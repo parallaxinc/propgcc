@@ -3,6 +3,7 @@ the Parallax Propeller.
 
 Directory organization is as follows:
 
-(TBD)
+binutils  - binutils 2.21 (complete) plus propeller changes
+
 
 
