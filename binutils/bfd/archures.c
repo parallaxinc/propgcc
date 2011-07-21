@@ -427,6 +427,9 @@ DESCRIPTION
 .  bfd_arch_lm32,      {* Lattice Mico32 *}
 .#define bfd_mach_lm32      1
 .  bfd_arch_microblaze,{* Xilinx MicroBlaze. *}
+.  bfd_arch_propeller,      {* Parallax Propeller *}
+.#define bfd_mach_prop1      1
+.#define bfd_mach_prop2      2
 .  bfd_arch_last
 .  };
 */
@@ -515,6 +518,7 @@ extern const bfd_arch_info_type bfd_pj_arch;
 extern const bfd_arch_info_type bfd_plugin_arch;
 extern const bfd_arch_info_type bfd_powerpc_archs[];
 #define bfd_powerpc_arch bfd_powerpc_archs[0]
+extern const bfd_arch_info_type bfd_propeller_arch;
 extern const bfd_arch_info_type bfd_rs6000_arch;
 extern const bfd_arch_info_type bfd_rx_arch;
 extern const bfd_arch_info_type bfd_s390_arch;

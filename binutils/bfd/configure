@@ -15122,6 +15122,7 @@ do
     bfd_elf32_powerpc_vec)	tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
     bfd_elf32_powerpcle_vec)	tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
     bfd_elf32_powerpc_vxworks_vec) tb="$tb elf32-ppc.lo elf-vxworks.lo elf32.lo $elf" ;;
+    bfd_elf32_propeller_vec)	tb="$tb elf32-propeller.lo elf32.lo $elf" ;;
     bfd_elf32_rx_le_vec)        tb="$tb elf32-rx.lo elf32.lo $elf" ;;
     bfd_elf32_rx_be_vec)        tb="$tb elf32-rx.lo elf32.lo $elf" ;;
     bfd_elf32_s390_vec)		tb="$tb elf32-s390.lo elf32.lo $elf" ;;

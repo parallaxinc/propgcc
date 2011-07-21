@@ -2819,6 +2819,14 @@ ENUMDOC
   PowerPC and PowerPC64 thread-local storage relocations.
 
 ENUM
+  BFD_RELOC_PROPELLER_SRC
+ENUMX
+  BFD_RELOC_PROPELLER_DST
+ENUMDOC
+  Propeller ELF relocations.
+COMMENT
+
+ENUM
   BFD_RELOC_I370_D12
 ENUMDOC
   IBM 370/390 relocations
