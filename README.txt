@@ -4,6 +4,7 @@ the Parallax Propeller.
 Directory organization is as follows:
 
 binutils  - binutils 2.21 (complete) plus propeller changes
+gcc	  - gcc 4.6.1 (complete) plus propeller changes
 
 
 
