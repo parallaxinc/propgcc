@@ -417,6 +417,7 @@ TARGET_CPU_CFILES = \
 	config/tc-pdp11.c \
 	config/tc-pj.c \
 	config/tc-ppc.c \
+	config/tc-propeller.c \
 	config/tc-rx.c \
 	config/tc-s390.c \
 	config/tc-score.c \
@@ -480,6 +481,7 @@ TARGET_CPU_HFILES = \
 	config/tc-pdp11.h \
 	config/tc-pj.h \
 	config/tc-ppc.h \
+	config/tc-propeller.h \
 	config/tc-rx.h \
 	config/tc-s390.h \
 	config/tc-score.h \
@@ -824,6 +826,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-pdp11.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-pj.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-ppc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-propeller.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-rx.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-s390.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-score.Po@am__quote@
@@ -1468,6 +1471,20 @@ tc-ppc.obj: config/tc-ppc.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-ppc.c' object='tc-ppc.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-ppc.obj `if test -f 'config/tc-ppc.c'; then $(CYGPATH_W) 'config/tc-ppc.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-ppc.c'; fi`
+
+tc-propeller.o: config/tc-propeller.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-propeller.o -MD -MP -MF $(DEPDIR)/tc-propeller.Tpo -c -o tc-propeller.o `test -f 'config/tc-propeller.c' || echo '$(srcdir)/'`config/tc-propeller.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/tc-propeller.Tpo $(DEPDIR)/tc-propeller.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-propeller.c' object='tc-propeller.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-propeller.o `test -f 'config/tc-propeller.c' || echo '$(srcdir)/'`config/tc-propeller.c
+
+tc-propeller.obj: config/tc-propeller.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-propeller.obj -MD -MP -MF $(DEPDIR)/tc-propeller.Tpo -c -o tc-propeller.obj `if test -f 'config/tc-propeller.c'; then $(CYGPATH_W) 'config/tc-propeller.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-propeller.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/tc-propeller.Tpo $(DEPDIR)/tc-propeller.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-propeller.c' object='tc-propeller.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-propeller.obj `if test -f 'config/tc-propeller.c'; then $(CYGPATH_W) 'config/tc-propeller.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-propeller.c'; fi`
 
 tc-rx.o: config/tc-rx.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-rx.o -MD -MP -MF $(DEPDIR)/tc-rx.Tpo -c -o tc-rx.o `test -f 'config/tc-rx.c' || echo '$(srcdir)/'`config/tc-rx.c

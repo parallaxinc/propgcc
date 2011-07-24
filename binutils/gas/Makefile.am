@@ -150,6 +150,7 @@ TARGET_CPU_CFILES = \
 	config/tc-pdp11.c \
 	config/tc-pj.c \
 	config/tc-ppc.c \
+	config/tc-propeller.c \
 	config/tc-rx.c \
 	config/tc-s390.c \
 	config/tc-score.c \
@@ -213,6 +214,7 @@ TARGET_CPU_HFILES = \
 	config/tc-pdp11.h \
 	config/tc-pj.h \
 	config/tc-ppc.h \
+	config/tc-propeller.h \
 	config/tc-rx.h \
 	config/tc-s390.h \
 	config/tc-score.h \
