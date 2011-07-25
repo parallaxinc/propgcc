@@ -401,6 +401,9 @@ powerpc*-*-*)
 	esac
 	extra_options="${extra_options} g.opt fused-madd.opt"
 	;;
+propeller*)
+	cpu_type=propeller
+	;;
 rs6000*-*-*)
 	need_64bit_hwint=yes
 	extra_options="${extra_options} g.opt fused-madd.opt"
@@ -2237,6 +2240,13 @@ powerpcle-*-eabi*)
 	extra_options="${extra_options} rs6000/sysv4.opt"
 	use_gcc_stdint=wrap
 	;;
+
+propeller-*)
+	tm_file="${tm_file} newlib-stdint.h"
+	use_gcc_stdint=wrap
+	tmake_file="propeller/t-propeller"
+        ;;
+
 rs6000-ibm-aix4.[3456789]* | powerpc-ibm-aix4.[3456789]*)
 	tm_file="rs6000/biarch64.h ${tm_file} rs6000/aix.h rs6000/aix43.h rs6000/xcoff.h rs6000/aix-stdint.h"
 	tmake_file=rs6000/t-aix43
