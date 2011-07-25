@@ -6,6 +6,8 @@ Directory organization is as follows:
 binutils  - binutils 2.21 (complete) plus propeller changes
 gcc	  - gcc 4.6.1 (complete) plus propeller changes
 
+
+----------------------- binutils build -------------------------------
 To build under Linux, execute the following commands (starting in this
 directory, which I assume is named "propgcc" on your system):
 
@@ -16,3 +18,6 @@ directory, which I assume is named "propgcc" on your system):
 
 This will start building binutils. It will fail when it gets to things
 we haven't gotten finished yet (the disassembler, linker, and/or gas).
+
+
+------------------------ gcc build ---------------------------------
