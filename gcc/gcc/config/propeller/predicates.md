@@ -34,3 +34,9 @@
 
 )))
 
+;; Nonzero if OP can be source of a simple move operations
+(define_predicate "propeller_movsrc_operand"
+  (match_code "mem,const_int,reg,subreg,symbol_ref,label_ref,const")
+{
+  return general_operand (op, mode);
+})

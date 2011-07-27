@@ -1,4 +1,4 @@
-/* Definitions of target machine for GNU compiler, Lattice Mico32 architecture.
+/* Definitions of target machine for GNU compiler, Propeller architecture.
    Contributed by Eric Smith <ersmith@totalspectrum.ca>
 
    Copyright (C) 2011 Parallax, Inc.
@@ -95,6 +95,27 @@ do {                                                    \
 #define LOCAL_ALIGNMENT(TYPE, ALIGN) \
   DATA_ALIGNMENT (TYPE, ALIGN)
 
+/* Nonzero if access to memory by bytes is slow and undesirable.  */
+#define SLOW_BYTE_ACCESS 0
+
+#define SLOW_UNALIGNED_ACCESS(MODE, ALIGN) 1
+
+/* Define if operations between registers always perform the operation
+   on the full register even if a narrower mode is specified.  */
+#define WORD_REGISTER_OPERATIONS
+
+/*-------------*/
+/* Profiling.  */
+/*-------------*/
+
+#define FUNCTION_PROFILER(FILE, LABELNO)
+
+/*---------------*/
+/* Trampolines.  */
+/*---------------*/
+
+#define TRAMPOLINE_SIZE		0
+
 /*----------------------------------------*/
 /* Layout of source language data types.  */
 /*----------------------------------------*/
@@ -112,6 +133,17 @@ do {                                                    \
 #define SIZE_TYPE "unsigned int"
 
 #define PTRDIFF_TYPE "int"
+
+/* An alias for the machine mode for pointers.  */
+#define Pmode         SImode
+
+/* An alias for the machine mode used for memory references to
+   functions being called, in `call' RTL expressions.  */
+#define FUNCTION_MODE Pmode
+
+/* Specify the machine mode that this machine uses
+   for the index in the tablejump instruction.  */
+#define CASE_VECTOR_MODE Pmode
 
 
 /*---------------------------*/
@@ -222,10 +254,29 @@ enum reg_class
 #define ARG_POINTER_REGNUM PROP_FAKE_AP_REGNUM
 
 #define HARD_FRAME_POINTER_REGNUM PROP_FP_REGNUM
+#define HARD_FRAME_POINTER_IS_FRAME_POINTER 0
+#define HARD_FRAME_POINTER_IS_ARG_POINTER   0
+
+/* Definitions for register eliminations.
+
+   This is an array of structures.  Each structure initializes one pair
+   of eliminable registers.  The "from" register number is given first,
+   followed by "to".  Eliminations of the same "from" register are listed
+   in order of preference.
+
+   We have two registers that can be eliminated on the propeller.  First, the
+   arg pointer register can often be eliminated in favor of the stack
+   pointer register.  Secondly, the pseudo frame pointer register can always
+   be eliminated; it is replaced with either the stack or the real frame
+   pointer.  */
 
 #define ELIMINABLE_REGS							\
-{{ FRAME_POINTER_REGNUM, HARD_FRAME_POINTER_REGNUM },			\
- { ARG_POINTER_REGNUM,   HARD_FRAME_POINTER_REGNUM }}			
+{{ ARG_POINTER_REGNUM,        STACK_POINTER_REGNUM            },\
+ { ARG_POINTER_REGNUM,        FRAME_POINTER_REGNUM            },\
+ { ARG_POINTER_REGNUM,        HARD_FRAME_POINTER_REGNUM       },\
+ { FRAME_POINTER_REGNUM,      STACK_POINTER_REGNUM            },\
+ { FRAME_POINTER_REGNUM,      HARD_FRAME_POINTER_REGNUM }}
+
 
 /* This macro is similar to `INITIAL_FRAME_POINTER_OFFSET'.  It
    specifies the initial difference between the specified pair of
@@ -246,6 +297,28 @@ enum reg_class
 #define BASE_REG_CLASS GENERAL_REGS
 
 #define INDEX_REG_CLASS NO_REGS
+
+#define HARD_REGNO_OK_FOR_BASE_P(NUM) \
+  ((unsigned) (NUM) < FIRST_PSEUDO_REGISTER \
+   && (REGNO_REG_CLASS(NUM) == GENERAL_REGS \
+       || (NUM) == HARD_FRAME_POINTER_REGNUM))
+
+#define MAX_REGS_PER_ADDRESS 1
+
+/* A C expression which is nonzero if register number NUM is suitable
+   for use as a base register in operand addresses.  */
+#ifdef REG_OK_STRICT
+#define REGNO_OK_FOR_BASE_P(NUM)		 \
+  (HARD_REGNO_OK_FOR_BASE_P(NUM) 		 \
+   || HARD_REGNO_OK_FOR_BASE_P(reg_renumber[(NUM)]))
+#else
+#define REGNO_OK_FOR_BASE_P(NUM)		 \
+  ((NUM) >= FIRST_PSEUDO_REGISTER || HARD_REGNO_OK_FOR_BASE_P(NUM))
+#endif
+
+/* A C expression which is nonzero if register number NUM is suitable
+   for use as an index register in operand addresses.  */
+#define REGNO_OK_FOR_INDEX_P(NUM) 0
 
 /* A C expression that is nonzero if it is permissible to store a
    value of mode MODE in hard register number REGNO (or in several
@@ -273,6 +346,17 @@ enum reg_class
    class CLASS needed to hold a value of mode MODE.  */
 #define CLASS_MAX_NREGS(CLASS, MODE) \
   ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
+
+/* The maximum number of bytes that a single instruction can move
+   quickly between memory and registers or between two memory
+   locations.  */
+#define MOVE_MAX 4
+#define TRULY_NOOP_TRUNCATION(op,ip) 1
+
+/* All load operations zero extend.  */
+#define LOAD_EXTEND_OP(MEM) ZERO_EXTEND
+
+#define LEGITIMATE_CONSTANT_P(X) propeller_legitimate_constant_p (X)
 
 
 /* Passing Arguments in Registers */
@@ -332,7 +416,7 @@ enum reg_class
                  && TYPE_PRECISION (VALTYPE) < BITS_PER_WORD)           \
 	            ? word_mode                                         \
 	            : TYPE_MODE (VALTYPE),				\
-	            RV_REGNUM)
+	            PROP_R0)
 
 #define LIBCALL_VALUE(MODE) gen_rtx_REG (MODE, PROP_R0)
 
@@ -348,16 +432,62 @@ enum reg_class
 #define ASM_APP_ON ""
 #define ASM_APP_OFF ""
 
+#undef  ASM_GENERATE_INTERNAL_LABEL
+#define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
+  do								\
+    {								\
+      sprintf (LABEL, ":%s%u", \
+	       PREFIX, (unsigned) (NUM));			\
+    }								\
+  while (0)
+
 #define FILE_ASM_OP     "\t.file\n"
 
 /* Switch to the text or data segment.  */
 #define TEXT_SECTION_ASM_OP  "\t.text"
 #define DATA_SECTION_ASM_OP  "\t.data"
+#define BSS_SECTION_ASM_OP   "\t.bss"
 
 /* Assembler Commands for Alignment */
 
 #define ASM_OUTPUT_ALIGN(STREAM,POWER) \
 	fprintf (STREAM, "\t.p2align\t%d\n", POWER);
+
+/* This says how to output an assembler line
+   to define a global common symbol.  */
+
+#define ASM_OUTPUT_COMMON(FILE, NAME, SIZE, ROUNDED)	\
+  ( fputs (".comm ", (FILE)),				\
+    assemble_name ((FILE), (NAME)),			\
+    fprintf ((FILE), ",%u\n", (int)(ROUNDED)))
+
+/* This says how to output an assembler line
+   to define a local common symbol....  */
+#undef  ASM_OUTPUT_LOCAL
+#define ASM_OUTPUT_LOCAL(FILE, NAME, SIZE, ROUNDED)	\
+  (fputs ("\t.lcomm\t", FILE),				\
+  assemble_name (FILE, NAME),				\
+  fprintf (FILE, ",%d\n", (int)SIZE))
+
+
+/* ... and how to define a local common symbol whose alignment
+   we wish to specify.  ALIGN comes in as bits, we have to turn
+   it into bytes.  */
+#undef  ASM_OUTPUT_ALIGNED_LOCAL
+#define ASM_OUTPUT_ALIGNED_LOCAL(FILE, NAME, SIZE, ALIGN)		\
+  do									\
+    {									\
+      fputs ("\t.bss\t", (FILE));					\
+      assemble_name ((FILE), (NAME));					\
+      fprintf ((FILE), ",%d,%d\n", (int)(SIZE), (ALIGN) / BITS_PER_UNIT);\
+    }									\
+  while (0)
+
+/* This is how to output an assembler line
+   that says to advance the location counter by SIZE bytes.  */
+#undef  ASM_OUTPUT_SKIP
+#define ASM_OUTPUT_SKIP(FILE,SIZE)  \
+  fprintf (FILE, "\tbyte 0[%d]\n", (int)(SIZE))
 
 /* A C compound statement to output to stdio stream STREAM the
    assembler syntax for an instruction operand X.  */
@@ -368,7 +498,6 @@ enum reg_class
 /* Output and Generation of Labels */
 
 #define GLOBAL_ASM_OP "\t.global\t"
-
 
 
 #endif /* GCC_PROPELLER_H */
