@@ -347,6 +347,8 @@ enum reg_class
 
 #define LEGITIMATE_CONSTANT_P(X) propeller_legitimate_constant_p (X)
 
+#define SELECT_CC_MODE(OP, X, Y) propeller_select_cc_mode(OP, X, Y)
+
 
 /* Passing Arguments in Registers */
 
@@ -433,17 +435,17 @@ typedef unsigned int CUMULATIVE_ARGS;
     }								\
   while (0)
 
-#define FILE_ASM_OP     "\t.file\n"
+#define FILE_ASM_OP     ""
 
 /* Switch to the text or data segment.  */
-#define TEXT_SECTION_ASM_OP  "\t.text"
-#define DATA_SECTION_ASM_OP  "\t.data"
-#define BSS_SECTION_ASM_OP   "\t.bss"
+#define TEXT_SECTION_ASM_OP  "\'\t.text"
+#define DATA_SECTION_ASM_OP  "\'\t.data"
+#define BSS_SECTION_ASM_OP   "\'\t.bss"
 
 /* Assembler Commands for Alignment */
 
 #define ASM_OUTPUT_ALIGN(STREAM,POWER) \
-	fprintf (STREAM, "\t.p2align\t%d\n", POWER);
+	fprintf (STREAM, "'\t.align\t%u\n", (1U<<POWER));
 
 /* This says how to output an assembler line
    to define a global common symbol.  */
@@ -481,15 +483,10 @@ typedef unsigned int CUMULATIVE_ARGS;
 #define ASM_OUTPUT_SKIP(FILE,SIZE)  \
   fprintf (FILE, "\tbyte 0[%d]\n", (int)(SIZE))
 
-/* A C compound statement to output to stdio stream STREAM the
-   assembler syntax for an instruction operand X.  */
-#define PRINT_OPERAND(STREAM, X, CODE) propeller_print_operand (STREAM, X, CODE)
-
-#define PRINT_OPERAND_ADDRESS(STREAM ,X) propeller_print_operand_address (STREAM, X)
 
 /* Output and Generation of Labels */
 
-#define GLOBAL_ASM_OP "\t.global\t"
+#define GLOBAL_ASM_OP "\'\t.global\t"
 
 
 #endif /* GCC_PROPELLER_H */

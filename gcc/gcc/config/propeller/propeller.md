@@ -30,7 +30,7 @@
 
 ; make sure this matches the definition in propeller.h
 (define_constants
-  [(CC_REG 20)])
+  [(CC_REG 18)])
 
 ; Most instructions are four bytes long.
 (define_attr "length" "" (const_int 4))
@@ -55,8 +55,8 @@
 	   (match_operand:SI 2 "propeller_add_operand" "rI,N")))]
   ""
   "@
-  add %0, %2
-  sub %0, %2")
+  add\t%0, %2
+  sub\t%0, #%n2")
 
 (define_insn "subsi3"
   [(set (match_operand:SI 0 "register_operand" "=r,r")
@@ -65,8 +65,8 @@
 	   (match_operand:SI 2 "propeller_src_operand" "I,r")))]
   ""
   "@
-  sub %0, %2
-  sub %0, %2")
+  sub\t%0, %2
+  sub\t%0, %2")
 
 ;; -------------------------------------------------------------------------
 ;; Unary arithmetic instructions
@@ -76,13 +76,13 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
 	  (neg:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "neg    %0, %1")
+  "neg\t%0, %1")
 
 (define_insn "one_cmplsi2"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(not:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "not    %0, %1")
+  "not\t%0, %1")
 
 ;; -------------------------------------------------------------------------
 ;; Logical operators
@@ -94,7 +94,7 @@
 		(match_operand:SI 2 "propeller_src_operand" "rI")))]
   ""
 {
-  return "and    %0, %2";
+  return "and\t%0, %2";
 })
 
 (define_insn "xorsi3"
@@ -103,7 +103,7 @@
 		(match_operand:SI 2 "propeller_src_operand" "rI")))]
   ""
 {
-  return "xor    %0, %2";
+  return "xor\t%0, %2";
 })
 
 (define_insn "iorsi3"
@@ -112,7 +112,7 @@
 		(match_operand:SI 2 "propeller_src_operand" "rI")))]
   ""
 {
-  return "or     %0, %2";
+  return "or\t%0, %2";
 })
 
 ;; -------------------------------------------------------------------------
@@ -125,25 +125,25 @@
 		   (match_operand:SI 2 "propeller_src_operand" "rI")))]
   ""
 {
-  return "shl   %0, %2";
+  return "shl\t%0, %2";
 })
 
 (define_insn "ashrsi3"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
-		     (match_operand:SI 2 "register_operand" "r")))]
+		     (match_operand:SI 2 "propeller_src_operand" "rI")))]
   ""
 {
-  return "sar   %0, %2";
+  return "sar\t%0, %2";
 })
 
 (define_insn "lshrsi3"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
-		     (match_operand:SI 2 "register_operand" "r")))]
+		     (match_operand:SI 2 "propeller_src_operand" "rI")))]
   ""
 {
-  return "shr   %0, %2";
+  return "shr\t%0, %2";
 })
 
 ;; -------------------------------------------------------------------------
@@ -180,10 +180,10 @@
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)"
   "@
-   mov    %0, %1
-   neg    %0, %1
-   rdlong %0, %1
-   wrlong %1, %0")
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdlong\t%0, %1
+   wrlong\t%1, %0")
 
 (define_expand "movqi"
   [(set (match_operand:QI 0 "general_operand" "")
@@ -202,10 +202,10 @@
   "register_operand (operands[0], QImode)
    || register_operand (operands[1], QImode)"
   "@
-   mov    %0, %1
-   neg    %0, %1
-   rdbyte %0, %1
-   wrbyte %1, %0")
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdbyte\t%0, %1
+   wrbyte\t%1, %0")
 
 
 (define_expand "movhi"
@@ -225,64 +225,81 @@
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)"
   "@
-   mov    %0, %1
-   neg    %0, %1
-   rdbyte %0, %1
-   wrbyte %1, %0")
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdbyte\t%0, %1
+   wrbyte\t%1, %0")
+
+;; optimizations
+(define_insn "*prop_zero_extendqisi2"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
+  ""
+  "@
+   and\\t%0,#255
+   rdbyte\\t%0 %1"
+)
 
 ;; -------------------------------------------------------------------------
 ;; Compare instructions
 ;; -------------------------------------------------------------------------
 
 (define_expand "cbranchsi4"
-  [(set (reg:CC CC_REG)
-        (compare:CC
-         (match_operand:SI 1 "general_operand" "")
-         (match_operand:SI 2 "general_operand" "")))
+  [(set (match_dup 4)
+        (match_op_dup 5
+         [(match_operand:SI 1 "register_operand" "")
+          (match_operand:SI 2 "propeller_src_operand" "")]))
    (set (pc)
-        (if_then_else (match_operator:CC 0 "comparison_operator"
-                       [(reg:CC CC_REG) (const_int 0)])
-                      (label_ref (match_operand 3 "" ""))
-                      (pc)))]
+        (if_then_else
+              (match_operator 0 "ordered_comparison_operator"
+               [(match_dup 4)
+                (const_int 0)])
+              (label_ref (match_operand 3 "" ""))
+              (pc)))]
   ""
   "
-  /* Force the compare operands into registers.  */
-  if (GET_CODE (operands[1]) != REG)
-	operands[1] = force_reg (SImode, operands[1]);
-  if (GET_CODE (operands[2]) != REG)
-	operands[2] = force_reg (SImode, operands[2]);
-  ")
+{
+  operands[4] = propeller_gen_compare_reg (GET_CODE (operands[0]),
+                                      operands[1], operands[2]);
+  operands[5] = gen_rtx_fmt_ee (COMPARE,
+                                GET_MODE (operands[4]),
+                                operands[1], operands[2]);
+}")
 
-(define_insn "*cmpsi"
+(define_insn "*cmps"
   [(set (reg:CC CC_REG)
 	(compare
 	 (match_operand:SI 0 "register_operand" "r")
-	 (match_operand:SI 1 "register_operand"	"r")))]
+	 (match_operand:SI 1 "propeller_src_operand"	"rI")))]
   ""
-  "cmp    %0, %1")
+  "cmps\t%0, %1")
 
+(define_insn "*cmpu"
+  [(set (reg:CCUNS CC_REG)
+	(compare
+	 (match_operand:SI 0 "register_operand" "r")
+	 (match_operand:SI 1 "propeller_src_operand"	"rI")))]
+  ""
+  "cmp\t%0, %1")
 
 ;; -------------------------------------------------------------------------
 ;; Branch instructions
 ;; -------------------------------------------------------------------------
 
 (define_code_iterator cond [ne eq lt ltu gt gtu ge le geu leu])
-(define_code_attr CC [(ne "ne") (eq "eq") (lt "lt") (ltu "ltu") 
-		      (gt "gt") (gtu "gtu") (ge "ge") (le "le") 
-		      (geu "geu") (leu "leu") ])
-(define_code_attr rCC [(ne "eq") (eq "ne") (lt "ge") (ltu "geu") 
-		       (gt "le") (gtu "leu") (ge "lt") (le "gt") 
-		       (geu "ltu") (leu "gtu") ])
+(define_code_attr CC [(ne "NE") (eq "E ") (lt "B ") (ltu "B ") 
+		      (gt "A ") (gtu "A ") (ge "AE") (le "BE") 
+		      (geu "AE") (leu "BE") ])
 
 (define_insn "*b<cond:code>"
   [(set (pc)
-	(if_then_else (cond (reg:CC CC_REG)
+	(if_then_else (cond (reg CC_REG)
 			    (const_int 0))
 		      (label_ref (match_operand 0 "" ""))
 		      (pc)))]
   ""
 {
-  return "IF_<CC> jmp   %l0";
+  return "IF_<CC> jmp\t%l0";
 })
 
 
@@ -291,7 +308,7 @@
 ;; -------------------------------------------------------------------------
 
 (define_expand "call"
-  [(call (match_operand:QI 0 "memory_operand" "")
+  [(call (match_operand:SI 0 "memory_operand" "")
 		(match_operand 1 "general_operand" ""))]
   ""
 {
@@ -299,17 +316,17 @@
 })
 
 (define_insn "*call"
-  [(call (mem:QI (match_operand:SI
+  [(call (mem:SI (match_operand:SI
 		  0 "nonmemory_operand" "ir"))
 	 (match_operand 1 "" ""))]
   ""
   "@
-   jmpret   lr,%0"
+   jmpret\tlr,%0"
 )
 
 (define_expand "call_value"
   [(set (match_operand 0 "" "")
-		(call (match_operand:QI 1 "memory_operand" "")
+		(call (match_operand:SI 1 "memory_operand" "")
 		 (match_operand 2 "" "")))]
   ""
 {
@@ -318,31 +335,31 @@
 
 (define_insn "*call_value"
   [(set (match_operand 0 "register_operand" "=r")
-	(call (mem:QI (match_operand:SI
+	(call (mem:SI (match_operand:SI
 		       1 "immediate_operand" "i"))
 	      (match_operand 2 "" "")))]
   ""
-  "jmpret   lr,%1"
+  "jmpret\tlr,%1"
  )
 
 (define_insn "*call_value_indirect"
   [(set (match_operand 0 "register_operand" "=r")
-	(call (mem:QI (match_operand:SI
+	(call (mem:SI (match_operand:SI
 		       1 "register_operand" "r"))
 	      (match_operand 2 "" "")))]
   ""
-  "jmpret   lr,%1")
+  "jmpret\tlr,%1")
 
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "r"))]
   ""
-  "jmp    %0")
+  "jmp\t%0")
 
 (define_insn "jump"
   [(set (pc)
 	(label_ref (match_operand 0 "" "")))]
   ""
-  "jmp   %0")
+  "jmp\t%0")
 
 
 ;; -------------------------------------------------------------------------
@@ -373,11 +390,11 @@
   [(use (match_operand:SI 0 "register_operand" "r"))
    (return)]
   ""
-  "jmp        %0"
+  "jmp\t%0"
 )
 
 (define_insn "return"
   [(return)]
   "propeller_can_use_return ()"
-  "jmp lr"
+  "jmp\tlr"
 )

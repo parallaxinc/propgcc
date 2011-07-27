@@ -67,6 +67,12 @@ static rtx propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
                                 const_tree type, bool named ATTRIBUTE_UNUSED);
 
+#undef TARGET_PRINT_OPERAND
+#define TARGET_PRINT_OPERAND propeller_print_operand
+#undef TARGET_PRINT_OPERAND_ADDRESS
+#define TARGET_PRINT_OPERAND_ADDRESS propeller_print_operand_address
+#undef TARGET_PRINT_OPERAND_PUNCT_VALID_P
+#define TARGET_PRINT_OPERAND_PUNCT_VALID_P propeller_print_operand_punct_valid_p
 #undef TARGET_PROMOTE_FUNCTION_MODE
 #define TARGET_PROMOTE_FUNCTION_MODE default_promote_function_mode_always_promote
 #undef TARGET_FUNCTION_ARG
@@ -78,10 +84,17 @@ static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_m
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P propeller_legitimate_address_p
 
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
 
 
+bool
+propeller_print_operand_punct_valid_p (unsigned char code)
+{
+    return false;
+}
+
 /* The PRINT_OPERAND worker.  */
 
 void
@@ -108,35 +121,30 @@ propeller_print_operand (FILE * file, rtx op, int letter)
     output_addr_const (file, XEXP (op, 0));  
   else if (code == MEM)
     output_address (XEXP (op, 0));
-  else if (GET_CODE (op) == CONST_DOUBLE)
+  else if (code == CONST_DOUBLE)
     {
       if ((CONST_DOUBLE_LOW (op) != 0) || (CONST_DOUBLE_HIGH (op) != 0))
 	output_operand_lossage ("only 0.0 can be loaded as an immediate");
       else
-	fprintf (file, "0");
+	fprintf (file, "#0");
     }
   else if (code == EQ)
-    fprintf (file, "e  ");
+    fprintf (file, "E  ");
   else if (code == NE)
-    fprintf (file, "ne ");
-  else if (code == GT)
-    fprintf (file, "g  ");
-  else if (code == GTU)
-    fprintf (file, "gu ");
-  else if (code == LT)
-    fprintf (file, "l  ");
-  else if (code == LTU)
-    fprintf (file, "lu ");
-  else if (code == GE)
-    fprintf (file, "ge ");
-  else if (code == GEU)
-    fprintf (file, "geu");
-  else if (code == LE)
-    fprintf (file, "le ");
-  else if (code == LEU)
-    fprintf (file, "leu");
+    fprintf (file, "NE ");
+  else if (code == GT || code == GTU)
+    fprintf (file, "A  ");
+  else if (code == LT || code == LTU)
+    fprintf (file, "B  ");
+  else if (code == GE || code == GEU)
+    fprintf (file, "AE ");
+  else if (code == LE || code == LEU)
+    fprintf (file, "BE ");
   else
-    output_addr_const (file, op);
+    {
+       if (code == CONST_INT) fprintf (file, "#");
+       output_addr_const (file, op);
+    }
 }
 
 /* A C compound statement to output to stdio stream STREAM the
@@ -255,6 +263,30 @@ propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
   *cum += PROP_NUM_REGS (mode, type);
 }
 
+
+/*
+ * comparison functions
+ */
+/* SELECT_CC_MODE.  */
+
+enum machine_mode
+propeller_select_cc_mode (RTX_CODE op, rtx x, rtx y ATTRIBUTE_UNUSED)
+{
+  if (op == GTU || op == LTU || op == GEU || op == LEU)
+    return CCUNSmode;
+
+  return CCmode;
+}
+
+/*
+ * generate CC_REG in appropriate mode
+ */
+rtx
+propeller_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
+{
+    enum machine_mode ccmode = SELECT_CC_MODE (code, x, y);
+    return gen_rtx_REG (ccmode, PROP_CC_REGNUM);
+}
 
 
 /*
