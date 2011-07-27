@@ -23,6 +23,7 @@
 
 extern void propeller_print_operand (FILE *file, rtx op, int letter);
 extern void propeller_print_operand_address (FILE *file, rtx addr);
+extern bool propeller_print_operand_punct_valid_p (unsigned char code);
 extern void propeller_expand_prologue (void);
 extern void propeller_expand_epilogue (void);
 extern int propeller_can_use_return (void);
@@ -33,10 +34,15 @@ extern bool propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c);
 
 extern HOST_WIDE_INT propeller_initial_elimination_offset (int from, int to);
 
-#if defined TREE_CODE
+#if defined(TREE_CODE)
 extern void propeller_init_cumulative_args (CUMULATIVE_ARGS *, tree, rtx, tree);
 extern bool propeller_pad_arg_upward (enum machine_mode, const_tree);
 extern bool propeller_pad_reg_upward (enum machine_mode, tree, int);
+#endif
+
+#if defined(RTX_CODE)
+extern enum machine_mode propeller_select_cc_mode (enum rtx_code, rtx, rtx);
+extern rtx propeller_gen_compare_reg (enum rtx_code, rtx, rtx);
 #endif
 
 #endif
