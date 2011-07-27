@@ -52,7 +52,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r,r")
 	  (plus:SI
 	   (match_operand:SI 1 "register_operand" "0,0")
-	   (match_operand:SI 2 "propeller_src_operand" "rI,N")))]
+	   (match_operand:SI 2 "propeller_add_operand" "rI,N")))]
   ""
   "@
   add %0, %2

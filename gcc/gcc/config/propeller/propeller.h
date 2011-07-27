@@ -176,19 +176,17 @@ do {                                                    \
   "r4", "r5", "r6", "r7",   \
   "r8", "r9", "r10", "r11",   \
   "r12", "r13", "r14", "lr",   \
-  "sp", "?ap", "?fp", "pc", "?cc" }
+  "sp", "pc", "?cc" }
 
 #define PROP_R0        0
 #define PROP_R1        1
 #define PROP_FP_REGNUM 14
 #define PROP_LR_REGNUM 15
 #define PROP_SP_REGNUM 16
-#define PROP_FAKE_AP_REGNUM 17
-#define PROP_FAKE_FP_REGNUM 18
-#define PROP_PC_REGNUM 19
-#define PROP_CC_REGNUM 20
+#define PROP_PC_REGNUM 17
+#define PROP_CC_REGNUM 18
 
-#define FIRST_PSEUDO_REGISTER 21
+#define FIRST_PSEUDO_REGISTER 19
 
 enum reg_class
 {
@@ -202,10 +200,10 @@ enum reg_class
 
 #define REG_CLASS_CONTENTS \
 { { 0x00000000 }, /* Empty */			   \
-  { 0x0007FFFF }, /* r0-r15, sp, fake AP, fake FP */ \
-  { 0x00080000 }, /* pc */	                   \
-  { 0x00100000 }, /* cc */                        \
-  { 0x001FFFFF }  /* All registers */              \
+  { 0x0001FFFF }, /* r0-r15, sp, */        \
+  { 0x00020000 }, /* pc */	                   \
+  { 0x00040000 }, /* cc */                        \
+  { 0x0007FFFF }  /* All registers */              \
 }
 
 #define N_REG_CLASSES LIM_REG_CLASSES
@@ -221,7 +219,7 @@ enum reg_class
 {                       \
   0,0,0,0,0,0,0,0,      \
   0,0,0,0,0,0,0,0,      \
-  1,1,1,1,1,        \
+  1,1,1,        \
 }
 
 /* 1 for registers not available across function calls
@@ -232,7 +230,7 @@ enum reg_class
 {                       \
   1,1,1,1,1,1,1,1,      \
   0,0,0,0,0,0,1,1,      \
-  1,1,1,1,1,        \
+  1,1,1,        \
 }
 
 /* we can't really copy to/from the CC */
@@ -247,15 +245,12 @@ enum reg_class
 
 /* The register number of the frame pointer register, which is used to
    access automatic variables in the stack frame.  */
-#define FRAME_POINTER_REGNUM PROP_FAKE_FP_REGNUM
+#define FRAME_POINTER_REGNUM PROP_FP_REGNUM
 
 /* The register number of the arg pointer register, which is used to
    access the function's argument list.  */
-#define ARG_POINTER_REGNUM PROP_FAKE_AP_REGNUM
+#define ARG_POINTER_REGNUM PROP_FP_REGNUM
 
-#define HARD_FRAME_POINTER_REGNUM PROP_FP_REGNUM
-#define HARD_FRAME_POINTER_IS_FRAME_POINTER 0
-#define HARD_FRAME_POINTER_IS_ARG_POINTER   0
 
 /* Definitions for register eliminations.
 
@@ -263,19 +258,13 @@ enum reg_class
    of eliminable registers.  The "from" register number is given first,
    followed by "to".  Eliminations of the same "from" register are listed
    in order of preference.
-
-   We have two registers that can be eliminated on the propeller.  First, the
-   arg pointer register can often be eliminated in favor of the stack
-   pointer register.  Secondly, the pseudo frame pointer register can always
-   be eliminated; it is replaced with either the stack or the real frame
-   pointer.  */
+*/
 
 #define ELIMINABLE_REGS							\
-{{ ARG_POINTER_REGNUM,        STACK_POINTER_REGNUM            },\
- { ARG_POINTER_REGNUM,        FRAME_POINTER_REGNUM            },\
- { ARG_POINTER_REGNUM,        HARD_FRAME_POINTER_REGNUM       },\
- { FRAME_POINTER_REGNUM,      STACK_POINTER_REGNUM            },\
- { FRAME_POINTER_REGNUM,      HARD_FRAME_POINTER_REGNUM }}
+{{ FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM },                        \
+ { ARG_POINTER_REGNUM, STACK_POINTER_REGNUM },                          \
+}
+
 
 
 /* This macro is similar to `INITIAL_FRAME_POINTER_OFFSET'.  It
@@ -363,7 +352,10 @@ enum reg_class
 
 /* A C type for declaring a variable that is used as the first
    argument of `FUNCTION_ARG' and other related values.  */
-#define CUMULATIVE_ARGS unsigned int
+typedef unsigned int CUMULATIVE_ARGS;
+
+#define FUNCTION_ARG_PADDING(MODE, TYPE) upward
+#define BLOCK_REG_PADDING(MODE, TYPE, FIRST) upward
 
 /* If defined, the maximum amount of space required for outgoing arguments
    will be computed and placed into the variable
@@ -376,7 +368,7 @@ enum reg_class
    for the state at the beginning of the argument list.  
    For moxie, the first arg is passed in register 2 (aka $r0).  */
 #define INIT_CUMULATIVE_ARGS(CUM,FNTYPE,LIBNAME,FNDECL,N_NAMED_ARGS) \
-  (CUM = PROP_R0)
+    (CUM = PROP_R0)
 
 /* How Scalar Function Values Are Returned */
 

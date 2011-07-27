@@ -62,7 +62,19 @@ struct propeller_frame_info
 /* Current frame information calculated by compute_frame_size.  */
 static struct propeller_frame_info current_frame_info;
 static HOST_WIDE_INT propeller_compute_frame_size (int size);
+static rtx propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
+                                   const_tree type, bool named);
+static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
+                                const_tree type, bool named ATTRIBUTE_UNUSED);
 
+#undef TARGET_PROMOTE_FUNCTION_MODE
+#define TARGET_PROMOTE_FUNCTION_MODE default_promote_function_mode_always_promote
+#undef TARGET_FUNCTION_ARG
+#define TARGET_FUNCTION_ARG propeller_function_arg
+#undef TARGET_FUNCTION_ARG_ADVANCE
+#define TARGET_FUNCTION_ARG_ADVANCE propeller_function_arg_advance
+#undef TARGET_PROMOTE_PROTOTYPES
+#define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_true
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P propeller_legitimate_address_p
 
@@ -196,6 +208,55 @@ emit_add (rtx dest, rtx src0, rtx src1)
 }
 
 
+/* Convert from bytes to ints.  */
+#define PROP_NUM_INTS(X) (((X) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
+
+/* The number of (integer) registers required to hold a quantity of
+   TYPE MODE.  */
+#define PROP_NUM_REGS(MODE, TYPE)                       \
+  PROP_NUM_INTS ((MODE) == BLKmode ?                     \
+  int_size_in_bytes (TYPE) : GET_MODE_SIZE (MODE))
+
+/* function parameter related functions */
+/* Determine where to put an argument to a function.
+   Value is zero to push the argument on the stack,
+   or a hard register in which to store the argument.
+
+   MODE is the argument's machine mode.
+   TYPE is the data type of the argument (as a tree).
+    This is null for libcalls where that information may
+    not be available.
+   CUM is a variable of type CUMULATIVE_ARGS which gives info about
+    the preceding args and about the function being called.
+   NAMED is nonzero if this argument is a named parameter
+    (otherwise it is an extra parameter matching an ellipsis).  */
+
+static rtx
+propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
+		   const_tree type, bool named)
+{
+  if (mode == VOIDmode)
+    /* Compute operand 2 of the call insn.  */
+    return GEN_INT (0);
+
+  if (targetm.calls.must_pass_in_stack (mode, type))
+    return NULL_RTX;
+
+  if (!named || (*cum + PROP_NUM_REGS (mode, type) > NUM_ARG_REGS))
+    return NULL_RTX;
+
+  return gen_rtx_REG (mode, *cum + PROP_R0);
+}
+
+static void
+propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
+			   const_tree type, bool named ATTRIBUTE_UNUSED)
+{
+  *cum += PROP_NUM_REGS (mode, type);
+}
+
+
+
 /*
  * stack related functions
  */
@@ -219,6 +280,7 @@ propeller_initial_elimination_offset (int from, int to)
           gcc_unreachable ();
           break;
       }
+      break;
   default:
       gcc_unreachable ();
       break;
@@ -443,7 +505,6 @@ propeller_legitimate_constant_p (rtx x)
 {
     return true;
 }
-
 bool
 propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 {
@@ -455,3 +516,5 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
         gcc_unreachable();
     }
 }
+
+

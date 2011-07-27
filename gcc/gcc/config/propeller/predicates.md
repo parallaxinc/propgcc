@@ -34,6 +34,16 @@
 
 )))
 
+;; for addition we can also do negative immediates
+(define_predicate "propeller_add_operand"
+  (ior (match_operand 0 "register_operand")
+       (and (match_operand 0 "immediate_operand")
+            (ior
+	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
+	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'N')")
+
+))))
+
 ;; Nonzero if OP can be source of a simple move operations
 (define_predicate "propeller_movsrc_operand"
   (match_code "mem,const_int,reg,subreg,symbol_ref,label_ref,const")
