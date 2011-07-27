@@ -241,6 +241,37 @@
 )
 
 ;; -------------------------------------------------------------------------
+;; min/max instructions
+;; -------------------------------------------------------------------------
+(define_insn "umaxsi3"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(umax:SI (match_operand:SI 1 "register_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  ""
+  "max\\t%0, %2")
+
+(define_insn "uminsi3"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(umin:SI (match_operand:SI 1 "register_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  ""
+  "min\\t%0, %2")
+
+(define_insn "smaxsi3"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(smax:SI (match_operand:SI 1 "register_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  ""
+  "maxs\\t%0, %2")
+
+(define_insn "sminsi3"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(smin:SI (match_operand:SI 1 "register_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  ""
+  "mins\\t%0, %2")
+
+;; -------------------------------------------------------------------------
 ;; Compare instructions
 ;; -------------------------------------------------------------------------
 
