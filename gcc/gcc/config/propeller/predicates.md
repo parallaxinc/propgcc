@@ -44,9 +44,33 @@
 
 ))))
 
-;; Nonzero if OP can be source of a simple move operations
-(define_predicate "propeller_movsrc_operand"
-  (match_code "mem,const_int,reg,subreg,symbol_ref,label_ref,const")
+;; True if OP is a valid operand for the MEM of a CALL insn.
+(define_predicate "call_operand"
+  (ior (match_code "symbol_ref")
+       (match_operand 0 "register_operand")))
+
+;; True if OP refers to any kind of symbol.
+;; For roughly the same reasons that pmode_register_operand exists, this
+;; predicate ignores its mode argument.
+(define_special_predicate "symbolic_operand" 
+   (match_code "symbol_ref,const,label_ref"))
+
+;; True if OP is a SYMBOL_REF which refers to a function.
+(define_predicate "function_operand"
+  (and (match_code "symbol_ref")
+       (match_test "SYMBOL_REF_FUNCTION_P (op)")))
+
+;; True if OP is a constant pool reference
+(define_predicate "const_pool_operand"
+  (match_code "symbol_ref")
 {
-  return general_operand (op, mode);
+  return CONSTANT_POOL_ADDRESS_P (op);
 })
+
+
+;; Nonzero if OP is a 32 bit constant that needs to be placed specially
+
+(define_predicate "propeller_big_const"
+  (and (match_operand 0 "immediate_operand")
+       (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'W')"
+)))

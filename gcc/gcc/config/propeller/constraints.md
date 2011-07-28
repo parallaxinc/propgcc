@@ -33,15 +33,20 @@
 	    (match_test "GET_CODE (XEXP (op, 0)) == CONST"))))
 
 (define_constraint "B"
-  "An offset address."
+  "A constant pool memory operand"
   (and (match_code "mem")
-       (match_test "GET_CODE (XEXP (op, 0)) == PLUS")))
+       (match_test "GET_CODE (XEXP (op, 0)) == SYMBOL_REF && CONSTANT_POOL_ADDRESS_P (XEXP (op, 0))")))
 
-(define_constraint "W"
+(define_constraint "C"
+  "A constant pool address"
+  (and (match_code "symbol_ref")
+       (match_test "CONSTANT_POOL_ADDRESS_P (op)")))
+
+(define_memory_constraint "Q"
   "A register indirect memory operand."
   (and (match_code "mem")
-       (match_test "REG_P (XEXP (op, 0))
-		    && REGNO_OK_FOR_BASE_P (REGNO (XEXP (op, 0)))")))
+       (match_test "REG_P (XEXP (op,0))
+                    && REGNO_OK_FOR_BASE_P (REGNO (XEXP (op,0)))")))
 
 (define_constraint "O"
   "The constant zero"
@@ -54,6 +59,13 @@
        (match_test "ival >= 0 && ival <= 511")))
 
 (define_constraint "N"
-  "A constant -(0..511)"
+  "A negative 9-bit constant -(0..511)"
   (and (match_code "const_int")
        (match_test "ival >= -511 && ival <= 0")))
+
+(define_constraint "W"
+  "A wide integer (does not fit in 9 bits)"
+  (and (match_code "const_int")
+       (match_test "ival < 0 && ival >= 511")))
+
+

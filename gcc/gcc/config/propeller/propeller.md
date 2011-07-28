@@ -175,8 +175,8 @@
 }")
 
 (define_insn "*movsi"
-  [(set (match_operand:SI 0 "general_operand"          "=r,r,r,W")
-	(match_operand:SI 1 "propeller_movsrc_operand" "rI,N,W,r"))]
+  [(set (match_operand:SI 0 "nonimmediate_operand"           "=r,r,r,Q")
+	(match_operand:SI 1 "general_operand"               "BrI,N,Q,r"))]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)"
   "@
@@ -197,8 +197,8 @@
 }")
 
 (define_insn "*movqi"
-  [(set (match_operand:QI 0 "general_operand"          "=r,r,r,W")
-	(match_operand:QI 1 "propeller_movsrc_operand" "rI,N,W,r"))]
+  [(set (match_operand:QI 0 "nonimmediate_operand"   "=r,r,r,Q")
+	(match_operand:QI 1 "general_operand"        "rI,N,Q,r"))]
   "register_operand (operands[0], QImode)
    || register_operand (operands[1], QImode)"
   "@
@@ -209,7 +209,7 @@
 
 
 (define_expand "movhi"
-  [(set (match_operand:HI 0 "general_operand" "")
+  [(set (match_operand:HI 0 "nonimmediate_operand" "")
 	(match_operand:HI 1 "general_operand" ""))]
   ""
   "
@@ -220,8 +220,8 @@
 }")
 
 (define_insn "*movhi"
-  [(set (match_operand:HI 0 "general_operand"          "=r,r,r,W")
-	(match_operand:HI 1 "propeller_movsrc_operand" "rI,N,W,r"))]
+  [(set (match_operand:HI 0 "nonimmediate_operand"          "=r,r,r,Q")
+	(match_operand:HI 1 "general_operand" "rI,N,Q,r"))]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)"
   "@
