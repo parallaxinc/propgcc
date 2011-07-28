@@ -22,11 +22,8 @@
 ;; <http://www.gnu.org/licenses/>.
 
 ;; -------------------------------------------------------------------------
-;; Moxie specific constraints, predicates and attributes
+;; Propeller specific constraints, predicates and attributes
 ;; -------------------------------------------------------------------------
-
-(include "constraints.md")
-(include "predicates.md")
 
 ; make sure this matches the definition in propeller.h
 (define_constants
@@ -34,6 +31,42 @@
 
 ; Most instructions are four bytes long.
 (define_attr "length" "" (const_int 4))
+
+(include "constraints.md")
+(include "predicates.md")
+
+;;
+;; instruction types
+;; core == normal instruction
+;; hub  == instruction that references hub memory
+;; multi == an insn that expands to multiple instructions
+;;
+(define_attr "type" "core,hub,multi" (const_string "core"))
+
+
+;; -------------------------------------------------------------------------
+;; machine model for instruction scheduling
+;; the tricky part here is that hub memory operations are only available
+;; every 16 cycles (4 instructions) and that 16 cycle period is independent
+;; of what's going on inside the processor -- if we miss a hub window we
+;; have to wait for the next one to come along
+;;
+;; we model this by pretending there are 4 slots; core operations issue
+;; to any of the slots, hub operations can only issue to slot1
+;; -------------------------------------------------------------------------
+(define_cpu_unit "issue,slot1,slot2,slot3,slot4")
+
+(define_reservation "use_slot1" "(issue+slot1),slot1*3")
+(define_reservation "use_slot2" "(issue+slot2),slot2*3")
+(define_reservation "use_slot3" "(issue+slot3),slot3*3")
+(define_reservation "use_slot4" "(issue+slot4),slot4*3")
+
+(define_insn_reservation "coreop" 1 (eq_attr "type" "core")
+			 "use_slot1 | use_slot2 | use_slot3 | use_slot4")
+(define_insn_reservation "hubop" 1 (eq_attr "type" "hub")
+			 "(issue+slot1+slot2),(slot1+slot2)*3")
+(define_insn_reservation "multiop" 1 (eq_attr "type" "multi")
+			 "issue+slot1,nothing*3")
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -183,7 +216,9 @@
    mov\t%0, %1
    neg\t%0, #%n1
    rdlong\t%0, %1
-   wrlong\t%1, %0")
+   wrlong\t%1, %0"
+   [(set_attr "type" "core,core,hub,hub")]
+)
 
 (define_expand "movqi"
   [(set (match_operand:QI 0 "general_operand" "")
@@ -205,7 +240,9 @@
    mov\t%0, %1
    neg\t%0, #%n1
    rdbyte\t%0, %1
-   wrbyte\t%1, %0")
+   wrbyte\t%1, %0"
+   [(set_attr "type" "core,core,hub,hub")]
+)
 
 
 (define_expand "movhi"
@@ -228,7 +265,9 @@
    mov\t%0, %1
    neg\t%0, #%n1
    rdbyte\t%0, %1
-   wrbyte\t%1, %0")
+   wrbyte\t%1, %0"
+   [(set_attr "type" "core,core,hub,hub")]
+)
 
 ;; optimizations
 (define_insn "*prop_zero_extendqisi2"
@@ -238,6 +277,7 @@
   "@
    and\\t%0,#255
    rdbyte\\t%0 %1"
+   [(set_attr "type" "core,hub")]
 )
 
 ;; -------------------------------------------------------------------------
