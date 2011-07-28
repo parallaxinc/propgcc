@@ -199,6 +199,11 @@ propeller_legitimate_address_p (enum machine_mode mode, rtx addr, bool strict)
     /* allow symbol references for calls */
     if (mode == VOIDmode && GET_CODE (addr) == SYMBOL_REF)
         return true;
+    /* allow constant pool references */
+    if (GET_CODE (addr) == SYMBOL_REF && CONSTANT_POOL_ADDRESS_P (addr))
+        return true;
+    if (GET_CODE (addr) == LABEL_REF)
+        return true;
 
     return false;
 }
@@ -530,12 +535,32 @@ propeller_can_use_return (void)
 
   return 1;
 }
+
+/*
+ * support functions for moving stuff
+ */
 
 
 bool
 propeller_legitimate_constant_p (rtx x)
 {
-    return true;
+    switch (GET_CODE (x))
+    {
+    case LABEL_REF:
+        return true;
+    case CONST_DOUBLE:
+        if (GET_MODE (x) == VOIDmode)
+            return true;
+        return false;
+    case CONST:
+    case SYMBOL_REF:
+    case CONST_VECTOR:
+        return false;
+    case CONST_INT:
+        return (INTVAL (x) >= -511 && INTVAL (x) <= 511);
+    default:
+        return true;
+    }
 }
 bool
 propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
@@ -544,6 +569,7 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
     {
     case 'I': return value >= 0 && value <= 511;
     case 'N': return value >= -511 && value <= 0;
+    case 'W': return value < 0 && value > 511;
     default:
         gcc_unreachable();
     }
