@@ -388,10 +388,11 @@
 
 (define_insn "*call"
   [(call (mem:SI (match_operand:SI
-		  0 "nonmemory_operand" "ir"))
+		  0 "call_operand" "i,r"))
 	 (match_operand 1 "" ""))]
   ""
   "@
+   jmpret\tlr,#%0
    jmpret\tlr,%0"
 )
 
@@ -405,21 +406,14 @@
 })
 
 (define_insn "*call_value"
-  [(set (match_operand 0 "register_operand" "=r")
-	(call (mem:SI (match_operand:SI
-		       1 "immediate_operand" "i"))
+  [(set (match_operand 0 "register_operand" "=r,r")
+	(call (mem:SI (match_operand:SI 1 "call_operand" "i,r"))
 	      (match_operand 2 "" "")))]
   ""
-  "jmpret\tlr,%1"
+  "@
+   jmpret\tlr,#%1
+   jmpret\tlr,%1"
  )
-
-(define_insn "*call_value_indirect"
-  [(set (match_operand 0 "register_operand" "=r")
-	(call (mem:SI (match_operand:SI
-		       1 "register_operand" "r"))
-	      (match_operand 2 "" "")))]
-  ""
-  "jmpret\tlr,%1")
 
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "r"))]
