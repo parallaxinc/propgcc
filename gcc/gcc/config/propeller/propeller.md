@@ -264,8 +264,8 @@
   "@
    mov\t%0, %1
    neg\t%0, #%n1
-   rdbyte\t%0, %1
-   wrbyte\t%1, %0"
+   rdword\t%0, %1
+   wrword\t%1, %0"
    [(set_attr "type" "core,core,hub,hub")]
 )
 
