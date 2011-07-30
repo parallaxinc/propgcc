@@ -196,12 +196,17 @@ propeller_legitimate_address_p (enum machine_mode mode, rtx addr, bool strict)
             return true;
         return regno >= FIRST_PSEUDO_REGISTER;
     }
-    /* allow symbol references for calls */
-    if (mode == VOIDmode && GET_CODE (addr) == SYMBOL_REF)
-        return true;
+
+#if 1
     /* allow constant pool references */
     if (GET_CODE (addr) == SYMBOL_REF && CONSTANT_POOL_ADDRESS_P (addr))
         return true;
+#else
+    /* allow symbol references for calls or constant pool addresses */
+    if (GET_CODE (addr) == SYMBOL_REF && read_only_operand (addr, VOIDmode))
+        return true;
+
+#endif
     if (GET_CODE (addr) == LABEL_REF)
         return true;
 
