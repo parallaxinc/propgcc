@@ -297,10 +297,12 @@ enum reg_class
 /* A C expression which is nonzero if register number NUM is suitable
    for use as a base register in operand addresses.  */
 #ifdef REG_OK_STRICT
+#define REG_STRICT_P 1
 #define REGNO_OK_FOR_BASE_P(NUM)		 \
   (HARD_REGNO_OK_FOR_BASE_P(NUM) 		 \
    || HARD_REGNO_OK_FOR_BASE_P(reg_renumber[(NUM)]))
 #else
+#define REG_STRICT_P 0
 #define REGNO_OK_FOR_BASE_P(NUM)		 \
   ((NUM) >= FIRST_PSEUDO_REGISTER || HARD_REGNO_OK_FOR_BASE_P(NUM))
 #endif
@@ -345,10 +347,18 @@ enum reg_class
 /* All load operations zero extend.  */
 #define LOAD_EXTEND_OP(MEM) ZERO_EXTEND
 
-#define LEGITIMATE_CONSTANT_P(X) propeller_legitimate_constant_p (X)
-
 #define SELECT_CC_MODE(OP, X, Y) propeller_select_cc_mode(OP, X, Y)
 
+#define LEGITIMATE_CONSTANT_P(X) propeller_legitimate_constant_p (X)
+
+/* GO_IF_LEGITIMATE_ADDRESS recognizes an RTL expression
+   that is a valid memory address for an instruction.
+   The MODE argument is the machine mode for the MEM expression
+   that wants to use this address.  */
+#define GO_IF_LEGITIMATE_ADDRESS(MODE, X, WIN) \
+  { \
+    if (propeller_legitimate_address_p (MODE, X, REG_STRICT_P)) goto WIN; \
+  }
 
 /* Passing Arguments in Registers */
 

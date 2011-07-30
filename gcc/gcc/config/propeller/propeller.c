@@ -67,6 +67,9 @@ static rtx propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
                                 const_tree type, bool named ATTRIBUTE_UNUSED);
 
+static bool propeller_rtx_costs (rtx, int, int, int *, bool);
+static int propeller_address_cost (rtx, bool);
+
 #undef TARGET_PRINT_OPERAND
 #define TARGET_PRINT_OPERAND propeller_print_operand
 #undef TARGET_PRINT_OPERAND_ADDRESS
@@ -83,6 +86,10 @@ static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_m
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_false
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P propeller_legitimate_address_p
+#undef  TARGET_RTX_COSTS
+#define TARGET_RTX_COSTS propeller_rtx_costs
+#undef  TARGET_ADDRESS_COST
+#define TARGET_ADDRESS_COST propeller_address_cost
 
 
 struct gcc_target targetm = TARGET_INITIALIZER;
@@ -211,6 +218,97 @@ propeller_legitimate_address_p (enum machine_mode mode, rtx addr, bool strict)
         return true;
 
     return false;
+}
+
+
+/* costs for various operations */
+
+/* Implement the TARGET_RTX_COSTS hook.
+
+   Speed-relative costs are relative to COSTS_N_INSNS, which is intended
+   to represent cycles.  Size-relative costs are in bytes.  */
+static bool
+propeller_rtx_costs (rtx x, int code, int outer_code, int *total_ptr, bool speed)
+{
+    int total;
+    bool done = false;
+
+    switch (code) {
+    case CONST_INT:
+        if (!speed) {
+            HOST_WIDE_INT ival = INTVAL (x);
+            if (ival >= -511 && ival < 511)
+                total = 0;
+            else
+                total = (speed ? COSTS_N_INSNS(1) : 4);
+            done = true;
+            break;
+        }
+        /* fall through */
+    case CONST:
+    case LABEL_REF:
+    case SYMBOL_REF:
+    case CONST_DOUBLE:
+        total = (speed ? COSTS_N_INSNS(1) : 4);
+        done = true;
+        break;
+    case PLUS:
+    case MINUS:
+    case AND:
+    case IOR:
+    case XOR:
+    case NOT:
+    case NEG:
+    case COMPARE:
+    case ASHIFT:
+    case ASHIFTRT:
+    case LSHIFTRT:
+        total = (speed ? COSTS_N_INSNS(1) : 4);
+        break;
+
+    case MULT:
+    case DIV:
+    case UDIV:
+    case MOD:
+    case UMOD:
+        total = (speed ? COSTS_N_INSNS(16) : 8);
+        done = true;
+        break;
+
+    case MEM:
+        total = propeller_address_cost (XEXP (x, 0), speed);
+        total = speed ? COSTS_N_INSNS (2 + total) : total;
+        done = true;
+        break;
+    default:
+        /* assume external call */
+        total = (speed ? COSTS_N_INSNS(10) : 8);
+        break;
+    }
+    *total_ptr = total;
+    return done;
+}
+
+
+static int
+propeller_address_cost (rtx addr, bool speed)
+{
+  int total;
+  rtx a, b;
+
+  if (GET_CODE (addr) != PLUS) {
+    total = 1;
+  } else {
+    a = XEXP (addr, 0);
+    b = XEXP (addr, 1);
+    if (REG_P (a) && REG_P (b)) {
+        /* try to discourage REG+REG addressing */
+        total = 4;
+    } else {
+        total = 2;
+    }
+  }
+  return speed ? COSTS_N_INSNS(total) : 4*total;
 }
 
 
