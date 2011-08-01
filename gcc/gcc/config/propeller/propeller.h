@@ -498,5 +498,7 @@ typedef unsigned int CUMULATIVE_ARGS;
 
 #define GLOBAL_ASM_OP "\'\t.global\t"
 
+/* propeller specific defines */
+#define SYMBOL_FLAG_PROPELLER_COGMEM (SYMBOL_FLAG_MACH_DEP << 0)
 
 #endif /* GCC_PROPELLER_H */

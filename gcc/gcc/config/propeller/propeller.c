@@ -70,31 +70,144 @@ static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_m
 static bool propeller_rtx_costs (rtx, int, int, int *, bool);
 static int propeller_address_cost (rtx, bool);
 
-#undef TARGET_PRINT_OPERAND
-#define TARGET_PRINT_OPERAND propeller_print_operand
-#undef TARGET_PRINT_OPERAND_ADDRESS
-#define TARGET_PRINT_OPERAND_ADDRESS propeller_print_operand_address
-#undef TARGET_PRINT_OPERAND_PUNCT_VALID_P
-#define TARGET_PRINT_OPERAND_PUNCT_VALID_P propeller_print_operand_punct_valid_p
-#undef TARGET_PROMOTE_FUNCTION_MODE
-#define TARGET_PROMOTE_FUNCTION_MODE default_promote_function_mode_always_promote
-#undef TARGET_FUNCTION_ARG
-#define TARGET_FUNCTION_ARG propeller_function_arg
-#undef TARGET_FUNCTION_ARG_ADVANCE
-#define TARGET_FUNCTION_ARG_ADVANCE propeller_function_arg_advance
-#undef TARGET_PROMOTE_PROTOTYPES
-#define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_false
-#undef TARGET_LEGITIMATE_ADDRESS_P
-#define TARGET_LEGITIMATE_ADDRESS_P propeller_legitimate_address_p
-#undef  TARGET_RTX_COSTS
-#define TARGET_RTX_COSTS propeller_rtx_costs
-#undef  TARGET_ADDRESS_COST
-#define TARGET_ADDRESS_COST propeller_address_cost
 
 
-struct gcc_target targetm = TARGET_INITIALIZER;
+
+/*
+ * propeller specific attributes
+ */
 
+/* check to see if a function has a specified attribute */
+static inline bool
+has_func_attr (const_tree decl, const char * func_attr)
+{
+  if (decl == NULL_TREE)
+    decl = current_function_decl;
 
+  return lookup_attribute (func_attr, DECL_ATTRIBUTES (decl)) != NULL_TREE;
+}
+
+static inline bool
+is_native_function (const_tree decl)
+{
+  return has_func_attr (decl, "native");
+}
+
+static inline bool
+is_naked_function (const_tree decl)
+{
+  return has_func_attr (decl, "naked");
+}
+
+/* Handle a "native" or "naked" attribute;
+   arguments as in struct attribute_spec.handler.  */
+
+static tree
+propeller_handle_func_attribute (tree *node, tree name,
+				      tree args ATTRIBUTE_UNUSED,
+				      int flags ATTRIBUTE_UNUSED,
+				      bool *no_add_attrs)
+{
+  if (TREE_CODE (*node) != FUNCTION_TYPE)
+    {
+      warning (OPT_Wattributes, "%qE attribute only applies to functions",
+	       name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+/* Handle a "cogmem" attribute;
+   arguments as in struct attribute_spec.handler.  */
+
+static tree
+propeller_handle_cogmem_attribute (tree *node,
+				     tree name ATTRIBUTE_UNUSED,
+				     tree args,
+				     int flags ATTRIBUTE_UNUSED,
+				     bool *no_add_attrs)
+{
+  if (TREE_CODE (*node) != VAR_DECL)
+    {
+      warning (OPT_Wattributes,
+	       "%<__COGMEM__%> attribute only applies to variables");
+      *no_add_attrs = true;
+    }
+  else if (args == NULL_TREE && TREE_CODE (*node) == VAR_DECL)
+    {
+      if (! (TREE_PUBLIC (*node) || TREE_STATIC (*node)))
+	{
+	  warning (OPT_Wattributes, "__COGMEM__ attribute not allowed "
+		   "with auto storage class");
+	  *no_add_attrs = true;
+	}
+    }
+
+  return NULL_TREE;
+}
+
+static const struct attribute_spec propeller_attribute_table[] =
+{  /* name, min_len, max_len, decl_req, type_req, fn_type_req, handler.  */
+  { "naked", 0, 0, false, true,  true,  propeller_handle_func_attribute },
+  { "native", 0, 0, false, true,  true,  propeller_handle_func_attribute },
+  { "cogmem",  0, 0, false, false, false, propeller_handle_cogmem_attribute },
+  { NULL,  0, 0, false, false, false, NULL }
+};
+
+#undef TARGET_ATTRIBUTE_TABLE
+#define TARGET_ATTRIBUTE_TABLE propeller_attribute_table
+
+static void
+propeller_encode_section_info (tree decl, rtx r, int first)
+{
+  default_encode_section_info (decl, r, first);
+
+   if (TREE_CODE (decl) == VAR_DECL
+       && lookup_attribute ("cogmem", DECL_ATTRIBUTES (decl)))
+    {
+      rtx symbol = XEXP (r, 0);
+
+      gcc_assert (GET_CODE (symbol) == SYMBOL_REF);
+      SYMBOL_REF_FLAGS (symbol) |= SYMBOL_FLAG_PROPELLER_COGMEM;
+    }
+}
+
+/*
+ * test whether this operand is a legitimate cog memory address
+ */
+bool
+propeller_cogaddr_p (rtx x)
+{
+    if (GET_CODE (x) != SYMBOL_REF) {
+        return false;
+    }
+    if (0 != (SYMBOL_REF_FLAGS (x) & SYMBOL_FLAG_PROPELLER_COGMEM)) {
+        return true;
+    }
+    if (CONSTANT_POOL_ADDRESS_P (x)) {
+        return true;
+    }
+    return false;
+}
+
+/*
+ * test whether this operand is a register or other reference to cog memory
+ * (hence may be acted upon directly by most instructions)
+ */
+bool
+propeller_cogmem_p (rtx op)
+{
+    if (register_operand (op, VOIDmode))
+        return 1;
+
+    if (GET_CODE (op) != MEM)
+        return 0;
+
+    op = XEXP (op, 0);
+    if (propeller_cogaddr_p (op))
+        return 1;
+    return 0;
+}
 
 bool
 propeller_print_operand_punct_valid_p (unsigned char code)
@@ -204,16 +317,9 @@ propeller_legitimate_address_p (enum machine_mode mode, rtx addr, bool strict)
         return regno >= FIRST_PSEUDO_REGISTER;
     }
 
-#if 1
-    /* allow constant pool references */
-    if (GET_CODE (addr) == SYMBOL_REF && CONSTANT_POOL_ADDRESS_P (addr))
+    /* allow cog memory references */
+    if (propeller_cogaddr_p (addr))
         return true;
-#else
-    /* allow symbol references for calls or constant pool addresses */
-    if (GET_CODE (addr) == SYMBOL_REF && read_only_operand (addr, VOIDmode))
-        return true;
-
-#endif
     if (GET_CODE (addr) == LABEL_REF)
         return true;
 
@@ -557,6 +663,10 @@ propeller_expand_prologue (void)
 {
   rtx insn;
 
+  /* naked functions have no prologue or epilogue */
+  if (is_naked_function (NULL_TREE))
+    return;
+
   propeller_compute_frame_size (get_frame_size ());
 
   if (current_frame_info.total_size > 0)
@@ -592,7 +702,7 @@ propeller_expand_prologue (void)
 
 /* Create an emit instructions for a functions epilogue.  */
 void
-propeller_expand_epilogue (void)
+propeller_expand_epilogue (bool is_sibcall)
 {
   rtx lr_rtx = gen_rtx_REG (Pmode, PROP_LR_REGNUM);
 
@@ -679,3 +789,29 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 }
 
 
+
+#undef TARGET_PRINT_OPERAND
+#define TARGET_PRINT_OPERAND propeller_print_operand
+#undef TARGET_PRINT_OPERAND_ADDRESS
+#define TARGET_PRINT_OPERAND_ADDRESS propeller_print_operand_address
+#undef TARGET_PRINT_OPERAND_PUNCT_VALID_P
+#define TARGET_PRINT_OPERAND_PUNCT_VALID_P propeller_print_operand_punct_valid_p
+#undef TARGET_PROMOTE_FUNCTION_MODE
+#define TARGET_PROMOTE_FUNCTION_MODE default_promote_function_mode_always_promote
+#undef TARGET_FUNCTION_ARG
+#define TARGET_FUNCTION_ARG propeller_function_arg
+#undef TARGET_FUNCTION_ARG_ADVANCE
+#define TARGET_FUNCTION_ARG_ADVANCE propeller_function_arg_advance
+#undef TARGET_PROMOTE_PROTOTYPES
+#define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_false
+#undef TARGET_LEGITIMATE_ADDRESS_P
+#define TARGET_LEGITIMATE_ADDRESS_P propeller_legitimate_address_p
+#undef  TARGET_RTX_COSTS
+#define TARGET_RTX_COSTS propeller_rtx_costs
+#undef  TARGET_ADDRESS_COST
+#define TARGET_ADDRESS_COST propeller_address_cost
+#undef  TARGET_ENCODE_SECTION_INFO
+#define TARGET_ENCODE_SECTION_INFO propeller_encode_section_info
+
+
+struct gcc_target targetm = TARGET_INITIALIZER;

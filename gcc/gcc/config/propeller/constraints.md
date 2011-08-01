@@ -32,15 +32,9 @@
 	    (match_test "GET_CODE (XEXP (op, 0)) == LABEL_REF")
 	    (match_test "GET_CODE (XEXP (op, 0)) == CONST"))))
 
-(define_constraint "B"
-  "A constant pool memory operand"
-  (and (match_code "mem")
-       (match_test "GET_CODE (XEXP (op, 0)) == SYMBOL_REF && CONSTANT_POOL_ADDRESS_P (XEXP (op, 0))")))
-
 (define_constraint "C"
-  "A constant pool address"
-  (and (match_code "symbol_ref")
-       (match_test "CONSTANT_POOL_ADDRESS_P (op)")))
+  "A cog memory reference"
+  (match_test "propeller_cogmem_p (op)"))
 
 (define_memory_constraint "Q"
   "A register indirect memory operand."
