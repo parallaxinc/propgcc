@@ -106,14 +106,14 @@
 ;; -------------------------------------------------------------------------
 
 (define_insn "negsi2"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	  (neg:SI (match_operand:SI 1 "register_operand" "r")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	  (neg:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))]
   ""
   "neg\t%0, %1")
 
 (define_insn "one_cmplsi2"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(not:SI (match_operand:SI 1 "register_operand" "r")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(not:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))]
   ""
   "not\t%0, %1")
 
@@ -122,27 +122,27 @@
 ;; -------------------------------------------------------------------------
 
 (define_insn "andsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(and:SI (match_operand:SI 1 "register_operand" "0")
-		(match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(and:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		(match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
 {
   return "and\t%0, %2";
 })
 
 (define_insn "xorsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(xor:SI (match_operand:SI 1 "register_operand" "0")
-		(match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(xor:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		(match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
 {
   return "xor\t%0, %2";
 })
 
 (define_insn "iorsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(ior:SI (match_operand:SI 1 "register_operand" "0")
-		(match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(ior:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		(match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
 {
   return "or\t%0, %2";
@@ -153,27 +153,27 @@
 ;; -------------------------------------------------------------------------
 
 (define_insn "ashlsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(ashift:SI (match_operand:SI 1 "register_operand" "0")
-		   (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(ashift:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		   (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
 {
   return "shl\t%0, %2";
 })
 
 (define_insn "ashrsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
-		     (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(ashiftrt:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		     (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
 {
   return "sar\t%0, %2";
 })
 
 (define_insn "lshrsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
-		     (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(lshiftrt:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		     (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
 {
   return "shr\t%0, %2";
@@ -257,8 +257,8 @@
 }")
 
 (define_insn "*movhi"
-  [(set (match_operand:HI 0 "nonimmediate_operand"          "=r,r,r,Q")
-	(match_operand:HI 1 "general_operand" "rI,N,Q,r"))]
+  [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
+	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
   "register_operand (operands[0], HImode)
    || register_operand (operands[1], HImode)"
   "@
@@ -271,7 +271,7 @@
 
 ;; optimizations
 (define_insn "*prop_zero_extendqisi2"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
   ""
   "@
@@ -284,30 +284,30 @@
 ;; min/max instructions
 ;; -------------------------------------------------------------------------
 (define_insn "umaxsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(umax:SI (match_operand:SI 1 "register_operand" "0")
-		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(umax:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
   "max\\t%0, %2")
 
 (define_insn "uminsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(umin:SI (match_operand:SI 1 "register_operand" "0")
-		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(umin:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
   "min\\t%0, %2")
 
 (define_insn "smaxsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(smax:SI (match_operand:SI 1 "register_operand" "0")
-		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(smax:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
   "maxs\\t%0, %2")
 
 (define_insn "sminsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(smin:SI (match_operand:SI 1 "register_operand" "0")
-		 (match_operand:SI 2 "propeller_src_operand" "rI")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(smin:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		 (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
   "mins\\t%0, %2")
 
@@ -318,7 +318,7 @@
 (define_expand "cbranchsi4"
   [(set (match_dup 4)
         (match_op_dup 5
-         [(match_operand:SI 1 "register_operand" "")
+         [(match_operand:SI 1 "propeller_dst_operand" "")
           (match_operand:SI 2 "propeller_src_operand" "")]))
    (set (pc)
         (if_then_else
@@ -340,16 +340,16 @@
 (define_insn "*cmps"
   [(set (reg:CC CC_REG)
 	(compare
-	 (match_operand:SI 0 "register_operand" "r")
-	 (match_operand:SI 1 "propeller_src_operand"	"rI")))]
+	 (match_operand:SI 0 "propeller_dst_operand" "rC")
+	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
   "cmps\t%0, %1")
 
 (define_insn "*cmpu"
   [(set (reg:CCUNS CC_REG)
 	(compare
-	 (match_operand:SI 0 "register_operand" "r")
-	 (match_operand:SI 1 "propeller_src_operand"	"rI")))]
+	 (match_operand:SI 0 "propeller_dst_operand" "rC")
+	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
   "cmp\t%0, %1")
 
@@ -406,8 +406,8 @@
 })
 
 (define_insn "*call_value"
-  [(set (match_operand 0 "register_operand" "=r,r")
-	(call (mem:SI (match_operand:SI 1 "call_operand" "i,r"))
+  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
+	(call (mem:SI (match_operand:SI 1 "call_operand" "i,rC"))
 	      (match_operand 2 "" "")))]
   ""
   "@
@@ -416,7 +416,7 @@
  )
 
 (define_insn "indirect_jump"
-  [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "r"))]
+  [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "rC"))]
   ""
   "jmp\t%0")
 
