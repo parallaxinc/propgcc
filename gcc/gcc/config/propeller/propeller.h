@@ -477,15 +477,10 @@ typedef unsigned int CUMULATIVE_ARGS;
 /* ... and how to define a local common symbol whose alignment
    we wish to specify.  ALIGN comes in as bits, we have to turn
    it into bytes.  */
-#undef  ASM_OUTPUT_ALIGNED_LOCAL
-#define ASM_OUTPUT_ALIGNED_LOCAL(FILE, NAME, SIZE, ALIGN)		\
-  do									\
-    {									\
-      fputs ("\t.bss\t", (FILE));					\
-      assemble_name ((FILE), (NAME));					\
-      fprintf ((FILE), ",%d,%d\n", (int)(SIZE), (ALIGN) / BITS_PER_UNIT);\
-    }									\
-  while (0)
+#define ASM_OUTPUT_ALIGNED_DECL_COMMON(STREAM, DECL, NAME, SIZE, ALIGNMENT) \
+  propeller_asm_output_aligned_common (STREAM, DECL, NAME, SIZE, ALIGNMENT, 1)
+#define ASM_OUTPUT_ALIGNED_DECL_LOCAL(STREAM, DECL, NAME, SIZE, ALIGNMENT) \
+  propeller_asm_output_aligned_common (STREAM, DECL, NAME, SIZE, ALIGNMENT, 0)
 
 /* This is how to output an assembler line
    that says to advance the location counter by SIZE bytes.  */

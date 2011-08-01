@@ -40,6 +40,10 @@ extern HOST_WIDE_INT propeller_initial_elimination_offset (int from, int to);
 extern void propeller_init_cumulative_args (CUMULATIVE_ARGS *, tree, rtx, tree);
 extern bool propeller_pad_arg_upward (enum machine_mode, const_tree);
 extern bool propeller_pad_reg_upward (enum machine_mode, tree, int);
+
+extern void propeller_asm_output_aligned_common (FILE *, tree, const char *,
+						 int, int, int);
+
 #endif
 
 #if defined(RTX_CODE)

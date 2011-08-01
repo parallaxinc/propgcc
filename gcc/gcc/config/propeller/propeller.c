@@ -209,6 +209,97 @@ propeller_cogmem_p (rtx op)
     return 0;
 }
 
+/*
+ * functions for output of assembly language
+ */
+
+/*
+ * start assembly language output
+ */
+static void
+propeller_asm_file_start (void)
+{
+    if (!TARGET_OUTPUT_SPINCODE) {
+        default_file_start ();
+        return;
+    }
+    fprintf (asm_out_file, "\torg\n\n");
+    // output the prologue necessary for interfacing with spin
+    fprintf (asm_out_file, "r0\tmov\tsp,PAR\n"); 
+    fprintf (asm_out_file, "r1\tmov\tr0,sp\n");
+    fprintf (asm_out_file, "r2\tjmp\tmain\n");
+    fprintf (asm_out_file, "r4\tlong 0\n");
+    fprintf (asm_out_file, "r5\tlong 0\n");
+    fprintf (asm_out_file, "r6\tlong 0\n");
+    fprintf (asm_out_file, "r7\tlong 0\n");
+
+    fprintf (asm_out_file, "r8\tlong 0\n");
+    fprintf (asm_out_file, "r9\tlong 0\n");
+    fprintf (asm_out_file, "r10\tlong 0\n");
+    fprintf (asm_out_file, "r11\tlong 0\n");
+    fprintf (asm_out_file, "r12\tlong 0\n");
+    fprintf (asm_out_file, "r13\tlong 0\n");
+    fprintf (asm_out_file, "r14\tlong 0\n");
+    fprintf (asm_out_file, "r15\tlong 0\n");
+    fprintf (asm_out_file, "sp\tlong 0\n");
+}
+
+/*
+ * end assembly language output
+ */
+static void
+propeller_asm_file_end (void)
+{
+    if (!TARGET_OUTPUT_SPINCODE) {
+        return;
+    }
+    fprintf (asm_out_file, "\tfit\t$1F0\n");
+}
+
+/* The purpose of this function is to override the default behavior of
+   BSS objects.  Normally, they go into .bss or .sbss via ".common"
+   directives, but we need to override that if they are for cog memory
+*/
+
+void
+propeller_asm_output_aligned_common (FILE *stream,
+				     tree decl,
+				     const char *name,
+				     int size,
+				     int align,
+				     int global)
+{
+  rtx mem = decl == NULL_TREE ? NULL_RTX : DECL_RTL (decl);
+  rtx symbol;
+
+  if (mem != NULL_RTX
+      && MEM_P (mem)
+      && GET_CODE (symbol = XEXP (mem, 0)) == SYMBOL_REF
+      && SYMBOL_REF_FLAGS (symbol) & SYMBOL_FLAG_PROPELLER_COGMEM)
+    {
+      const char *name2;
+      int i;
+
+      name2 = default_strip_name_encoding (name);
+      fprintf(stream, "%s\n", name2);
+      for (i = 0; i < size; i+=4) 
+      fprintf (stream, "\tlong\t0\n", size);
+      return;
+    }
+
+  if (!global)
+    {
+      fprintf (stream, "\t.local\t");
+      assemble_name (stream, name);
+      fprintf (stream, "\n");
+    }
+  fprintf (stream, "\t.comm\t");
+  assemble_name (stream, name);
+  fprintf (stream, ",%u,%u\n", size, align / BITS_PER_UNIT);
+}
+
+
+/* test whether punctuation is valid in operand output */
 bool
 propeller_print_operand_punct_valid_p (unsigned char code)
 {
@@ -790,6 +881,11 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 
 
 
+#undef TARGET_ASM_FILE_START
+#define TARGET_ASM_FILE_START propeller_asm_file_start
+#undef TARGET_ASM_FILE_END
+#define TARGET_ASM_FILE_END propeller_asm_file_end
+
 #undef TARGET_PRINT_OPERAND
 #define TARGET_PRINT_OPERAND propeller_print_operand
 #undef TARGET_PRINT_OPERAND_ADDRESS
