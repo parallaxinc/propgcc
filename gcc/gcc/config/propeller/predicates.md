@@ -25,25 +25,6 @@
 ;; Predicates
 ;; -------------------------------------------------------------------------
 
-;; Nonzero if OP is suitable as a general propeller source operand
-
-(define_predicate "propeller_src_operand"
-  (ior (match_operand 0 "register_operand")
-       (and (match_operand 0 "immediate_operand")
-            (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
-
-)))
-
-;; for addition we can also do negative immediates
-(define_predicate "propeller_add_operand"
-  (ior (match_operand 0 "register_operand")
-       (and (match_operand 0 "immediate_operand")
-            (ior
-	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
-	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'N')")
-
-))))
-
 ;; True if OP is a valid operand for the MEM of a CALL insn.
 (define_predicate "call_operand"
   (ior (match_code "symbol_ref")
@@ -60,12 +41,38 @@
   (and (match_code "symbol_ref")
        (match_test "SYMBOL_REF_FUNCTION_P (op)")))
 
-;; True if OP is a constant pool reference
-(define_predicate "const_pool_operand"
+;; True if OP is a symbol living in cog memory space
+(define_predicate "cog_mem_operand"
   (match_code "symbol_ref")
 {
-  return CONSTANT_POOL_ADDRESS_P (op);
+  return propeller_cogaddr_p (op);
 })
+
+;; True if OP is suitable as a general propeller destination operand
+(define_predicate "propeller_dst_operand"
+  (ior (match_operand 0 "register_operand")
+       (match_test "propeller_cogmem_p (op)")))
+
+
+;; Nonzero if OP is suitable as a general propeller source operand
+
+(define_predicate "propeller_src_operand"
+  (ior (match_operand 0 "propeller_dst_operand")
+       (and (match_operand 0 "immediate_operand")
+            (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
+
+)))
+
+;; for addition we can also do negative immediates
+(define_predicate "propeller_add_operand"
+  (ior (match_operand 0 "register_operand")
+       (and (match_operand 0 "immediate_operand")
+            (ior
+	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
+	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'N')")
+
+))))
+
 
 
 ;; Nonzero if OP is a 32 bit constant that needs to be placed specially

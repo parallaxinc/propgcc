@@ -82,20 +82,20 @@
 ;; -------------------------------------------------------------------------
 
 (define_insn "addsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	  (plus:SI
-	   (match_operand:SI 1 "register_operand" "0,0")
-	   (match_operand:SI 2 "propeller_add_operand" "rI,N")))]
+	   (match_operand:SI 1 "propeller_dst_operand" "0,0")
+	   (match_operand:SI 2 "propeller_add_operand" "rCI,N")))]
   ""
   "@
   add\t%0, %2
   sub\t%0, #%n2")
 
 (define_insn "subsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	  (minus:SI
-	   (match_operand:SI 1 "register_operand" "0,0")
-	   (match_operand:SI 2 "propeller_src_operand" "I,r")))]
+	   (match_operand:SI 1 "propeller_dst_operand" "0,0")
+	   (match_operand:SI 2 "propeller_src_operand" "I,rC")))]
   ""
   "@
   sub\t%0, %2
@@ -208,8 +208,8 @@
 }")
 
 (define_insn "*movsi"
-  [(set (match_operand:SI 0 "nonimmediate_operand"           "=r,r,r,Q")
-	(match_operand:SI 1 "general_operand"               "BrI,N,Q,r"))]
+  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
+	(match_operand:SI 1 "general_operand"               "rCI,N,Q,rC"))]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)"
   "@
@@ -446,7 +446,7 @@
   ""
   "
 {
-  propeller_expand_epilogue ();
+  propeller_expand_epilogue (false);
   DONE;
 }
 ")

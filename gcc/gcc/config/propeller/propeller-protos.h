@@ -25,9 +25,11 @@ extern void propeller_print_operand (FILE *file, rtx op, int letter);
 extern void propeller_print_operand_address (FILE *file, rtx addr);
 extern bool propeller_print_operand_punct_valid_p (unsigned char code);
 extern void propeller_expand_prologue (void);
-extern void propeller_expand_epilogue (void);
+extern void propeller_expand_epilogue (bool is_sibcall);
 extern int propeller_can_use_return (void);
 
+extern bool propeller_cogaddr_p (rtx x);
+extern bool propeller_cogmem_p (rtx op);
 extern bool propeller_legitimate_constant_p (rtx x);
 extern bool propeller_legitimate_address_p (enum machine_mode mode, rtx x, bool strict);
 extern bool propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c);
