@@ -111,12 +111,6 @@
   ""
   "neg\t%0, %1")
 
-(define_insn "one_cmplsi2"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-	(not:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))]
-  ""
-  "not\t%0, %1")
-
 ;; -------------------------------------------------------------------------
 ;; Logical operators
 ;; -------------------------------------------------------------------------
@@ -276,7 +270,7 @@
   ""
   "@
    and\\t%0,#255
-   rdbyte\\t%0 %1"
+   rdbyte\\t%0, %1"
    [(set_attr "type" "core,hub")]
 )
 

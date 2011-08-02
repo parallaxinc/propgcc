@@ -21,6 +21,7 @@
 #ifndef GCC_PROPELLER_PROTOS_H
 #define GCC_PROPELLER_PROTOS_H
 
+extern void propeller_output_label (FILE *file, rtx name);
 extern void propeller_print_operand (FILE *file, rtx op, int letter);
 extern void propeller_print_operand_address (FILE *file, rtx addr);
 extern bool propeller_print_operand_punct_valid_p (unsigned char code);
