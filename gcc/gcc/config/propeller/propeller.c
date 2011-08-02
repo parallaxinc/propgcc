@@ -224,6 +224,7 @@ propeller_asm_file_start (void)
         return;
     }
     fprintf (asm_out_file, "\torg\n\n");
+    fprintf (asm_out_file, "entry\n");
     // output the prologue necessary for interfacing with spin
     fprintf (asm_out_file, "r0\tmov\tsp,PAR\n"); 
     fprintf (asm_out_file, "r1\tmov\tr0,sp\n");
@@ -921,10 +922,14 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 #define TARGET_ENCODE_SECTION_INFO propeller_encode_section_info
 
 #undef TARGET_ASM_BYTE_OP
-#define TARGET_ASM_BYTE_OP "byte"
+#define TARGET_ASM_BYTE_OP "\tbyte\t"
+#undef TARGET_ASM_ALIGNED_HI_OP
+#define TARGET_ASM_ALIGNED_HI_OP "\tword\t"
+#undef TARGET_ASM_UNALIGNED_HI_OP
+#define TARGET_ASM_UNALIGNED_HI_OP "\tword\t"
 #undef TARGET_ASM_ALIGNED_SI_OP
-#define TARGET_ASM_ALIGNED_SI_OP "long"
+#define TARGET_ASM_ALIGNED_SI_OP "\tlong\t"
 #undef TARGET_ASM_UNALIGNED_SI_OP
-#define TARGET_ASM_UNALIGNED_SI_OP "long"
+#define TARGET_ASM_UNALIGNED_SI_OP "\tlong\t"
 
 struct gcc_target targetm = TARGET_INITIALIZER;
