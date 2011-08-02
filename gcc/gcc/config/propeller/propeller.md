@@ -111,6 +111,38 @@
   ""
   "neg\t%0, %1")
 
+;;
+;; the instruction set doesn't actually have a NOT instruction, so synthesize
+;; it from XOR
+;; the preferred way to do this is with define_insn_and_split; this specifies
+;; a pattern that we can match which can be split into multiple smaller insns
+;; for later RTL optimization
+;;
+(define_insn_and_split "*notsi2"
+  [ (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+         (not:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))
+    (clobber (match_scratch:SI 2 "=&r"))
+  ]
+  ""
+  "#"
+  "&& reload_completed"
+[
+  (set (match_dup 2)(const_int -1))
+  (set (match_dup 0)(match_dup 1))
+  (set (match_dup 0)(xor:SI (match_dup 0) (match_dup 2)))
+]
+""
+[(set_attr "type" "multi")])
+
+(define_expand "one_cmplsi2"
+  [(parallel
+    [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	  (not:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))
+     (clobber (match_scratch:SI 2 "=&r"))])
+  ]
+  ""
+  "")
+
 ;; -------------------------------------------------------------------------
 ;; Logical operators
 ;; -------------------------------------------------------------------------
