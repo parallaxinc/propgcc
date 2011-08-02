@@ -81,10 +81,10 @@ static int propeller_address_cost (rtx, bool);
 static inline bool
 has_func_attr (const_tree decl, const char * func_attr)
 {
-  if (decl == NULL_TREE)
-    decl = current_function_decl;
+  tree a;
 
-  return lookup_attribute (func_attr, DECL_ATTRIBUTES (decl)) != NULL_TREE;
+  a = lookup_attribute (func_attr, DECL_ATTRIBUTES (decl));
+  return a != NULL_TREE;
 }
 
 static inline bool
@@ -108,13 +108,12 @@ propeller_handle_func_attribute (tree *node, tree name,
 				      int flags ATTRIBUTE_UNUSED,
 				      bool *no_add_attrs)
 {
-  if (TREE_CODE (*node) != FUNCTION_TYPE)
+  if (TREE_CODE (*node) != FUNCTION_DECL)
     {
       warning (OPT_Wattributes, "%qE attribute only applies to functions",
 	       name);
       *no_add_attrs = true;
     }
-
   return NULL_TREE;
 }
 /* Handle a "cogmem" attribute;
@@ -148,8 +147,8 @@ propeller_handle_cogmem_attribute (tree *node,
 
 static const struct attribute_spec propeller_attribute_table[] =
 {  /* name, min_len, max_len, decl_req, type_req, fn_type_req, handler.  */
-  { "naked", 0, 0, false, true,  true,  propeller_handle_func_attribute },
-  { "native", 0, 0, false, true,  true,  propeller_handle_func_attribute },
+  { "naked",   0, 0, true, false,  false,  propeller_handle_func_attribute },
+  { "native",  0, 0, true, false,  false,  propeller_handle_func_attribute },
   { "cogmem",  0, 0, false, false, false, propeller_handle_cogmem_attribute },
   { NULL,  0, 0, false, false, false, NULL }
 };
@@ -795,7 +794,7 @@ propeller_expand_prologue (void)
   rtx insn;
 
   /* naked functions have no prologue or epilogue */
-  if (is_naked_function (NULL_TREE))
+  if (is_naked_function (current_function_decl))
     return;
 
   propeller_compute_frame_size (get_frame_size ());
@@ -837,7 +836,7 @@ propeller_expand_epilogue (bool is_sibcall)
 {
   rtx lr_rtx = gen_rtx_REG (Pmode, PROP_LR_REGNUM);
 
-  if (is_naked_function (NULL_TREE))
+  if (is_naked_function (current_function_decl))
   {
       gcc_assert(! is_sibcall);
       /* Naked functions use their own, programmer provided epilogues.
