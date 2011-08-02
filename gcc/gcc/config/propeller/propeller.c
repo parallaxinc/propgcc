@@ -228,7 +228,7 @@ propeller_asm_file_start (void)
     // output the prologue necessary for interfacing with spin
     fprintf (asm_out_file, "r0\tmov\tsp,PAR\n"); 
     fprintf (asm_out_file, "r1\tmov\tr0,sp\n");
-    fprintf (asm_out_file, "r2\tjmp\tspinmain\n");
+    fprintf (asm_out_file, "r2\tjmp\t#spinmain\n");
     fprintf (asm_out_file, "r3\tlong 0\n");
     fprintf (asm_out_file, "r4\tlong 0\n");
     fprintf (asm_out_file, "r5\tlong 0\n");
