@@ -436,15 +436,6 @@ typedef unsigned int CUMULATIVE_ARGS;
 #define ASM_APP_ON ""
 #define ASM_APP_OFF ""
 
-#undef  ASM_GENERATE_INTERNAL_LABEL
-#define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
-  do								\
-    {								\
-      sprintf (LABEL, ":%s%u", \
-	       PREFIX, (unsigned) (NUM));			\
-    }								\
-  while (0)
-
 #define FILE_ASM_OP     ""
 
 /* Switch to the text or data segment.  */
@@ -492,8 +483,21 @@ typedef unsigned int CUMULATIVE_ARGS;
 /* Output and Generation of Labels */
 
 #define GLOBAL_ASM_OP "\'\t.global\t"
+#define ASM_OUTPUT_LABEL(FILE,NAME) propeller_output_label(FILE,NAME)
+#define ASM_OUTPUT_INTERNAL_LABEL(FILE,NAME) propeller_output_label(FILE,NAME)
+
+#undef  ASM_GENERATE_INTERNAL_LABEL
+#define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
+  do								\
+    {								\
+      sprintf (LABEL, ":%s%u", \
+	       PREFIX, (unsigned) (NUM));			\
+    }								\
+  while (0)
 
 /* propeller specific defines */
 #define SYMBOL_FLAG_PROPELLER_COGMEM (SYMBOL_FLAG_MACH_DEP << 0)
+
+#define CONSTANT_POOL_BEFORE_FUNCTION (0)
 
 #endif /* GCC_PROPELLER_H */

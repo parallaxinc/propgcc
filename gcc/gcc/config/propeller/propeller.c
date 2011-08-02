@@ -227,7 +227,8 @@ propeller_asm_file_start (void)
     // output the prologue necessary for interfacing with spin
     fprintf (asm_out_file, "r0\tmov\tsp,PAR\n"); 
     fprintf (asm_out_file, "r1\tmov\tr0,sp\n");
-    fprintf (asm_out_file, "r2\tjmp\tmain\n");
+    fprintf (asm_out_file, "r2\tjmp\tspinmain\n");
+    fprintf (asm_out_file, "r3\tlong 0\n");
     fprintf (asm_out_file, "r4\tlong 0\n");
     fprintf (asm_out_file, "r5\tlong 0\n");
     fprintf (asm_out_file, "r6\tlong 0\n");
@@ -240,7 +241,7 @@ propeller_asm_file_start (void)
     fprintf (asm_out_file, "r12\tlong 0\n");
     fprintf (asm_out_file, "r13\tlong 0\n");
     fprintf (asm_out_file, "r14\tlong 0\n");
-    fprintf (asm_out_file, "r15\tlong 0\n");
+    fprintf (asm_out_file, "lr\tlong 0\n");
     fprintf (asm_out_file, "sp\tlong 0\n");
 }
 
@@ -254,6 +255,16 @@ propeller_asm_file_end (void)
         return;
     }
     fprintf (asm_out_file, "\tfit\t$1F0\n");
+}
+
+/*
+ * output a label
+ */
+void
+propeller_output_label(FILE *file, rtx label)
+{
+    assemble_name (file, label);
+    fputs("\n", file);
 }
 
 /* The purpose of this function is to override the default behavior of
@@ -909,5 +920,11 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 #undef  TARGET_ENCODE_SECTION_INFO
 #define TARGET_ENCODE_SECTION_INFO propeller_encode_section_info
 
+#undef TARGET_ASM_BYTE_OP
+#define TARGET_ASM_BYTE_OP "byte"
+#undef TARGET_ASM_ALIGNED_SI_OP
+#define TARGET_ASM_ALIGNED_SI_OP "long"
+#undef TARGET_ASM_UNALIGNED_SI_OP
+#define TARGET_ASM_UNALIGNED_SI_OP "long"
 
 struct gcc_target targetm = TARGET_INITIALIZER;
