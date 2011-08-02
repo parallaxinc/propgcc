@@ -262,7 +262,7 @@ propeller_asm_file_end (void)
  * output a label
  */
 void
-propeller_output_label(FILE *file, rtx label)
+propeller_output_label(FILE *file, const char * label)
 {
     assemble_name (file, label);
     fputs("\n", file);
@@ -401,6 +401,34 @@ propeller_print_operand_address (FILE * file, rtx addr)
       break;
     }
 }
+
+/*
+ * determine whether it's OK to store a value of mode MODE into a register
+ */
+bool
+propeller_hard_regno_mode_ok (unsigned int reg, enum machine_mode mode)
+{
+    /* condition codes only go in the CC register, and it can only
+       hold condition codes
+    */
+    if (mode == CCmode || mode == CCUNSmode) {
+        return reg == PROP_CC_REGNUM;
+    }
+    if (reg == PROP_CC_REGNUM) {
+        return false;
+    }
+    return true;
+}
+
+/*
+ * true if a value in mode A is accessible in mode B without copying
+ */
+bool
+propeller_modes_tieable_p (enum machine_mode A, enum machine_mode B)
+{
+    return true;
+}
+
 
 /*
  * check for legitimate addresses
@@ -809,6 +837,16 @@ propeller_expand_epilogue (bool is_sibcall)
 {
   rtx lr_rtx = gen_rtx_REG (Pmode, PROP_LR_REGNUM);
 
+  if (is_naked_function (NULL_TREE))
+  {
+      gcc_assert(! is_sibcall);
+      /* Naked functions use their own, programmer provided epilogues.
+         But, in order to keep gcc happy we have to generate some kind of
+         epilogue RTL.  */
+      emit_jump_insn (gen_naked_return ());
+      return;
+
+  }
   propeller_compute_frame_size (get_frame_size ());
 
   if (current_frame_info.total_size > 0)

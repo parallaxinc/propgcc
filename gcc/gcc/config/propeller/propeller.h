@@ -233,6 +233,12 @@ enum reg_class
   1,1,1,        \
 }
 
+#define REG_ALLOC_ORDER \
+    { \
+        7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8, \
+        16, 18, 17                                            \
+    }
+
 /* we can't really copy to/from the CC */
 #define AVOID_CCMODE_COPIES 1
 
@@ -289,8 +295,7 @@ enum reg_class
 
 #define HARD_REGNO_OK_FOR_BASE_P(NUM) \
   ((unsigned) (NUM) < FIRST_PSEUDO_REGISTER \
-   && (REGNO_REG_CLASS(NUM) == GENERAL_REGS \
-       || (NUM) == HARD_FRAME_POINTER_REGNUM))
+   && (REGNO_REG_CLASS(NUM) == GENERAL_REGS))
 
 #define MAX_REGS_PER_ADDRESS 1
 
@@ -311,12 +316,6 @@ enum reg_class
    for use as an index register in operand addresses.  */
 #define REGNO_OK_FOR_INDEX_P(NUM) 0
 
-/* A C expression that is nonzero if it is permissible to store a
-   value of mode MODE in hard register number REGNO (or in several
-   registers starting with that one).  All gstore registers are 
-   equivalent, so we can set this to 1.  */
-#define HARD_REGNO_MODE_OK(R,M) 1
-
 /* A C expression whose value is a register class containing hard
    register REGNO.  */
 #define REGNO_REG_CLASS(R) ((R < PROP_PC_REGNUM) ? GENERAL_REGS :		\
@@ -329,9 +328,15 @@ enum reg_class
   ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1)		   \
    / UNITS_PER_WORD)
 
+/* A C expression that is nonzero if it is permissible to store a
+   value of mode MODE in hard register number REGNO (or in several
+   registers starting with that one).  All gstore registers are 
+   equivalent, so we can set this to 1.  */
+#define HARD_REGNO_MODE_OK(REGNO,MODE) propeller_hard_regno_mode_ok ((REGNO), (MODE))
+
 /* A C expression that is nonzero if a value of mode MODE1 is
    accessible in mode MODE2 without copying.  */
-#define MODES_TIEABLE_P(MODE1, MODE2) 1
+#define MODES_TIEABLE_P(MODE1, MODE2) propeller_modes_tieable_p ((MODE1), (MODE2))
 
 /* A C expression for the maximum number of consecutive registers of
    class CLASS needed to hold a value of mode MODE.  */

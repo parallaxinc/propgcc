@@ -27,7 +27,10 @@
 
 ; make sure this matches the definition in propeller.h
 (define_constants
-  [(CC_REG 18)])
+  [(CC_REG 18)
+   (SP_REG 16)
+   (UNSPEC_NAKED   32)
+  ])
 
 ; Most instructions are four bytes long.
 (define_attr "length" "" (const_int 4))
@@ -482,6 +485,12 @@
    (return)]
   ""
   "jmp\t%0"
+)
+
+(define_insn "naked_return"
+  [(unspec_volatile [(return)] UNSPEC_NAKED) ]
+  ""
+  "; Naked function: epilogue provided by programmer."
 )
 
 (define_insn "return"
