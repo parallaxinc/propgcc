@@ -372,7 +372,7 @@
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
-  "cmps\t%0, %1")
+  "cmps\t%0, %1 wz,wc")
 
 (define_insn "*cmpu"
   [(set (reg:CCUNS CC_REG)
@@ -380,7 +380,7 @@
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
-  "cmp\t%0, %1")
+  "cmp\t%0, %1 wz,wc")
 
 ;; -------------------------------------------------------------------------
 ;; Branch instructions
