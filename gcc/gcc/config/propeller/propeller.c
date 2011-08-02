@@ -859,15 +859,10 @@ propeller_expand_epilogue (bool is_sibcall)
 
       /* Deallocate stack.  */
       stack_adjust (current_frame_info.total_size);
+    }
 
-      /* Return to calling function.  */
-      emit_jump_insn (gen_return_internal (lr_rtx));
-    }
-  else
-    {
-      /* Return to calling function.  */
-      emit_jump_insn (gen_return_internal (lr_rtx));
-    }
+  /* Return to calling function.  */
+  emit_jump_insn (gen_return_internal (lr_rtx));
 }
 
 /* Return nonzero if this function is known to have a null epilogue.
