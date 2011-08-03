@@ -637,6 +637,34 @@ propeller_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
  * stack related functions
  */
 
+/* Typical stack layout should looks like this after the function's prologue:
+
+                            |    |
+                              --                       ^
+                            |    | \                   |
+                            |    |   arguments saved   | Increasing
+                            |    |   on the stack      |  addresses
+    PARENT   arg pointer -> |    | /
+  -------------------------- ---- -------------------
+    CHILD                   |ret |   return address
+                              --
+                            |    | \
+                            |    |   call saved
+                            |    |   registers
+                            |    | /
+                              --
+                            |    | \
+                            |    |   local
+                            |    |   variables
+        frame pointer ->    |    | /
+                              --
+                            |    | \
+                            |    |   outgoing          | Decreasing
+                            |    |   arguments         |  addresses
+   current stack pointer -> |    | /                   |
+  -------------------------- ---- ------------------   V
+                            |    |                 */
+
 HOST_WIDE_INT
 propeller_initial_elimination_offset (int from, int to)
 {
@@ -647,7 +675,7 @@ propeller_initial_elimination_offset (int from, int to)
   case ARG_POINTER_REGNUM:
       switch (to) {
       case FRAME_POINTER_REGNUM:
-          offset = 0;
+          offset = propeller_compute_frame_size (get_frame_size ()) - (current_frame_info.pretend_size + current_frame_info.args_size);
           break;
       case STACK_POINTER_REGNUM:
           offset = propeller_compute_frame_size (get_frame_size ()) - current_frame_info.pretend_size;
@@ -662,50 +690,61 @@ propeller_initial_elimination_offset (int from, int to)
       break;
   }
 }
-/* Generate and emit RTL to save or restore callee save registers.  */
-static void
-expand_save_restore (struct propeller_frame_info *info, int op)
+/* Generate and emit RTL to save callee save registers.  */
+/* returns total number of bytes pushed on stack */
+static int
+expand_save_registers (struct propeller_frame_info *info)
 {
   unsigned int reg_save_mask = info->reg_save_mask;
   int regno;
-  HOST_WIDE_INT offset;
+  int pushed = 0;
   rtx insn;
+  rtx sp;
+
+  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
 
   /* Callee saves are below locals and above outgoing arguments.  */
-  offset = info->args_size + info->callee_size;
+  /* push registers from high to low (so r15 gets pushed first) */
+  for (regno = 15; regno >= 0; regno--)
+    {
+      if ((reg_save_mask & (1 << regno)) != 0)
+      {
+          rtx mem;
+          insn = emit_add (sp, sp, GEN_INT(-4));
+          RTX_FRAME_RELATED_P (insn) = 1;
+          mem = gen_rtx_MEM (word_mode, sp);
+          insn = emit_move_insn (mem, gen_rtx_REG (word_mode, regno));
+          RTX_FRAME_RELATED_P (insn) = 1;
+          pushed += UNITS_PER_WORD;
+      }
+    }
+  return pushed;
+}
+
+/* Generate and emit RTL to restore callee save registers.  */
+static void
+expand_restore_registers (struct propeller_frame_info *info)
+{
+  unsigned int reg_save_mask = info->reg_save_mask;
+  int regno;
+  rtx insn;
+  rtx sp;
+
+  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
+
+  /* Callee saves are below locals and above outgoing arguments.  */
+  /* we pushed registers from high to low (so r15 gets pushed first),
+   * so restore in the opposite order
+   */
   for (regno = 0; regno <= 15; regno++)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
-	{
-	  rtx offset_rtx;
-	  rtx mem;
-	  
-	  offset_rtx = GEN_INT (offset);
-            {
-              /* r7 is caller saved so it can be used as a temp reg.  */
-              rtx r7;
-               
-              r7 = gen_rtx_REG (word_mode, 7);
-              insn = emit_move_insn (r7, offset_rtx);
-              if (op == 0)
-                RTX_FRAME_RELATED_P (insn) = 1;
-              insn = emit_add (r7, r7, stack_pointer_rtx);
-              if (op == 0)
-                RTX_FRAME_RELATED_P (insn) = 1;                
-              mem = gen_rtx_MEM (word_mode, r7);
-            }                                                 	    
-	    	    
-	  if (op == 0)
-	    insn = emit_move_insn (mem, gen_rtx_REG (word_mode, regno));
-	  else
-	    insn = emit_move_insn (gen_rtx_REG (word_mode, regno), mem);
-        
-	  /* only prologue instructions which set the sp fp or save a
-	     register should be marked as frame related.  */
-	  if (op == 0)
-	    RTX_FRAME_RELATED_P (insn) = 1;
-	  offset -= UNITS_PER_WORD;
-	}
+      {
+          rtx mem;
+          mem = gen_rtx_MEM (word_mode, sp);
+          insn = emit_move_insn (gen_rtx_REG (word_mode, regno), mem);
+          insn = emit_add (sp, sp, GEN_INT(4));
+      }
     }
 }
 
@@ -714,6 +753,7 @@ stack_adjust (HOST_WIDE_INT amount)
 {
   rtx insn;
 
+  if (amount == 0) return;
   if (!IN_RANGE (amount, -511, 511))
     {
       /* r7 is caller saved so it can be used as a temp reg.  */
@@ -792,6 +832,7 @@ void
 propeller_expand_prologue (void)
 {
   rtx insn;
+  int pushed;
 
   /* naked functions have no prologue or epilogue */
   if (is_naked_function (current_function_decl))
@@ -801,16 +842,16 @@ propeller_expand_prologue (void)
 
   if (current_frame_info.total_size > 0)
     {
-      /* Add space on stack new frame.  */
-      stack_adjust (-current_frame_info.total_size);
-
       /* Save callee save registers.  */
       if (current_frame_info.reg_save_mask != 0)
-	expand_save_restore (&current_frame_info, 0);
+          pushed = expand_save_registers (&current_frame_info);
+
+      /* Add space on stack new frame.  */
+      stack_adjust (-(current_frame_info.total_size - pushed));
 
       /* Setup frame pointer if it's needed.  */
       if (frame_pointer_needed == 1)
-	{
+      {
 	  /* Move sp to fp.  */
 	  insn = emit_move_insn (frame_pointer_rtx, stack_pointer_rtx);
 	  RTX_FRAME_RELATED_P (insn) = 1; 
@@ -823,10 +864,12 @@ propeller_expand_prologue (void)
 				    current_frame_info.callee_size +
 				    current_frame_info.locals_size));
 	  RTX_FRAME_RELATED_P (insn) = 1;
-	}
+      }
 
+#if 0
       /* Prevent prologue from being scheduled into function body.  */
       emit_insn (gen_blockage ());
+#endif
     }
 }
 
@@ -850,16 +893,18 @@ propeller_expand_epilogue (bool is_sibcall)
 
   if (current_frame_info.total_size > 0)
     {
+#if 0
       /* Prevent stack code from being reordered.  */
       emit_insn (gen_blockage ());
-
-      /* Restore callee save registers.  */
-      if (current_frame_info.reg_save_mask != 0)
-	expand_save_restore (&current_frame_info, 1);
+#endif
 
       /* Deallocate stack.  */
-      stack_adjust (current_frame_info.total_size);
-    }
+      stack_adjust (current_frame_info.total_size - current_frame_info.callee_size);
+      /* Restore callee save registers.  */
+      if (current_frame_info.reg_save_mask != 0)
+          expand_restore_registers (&current_frame_info);
+
+      }
 
   /* Return to calling function.  */
   emit_jump_insn (gen_return_internal (lr_rtx));

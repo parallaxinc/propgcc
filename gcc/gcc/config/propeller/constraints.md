@@ -32,6 +32,10 @@
 	    (match_test "GET_CODE (XEXP (op, 0)) == LABEL_REF")
 	    (match_test "GET_CODE (XEXP (op, 0)) == CONST"))))
 
+(define_constraint "B"
+  "A cog memory address"
+  (match_test "propeller_cogaddr_p (op)"))
+
 (define_constraint "C"
   "A cog memory reference"
   (match_test "propeller_cogmem_p (op)"))

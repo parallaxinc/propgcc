@@ -238,7 +238,7 @@
 
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
-	(match_operand:SI 1 "general_operand"               "rCI,N,Q,rC"))]
+	(match_operand:SI 1 "general_operand"               "rCIB,N,Q,rC"))]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)"
   "@
