@@ -317,14 +317,53 @@ propeller_print_operand_punct_valid_p (unsigned char code)
     return false;
 }
 
-/* The PRINT_OPERAND worker.  */
+/* The PRINT_OPERAND worker; prints an operand to an assembler
+ * instruction.
+ * Our specific ones:
+ *   J   Select a predicate for a conditional execution
+ *   j   Select the inverse predicate for a conditional execution
+ */
+
+#define LETTERJ(YES, REV)  (letter == 'J') ? (YES) : (REV)
 
 void
 propeller_print_operand (FILE * file, rtx op, int letter)
 {
   enum rtx_code code;
+  const char *str;
 
   code = GET_CODE (op);
+  if (letter == 'J' || letter == 'j') {
+      switch (code) {
+      case NE:
+          str = LETTERJ("NE", "E ");
+          break;
+      case EQ:
+          str = LETTERJ("E ", "NE");
+          break;
+      case LT:
+      case LTU:
+          str = LETTERJ("B ", "AE");
+          break;
+      case GE:
+      case GEU:
+          str = LETTERJ("AE", "B ");
+          break;
+      case GT:
+      case GTU:
+          str = LETTERJ("A ", "BE");
+          break;
+      case LE:
+      case LEU:
+          str = LETTERJ("BE", "A ");
+          break;
+      default:
+          output_operand_lossage("invalid mode for %%J");
+          return;
+      }
+      fprintf (file, "IF_%s", str);
+      return;
+  }
 
   if (code == SIGN_EXTEND)
     op = XEXP (op, 0), code = GET_CODE (op);
@@ -423,7 +462,7 @@ propeller_hard_regno_mode_ok (unsigned int reg, enum machine_mode mode)
  * true if a value in mode A is accessible in mode B without copying
  */
 bool
-propeller_modes_tieable_p (enum machine_mode A, enum machine_mode B)
+propeller_modes_tieable_p (enum machine_mode A ATTRIBUTE_UNUSED, enum machine_mode B ATTRIBUTE_UNUSED)
 {
     return true;
 }
@@ -433,7 +472,7 @@ propeller_modes_tieable_p (enum machine_mode A, enum machine_mode B)
  * check for legitimate addresses
  */
 bool
-propeller_legitimate_address_p (enum machine_mode mode, rtx addr, bool strict)
+propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx addr, bool strict)
 {
     /* the only kind of address the propeller 1 supports is register indirect */
     while (GET_CODE (addr) == SUBREG)
@@ -464,7 +503,7 @@ propeller_legitimate_address_p (enum machine_mode mode, rtx addr, bool strict)
    Speed-relative costs are relative to COSTS_N_INSNS, which is intended
    to represent cycles.  Size-relative costs are in bytes.  */
 static bool
-propeller_rtx_costs (rtx x, int code, int outer_code, int *total_ptr, bool speed)
+propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *total_ptr, bool speed)
 {
     int total;
     bool done = false;
@@ -614,7 +653,7 @@ propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 /* SELECT_CC_MODE.  */
 
 enum machine_mode
-propeller_select_cc_mode (RTX_CODE op, rtx x, rtx y ATTRIBUTE_UNUSED)
+propeller_select_cc_mode (RTX_CODE op, rtx x ATTRIBUTE_UNUSED, rtx y ATTRIBUTE_UNUSED)
 {
   if (op == GTU || op == LTU || op == GEU || op == LEU)
     return CCUNSmode;

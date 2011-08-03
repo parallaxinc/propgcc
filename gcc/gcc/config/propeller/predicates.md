@@ -73,7 +73,15 @@
 
 ))))
 
+;; True if this operator is valid for predication
+(define_predicate "predicate_operator"
+  (match_code "eq,ne"))
 
+(define_special_predicate "cc_register"
+  (and (match_code "reg")
+       (and (match_test "REGNO (op) == PROP_CC_REGNUM")
+	    (ior (match_test "mode == GET_MODE (op)")
+		 (match_test "mode == VOIDmode && GET_MODE_CLASS (GET_MODE (op)) == MODE_CC")))))
 
 ;; Nonzero if OP is a 32 bit constant that needs to be placed specially
 
