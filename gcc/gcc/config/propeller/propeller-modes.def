@@ -23,6 +23,10 @@
  * modes to represent condition codes
  * the propeller has unsigned and signed operations throughout,
  * so we need to distinguish these
+ * also, some operations set only the Z flag validly (e.g. rdlong)
+ * others (some adds) may only set the C flag in any sensible way
  */
 
 CC_MODE (CCUNS);
+CC_MODE (CC_Z);
+CC_MODE (CC_C);
