@@ -249,30 +249,6 @@
    [(set_attr "type" "core,core,hub,hub")]
 )
 
-(define_expand "movqi"
-  [(set (match_operand:QI 0 "general_operand" "")
-	(match_operand:QI 1 "general_operand" ""))]
-  ""
-  "
-{
-  /* If this is a store, force the value into a register.  */
-  if (MEM_P (operands[0]))
-    operands[1] = force_reg (QImode, operands[1]);
-}")
-
-(define_insn "*movqi"
-  [(set (match_operand:QI 0 "nonimmediate_operand"   "=r,r,r,Q")
-	(match_operand:QI 1 "general_operand"        "rI,N,Q,r"))]
-  "register_operand (operands[0], QImode)
-   || register_operand (operands[1], QImode)"
-  "@
-   mov\t%0, %1
-   neg\t%0, #%n1
-   rdbyte\t%0, %1
-   wrbyte\t%1, %0"
-   [(set_attr "type" "core,core,hub,hub")]
-)
-
 
 (define_expand "movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand" "")
@@ -298,8 +274,37 @@
    [(set_attr "type" "core,core,hub,hub")]
 )
 
-;; optimizations
-(define_insn "*prop_zero_extendqisi2"
+(define_expand "movqi"
+  [(set (match_operand:QI 0 "general_operand" "")
+	(match_operand:QI 1 "general_operand" ""))]
+  ""
+  "
+{
+  /* If this is a store, force the value into a register.  */
+  if (MEM_P (operands[0]))
+    operands[1] = force_reg (QImode, operands[1]);
+}")
+
+(define_insn "*movqi"
+  [(set (match_operand:QI 0 "nonimmediate_operand"   "=r,r,r,Q")
+	(match_operand:QI 1 "general_operand"        "rI,N,Q,r"))]
+  "register_operand (operands[0], QImode)
+   || register_operand (operands[1], QImode)"
+  "@
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdbyte\t%0, %1
+   wrbyte\t%1, %0"
+   [(set_attr "type" "core,core,hub,hub")]
+)
+
+;; -------------------------------------------------------------------------
+;; extending qi to si
+;; the default gcc way of extending (using shifts) is fine for
+;; extending hi to si and for sign extensions, but for zero extension
+;; "and" is better
+;; -------------------------------------------------------------------------
+(define_insn "zero_extendqisi2"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
   ""
