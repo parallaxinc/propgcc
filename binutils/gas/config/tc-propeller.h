@@ -20,11 +20,11 @@
 
 #define TC_PROPELLER 1
 
-#define TARGET_FORMAT "elf-propeller"
+#define TARGET_FORMAT "elf32-propeller"
 #define TARGET_ARCH bfd_arch_propeller
 #define TARGET_BYTES_BIG_ENDIAN 1
 
-#define LEX_TILDE (LEX_BEGIN_NAME | LEX_NAME)
+#define TC_KEEP_OPERAND_SPACES 1
 
 #define md_operand(x)
 
