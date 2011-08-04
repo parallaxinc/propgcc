@@ -718,10 +718,8 @@ propeller_initial_elimination_offset (int from, int to)
   {
       if (to == STACK_POINTER_REGNUM)
           offset = base;
-      else if (to == FRAME_POINTER_REGNUM)
-          offset = current_frame_info.callee_size + current_frame_info.locals_size;
       else if (to == HARD_FRAME_POINTER_REGNUM)
-          offset = current_frame_info.callee_size + UNITS_PER_WORD;
+          offset = current_frame_info.callee_size;
       else
           gcc_unreachable ();
   }
