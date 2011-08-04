@@ -176,7 +176,7 @@ do {                                                    \
   "r4", "r5", "r6", "r7",   \
   "r8", "r9", "r10", "r11",   \
   "r12", "r13", "r14", "lr",   \
-  "sp", "pc", "?cc" }
+  "sp", "pc", "?cc", "?sap", "?sfp" }
 
 #define PROP_R0        0
 #define PROP_R1        1
@@ -184,9 +184,11 @@ do {                                                    \
 #define PROP_LR_REGNUM 15
 #define PROP_SP_REGNUM 16
 #define PROP_PC_REGNUM 17
-#define PROP_CC_REGNUM 18
+#define PROP_CC_REGNUM 18   /* not a real register */
+#define PROP_FAKEAP_REGNUM 19  /* similarly for the arg pointer */
+#define PROP_FAKEFP_REGNUM 20  /* a fake register for tracking the frame pointer until all offsets are known */
 
-#define FIRST_PSEUDO_REGISTER 19
+#define FIRST_PSEUDO_REGISTER 21
 
 enum reg_class
 {
@@ -219,7 +221,7 @@ enum reg_class
 {                       \
   0,0,0,0,0,0,0,0,      \
   0,0,0,0,0,0,0,0,      \
-  1,1,1,        \
+  1,1,1,1,1,        \
 }
 
 /* 1 for registers not available across function calls
@@ -230,7 +232,7 @@ enum reg_class
 {                       \
   1,1,1,1,1,1,1,1,      \
   0,0,0,0,0,0,1,1,      \
-  1,1,1,        \
+  1,1,1,1,1,        \
 }
 
 #define REG_ALLOC_ORDER \
@@ -251,12 +253,11 @@ enum reg_class
 
 /* The register number of the frame pointer register, which is used to
    access automatic variables in the stack frame.  */
-#define FRAME_POINTER_REGNUM PROP_FP_REGNUM
+#define FRAME_POINTER_REGNUM PROP_FAKEFP_REGNUM
 
 /* The register number of the arg pointer register, which is used to
    access the function's argument list.  */
-#define ARG_POINTER_REGNUM PROP_FP_REGNUM
-
+#define ARG_POINTER_REGNUM PROP_FAKEAP_REGNUM
 
 /* Definitions for register eliminations.
 
@@ -265,10 +266,16 @@ enum reg_class
    followed by "to".  Eliminations of the same "from" register are listed
    in order of preference.
 */
+#define HARD_FRAME_POINTER_REGNUM PROP_FP_REGNUM
+#define HARD_FRAME_POINTER_IS_FRAME_POINTER 0
+#define HARD_FRAME_POINTER_IS_ARG_POINTER 0
 
 #define ELIMINABLE_REGS							\
-{{ FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM },                        \
- { ARG_POINTER_REGNUM, STACK_POINTER_REGNUM },                          \
+{ { ARG_POINTER_REGNUM, STACK_POINTER_REGNUM },              \
+  { ARG_POINTER_REGNUM, FRAME_POINTER_REGNUM },              \
+  { ARG_POINTER_REGNUM, HARD_FRAME_POINTER_REGNUM },         \
+  { FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM },            \
+  { FRAME_POINTER_REGNUM, HARD_FRAME_POINTER_REGNUM },       \
 }
 
 

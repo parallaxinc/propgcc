@@ -294,7 +294,7 @@ propeller_asm_output_aligned_common (FILE *stream,
       name2 = default_strip_name_encoding (name);
       fprintf(stream, "%s\n", name2);
       for (i = 0; i < size; i+=4) 
-      fprintf (stream, "\tlong\t0\n", size);
+          fprintf (stream, "\tlong\t0\n");
       return;
     }
 
@@ -707,27 +707,33 @@ propeller_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
 HOST_WIDE_INT
 propeller_initial_elimination_offset (int from, int to)
 {
-  HOST_WIDE_INT offset = 0;
+  HOST_WIDE_INT offset;
+  HOST_WIDE_INT total;
 
-  switch (from)
+  total = propeller_compute_frame_size (get_frame_size ());
+  if (from == ARG_POINTER_REGNUM)
   {
-  case ARG_POINTER_REGNUM:
-      switch (to) {
-      case FRAME_POINTER_REGNUM:
-          offset = propeller_compute_frame_size (get_frame_size ()) - (current_frame_info.pretend_size + current_frame_info.args_size);
-          break;
-      case STACK_POINTER_REGNUM:
-          offset = propeller_compute_frame_size (get_frame_size ()) - current_frame_info.pretend_size;
-          break;
-      default:
+      if (to == STACK_POINTER_REGNUM)
+          offset = (total - current_frame_info.args_size) - 4;
+      else if (to == FRAME_POINTER_REGNUM)
+          offset = total - (current_frame_info.args_size + current_frame_info.locals_size);
+      else if (to == HARD_FRAME_POINTER_REGNUM)
+          offset = total - (current_frame_info.args_size + current_frame_info.locals_size + 4);
+      else
           gcc_unreachable ();
-          break;
-      }
-      break;
-  default:
-      gcc_unreachable ();
-      break;
   }
+  else if (from == FRAME_POINTER_REGNUM)
+  {
+      if (to == STACK_POINTER_REGNUM)
+          offset = current_frame_info.args_size - 4;
+      else if (to == HARD_FRAME_POINTER_REGNUM)
+          offset = -4;
+      else
+          gcc_unreachable ();
+  }
+  else
+      gcc_unreachable();
+  return offset;
 }
 /* Generate and emit RTL to save callee save registers.  */
 /* returns total number of bytes pushed on stack */
@@ -871,7 +877,8 @@ void
 propeller_expand_prologue (void)
 {
   rtx insn;
-  int pushed;
+  rtx hardfp;
+  int pushed = 0;
 
   /* naked functions have no prologue or epilogue */
   if (is_naked_function (current_function_decl))
@@ -892,17 +899,9 @@ propeller_expand_prologue (void)
       if (frame_pointer_needed == 1)
       {
 	  /* Move sp to fp.  */
-	  insn = emit_move_insn (frame_pointer_rtx, stack_pointer_rtx);
-	  RTX_FRAME_RELATED_P (insn) = 1; 
-
-	  /* Add offset - Don't use total_size, as that includes pretend_size, 
-             which isn't part of this frame?  */
-	  insn = emit_add (frame_pointer_rtx, 
-			   frame_pointer_rtx,
-			   GEN_INT (current_frame_info.args_size +
-				    current_frame_info.callee_size +
-				    current_frame_info.locals_size));
-	  RTX_FRAME_RELATED_P (insn) = 1;
+          hardfp = gen_rtx_REG (Pmode, PROP_FP_REGNUM);
+          insn = emit_move_insn (hardfp, stack_pointer_rtx);
+          RTX_FRAME_RELATED_P (insn) = 1; 
       }
 
 #if 0
