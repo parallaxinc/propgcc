@@ -24,7 +24,10 @@
 #define PROP_2 1
 
 /* List of instruction formats */
-#define PROPELLER_OPCODE_NO_OPS 0
+#define PROPELLER_OPERAND_NO_OPS      0
+#define PROPELLER_OPERAND_SOURCE_ONLY 1
+#define PROPELLER_OPERAND_DEST_ONLY   2
+#define PROPELLER_OPERAND_TWO_OPS     3
 
 struct propeller_opcode
 {

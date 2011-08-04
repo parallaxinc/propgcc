@@ -24,10 +24,25 @@
 #include "safe-ctype.h"
 #include "opcode/propeller.h"
 
+/* A representation for Propeller machine code.  */
+struct propeller_code
+{
+  char *error;
+  int code;
+  int additional;	/* Is there an additional word?  */
+  int word;		/* Additional word, if any.  */
+  struct
+  {
+    bfd_reloc_code_real_type type;
+    expressionS exp;
+    int pc_rel;
+  } reloc;
+};
+
 
 /* These chars start a comment anywhere in a source file (except inside
    another comment.  */
-const char comment_chars[] = "#/";
+const char comment_chars[] = "'";
 
 /* These chars only start a comment at the beginning of a line.  */
 const char line_comment_chars[] = "#/";
@@ -47,26 +62,42 @@ const pseudo_typeS md_pseudo_table[] =
   { 0, 0, 0 },
 };
 
+static struct hash_control *insn_hash = NULL;
 
 const char *md_shortopts = "m:";
 
 struct option md_longopts[] =
 {
-#define OPTION_CPU 257
-  { "cpu", required_argument, NULL, OPTION_CPU },
-#define OPTION_MACHINE 258
-  { "machine", required_argument, NULL, OPTION_MACHINE },
-#define OPTION_PIC 259
-  { "pic", no_argument, NULL, OPTION_PIC },
   { NULL, no_argument, NULL, 0 }
 };
 
 size_t md_longopts_size = sizeof (md_longopts);
 
+static void
+init_defaults (void)
+{
+  static int first = 1;
+
+  if (first)
+    {
+      /* set_option(as desired); */
+      first = 0;
+    }
+}
 
 void
 md_begin (void)
 {
+  int i;
+
+  init_defaults ();
+
+  insn_hash = hash_new ();
+  if (insn_hash == NULL)
+    as_fatal (_("Virtual memory exhausted"));
+
+  for (i = 0; i < propeller_num_opcodes; i++)
+    hash_insert (insn_hash, propeller_opcodes[i].name, (void *) (propeller_opcodes + i));
 }
 
 void
@@ -139,10 +170,187 @@ md_atof (int type, char * litP, int * sizeP)
   return 0;
 }
 
+static char *
+parse_expression (char *str, struct propeller_code *operand)
+{
+  char *save_input_line_pointer;
+  segT seg;
+
+  save_input_line_pointer = input_line_pointer;
+  input_line_pointer = str;
+  seg = expression (&operand->reloc.exp);
+  if (seg == NULL)
+    {
+      input_line_pointer = save_input_line_pointer;
+      operand->error = _("Error in expression");
+      return str;
+    }
+
+  str = input_line_pointer;
+  input_line_pointer = save_input_line_pointer;
+
+  operand->reloc.pc_rel = 0;
+
+  return str;
+}
+
+static char *
+skip_whitespace (char *str)
+{
+  while (*str == ' ' || *str == '\t')
+    str++;
+  return str;
+}
+
+static char *
+find_whitespace (char *str)
+{
+  while (*str != ' ' && *str != '\t' && *str != 0)
+    str++;
+  return str;
+}
+
+static char *
+parse_separator (char *str, int *error)
+{
+  str = skip_whitespace (str);
+  *error = (*str != ',');
+  if (!*error)
+    str++;
+  return str;
+}
+
 void
 md_assemble (char *instruction_string)
 {
-  (void)instruction_string;
+  const struct propeller_opcode *op;
+  struct propeller_code insn, op1, op2;
+  int error;
+  int size;
+  int op_is_immediate = 0;
+  char *err = NULL;
+  char *str;
+  char *p;
+  char c;
+
+  str = skip_whitespace (instruction_string);
+  p = find_whitespace (str);
+  if (p - str == 0)
+    {
+      as_bad (_("No instruction found"));
+      return;
+    }
+
+  if(!strncasecmp("if_", str, 3)){
+    char *p2;
+    /* Process conditional flag that str points to */
+    p = skip_whitespace(p);
+    p2 = find_whitespace(p);
+    if(p2 - p == 0){
+      as_bad (_("No instruction found after condition"));
+      return;
+    }
+    str = p;
+    p = p2;
+  }
+  c = *p;
+  *p = '\0';
+  op = (struct propeller_opcode *)hash_find (insn_hash, str);
+  *p = c;
+  if (op == 0)
+    {
+      as_bad (_("Unknown instruction '%s'"), str);
+      return;
+    }
+
+  insn.error = NULL;
+  insn.code = op->opcode;
+  insn.reloc.type = BFD_RELOC_NONE;
+  op1.error = NULL;
+  op1.additional = FALSE;
+  op1.reloc.type = BFD_RELOC_NONE;
+  op2.error = NULL;
+  op2.additional = FALSE;
+  op2.reloc.type = BFD_RELOC_NONE;
+
+  str = p;
+  size = 4;
+
+  switch (op->format)
+    {
+    case PROPELLER_OPERAND_NO_OPS:
+      str = skip_whitespace (str);
+      if (*str == 0)
+	str = "";
+      break;
+
+    case PROPELLER_OPERAND_TWO_OPS:
+    case PROPELLER_OPERAND_SOURCE_ONLY:
+      str = skip_whitespace (str);
+      if (*str == '#'){
+	str++;
+	op_is_immediate = 1;
+      }
+      str = parse_expression (str, &op1);
+      if (op1.error)
+	break;
+      if (op1.reloc.exp.X_op != O_constant || op1.reloc.type != BFD_RELOC_NONE)
+	{
+	  op1.error = _("operand is not an absolute constant");
+	  break;
+	}
+      if (op1.reloc.exp.X_add_number & ~0x1ff)
+        {
+          op1.error = _("9-bit value out of range");
+          break;
+        }
+      insn.code |= op1.reloc.exp.X_add_number;
+      if(op->format == PROPELLER_OPERAND_SOURCE_ONLY){
+        break;
+      } else {
+        str = parse_separator (str, &error);
+        if (error)
+	  {
+	    op2.error = _("Missing ','");
+	    break;
+	  }
+	}
+    case PROPELLER_OPERAND_DEST_ONLY:
+      str = parse_expression (str, &op2);
+      if (op2.error)
+	break;
+      if (op2.reloc.exp.X_op != O_constant || op2.reloc.type != BFD_RELOC_NONE)
+	{
+	  op2.error = _("operand is not an absolute constant");
+	  break;
+	}
+      if (op2.reloc.exp.X_add_number & ~0x1ff)
+        {
+          op2.error = _("9-bit value out of range");
+          break;
+        }
+      insn.code |= op2.reloc.exp.X_add_number;
+      break;
+    default:
+      BAD_CASE (op->format);
+    }
+
+  if (op1.error)
+    err = op1.error;
+  else if (op2.error)
+    err = op2.error;
+  else
+    {
+      str = skip_whitespace (str);
+      if (*str)
+	err = _("Too many operands");
+    }
+
+  if (err)
+    {
+      as_bad ("%s", err);
+      return;
+    }
 }
 
 int
@@ -159,7 +367,7 @@ md_convert_frag (bfd *headers ATTRIBUTE_UNUSED,
 {
 }
 
-int md_short_jump_size = 2;
+int md_short_jump_size = 4;
 int md_long_jump_size = 4;
 
 void
