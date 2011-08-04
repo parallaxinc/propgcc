@@ -175,7 +175,7 @@
 ;; a pattern that we can match which can be split into multiple smaller insns
 ;; for later RTL optimization
 ;;
-(define_insn_and_split "*notsi2"
+(define_insn_and_split "one_cmplsi2"
   [ (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
          (not:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))
     (clobber (match_scratch:SI 2 "=&r"))
@@ -191,14 +191,6 @@
 ""
 [(set_attr "type" "multi")])
 
-(define_expand "one_cmplsi2"
-  [(parallel
-    [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-	  (not:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))
-     (clobber (match_scratch:SI 2 "=&r"))])
-  ]
-  ""
-  "")
 
 ;; -------------------------------------------------------------------------
 ;; Logical operators
@@ -209,27 +201,24 @@
 	(and:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 		(match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
-{
-  return "and\t%0, %2";
-})
+  "and\t%0, %2"
+)
 
 (define_insn "xorsi3"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	(xor:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 		(match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
-{
-  return "xor\t%0, %2";
-})
+  "xor\t%0, %2"
+)
 
 (define_insn "iorsi3"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	(ior:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 		(match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
-{
-  return "or\t%0, %2";
-})
+  "or\t%0, %2"
+)
 
 ;; -------------------------------------------------------------------------
 ;; Shifters
@@ -240,27 +229,24 @@
 	(ashift:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 		   (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
-{
-  return "shl\t%0, %2";
-})
+  "shl\t%0, %2"
+)
 
 (define_insn "ashrsi3"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	(ashiftrt:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 		     (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
-{
-  return "sar\t%0, %2";
-})
+  "sar\t%0, %2"
+)
 
 (define_insn "lshrsi3"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	(lshiftrt:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 		     (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
-{
-  return "shr\t%0, %2";
-})
+  "shr\t%0, %2"
+)
 
 ;; -------------------------------------------------------------------------
 ;; Move instructions
