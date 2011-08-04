@@ -53,9 +53,9 @@ struct propeller_frame_info
 {
   HOST_WIDE_INT total_size;	/* number of bytes of entire frame.  */
   HOST_WIDE_INT callee_size;	/* number of bytes to save callee saves.  */
-  HOST_WIDE_INT pretend_size;	/* number of bytes we pretend caller did.  */
-  HOST_WIDE_INT args_size;	/* number of bytes for outgoing arguments.  */
   HOST_WIDE_INT locals_size;	/* number of bytes for local variables.  */
+  HOST_WIDE_INT args_size;	/* number of bytes for outgoing arguments.  */
+  HOST_WIDE_INT pretend_size;	/* number of bytes we pretend caller pushed.  */
   unsigned int reg_save_mask;	/* mask of saved registers.  */
 };
 
@@ -224,7 +224,7 @@ propeller_asm_file_start (void)
     }
     fprintf (asm_out_file, "\torg\n\n");
     fprintf (asm_out_file, "entry\n");
-    // output the prologue necessary for interfacing with spin
+    /* output the prologue necessary for interfacing with spin */
     fprintf (asm_out_file, "r0\tmov\tsp,PAR\n"); 
     fprintf (asm_out_file, "r1\tmov\tr0,sp\n");
     fprintf (asm_out_file, "r2\tjmp\t#spinmain\n");
@@ -685,12 +685,10 @@ propeller_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
                             |    |   on the stack      |  addresses
     PARENT   arg pointer -> |    | /
   -------------------------- ---- -------------------
-    CHILD                   |ret |   return address
-                              --
-                            |    | \
+    CHILD                   |    | \
                             |    |   call saved
                             |    |   registers
-                            |    | /
+        hard fp ->          |    | /
                               --
                             |    | \
                             |    |   local
@@ -708,26 +706,31 @@ HOST_WIDE_INT
 propeller_initial_elimination_offset (int from, int to)
 {
   HOST_WIDE_INT offset;
-  HOST_WIDE_INT total;
+  HOST_WIDE_INT base;
 
-  total = propeller_compute_frame_size (get_frame_size ());
+  /* the -UNITS_PER_WORD in stack pointer offsets is
+     because we predecrement the stack pointer before using it,
+   */
+  base = propeller_compute_frame_size (get_frame_size ()) - UNITS_PER_WORD;
+
+
   if (from == ARG_POINTER_REGNUM)
   {
       if (to == STACK_POINTER_REGNUM)
-          offset = (total - current_frame_info.args_size) - 4;
+          offset = base;
       else if (to == FRAME_POINTER_REGNUM)
-          offset = total - (current_frame_info.args_size + current_frame_info.locals_size);
+          offset = current_frame_info.callee_size + current_frame_info.locals_size;
       else if (to == HARD_FRAME_POINTER_REGNUM)
-          offset = total - (current_frame_info.args_size + current_frame_info.locals_size + 4);
+          offset = current_frame_info.callee_size + UNITS_PER_WORD;
       else
           gcc_unreachable ();
   }
   else if (from == FRAME_POINTER_REGNUM)
   {
       if (to == STACK_POINTER_REGNUM)
-          offset = current_frame_info.args_size - 4;
+          offset = base - (current_frame_info.callee_size + current_frame_info.locals_size);
       else if (to == HARD_FRAME_POINTER_REGNUM)
-          offset = -4;
+          offset = -(current_frame_info.locals_size+UNITS_PER_WORD);
       else
           gcc_unreachable ();
   }
@@ -749,8 +752,9 @@ expand_save_registers (struct propeller_frame_info *info)
   sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
 
   /* Callee saves are below locals and above outgoing arguments.  */
-  /* push registers from high to low (so r15 gets pushed first) */
-  for (regno = 15; regno >= 0; regno--)
+  /* push registers from low to high (so r15 gets pushed last, and
+     hence is available early for us to use in the epilogue) */
+  for (regno = 0; regno <= 15; regno++)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
@@ -778,10 +782,10 @@ expand_restore_registers (struct propeller_frame_info *info)
   sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
 
   /* Callee saves are below locals and above outgoing arguments.  */
-  /* we pushed registers from high to low (so r15 gets pushed first),
+  /* we pushed registers from high to low (so r0 gets pushed first),
    * so restore in the opposite order
    */
-  for (regno = 0; regno <= 15; regno++)
+  for (regno = 15; regno >= 0; regno--)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
@@ -820,6 +824,12 @@ stack_adjust (HOST_WIDE_INT amount)
     }
 }
 
+static bool
+propeller_use_frame_pointer(void)
+{
+    return frame_pointer_needed;
+}
+
 static HOST_WIDE_INT
 propeller_compute_frame_size (int size)
 {
@@ -843,7 +853,7 @@ propeller_compute_frame_size (int size)
 	  callee_size += UNITS_PER_WORD;
 	}
     }
-  if (!(reg_save_mask & (1 << PROP_FP_REGNUM)) && frame_pointer_needed)
+  if (!(reg_save_mask & (1 << PROP_FP_REGNUM)) && propeller_use_frame_pointer())
     {
       reg_save_mask |= 1 << PROP_FP_REGNUM;
       callee_size += UNITS_PER_WORD;
@@ -872,6 +882,11 @@ propeller_compute_frame_size (int size)
   return total_size;
 }
 
+/* set to 1 to keep scheduling from moving around stuff in the prologue
+ * and epilogue
+ */
+#define PROLOGUE_BLOCKAGE 1
+
 /* Create and emit instructions for a functions prologue.  */
 void
 propeller_expand_prologue (void)
@@ -892,11 +907,8 @@ propeller_expand_prologue (void)
       if (current_frame_info.reg_save_mask != 0)
           pushed = expand_save_registers (&current_frame_info);
 
-      /* Add space on stack new frame.  */
-      stack_adjust (-(current_frame_info.total_size - pushed));
-
       /* Setup frame pointer if it's needed.  */
-      if (frame_pointer_needed == 1)
+      if (propeller_use_frame_pointer())
       {
 	  /* Move sp to fp.  */
           hardfp = gen_rtx_REG (Pmode, PROP_FP_REGNUM);
@@ -904,7 +916,11 @@ propeller_expand_prologue (void)
           RTX_FRAME_RELATED_P (insn) = 1; 
       }
 
-#if 0
+      /* Add space on stack new frame.  */
+      stack_adjust (-(current_frame_info.total_size - pushed));
+
+
+#ifdef PROLOGUE_BLOCKAGE
       /* Prevent prologue from being scheduled into function body.  */
       emit_insn (gen_blockage ());
 #endif
@@ -931,13 +947,24 @@ propeller_expand_epilogue (bool is_sibcall)
 
   if (current_frame_info.total_size > 0)
     {
-#if 0
+#ifdef PROLOGUE_BLOCKAGE
       /* Prevent stack code from being reordered.  */
       emit_insn (gen_blockage ());
 #endif
 
       /* Deallocate stack.  */
-      stack_adjust (current_frame_info.total_size - current_frame_info.callee_size);
+      if (propeller_use_frame_pointer ())
+      {
+          /* the hardware frame pointer points just below the saved registers,
+             so we can get back there by moving it to the sp
+          */
+          rtx hardfp_rtx = gen_rtx_REG (Pmode, PROP_FP_REGNUM);
+          emit_move_insn (stack_pointer_rtx, hardfp_rtx);
+      }
+      else
+      {
+          stack_adjust (current_frame_info.total_size - current_frame_info.callee_size);
+      }
       /* Restore callee save registers.  */
       if (current_frame_info.reg_save_mask != 0)
           expand_restore_registers (&current_frame_info);
