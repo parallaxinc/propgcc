@@ -50,6 +50,8 @@ extern void propeller_asm_output_aligned_common (FILE *, tree, const char *,
 extern bool propeller_modes_tieable_p (enum machine_mode, enum machine_mode);
 extern bool propeller_hard_regno_mode_ok (unsigned int, enum machine_mode);
 
+extern bool propeller_match_ccmode (rtx, enum machine_mode);
+
 #if defined(RTX_CODE)
 extern enum machine_mode propeller_select_cc_mode (enum rtx_code, rtx, rtx);
 extern rtx propeller_gen_compare_reg (enum rtx_code, rtx, rtx);

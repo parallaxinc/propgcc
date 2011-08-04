@@ -655,6 +655,8 @@ propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 enum machine_mode
 propeller_select_cc_mode (RTX_CODE op, rtx x ATTRIBUTE_UNUSED, rtx y ATTRIBUTE_UNUSED)
 {
+  if (op == EQ || op == NE)
+    return CC_Zmode;
   if (op == GTU || op == LTU || op == GEU || op == LEU)
     return CCUNSmode;
 
@@ -669,6 +671,46 @@ propeller_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
 {
     enum machine_mode ccmode = SELECT_CC_MODE (code, x, y);
     return gen_rtx_REG (ccmode, PROP_CC_REGNUM);
+}
+
+/*
+ * return TRUE or FALSE depending on whether the first SET
+ * in insn has source and destination with matching CC modes, and
+ * that the CC mode is at least as constrained as req_mode
+ */
+bool
+propeller_match_ccmode (rtx insn, enum machine_mode req_mode)
+{
+  rtx op1, flags;
+  enum machine_mode flags_mode;
+
+  if (req_mode == VOIDmode)
+    return false;
+
+  gcc_checking_assert (XVECLEN (PATTERN (insn), 0) == 2);
+
+  op1 = XVECEXP (PATTERN (insn), 0, 1);
+  gcc_checking_assert (GET_CODE (SET_SRC (op1)) == COMPARE);
+
+  flags = SET_DEST (op1);
+  flags_mode = GET_MODE (flags);
+
+  if (GET_MODE (SET_SRC (op1)) != flags_mode)
+    return false;
+  if (GET_MODE_CLASS (flags_mode) != MODE_CC)
+    return false;
+
+  /* Ensure that the mode of FLAGS is compatible with REQ_MODE.
+   * For example, CC_Z is compatible with both CCUNS and CC,
+   * but not necessarily vice-versa
+   */
+  switch (flags_mode)
+  {
+  case CC_Zmode:
+      return (req_mode == CC_Zmode || req_mode == CCmode || req_mode == CCUNSmode);
+  default:
+      return (req_mode == flags_mode);
+  }
 }
 
 
