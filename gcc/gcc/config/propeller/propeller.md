@@ -170,27 +170,17 @@
 
 ;;
 ;; the instruction set doesn't actually have a NOT instruction, so synthesize
-;; it from XOR
-;; the preferred way to do this is with define_insn_and_split; this specifies
-;; a pattern that we can match which can be split into multiple smaller insns
-;; for later RTL optimization
+;; it from XOR; we'll just put a handy 0xFFFFFFFF somewhere in cog memory
 ;;
-(define_insn_and_split "one_cmplsi2"
+;;
+(define_insn "one_cmplsi2"
   [ (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-         (not:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))
-    (clobber (match_scratch:SI 2 "=&r"))
-  ]
+         (not:SI (match_operand:SI 1 "propeller_src_operand" "0")))]
   ""
-  "#"
-  "&& reload_completed"
-[
-  (set (match_dup 2)(const_int -1))
-  (set (match_dup 0)(match_dup 1))
-  (set (match_dup 0)(xor:SI (match_dup 0) (match_dup 2)))
-]
-""
-[(set_attr "type" "multi")])
-
+{
+  propeller_need_allbitsset = true; /* make sure we generate the FFFFFFFF */
+  return "xor\t%0,C_ALLBITSSET";
+})
 
 ;; -------------------------------------------------------------------------
 ;; Logical operators
@@ -361,6 +351,43 @@
    rdbyte\\t%0, %1"
    [(set_attr "type" "core,hub")]
 )
+
+;; -------------------------------------------------------------------------
+;; multiply
+;; on propeller 1 multiply has to be implemented in software; we do this
+;; by calling in to a library function which takes r0,r1 and returns r0
+;; the function is allowed to clobber r1, r2, and the condition codes
+;; -------------------------------------------------------------------------
+
+(define_insn "*prop_mulsi3"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (mult:SI (reg:SI 0)(reg:SI 1)))
+   (clobber (reg:SI 1))
+   (clobber (reg:SI 2))
+   (clobber (reg:CC CC_REG))
+  ]
+""
+{
+  propeller_need_mulsi = true;
+  return "call\t#C_MULT";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")
+ ]
+)
+
+(define_expand "mulsi3"
+  [(set (reg:SI 0)(match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:SI 1)(match_operand:SI 2 "propeller_src_operand" ""))
+   (parallel[
+     (set (reg:SI 0)(mult:SI (reg:SI 0)(reg:SI 1)))
+     (clobber (reg:SI 1))
+     (clobber (reg:SI 2))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:SI 0 "propeller_dst_operand" "")(reg:SI 0))
+  ]
+""
+"")
 
 ;; -------------------------------------------------------------------------
 ;; min/max instructions
