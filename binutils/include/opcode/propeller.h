@@ -38,6 +38,24 @@ struct propeller_opcode
   int hardware;
 };
 
+struct propeller_condition
+{
+  const char *name;
+  int value;
+};
+
+struct propeller_effect
+{
+  const char *name;
+  int or;
+  int and;
+};
+
+
 int print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info);
 extern const struct propeller_opcode propeller_opcodes[];
 extern const int propeller_num_opcodes;
+extern const struct propeller_condition propeller_conditions[];
+extern const int propeller_num_conditions;
+extern const struct propeller_effect propeller_effects[];
+extern const int propeller_num_effects;
