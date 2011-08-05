@@ -391,34 +391,36 @@
 
 ;; -------------------------------------------------------------------------
 ;; min/max instructions
+;; NOTE!! The Propeller instruction names are the reverse of what one
+;; might expect: the "max X,Y" instruction does X := (X > Y) ? Y : X
 ;; -------------------------------------------------------------------------
 (define_insn "umaxsi3"
   [(set (match_operand:SI          0 "propeller_dst_operand" "=rC")
 	(umax:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
 		 (match_operand:SI 2 "propeller_src_operand" " rCI")))]
   ""
-  "max\\t%0, %2")
+  "min\\t%0, %2")
 
 (define_insn "uminsi3"
   [(set (match_operand:SI          0 "propeller_dst_operand" "=rC")
 	(umin:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
 		 (match_operand:SI 2 "propeller_src_operand" " rCI")))]
   ""
-  "min\\t%0, %2")
+  "max\\t%0, %2")
 
 (define_insn "smaxsi3"
   [(set (match_operand:SI          0 "propeller_dst_operand" "=rC")
 	(smax:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
 		 (match_operand:SI 2 "propeller_src_operand" " rCI")))]
   ""
-  "maxs\\t%0, %2")
+  "mins\\t%0, %2")
 
 (define_insn "sminsi3"
   [(set (match_operand:SI          0 "propeller_dst_operand" "=rC")
 	(smin:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
 		 (match_operand:SI 2 "propeller_src_operand" " rCI")))]
   ""
-  "mins\\t%0, %2")
+  "maxs\\t%0, %2")
 
 ;; -------------------------------------------------------------------------
 ;; Compare instructions
