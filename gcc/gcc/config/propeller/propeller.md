@@ -220,17 +220,12 @@
   "or\t%0, %2"
 )
 
-(define_insn "*andsi3_flags"
+(define_insn "*andnotsi3"
   [(set (match_operand:SI 0         "propeller_dst_operand" "=rC")
-	(and:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
-		(match_operand:SI 2 "propeller_src_operand" " rCI")))
-   (set (reg CC_REG)
-        (compare (and:SI (match_dup 1)(match_dup 2))
-                 (const_int 0)))
-  ]
-  "reload_completed && propeller_match_ccmode (insn, CC_Zmode)"
-  "and\t%0, %2 wz"
-  [(set_attr "conds" "set")]
+	(and:SI (not:SI (match_operand:SI 1 "propeller_src_operand" " rCI"))
+		(match_operand:SI 2 "propeller_dst_operand" " 0")))]
+  ""
+  "andn\t%0, %1"
 )
 
 ;; -------------------------------------------------------------------------
