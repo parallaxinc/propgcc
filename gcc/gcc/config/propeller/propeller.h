@@ -193,6 +193,8 @@ do {                                                    \
 enum reg_class
 {
   NO_REGS,
+  R0_REGS,
+  R1_REGS,
   GENERAL_REGS,
   SPECIAL_REGS,
   CC_REGS,
@@ -202,6 +204,8 @@ enum reg_class
 
 #define REG_CLASS_CONTENTS \
 { { 0x00000000 }, /* Empty */			   \
+  { 0x00000001 }, /* r0 */                 \
+  { 0x00000002 }, /* r1 */                 \
   { 0x0001FFFF }, /* r0-r15, sp, */        \
   { 0x00020000 }, /* pc */	                   \
   { 0x00040000 }, /* cc */                        \
@@ -212,10 +216,17 @@ enum reg_class
 
 #define REG_CLASS_NAMES {\
     "NO_REGS", \
+    "R0_REGS", \
+    "R1_REGS", \
     "GENERAL_REGS", \
     "SPECIAL_REGS", \
     "CC_REGS", \
     "ALL_REGS" }
+
+/* A C expression whose value is a register class containing hard
+   register REGNO.  */
+extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
+#define REGNO_REG_CLASS(R) propeller_reg_class[(R)]
 
 #define FIXED_REGISTERS \
 {                       \
@@ -321,11 +332,6 @@ enum reg_class
 /* A C expression which is nonzero if register number NUM is suitable
    for use as an index register in operand addresses.  */
 #define REGNO_OK_FOR_INDEX_P(NUM) 0
-
-/* A C expression whose value is a register class containing hard
-   register REGNO.  */
-#define REGNO_REG_CLASS(R) ((R < PROP_PC_REGNUM) ? GENERAL_REGS :		\
-                            (R == PROP_CC_REGNUM ? CC_REGS : SPECIAL_REGS))
 
 /* A C expression for the number of consecutive hard registers,
    starting at register number REGNO, required to hold a value of mode
@@ -510,5 +516,11 @@ typedef unsigned int CUMULATIVE_ARGS;
 #define SYMBOL_FLAG_PROPELLER_COGMEM (SYMBOL_FLAG_MACH_DEP << 0)
 
 #define CONSTANT_POOL_BEFORE_FUNCTION (0)
+
+/* some variables controlling output of constants and functions */
+extern bool propeller_need_mulsi;
+extern bool propeller_need_udivsi;
+extern bool propeller_need_divsi;
+extern bool propeller_need_allbitsset;
 
 #endif /* GCC_PROPELLER_H */

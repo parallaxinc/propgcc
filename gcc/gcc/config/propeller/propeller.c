@@ -70,7 +70,16 @@ static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_m
 static bool propeller_rtx_costs (rtx, int, int, int *, bool);
 static int propeller_address_cost (rtx, bool);
 
+/* register classes */
+enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
+    R0_REGS, R1_REGS, GENERAL_REGS, GENERAL_REGS,
+    GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
+    GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
+    GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
 
+    GENERAL_REGS, SPECIAL_REGS, CC_REGS, SPECIAL_REGS,
+    SPECIAL_REGS
+};
 
 
 /*
@@ -211,6 +220,10 @@ propeller_cogmem_p (rtx op)
 /*
  * functions for output of assembly language
  */
+bool propeller_need_allbitsset = false;
+bool propeller_need_mulsi = false;
+bool propeller_need_divsi = false;
+bool propeller_need_udivsi = false;
 
 /*
  * start assembly language output
@@ -253,6 +266,23 @@ propeller_asm_file_end (void)
 {
     if (!TARGET_OUTPUT_SPINCODE) {
         return;
+    }
+    if (propeller_need_allbitsset) {
+        fprintf(asm_out_file, "C_ALLBITSSET\tlong\t$FFFFFFFF\n");
+    }
+    if (propeller_need_mulsi) {
+        fprintf(asm_out_file, "TMP0\tlong\t0\n");
+        fprintf(asm_out_file, "C_MULT\n");
+        fprintf(asm_out_file, "\tmov\tTMP0,r0\n");
+        fprintf(asm_out_file, "\tmin\tTMP0,r1\n");
+        fprintf(asm_out_file, "\tmax\tr1,r0\n");
+        fprintf(asm_out_file, "\tmov\tr0,#0\n");
+        fprintf(asm_out_file, ":mloop\n");
+        fprintf(asm_out_file, "\tshr\tr1,#1 wz,wc\n");
+        fprintf(asm_out_file, "  IF_C\tadd\tr0,TMP0\n");
+        fprintf(asm_out_file, "\tadd\tTMP0,TMP0\n");
+        fprintf(asm_out_file, "  IF_NZ\tjmp\t#:mloop\n");
+        fprintf(asm_out_file, "C_MULT_ret\tret\n");
     }
     fprintf (asm_out_file, "\tfit\t$1F0\n");
 }

@@ -66,4 +66,11 @@
   (and (match_code "const_int")
        (match_test "ival < 0 && ival >= 511")))
 
+;;
+;; some register constraints
+;;
+(define_register_constraint "z" "R0_REGS"
+  "R0 register")
 
+(define_register_constraint "y" "R1_REGS"
+  "R1 register")
