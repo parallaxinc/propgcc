@@ -24,6 +24,7 @@
 #include "opcode/propeller.h"
 
 const struct propeller_opcode propeller_opcodes[] = {
-  /* name,	pattern, mask,	opcode type,		insn type,    alias */
+  /* name,      pattern, mask,  opcode type,            insn type,    alias */
 };
+
 #define NUM_PROPELLER_OPCODES (sizeof(propeller_opcodes)/sizeof(struct propeller_opcode))

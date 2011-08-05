@@ -29,8 +29,8 @@ struct propeller_code
 {
   char *error;
   int code;
-  int additional;	/* Is there an additional word?  */
-  int word;		/* Additional word, if any.  */
+  int additional;		/* Is there an additional word?  */
+  int word;			/* Additional word, if any.  */
   struct
   {
     bfd_reloc_code_real_type type;
@@ -57,18 +57,18 @@ const char EXP_CHARS[] = "eE";
 /* or    0H1.234E-12 (see exp chars above).  */
 const char FLT_CHARS[] = "dDfF";
 
-const pseudo_typeS md_pseudo_table[] =
-{
-  { 0, 0, 0 },
+const pseudo_typeS md_pseudo_table[] = {
+  {0, 0, 0},
 };
 
 static struct hash_control *insn_hash = NULL;
+static struct hash_control *cond_hash = NULL;
+static struct hash_control *eff_hash = NULL;
 
 const char *md_shortopts = "m:";
 
-struct option md_longopts[] =
-{
-  { NULL, no_argument, NULL, 0 }
+struct option md_longopts[] = {
+  {NULL, no_argument, NULL, 0}
 };
 
 size_t md_longopts_size = sizeof (md_longopts);
@@ -95,9 +95,22 @@ md_begin (void)
   insn_hash = hash_new ();
   if (insn_hash == NULL)
     as_fatal (_("Virtual memory exhausted"));
+  cond_hash = hash_new ();
+  if (cond_hash == NULL)
+    as_fatal (_("Virtual memory exhausted"));
+  eff_hash = hash_new ();
+  if (eff_hash == NULL)
+    as_fatal (_("Virtual memory exhausted"));
 
   for (i = 0; i < propeller_num_opcodes; i++)
-    hash_insert (insn_hash, propeller_opcodes[i].name, (void *) (propeller_opcodes + i));
+    hash_insert (insn_hash, propeller_opcodes[i].name,
+		 (void *) (propeller_opcodes + i));
+  for (i = 0; i < propeller_num_conditions; i++)
+    hash_insert (cond_hash, propeller_conditions[i].name,
+		 (void *) (propeller_conditions + i));
+  for (i = 0; i < propeller_num_effects; i++)
+    hash_insert (eff_hash, propeller_effects[i].name,
+		 (void *) (propeller_effects + i));
 }
 
 void
@@ -108,15 +121,15 @@ md_number_to_chars (char con[], valueT value, int nbytes)
     case 0:
       break;
     case 1:
-      con[0] =  value       & 0xff;
+      con[0] = value & 0xff;
       break;
     case 2:
-      con[0] =  value        & 0xff;
-      con[1] = (value >>  8) & 0xff;
+      con[0] = value & 0xff;
+      con[1] = (value >> 8) & 0xff;
       break;
     case 4:
-      con[3] =  value        & 0xff;
-      con[2] = (value >>  8) & 0xff;
+      con[3] = value & 0xff;
+      con[2] = (value >> 8) & 0xff;
       con[1] = (value >> 16) & 0xff;
       con[0] = (value >> 24) & 0xff;
       break;
@@ -130,12 +143,10 @@ md_number_to_chars (char con[], valueT value, int nbytes)
    that they reference.  Knows about order of bytes in address.  */
 
 void
-md_apply_fix (fixS *fixP,
-	       valueT * valP,
-	       segT seg ATTRIBUTE_UNUSED)
+md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
 {
-  (void)fixP;
-  (void)valP;
+  (void) fixP;
+  (void) valP;
 }
 
 long
@@ -154,7 +165,7 @@ md_chars_to_number (con, nbytes)
     case 4:
       return
 	(((con[0] << BITS_PER_CHAR) | con[1]) << (2 * BITS_PER_CHAR))
-	|((con[2] << BITS_PER_CHAR) | con[3]);
+	| ((con[2] << BITS_PER_CHAR) | con[3]);
     default:
       BAD_CASE (nbytes);
       return 0;
@@ -162,11 +173,11 @@ md_chars_to_number (con, nbytes)
 }
 
 char *
-md_atof (int type, char * litP, int * sizeP)
+md_atof (int type, char *litP, int *sizeP)
 {
-  (void)type;
-  (void)litP;
-  (void)sizeP;
+  (void) type;
+  (void) litP;
+  (void) sizeP;
   return 0;
 }
 
@@ -211,6 +222,14 @@ find_whitespace (char *str)
 }
 
 static char *
+find_whitespace_or_separator (char *str)
+{
+  while (*str != ' ' && *str != '\t' && *str != 0 && *str != ',')
+    str++;
+  return str;
+}
+
+static char *
 parse_separator (char *str, int *error)
 {
   str = skip_whitespace (str);
@@ -220,14 +239,24 @@ parse_separator (char *str, int *error)
   return str;
 }
 
+static void
+lc(char *str)
+{
+  while(*str){
+    *str = TOLOWER(*str);
+    str++;
+  }
+}
+
 void
 md_assemble (char *instruction_string)
 {
   const struct propeller_opcode *op;
+  const struct propeller_condition *cond;
+  const struct propeller_effect *eff;
   struct propeller_code insn, op1, op2;
   int error;
   int size;
-  int op_is_immediate = 0;
   char *err = NULL;
   char *str;
   char *p;
@@ -241,21 +270,34 @@ md_assemble (char *instruction_string)
       return;
     }
 
-  if(!strncasecmp("if_", str, 3)){
-    char *p2;
-    /* Process conditional flag that str points to */
-    p = skip_whitespace(p);
-    p2 = find_whitespace(p);
-    if(p2 - p == 0){
-      as_bad (_("No instruction found after condition"));
-      return;
-    }
-    str = p;
-    p = p2;
-  }
   c = *p;
   *p = '\0';
-  op = (struct propeller_opcode *)hash_find (insn_hash, str);
+  lc(str);
+  cond = (struct propeller_condition *) hash_find (cond_hash, str);
+  *p = c;
+  if (cond)
+    {
+      char *p2;
+      /* Process conditional flag that str points to */
+      insn.code = cond->value;
+      p = skip_whitespace (p);
+      p2 = find_whitespace (p);
+      if (p2 - p == 0)
+	{
+	  as_bad (_("No instruction found after condition"));
+	  return;
+	}
+      str = p;
+      p = p2;
+    }
+  else
+    {
+      insn.code = 0xf << 18;
+    }
+  c = *p;
+  *p = '\0';
+  lc(str);
+  op = (struct propeller_opcode *) hash_find (insn_hash, str);
   *p = c;
   if (op == 0)
     {
@@ -264,7 +306,7 @@ md_assemble (char *instruction_string)
     }
 
   insn.error = NULL;
-  insn.code = op->opcode;
+  insn.code |= op->opcode;
   insn.reloc.type = BFD_RELOC_NONE;
   op1.error = NULL;
   op1.additional = FALSE;
@@ -285,55 +327,68 @@ md_assemble (char *instruction_string)
       break;
 
     case PROPELLER_OPERAND_TWO_OPS:
-    case PROPELLER_OPERAND_SOURCE_ONLY:
+    case PROPELLER_OPERAND_DEST_ONLY:
       str = skip_whitespace (str);
-      if (*str == '#'){
-	str++;
-	op_is_immediate = 1;
-      }
       str = parse_expression (str, &op1);
       if (op1.error)
 	break;
-      if (op1.reloc.exp.X_op != O_constant || op1.reloc.type != BFD_RELOC_NONE)
+      if (op1.reloc.exp.X_add_number & ~0x1ff)
 	{
-	  op1.error = _("operand is not an absolute constant");
+	  op1.error = _("9-bit value out of range");
 	  break;
 	}
-      if (op1.reloc.exp.X_add_number & ~0x1ff)
-        {
-          op1.error = _("9-bit value out of range");
-          break;
-        }
-      insn.code |= op1.reloc.exp.X_add_number;
-      if(op->format == PROPELLER_OPERAND_SOURCE_ONLY){
-        break;
-      } else {
-        str = parse_separator (str, &error);
-        if (error)
-	  {
-	    op2.error = _("Missing ','");
-	    break;
-	  }
+      insn.code |= op1.reloc.exp.X_add_number << 9;
+      if (op->format == PROPELLER_OPERAND_DEST_ONLY)
+	{
+	  break;
 	}
-    case PROPELLER_OPERAND_DEST_ONLY:
+      else
+	{
+	  str = parse_separator (str, &error);
+	  if (error)
+	    {
+	      op2.error = _("Missing ','");
+	      break;
+	    }
+	}
+    case PROPELLER_OPERAND_SOURCE_ONLY:
+      if (*str == '#')
+	{
+	  str++;
+	  insn.code |= 1 << 22;
+	}
       str = parse_expression (str, &op2);
       if (op2.error)
 	break;
-      if (op2.reloc.exp.X_op != O_constant || op2.reloc.type != BFD_RELOC_NONE)
+      if (op2.reloc.exp.X_add_number & ~0x1ff)
 	{
-	  op2.error = _("operand is not an absolute constant");
+	  op2.error = _("9-bit value out of range");
 	  break;
 	}
-      if (op2.reloc.exp.X_add_number & ~0x1ff)
-        {
-          op2.error = _("9-bit value out of range");
-          break;
-        }
       insn.code |= op2.reloc.exp.X_add_number;
       break;
     default:
       BAD_CASE (op->format);
     }
+
+  /* Find and process any effect flags */
+  do
+    {
+      str = skip_whitespace (str);
+      p = find_whitespace_or_separator (str);
+      c = *p;
+      *p = '\0';
+      lc(str);
+      eff = (struct propeller_effect *) hash_find (eff_hash, str);
+      *p = c;
+      if (!eff)
+	break;
+      str = p;
+      insn.code |= eff->or;
+      insn.code &= eff->and;
+      str = parse_separator (str, &error);
+    }
+  while (eff && !error);
 
   if (op1.error)
     err = op1.error;
@@ -351,19 +406,52 @@ md_assemble (char *instruction_string)
       as_bad ("%s", err);
       return;
     }
+  {
+    char *to = NULL;
+
+    if (err)
+      {
+	as_bad ("%s", err);
+	return;
+      }
+
+    to = frag_more (size);
+
+    md_number_to_chars (to, insn.code, 4);
+    if (insn.reloc.type != BFD_RELOC_NONE)
+      fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+		   &insn.reloc.exp, insn.reloc.pc_rel, insn.reloc.type);
+    to += 4;
+
+    if (op1.additional)
+      {
+	md_number_to_chars (to, op1.word, 4);
+	if (op1.reloc.type != BFD_RELOC_NONE)
+	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+		       &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
+	to += 4;
+      }
+
+    if (op2.additional)
+      {
+	md_number_to_chars (to, op2.word, 4);
+	if (op2.reloc.type != BFD_RELOC_NONE)
+	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+		       &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
+      }
+  }
 }
 
 int
-md_estimate_size_before_relax (fragS *fragP ATTRIBUTE_UNUSED,
+md_estimate_size_before_relax (fragS * fragP ATTRIBUTE_UNUSED,
 			       segT segment ATTRIBUTE_UNUSED)
 {
   return 0;
 }
 
 void
-md_convert_frag (bfd *headers ATTRIBUTE_UNUSED,
-		 segT seg ATTRIBUTE_UNUSED,
-		 fragS *fragP ATTRIBUTE_UNUSED)
+md_convert_frag (bfd * headers ATTRIBUTE_UNUSED,
+		 segT seg ATTRIBUTE_UNUSED, fragS * fragP ATTRIBUTE_UNUSED)
 {
 }
 
@@ -374,8 +462,8 @@ void
 md_create_short_jump (char *ptr ATTRIBUTE_UNUSED,
 		      addressT from_addr ATTRIBUTE_UNUSED,
 		      addressT to_addr ATTRIBUTE_UNUSED,
-		      fragS *frag ATTRIBUTE_UNUSED,
-		      symbolS *to_symbol ATTRIBUTE_UNUSED)
+		      fragS * frag ATTRIBUTE_UNUSED,
+		      symbolS * to_symbol ATTRIBUTE_UNUSED)
 {
 }
 
@@ -383,8 +471,8 @@ void
 md_create_long_jump (char *ptr ATTRIBUTE_UNUSED,
 		     addressT from_addr ATTRIBUTE_UNUSED,
 		     addressT to_addr ATTRIBUTE_UNUSED,
-		     fragS *frag ATTRIBUTE_UNUSED,
-		     symbolS *to_symbol ATTRIBUTE_UNUSED)
+		     fragS * frag ATTRIBUTE_UNUSED,
+		     symbolS * to_symbol ATTRIBUTE_UNUSED)
 {
 }
 
@@ -395,13 +483,13 @@ md_create_long_jump (char *ptr ATTRIBUTE_UNUSED,
 int
 md_parse_option (int c, char *arg)
 {
-  (void)c;
-  (void)arg;
+  (void) c;
+  (void) arg;
   return 0;
 }
 
 void
-md_show_usage (FILE *stream)
+md_show_usage (FILE * stream)
 {
   fprintf (stream, "\
 Propeller options\n\
@@ -415,14 +503,13 @@ md_undefined_symbol (char *name ATTRIBUTE_UNUSED)
 }
 
 valueT
-md_section_align (segT segment ATTRIBUTE_UNUSED,
-		  valueT size)
+md_section_align (segT segment ATTRIBUTE_UNUSED, valueT size)
 {
   return (size + 1) & ~1;
 }
 
 long
-md_pcrel_from (fixS *fixP)
+md_pcrel_from (fixS * fixP)
 {
   return fixP->fx_frag->fr_address + fixP->fx_where + fixP->fx_size;
 }
@@ -431,10 +518,8 @@ md_pcrel_from (fixS *fixP)
    format.  */
 
 arelent *
-tc_gen_reloc (asection *section ATTRIBUTE_UNUSED,
-	      fixS *fixp)
+tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
 {
-  (void)fixp;
+  (void) fixp;
   return 0;
 }
-
