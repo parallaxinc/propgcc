@@ -106,6 +106,52 @@ const struct propeller_opcode propeller_opcodes[] = {
 
 const int propeller_num_opcodes = sizeof propeller_opcodes / sizeof propeller_opcodes[0];
 
+const struct propeller_condition propeller_conditions[] = {
+  { "if_always",    0xf << 18 },
+  { "if_never",     0x0 << 18 },
+  { "if_e",         0xa << 18 },
+  { "if_ne",        0x5 << 18 },
+  { "if_a",         0x1 << 18 },
+  { "if_b",         0xc << 18 },
+  { "if_ae",        0x3 << 18 },
+  { "if_be",        0xe << 18 },
+  { "if_c",         0xc << 18 },
+  { "if_nc",        0x3 << 18 },
+  { "if_z",         0xa << 18 },
+  { "if_nz",        0x5 << 18 },
+  { "if_c_eq_z",    0x9 << 18 },
+  { "if_c_ne_z",    0x6 << 18 },
+  { "if_c_and_z",   0x8 << 18 },
+  { "if_c_and_nz",  0x4 << 18 },
+  { "if_nc_and_z",  0x2 << 18 },
+  { "if_nc_and_nz", 0x1 << 18 },
+  { "if_c_or_z",    0xe << 18 },
+  { "if_c_or_nz",   0xd << 18 },
+  { "if_nc_or_z",   0xb << 18 },
+  { "if_nc_or_nz",  0x7 << 18 },
+  { "if_z_eq_c",    0x9 << 18 },
+  { "if_z_ne_c",    0x6 << 18 },
+  { "if_z_and_c",   0x8 << 18 },
+  { "if_z_and_nc",  0x2 << 18 },
+  { "if_nz_and_c",  0x4 << 18 },
+  { "if_nz_and_nc", 0x1 << 18 },
+  { "if_z_or_c",    0xe << 18 },
+  { "if_z_or_nc",   0xb << 18 },
+  { "if_nz_or_c",   0xd << 18 },
+  { "if_nz_or_nc",  0x7 << 18 },
+};
+
+const int propeller_num_conditions = sizeof propeller_conditions / sizeof propeller_conditions[0];
+
+const struct propeller_effect propeller_effects[] = {
+  { "wc", 1 << 24, ~0 },
+  { "wz", 1 << 25, ~0 },
+  { "nr", 0,       ~(1 << 23) },
+  { "wr", 1 << 23, ~0 }
+};
+
+const int propeller_num_effects = sizeof propeller_effects / sizeof propeller_effects[0];
+
 int
 print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 {
