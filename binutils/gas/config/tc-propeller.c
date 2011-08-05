@@ -239,6 +239,15 @@ parse_separator (char *str, int *error)
   return str;
 }
 
+static void
+lc(char *str)
+{
+  while(*str){
+    *str = TOLOWER(*str);
+    str++;
+  }
+}
+
 void
 md_assemble (char *instruction_string)
 {
@@ -263,6 +272,7 @@ md_assemble (char *instruction_string)
 
   c = *p;
   *p = '\0';
+  lc(str);
   cond = (struct propeller_condition *) hash_find (cond_hash, str);
   *p = c;
   if (cond)
@@ -286,6 +296,7 @@ md_assemble (char *instruction_string)
     }
   c = *p;
   *p = '\0';
+  lc(str);
   op = (struct propeller_opcode *) hash_find (insn_hash, str);
   *p = c;
   if (op == 0)
@@ -367,6 +378,7 @@ md_assemble (char *instruction_string)
       p = find_whitespace_or_separator (str);
       c = *p;
       *p = '\0';
+      lc(str);
       eff = (struct propeller_effect *) hash_find (eff_hash, str);
       *p = c;
       if (!eff)
