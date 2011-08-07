@@ -440,6 +440,36 @@
 ""
 "")
 
+(define_insn "*prop_divmodsi4"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (div:SI (reg:SI 0)(reg:SI 1)))
+   (set (match_operand:SI 1 "register_operand" "=y")
+        (mod:SI (reg:SI 0)(reg:SI 1)))
+   (clobber (reg:CC CC_REG))
+  ]
+""
+{
+  propeller_need_divsi = true;
+  return "call\t#__DIVSI";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")
+ ]
+)
+
+(define_expand "divmodsi4"
+  [(set (reg:SI 0)(match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:SI 1)(match_operand:SI 2 "propeller_src_operand" ""))
+   (parallel[
+     (set (reg:SI 0)(div:SI (reg:SI 0)(reg:SI 1)))
+     (set (reg:SI 1)(mod:SI (reg:SI 0)(reg:SI 1)))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:SI 0 "propeller_dst_operand" "")(reg:SI 0))
+   (set (match_operand:SI 3 "propeller_dst_operand" "")(reg:SI 1))
+  ]
+""
+"")
+
 ;; -------------------------------------------------------------------------
 ;; min/max instructions
 ;; NOTE!! The Propeller instruction names are the reverse of what one
