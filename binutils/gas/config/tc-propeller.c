@@ -170,22 +170,74 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       mask = 0x0003fe00;
       shift = 9;
       break;
+    case BFD_RELOC_32:
+      mask = 0xffffffff;
+      shift = 0;
+      break;
     default:
       BAD_CASE (fixP->fx_r_type);
     }
 
-printf("mask is %08x shift is %d bits %02x%02x%02x%02x\n",(unsigned int)mask,shift,buf[0]&0xff,buf[1]&0xff,buf[2]&0xff,buf[3]&0xff);
   if (fixP->fx_addsy != NULL)
     val += symbol_get_bfdsym (fixP->fx_addsy)->section->vma;
-    /* *value += fixP->fx_addsy->bsym->section->vma; */
 
   code &= ~mask;
   code |= (val << shift) & mask;
   number_to_chars_bigendian (buf, code, size);
-printf("                             now %02x%02x%02x%02x\n",buf[0]&0xff,buf[1]&0xff,buf[2]&0xff,buf[3]&0xff);
 
-  //if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
-    //fixP->fx_done = 1;
+  if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
+    fixP->fx_done = 1;
+}
+
+/* Translate internal representation of relocation info to BFD target
+   format.  */
+
+arelent *
+tc_gen_reloc (asection *section ATTRIBUTE_UNUSED,
+	      fixS *fixp)
+{
+  arelent *reloc;
+  bfd_reloc_code_real_type code;
+
+  reloc = xmalloc (sizeof (* reloc));
+
+  reloc->sym_ptr_ptr = xmalloc (sizeof (asymbol *));
+  *reloc->sym_ptr_ptr = symbol_get_bfdsym (fixp->fx_addsy);
+  reloc->address = fixp->fx_frag->fr_address + fixp->fx_where;
+
+  /* This is taken account for in md_apply_fix().  */
+  reloc->addend = -symbol_get_bfdsym (fixp->fx_addsy)->section->vma;
+
+  switch (fixp->fx_r_type)
+    {
+    case BFD_RELOC_PROPELLER_SRC:
+      code = BFD_RELOC_PROPELLER_SRC;
+      break;
+
+    case BFD_RELOC_PROPELLER_DST:
+      code = BFD_RELOC_PROPELLER_DST;
+      break;
+
+    case BFD_RELOC_32:
+      code = BFD_RELOC_32;
+      break;
+
+    default:
+      BAD_CASE (fixp->fx_r_type);
+      return NULL;
+    }
+
+  reloc->howto = bfd_reloc_type_lookup (stdoutput, code);
+
+  if (reloc->howto == NULL)
+    {
+      as_bad_where (fixp->fx_file, fixp->fx_line,
+		    _("Can not represent %s relocation in this object file format"),
+		    bfd_get_reloc_code_name (code));
+      return NULL;
+    }
+
+  return reloc;
 }
 
 char *
@@ -570,21 +622,12 @@ md_undefined_symbol (char *name ATTRIBUTE_UNUSED)
 valueT
 md_section_align (segT segment ATTRIBUTE_UNUSED, valueT size)
 {
-  return (size + 1) & ~1;
+  return (size + 3) & ~3;
 }
 
 long
-md_pcrel_from (fixS * fixP)
+md_pcrel_from (fixS *fixP)
 {
   return fixP->fx_frag->fr_address + fixP->fx_where + fixP->fx_size;
 }
 
-/* Translate internal representation of relocation info to BFD target
-   format.  */
-
-arelent *
-tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
-{
-  (void) fixp;
-  return 0;
-}
