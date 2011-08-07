@@ -220,11 +220,12 @@ propeller_cogmem_p (rtx op)
 /*
  * functions for output of assembly language
  */
-bool propeller_need_allbitsset = false;
+bool propeller_need_maskffffffff = false;
+bool propeller_need_mask0000ffff = false;
 bool propeller_need_mulsi = false;
 bool propeller_need_divsi = false;
 bool propeller_need_udivsi = false;
-
+bool propeller_need_clzsi = false;
 /*
  * start assembly language output
  */
@@ -261,30 +262,170 @@ propeller_asm_file_start (void)
 /*
  * end assembly language output
  */
+
+/*
+ * output code for count leading/trailing zeros
+ * this is slightly tricky
+ * leading zeros is converted to trailing zeros by
+ * bit-reversal
+ * to count trailing zeros, we remove all but the
+ * lowest order 1 bit by calculating CZTMP = (x & -x);
+ * then we use the basic binary search algorithm
+ *   cnt = 0;
+ *   if ((x & 0x0000FFFF) == 0)
+ *   {   cnt += 16; x >>= 16; }
+ *   if ((x & 0x000000FF) == 0)
+ *   {   cnt += 8; x >>= 8; }
+ *   ... etc; but since we know only one bit is set,
+ *   we can skip the shifts of the value and use a shifted
+ *   mask instead
+ */
+
+/* this whole thing takes 15 cycles for a "count leading zeros"
+ * operation
+ */
+static void
+pasm_clzsi(FILE *f) {
+    fprintf(f, "__MASK_00FF00FF\tlong\t$00FF00FF\n");
+    fprintf(f, "__MASK_0F0F0F0F\tlong\t$0F0F0F0F\n");
+    fprintf(f, "__MASK_33333333\tlong\t$33333333\n");
+    fprintf(f, "__MASK_55555555\tlong\t$55555555\n");
+    fprintf(f, "__CLZSI\trev\tr0,#0\n");
+    fprintf(f, "__CTZSI\tneg\t__TMP0,r0\n"); 
+    fprintf(f, "\tand\t__TMP0,r0 wz\n");
+    /* slight wrinkle: we want ctzsi(0) == 32, so start
+       the count as (x == 0) ? 1 : 0
+    */
+    fprintf(f, "\tmov\tr0,#0\n");
+    fprintf(f, "\tIF_Z\tmov\tr0,#1\n");
+    fprintf(f, "\ttest\t__TMP0, __MASK_0000FFFF wz\n");
+    fprintf(f, "\tIF_Z\tadd\tr0,#16\n");
+    fprintf(f, "\ttest\t__TMP0, __MASK_00FF00FF wz\n");
+    fprintf(f, "\tIF_Z\tadd\tr0,#8\n");
+    fprintf(f, "\ttest\t__TMP0, __MASK_0F0F0F0F wz\n");
+    fprintf(f, "\tIF_Z\tadd\tr0,#4\n");
+    fprintf(f, "\ttest\t__TMP0, __MASK_33333333 wz\n");
+    fprintf(f, "\tIF_Z\tadd\tr0,#2\n");
+    fprintf(f, "\ttest\t__TMP0, __MASK_55555555 wz\n");
+    fprintf(f, "\tIF_Z\tadd\tr0,#1\n");
+    /* note: when calling ctz we need to use jmpret instead of
+       call, since the return is named for C_CLZSI
+    */
+    fprintf(f, "__CLZSI_ret ret\n");
+}
+
+/*
+ * unsigned division
+ * input: r0 = n, r0 = d
+ * output: r0 = quotient n/d, r1 = remainder
+ * the algorithm used shifts d up so that it has the
+ * same sign bit as n, and then counts down doing trial
+ * division for as many bits as the quotient might have
+ * both the shift and output bits are determined by
+ * counting how many significant bits n and d have, using
+ * CLZSI
+ * This is significantly better than the naive division
+ * algorithm when n and d are of similar sizes (since then
+ * the quotient has only a few bits, so we only iterate a
+ * few times). In the case where n is much bigger than d,
+ * the advantage fades, but we can still use a 4 instruction
+ * inner loop (instead of 5 for the naive division), which
+ * cancels out the setup cost, so we don't lose anything;
+ * it's a win-win!
+ */
+
+static void
+pasm_udivsi(FILE *f) {
+    fprintf(f, "__DIVR\tlong\t0\n");
+    fprintf(f, "__DIVCNT\tlong\t0\n");
+
+    fprintf(f, "__UDIVSI\n");
+    fprintf(f, "\tmov\t__DIVR,r0\n");
+    fprintf(f, "\tcall\t#__CLZSI\n");
+    fprintf(f, "\tneg\t__DIVCNT,r0\n");
+    fprintf(f, "\tmov\tr0,r1\n");
+    fprintf(f, "\tcall\t#__CLZSI\n");
+    fprintf(f, "\tadd\t__DIVCNT,r0 wc\n");
+    fprintf(f, "\tmov\tr0,#0\n");
+    fprintf(f, "  IF_NC\tjmp\t#__UDIVSI_done\n");
+    fprintf(f, "\tshl\tr1,__DIVCNT\n");
+    fprintf(f, "\tadd\t__DIVCNT,#1\n");  /* adjust for DJNZ loop */
+
+    fprintf(f, "__UDIVSI_loop\n");
+    fprintf(f, "\tcmpsub\t__DIVR,r1 wz,wc\n");
+    fprintf(f, "\taddx\tr0,r0\n");
+    fprintf(f, "\tshr\tr1,#1\n");
+    fprintf(f, "\tdjnz\t__DIVCNT,#__UDIVSI_loop\n");
+
+    fprintf(f, "__UDIVSI_done\n");
+    fprintf(f, "\tmov\tr1,__DIVR\n");
+    fprintf(f, "__UDIVSI_ret\tret\n");
+}
+
+/*
+ * implement signed division by using udivsi
+ */
+static void
+pasm_divsi(FILE *f) {
+    fprintf(f, "__DIVSGN\tlong\t0\n");
+    fprintf(f, "__DIVSI\tmov\t__DIVSGN,r0\n");
+    fprintf(f, "\txor\t__DIVSGN,r1\n");
+    fprintf(f, "\tabs\tr0\n");
+    fprintf(f, "\tabs\tr1\n");
+    fprintf(f, "\tcall\t#__UDIVSI\n");
+    fprintf(f, "\tcmps\t__DIVSGN,#0\n");
+    fprintf(f, "\tIF_B\tneg\tr0\n");
+    fprintf(f, "\tIF_B\tneg\tr1\n");
+    fprintf(f, "__DIVSI_ret\tret\n");
+}
+
 static void
 propeller_asm_file_end (void)
 {
     if (!TARGET_OUTPUT_SPINCODE) {
         return;
     }
-    if (propeller_need_allbitsset) {
-        fprintf(asm_out_file, "C_ALLBITSSET\tlong\t$FFFFFFFF\n");
+    // adjust for dependencies
+    if (propeller_need_divsi) {
+        propeller_need_udivsi = true;
+    }
+    if (propeller_need_udivsi) {
+        propeller_need_clzsi = true;
+    }
+    if (propeller_need_clzsi) {
+        propeller_need_mask0000ffff = true;
+    }
+    if (propeller_need_mask0000ffff) {
+        fprintf(asm_out_file, "__MASK_0000FFFF\tlong\t$0000FFFF\n");
+    }
+    if (propeller_need_maskffffffff) {
+        fprintf(asm_out_file, "__MASK_FFFFFFFF\tlong\t$FFFFFFFF\n");
+    }
+    if (propeller_need_mulsi || propeller_need_clzsi) {
+        fprintf(asm_out_file, "__TMP0\tlong\t0\n");
     }
     if (propeller_need_mulsi) {
-        fprintf(asm_out_file, "TMP0\tlong\t0\n");
-        fprintf(asm_out_file, "C_MULT\n");
-        fprintf(asm_out_file, "\tmov\tTMP0,r0\n");
-        fprintf(asm_out_file, "\tmin\tTMP0,r1\n");
+        fprintf(asm_out_file, "__MULSI\n");
+        fprintf(asm_out_file, "\tmov\t__TMP0,r0\n");
+        fprintf(asm_out_file, "\tmin\t__TMP0,r1\n");
         fprintf(asm_out_file, "\tmax\tr1,r0\n");
         fprintf(asm_out_file, "\tmov\tr0,#0\n");
         fprintf(asm_out_file, ":mloop\n");
         fprintf(asm_out_file, "\tshr\tr1,#1 wz,wc\n");
-        fprintf(asm_out_file, "  IF_C\tadd\tr0,TMP0\n");
-        fprintf(asm_out_file, "\tadd\tTMP0,TMP0\n");
+        fprintf(asm_out_file, "  IF_C\tadd\tr0,__TMP0\n");
+        fprintf(asm_out_file, "\tadd\t__TMP0,__TMP0\n");
         fprintf(asm_out_file, "  IF_NZ\tjmp\t#:mloop\n");
-        fprintf(asm_out_file, "C_MULT_ret\tret\n");
+        fprintf(asm_out_file, "__MULSI_ret\tret\n");
     }
-    fprintf (asm_out_file, "\tfit\t$1F0\n");
+    if (propeller_need_clzsi) {
+        pasm_clzsi(asm_out_file);
+    }
+    if (propeller_need_udivsi) {
+        pasm_udivsi(asm_out_file);
+    }
+    if (propeller_need_divsi) {
+        pasm_divsi(asm_out_file);
+    }
 }
 
 /*
