@@ -30,12 +30,15 @@
 #define md_operand(x)
 #define md_number_to_chars number_to_chars_bigendian
 
-#define DEBUG 1
-#define DEBUG2 1
-#define DEBUG3 1
-//#define DEBUG4 1
-#define DEBUG5 1
-
 long md_chars_to_number (unsigned char *, int);
 
 /* end of tc-propeller.h */
+
+/* Stuff for experiments or debugging.  This should all
+ * be gone for release */
+//#define DEBUG 1
+//#define DEBUG2 1
+//#define DEBUG3 1
+//#define DEBUG4 1
+//#define DEBUG5 1
+//#define TC_FORCE_RELOCATION(x) 1
