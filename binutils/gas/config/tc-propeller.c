@@ -30,6 +30,8 @@ struct propeller_code
   char *error;
   int code;
   int additional;		/* Is there an additional word?  */
+  				/* No real instructions need any, */
+				/* but some fake ones might */
   int word;			/* Additional word, if any.  */
   struct
   {
@@ -57,8 +59,13 @@ const char EXP_CHARS[] = "eE";
 /* or    0H1.234E-12 (see exp chars above).  */
 const char FLT_CHARS[] = "dDfF";
 
+static void pseudo_fit(int);
+static void pseudo_res(int);
+
 const pseudo_typeS md_pseudo_table[] = {
-  {0, 0, 0},
+  { "fit", pseudo_fit, 0 },
+  { "res", pseudo_res, 0 },
+  { 0, 0, 0 },
 };
 
 static struct hash_control *insn_hash = NULL;
@@ -113,45 +120,9 @@ md_begin (void)
 		 (void *) (propeller_effects + i));
 }
 
-void
-md_number_to_chars (char con[], valueT value, int nbytes)
-{
-  switch (nbytes)
-    {
-    case 0:
-      break;
-    case 1:
-      con[0] = value & 0xff;
-      break;
-    case 2:
-      con[0] = value & 0xff;
-      con[1] = (value >> 8) & 0xff;
-      break;
-    case 4:
-      con[3] = value & 0xff;
-      con[2] = (value >> 8) & 0xff;
-      con[1] = (value >> 16) & 0xff;
-      con[0] = (value >> 24) & 0xff;
-      break;
-    default:
-      BAD_CASE (nbytes);
-    }
-}
-
-
-/* Fix up some data or instructions after we find out the value of a symbol
-   that they reference.  Knows about order of bytes in address.  */
-
-void
-md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
-{
-  (void) fixP;
-  (void) valP;
-}
-
 long
 md_chars_to_number (con, nbytes)
-     unsigned char con[];	/* Low order byte 1st. FIXME  */
+     unsigned char con[];	/* High order byte 1st.  */
      int nbytes;		/* Number of bytes in the input.  */
 {
   switch (nbytes)
@@ -159,17 +130,62 @@ md_chars_to_number (con, nbytes)
     case 0:
       return 0;
     case 1:
-      return con[0];
+      return con[3];
     case 2:
-      return (con[1] << BITS_PER_CHAR) | con[0];
+      return (con[2] << BITS_PER_CHAR) | con[3];
     case 4:
       return
 	(((con[0] << BITS_PER_CHAR) | con[1]) << (2 * BITS_PER_CHAR))
-	| ((con[2] << BITS_PER_CHAR) | con[3]);
+	|((con[2] << BITS_PER_CHAR) | con[3]);
     default:
       BAD_CASE (nbytes);
       return 0;
     }
+}
+
+/* Fix up some data or instructions after we find out the value of a symbol
+   that they reference.  Knows about order of bytes in address.  */
+
+void
+md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
+{
+  valueT code;
+  valueT mask;
+  valueT val = * valP;
+  char *buf;
+  int shift;
+  int size;
+
+  buf = fixP->fx_where + fixP->fx_frag->fr_literal;
+  size = fixP->fx_size;
+  code = md_chars_to_number ((unsigned char *) buf, size);
+
+  switch (fixP->fx_r_type)
+    {
+    case BFD_RELOC_PROPELLER_SRC:
+      mask = 0x000001ff;
+      shift = 0;
+      break;
+    case BFD_RELOC_PROPELLER_DST:
+      mask = 0x0003fe00;
+      shift = 9;
+      break;
+    default:
+      BAD_CASE (fixP->fx_r_type);
+    }
+
+printf("mask is %08x shift is %d bits %02x%02x%02x%02x\n",(unsigned int)mask,shift,buf[0]&0xff,buf[1]&0xff,buf[2]&0xff,buf[3]&0xff);
+  if (fixP->fx_addsy != NULL)
+    val += symbol_get_bfdsym (fixP->fx_addsy)->section->vma;
+    /* *value += fixP->fx_addsy->bsym->section->vma; */
+
+  code &= ~mask;
+  code |= (val << shift) & mask;
+  number_to_chars_bigendian (buf, code, size);
+printf("                             now %02x%02x%02x%02x\n",buf[0]&0xff,buf[1]&0xff,buf[2]&0xff,buf[3]&0xff);
+
+  //if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
+    //fixP->fx_done = 1;
 }
 
 char *
@@ -181,6 +197,23 @@ md_atof (int type, char *litP, int *sizeP)
   return 0;
 }
 
+/* Pseudo-op processing */
+static void
+pseudo_fit(int c ATTRIBUTE_UNUSED){
+  /* Do nothing.  This is the linker's job */
+}
+
+static void
+pseudo_res(int c ATTRIBUTE_UNUSED){
+  int temp;
+
+  temp = get_absolute_expression ();
+  subseg_set (bss_section, temp);
+  demand_empty_rest_of_line ();
+}
+
+
+/* Instruction processing */
 static char *
 parse_expression (char *str, struct propeller_code *operand)
 {
@@ -332,12 +365,24 @@ md_assemble (char *instruction_string)
       str = parse_expression (str, &op1);
       if (op1.error)
 	break;
-      if (op1.reloc.exp.X_add_number & ~0x1ff)
-	{
-	  op1.error = _("9-bit value out of range");
-	  break;
-	}
-      insn.code |= op1.reloc.exp.X_add_number << 9;
+      switch(op1.reloc.exp.X_op){
+      case O_constant:
+        if (op1.reloc.exp.X_add_number & ~0x1ff)
+	  {
+	    op1.error = _("9-bit value out of range");
+	    break;
+	  }
+        insn.code |= op1.reloc.exp.X_add_number << 9;
+	break;
+      case O_symbol:
+      case O_add:
+      case O_subtract:
+	op1.reloc.type = BFD_RELOC_PROPELLER_DST;
+	op1.reloc.pc_rel = 0;
+	break;
+      default:
+        op1.error = _("Unhandled case in op1");
+      }
       if (op->format == PROPELLER_OPERAND_DEST_ONLY)
 	{
 	  break;
@@ -360,12 +405,24 @@ md_assemble (char *instruction_string)
       str = parse_expression (str, &op2);
       if (op2.error)
 	break;
-      if (op2.reloc.exp.X_add_number & ~0x1ff)
-	{
-	  op2.error = _("9-bit value out of range");
-	  break;
-	}
-      insn.code |= op2.reloc.exp.X_add_number;
+      switch(op2.reloc.exp.X_op){
+      case O_constant:
+        if (op2.reloc.exp.X_add_number & ~0x1ff)
+	  {
+	    op2.error = _("9-bit value out of range");
+	    break;
+	  }
+        insn.code |= op2.reloc.exp.X_add_number;
+	break;
+      case O_symbol:
+      case O_add:
+      case O_subtract:
+	op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
+	op2.reloc.pc_rel = 0;
+	break;
+      default:
+        op2.error = _("Unhandled case in op2");
+      }
       break;
     default:
       BAD_CASE (op->format);
@@ -421,8 +478,16 @@ md_assemble (char *instruction_string)
     if (insn.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
 		   &insn.reloc.exp, insn.reloc.pc_rel, insn.reloc.type);
+    if (op1.reloc.type != BFD_RELOC_NONE)
+      fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+                   &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
+    if (op2.reloc.type != BFD_RELOC_NONE)
+      fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+                   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
     to += 4;
 
+    /* These are never used for real instructions, but might be useful */
+    /* for some pseudoinstruction for LMM or such. */
     if (op1.additional)
       {
 	md_number_to_chars (to, op1.word, 4);

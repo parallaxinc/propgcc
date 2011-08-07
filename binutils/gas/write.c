@@ -1274,16 +1274,16 @@ write_relocs (bfd *abfd, asection *sec, void *xxx ATTRIBUTE_UNUSED)
 
 #ifdef DEBUG3
   {
-    unsigned int i;
-    arelent *r;
+    unsigned int ii;
+    arelent *ri;
     asymbol *s;
     fprintf (stderr, "relocs for sec %s\n", sec->name);
-    for (i = 0; i < n; i++)
+    for (ii = 0; ii < n; ii++)
       {
-	r = relocs[i];
-	s = *r->sym_ptr_ptr;
+	ri = relocs[ii];
+	s = *ri->sym_ptr_ptr;
 	fprintf (stderr, "  reloc %2d @%p off %4lx : sym %-10s addend %lx\n",
-		 i, r, (unsigned long)r->address, s->name, (unsigned long)r->addend);
+		 ii, ri, (unsigned long)ri->address, s->name, (unsigned long)ri->addend);
       }
   }
 #endif

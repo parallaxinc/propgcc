@@ -25,8 +25,16 @@
 #define TARGET_BYTES_BIG_ENDIAN 1
 
 #define TC_KEEP_OPERAND_SPACES 1
+#define NO_PSEUDO_DOT 1
 
 #define md_operand(x)
+#define md_number_to_chars number_to_chars_bigendian
+
+#define DEBUG 1
+#define DEBUG2 1
+#define DEBUG3 1
+//#define DEBUG4 1
+#define DEBUG5 1
 
 long md_chars_to_number (unsigned char *, int);
 
