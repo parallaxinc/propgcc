@@ -83,6 +83,35 @@ enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
 
 
 /*
+ * options handling
+ */
+/* Implement TARGET_OPTION_OPTIMIZATION_TABLE.  */
+
+static const struct default_options propeller_option_optimization_table[] =
+  {
+    { OPT_LEVELS_1_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
+    { OPT_LEVELS_NONE, 0, NULL, 0 }
+  };
+
+/* Validate and override various options, and do machine dependent
+ * initialization
+ */
+static void
+propeller_option_override (void)
+{
+    if (flag_pic)
+    {
+        error ("-fPIC and -fpic are not supported");
+        flag_pic = 0;
+    }
+    /* function CSE does not make sense for Cog mode
+       we'll have to revisit this for LMM
+    */
+    flag_no_function_cse = 1;
+}
+
+
+/*
  * propeller specific attributes
  */
 
@@ -1247,6 +1276,11 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 
 
 
+#undef TARGET_OPTION_OVERRIDE
+#define TARGET_OPTION_OVERRIDE propeller_option_override
+#undef TARGET_OPTION_OPTIMIZATION_TABLE
+#define TARGET_OPTION_OPTIMIZATION_TABLE propeller_option_optimization_table
+
 #undef TARGET_ASM_FILE_START
 #define TARGET_ASM_FILE_START propeller_asm_file_start
 #undef TARGET_ASM_FILE_END
