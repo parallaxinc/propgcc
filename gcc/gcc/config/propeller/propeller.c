@@ -345,9 +345,10 @@ pasm_udivsi(FILE *f) {
     fprintf(f, "\tneg\t__DIVCNT,r0\n");
     fprintf(f, "\tmov\tr0,r1\n");
     fprintf(f, "\tcall\t#__CLZSI\n");
-    fprintf(f, "\tadd\t__DIVCNT,r0 wc\n");
+    fprintf(f, "\tadd\t__DIVCNT,r0\n");
     fprintf(f, "\tmov\tr0,#0\n");
-    fprintf(f, "  IF_NC\tjmp\t#__UDIVSI_done\n");
+    fprintf(f, "\tcmps\t__DIVCNT,#0 wz,wc\n");
+    fprintf(f, "  IF_C\tjmp\t#__UDIVSI_done\n");
     fprintf(f, "\tshl\tr1,__DIVCNT\n");
     fprintf(f, "\tadd\t__DIVCNT,#1\n");  /* adjust for DJNZ loop */
 
@@ -370,12 +371,12 @@ pasm_divsi(FILE *f) {
     fprintf(f, "__DIVSGN\tlong\t0\n");
     fprintf(f, "__DIVSI\tmov\t__DIVSGN,r0\n");
     fprintf(f, "\txor\t__DIVSGN,r1\n");
-    fprintf(f, "\tabs\tr0\n");
-    fprintf(f, "\tabs\tr1\n");
+    fprintf(f, "\tabs\tr0,r0\n");
+    fprintf(f, "\tabs\tr1,r1\n");
     fprintf(f, "\tcall\t#__UDIVSI\n");
-    fprintf(f, "\tcmps\t__DIVSGN,#0\n");
-    fprintf(f, "\tIF_B\tneg\tr0\n");
-    fprintf(f, "\tIF_B\tneg\tr1\n");
+    fprintf(f, "\tcmps\t__DIVSGN,#0 wz,wc\n");
+    fprintf(f, "\tIF_B\tneg\tr0,r0\n");
+    fprintf(f, "\tIF_B\tneg\tr1,r1\n");
     fprintf(f, "__DIVSI_ret\tret\n");
 }
 
