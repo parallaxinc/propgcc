@@ -178,8 +178,8 @@
          (not:SI (match_operand:SI 1 "propeller_src_operand" "0")))]
   ""
 {
-  propeller_need_allbitsset = true; /* make sure we generate the FFFFFFFF */
-  return "xor\t%0,C_ALLBITSSET";
+  propeller_need_maskffffffff = true; /* make sure we generate the FFFFFFFF */
+  return "xor\t%0,__MASK_FFFFFFFF";
 })
 
 ;; -------------------------------------------------------------------------
@@ -337,19 +337,27 @@
 )
 
 ;; -------------------------------------------------------------------------
-;; extending qi to si
+;; extending qi and hi to si
 ;; the default gcc way of extending (using shifts) is fine for
 ;; extending hi to si and for sign extensions, but for zero extension
 ;; "and" is better
 ;; -------------------------------------------------------------------------
-(define_insn "zero_extendqisi2"
+(define_insn "zero_extendhisi2"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
   ""
-  "@
-   and\\t%0,#255
-   rdbyte\\t%0, %1"
-   [(set_attr "type" "core,hub")]
+{
+  switch(which_alternative) {
+    case 0:
+      propeller_need_mask0000ffff = true;
+      return "and\\t%0,__MASK_0000FFFF";
+    case 1:
+      return "rdword\\t%0, %1";
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "core,hub")]
 )
 
 ;; -------------------------------------------------------------------------
@@ -359,17 +367,24 @@
 ;; the function is allowed to clobber r1, r2, and the condition codes
 ;; -------------------------------------------------------------------------
 
+;; We must use a pseudo-reg forced to reg 0 in the SET_DEST rather than
+;; hard register 0.  If we used hard register 0, then the next instruction
+;; would be a move from hard register 0 to a pseudo-reg.  If the pseudo-reg
+;; gets allocated to a stack slot that needs its address reloaded, then
+;; there is nothing to prevent reload from using r0 to reload the address.
+;; This reload would clobber the value in r0 we are trying to store.
+;; If we let reload allocate r0, then this problem can never happen.
+
 (define_insn "*prop_mulsi3"
   [(set (match_operand:SI 0 "register_operand" "=z")
         (mult:SI (reg:SI 0)(reg:SI 1)))
    (clobber (reg:SI 1))
-   (clobber (reg:SI 2))
    (clobber (reg:CC CC_REG))
   ]
 ""
 {
   propeller_need_mulsi = true;
-  return "call\t#C_MULT";
+  return "call\t#__MULSI";
 }
  [(set_attr "type" "multi")
   (set_attr "conds" "clob")
@@ -382,9 +397,75 @@
    (parallel[
      (set (reg:SI 0)(mult:SI (reg:SI 0)(reg:SI 1)))
      (clobber (reg:SI 1))
-     (clobber (reg:SI 2))
      (clobber (reg:CC CC_REG))])
    (set (match_operand:SI 0 "propeller_dst_operand" "")(reg:SI 0))
+  ]
+""
+"")
+
+;; -------------------------------------------------------------------------
+;; divide
+;; on propeller 1 divide has to be implemented in software; we do this
+;; by calling in to a library function which takes r0,r1 and returns
+;; r0/r1 in r0 and r0%r1 in r1
+;; -------------------------------------------------------------------------
+
+(define_insn "*prop_udivmodsi4"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (udiv:SI (reg:SI 0)(reg:SI 1)))
+   (set (match_operand:SI 1 "register_operand" "=y")
+        (umod:SI (reg:SI 0)(reg:SI 1)))
+   (clobber (reg:CC CC_REG))
+  ]
+""
+{
+  propeller_need_udivsi = true;
+  return "call\t#__UDIVSI";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")
+ ]
+)
+
+(define_expand "udivmodsi4"
+  [(set (reg:SI 0)(match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:SI 1)(match_operand:SI 2 "propeller_src_operand" ""))
+   (parallel[
+     (set (reg:SI 0)(udiv:SI (reg:SI 0)(reg:SI 1)))
+     (set (reg:SI 1)(umod:SI (reg:SI 0)(reg:SI 1)))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:SI 0 "propeller_dst_operand" "")(reg:SI 0))
+   (set (match_operand:SI 3 "propeller_dst_operand" "")(reg:SI 1))
+  ]
+""
+"")
+
+(define_insn "*prop_divmodsi4"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (div:SI (reg:SI 0)(reg:SI 1)))
+   (set (match_operand:SI 1 "register_operand" "=y")
+        (mod:SI (reg:SI 0)(reg:SI 1)))
+   (clobber (reg:CC CC_REG))
+  ]
+""
+{
+  propeller_need_divsi = true;
+  return "call\t#__DIVSI";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")
+ ]
+)
+
+(define_expand "divmodsi4"
+  [(set (reg:SI 0)(match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:SI 1)(match_operand:SI 2 "propeller_src_operand" ""))
+   (parallel[
+     (set (reg:SI 0)(div:SI (reg:SI 0)(reg:SI 1)))
+     (set (reg:SI 1)(mod:SI (reg:SI 0)(reg:SI 1)))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:SI 0 "propeller_dst_operand" "")(reg:SI 0))
+   (set (match_operand:SI 3 "propeller_dst_operand" "")(reg:SI 1))
   ]
 ""
 "")

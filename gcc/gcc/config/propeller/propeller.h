@@ -521,6 +521,8 @@ typedef unsigned int CUMULATIVE_ARGS;
 extern bool propeller_need_mulsi;
 extern bool propeller_need_udivsi;
 extern bool propeller_need_divsi;
-extern bool propeller_need_allbitsset;
+extern bool propeller_need_clzsi;
+extern bool propeller_need_mask0000ffff;
+extern bool propeller_need_maskffffffff;
 
 #endif /* GCC_PROPELLER_H */
