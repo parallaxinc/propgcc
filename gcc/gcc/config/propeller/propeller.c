@@ -523,6 +523,7 @@ propeller_print_operand_punct_valid_p (unsigned char code)
  * Our specific ones:
  *   J   Select a predicate for a conditional execution
  *   j   Select the inverse predicate for a conditional execution
+ *   M   Print the complement of a constant integer
  */
 
 #define LETTERJ(YES, REV)  (letter == 'J') ? (YES) : (REV)
@@ -565,7 +566,13 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       fprintf (file, "IF_%s", str);
       return;
   }
-
+  if (letter == 'M') {
+      if (code != CONST_INT) {
+          gcc_unreachable ();
+      }
+      fprintf (file, "#$%lx", ~INTVAL (op));
+      return;
+  }
   if (code == SIGN_EXTEND)
     op = XEXP (op, 0), code = GET_CODE (op);
   else if (code == REG || code == SUBREG)
@@ -650,7 +657,7 @@ propeller_hard_regno_mode_ok (unsigned int reg, enum machine_mode mode)
     /* condition codes only go in the CC register, and it can only
        hold condition codes
     */
-    if (mode == CCmode || mode == CCUNSmode) {
+    if (GET_MODE_CLASS (mode) == MODE_CC) {
         return reg == PROP_CC_REGNUM;
     }
     if (reg == PROP_CC_REGNUM) {
@@ -1267,6 +1274,7 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
     switch (c)
     {
     case 'I': return value >= 0 && value <= 511;
+    case 'M': return value >= -512 && value < 0;
     case 'N': return value >= -511 && value <= 0;
     case 'W': return value < 0 && value > 511;
     default:

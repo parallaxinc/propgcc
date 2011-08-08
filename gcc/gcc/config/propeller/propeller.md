@@ -186,12 +186,27 @@
 ;; Logical operators
 ;; -------------------------------------------------------------------------
 
-(define_insn "andsi3"
-  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
-	(and:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
-		(match_operand:SI 2 "propeller_src_operand" " rCI")))]
+(define_insn "*andsi3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (and:SI
+	    (match_operand:SI 0 "register_operand" "r")
+            (match_operand:SI 1 "general_operand" "rCI"))
+          (const_int 0)))
+   ]
   ""
-  "and\t%0, %2"
+  "test %0,%1 wz"
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "andsi3"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC,rC")
+	(and:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
+		(match_operand:SI 2 "propeller_and_operand" " rCI,M")))]
+  ""
+  "@
+   and\t%0, %2
+   andn\t%0, %M2"
 )
 
 (define_insn "xorsi3"
@@ -211,13 +226,14 @@
 )
 
 (define_insn "*andnotsi3"
-  [(set (match_operand:SI 0         "propeller_dst_operand" "=rC")
+  [(set (match_operand:SI                 0 "propeller_dst_operand" "=rC")
 	(and:SI (not:SI (match_operand:SI 1 "propeller_src_operand" " rCI"))
-		(match_operand:SI 2 "propeller_dst_operand" " 0")))]
+		(match_operand:SI         2 "propeller_dst_operand" " 0")))]
   ""
   "andn\t%0, %1"
 )
 
+              
 ;; -------------------------------------------------------------------------
 ;; Shifters
 ;; -------------------------------------------------------------------------
@@ -679,4 +695,61 @@
   [(return)]
   "propeller_can_use_return ()"
   "jmp\tlr"
+)
+
+
+;; -------------------------------------------------------------------------
+;; Some library functions
+;; -------------------------------------------------------------------------
+;;
+;; count leading zeros
+;;
+
+(define_insn "*prop_clzsi2"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (clz:SI (reg:SI 0)))
+   (clobber (reg:CC CC_REG))]
+""
+{
+  propeller_need_clzsi = true;
+  return "call\t#__CLZSI";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")]
+)
+
+;; count trailing zeros
+(define_insn "*prop_ctzsi2"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (ctz:SI (reg:SI 0)))
+   (clobber (reg:CC CC_REG))]
+""
+{
+  propeller_need_clzsi = true;
+  return "jmpret\t__CLZSI_ret,#__CTZSI";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")]
+)
+
+(define_expand "clzsi2"
+  [(set (reg:SI 0)(match_operand:SI 1 "propeller_src_operand" ""))
+   (parallel[
+     (set (reg:SI 0)(clz:SI (reg:SI 0)))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:SI 0 "propeller_dst_operand" "")(reg:SI 0))
+  ]
+""
+""
+)
+
+(define_expand "ctzsi2"
+  [(set (reg:SI 0)(match_operand:SI 1 "propeller_src_operand" ""))
+   (parallel[
+     (set (reg:SI 0)(ctz:SI (reg:SI 0)))
+     (clobber (reg:CC CC_REG))])
+   (set (match_operand:SI 0 "propeller_dst_operand" "")(reg:SI 0))
+  ]
+""
+""
 )
