@@ -28,6 +28,8 @@
 #define PROPELLER_OPERAND_SOURCE_ONLY 1
 #define PROPELLER_OPERAND_DEST_ONLY   2
 #define PROPELLER_OPERAND_TWO_OPS     3
+#define PROPELLER_OPERAND_CALL        4
+#define PROPELLER_OPERAND_IGNORE      5
 
 struct propeller_opcode
 {
@@ -35,6 +37,7 @@ struct propeller_opcode
   int opcode;
   int mask;
   int format;
+  int result;
   int hardware;
 };
 
@@ -42,6 +45,7 @@ struct propeller_condition
 {
   const char *name;
   int value;
+  int tabs;
 };
 
 struct propeller_effect
