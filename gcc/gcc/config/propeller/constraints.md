@@ -56,6 +56,11 @@
   (and (match_code "const_int")
        (match_test "ival >= 0 && ival <= 511")))
 
+(define_constraint "M"
+  "A complemented 9-bit constant ~(0..511)"
+  (and (match_code "const_int")
+       (match_test "ival >= -512 && ival < 0")))
+
 (define_constraint "N"
   "A negative 9-bit constant -(0..511)"
   (and (match_code "const_int")

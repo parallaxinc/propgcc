@@ -73,6 +73,16 @@
 
 ))))
 
+;; for and we can do "andn" of immediates
+(define_predicate "propeller_and_operand"
+  (ior (match_operand 0 "register_operand")
+       (and (match_operand 0 "immediate_operand")
+            (ior
+	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
+	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'M')")
+
+))))
+
 ;; True if this operator is valid for predication
 (define_predicate "predicate_operator"
   (match_code "eq,ne"))
