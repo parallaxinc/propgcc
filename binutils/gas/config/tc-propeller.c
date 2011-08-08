@@ -29,9 +29,10 @@ struct propeller_code
 {
   char *error;
   int code;
-  int additional;		/* Is there an additional word?  */
-  				/* No real instructions need any, */
-				/* but some fake ones might */
+  /* Is there an additional word?  */
+  /* No real instructions need any, */
+  /* but some fake ones might */
+  int additional;
   int word;			/* Additional word, if any.  */
   struct
   {
@@ -59,13 +60,13 @@ const char EXP_CHARS[] = "eE";
 /* or    0H1.234E-12 (see exp chars above).  */
 const char FLT_CHARS[] = "dDfF";
 
-static void pseudo_fit(int);
-static void pseudo_res(int);
+static void pseudo_fit (int);
+static void pseudo_res (int);
 
 const pseudo_typeS md_pseudo_table[] = {
-  { "fit", pseudo_fit, 0 },
-  { "res", pseudo_res, 0 },
-  { 0, 0, 0 },
+  {"fit", pseudo_fit, 0},
+  {"res", pseudo_res, 0},
+  {0, 0, 0},
 };
 
 static struct hash_control *insn_hash = NULL;
@@ -136,7 +137,7 @@ md_chars_to_number (con, nbytes)
     case 4:
       return
 	(((con[0] << BITS_PER_CHAR) | con[1]) << (2 * BITS_PER_CHAR))
-	|((con[2] << BITS_PER_CHAR) | con[3]);
+	| ((con[2] << BITS_PER_CHAR) | con[3]);
     default:
       BAD_CASE (nbytes);
       return 0;
@@ -151,7 +152,7 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
 {
   valueT code;
   valueT mask;
-  valueT val = * valP;
+  valueT val = *valP;
   char *buf;
   int shift;
   int size;
@@ -193,13 +194,12 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
    format.  */
 
 arelent *
-tc_gen_reloc (asection *section ATTRIBUTE_UNUSED,
-	      fixS *fixp)
+tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
 {
   arelent *reloc;
   bfd_reloc_code_real_type code;
 
-  reloc = xmalloc (sizeof (* reloc));
+  reloc = xmalloc (sizeof (*reloc));
 
   reloc->sym_ptr_ptr = xmalloc (sizeof (asymbol *));
   *reloc->sym_ptr_ptr = symbol_get_bfdsym (fixp->fx_addsy);
@@ -232,7 +232,8 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED,
   if (reloc->howto == NULL)
     {
       as_bad_where (fixp->fx_file, fixp->fx_line,
-		    _("Can not represent %s relocation in this object file format"),
+		    _
+		    ("Can not represent %s relocation in this object file format"),
 		    bfd_get_reloc_code_name (code));
       return NULL;
     }
@@ -251,12 +252,14 @@ md_atof (int type, char *litP, int *sizeP)
 
 /* Pseudo-op processing */
 static void
-pseudo_fit(int c ATTRIBUTE_UNUSED){
+pseudo_fit (int c ATTRIBUTE_UNUSED)
+{
   /* Do nothing.  This is the linker's job */
 }
 
 static void
-pseudo_res(int c ATTRIBUTE_UNUSED){
+pseudo_res (int c ATTRIBUTE_UNUSED)
+{
   int temp;
 
   temp = get_absolute_expression ();
@@ -325,12 +328,13 @@ parse_separator (char *str, int *error)
 }
 
 static void
-lc(char *str)
+lc (char *str)
 {
-  while(*str){
-    *str = TOLOWER(*str);
-    str++;
-  }
+  while (*str)
+    {
+      *str = TOLOWER (*str);
+      str++;
+    }
 }
 
 void
@@ -357,7 +361,7 @@ md_assemble (char *instruction_string)
 
   c = *p;
   *p = '\0';
-  lc(str);
+  lc (str);
   cond = (struct propeller_condition *) hash_find (cond_hash, str);
   *p = c;
   if (cond)
@@ -381,7 +385,7 @@ md_assemble (char *instruction_string)
     }
   c = *p;
   *p = '\0';
-  lc(str);
+  lc (str);
   op = (struct propeller_opcode *) hash_find (insn_hash, str);
   *p = c;
   if (op == 0)
@@ -405,6 +409,11 @@ md_assemble (char *instruction_string)
 
   switch (op->format)
     {
+    case PROPELLER_OPERAND_IGNORE:
+      /* special case for NOP instruction, since we need to 
+       * suppress the condition. */
+      insn.code = 0;
+      break;
     case PROPELLER_OPERAND_NO_OPS:
       str = skip_whitespace (str);
       if (*str == 0)
@@ -417,24 +426,25 @@ md_assemble (char *instruction_string)
       str = parse_expression (str, &op1);
       if (op1.error)
 	break;
-      switch(op1.reloc.exp.X_op){
-      case O_constant:
-        if (op1.reloc.exp.X_add_number & ~0x1ff)
-	  {
-	    op1.error = _("9-bit value out of range");
-	    break;
-	  }
-        insn.code |= op1.reloc.exp.X_add_number << 9;
-	break;
-      case O_symbol:
-      case O_add:
-      case O_subtract:
-	op1.reloc.type = BFD_RELOC_PROPELLER_DST;
-	op1.reloc.pc_rel = 0;
-	break;
-      default:
-        op1.error = _("Unhandled case in op1");
-      }
+      switch (op1.reloc.exp.X_op)
+	{
+	case O_constant:
+	  if (op1.reloc.exp.X_add_number & ~0x1ff)
+	    {
+	      op1.error = _("9-bit value out of range");
+	      break;
+	    }
+	  insn.code |= op1.reloc.exp.X_add_number << 9;
+	  break;
+	case O_symbol:
+	case O_add:
+	case O_subtract:
+	  op1.reloc.type = BFD_RELOC_PROPELLER_DST;
+	  op1.reloc.pc_rel = 0;
+	  break;
+	default:
+	  op1.error = _("Unhandled case in op1");
+	}
       if (op->format == PROPELLER_OPERAND_DEST_ONLY)
 	{
 	  break;
@@ -457,28 +467,76 @@ md_assemble (char *instruction_string)
       str = parse_expression (str, &op2);
       if (op2.error)
 	break;
-      switch(op2.reloc.exp.X_op){
-      case O_constant:
-        if (op2.reloc.exp.X_add_number & ~0x1ff)
+      switch (op2.reloc.exp.X_op)
+	{
+	case O_constant:
+	  if (op2.reloc.exp.X_add_number & ~0x1ff)
+	    {
+	      op2.error = _("9-bit value out of range");
+	      break;
+	    }
+	  insn.code |= op2.reloc.exp.X_add_number;
+	  break;
+	case O_symbol:
+	case O_add:
+	case O_subtract:
+	  op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
+	  op2.reloc.pc_rel = 0;
+	  break;
+	default:
+	  op2.error = _("Unhandled case in op2");
+	}
+      break;
+    case PROPELLER_OPERAND_CALL:
+      {
+	char *str2 = malloc (5 + strlen (str));
+	if (str2 == NULL)
+	  as_fatal (_("Virtual memory exhausted"));
+	strcpy (str2, str);
+	str = parse_expression (str, &op2);
+	if (op2.error)
+	  break;
+	switch (op2.reloc.exp.X_op)
 	  {
-	    op2.error = _("9-bit value out of range");
+	  case O_constant:
+	    if (op2.reloc.exp.X_add_number & ~0x1ff)
+	      {
+		op2.error = _("9-bit value out of range");
+		break;
+	      }
+	    insn.code |= op2.reloc.exp.X_add_number;
 	    break;
+	  case O_symbol:
+	  case O_add:
+	  case O_subtract:
+	    op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
+	    op2.reloc.pc_rel = 0;
+	    break;
+	  default:
+	    op2.error = _("Unhandled case in op2");
 	  }
-        insn.code |= op2.reloc.exp.X_add_number;
-	break;
-      case O_symbol:
-      case O_add:
-      case O_subtract:
-	op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
-	op2.reloc.pc_rel = 0;
-	break;
-      default:
-        op2.error = _("Unhandled case in op2");
+	strcat (str2, "_ret");
+	parse_expression (str2, &op1);
+	free (str2);
+	if (op1.error)
+	  break;
+	switch (op1.reloc.exp.X_op)
+	  {
+	  case O_symbol:
+	    op1.reloc.type = BFD_RELOC_PROPELLER_DST;
+	    op1.reloc.pc_rel = 0;
+	    break;
+	  default:
+	    op1.error = _("Improper call target");
+	  }
       }
       break;
     default:
       BAD_CASE (op->format);
     }
+
+  /* set the r bit to its default state for this insn */
+  insn.code |= op->result << 23;
 
   /* Find and process any effect flags */
   do
@@ -487,7 +545,7 @@ md_assemble (char *instruction_string)
       p = find_whitespace_or_separator (str);
       c = *p;
       *p = '\0';
-      lc(str);
+      lc (str);
       eff = (struct propeller_effect *) hash_find (eff_hash, str);
       *p = c;
       if (!eff)
@@ -532,10 +590,10 @@ md_assemble (char *instruction_string)
 		   &insn.reloc.exp, insn.reloc.pc_rel, insn.reloc.type);
     if (op1.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
-                   &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
+		   &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
     if (op2.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
-                   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
+		   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
     to += 4;
 
     /* These are never used for real instructions, but might be useful */
@@ -626,8 +684,7 @@ md_section_align (segT segment ATTRIBUTE_UNUSED, valueT size)
 }
 
 long
-md_pcrel_from (fixS *fixP)
+md_pcrel_from (fixS * fixP)
 {
   return fixP->fx_frag->fr_address + fixP->fx_where + fixP->fx_size;
 }
-
