@@ -69,6 +69,7 @@
 #define ARCH_pdp11
 #define ARCH_pj
 #define ARCH_powerpc
+#define ARCH_propeller
 #define ARCH_rs6000
 #define ARCH_rx
 #define ARCH_s390
@@ -336,6 +337,11 @@ disassembler (abfd)
 	disassemble = print_insn_big_powerpc;
       else
 	disassemble = print_insn_little_powerpc;
+      break;
+#endif
+#ifdef ARCH_propeller
+    case bfd_arch_propeller:
+      disassemble = print_insn_propeller;
       break;
 #endif
 #ifdef ARCH_rs6000
