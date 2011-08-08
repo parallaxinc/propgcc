@@ -126,6 +126,14 @@
 )
 
 ;; -------------------------------------------------------------------------
+;; the instruction set is pretty regular, so we define some iterators
+;; to make repetitive patterns easier
+;; -------------------------------------------------------------------------
+
+(define_code_iterator logicop     [(ior "") (xor "")])
+(define_code_attr     logicopcode [(ior "or") (xor "xor")])
+
+;; -------------------------------------------------------------------------
 ;; nop instruction
 ;; -------------------------------------------------------------------------
 
@@ -186,17 +194,16 @@
 ;; Logical operators
 ;; -------------------------------------------------------------------------
 
-(define_insn "*andsi3_compare0"
-  [(set (reg:CC_Z CC_REG)
-        (compare:CC_Z
-	  (and:SI
-	    (match_operand:SI 0 "register_operand" "r")
-            (match_operand:SI 1 "general_operand" "rCI"))
-          (const_int 0)))
-   ]
+;; and is a little bit odd because the "andn" instruction gives us an
+;; opportunity to optimize some constants
+
+
+(define_insn "*andnotsi3"
+  [(set (match_operand:SI                 0 "propeller_dst_operand" "=rC")
+	(and:SI (not:SI (match_operand:SI 1 "propeller_src_operand" " rCI"))
+		(match_operand:SI         2 "propeller_dst_operand" " 0")))]
   ""
-  "test %0,%1 wz"
-  [(set_attr "conds" "set")]
+  "andn\t%0, %1"
 )
 
 (define_insn "andsi3"
@@ -209,31 +216,45 @@
    andn\t%0, %M2"
 )
 
-(define_insn "xorsi3"
-  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
-	(xor:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
-		(match_operand:SI 2 "propeller_src_operand" " rCI")))]
+;; version that checks against 0
+(define_insn "*andsi3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (and:SI
+	    (match_operand:SI 0 "propeller_src_operand" "rC,rC")
+            (match_operand:SI 1 "propeller_and_operand" "rCI,M"))
+          (const_int 0)))
+   ]
   ""
-  "xor\t%0, %2"
+  "@
+   test\t%0,%1 wz
+   testn\t%0,%1 wz"
+  [(set_attr "conds" "set")]
 )
 
-(define_insn "iorsi3"
-  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
-	(ior:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
-		(match_operand:SI 2 "propeller_src_operand" " rCI")))]
+; xor and ior are very regular, we can use the logicalop iterator for them
+
+(define_insn "<logicop:code>si3"
+  [(set (match_operand:SI             0 "propeller_dst_operand" "=rC")
+	(logicop:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
+	            (match_operand:SI 2 "propeller_src_operand" " rCI")))]
   ""
-  "or\t%0, %2"
+  "<logicopcode>\t%0, %2"
 )
 
-(define_insn "*andnotsi3"
-  [(set (match_operand:SI                 0 "propeller_dst_operand" "=rC")
-	(and:SI (not:SI (match_operand:SI 1 "propeller_src_operand" " rCI"))
-		(match_operand:SI         2 "propeller_dst_operand" " 0")))]
+(define_insn "*<logicop:code>si3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (logicop:SI
+	    (match_operand:SI 0 "propeller_src_operand" "rC")
+            (match_operand:SI 1 "propeller_dst_operand" "rCI"))
+          (const_int 0)))
+   ]
   ""
-  "andn\t%0, %1"
+  "<logicopcode>\t%0, %1 wz,nr"
+  [(set_attr "conds" "set")]
 )
 
-              
 ;; -------------------------------------------------------------------------
 ;; Shifters
 ;; -------------------------------------------------------------------------
