@@ -381,7 +381,7 @@
 ;; -------------------------------------------------------------------------
 (define_insn "zero_extendhisi2"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
-	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,m")))]
   ""
 {
   switch(which_alternative) {
@@ -390,6 +390,22 @@
       return "and\\t%0,__MASK_0000FFFF";
     case 1:
       return "rdword\\t%0, %1";
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "core,hub")]
+)
+(define_insn "zero_extendqisi2"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
+  ""
+{
+  switch(which_alternative) {
+    case 0:
+      return "and\\t%0,#255";
+    case 1:
+      return "rdbyte\\t%0, %1";
     default:
       gcc_unreachable ();
   }
