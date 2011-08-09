@@ -293,29 +293,18 @@
    [(set (match_operand:SI 0 "general_operand" "")
  	(match_operand:SI 1 "general_operand" ""))]
    ""
-  "
 {
-  /* If this is a store, force the value into a register.  */
-  if (! (reload_in_progress || reload_completed))
-  {
-    if (MEM_P (operands[0]))
+  if (!propeller_dst_operand (operands[0], SImode))
     {
       operands[1] = force_reg (SImode, operands[1]);
-      if (MEM_P (XEXP (operands[0], 0)))
-        operands[0] = gen_rtx_MEM (SImode, force_reg (SImode, XEXP (operands[0], 0)));
     }
-    else 
-      if (MEM_P (operands[1])
-          && MEM_P (XEXP (operands[1], 0)))
-        operands[1] = gen_rtx_MEM (SImode, force_reg (SImode, XEXP (operands[1], 0)));
-  }
-}")
+})
 
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:SI 1 "general_operand"               "rCIB,N,Q,rC"))]
-  "register_operand (operands[0], SImode)
-   || register_operand (operands[1], SImode)"
+  "propeller_dst_operand (operands[0], SImode)
+   || propeller_dst_operand (operands[1], SImode)"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -332,15 +321,15 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (MEM_P (operands[0]))
+  if (!propeller_dst_operand (operands[0], HImode))
     operands[1] = force_reg (HImode, operands[1]);
 }")
 
 (define_insn "*movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
-  "register_operand (operands[0], HImode)
-   || register_operand (operands[1], HImode)"
+  "propeller_dst_operand (operands[0], HImode)
+   || propeller_dst_operand (operands[1], HImode)"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -356,15 +345,15 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (MEM_P (operands[0]))
+  if (!propeller_dst_operand (operands[0], QImode))
     operands[1] = force_reg (QImode, operands[1]);
 }")
 
 (define_insn "*movqi"
   [(set (match_operand:QI 0 "nonimmediate_operand"   "=r,r,r,Q")
 	(match_operand:QI 1 "general_operand"        "rI,N,Q,r"))]
-  "register_operand (operands[0], QImode)
-   || register_operand (operands[1], QImode)"
+  "propeller_dst_operand (operands[0], QImode)
+   || propeller_dst_operand (operands[1], QImode)"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
