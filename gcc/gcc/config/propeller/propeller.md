@@ -235,8 +235,8 @@
    ]
   ""
   "@
-   test\t%0,%1 wz
-   testn\t%0,%1 wz"
+   and\t%0,%1 wz
+   andn\t%0,%1 wz"
   [(set_attr "conds" "set")]
 )
 (define_insn "*andsi3_compare0_only"
