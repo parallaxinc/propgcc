@@ -130,8 +130,14 @@
 ;; to make repetitive patterns easier
 ;; -------------------------------------------------------------------------
 
-(define_code_iterator logicop     [(ior "") (xor "")])
-(define_code_attr     logicopcode [(ior "or") (xor "xor")])
+(define_code_iterator orop
+		        [(ior "") (xor "")])
+(define_code_iterator shiftop
+		        [(ashift "") (ashiftrt "") (lshiftrt "")])
+(define_code_attr     opcode
+		        [(plus "add") (ior "or") (xor "xor")
+                      	 (ashift "shl") (ashiftrt "sar") (lshiftrt "shr")
+			 ])
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -216,8 +222,24 @@
    andn\t%0, %M2"
 )
 
-;; version that checks against 0
+;; versions that check against 0
 (define_insn "*andsi3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (and:SI
+	    (match_operand:SI 1 "propeller_dst_operand" "%0,0")
+            (match_operand:SI 2 "propeller_and_operand" "rCI,M"))
+          (const_int 0)))
+   (set (match_operand:SI     0 "propeller_dst_operand" "=rC,rC")
+        (and:SI (match_dup 1)(match_dup 2)))
+   ]
+  ""
+  "@
+   test\t%0,%1 wz
+   testn\t%0,%1 wz"
+  [(set_attr "conds" "set")]
+)
+(define_insn "*andsi3_compare0_only"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	  (and:SI
@@ -232,26 +254,41 @@
   [(set_attr "conds" "set")]
 )
 
-; xor and ior are very regular, we can use the logicalop iterator for them
+; xor and ior are very regular, we can use the orop iterator for them
 
-(define_insn "<logicop:code>si3"
+(define_insn "<orop:code>si3"
   [(set (match_operand:SI             0 "propeller_dst_operand" "=rC")
-	(logicop:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
+	(orop:SI    (match_operand:SI 1 "propeller_dst_operand" "%0")
 	            (match_operand:SI 2 "propeller_src_operand" " rCI")))]
   ""
-  "<logicopcode>\t%0, %2"
+  "<opcode>\t%0, %2"
 )
 
-(define_insn "*<logicop:code>si3_compare0"
+(define_insn "*<orop:code>si3_compare0_only"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
-	  (logicop:SI
-	    (match_operand:SI 0 "propeller_src_operand" "rC")
-            (match_operand:SI 1 "propeller_dst_operand" "rCI"))
+	  (orop:SI
+	    (match_operand:SI 0 "propeller_dst_operand" "rC")
+            (match_operand:SI 1 "propeller_src_operand" "rCI"))
           (const_int 0)))
    ]
   ""
-  "<logicopcode>\t%0, %1 wz,nr"
+  "<opcode>\t%0, %1 wz,nr"
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "*<orop:code>si3_compare0_only"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (orop:SI
+	    (match_operand:SI 1 "propeller_dst_operand" "%0")
+            (match_operand:SI 2 "propeller_src_operand" "rCI"))
+          (const_int 0)))
+   (set (match_operand:SI     0 "propeller_dst_operand" "=rC")
+        (orop:SI (match_dup 1)(match_dup 2)))
+  ]
+  ""
+  "<opcode>\t%0, %1 wz"
   [(set_attr "conds" "set")]
 )
 
@@ -281,6 +318,35 @@
 		     (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
   "shr\t%0, %2"
+)
+
+;; patterns to compare with 0
+(define_insn "*<shiftop:code>si3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (shiftop:SI
+	    (match_operand:SI 1 "propeller_dst_operand" "0")
+            (match_operand:SI 2 "propeller_src_operand" "rCI"))
+          (const_int 0)))
+   (set (match_operand:SI     0 "propeller_dst_operand" "=rC")
+        (shiftop:SI (match_dup 1)(match_dup 2)))
+  ]
+  ""
+  "<opcode>\t%0, %1 wz"
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "*<shiftop:code>si3_compare0_only"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (shiftop:SI
+	    (match_operand:SI 0 "propeller_dst_operand" "rC")
+            (match_operand:SI 1 "propeller_src_operand" "rCI"))
+          (const_int 0)))
+   ]
+  ""
+  "<opcode>\t%0, %1 wz,nr"
+  [(set_attr "conds" "set")]
 )
 
 ;; -------------------------------------------------------------------------
