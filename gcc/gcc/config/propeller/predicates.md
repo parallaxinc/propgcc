@@ -41,17 +41,11 @@
   (and (match_code "symbol_ref")
        (match_test "SYMBOL_REF_FUNCTION_P (op)")))
 
-;; True if OP is a symbol living in cog memory space
-(define_predicate "cog_mem_operand"
-  (match_code "symbol_ref")
-{
-  return propeller_cogaddr_p (op);
-})
-
 ;; True if OP is suitable as a general propeller destination operand
 (define_predicate "propeller_dst_operand"
   (ior (match_operand 0 "register_operand")
-       (match_test "propeller_cogmem_p (op)")))
+       (and (match_operand 0 "memory_operand")
+            (match_test "propeller_cogmem_p (op)"))))
 
 
 ;; Nonzero if OP is suitable as a general propeller source operand
@@ -59,29 +53,22 @@
 (define_predicate "propeller_src_operand"
   (ior (match_operand 0 "propeller_dst_operand")
        (and (match_operand 0 "immediate_operand")
-            (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
-
-)))
+            (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')"))
+))
 
 ;; for addition we can also do negative immediates
 (define_predicate "propeller_add_operand"
-  (ior (match_operand 0 "register_operand")
+  (ior (match_operand 0 "propeller_src_operand")
        (and (match_operand 0 "immediate_operand")
-            (ior
-	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
-	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'N')")
+	    (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'N')"))
 
-))))
+))
 
 ;; for and we can do "andn" of immediates
 (define_predicate "propeller_and_operand"
-  (ior (match_operand 0 "register_operand")
-       (and (match_operand 0 "immediate_operand")
-            (ior
-	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'I')")
-	        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'M')")
+  (ior (match_operand 0 "propeller_src_operand")
+       (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'M')")))
 
-))))
 
 ;; True if this operator is valid for predication
 (define_predicate "predicate_operator"
