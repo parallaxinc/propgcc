@@ -234,9 +234,6 @@ propeller_cogaddr_p (rtx x)
 bool
 propeller_cogmem_p (rtx op)
 {
-    if (register_operand (op, VOIDmode))
-        return 1;
-
     if (GET_CODE (op) != MEM)
         return 0;
 
@@ -415,7 +412,7 @@ propeller_asm_file_end (void)
     if (!TARGET_OUTPUT_SPINCODE) {
         return;
     }
-    // adjust for dependencies
+    /* adjust for dependencies */
     if (propeller_need_divsi) {
         propeller_need_udivsi = true;
     }
@@ -687,11 +684,17 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
         addr = SUBREG_REG (addr);
     if (GET_CODE (addr) == REG) {
         int regno = REGNO(addr);
+        if (!HARD_REGISTER_NUM_P (regno)) {
+            if (!strict) return true;
+            regno = reg_renumber[regno];
+        }
+        if (regno == ARG_POINTER_REGNUM || regno == FRAME_POINTER_REGNUM)
+            return true;
+
         if (HARD_REGNO_OK_FOR_BASE_P(regno))
             return true;
-        if (strict && HARD_REGNO_OK_FOR_BASE_P(reg_renumber[regno]))
-            return true;
-        return regno >= FIRST_PSEUDO_REGISTER;
+
+        return false;
     }
 
     /* allow cog memory references */
