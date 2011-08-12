@@ -243,7 +243,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	  (and:SI
-	    (match_operand:SI 0 "propeller_src_operand" "rC,rC")
+	    (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
             (match_operand:SI 1 "propeller_and_operand" "rCI,M"))
           (const_int 0)))
    ]
@@ -253,6 +253,41 @@
    testn\t%0,%1 wz"
   [(set_attr "conds" "set")]
 )
+
+;; sometimes in combine "ands" are converted to "zero extract"
+(define_insn "*andsi3_zext_compare0_only"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (zero_extract:SI
+	    (match_operand:SI 0 "propeller_dst_operand" "rC")
+            (match_operand:SI 1 "immediate_1_9" "i")
+	    (const_int 0))
+          (const_int 0)))
+   ]
+  ""
+  "test\t%0,#(1<<%1)-1 wz"
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "*andsi3_zext_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (zero_extract:SI
+	    (match_operand:SI 1 "propeller_dst_operand" "%0")
+            (match_operand:SI 2 "immediate_1_9" "i")
+            (const_int 0))
+          (const_int 0)))
+   (set (match_operand:SI     0 "propeller_dst_operand" "=rC")
+        (zero_extract (match_dup 1)(match_dup 2)(const_int 0)))
+   ]
+  ""
+{
+   return "and\t%0,#(1<<%1)-1 wz";
+}
+  [(set_attr "conds" "set")]
+)
+
+
 
 ; xor and ior are very regular, we can use the orop iterator for them
 
