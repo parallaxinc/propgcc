@@ -521,6 +521,7 @@ propeller_print_operand_punct_valid_p (unsigned char code)
  *   J   Select a predicate for a conditional execution
  *   j   Select the inverse predicate for a conditional execution
  *   M   Print the complement of a constant integer
+ *   m   Print a mask (1<<n)-1 where n is a constant
  */
 
 #define LETTERJ(YES, REV)  (letter == 'J') ? (YES) : (REV)
@@ -568,6 +569,13 @@ propeller_print_operand (FILE * file, rtx op, int letter)
           gcc_unreachable ();
       }
       fprintf (file, "#$%lx", ~INTVAL (op));
+      return;
+  }
+  if (letter == 'm') {
+      if (code != CONST_INT) {
+          gcc_unreachable ();
+      }
+      fprintf (file, "#$%lx", (1<<INTVAL (op))-1);
       return;
   }
   if (code == SIGN_EXTEND)
