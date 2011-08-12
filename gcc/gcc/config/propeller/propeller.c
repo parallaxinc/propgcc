@@ -752,6 +752,7 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case XOR:
     case NOT:
     case NEG:
+    case ABS:
     case COMPARE:
     case ASHIFT:
     case ASHIFTRT:
