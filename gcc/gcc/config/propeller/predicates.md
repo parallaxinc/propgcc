@@ -67,7 +67,8 @@
 ;; for and we can do "andn" of immediates
 (define_predicate "propeller_and_operand"
   (ior (match_operand 0 "propeller_src_operand")
-       (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'M')")))
+       (and (match_operand 0 "immediate_operand")
+            (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'M')"))))
 
 
 ;; True if this operator is valid for predication
@@ -86,3 +87,7 @@
   (and (match_operand 0 "immediate_operand")
        (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'W')"
 )))
+
+(define_predicate "immediate_1_9"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 1, 9)")))

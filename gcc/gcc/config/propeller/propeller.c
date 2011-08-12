@@ -721,16 +721,15 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
 
     switch (code) {
     case CONST_INT:
-        if (!speed) {
+        {
             HOST_WIDE_INT ival = INTVAL (x);
             if (ival >= -511 && ival < 511)
                 total = 0;
             else
                 total = (speed ? COSTS_N_INSNS(1) : 4);
             done = true;
-            break;
         }
-        /* fall through */
+        break;
     case CONST:
     case LABEL_REF:
     case SYMBOL_REF:
@@ -749,15 +748,19 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case ASHIFT:
     case ASHIFTRT:
     case LSHIFTRT:
+    case ZERO_EXTRACT:
         total = (speed ? COSTS_N_INSNS(1) : 4);
         break;
 
     case MULT:
+        total = (speed ? COSTS_N_INSNS(16) : 8);
+        break;
+
     case DIV:
     case UDIV:
     case MOD:
     case UMOD:
-        total = (speed ? COSTS_N_INSNS(16) : 8);
+        total = (speed ? COSTS_N_INSNS(100) : 8);
         done = true;
         break;
 
@@ -766,9 +769,8 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
         total = speed ? COSTS_N_INSNS (2 + total) : total;
         done = true;
         break;
+
     default:
-        /* assume external call */
-        total = (speed ? COSTS_N_INSNS(10) : 8);
         break;
     }
     *total_ptr = total;
