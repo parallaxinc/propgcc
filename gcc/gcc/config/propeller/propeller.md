@@ -179,11 +179,12 @@
 ;;
 (define_insn "*addabs"
   [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
-          (plus:SI (match_operand:SI 1 "propeller_dst_operand" "0")
-	  	   (abs:SI (match_operand:SI 2 "propeller_src_operand" "rCI"))
+          (plus:SI
+	    (abs:SI (match_operand:SI 1 "propeller_src_operand" "rCI"))
+	    	    (match_operand:SI 2 "propeller_dst_operand" "0")
     ))]
   ""
-  "addabs\t%0, %2")
+  "addabs\t%0, %1")
 
 ;; -------------------------------------------------------------------------
 ;; Unary arithmetic instructions
