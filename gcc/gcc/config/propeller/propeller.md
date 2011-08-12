@@ -172,9 +172,28 @@
   sub\t%0, %2
   sub\t%0, %2")
 
+;;
+;; special cases of add and sub
+;;
+;; set x:= x+abs(y)
+;;
+(define_insn "*addabs"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+          (plus:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+	  	   (abs:SI (match_operand:SI 2 "propeller_src_operand" "rCI"))
+    ))]
+  ""
+  "addabs\t%0, %2")
+
 ;; -------------------------------------------------------------------------
 ;; Unary arithmetic instructions
 ;; -------------------------------------------------------------------------
+
+(define_insn "abssi2"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	(abs:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))]
+  ""
+  "abs\t%0, %1")
 
 (define_insn "negsi2"
   [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
@@ -265,7 +284,7 @@
           (const_int 0)))
    ]
   ""
-  "test\t%0,#(1<<%1)-1 wz"
+  "test\t%0,%m1 wz"
   [(set_attr "conds" "set")]
 )
 
@@ -282,12 +301,10 @@
    ]
   ""
 {
-   return "and\t%0,#(1<<%1)-1 wz";
+   return "and\t%0,%m1 wz";
 }
   [(set_attr "conds" "set")]
 )
-
-
 
 ; xor and ior are very regular, we can use the orop iterator for them
 
