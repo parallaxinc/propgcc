@@ -202,6 +202,12 @@
   ""
   "neg\t%0, %1")
 
+(define_insn "*absnegsi2"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	(neg:SI (abs:SI (match_operand:SI 1 "propeller_src_operand" "rCI"))))]
+  ""
+  "absneg\t%0, %1")
+
 ;;
 ;; the instruction set doesn't actually have a NOT instruction, so synthesize
 ;; it from XOR; we'll just put a handy 0xFFFFFFFF somewhere in cog memory
@@ -298,7 +304,7 @@
             (const_int 0))
           (const_int 0)))
    (set (match_operand:SI     0 "propeller_dst_operand" "=rC")
-        (zero_extract (match_dup 1)(match_dup 2)(const_int 0)))
+        (zero_extract:SI (match_dup 1)(match_dup 2)(const_int 0)))
    ]
   ""
 {
@@ -385,7 +391,7 @@
         (shiftop:SI (match_dup 1)(match_dup 2)))
   ]
   ""
-  "<opcode>\t%0, %1 wz"
+  "<opcode>\t%0, %2 wz"
   [(set_attr "conds" "set")]
 )
 
