@@ -72,8 +72,8 @@
 
 
 ;; True if this operator is valid for predication
-(define_predicate "predicate_operator"
-  (match_code "eq,ne"))
+(define_special_predicate "predicate_operator"
+  (match_code "eq,ne,le,lt,ge,gt,geu,gtu,leu,ltu"))
 
 (define_special_predicate "cc_register"
   (and (match_code "reg")
