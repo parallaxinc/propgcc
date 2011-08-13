@@ -698,7 +698,7 @@
 
 (define_insn "*cmpu"
   [(set (reg:CCUNS CC_REG)
-	(compare
+	(compare:CCUNS
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
@@ -708,7 +708,7 @@
 
 (define_insn "*cmpz"
   [(set (reg:CC_Z CC_REG)
-	(compare
+	(compare:CC_Z
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
@@ -718,7 +718,7 @@
 
 (define_insn "*cmps"
   [(set (reg:CC CC_REG)
-	(compare
+	(compare:CC
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
