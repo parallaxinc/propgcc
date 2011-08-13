@@ -29,63 +29,62 @@
 
 /* Forward declarations.  */
 
-static reloc_howto_type propeller_elf_howto_table [] =
-{
-  /* This reloc does nothing.  */
-  HOWTO (R_PROPELLER_NONE,		/* type */
+static reloc_howto_type propeller_elf_howto_table[] = {
+  /* This reloc does nothing. */
+  HOWTO (R_PROPELLER_NONE,	/* type */
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 32,			/* bitsize */
 	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
-	 complain_overflow_dont, /* complain_on_overflow */
+	 complain_overflow_dont,	/* complain_on_overflow */
 	 bfd_elf_generic_reloc,	/* special_function */
-	 "R_PROPELLER_NONE",		/* name */
+	 "R_PROPELLER_NONE",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
 	 0,			/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* A 32 bit absolute relocation.  */
-  HOWTO (R_PROPELLER_32,		/* type */
+  /* A 32 bit absolute relocation. */
+  HOWTO (R_PROPELLER_32,	/* type */
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 32,			/* bitsize */
 	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
-	 complain_overflow_dont, /* complain_on_overflow */
+	 complain_overflow_dont,	/* complain_on_overflow */
 	 bfd_elf_generic_reloc,	/* special_function */
-	 "R_PROPELLER_32",		/* name */
+	 "R_PROPELLER_32",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
 	 0xffffffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* A 9 bit relocation of the SRC field of an instruction  */
-  HOWTO (R_PROPELLER_SRC,		/* type */
+  /* A 9 bit relocation of the SRC field of an instruction */
+  HOWTO (R_PROPELLER_SRC,	/* type */
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 9,			/* bitsize */
 	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
-	 complain_overflow_bitfield, /* complain_on_overflow */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
 	 bfd_elf_generic_reloc,	/* special_function */
-	 "R_PROPELLER_SRC",		/* name */
+	 "R_PROPELLER_SRC",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x000001FF,		/* src_mask */
 	 0x000001FF,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* A 9 bit relocation of the DST field of an instruction  */
-  HOWTO (R_PROPELLER_DST,		/* type */
+  /* A 9 bit relocation of the DST field of an instruction */
+  HOWTO (R_PROPELLER_DST,	/* type */
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 9,			/* bitsize */
 	 FALSE,			/* pc_relative */
 	 9,			/* bitpos */
-	 complain_overflow_bitfield, /* complain_on_overflow */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
 	 bfd_elf_generic_reloc,	/* special_function */
-	 "R_PROPELLER_DST",		/* name */
+	 "R_PROPELLER_DST",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x0003FE00,		/* src_mask */
 	 0x0003FE00,		/* dst_mask */
@@ -93,7 +92,7 @@ static reloc_howto_type propeller_elf_howto_table [] =
 
 };
 
-/* Map BFD reloc types to Propeller ELF reloc types.  */
+/* Map BFD reloc types to Propeller ELF reloc types. */
 
 struct propeller_reloc_map
 {
@@ -101,36 +100,37 @@ struct propeller_reloc_map
   unsigned int propeller_reloc_val;
 };
 
-static const struct propeller_reloc_map propeller_reloc_map [] =
-{
-  { BFD_RELOC_NONE,            R_PROPELLER_NONE },
-  { BFD_RELOC_32,              R_PROPELLER_32 },
-  { BFD_RELOC_PROPELLER_SRC,   R_PROPELLER_SRC },
-  { BFD_RELOC_PROPELLER_DST,   R_PROPELLER_DST },
+static const struct propeller_reloc_map propeller_reloc_map[] = {
+  {BFD_RELOC_NONE, R_PROPELLER_NONE},
+  {BFD_RELOC_32, R_PROPELLER_32},
+  {BFD_RELOC_PROPELLER_SRC, R_PROPELLER_SRC},
+  {BFD_RELOC_PROPELLER_DST, R_PROPELLER_DST},
 };
 
 static reloc_howto_type *
-propeller_reloc_type_lookup (bfd *abfd ATTRIBUTE_UNUSED,
-			 bfd_reloc_code_real_type code)
+propeller_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
+			     bfd_reloc_code_real_type code)
 {
   unsigned int i;
 
   for (i = sizeof (propeller_reloc_map) / sizeof (propeller_reloc_map[0]);
        --i;)
-    if (propeller_reloc_map [i].bfd_reloc_val == code)
-      return & propeller_elf_howto_table [propeller_reloc_map[i].propeller_reloc_val];
+    if (propeller_reloc_map[i].bfd_reloc_val == code)
+      return &propeller_elf_howto_table[propeller_reloc_map[i].
+					propeller_reloc_val];
 
   return NULL;
 }
 
 static reloc_howto_type *
-propeller_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED, const char *r_name)
+propeller_reloc_name_lookup (bfd * abfd ATTRIBUTE_UNUSED, const char *r_name)
 {
   unsigned int i;
 
   for (i = 0;
-       i < sizeof (propeller_elf_howto_table) / sizeof (propeller_elf_howto_table[0]);
-       i++)
+       i <
+       sizeof (propeller_elf_howto_table) /
+       sizeof (propeller_elf_howto_table[0]); i++)
     if (propeller_elf_howto_table[i].name != NULL
 	&& strcasecmp (propeller_elf_howto_table[i].name, r_name) == 0)
       return &propeller_elf_howto_table[i];
@@ -141,27 +141,25 @@ propeller_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED, const char *r_name)
 /* Set the howto pointer for an PROPELLER ELF reloc.  */
 
 static void
-propeller_info_to_howto_rela (bfd *abfd ATTRIBUTE_UNUSED,
-			  arelent *cache_ptr,
-			  Elf_Internal_Rela *dst)
+propeller_info_to_howto_rela (bfd * abfd ATTRIBUTE_UNUSED,
+			      arelent * cache_ptr, Elf_Internal_Rela * dst)
 {
   unsigned int r_type;
 
   r_type = ELF32_R_TYPE (dst->r_info);
   BFD_ASSERT (r_type < (unsigned int) R_PROPELLER_max);
-  cache_ptr->howto = & propeller_elf_howto_table [r_type];
+  cache_ptr->howto = &propeller_elf_howto_table[r_type];
 }
 
 /* Perform a single relocation.  By default we use the standard BFD
    routines, but a few relocs, we have to do them ourselves.  */
 
 static bfd_reloc_status_type
-propeller_final_link_relocate (reloc_howto_type *howto,
-			   bfd *input_bfd,
-			   asection *input_section,
-			   bfd_byte *contents,
-			   Elf_Internal_Rela *rel,
-			   bfd_vma relocation)
+propeller_final_link_relocate (reloc_howto_type * howto,
+			       bfd * input_bfd,
+			       asection * input_section,
+			       bfd_byte * contents,
+			       Elf_Internal_Rela * rel, bfd_vma relocation)
 {
   bfd_reloc_status_type r = bfd_reloc_ok;
 
@@ -207,25 +205,25 @@ propeller_final_link_relocate (reloc_howto_type *howto,
    accordingly.  */
 
 static bfd_boolean
-propeller_elf_relocate_section (bfd *output_bfd,
-			    struct bfd_link_info *info,
-			    bfd *input_bfd,
-			    asection *input_section,
-			    bfd_byte *contents,
-			    Elf_Internal_Rela *relocs,
-			    Elf_Internal_Sym *local_syms,
-			    asection **local_sections)
+propeller_elf_relocate_section (bfd * output_bfd,
+				struct bfd_link_info *info,
+				bfd * input_bfd,
+				asection * input_section,
+				bfd_byte * contents,
+				Elf_Internal_Rela * relocs,
+				Elf_Internal_Sym * local_syms,
+				asection ** local_sections)
 {
   Elf_Internal_Shdr *symtab_hdr;
   struct elf_link_hash_entry **sym_hashes;
   Elf_Internal_Rela *rel;
   Elf_Internal_Rela *relend;
 
-  symtab_hdr = & elf_tdata (input_bfd)->symtab_hdr;
+  symtab_hdr = &elf_tdata (input_bfd)->symtab_hdr;
   sym_hashes = elf_sym_hashes (input_bfd);
-  relend     = relocs + input_section->reloc_count;
+  relend = relocs + input_section->reloc_count;
 
-  for (rel = relocs; rel < relend; rel ++)
+  for (rel = relocs; rel < relend; rel++)
     {
       reloc_howto_type *howto;
       unsigned long r_symndx;
@@ -239,15 +237,15 @@ propeller_elf_relocate_section (bfd *output_bfd,
 
       r_type = ELF32_R_TYPE (rel->r_info);
       r_symndx = ELF32_R_SYM (rel->r_info);
-      howto  = propeller_elf_howto_table + r_type;
-      h      = NULL;
-      sym    = NULL;
-      sec    = NULL;
+      howto = propeller_elf_howto_table + r_type;
+      h = NULL;
+      sym = NULL;
+      sec = NULL;
 
       if (r_symndx < symtab_hdr->sh_info)
 	{
 	  sym = local_syms + r_symndx;
-	  sec = local_sections [r_symndx];
+	  sec = local_sections[r_symndx];
 	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
 
 	  name = bfd_elf_string_from_elf_section
@@ -274,11 +272,11 @@ propeller_elf_relocate_section (bfd *output_bfd,
 	continue;
 
       r = propeller_final_link_relocate (howto, input_bfd, input_section,
-				     contents, rel, relocation);
+					 contents, rel, relocation);
 
       if (r != bfd_reloc_ok)
 	{
-	  const char * msg = NULL;
+	  const char *msg = NULL;
 
 	  switch (r)
 	    {
@@ -290,8 +288,7 @@ propeller_elf_relocate_section (bfd *output_bfd,
 
 	    case bfd_reloc_undefined:
 	      r = info->callbacks->undefined_symbol
-		(info, name, input_bfd, input_section, rel->r_offset,
-		 TRUE);
+		(info, name, input_bfd, input_section, rel->r_offset, TRUE);
 	      break;
 
 	    case bfd_reloc_outofrange:
@@ -315,7 +312,7 @@ propeller_elf_relocate_section (bfd *output_bfd,
 	    r = info->callbacks->warning
 	      (info, msg, name, input_bfd, input_section, rel->r_offset);
 
-	  if (! r)
+	  if (!r)
 	    return FALSE;
 	}
     }
@@ -327,11 +324,11 @@ propeller_elf_relocate_section (bfd *output_bfd,
    relocation.  */
 
 static asection *
-propeller_elf_gc_mark_hook (asection *sec,
-			struct bfd_link_info *info,
-			Elf_Internal_Rela *rel,
-			struct elf_link_hash_entry *h,
-			Elf_Internal_Sym *sym)
+propeller_elf_gc_mark_hook (asection * sec,
+			    struct bfd_link_info *info,
+			    Elf_Internal_Rela * rel,
+			    struct elf_link_hash_entry *h,
+			    Elf_Internal_Sym * sym)
 {
   return _bfd_elf_gc_mark_hook (sec, info, rel, h, sym);
 }
@@ -341,10 +338,9 @@ propeller_elf_gc_mark_hook (asection *sec,
    virtual table relocs for gc.  */
 
 static bfd_boolean
-propeller_elf_check_relocs (bfd *abfd,
-			struct bfd_link_info *info,
-			asection *sec,
-			const Elf_Internal_Rela *relocs)
+propeller_elf_check_relocs (bfd * abfd,
+			    struct bfd_link_info *info,
+			    asection * sec, const Elf_Internal_Rela * relocs)
 {
   Elf_Internal_Shdr *symtab_hdr;
   struct elf_link_hash_entry **sym_hashes;
@@ -365,7 +361,7 @@ propeller_elf_check_relocs (bfd *abfd,
 
       r_symndx = ELF32_R_SYM (rel->r_info);
       if (r_symndx < symtab_hdr->sh_info)
-        h = NULL;
+	h = NULL;
       else
 	{
 	  h = sym_hashes[r_symndx - symtab_hdr->sh_info];

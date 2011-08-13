@@ -23,6 +23,8 @@
 #define TARGET_FORMAT "elf32-propeller"
 #define TARGET_ARCH bfd_arch_propeller
 #define TARGET_BYTES_BIG_ENDIAN 1
+#define TC_SYMFIELD_TYPE int
+#define LABELS_WITHOUT_COLONS 1
 
 #define TC_KEEP_OPERAND_SPACES 1
 #define NO_PSEUDO_DOT 1
@@ -31,6 +33,12 @@
 #define md_number_to_chars number_to_chars_bigendian
 
 long md_chars_to_number (unsigned char *, int);
+
+#define tc_frob_symbol(s,p) propeller_frob_symbol(s,p)
+void propeller_frob_symbol (symbolS * s, int p);
+
+#define tc_frob_label(s) propeller_frob_label(s)
+void propeller_frob_label (symbolS * s);
 
 /* end of tc-propeller.h */
 

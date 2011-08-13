@@ -19,8 +19,10 @@
    Boston, MA 02110-1301, USA.  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "dis-asm.h"
 #include "as.h"
+#include "struc-symbol.h"
 #include "safe-ctype.h"
 #include "opcode/propeller.h"
 
@@ -62,10 +64,23 @@ const char FLT_CHARS[] = "dDfF";
 
 static void pseudo_fit (int);
 static void pseudo_res (int);
+static void pseudo_hub_ram (int);
+static void pseudo_cog_ram (int);
+static void pseudo_regbase (int);
+static char *skip_whitespace (char *str);
+static char *find_whitespace (char *str);
+static char *find_whitespace_or_separator (char *str);
+
+static int cog_ram = 1;		/* Use Cog ram by default */
+
+static int register_base = 128;	/* Address of register file */
 
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
   {"res", pseudo_res, 0},
+  {"hub_ram", pseudo_hub_ram, 0},
+  {"cog_ram", pseudo_cog_ram, 0},
+  {"regbase", pseudo_regbase, 0},
   {0, 0, 0},
 };
 
@@ -179,9 +194,9 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       BAD_CASE (fixP->fx_r_type);
     }
 
-  if (fixP->fx_addsy != NULL)
+  if (fixP->fx_addsy != NULL){
     val += symbol_get_bfdsym (fixP->fx_addsy)->section->vma;
-
+  }
   code &= ~mask;
   code |= (val << shift) & mask;
   number_to_chars_bigendian (buf, code, size);
@@ -267,14 +282,73 @@ pseudo_res (int c ATTRIBUTE_UNUSED)
   demand_empty_rest_of_line ();
 }
 
+static void
+pseudo_hub_ram (int c ATTRIBUTE_UNUSED)
+{
+  cog_ram = 0;
+}
+
+static void
+pseudo_cog_ram (int c ATTRIBUTE_UNUSED)
+{
+  cog_ram = 1;
+}
+
+static void
+pseudo_regbase (int c ATTRIBUTE_UNUSED)
+{
+  register_base = get_absolute_expression ();
+}
 
 /* Instruction processing */
 static char *
 parse_expression (char *str, struct propeller_code *operand)
 {
   char *save_input_line_pointer;
+  char *end;
+  char t;
   segT seg;
 
+  str = skip_whitespace (str);
+  end = find_whitespace_or_separator (str);
+  t = *end;
+  *end = 0;
+  if (!strcasecmp ("lr", str))
+    {
+      operand->reloc.exp.X_add_number = 15 + register_base;
+      operand->reloc.exp.X_op = O_register;
+      *end = t;
+      return end;
+    }
+  if (!strcasecmp ("sp", str))
+    {
+      operand->reloc.exp.X_add_number = 16 + register_base;
+      operand->reloc.exp.X_op = O_register;
+      *end = t;
+      return end;
+    }
+  if (!strcasecmp ("pc", str))
+    {
+      operand->reloc.exp.X_add_number = 17 + register_base;
+      operand->reloc.exp.X_op = O_register;
+      *end = t;
+      return end;
+    }
+  *end = t;
+  if (*str == 'r' || *str == 'R')
+    {
+      int reg;
+      reg = strtol (str + 1, &end, 10);
+      if (end != str + 1)
+	{
+	  if (reg >= 0 && reg <= 15)
+	    {
+	      operand->reloc.exp.X_add_number = reg + register_base;
+	      operand->reloc.exp.X_op = O_register;
+	      return end;
+	    }
+	}
+    }
   save_input_line_pointer = input_line_pointer;
   input_line_pointer = str;
   seg = expression (&operand->reloc.exp);
@@ -429,6 +503,7 @@ md_assemble (char *instruction_string)
       switch (op1.reloc.exp.X_op)
 	{
 	case O_constant:
+	case O_register:
 	  if (op1.reloc.exp.X_add_number & ~0x1ff)
 	    {
 	      op1.error = _("9-bit value out of range");
@@ -441,6 +516,9 @@ md_assemble (char *instruction_string)
 	case O_subtract:
 	  op1.reloc.type = BFD_RELOC_PROPELLER_DST;
 	  op1.reloc.pc_rel = 0;
+	  break;
+	case O_illegal:
+	  op1.error = _("Illegal operand in operand 1");
 	  break;
 	default:
 	  op1.error = _("Unhandled case in op1");
@@ -458,7 +536,9 @@ md_assemble (char *instruction_string)
 	      break;
 	    }
 	}
+      /* Fall through */
     case PROPELLER_OPERAND_SOURCE_ONLY:
+      str = skip_whitespace (str);
       if (*str == '#')
 	{
 	  str++;
@@ -470,6 +550,7 @@ md_assemble (char *instruction_string)
       switch (op2.reloc.exp.X_op)
 	{
 	case O_constant:
+	case O_register:
 	  if (op2.reloc.exp.X_add_number & ~0x1ff)
 	    {
 	      op2.error = _("9-bit value out of range");
@@ -482,6 +563,9 @@ md_assemble (char *instruction_string)
 	case O_subtract:
 	  op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
 	  op2.reloc.pc_rel = 0;
+	  break;
+	case O_illegal:
+	  op2.error = _("Illegal operand in operand 2");
 	  break;
 	default:
 	  op2.error = _("Unhandled case in op2");
@@ -499,6 +583,7 @@ md_assemble (char *instruction_string)
 	switch (op2.reloc.exp.X_op)
 	  {
 	  case O_constant:
+	  case O_register:
 	    if (op2.reloc.exp.X_add_number & ~0x1ff)
 	      {
 		op2.error = _("9-bit value out of range");
@@ -512,8 +597,11 @@ md_assemble (char *instruction_string)
 	    op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
 	    op2.reloc.pc_rel = 0;
 	    break;
+	  case O_illegal:
+	    op1.error = _("Illegal operand in call");
+	    break;
 	  default:
-	    op2.error = _("Unhandled case in op2");
+	    op2.error = _("Unhandled case in call");
 	  }
 	strcat (str2, "_ret");
 	parse_expression (str2, &op1);
@@ -630,6 +718,21 @@ md_convert_frag (bfd * headers ATTRIBUTE_UNUSED,
 {
 }
 
+void
+propeller_frob_label (symbolS * sym)
+{
+  sym->sy_tc = cog_ram;
+}
+
+void
+propeller_frob_symbol (symbolS * sym, int punt ATTRIBUTE_UNUSED)
+{
+  if (sym->sy_tc)
+    {
+        sym->sy_value.X_add_number /= 4;
+    }
+}
+
 int md_short_jump_size = 4;
 int md_long_jump_size = 4;
 
@@ -668,6 +771,7 @@ md_show_usage (FILE * stream)
 {
   fprintf (stream, "\
 Propeller options\n\
+\tNone at this time.\n\
 ");
 }
 
