@@ -242,7 +242,7 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define CALL_USED_REGISTERS \
 {                       \
   1,1,1,1,1,1,1,1,      \
-  0,0,0,0,0,0,1,1,      \
+  0,0,0,0,0,0,0,1,      \
   1,1,1,1,1,        \
 }
 
