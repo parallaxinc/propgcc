@@ -1107,7 +1107,7 @@ propeller_compute_frame_size (int size)
 
   /* Build mask that actually determines which registers we save
      and calculate size required to store them in the stack.  */
-  for (regno = 0; regno < PROP_FP_REGNUM; regno++)
+  for (regno = 0; regno <= PROP_FP_REGNUM; regno++)
     {
       if (df_regs_ever_live_p (regno) && !call_used_regs[regno])
 	{
