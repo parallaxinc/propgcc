@@ -311,8 +311,7 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define INDEX_REG_CLASS NO_REGS
 
 #define HARD_REGNO_OK_FOR_BASE_P(NUM) \
-  ((unsigned) (NUM) < FIRST_PSEUDO_REGISTER \
-   && (REGNO_REG_CLASS(NUM) == GENERAL_REGS))
+    ((unsigned) (NUM) <= PROP_SP_REGNUM)
 
 #define MAX_REGS_PER_ADDRESS 1
 
