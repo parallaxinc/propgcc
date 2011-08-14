@@ -172,15 +172,41 @@
   sub\t%0, %2
   sub\t%0, %2")
 
+;;
+;; special cases of add and sub
+;;
+;; set x:= x+abs(y)
+;;
+(define_insn "*addabs"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+          (plus:SI
+	    (abs:SI (match_operand:SI 1 "propeller_src_operand" "rCI"))
+	    	    (match_operand:SI 2 "propeller_dst_operand" "0")
+    ))]
+  ""
+  "addabs\t%0, %1")
+
 ;; -------------------------------------------------------------------------
 ;; Unary arithmetic instructions
 ;; -------------------------------------------------------------------------
+
+(define_insn "abssi2"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	(abs:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))]
+  ""
+  "abs\t%0, %1")
 
 (define_insn "negsi2"
   [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
 	(neg:SI (match_operand:SI 1 "propeller_src_operand" "rCI")))]
   ""
   "neg\t%0, %1")
+
+(define_insn "*absnegsi2"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	(neg:SI (abs:SI (match_operand:SI 1 "propeller_src_operand" "rCI"))))]
+  ""
+  "absneg\t%0, %1")
 
 ;;
 ;; the instruction set doesn't actually have a NOT instruction, so synthesize
@@ -243,7 +269,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	  (and:SI
-	    (match_operand:SI 0 "propeller_src_operand" "rC,rC")
+	    (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
             (match_operand:SI 1 "propeller_and_operand" "rCI,M"))
           (const_int 0)))
    ]
@@ -251,6 +277,39 @@
   "@
    test\t%0,%1 wz
    testn\t%0,%1 wz"
+  [(set_attr "conds" "set")]
+)
+
+;; sometimes in combine "ands" are converted to "zero extract"
+(define_insn "*andsi3_zext_compare0_only"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (zero_extract:SI
+	    (match_operand:SI 0 "propeller_dst_operand" "rC")
+            (match_operand:SI 1 "immediate_1_9" "i")
+	    (const_int 0))
+          (const_int 0)))
+   ]
+  ""
+  "test\t%0,%m1 wz"
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "*andsi3_zext_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (zero_extract:SI
+	    (match_operand:SI 1 "propeller_dst_operand" "%0")
+            (match_operand:SI 2 "immediate_1_9" "i")
+            (const_int 0))
+          (const_int 0)))
+   (set (match_operand:SI     0 "propeller_dst_operand" "=rC")
+        (zero_extract:SI (match_dup 1)(match_dup 2)(const_int 0)))
+   ]
+  ""
+{
+   return "and\t%0,%m1 wz";
+}
   [(set_attr "conds" "set")]
 )
 
@@ -332,7 +391,7 @@
         (shiftop:SI (match_dup 1)(match_dup 2)))
   ]
   ""
-  "<opcode>\t%0, %1 wz"
+  "<opcode>\t%0, %2 wz"
   [(set_attr "conds" "set")]
 )
 
@@ -639,7 +698,7 @@
 
 (define_insn "*cmpu"
   [(set (reg:CCUNS CC_REG)
-	(compare
+	(compare:CCUNS
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
@@ -649,7 +708,7 @@
 
 (define_insn "*cmpz"
   [(set (reg:CC_Z CC_REG)
-	(compare
+	(compare:CC_Z
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
@@ -659,7 +718,7 @@
 
 (define_insn "*cmps"
   [(set (reg:CC CC_REG)
-	(compare
+	(compare:CC
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""

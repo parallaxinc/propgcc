@@ -521,6 +521,7 @@ propeller_print_operand_punct_valid_p (unsigned char code)
  *   J   Select a predicate for a conditional execution
  *   j   Select the inverse predicate for a conditional execution
  *   M   Print the complement of a constant integer
+ *   m   Print a mask (1<<n)-1 where n is a constant
  */
 
 #define LETTERJ(YES, REV)  (letter == 'J') ? (YES) : (REV)
@@ -568,6 +569,13 @@ propeller_print_operand (FILE * file, rtx op, int letter)
           gcc_unreachable ();
       }
       fprintf (file, "#$%lx", ~INTVAL (op));
+      return;
+  }
+  if (letter == 'm') {
+      if (code != CONST_INT) {
+          gcc_unreachable ();
+      }
+      fprintf (file, "#$%lx", (1<<INTVAL (op))-1);
       return;
   }
   if (code == SIGN_EXTEND)
@@ -721,16 +729,15 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
 
     switch (code) {
     case CONST_INT:
-        if (!speed) {
+        {
             HOST_WIDE_INT ival = INTVAL (x);
             if (ival >= -511 && ival < 511)
                 total = 0;
             else
                 total = (speed ? COSTS_N_INSNS(1) : 4);
             done = true;
-            break;
         }
-        /* fall through */
+        break;
     case CONST:
     case LABEL_REF:
     case SYMBOL_REF:
@@ -745,19 +752,24 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case XOR:
     case NOT:
     case NEG:
+    case ABS:
     case COMPARE:
     case ASHIFT:
     case ASHIFTRT:
     case LSHIFTRT:
+    case ZERO_EXTRACT:
         total = (speed ? COSTS_N_INSNS(1) : 4);
         break;
 
     case MULT:
+        total = (speed ? COSTS_N_INSNS(16) : 8);
+        break;
+
     case DIV:
     case UDIV:
     case MOD:
     case UMOD:
-        total = (speed ? COSTS_N_INSNS(16) : 8);
+        total = (speed ? COSTS_N_INSNS(100) : 8);
         done = true;
         break;
 
@@ -766,9 +778,8 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
         total = speed ? COSTS_N_INSNS (2 + total) : total;
         done = true;
         break;
+
     default:
-        /* assume external call */
-        total = (speed ? COSTS_N_INSNS(10) : 8);
         break;
     }
     *total_ptr = total;
@@ -1096,7 +1107,7 @@ propeller_compute_frame_size (int size)
 
   /* Build mask that actually determines which registers we save
      and calculate size required to store them in the stack.  */
-  for (regno = 0; regno < PROP_FP_REGNUM; regno++)
+  for (regno = 0; regno <= PROP_FP_REGNUM; regno++)
     {
       if (df_regs_ever_live_p (regno) && !call_used_regs[regno])
 	{
