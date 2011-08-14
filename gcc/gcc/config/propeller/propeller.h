@@ -242,7 +242,7 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define CALL_USED_REGISTERS \
 {                       \
   1,1,1,1,1,1,1,1,      \
-  0,0,0,0,0,0,1,1,      \
+  0,0,0,0,0,0,0,1,      \
   1,1,1,1,1,        \
 }
 
@@ -311,8 +311,7 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define INDEX_REG_CLASS NO_REGS
 
 #define HARD_REGNO_OK_FOR_BASE_P(NUM) \
-  ((unsigned) (NUM) < FIRST_PSEUDO_REGISTER \
-   && (REGNO_REG_CLASS(NUM) == GENERAL_REGS))
+    ((unsigned) (NUM) <= PROP_SP_REGNUM)
 
 #define MAX_REGS_PER_ADDRESS 1
 
@@ -364,7 +363,6 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 /* All load operations zero extend.  */
 #define LOAD_EXTEND_OP(MEM) ZERO_EXTEND
 
-#define SELECT_CC_MODE(OP, X, Y) propeller_select_cc_mode(OP, X, Y)
 
 #define LEGITIMATE_CONSTANT_P(X) propeller_legitimate_constant_p (X)
 
@@ -376,6 +374,11 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
   { \
     if (propeller_legitimate_address_p (MODE, X, REG_STRICT_P)) goto WIN; \
   }
+
+/* condition code stuff */
+#define SELECT_CC_MODE(OP, X, Y) propeller_select_cc_mode(OP, X, Y)
+
+#define REVERSIBLE_CC_MODE(MODE) 1
 
 /* Passing Arguments in Registers */
 
