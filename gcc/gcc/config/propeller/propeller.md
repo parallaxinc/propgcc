@@ -762,7 +762,7 @@
 	      (clobber (reg:SI LINK_REG))])]
   ""
 {
-  if (propeller_expand_call(operands[0], operands[1]))
+  if (propeller_expand_call(NULL, operands[0], operands[1]))
     DONE;
 })
 
@@ -801,7 +801,8 @@
               (clobber (reg:SI LINK_REG))])]
   ""
 {
-  gcc_assert (MEM_P (operands[1]));
+  if (propeller_expand_call(operands[0], operands[1], operands[2]))
+    DONE;
 })
 
 (define_insn "*call_value"
@@ -816,6 +817,18 @@
    jmpret\tlr,%1"
   [(set_attr "type" "call")]
  )
+
+(define_insn "call_native_value"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
+        (call (mem:SI (match_operand 1 "call_operand" "i,r"))
+	         (match_operand 2 "" "")))
+  ]
+  ""
+  "@
+   call\t#%1
+   call\t%1"
+  [(set_attr "type" "call")]
+)
 
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "rC"))]
