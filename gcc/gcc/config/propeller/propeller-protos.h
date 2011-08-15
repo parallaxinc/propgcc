@@ -57,4 +57,6 @@ extern enum machine_mode propeller_select_cc_mode (enum rtx_code, rtx, rtx);
 extern rtx propeller_gen_compare_reg (enum rtx_code, rtx, rtx);
 #endif
 
+extern bool propeller_expand_call (rtx, rtx);
+
 #endif

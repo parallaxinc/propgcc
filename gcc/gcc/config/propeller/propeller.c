@@ -117,22 +117,23 @@ propeller_option_override (void)
 
 /* check to see if a function has a specified attribute */
 static inline bool
-has_func_attr (const_tree decl, const char * func_attr)
+has_func_attr (tree decl, const char * func_attr)
 {
-  tree a;
+  tree attrs, a;
 
-  a = lookup_attribute (func_attr, DECL_ATTRIBUTES (decl));
+  attrs = DECL_ATTRIBUTES (decl);
+  a = lookup_attribute (func_attr, attrs);
   return a != NULL_TREE;
 }
 
 static inline bool
-is_native_function (const_tree decl)
+is_native_function (tree decl)
 {
   return has_func_attr (decl, "native");
 }
 
 static inline bool
-is_naked_function (const_tree decl)
+is_naked_function (tree decl)
 {
   return has_func_attr (decl, "naked");
 }
@@ -724,7 +725,7 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
 static bool
 propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *total_ptr, bool speed)
 {
-    int total;
+    int total = *total_ptr;
     bool done = false;
 
     switch (code) {
@@ -1254,6 +1255,30 @@ propeller_can_use_return (void)
     return 0;
 
   return 1;
+}
+
+/*
+ * expand a call to the appropriate instructions, depending on whether
+ * we need a native or regular call
+ * returns true if expansion is finished, false if the normal pattern
+ * matching needs to be done
+ */
+bool
+propeller_expand_call (rtx dest, rtx numargs)
+{
+    rtx callee = XEXP (dest, 0);
+    if (GET_CODE (callee) == SYMBOL_REF)
+    {
+        if (is_native_function (SYMBOL_REF_DECL (callee)))
+        {
+            rtx pat;
+
+            pat = gen_call_native (callee, numargs);
+            emit_call_insn (pat);
+            return true;
+        }
+    }
+    return false;
 }
 
 /*
