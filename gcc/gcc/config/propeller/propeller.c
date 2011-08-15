@@ -1121,8 +1121,7 @@ propeller_compute_frame_size (int size)
       reg_save_mask |= 1 << PROP_FP_REGNUM;
       callee_size += UNITS_PER_WORD;
     }
-  if (df_regs_ever_live_p (PROP_LR_REGNUM) || !current_function_is_leaf
-      || !optimize)
+  if (df_regs_ever_live_p (PROP_LR_REGNUM))
     {
       reg_save_mask |= 1 << PROP_LR_REGNUM;
       callee_size += UNITS_PER_WORD;
@@ -1235,7 +1234,14 @@ propeller_expand_epilogue (bool is_sibcall)
       }
 
   /* Return to calling function.  */
-  emit_jump_insn (gen_return_internal (lr_rtx));
+  if (is_native_function (current_function_decl))
+  {
+    emit_jump_insn (gen_native_return());
+  }
+  else
+  {
+    emit_jump_insn (gen_return_internal (lr_rtx));
+  }
 }
 
 /* Return nonzero if this function is known to have a null epilogue.
@@ -1246,6 +1252,9 @@ int
 propeller_can_use_return (void)
 {
   if (!reload_completed)
+    return 0;
+
+  if (is_native_function (current_function_decl))
     return 0;
 
   if (df_regs_ever_live_p (PROP_LR_REGNUM) || crtl->profile)
@@ -1264,7 +1273,7 @@ propeller_can_use_return (void)
  * matching needs to be done
  */
 bool
-propeller_expand_call (rtx dest, rtx numargs)
+propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
 {
     rtx callee = XEXP (dest, 0);
     if (GET_CODE (callee) == SYMBOL_REF)
@@ -1273,7 +1282,11 @@ propeller_expand_call (rtx dest, rtx numargs)
         {
             rtx pat;
 
-            pat = gen_call_native (callee, numargs);
+            if (setreg == NULL_RTX) {
+                pat = gen_call_native (callee, numargs);
+            } else {
+                pat = gen_call_native_value (setreg, callee, numargs);
+            }
             emit_call_insn (pat);
             return true;
         }
