@@ -29,7 +29,9 @@
 (define_constants
   [(CC_REG 18)
    (SP_REG 16)
-   (UNSPEC_NAKED   32)
+   (LINK_REG 15)
+   (UNSPEC_NAKED_RET   32)
+   (UNSPEC_NATIVE_RET  33)
   ])
 
 ; Most instructions are four bytes long.
@@ -755,17 +757,20 @@
 ;; -------------------------------------------------------------------------
 
 (define_expand "call"
-  [(call (match_operand:SI 0 "memory_operand" "")
-		(match_operand 1 "general_operand" ""))]
+  [(parallel [(call (match_operand:SI 0 "memory_operand" "")
+		    (match_operand 1 "general_operand" ""))
+	      (clobber (reg:SI LINK_REG))])]
   ""
 {
-  gcc_assert (MEM_P (operands[0]));
+  if (propeller_expand_call(operands[0], operands[1]))
+    DONE;
 })
 
-(define_insn "*call"
-  [(call (mem:SI (match_operand:SI
-		  0 "call_operand" "i,r"))
-	 (match_operand 1 "" ""))]
+(define_insn "call_std"
+  [(call (mem:SI (match_operand 0 "call_operand" "i,r"))
+	         (match_operand 1 "" ""))
+   (clobber (reg:SI LINK_REG))
+  ]
   ""
   "@
    jmpret\tlr,#%0
@@ -773,10 +778,27 @@
   [(set_attr "type" "call")]
 )
 
+;;
+;; a special variant that does not clobber the link register (the return
+;; address is stored directly into the corresponding ret instruction; so
+;; this cannot be used for recursive functions!)
+;;
+(define_insn "call_native"
+  [(call (mem:SI (match_operand 0 "call_operand" "i,r"))
+	         (match_operand 1 "" ""))
+  ]
+  ""
+  "@
+   call\t#%0
+   call\t%0"
+  [(set_attr "type" "call")]
+)
+
 (define_expand "call_value"
-  [(set (match_operand 0 "" "")
-		(call (match_operand:SI 1 "memory_operand" "")
-		 (match_operand 2 "" "")))]
+  [(parallel [(set (match_operand 0 "" "")
+		     (call (match_operand:SI 1 "memory_operand" "")
+		           (match_operand 2 "" "")))
+              (clobber (reg:SI LINK_REG))])]
   ""
 {
   gcc_assert (MEM_P (operands[1]));
@@ -785,7 +807,9 @@
 (define_insn "*call_value"
   [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
 	(call (mem:SI (match_operand:SI 1 "call_operand" "i,rC"))
-	      (match_operand 2 "" "")))]
+	      (match_operand 2 "" "")))
+   (clobber (reg:SI LINK_REG))
+  ]
   ""
   "@
    jmpret\tlr,#%1
@@ -830,23 +854,37 @@
 ")
 
 (define_insn "return_internal"
-  [(use (match_operand:SI 0 "register_operand" "r"))
-   (return)]
+  [(return)
+   (use (match_operand:SI 0 "register_operand" "r"))
+  ]
   ""
   "jmp\t%0"
 )
 
 (define_insn "naked_return"
-  [(unspec_volatile [(return)] UNSPEC_NAKED) ]
+  [(unspec_volatile [(return)] UNSPEC_NAKED_RET) ]
   ""
-  "; Naked function: epilogue provided by programmer."
+  "' Naked function: epilogue provided by programmer."
 )
 
-(define_insn "return"
+(define_insn "native_return"
+  [(unspec_volatile [(return)] UNSPEC_NATIVE_RET)]
+  ""
+  "ret"
+)
+
+(define_insn "*return"
   [(return)]
   "propeller_can_use_return ()"
   "jmp\tlr"
 )
+
+(define_expand "return"
+  [(parallel [(return)
+              (use (reg:SI LINK_REG))])
+  ]
+  "propeller_can_use_return ()"
+  "")
 
 
 ;; -------------------------------------------------------------------------
