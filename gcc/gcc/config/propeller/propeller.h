@@ -458,6 +458,8 @@ typedef unsigned int CUMULATIVE_ARGS;
 
 #define FILE_ASM_OP     ""
 
+#define USER_LABEL_PREFIX "_"
+
 /* Switch to the text or data segment.  */
 #define TEXT_SECTION_ASM_OP  "\'\t.text"
 #define DATA_SECTION_ASM_OP  "\'\t.data"
@@ -510,7 +512,7 @@ typedef unsigned int CUMULATIVE_ARGS;
 #define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
   do								\
     {								\
-      sprintf (LABEL, ":%s%u", \
+      sprintf (LABEL, "L_%s%u", \
 	       PREFIX, (unsigned) (NUM));			\
     }								\
   while (0)
