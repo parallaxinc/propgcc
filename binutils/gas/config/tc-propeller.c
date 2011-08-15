@@ -573,10 +573,17 @@ md_assemble (char *instruction_string)
       break;
     case PROPELLER_OPERAND_CALL:
       {
-	char *str2 = malloc (5 + strlen (str));
+	char *str2;
+        str = skip_whitespace (str);
+        if (*str == '#')
+	  {
+	    str++;
+	    insn.code |= 1 << 22;
+	  }
+	str2 = malloc (5 + strlen (str));
 	if (str2 == NULL)
 	  as_fatal (_("Virtual memory exhausted"));
-	strcpy (str2, str);
+  	strcpy (str2, str);
 	str = parse_expression (str, &op2);
 	if (op2.error)
 	  break;
@@ -630,6 +637,7 @@ md_assemble (char *instruction_string)
   do
     {
       str = skip_whitespace (str);
+      if(*str == 0) break;
       p = find_whitespace_or_separator (str);
       c = *p;
       *p = '\0';
