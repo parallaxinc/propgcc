@@ -1236,7 +1236,8 @@ propeller_expand_epilogue (bool is_sibcall)
   /* Return to calling function.  */
   if (is_native_function (current_function_decl))
   {
-    emit_jump_insn (gen_native_return());
+    rtx current_func_sym = XEXP (DECL_RTL (current_function_decl), 0);
+    emit_jump_insn (gen_native_return (current_func_sym));
   }
   else
   {
@@ -1282,6 +1283,10 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
         {
             rtx pat;
 
+            if (callee == XEXP (DECL_RTL (current_function_decl), 0))
+            {
+                error("native function cannot be recursive");
+            }
             if (setreg == NULL_RTX) {
                 pat = gen_call_native (callee, numargs);
             } else {

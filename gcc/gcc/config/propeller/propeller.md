@@ -881,9 +881,11 @@
 )
 
 (define_insn "native_return"
-  [(unspec_volatile [(return)] UNSPEC_NATIVE_RET)]
+  [(unspec_volatile [(return)] UNSPEC_NATIVE_RET)
+   (use (match_operand:SI 0 "call_operand" ""))
+  ]
   ""
-  "ret"
+  "\n%0_ret\tret"
 )
 
 (define_insn "*return"
