@@ -576,7 +576,7 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       if (code != CONST_INT) {
           gcc_unreachable ();
       }
-      fprintf (file, "#$%lx", (1<<INTVAL (op))-1);
+      fprintf (file, "#$%lx", (1L<<INTVAL (op))-1);
       return;
   }
   if (code == SIGN_EXTEND)
@@ -1299,11 +1299,6 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
     return false;
 }
 
-/*
- * support functions for moving stuff
- */
-
-
 bool
 propeller_legitimate_constant_p (rtx x)
 {
@@ -1338,7 +1333,270 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
         gcc_unreachable();
     }
 }
+
+/*
+ * builtin functions
+ * here are the builtins we support:
+ *
+ * unsigned __builtin_cogid(void)
+ *     get the current cog id
+ * unsigned __builtin_coginit(unsigned mode)
+ *     start or restart a cog
+ * void __builtin_cogstop(unsigned id)
+ *     stop a cog
+ *
+ * unsigned __builtin_reverse(unsigned x, unsigned n)
+ *     reverse the bottom n bits of x, and 0 the others
+ * unsigned __builtin_waitcnt(unsigned c, unsigned d)
+ *     wait until the frequency counter reaches c;
+ *     returns c+d
+ * void __builtin_waitpeq(unsigned state, unsigned mask)
+ *     wait until (INA & mask) == state
+ * void __builtin_waitpne(unsigned state, unsigned mask)
+ *     wait until (INA & mask) != state
+ * void __builtin_waitvid(unsigned colors, unsigned pixels)
+ *     wait for video generator
+ *
+ * void * __builtin_taskswitch(void *newfunc)
+ *     switch to a new function
+ *
+ */
 
+enum propeller_builtins
+{
+    PROPELLER_BUILTIN_COGID,
+    PROPELLER_BUILTIN_COGINIT,
+    PROPELLER_BUILTIN_COGSTOP,
+    PROPELLER_BUILTIN_REVERSE,
+
+    PROPELLER_BUILTIN_WAITCNT,
+    PROPELLER_BUILTIN_WAITPEQ,
+    PROPELLER_BUILTIN_WAITPNE,
+    PROPELLER_BUILTIN_WAITVID,
+
+    PROPELLER_BUILTIN_TASKSWITCH
+};
+
+/* Initialise the builtin functions.  Start by initialising
+   descriptions of different types of functions (e.g., void fn(int),
+   int fn(void)), and then use these to define the builtins.
+*/
+static void
+propeller_init_builtins (void)
+{
+  tree endlink = void_list_node;
+  tree uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, endlink);
+  tree uns_uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, uns_endlink);
+
+  tree void_ftype_void, void_ftype_uns, void_ftype_uns_uns;
+  tree vfunc_ftype_vfunc;
+  tree uns_ftype_void;
+  tree uns_ftype_uns;
+  tree uns_ftype_uns_uns;
+
+  /* void func (void) */
+  void_ftype_void = build_function_type (void_type_node, endlink);
+
+  /* void func (unsigned) */
+  void_ftype_uns = build_function_type (void_type_node, uns_endlink);
+  void_ftype_uns_uns = build_function_type (void_type_node, uns_uns_endlink);
+
+  /* unsigned func(void) */
+  uns_ftype_void = build_function_type (unsigned_type_node, endlink);
+
+  /* unsigned func(unsigned) */
+  /* unsigned func(unsigned,unsigned) */
+  uns_ftype_uns = build_function_type (unsigned_type_node, uns_endlink);
+  uns_ftype_uns_uns = build_function_type (unsigned_type_node, uns_uns_endlink);
+
+  /* void (*)(void) func(void (*f)(void)) */
+  vfunc_ftype_vfunc = build_function_type(unsigned_type_node, uns_endlink);
+
+  add_builtin_function("__builtin_cogid", uns_ftype_void,
+                       PROPELLER_BUILTIN_COGID,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_reverse", uns_ftype_uns_uns,
+                       PROPELLER_BUILTIN_REVERSE,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_waitcnt", uns_ftype_uns_uns,
+                       PROPELLER_BUILTIN_WAITCNT,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_waitpeq", void_ftype_uns_uns,
+                       PROPELLER_BUILTIN_WAITPEQ,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_waitpne", void_ftype_uns_uns,
+                       PROPELLER_BUILTIN_WAITPNE,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_waitvid", void_ftype_uns_uns,
+                       PROPELLER_BUILTIN_WAITVID,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+
+}
+
+/* Given a builtin function taking 2 operands (i.e., target + source),
+   emit the RTL for the underlying instruction. */
+static rtx
+propeller_expand_builtin_2op (enum insn_code icode, tree call, rtx target)
+{
+  tree arg0;
+  rtx op0, pat;
+  enum machine_mode tmode, mode0;
+
+  /* Grab the incoming argument and emit its RTL. */
+  arg0 = CALL_EXPR_ARG (call, 0);
+  op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+
+  /* Determine the modes of the instruction operands. */
+  tmode = insn_data[icode].operand[0].mode;
+  mode0 = insn_data[icode].operand[1].mode;
+
+  /* Ensure that the incoming argument RTL is in a register of the
+     correct mode. */
+  if (!(*insn_data[icode].operand[1].predicate) (op0, mode0))
+    op0 = copy_to_mode_reg (mode0, op0);
+
+  /* If there isn't a suitable target, emit a target register. */
+  if (target == 0
+      || GET_MODE (target) != tmode
+      || !(*insn_data[icode].operand[0].predicate) (target, tmode))
+    target = gen_reg_rtx (tmode);
+
+  /* Emit and return the new instruction. */
+  pat = GEN_FCN (icode) (target, op0);
+  if (!pat)
+    return 0;
+  emit_insn (pat);
+
+  return target;
+
+}
+/* Expand a builtin function which takes two arguments, and returns a void. */
+static rtx
+propeller_expand_builtin_2opvoid (enum insn_code icode, tree call)
+{
+  tree arg0, arg1;
+  rtx op0, op1, pat;
+  enum machine_mode mode0, mode1;
+
+  /* Grab the function's arguments. */
+  arg0 = CALL_EXPR_ARG (call, 0);
+  arg1 = CALL_EXPR_ARG (call, 1);
+
+  /* Emit rtl sequences for the function arguments. */
+  op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+  op1 = expand_expr (arg1, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+
+  /* Get the mode's of each of the instruction operands. */
+  mode0 = insn_data[icode].operand[0].mode;
+  mode1 = insn_data[icode].operand[1].mode;
+
+  /* Ensure that each of the function argument rtl sequences are in a
+     register of the correct mode. */
+  if (!(*insn_data[icode].operand[0].predicate) (op0, mode0))
+    op0 = copy_to_mode_reg (mode0, op0);
+  if (!(*insn_data[icode].operand[1].predicate) (op1, mode1))
+    op1 = copy_to_mode_reg (mode1, op1);
+
+  /* Emit and return the new instruction. */
+  pat = GEN_FCN (icode) (op0, op1);
+  if (!pat)
+    return 0;
+  emit_insn (pat);
+
+  return NULL_RTX;
+
+}
+/* Given a builtin function taking 3 operands (i.e., target + two
+   source), emit the RTL for the underlying instruction. */
+static rtx
+propeller_expand_builtin_3op (enum insn_code icode, tree call, rtx target)
+{
+  tree arg0, arg1;
+  rtx op0, op1, pat;
+  enum machine_mode tmode, mode0, mode1;
+
+  /* Grab the function's arguments. */
+  arg0 = CALL_EXPR_ARG (call, 0);
+  arg1 = CALL_EXPR_ARG (call, 1);
+
+  /* Emit rtl sequences for the function arguments. */
+  op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+  op1 = expand_expr (arg1, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+
+  /* Get the mode's of each of the instruction operands. */
+  tmode = insn_data[icode].operand[0].mode;
+  mode0 = insn_data[icode].operand[1].mode;
+  mode1 = insn_data[icode].operand[2].mode;
+
+  /* Ensure that each of the function argument rtl sequences are in a
+     register of the correct mode. */
+  if (!(*insn_data[icode].operand[1].predicate) (op0, mode0))
+    op0 = copy_to_mode_reg (mode0, op0);
+  if (!(*insn_data[icode].operand[2].predicate) (op1, mode1))
+    op1 = copy_to_mode_reg (mode1, op1);
+
+  /* If no target has been given, create a register to use as the target. */
+  if (target == 0
+      || GET_MODE (target) != tmode
+      || !(*insn_data[icode].operand[0].predicate) (target, tmode))
+    target = gen_reg_rtx (tmode);
+
+  /* Emit and return the new instruction. */
+  pat = GEN_FCN (icode) (target, op0, op1);
+  if (!pat)
+    return 0;
+  emit_insn (pat);
+
+  return target;
+
+}
+
+static rtx
+propeller_expand_builtin_1op(enum insn_code icode, rtx target)
+{
+  enum machine_mode tmode;
+  rtx pat;
+
+  tmode = insn_data[icode].operand[0].mode;
+  /* If no target has been given, create a register to use as the target. */
+  if (target == 0
+      || GET_MODE (target) != tmode
+      || !(*insn_data[icode].operand[0].predicate) (target, tmode))
+    target = gen_reg_rtx (tmode);
+
+  pat = GEN_FCN (icode) (target);
+  if (!pat)
+    return 0;
+
+  return target;
+}
+
+/* Expand a call to a builtin function */
+static rtx
+propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
+			 enum machine_mode mode ATTRIBUTE_UNUSED,
+			 int ignore ATTRIBUTE_UNUSED)
+{
+  tree fndecl = TREE_OPERAND (CALL_EXPR_FN (exp), 0);
+  int fcode = DECL_FUNCTION_CODE (fndecl);
+
+  switch (fcode)
+    {
+    case PROPELLER_BUILTIN_COGID:
+        return propeller_expand_builtin_1op (CODE_FOR_cogid, target);
+    case PROPELLER_BUILTIN_REVERSE:
+        return propeller_expand_builtin_3op (CODE_FOR_reverse, exp, target);
+    case PROPELLER_BUILTIN_WAITCNT:
+        return propeller_expand_builtin_3op (CODE_FOR_waitcnt, exp, target);
+    case PROPELLER_BUILTIN_WAITPEQ:
+        return propeller_expand_builtin_2opvoid (CODE_FOR_waitpeq, exp);
+    case PROPELLER_BUILTIN_WAITPNE:
+        return propeller_expand_builtin_2opvoid (CODE_FOR_waitpne, exp);
+    default:
+        gcc_unreachable ();
+    }
+  return NULL_RTX;
+}
 
 
 #undef TARGET_OPTION_OVERRIDE
@@ -1373,6 +1631,11 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 #define TARGET_ADDRESS_COST propeller_address_cost
 #undef  TARGET_ENCODE_SECTION_INFO
 #define TARGET_ENCODE_SECTION_INFO propeller_encode_section_info
+
+#undef TARGET_INIT_BUILTINS
+#define TARGET_INIT_BUILTINS propeller_init_builtins
+#undef TARGET_EXPAND_BUILTIN
+#define TARGET_EXPAND_BUILTIN propeller_expand_builtin
 
 #undef TARGET_ASM_BYTE_OP
 #define TARGET_ASM_BYTE_OP "\tbyte\t"
