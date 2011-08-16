@@ -25,13 +25,28 @@
 ;; Propeller specific constraints, predicates and attributes
 ;; -------------------------------------------------------------------------
 
-; make sure this matches the definition in propeller.h
+; make sure these registers match the definition in propeller.h
 (define_constants
   [(CC_REG 18)
    (SP_REG 16)
    (LINK_REG 15)
-   (UNSPEC_NAKED_RET   32)
-   (UNSPEC_NATIVE_RET  33)
+  ]
+)
+
+; for builtins
+(define_constants
+  [
+   (UNSPEC_COGID	 0)
+   (UNSPEC_COGINIT	 1)
+   (UNSPEC_COGSTOP	 2)
+   (UNSPEC_TASKSWITCH    3)
+   (UNSPEC_REVERSE       4)
+   (UNSPEC_WAITCNT       5)
+   (UNSPEC_WAITPEQ       6)
+   (UNSPEC_WAITPNE       7)
+   (UNSPEC_WAITVID       8)
+   (UNSPEC_NAKED_RET   101)
+   (UNSPEC_NATIVE_RET  102)
   ])
 
 ; Most instructions are four bytes long.
@@ -45,9 +60,10 @@
 ;; core == normal instruction
 ;; call == subroutine call
 ;; hub  == instruction that references hub memory
+;; wait == a wait instruction
 ;; multi == an insn that expands to multiple instructions
 ;;
-(define_attr "type" "core,call,hub,multi" (const_string "core"))
+(define_attr "type" "core,call,hub,wait,multi" (const_string "core"))
 
 ; condition codes: this one is used by final_prescan_insn to speed up
 ; conditionalizing instructions.  It saves having to scan the rtl to see if
@@ -135,10 +151,13 @@
 (define_code_iterator orop
 		        [(ior "") (xor "")])
 (define_code_iterator shiftop
-		        [(ashift "") (ashiftrt "") (lshiftrt "")])
+		        [(ashift "") (ashiftrt "") (lshiftrt "")
+			 (rotate "") (rotatert "")
+			])
 (define_code_attr     opcode
 		        [(plus "add") (ior "or") (xor "xor")
                       	 (ashift "shl") (ashiftrt "sar") (lshiftrt "shr")
+			 (rotate "rol") (rotatert "ror")
 			 ])
 
 ;; -------------------------------------------------------------------------
@@ -187,6 +206,15 @@
     ))]
   ""
   "addabs\t%0, %1")
+
+(define_insn "*subabs"
+  [(set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+          (minus:SI
+	    	    (match_operand:SI 1 "propeller_dst_operand" "0")
+	    (abs:SI (match_operand:SI 2 "propeller_src_operand" "rCI"))
+    ))]
+  ""
+  "subabs\t%0, %2")
 
 ;; -------------------------------------------------------------------------
 ;; Unary arithmetic instructions
@@ -379,6 +407,22 @@
 		     (match_operand:SI 2 "propeller_src_operand" "rCI")))]
   ""
   "shr\t%0, %2"
+)
+
+(define_insn "rotlsi3"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(rotate:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		   (match_operand:SI 2 "propeller_src_operand" "rCI")))]
+  ""
+  "rol\t%0, %2"
+)
+
+(define_insn "rotrsi3"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(rotatert:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+		     (match_operand:SI 2 "propeller_src_operand" "rCI")))]
+  ""
+  "ror\t%0, %2"
 )
 
 ;; patterns to compare with 0
@@ -767,7 +811,7 @@
 })
 
 (define_insn "call_std"
-  [(call (mem:SI (match_operand 0 "call_operand" "i,r"))
+  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
 	         (match_operand 1 "" ""))
    (clobber (reg:SI LINK_REG))
   ]
@@ -784,7 +828,7 @@
 ;; this cannot be used for recursive functions!)
 ;;
 (define_insn "call_native"
-  [(call (mem:SI (match_operand 0 "call_operand" "i,r"))
+  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
 	         (match_operand 1 "" ""))
   ]
   ""
@@ -820,7 +864,7 @@
 
 (define_insn "call_native_value"
   [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
-        (call (mem:SI (match_operand 1 "call_operand" "i,r"))
+        (call (mem:SI (match_operand:SI 1 "call_operand" "i,r"))
 	         (match_operand 2 "" "")))
   ]
   ""
@@ -961,4 +1005,96 @@
   ]
 ""
 ""
+)
+
+;; -------------------------------------------------------------------------
+;; Special insns for built in instructions
+;; -------------------------------------------------------------------------
+(define_insn "cogid"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+       (unspec:SI [(match_dup 0)] UNSPEC_COGID))
+  ]
+  ""
+  "cogid\t%0"
+  [(set_attr "type" "hub")]
+)
+
+(define_insn "coginit"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+       (unspec_volatile:SI
+         [(match_operand 1 "propeller_dst_operand" "0")] UNSPEC_COGINIT))
+  ]
+  ""
+  "coginit\t%0 wr"
+  [(set_attr "type" "hub")]
+)
+
+(define_insn "cogstop"
+  [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+      UNSPEC_COGSTOP)]
+  ""
+  "cogstop\t%0"
+  [(set_attr "type" "hub")]
+)
+
+(define_insn "taskswitch"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+        (unspec_volatile
+	  [(mem:SI (match_operand:SI 1 "call_operand" "i,rC"))]
+            UNSPEC_TASKSWITCH))
+  ]
+  ""
+  "@
+   jmpret\t%0,#%1
+   jmpret\t%0,%1"
+  [(set_attr "type" "call")]
+)
+
+(define_insn "reverse"
+  [(set (match_operand:SI          0 "propeller_dst_operand" "=rC")
+        (unspec [(match_operand:SI 1 "propeller_dst_operand" "0")
+                 (match_operand:SI 2 "propeller_src_operand" "rCI")]
+	  UNSPEC_REVERSE))]
+  ""
+  "rev\t%0,%2"
+)
+
+(define_insn "waitcnt"
+  [(set (match_operand:SI       0 "propeller_dst_operand" "=rC")
+        (plus (match_operand:SI 1 "propeller_dst_operand" "0")
+              (match_operand:SI 2 "propeller_src_operand" "rCI")))
+   (unspec_volatile [(match_dup 1)] UNSPEC_WAITCNT)]
+  ""
+  "waitcnt\t%0,%2"
+  [(set_attr "type" "wait")]
+)
+
+(define_insn "waitpeq"
+  [(unspec_volatile
+     [(match_operand:SI 0 "propeller_dst_operand" "rC")
+      (match_operand:SI 1 "propeller_src_operand" "rCI")]
+     UNSPEC_WAITPEQ)]
+  ""
+  "waitpeq\t%0,%1"
+  [(set_attr "type" "wait")]
+)
+
+(define_insn "waitpne"
+  [(unspec_volatile
+     [(match_operand:SI 0 "propeller_dst_operand" "rC")
+      (match_operand:SI 1 "propeller_src_operand" "rCI")]
+     UNSPEC_WAITPNE)]
+  ""
+  "waitpne\t%0,%1"
+  [(set_attr "type" "wait")]
+)
+
+(define_insn "waitvid"
+  [(unspec_volatile
+     [(match_operand:SI 0 "propeller_dst_operand" "rC")
+      (match_operand:SI 1 "propeller_src_operand" "rCI")]
+     UNSPEC_WAITVID)]
+  ""
+  "waitvid\t%0,%1"
+  [(set_attr "type" "wait")]
 )
