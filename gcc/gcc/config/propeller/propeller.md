@@ -1012,7 +1012,7 @@
 ;; -------------------------------------------------------------------------
 (define_insn "cogid"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-       (unspec:SI [(match_dup 0)] UNSPEC_COGID))
+       (unspec:SI [(const_int 0)] UNSPEC_COGID))
   ]
   ""
   "cogid\t%0"
