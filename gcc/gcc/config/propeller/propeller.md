@@ -880,16 +880,21 @@
   "' Naked function: epilogue provided by programmer."
 )
 
+;; we pretend that "native return" uses the link register
+;; (even though it doesn't) to make sure it is saved/restored
 (define_insn "native_return"
   [(unspec_volatile [(return)] UNSPEC_NATIVE_RET)
    (use (match_operand:SI 0 "call_operand" ""))
+   (use (reg:SI LINK_REG))
   ]
   ""
   "\n%0_ret\tret"
 )
 
 (define_insn "*return"
-  [(return)]
+  [(return)
+   (use (reg:SI LINK_REG))
+  ]
   "propeller_can_use_return ()"
   "jmp\tlr"
 )
