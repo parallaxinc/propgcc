@@ -1387,6 +1387,7 @@ propeller_init_builtins (void)
   tree endlink = void_list_node;
   tree uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, endlink);
   tree uns_uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, uns_endlink);
+  tree ptr_endlink = tree_cons (NULL_TREE, ptr_type_node, endlink);
 
   tree void_ftype_void, void_ftype_uns, void_ftype_uns_uns;
   tree vfunc_ftype_vfunc;
@@ -1410,10 +1411,13 @@ propeller_init_builtins (void)
   uns_ftype_uns_uns = build_function_type (unsigned_type_node, uns_uns_endlink);
 
   /* void (*)(void) func(void (*f)(void)) */
-  vfunc_ftype_vfunc = build_function_type(unsigned_type_node, uns_endlink);
+  vfunc_ftype_vfunc = build_function_type(ptr_type_node, ptr_endlink);
 
   add_builtin_function("__builtin_cogid", uns_ftype_void,
                        PROPELLER_BUILTIN_COGID,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_cogstop", void_ftype_uns,
+                       PROPELLER_BUILTIN_COGSTOP,
                        BUILT_IN_MD, NULL, NULL_TREE);
   add_builtin_function("__builtin_reverse", uns_ftype_uns_uns,
                        PROPELLER_BUILTIN_REVERSE,
@@ -1429,6 +1433,10 @@ propeller_init_builtins (void)
                        BUILT_IN_MD, NULL, NULL_TREE);
   add_builtin_function("__builtin_waitvid", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITVID,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+
+  add_builtin_function("__builtin_taskswitch", vfunc_ftype_vfunc,
+                       PROPELLER_BUILTIN_TASKSWITCH,
                        BUILT_IN_MD, NULL, NULL_TREE);
 
 }
@@ -1506,6 +1514,36 @@ propeller_expand_builtin_2opvoid (enum insn_code icode, tree call)
   return NULL_RTX;
 
 }
+static rtx
+propeller_expand_builtin_1opvoid (enum insn_code icode, tree call)
+{
+  tree arg0;
+  rtx op0, pat;
+  enum machine_mode mode0;
+
+  /* Grab the function's arguments. */
+  arg0 = CALL_EXPR_ARG (call, 0);
+
+  /* Emit rtl sequences for the function arguments. */
+  op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+
+  /* Get the mode's of each of the instruction operands. */
+  mode0 = insn_data[icode].operand[0].mode;
+
+  /* Ensure that each of the function argument rtl sequences are in a
+     register of the correct mode. */
+  if (!(*insn_data[icode].operand[0].predicate) (op0, mode0))
+    op0 = copy_to_mode_reg (mode0, op0);
+
+  /* Emit and return the new instruction. */
+  pat = GEN_FCN (icode) (op0);
+  if (!pat)
+    return 0;
+  emit_insn (pat);
+
+  return NULL_RTX;
+
+}
 /* Given a builtin function taking 3 operands (i.e., target + two
    source), emit the RTL for the underlying instruction. */
 static rtx
@@ -1567,7 +1605,7 @@ propeller_expand_builtin_1op(enum insn_code icode, rtx target)
   pat = GEN_FCN (icode) (target);
   if (!pat)
     return 0;
-
+  emit_insn (pat);
   return target;
 }
 
@@ -1584,6 +1622,8 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     {
     case PROPELLER_BUILTIN_COGID:
         return propeller_expand_builtin_1op (CODE_FOR_cogid, target);
+    case PROPELLER_BUILTIN_COGSTOP:
+        return propeller_expand_builtin_1opvoid (CODE_FOR_cogstop, exp);
     case PROPELLER_BUILTIN_REVERSE:
         return propeller_expand_builtin_3op (CODE_FOR_reverse, exp, target);
     case PROPELLER_BUILTIN_WAITCNT:
@@ -1592,6 +1632,8 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpeq, exp);
     case PROPELLER_BUILTIN_WAITPNE:
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpne, exp);
+    case PROPELLER_BUILTIN_TASKSWITCH:
+        return propeller_expand_builtin_2op (CODE_FOR_taskswitch, exp, target);
     default:
         gcc_unreachable ();
     }
