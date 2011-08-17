@@ -291,8 +291,8 @@
    ]
   ""
   "@
-   and\t%0,%1 wz
-   andn\t%0,%1 wz"
+   and\t%0,%2 wz
+   andn\t%0,%2 wz"
   [(set_attr "conds" "set")]
 )
 (define_insn "*andsi3_compare0_only"
@@ -311,6 +311,9 @@
 )
 
 ;; sometimes in combine "ands" are converted to "zero extract"
+;; this seems to happen for contiguous bit fields in the low
+;; bits (so operand 2 is 0) or for single bits (so operand 1 is 1)
+
 (define_insn "*andsi3_zext_compare0_only"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
@@ -329,7 +332,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	  (zero_extract:SI
-	    (match_operand:SI 1 "propeller_dst_operand" "%0")
+	    (match_operand:SI 1 "propeller_dst_operand" "0")
             (match_operand:SI 2 "immediate_1_9" "i")
             (const_int 0))
           (const_int 0)))
@@ -338,7 +341,39 @@
    ]
   ""
 {
-   return "and\t%0,%m1 wz";
+   return "and\t%0,%m2 wz";
+}
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "*andsi3_zextbit_compare0_only"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (zero_extract:SI
+	    (match_operand:SI 0 "propeller_dst_operand" "rC")
+	    (const_int 1)
+            (match_operand:SI 1 "immediate_0_31" "i"))
+          (const_int 0)))
+   ]
+  ""
+  "test\t%0,%B1 wz"
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "*andsi3_zextbit_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (zero_extract:SI
+	    (match_operand:SI 1 "propeller_dst_operand" "0")
+	    (const_int 1)
+            (match_operand:SI 2 "immediate_0_31" "i"))
+          (const_int 0)))
+   (set (match_operand:SI     0 "propeller_dst_operand" "=rC")
+        (zero_extract:SI (match_dup 1)(const_int 1)(match_dup 2)))
+   ]
+  ""
+{
+   return "and\t%0,%B2 wz";
 }
   [(set_attr "conds" "set")]
 )
