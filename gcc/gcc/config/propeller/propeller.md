@@ -25,11 +25,12 @@
 ;; Propeller specific constraints, predicates and attributes
 ;; -------------------------------------------------------------------------
 
-; make sure these registers match the definition in propeller.h
+; make sure these values match the definition in propeller.h
 (define_constants
   [(CC_REG 18)
    (SP_REG 16)
    (LINK_REG 15)
+   (STORE_FLAG 1)
   ]
 )
 
@@ -160,6 +161,17 @@
 			 (rotate "rol") (rotatert "ror")
 			 ])
 
+(define_code_iterator cond [ne eq lt ltu gt gtu ge le geu leu])
+(define_code_attr CC [(ne "NE") (eq "E ") (lt "B ") (ltu "B ") 
+		      (gt "A ") (gtu "A ") (ge "AE") (le "BE") 
+		      (geu "AE") (leu "BE") ])
+
+(define_code_iterator eqcond [ne eq])
+(define_code_iterator ltcond [lt ge])
+(define_code_iterator ltucond [ltu geu])
+(define_code_attr muxcc [(ne "nz") (eq "z") (lt "c") (ltu "c")
+                         (ge "nc") (geu "nc")])
+
 ;; -------------------------------------------------------------------------
 ;; nop instruction
 ;; -------------------------------------------------------------------------
@@ -214,8 +226,7 @@
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	  (minus:SI (match_dup 1)(match_dup 2)))]
   ""
-  "@
-  subs\t%0, %2 wz,wc"
+  "subs\t%0, %2 wz,wc"
   [(set_attr "conds" "set")]
 )
 
@@ -802,6 +813,61 @@
   "maxs\\t%0, %2")
 
 ;; -------------------------------------------------------------------------
+;; Conditional stores
+;;  operand 0 = value to set
+;;  operand 1 = new value
+;;  operands 2,3 = comparison operator and appropriate mode CC register
+;;
+;; -------------------------------------------------------------------------
+
+;; conditionally replace a register with a new value
+(define_insn "movreplace"
+ [(set (match_operand:SI   0 "propeller_dst_operand" "=rC,rC,rC")
+       (if_then_else
+         (match_operator 2 "predicate_operator"
+           [(match_operand 3 "cc_register" "") (const_int 0)])
+         (match_operand:SI 1 "general_operand" "rCI,N,Q") 
+         (match_dup 0)))]
+ ""
+ "@
+  %J2\tmov\t%0,%1
+  %J2\tneg\t%0,#%n1
+  %J2\rdword\t%0,%1"
+ [(set_attr "predicable" "no")
+  (set_attr "conds" "use")
+  (set_attr "type" "core,core,hub")
+ ]
+)
+
+;;
+;; cstoresi4: store 0 or nonzero in operand 0 depending on the comparison
+;;            (operand 1) of operands 2 and 3
+;; we do this by unconditionally setting the result to 0, and then
+;; doing a conditional execution to set it to STORE_FLAG_VALUE
+;;
+(define_expand "cstoresi4"
+  [(set (match_dup 4)
+        (match_op_dup 5
+         [(match_operand:SI 2 "propeller_dst_operand" "")
+          (match_operand:SI 3 "propeller_src_operand" "")]))
+   (set (match_operand:SI 0)(const_int 0))
+   (set (match_dup 0)
+        (if_then_else
+          (match_operator 1 "predicate_operator"
+            [(match_dup 4)(const_int 0)])
+          (const_int STORE_FLAG)
+          (match_dup 0)))]
+  ""
+{
+  operands[4] = propeller_gen_compare_reg (GET_CODE (operands[1]),
+                                      operands[2], operands[3]);
+  operands[5] = gen_rtx_fmt_ee (COMPARE,
+                                GET_MODE (operands[4]),
+                                operands[2], operands[3]);
+}
+)
+         
+;; -------------------------------------------------------------------------
 ;; Compare instructions
 ;; -------------------------------------------------------------------------
 
@@ -827,7 +893,7 @@
                                 operands[1], operands[2]);
 }")
 
-(define_insn "*cmpu"
+(define_insn "compare_unsigned"
   [(set (reg:CCUNS CC_REG)
 	(compare:CCUNS
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
@@ -837,7 +903,7 @@
   [(set_attr "conds" "set")]
 )
 
-(define_insn "*cmpz"
+(define_insn "compare_zero"
   [(set (reg:CC_Z CC_REG)
 	(compare:CC_Z
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
@@ -847,7 +913,7 @@
   [(set_attr "conds" "set")]
 )
 
-(define_insn "*cmps"
+(define_insn "compare_signed"
   [(set (reg:CC CC_REG)
 	(compare:CC
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
@@ -861,11 +927,6 @@
 ;; -------------------------------------------------------------------------
 ;; Branch instructions
 ;; -------------------------------------------------------------------------
-
-(define_code_iterator cond [ne eq lt ltu gt gtu ge le geu leu])
-(define_code_attr CC [(ne "NE") (eq "E ") (lt "B ") (ltu "B ") 
-		      (gt "A ") (gtu "A ") (ge "AE") (le "BE") 
-		      (geu "AE") (leu "BE") ])
 
 (define_insn "*b<cond:code>"
   [(set (pc)
@@ -1124,7 +1185,7 @@
 
 (define_insn "taskswitch"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
-        (unspec_volatile
+        (unspec_volatile:SI
 	  [(match_operand:SI 1 "general_operand" "rC,A")]
             UNSPEC_TASKSWITCH))
   ]
