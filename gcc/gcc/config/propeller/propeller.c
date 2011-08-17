@@ -491,7 +491,8 @@ propeller_asm_output_aligned_common (FILE *stream,
       int i;
 
       name2 = default_strip_name_encoding (name);
-      fprintf(stream, "%s\n", name2);
+      assemble_name (stream, name2);
+      fprintf(stream, "\n");
       for (i = 0; i < size; i+=4) 
           fprintf (stream, "\tlong\t0\n");
       return;
