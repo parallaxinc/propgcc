@@ -379,6 +379,8 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define SELECT_CC_MODE(OP, X, Y) propeller_select_cc_mode(OP, X, Y)
 
 #define REVERSIBLE_CC_MODE(MODE) 1
+
+#define STORE_FLAG_VALUE (1)
 
 /* Passing Arguments in Registers */
 
