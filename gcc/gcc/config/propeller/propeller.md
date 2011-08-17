@@ -1040,13 +1040,13 @@
 (define_insn "taskswitch"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
         (unspec_volatile
-	  [(mem:SI (match_operand:SI 1 "call_operand" "i,rC"))]
+	  [(match_operand:SI 1 "general_operand" "rC,A")]
             UNSPEC_TASKSWITCH))
   ]
   ""
   "@
-   jmpret\t%0,#%1
-   jmpret\t%0,%1"
+   jmpret\t%0,%1
+   jmpret\t%0,#%1"
   [(set_attr "type" "call")]
 )
 
