@@ -438,11 +438,11 @@ propeller_asm_file_end (void)
         fprintf(asm_out_file, "\tmin\t__TMP0,r1\n");
         fprintf(asm_out_file, "\tmax\tr1,r0\n");
         fprintf(asm_out_file, "\tmov\tr0,#0\n");
-        fprintf(asm_out_file, ":mloop\n");
+        fprintf(asm_out_file, "__MULSI_loop\n");
         fprintf(asm_out_file, "\tshr\tr1,#1 wz,wc\n");
         fprintf(asm_out_file, "  IF_C\tadd\tr0,__TMP0\n");
         fprintf(asm_out_file, "\tadd\t__TMP0,__TMP0\n");
-        fprintf(asm_out_file, "  IF_NZ\tjmp\t#:mloop\n");
+        fprintf(asm_out_file, "  IF_NZ\tjmp\t#__MULSI_loop\n");
         fprintf(asm_out_file, "__MULSI_ret\tret\n");
     }
     if (propeller_need_clzsi) {
@@ -1461,14 +1461,16 @@ propeller_expand_builtin_2op (enum insn_code icode, tree call, rtx target)
   /* Ensure that the incoming argument RTL is in a register of the
      correct mode. */
   if (!(*insn_data[icode].operand[1].predicate) (op0, mode0))
-    op0 = copy_to_mode_reg (mode0, op0);
+      op0 = copy_to_mode_reg (mode0, op0);
+  
 
   /* If there isn't a suitable target, emit a target register. */
   if (target == 0
       || GET_MODE (target) != tmode
       || !(*insn_data[icode].operand[0].predicate) (target, tmode))
+  {
     target = gen_reg_rtx (tmode);
-
+  }
   /* Emit and return the new instruction. */
   pat = GEN_FCN (icode) (target, op0);
   if (!pat)
