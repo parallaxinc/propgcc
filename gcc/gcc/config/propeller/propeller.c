@@ -697,7 +697,8 @@ propeller_modes_tieable_p (enum machine_mode A ATTRIBUTE_UNUSED, enum machine_mo
 bool
 propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx addr, bool strict)
 {
-    /* the only kind of address the propeller 1 supports is register indirect */
+    /* the only kinds of address the propeller 1 supports is register indirect
+       and cog memory indirect */
     while (GET_CODE (addr) == SUBREG)
         addr = SUBREG_REG (addr);
     if (GET_CODE (addr) == REG) {
@@ -719,6 +720,10 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
     if (propeller_cogaddr_p (addr))
         return true;
     if (GET_CODE (addr) == LABEL_REF)
+        return true;
+
+    /* allow cog memory indirect */
+    if (propeller_cogmem_p (addr))
         return true;
 
     return false;
@@ -785,7 +790,6 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
 
     case MEM:
         total = propeller_address_cost (XEXP (x, 0), speed);
-        total = speed ? COSTS_N_INSNS (2 + total) : total;
         done = true;
         break;
 
@@ -804,7 +808,8 @@ propeller_address_cost (rtx addr, bool speed)
   rtx a, b;
 
   if (GET_CODE (addr) != PLUS) {
-    total = 1;
+    /* cog memory addresses are free */
+    total = propeller_cogaddr_p (addr) ? 0 : 1;
   } else {
     a = XEXP (addr, 0);
     b = XEXP (addr, 1);

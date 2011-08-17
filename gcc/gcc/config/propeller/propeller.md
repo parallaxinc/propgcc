@@ -496,11 +496,12 @@
 ;; SImode
 
 (define_expand "movsi"
-   [(set (match_operand:SI 0 "general_operand" "")
+   [(set (match_operand:SI 0 "nonimmediate_operand" "")
  	(match_operand:SI 1 "general_operand" ""))]
    ""
 {
-  if (!propeller_dst_operand (operands[0], SImode))
+  if (!propeller_dst_operand (operands[0], SImode)
+      && !propeller_dst_operand (operands[1], SImode))
     {
       operands[1] = force_reg (SImode, operands[1]);
     }
@@ -527,7 +528,8 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (!propeller_dst_operand (operands[0], HImode))
+  if (!propeller_dst_operand (operands[0], HImode)
+      && !propeller_dst_operand (operands[1], HImode))
     operands[1] = force_reg (HImode, operands[1]);
 }")
 
@@ -551,7 +553,8 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (!propeller_dst_operand (operands[0], QImode))
+  if (!propeller_dst_operand (operands[0], QImode)
+      && !propeller_dst_operand (operands[1], QImode))
     operands[1] = force_reg (QImode, operands[1]);
 }")
 
@@ -1057,7 +1060,7 @@
 (define_insn "coginit"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
        (unspec_volatile:SI
-         [(match_operand 1 "propeller_dst_operand" "0")] UNSPEC_COGINIT))
+         [(match_operand:SI 1 "propeller_dst_operand" "0")] UNSPEC_COGINIT))
   ]
   ""
   "coginit\t%0 wr"
@@ -1087,7 +1090,7 @@
 
 (define_insn "reverse"
   [(set (match_operand:SI          0 "propeller_dst_operand" "=rC")
-        (unspec [(match_operand:SI 1 "propeller_dst_operand" "0")
+        (unspec:SI [(match_operand:SI 1 "propeller_dst_operand" "0")
                  (match_operand:SI 2 "propeller_src_operand" "rCI")]
 	  UNSPEC_REVERSE))]
   ""
@@ -1096,7 +1099,7 @@
 
 (define_insn "waitcnt"
   [(set (match_operand:SI       0 "propeller_dst_operand" "=rC")
-        (plus (match_operand:SI 1 "propeller_dst_operand" "0")
+        (plus:SI (match_operand:SI 1 "propeller_dst_operand" "0")
               (match_operand:SI 2 "propeller_src_operand" "rCI")))
    (unspec_volatile [(match_dup 1)] UNSPEC_WAITCNT)]
   ""
