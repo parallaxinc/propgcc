@@ -203,7 +203,9 @@
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	  (minus:SI (match_dup 1)(match_dup 2)))]
   ""
-  "sub\t%0, %2 wz")
+  "sub\t%0, %2 wz"
+  [(set_attr "conds" "set")]
+)
 
 (define_insn "*subsi3_compare"
   [(set (reg:CC CC_REG)
@@ -213,7 +215,9 @@
 	  (minus:SI (match_dup 1)(match_dup 2)))]
   ""
   "@
-  subs\t%0, %2 wz,wc")
+  subs\t%0, %2 wz,wc"
+  [(set_attr "conds" "set")]
+)
 
 (define_insn "*subsi3_compare_unsigned"
   [(set (reg:CCUNS CC_REG)
@@ -222,7 +226,9 @@
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	  (minus:SI (match_dup 1)(match_dup 2)))]
   ""
-  "sub\t%0, %2 wz,wc")
+  "sub\t%0, %2 wz,wc"
+  [(set_attr "conds" "set")]
+)
 
 ;;
 ;; special cases of add and sub
@@ -551,6 +557,16 @@
    [(set_attr "type" "core,core,hub,hub")]
 )
 
+(define_insn "*movsi_compare0"
+  [(set (reg:CC CC_REG)
+	(compare:CC (match_operand:SI 1 "propeller_src_operand" "rCI")
+		    (const_int 0)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_dup 1))]
+  ""
+  "mov\t%0,%1 wz,wc"
+   [(set_attr "conds" "set")]
+)
 
 (define_expand "movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand" "")
@@ -1167,3 +1183,8 @@
   "waitvid\t%0,%1"
   [(set_attr "type" "wait")]
 )
+
+;; -------------------------------------------------------------------------
+;; machine specific peepholes to catch things the combiner misses
+;; -------------------------------------------------------------------------
+
