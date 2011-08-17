@@ -184,14 +184,45 @@
   sub\t%0, #%n2")
 
 (define_insn "subsi3"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
 	  (minus:SI
-	   (match_operand:SI 1 "propeller_dst_operand" "0,0")
-	   (match_operand:SI 2 "propeller_src_operand" "I,rC")))]
+	   (match_operand:SI 1 "propeller_dst_operand" "0")
+	   (match_operand:SI 2 "propeller_src_operand" "rCI")))]
+  ""
+  "sub\t%0, %2")
+
+;;
+;; versions which set flags
+;;
+(define_insn "*subsi3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+          (minus:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+                    (match_operand:SI 2 "propeller_src_operand" "rCI"))
+          (const_int 0)))
+  (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	  (minus:SI (match_dup 1)(match_dup 2)))]
+  ""
+  "sub\t%0, %2 wz")
+
+(define_insn "*subsi3_compare"
+  [(set (reg:CC CC_REG)
+        (compare:CC (match_operand:SI 1 "propeller_dst_operand" "0")
+                    (match_operand:SI 2 "propeller_src_operand" "rCI")))
+  (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	  (minus:SI (match_dup 1)(match_dup 2)))]
   ""
   "@
-  sub\t%0, %2
-  sub\t%0, %2")
+  subs\t%0, %2 wz,wc")
+
+(define_insn "*subsi3_compare_unsigned"
+  [(set (reg:CCUNS CC_REG)
+        (compare:CCUNS (match_operand:SI 1 "propeller_dst_operand" "0")
+                       (match_operand:SI 2 "propeller_src_operand" "rCI")))
+  (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	  (minus:SI (match_dup 1)(match_dup 2)))]
+  ""
+  "sub\t%0, %2 wz,wc")
 
 ;;
 ;; special cases of add and sub
