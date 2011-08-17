@@ -121,6 +121,7 @@ has_func_attr (tree decl, const char * func_attr)
 {
   tree attrs, a;
 
+  if (!decl) return false;
   attrs = DECL_ATTRIBUTES (decl);
   a = lookup_attribute (func_attr, attrs);
   return a != NULL_TREE;
