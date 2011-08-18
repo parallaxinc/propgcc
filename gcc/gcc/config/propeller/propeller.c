@@ -521,14 +521,14 @@ propeller_print_operand_punct_valid_p (unsigned char code)
 /* The PRINT_OPERAND worker; prints an operand to an assembler
  * instruction.
  * Our specific ones:
- *   J   Select a predicate for a conditional execution
- *   j   Select the inverse predicate for a conditional execution
+ *   p   Select a predicate for a conditional execution
+ *   P   Select the inverse predicate for a conditional execution
  *   M   Print the complement of a constant integer
  *   m   Print a mask (1<<n)-1 where n is a constant
  *   B   Print a mask (1<<n) where n is a constant
  */
 
-#define LETTERJ(YES, REV)  (letter == 'J') ? (YES) : (REV)
+#define PREDLETTER(YES, REV)  (letter == 'p') ? (YES) : (REV)
 
 void
 propeller_print_operand (FILE * file, rtx op, int letter)
@@ -537,33 +537,32 @@ propeller_print_operand (FILE * file, rtx op, int letter)
   const char *str;
 
   code = GET_CODE (op);
-  if (letter == 'J' || letter == 'j') {
+  if (letter == 'p' || letter == 'P') {
       switch (code) {
       case NE:
-          str = LETTERJ("NE", "E ");
+          str = PREDLETTER("NE", "E ");
           break;
       case EQ:
-          str = LETTERJ("E ", "NE");
+          str = PREDLETTER("E ", "NE");
           break;
       case LT:
       case LTU:
-          str = LETTERJ("B ", "AE");
+          str = PREDLETTER("B ", "AE");
           break;
       case GE:
       case GEU:
-          str = LETTERJ("AE", "B ");
+          str = PREDLETTER("AE", "B ");
           break;
       case GT:
       case GTU:
-          str = LETTERJ("A ", "BE");
+          str = PREDLETTER("A ", "BE");
           break;
       case LE:
       case LEU:
-          str = LETTERJ("BE", "A ");
+          str = PREDLETTER("BE", "A ");
           break;
       default:
-          output_operand_lossage("invalid mode for %%J");
-          return;
+          gcc_unreachable ();
       }
       fprintf (file, "IF_%s", str);
       return;
