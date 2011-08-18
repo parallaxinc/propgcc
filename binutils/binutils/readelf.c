@@ -132,6 +132,7 @@
 #include "elf/pj.h"
 #include "elf/ppc.h"
 #include "elf/ppc64.h"
+#include "elf/propeller.h"
 #include "elf/rx.h"
 #include "elf/s390.h"
 #include "elf/score.h"
@@ -655,6 +656,7 @@ guess_is_rela (unsigned int e_machine)
     case EM_NIOS32:
     case EM_PPC64:
     case EM_PPC:
+    case EM_PROPELLER:
     case EM_RX:
     case EM_S390:
     case EM_S390_OLD:
@@ -1148,6 +1150,10 @@ dump_relocations (FILE * file,
 
 	case EM_PPC64:
 	  rtype = elf_ppc64_reloc_type (type);
+	  break;
+
+	case EM_PROPELLER:
+	  rtype = elf_propeller_reloc_type (type);
 	  break;
 
 	case EM_MIPS:
@@ -2030,6 +2036,7 @@ get_machine_name (unsigned e_machine)
     case EM_TILE64:		return "Tilera TILE64 multicore architecture family";
     case EM_TILEPRO:		return "Tilera TILEPro multicore architecture family";
     case EM_CUDA:		return "NVIDIA CUDA architecture";
+    case EM_PROPELLER:		return "Parallax Propeller";
     default:
       snprintf (buff, sizeof (buff), _("<unknown>: 0x%x"), e_machine);
       return buff;
@@ -9412,6 +9419,8 @@ is_32bit_abs_reloc (unsigned int reloc_type)
     case EM_XTENSA_OLD:
     case EM_XTENSA:
       return reloc_type == 1; /* R_XTENSA_32.  */
+    case EM_PROPELLER:
+      return reloc_type == 1; 
     default:
       error (_("Missing knowledge of 32-bit reloc types used in DWARF sections of machine number %d\n"),
 	     elf_header.e_machine);
