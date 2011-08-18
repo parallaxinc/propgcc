@@ -30,7 +30,7 @@
   [(CC_REG 18)
    (SP_REG 16)
    (LINK_REG 15)
-   (STORE_FLAG -1)
+   (STORE_FLAG 1)
   ]
 )
 
@@ -878,6 +878,25 @@
 ;; so for example muxz r0,#1 sets the low order bit if the z flag
 ;; is set, and leaves it alone otherwise
 ;;
+;;
+;; in general r0 = muxz(r0, mask)
+;; is the same as r0 = z ? (r0 | mask) : (r0 & ~mask)
+;;
+
+(define_insn "*or_andn_<muxcond:code>"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (if_then_else:SI
+	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+	  (ior:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+	          (match_operand:SI 2 "propeller_src_operand" "rCI"))
+	  (and:SI (not:SI (match_dup 2))
+                  (match_dup 1))))]
+  ""
+  "mux<muxcc>\t%0,%2"
+  [(set_attr "conds" "use")]
+)
+
+;; setting all bits to 1 or 0 is a special case
 (define_insn "*movesi<muxcond:code>_allones"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
         (if_then_else:SI
@@ -891,6 +910,35 @@
   }
   [(set_attr "conds" "use")]
 )
+
+;; setting a value to 0 or N is also a special case
+;; we can do this with a split: set it to 0 first, and or in the 1 if
+;; appropriate
+;; so r0 := (z ? N : 0)
+;; becomes r0 := 0; r0 = z ? (r0 | N) : (r0 & ~N)
+;;  where we know the "&~N" will have no effect
+
+(define_insn_and_split "*movesi<muxcond:code>_one"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (if_then_else:SI
+	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+            (match_operand:SI 1 "propeller_src_operand" "rCI")
+	    (const_int 0)))]
+  ""
+  "#"
+  "reload_completed"
+  [(set (match_dup 0)(const_int 0))
+   (set (match_dup 0)
+        (if_then_else:SI
+	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+          (ior:SI (match_dup 0)(match_dup 1))
+          (and:SI (not:SI (match_dup 1))(match_dup 0))))
+  ]
+  ""
+  [(set_attr "conds" "use")
+   (set_attr "length" "8")]
+)
+
 
 ;; the general case of movsi
 (define_insn "*movsicc_insn"
