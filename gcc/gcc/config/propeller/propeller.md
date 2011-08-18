@@ -30,7 +30,7 @@
   [(CC_REG 18)
    (SP_REG 16)
    (LINK_REG 15)
-   (STORE_FLAG 1)
+   (STORE_FLAG -1)
   ]
 )
 
@@ -166,11 +166,11 @@
 		      (gt "A ") (gtu "A ") (ge "AE") (le "BE") 
 		      (geu "AE") (leu "BE") ])
 
-(define_code_iterator eqcond [ne eq])
-(define_code_iterator ltcond [lt ge])
-(define_code_iterator ltucond [ltu geu])
+(define_code_iterator muxcond [ne eq lt ge ltu geu])
 (define_code_attr muxcc [(ne "nz") (eq "z") (lt "c") (ltu "c")
                          (ge "nc") (geu "nc")])
+(define_code_attr muxccmode [(ne "CC_Z") (eq "CC_Z") (lt "CC") (ltu "CCUNS")
+                             (ge "CC") (geu "CCUNS")])
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -582,7 +582,7 @@
    [(set_attr "type" "core,core,hub,hub")]
 )
 
-(define_insn "*movsi_compare0"
+(define_insn "*movsi_compare_signed"
   [(set (reg:CC CC_REG)
 	(compare:CC (match_operand:SI 1 "propeller_src_operand" "rCI")
 		    (const_int 0)))
@@ -666,6 +666,7 @@
 }
   [(set_attr "type" "core,hub")]
 )
+
 (define_insn "zero_extendqisi2"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
@@ -676,6 +677,27 @@
       return "and\\t%0,#255";
     case 1:
       return "rdbyte\\t%0, %1";
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "core,hub")]
+)
+
+(define_insn "*zero_extendqisi2_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m"))
+	  (const_int 0)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+        (zero_extend:SI (match_dup 1)))]
+  ""
+{
+  switch(which_alternative) {
+    case 0:
+      return "and\\t%0,#255 wz";
+    case 1:
+      return "rdbyte\\t%0, %1 wz";
     default:
       gcc_unreachable ();
   }
@@ -827,50 +849,89 @@
   "maxs\\t%0, %2")
 
 ;; -------------------------------------------------------------------------
-;; Conditional stores
-;;  operand 0 = value to set
-;;  operand 1 = new value
-;;  operands 2,3 = comparison operator and appropriate mode CC register
-;;
+;; Conditional moves and stores
 ;; -------------------------------------------------------------------------
 
-;; conditionally replace a register with a new value
-(define_insn "movreplace"
- [(set (match_operand:SI   0 "propeller_dst_operand" "=rC,rC,rC")
-       (if_then_else
-         (match_operator 2 "predicate_operator"
-           [(match_operand 3 "cc_register" "") (const_int 0)])
-         (match_operand:SI 1 "general_operand" "rCI,N,Q") 
-         (match_dup 0)))]
- ""
- "@
-  %J2\tmov\t%0,%1
-  %J2\tneg\t%0,#%n1
-  %J2\rdword\t%0,%1"
- [(set_attr "predicable" "no")
-  (set_attr "conds" "use")
-  (set_attr "type" "core,core,hub")
- ]
+;; conditional move
+
+(define_expand "movsicc"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+	(if_then_else:SI (match_operand 1 "predicate_operator" "")
+			 (match_operand:SI 2 "propeller_add_operand" "")
+			 (match_operand:SI 3 "propeller_add_operand" "")))]
+  ""
+  "
+  {
+    enum rtx_code code = GET_CODE (operands[1]);
+    rtx ccreg;
+
+    ccreg = propeller_gen_compare_reg (code, XEXP (operands[1], 0),
+				 XEXP (operands[1], 1));
+    operands[1] = gen_rtx_fmt_ee (code, VOIDmode, ccreg, const0_rtx);
+  }"
 )
+
+;;
+;; some special cases
+;; we can use the "mux" instruction to set bits to 0 or 1 (and leave
+;; them alone otherwise)
+;; so for example muxz r0,#1 sets the low order bit if the z flag
+;; is set, and leaves it alone otherwise
+;;
+(define_insn "*movesi<muxcond:code>_allones"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (if_then_else:SI
+	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+            (const_int -1)
+	    (const_int 0)))]
+  ""
+  {
+    propeller_need_maskffffffff = true;
+    return "mux<muxcc>\t%0,__MASK_FFFFFFFF";
+  }
+  [(set_attr "conds" "use")]
+)
+
+;; the general case of movsi
+(define_insn "*movsicc_insn"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC,rC,rC,rC,rC,rC,rC")
+        (if_then_else:SI
+	  (match_operator 3 "predicate_operator"
+	    [(match_operand 4 "cc_register" "") (const_int 0)])
+	  (match_operand:SI 1 "propeller_add_operand" "0,0,rCI,N,rCI,rCI,N,N")
+	  (match_operand:SI 2 "propeller_add_operand" "rCI,N,0,0,rCI,N,rCI,N" )))]
+  ""
+  "@
+   %J3 mov\t%0,%2
+   %J3 neg\t%0,#%n2
+   %j3 mov\t%0,%1
+   %j3 neg\t%0,%1
+   %J3 mov\t%0,%1\n  %j3 mov\t%0,%2
+   %J3 mov\t%0,%1\n  %j3 neg\t%0,#%n2
+   %J3 neg\t%0,#%n1\n  %j3 mov\t%0,%2
+   %J3 neg\t%0,#%n1\n  %j3 neg\t%0,#%n2"
+  [(set_attr "predicable" "no")
+   (set_attr "conds" "use")
+   (set_attr "length" "4,4,4,4,8,8,8,8")
+   (set_attr "type" "core,core,core,core,multi,multi,multi,multi")
+  ])
 
 ;;
 ;; cstoresi4: store 0 or nonzero in operand 0 depending on the comparison
 ;;            (operand 1) of operands 2 and 3
-;; we do this by unconditionally setting the result to 0, and then
-;; doing a conditional execution to set it to STORE_FLAG_VALUE
+;; we do this with a simple conditional move
 ;;
 (define_expand "cstoresi4"
   [(set (match_dup 4)
         (match_op_dup 5
          [(match_operand:SI 2 "propeller_dst_operand" "")
           (match_operand:SI 3 "propeller_src_operand" "")]))
-   (set (match_operand:SI 0)(const_int 0))
-   (set (match_dup 0)
-        (if_then_else
+   (set (match_operand:SI 0)
+        (if_then_else:SI
           (match_operator 1 "predicate_operator"
             [(match_dup 4)(const_int 0)])
           (const_int STORE_FLAG)
-          (match_dup 0)))]
+          (const_int 0)))]
   ""
 {
   operands[4] = propeller_gen_compare_reg (GET_CODE (operands[1]),
