@@ -75,6 +75,15 @@
 (define_special_predicate "predicate_operator"
   (match_code "eq,ne,le,lt,ge,gt,geu,gtu,leu,ltu"))
 
+;; true if this operator is a math operator with 2 arguments
+(define_special_predicate "propeller_math_op2"
+  (match_code "plus,minus,and,ior,xor,smin,smax,umin,umax"))
+
+;; true if this operator is a math operator with 1 arguments
+(define_special_predicate "propeller_math_op1"
+  (match_code "neg,not,abs"))
+
+;; match the cc register
 (define_special_predicate "cc_register"
   (and (match_code "reg")
        (and (match_test "REGNO (op) == PROP_CC_REGNUM")
