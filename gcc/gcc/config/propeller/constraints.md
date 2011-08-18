@@ -36,9 +36,14 @@
   "A cog memory address"
   (match_test "propeller_cogaddr_p (op)"))
 
+;;
+;; note that a cog memory reference is not actually a "memory_constraint"
+;; as gcc uses the term, because we can't access it via a base register
+;;
 (define_constraint "C"
   "A cog memory reference"
-  (match_test "propeller_cogmem_p (op)"))
+  (and (match_code "mem")
+       (match_test "propeller_cogmem_p (op)")))
 
 (define_memory_constraint "Q"
   "A register or cog memory indirect memory operand."
