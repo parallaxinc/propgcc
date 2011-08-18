@@ -141,7 +141,7 @@
     [(match_operand 1 "cc_register" "")
      (const_int 0)])]
   ""
-  "%J0"
+  "%p0"
 )
 
 ;; -------------------------------------------------------------------------
@@ -161,16 +161,15 @@
 			 (rotate "rol") (rotatert "ror")
 			 ])
 
-(define_code_iterator cond [ne eq lt ltu gt gtu ge le geu leu])
-(define_code_attr CC [(ne "NE") (eq "E ") (lt "B ") (ltu "B ") 
-		      (gt "A ") (gtu "A ") (ge "AE") (le "BE") 
-		      (geu "AE") (leu "BE") ])
 
 (define_code_iterator muxcond [ne eq lt ge ltu geu])
 (define_code_attr muxcc [(ne "nz") (eq "z") (lt "c") (ltu "c")
                          (ge "nc") (geu "nc")])
 (define_code_attr muxccmode [(ne "CC_Z") (eq "CC_Z") (lt "CC") (ltu "CCUNS")
                              (ge "CC") (geu "CCUNS")])
+
+;; types of condition codes we can branch on
+(define_mode_iterator BRCC [CC CCUNS CC_Z])
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -897,6 +896,7 @@
 )
 
 ;; setting all bits to 1 or 0 is a special case
+
 (define_insn "*movesi<muxcond:code>_allones"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
         (if_then_else:SI
@@ -950,14 +950,14 @@
 	  (match_operand:SI 2 "propeller_add_operand" "rCI,N,0,0,rCI,N,rCI,N" )))]
   ""
   "@
-   %J3 mov\t%0,%2
-   %J3 neg\t%0,#%n2
-   %j3 mov\t%0,%1
-   %j3 neg\t%0,%1
-   %J3 mov\t%0,%1\n  %j3 mov\t%0,%2
-   %J3 mov\t%0,%1\n  %j3 neg\t%0,#%n2
-   %J3 neg\t%0,#%n1\n  %j3 mov\t%0,%2
-   %J3 neg\t%0,#%n1\n  %j3 neg\t%0,#%n2"
+   %p3 mov\t%0,%2
+   %p3 neg\t%0,#%n2
+   %P3 mov\t%0,%1
+   %P3 neg\t%0,%1
+   %p3 mov\t%0,%1\n\t%P3 mov\t%0,%2
+   %p3 mov\t%0,%1\n\t%P3 neg\t%0,#%n2
+   %p3 neg\t%0,#%n1\n\t%P3 mov\t%0,%2
+   %p3 neg\t%0,#%n1\n\t%P3 neg\t%0,#%n2"
   [(set_attr "predicable" "no")
    (set_attr "conds" "use")
    (set_attr "length" "4,4,4,4,8,8,8,8")
@@ -994,27 +994,6 @@
 ;; Compare instructions
 ;; -------------------------------------------------------------------------
 
-(define_expand "cbranchsi4"
-  [(set (match_dup 4)
-        (match_op_dup 5
-         [(match_operand:SI 1 "propeller_dst_operand" "")
-          (match_operand:SI 2 "propeller_src_operand" "")]))
-   (set (pc)
-        (if_then_else
-              (match_operator 0 "ordered_comparison_operator"
-               [(match_dup 4)
-                (const_int 0)])
-              (label_ref (match_operand 3 "" ""))
-              (pc)))]
-  ""
-  "
-{
-  operands[4] = propeller_gen_compare_reg (GET_CODE (operands[0]),
-                                      operands[1], operands[2]);
-  operands[5] = gen_rtx_fmt_ee (COMPARE,
-                                GET_MODE (operands[4]),
-                                operands[1], operands[2]);
-}")
 
 (define_insn "compare_unsigned"
   [(set (reg:CCUNS CC_REG)
@@ -1051,17 +1030,41 @@
 ;; Branch instructions
 ;; -------------------------------------------------------------------------
 
-(define_insn "*b<cond:code>"
+(define_expand "cbranchsi4"
+  [(set (match_dup 4)
+        (match_op_dup 5
+         [(match_operand:SI 1 "propeller_dst_operand" "")
+          (match_operand:SI 2 "propeller_src_operand" "")]))
+   (set (pc)
+        (if_then_else
+              (match_operator 0 "ordered_comparison_operator"
+               [(match_dup 4)
+                (const_int 0)])
+              (label_ref (match_operand 3 "" ""))
+              (pc)))]
+  ""
+  "
+{
+  operands[4] = propeller_gen_compare_reg (GET_CODE (operands[0]),
+                                      operands[1], operands[2]);
+  operands[5] = gen_rtx_fmt_ee (COMPARE,
+                                GET_MODE (operands[4]),
+                                operands[1], operands[2]);
+}")
+
+(define_insn "*condbranch"
   [(set (pc)
-	(if_then_else (cond (reg CC_REG)
-			    (const_int 0))
+	(if_then_else (match_operator 1 "ordered_comparison_operator"
+	                [(reg CC_REG) (const_int 0)])
 		      (label_ref (match_operand 0 "" ""))
 		      (pc)))]
   ""
 {
-  return "IF_<CC> jmp\t#%l0";
+  return "%p1\tjmp\t#%l0";
 }
-[(set_attr "conds" "use")]
+[(set_attr "conds" "use")
+ (set_attr "predicable" "no")
+]
 )
 
 
@@ -1175,6 +1178,16 @@
   "
 {
   propeller_expand_epilogue (false);
+  DONE;
+}
+")
+
+(define_expand "sibcall_epilogue"
+  [(return)]
+  ""
+  "
+{
+  propeller_expand_epilogue (true);
   DONE;
 }
 ")
