@@ -264,6 +264,20 @@
   ""
   "subabs\t%0, %2")
 
+(define_insn "*cmpsub"
+  [(set (reg:CCUNS CC_REG)
+        (compare:CCUNS (match_operand:SI 1 "propeller_dst_operand" "0")
+	               (match_operand:SI 2 "propeller_src_operand" "rCI")))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (if_then_else:SI
+	   (gtu (reg:CCUNS CC_REG)(const_int 0))
+           (minus:SI (match_dup 1)(match_dup 2))
+           (match_dup 1)))]
+  ""
+  "cmpsub\t%0,%2 wz,wc"
+  [(set_attr "conds" "set")]
+)
+
 ;; -------------------------------------------------------------------------
 ;; Unary arithmetic instructions
 ;; -------------------------------------------------------------------------
