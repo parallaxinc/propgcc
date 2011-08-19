@@ -1430,6 +1430,9 @@ propeller_init_builtins (void)
   add_builtin_function("__builtin_cogid", uns_ftype_void,
                        PROPELLER_BUILTIN_COGID,
                        BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_coginit", uns_ftype_uns,
+                       PROPELLER_BUILTIN_COGINIT,
+                       BUILT_IN_MD, NULL, NULL_TREE);
   add_builtin_function("__builtin_cogstop", void_ftype_uns,
                        PROPELLER_BUILTIN_COGSTOP,
                        BUILT_IN_MD, NULL, NULL_TREE);
@@ -1638,6 +1641,8 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     {
     case PROPELLER_BUILTIN_COGID:
         return propeller_expand_builtin_1op (CODE_FOR_cogid, target);
+    case PROPELLER_BUILTIN_COGINIT:
+        return propeller_expand_builtin_2op (CODE_FOR_coginit, exp, target);
     case PROPELLER_BUILTIN_COGSTOP:
         return propeller_expand_builtin_1opvoid (CODE_FOR_cogstop, exp);
     case PROPELLER_BUILTIN_REVERSE:
