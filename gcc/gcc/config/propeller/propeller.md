@@ -209,6 +209,22 @@
 ;;
 ;; versions which set flags
 ;;
+(define_insn "*addsi3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+          (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
+                   (match_operand:SI 2 "propeller_add_operand"  "rCI,N"))
+          (const_int 0)))
+  (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	  (plus:SI (match_dup 1)(match_dup 2)))]
+  ""
+  "@
+   add\t%0, %2 wz
+   sub\t%0, #%n2 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")
+  ]
+)
 (define_insn "*subsi3_compare0"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
