@@ -52,6 +52,11 @@
                     && REGNO_OK_FOR_BASE_P (REGNO (XEXP (op,0)))")
 	    (match_test "propeller_cogmem_p (XEXP (op,0))"))))
 
+(define_memory_constraint "h"
+  "A memory address known not to be in cog RAM"
+  (and (match_code "mem")
+       (match_test "!propeller_cogmem_p (op)")))
+
 (define_constraint "O"
   "The constant zero"
   (and (match_code "const_int")

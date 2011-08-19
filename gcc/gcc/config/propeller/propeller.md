@@ -605,7 +605,7 @@
 
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
-	(match_operand:SI 1 "general_operand"               "rCIB,N,Q,rC"))]
+	(match_operand:SI 1 "general_operand"               "rCI,N,Q,rC"))]
   "propeller_dst_operand (operands[0], SImode)
    || propeller_dst_operand (operands[1], SImode)"
   "@
@@ -657,7 +657,7 @@
 
 (define_expand "movqi"
   [(set (match_operand:QI 0 "general_operand" "")
-	(match_operand:QI 1 "general_operand" ""))]
+	(match_operand:QI 1 "nonimmediate_operand" ""))]
   ""
   "
 {
@@ -668,8 +668,8 @@
 }")
 
 (define_insn "*movqi"
-  [(set (match_operand:QI 0 "nonimmediate_operand"   "=r,r,r,Q")
-	(match_operand:QI 1 "general_operand"        "rI,N,Q,r"))]
+  [(set (match_operand:QI 0 "nonimmediate_operand"   "=rC,rC,rC,Q")
+	(match_operand:QI 1 "general_operand"         "rCI,N,Q,rC"))]
   "propeller_dst_operand (operands[0], QImode)
    || propeller_dst_operand (operands[1], QImode)"
   "@
@@ -687,9 +687,11 @@
 ;; extending hi to si and for sign extensions, but for zero extension
 ;; "and" is better
 ;; -------------------------------------------------------------------------
+
+;; the h constraint says that alternative cannot be in cog memory
 (define_insn "zero_extendhisi2"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
-	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,m")))]
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
   ""
 {
   switch(which_alternative) {
@@ -707,7 +709,7 @@
 
 (define_insn "zero_extendqisi2"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
-	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m")))]
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
   ""
 {
   switch(which_alternative) {
@@ -722,10 +724,11 @@
   [(set_attr "type" "core,hub")]
 )
 
+;; the "h" constraint says the operand cannot be in cog memory
 (define_insn "*zero_extendqisi2_compare0"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
-	  (zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,m"))
+	  (zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h"))
 	  (const_int 0)))
    (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
         (zero_extend:SI (match_dup 1)))]
