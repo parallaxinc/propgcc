@@ -35,9 +35,9 @@
 #include "flags.h"
 #include "recog.h"
 #include "reload.h"
-#include "diagnostic-core.h"
 #include "obstack.h"
 #include "tree.h"
+#include "c-tree.h"
 #include "expr.h"
 #include "optabs.h"
 #include "except.h"
@@ -48,6 +48,7 @@
 #include "tm_p.h"
 #include "langhooks.h"
 #include "df.h"
+#include "diagnostic-core.h"
 
 struct propeller_frame_info
 {
@@ -166,13 +167,23 @@ propeller_handle_cogmem_attribute (tree *node,
 				     int flags ATTRIBUTE_UNUSED,
 				     bool *no_add_attrs)
 {
-  if (TREE_CODE (*node) != VAR_DECL)
+  tree decl = *node;
+
+  if (TYPE_MODE (TREE_TYPE (decl)) == BLKmode)
+    {
+        error ("data type of %q+D isn%'t suitable for a register",
+               decl);
+        *no_add_attrs = true;
+        return NULL_TREE;
+    }
+
+  if (TREE_CODE (decl) != VAR_DECL)
     {
       warning (OPT_Wattributes,
 	       "%<__COGMEM__%> attribute only applies to variables");
       *no_add_attrs = true;
     }
-  else if (args == NULL_TREE && TREE_CODE (*node) == VAR_DECL)
+  else if (args == NULL_TREE && TREE_CODE (decl) == VAR_DECL)
     {
       if (! (TREE_PUBLIC (*node) || TREE_STATIC (*node)))
 	{
@@ -181,7 +192,11 @@ propeller_handle_cogmem_attribute (tree *node,
 	  *no_add_attrs = true;
 	}
     }
-
+  
+  if (*no_add_attrs == false)
+    {
+        C_DECL_REGISTER (decl) = 1;
+    }
   return NULL_TREE;
 }
 
