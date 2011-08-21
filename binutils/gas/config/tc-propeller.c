@@ -25,6 +25,7 @@
 #include "struc-symbol.h"
 #include "safe-ctype.h"
 #include "opcode/propeller.h"
+#include "elf/propeller.h"
 
 /* A representation for Propeller machine code.  */
 struct propeller_code
@@ -672,12 +673,6 @@ md_assemble (char *instruction_string)
   {
     char *to = NULL;
 
-    if (err)
-      {
-	as_bad ("%s", err);
-	return;
-      }
-
     to = frag_more (size);
 
     md_number_to_chars (to, insn.code, 4);
@@ -737,8 +732,19 @@ propeller_frob_symbol (symbolS * sym, int punt ATTRIBUTE_UNUSED)
 {
   if (sym->sy_tc)
     {
-        sym->sy_value.X_add_number /= 4;
+      S_SET_OTHER (sym, PROPELLER_OTHER_COG_RAM
+		   | (S_GET_OTHER (sym) & ~PROPELLER_OTHER_FLAGS));
     }
+}
+
+valueT
+propeller_s_get_value (symbolS *s)
+{
+  valueT val = S_GET_VALUE(s);
+  if(s->sy_tc){
+    val /= 4;
+  }
+  return val;
 }
 
 int md_short_jump_size = 4;

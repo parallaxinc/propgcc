@@ -333,6 +333,27 @@ propeller_elf_gc_mark_hook (asection * sec,
   return _bfd_elf_gc_mark_hook (sec, info, rel, h, sym);
 }
 
+/* Change symbols that are cog internal to be word references.  */
+
+static int
+propeller_elf_link_output_symbol_hook (
+			       struct bfd_link_info *info ATTRIBUTE_UNUSED,
+			       const char *name ATTRIBUTE_UNUSED,
+			       Elf_Internal_Sym *sym,
+			       asection *input_sec,
+			       struct elf_link_hash_entry *h ATTRIBUTE_UNUSED)
+{
+  if (input_sec != NULL
+      && input_sec->name != NULL
+      && ELF_ST_TYPE (sym->st_info) != STT_SECTION
+      && strcmp (input_sec->name, PROPELLER_COG_CONTENTS_SECTION_NAME) == 0)
+    {
+      sym->st_value /= 4;
+    }
+
+  return 1;
+}
+
 /* Look through the relocs for a section during the first phase.
    Since we don't do .gots or .plts, we just need to consider the
    virtual table relocs for gc.  */
@@ -386,6 +407,7 @@ propeller_elf_check_relocs (bfd * abfd,
 #define elf_backend_relocate_section		propeller_elf_relocate_section
 #define elf_backend_gc_mark_hook		propeller_elf_gc_mark_hook
 #define elf_backend_check_relocs                propeller_elf_check_relocs
+#define elf_backend_link_output_symbol_hook	propeller_elf_link_output_symbol_hook
 
 #define elf_backend_can_gc_sections		1
 #define elf_backend_rela_normal			1

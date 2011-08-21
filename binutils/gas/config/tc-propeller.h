@@ -40,6 +40,11 @@ void propeller_frob_symbol (symbolS * s, int p);
 #define tc_frob_label(s) propeller_frob_label(s)
 void propeller_frob_label (symbolS * s);
 
+#define TC_S_GET_VALUE propeller_s_get_value
+valueT propeller_s_get_value (symbolS *s);
+
+#define tc_fix_adjustable(f) 0
+
 /* end of tc-propeller.h */
 
 /* Stuff for experiments or debugging.  This should all

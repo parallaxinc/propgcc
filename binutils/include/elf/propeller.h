@@ -20,6 +20,10 @@
 #ifndef _ELF_PROPELLER_H
 #define _ELF_PROPELLER_H
 
+/* Flags for the st_other field. */
+#define PROPELLER_OTHER_COG_RAM 0x80
+#define PROPELLER_OTHER_FLAGS 0x80
+
 #include "elf/reloc-macros.h"
 
 /* Relocation types.  */
@@ -29,5 +33,7 @@ START_RELOC_NUMBERS (elf_propeller_reloc_type)
   RELOC_NUMBER (R_PROPELLER_SRC, 2)
   RELOC_NUMBER (R_PROPELLER_DST, 3)
 END_RELOC_NUMBERS (R_PROPELLER_max)
+
+#define PROPELLER_COG_CONTENTS_SECTION_NAME ".text"
 
 #endif /* _ELF_PROPELLER_H */
