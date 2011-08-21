@@ -25,12 +25,24 @@
 ;; Propeller specific constraints, predicates and attributes
 ;; -------------------------------------------------------------------------
 
-; make sure these values match the definition in propeller.h
+;; defines for specific registers of interest
+;; some of these are also used in propeller.h
+
+;;
+;;  
 (define_constants
-  [(CC_REG 18)
-   (SP_REG 16)
+  [
+   (FRAME_REG 14)
    (LINK_REG 15)
-   (STORE_FLAG 1)
+   (SP_REG 16)
+   (LMM_PC_REG 17)
+   (CC_REG 18)
+  ]
+)
+
+(define_constants
+  [
+   (STORE_FLAG_VALUE 1)
   ]
 )
 
@@ -645,6 +657,53 @@
    (set_attr "predicable" "yes")]
 )
 
+;; compare and set patterns
+(define_insn "*movsi_compare0"
+  [(set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_operand:SI 1 "propeller_src_operand" "rCI")
+		      (const_int 0)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_dup 1))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+(define_insn "*movsi_compare0_flip"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_operand:SI 1 "propeller_src_operand" "rCI"))
+   (set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_dup 1)
+		      (const_int 0)))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+(define_insn "*movsi_compare0b"
+  [(set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_operand:SI 0 "propeller_dst_operand" "=rC")
+		      (const_int 0)))
+   (set (match_dup 0)
+	(match_operand:SI 1 "propeller_src_operand" "rCI"))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+(define_insn "*movsi_compare0_flipb"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_operand:SI 1 "propeller_src_operand" "rCI"))
+   (set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_dup 0)
+		      (const_int 0)))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
+
 (define_expand "movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand" "")
 	(match_operand:HI 1 "general_operand" ""))]
@@ -1044,7 +1103,7 @@
         (if_then_else:SI
           (match_operator 1 "predicate_operator"
             [(match_dup 4)(const_int 0)])
-          (const_int STORE_FLAG)
+          (const_int STORE_FLAG_VALUE)
           (const_int 0)))]
   ""
 {
@@ -1502,28 +1561,49 @@
   ""
 )
 
+;;
+;; an arithmetic operation, followed by a move and a compare
+;;
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operator:SI 3 "propeller_math_op2"
+	  [(match_dup 0)
+           (match_operand:SI 1 "propeller_src_operand" "")]))
+   (set (match_operand:SI 2 "propeller_dst_operand" "")
+        (match_dup 0))
+   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 0) (const_int 0)))
+  ]
+  "peep2_reg_dead_p (3, operands[0])"
+  [
+   (set (match_dup 2)(match_dup 0))
+   (parallel
+     [(set (reg:CC_Z CC_REG)
+           (compare:CC_Z 
+	     (match_op_dup 3 [(match_dup 2)(match_dup 1)])
+	     (const_int 0)))
+      (set (match_dup 2)
+           (match_op_dup 3 [(match_dup 2)(match_dup 1)]))
+      ])]
+  ""
+)
+
+;;
+;; move followed by a redundant compare
+;;
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
+  ]
+  ""
+  [(parallel
+     [(set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1)(const_int 0)))
+      (set (match_dup 0)(match_dup 1))])]
+  ""
+)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; old-style peepholes: these work at the very end of compilation
 ;; and can occasionally catch issues that are missed by earlier
 ;; passes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;
-;; move followed by redundant compare
-;;
-(define_peephole
-  [(set (match_operand:SI 0 "propeller_dst_operand" "")
-        (match_operand:SI 1 "propeller_src_operand" ""))
-   (set (reg:CC_Z CC_REG)
-        (compare:CC_Z (match_dup 0)(const_int 0)))]
-  ""
-  "mov\t%0,%1 wz"
-)
-(define_peephole
-  [(set (match_operand:SI 0 "propeller_dst_operand" "")
-        (match_operand:SI 1 "propeller_src_operand" ""))
-   (set (reg:CC CC_REG)
-        (compare:CC (match_dup 0)(const_int 0)))]
-  ""
-  "mov\t%0,%1 wz,wc"
-)

@@ -178,13 +178,14 @@ do {                                                    \
   "r12", "r13", "r14", "lr",   \
   "sp", "pc", "?cc", "?sap", "?sfp" }
 
+/* some utility defines; the _REG definitions come from propeller.md */
 #define PROP_R0        0
 #define PROP_R1        1
-#define PROP_FP_REGNUM 14
-#define PROP_LR_REGNUM 15
-#define PROP_SP_REGNUM 16
-#define PROP_PC_REGNUM 17
-#define PROP_CC_REGNUM 18   /* not a real register */
+#define PROP_FP_REGNUM (FRAME_REG)
+#define PROP_LR_REGNUM (LINK_REG)
+#define PROP_SP_REGNUM (SP_REG)
+#define PROP_PC_REGNUM (LMM_PC_REG)
+#define PROP_CC_REGNUM (CC_REG)   /* not a real register */
 #define PROP_FAKEAP_REGNUM 19  /* similarly for the arg pointer */
 #define PROP_FAKEFP_REGNUM 20  /* a fake register for tracking the frame pointer until all offsets are known */
 
@@ -380,7 +381,6 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 
 #define REVERSIBLE_CC_MODE(MODE) 1
 
-#define STORE_FLAG_VALUE (1)
 
 /* Passing Arguments in Registers */
 
