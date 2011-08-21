@@ -35,9 +35,9 @@
 #include "flags.h"
 #include "recog.h"
 #include "reload.h"
-#include "diagnostic-core.h"
 #include "obstack.h"
 #include "tree.h"
+#include "c-tree.h"
 #include "expr.h"
 #include "optabs.h"
 #include "except.h"
@@ -48,6 +48,7 @@
 #include "tm_p.h"
 #include "langhooks.h"
 #include "df.h"
+#include "diagnostic-core.h"
 
 struct propeller_frame_info
 {
@@ -166,13 +167,23 @@ propeller_handle_cogmem_attribute (tree *node,
 				     int flags ATTRIBUTE_UNUSED,
 				     bool *no_add_attrs)
 {
-  if (TREE_CODE (*node) != VAR_DECL)
+  tree decl = *node;
+
+  if (TYPE_MODE (TREE_TYPE (decl)) == BLKmode)
+    {
+        error ("data type of %q+D isn%'t suitable for a register",
+               decl);
+        *no_add_attrs = true;
+        return NULL_TREE;
+    }
+
+  if (TREE_CODE (decl) != VAR_DECL)
     {
       warning (OPT_Wattributes,
 	       "%<__COGMEM__%> attribute only applies to variables");
       *no_add_attrs = true;
     }
-  else if (args == NULL_TREE && TREE_CODE (*node) == VAR_DECL)
+  else if (args == NULL_TREE && TREE_CODE (decl) == VAR_DECL)
     {
       if (! (TREE_PUBLIC (*node) || TREE_STATIC (*node)))
 	{
@@ -181,7 +192,11 @@ propeller_handle_cogmem_attribute (tree *node,
 	  *no_add_attrs = true;
 	}
     }
-
+  
+  if (*no_add_attrs == false)
+    {
+        C_DECL_REGISTER (decl) = 1;
+    }
   return NULL_TREE;
 }
 
@@ -521,14 +536,14 @@ propeller_print_operand_punct_valid_p (unsigned char code)
 /* The PRINT_OPERAND worker; prints an operand to an assembler
  * instruction.
  * Our specific ones:
- *   J   Select a predicate for a conditional execution
- *   j   Select the inverse predicate for a conditional execution
+ *   p   Select a predicate for a conditional execution
+ *   P   Select the inverse predicate for a conditional execution
  *   M   Print the complement of a constant integer
  *   m   Print a mask (1<<n)-1 where n is a constant
  *   B   Print a mask (1<<n) where n is a constant
  */
 
-#define LETTERJ(YES, REV)  (letter == 'J') ? (YES) : (REV)
+#define PREDLETTER(YES, REV)  (letter == 'p') ? (YES) : (REV)
 
 void
 propeller_print_operand (FILE * file, rtx op, int letter)
@@ -537,33 +552,32 @@ propeller_print_operand (FILE * file, rtx op, int letter)
   const char *str;
 
   code = GET_CODE (op);
-  if (letter == 'J' || letter == 'j') {
+  if (letter == 'p' || letter == 'P') {
       switch (code) {
       case NE:
-          str = LETTERJ("NE", "E ");
+          str = PREDLETTER("NE", "E ");
           break;
       case EQ:
-          str = LETTERJ("E ", "NE");
+          str = PREDLETTER("E ", "NE");
           break;
       case LT:
       case LTU:
-          str = LETTERJ("B ", "AE");
+          str = PREDLETTER("B ", "AE");
           break;
       case GE:
       case GEU:
-          str = LETTERJ("AE", "B ");
+          str = PREDLETTER("AE", "B ");
           break;
       case GT:
       case GTU:
-          str = LETTERJ("A ", "BE");
+          str = PREDLETTER("A ", "BE");
           break;
       case LE:
       case LEU:
-          str = LETTERJ("BE", "A ");
+          str = PREDLETTER("BE", "A ");
           break;
       default:
-          output_operand_lossage("invalid mode for %%J");
-          return;
+          gcc_unreachable ();
       }
       fprintf (file, "IF_%s", str);
       return;
@@ -1431,6 +1445,9 @@ propeller_init_builtins (void)
   add_builtin_function("__builtin_cogid", uns_ftype_void,
                        PROPELLER_BUILTIN_COGID,
                        BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_coginit", uns_ftype_uns,
+                       PROPELLER_BUILTIN_COGINIT,
+                       BUILT_IN_MD, NULL, NULL_TREE);
   add_builtin_function("__builtin_cogstop", void_ftype_uns,
                        PROPELLER_BUILTIN_COGSTOP,
                        BUILT_IN_MD, NULL, NULL_TREE);
@@ -1639,6 +1656,8 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     {
     case PROPELLER_BUILTIN_COGID:
         return propeller_expand_builtin_1op (CODE_FOR_cogid, target);
+    case PROPELLER_BUILTIN_COGINIT:
+        return propeller_expand_builtin_2op (CODE_FOR_coginit, exp, target);
     case PROPELLER_BUILTIN_COGSTOP:
         return propeller_expand_builtin_1opvoid (CODE_FOR_cogstop, exp);
     case PROPELLER_BUILTIN_REVERSE:
