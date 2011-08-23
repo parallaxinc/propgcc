@@ -503,11 +503,9 @@ propeller_asm_output_aligned_common (FILE *stream,
       && GET_CODE (symbol = XEXP (mem, 0)) == SYMBOL_REF
       && SYMBOL_REF_FLAGS (symbol) & SYMBOL_FLAG_PROPELLER_COGMEM)
     {
-      const char *name2;
       int i;
 
-      name2 = default_strip_name_encoding (name);
-      assemble_name (stream, name2);
+      assemble_name (stream, name);
       fprintf(stream, "\n");
       for (i = 0; i < size; i+=4) 
           fprintf (stream, "\tlong\t0\n");
