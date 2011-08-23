@@ -1565,7 +1565,7 @@
 ;; an arithmetic operation, followed by a move and a compare
 ;;
 (define_peephole2
-  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+  [(set (match_operand:SI 0 "register_operand" "")
         (match_operator:SI 3 "propeller_math_op2"
 	  [(match_dup 0)
            (match_operand:SI 1 "propeller_src_operand" "")]))
@@ -1601,6 +1601,20 @@
       (set (match_dup 0)(match_dup 1))])]
   ""
 )
+
+;;
+;; needless move
+;;
+(define_peephole2
+  [(set (match_operand:SI 0 "register_operand" "")
+        (match_operand:SI 1 "propeller_dst_operand" ""))
+   (set (match_dup 1)(match_dup 0))
+  ]
+  "peep2_reg_dead_p (2, operands[0]) && !(MEM_P (operands[1]) && MEM_VOLATILE_P (operands[1]))"
+  [(const_int 0)]
+  ""
+)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; old-style peepholes: these work at the very end of compilation
 ;; and can occasionally catch issues that are missed by earlier

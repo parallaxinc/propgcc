@@ -49,6 +49,7 @@
 #include "langhooks.h"
 #include "df.h"
 #include "diagnostic-core.h"
+#include "tree-pass.h"
 
 struct propeller_frame_info
 {
@@ -109,6 +110,12 @@ propeller_option_override (void)
        we'll have to revisit this for LMM
     */
     flag_no_function_cse = 1;
+
+    /*
+     * set up target specific flags
+     */
+    if (TARGET_OUTPUT_SPINCODE)
+      target_flags |= MASK_PASM;
 }
 
 
@@ -512,21 +519,40 @@ propeller_asm_output_aligned_common (FILE *stream,
       return;
     }
 
-  if (!global)
+  if (!global && !TARGET_PASM)
     {
       fprintf (stream, "\t.local\t");
       assemble_name (stream, name);
       fprintf (stream, "\n");
     }
-  fprintf (stream, "\t.comm\t");
-  assemble_name (stream, name);
-  fprintf (stream, ",%u,%u\n", size, align / BITS_PER_UNIT);
+  if (TARGET_PASM)
+    {
+      int i;
+      assemble_name (stream, name);
+      fprintf (stream, "\n");
+      while (i > 4) {
+	fprintf (stream, "\tlong\t0\n");
+	i -= 4;
+      }
+      while (i > 0) {
+	fprintf (stream, "\tbyte\t0\n");
+	i--;
+      }
+    }
+  else
+    {
+      fprintf (stream, "\t.comm\t");
+      assemble_name (stream, name);
+      if (align)
+	fprintf (stream, ",%u,%u\n", size, align / BITS_PER_UNIT);
+      else
+	fprintf (stream, ",%u\n", size);
+    }
 }
-
 
 /* test whether punctuation is valid in operand output */
 bool
-propeller_print_operand_punct_valid_p (unsigned char code)
+propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
 {
     return false;
 }
@@ -1673,6 +1699,18 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     }
   return NULL_RTX;
 }
+
+/*
+ * a machine dependent pass over the rtl
+ * this is a chance for us to do additional machine specific
+ * optimizations
+ */
+
+static void
+propeller_reorg(void)
+{
+  /* for now, this does nothing */
+}
 
 
 #undef TARGET_OPTION_OVERRIDE
@@ -1712,6 +1750,9 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
 #define TARGET_INIT_BUILTINS propeller_init_builtins
 #undef TARGET_EXPAND_BUILTIN
 #define TARGET_EXPAND_BUILTIN propeller_expand_builtin
+
+#undef TARGET_MACHINE_DEPENDENT_REORG
+#define TARGET_MACHINE_DEPENDENT_REORG propeller_reorg
 
 #undef TARGET_ASM_BYTE_OP
 #define TARGET_ASM_BYTE_OP "\tbyte\t"
