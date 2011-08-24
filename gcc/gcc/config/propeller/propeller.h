@@ -463,12 +463,13 @@ typedef unsigned int CUMULATIVE_ARGS;
 #define USER_LABEL_PREFIX "_"
 
 /* Switch to the text or data segment.  */
-#define TEXT_SECTION_ASM_OP  \
-  (TARGET_PASM ? "\t'.text" : "\t.text")
-#define DATA_SECTION_ASM_OP  \
-  (TARGET_PASM ? "\t'.data" : "\t.data")
-#define BSS_SECTION_ASM_OP   \
-  (TARGET_PASM ? "\t'.bss" : "\t.bss")
+extern const char *propeller_text_asm_op;
+extern const char *propeller_data_asm_op;
+extern const char *propeller_bss_asm_op;
+
+#define TEXT_SECTION_ASM_OP  propeller_text_asm_op
+#define DATA_SECTION_ASM_OP  propeller_data_asm_op
+#define BSS_SECTION_ASM_OP   propeller_bss_asm_op
 
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
