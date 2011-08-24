@@ -25,6 +25,7 @@
 #include "struc-symbol.h"
 #include "safe-ctype.h"
 #include "opcode/propeller.h"
+#include "elf/propeller.h"
 
 /* A representation for Propeller machine code.  */
 struct propeller_code
@@ -66,21 +67,17 @@ static void pseudo_fit (int);
 static void pseudo_res (int);
 static void pseudo_hub_ram (int);
 static void pseudo_cog_ram (int);
-static void pseudo_regbase (int);
 static char *skip_whitespace (char *str);
 static char *find_whitespace (char *str);
 static char *find_whitespace_or_separator (char *str);
 
 static int cog_ram = 1;		/* Use Cog ram by default */
 
-static int register_base = 128;	/* Address of register file */
-
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
   {"res", pseudo_res, 0},
   {"hub_ram", pseudo_hub_ram, 0},
   {"cog_ram", pseudo_cog_ram, 0},
-  {"regbase", pseudo_regbase, 0},
   {0, 0, 0},
 };
 
@@ -294,61 +291,13 @@ pseudo_cog_ram (int c ATTRIBUTE_UNUSED)
   cog_ram = 1;
 }
 
-static void
-pseudo_regbase (int c ATTRIBUTE_UNUSED)
-{
-  register_base = get_absolute_expression ();
-}
-
 /* Instruction processing */
 static char *
 parse_expression (char *str, struct propeller_code *operand)
 {
   char *save_input_line_pointer;
-  char *end;
-  char t;
   segT seg;
 
-  str = skip_whitespace (str);
-  end = find_whitespace_or_separator (str);
-  t = *end;
-  *end = 0;
-  if (!strcasecmp ("lr", str))
-    {
-      operand->reloc.exp.X_add_number = 15 + register_base;
-      operand->reloc.exp.X_op = O_register;
-      *end = t;
-      return end;
-    }
-  if (!strcasecmp ("sp", str))
-    {
-      operand->reloc.exp.X_add_number = 16 + register_base;
-      operand->reloc.exp.X_op = O_register;
-      *end = t;
-      return end;
-    }
-  if (!strcasecmp ("pc", str))
-    {
-      operand->reloc.exp.X_add_number = 17 + register_base;
-      operand->reloc.exp.X_op = O_register;
-      *end = t;
-      return end;
-    }
-  *end = t;
-  if (*str == 'r' || *str == 'R')
-    {
-      int reg;
-      reg = strtol (str + 1, &end, 10);
-      if (end != str + 1)
-	{
-	  if (reg >= 0 && reg <= 15)
-	    {
-	      operand->reloc.exp.X_add_number = reg + register_base;
-	      operand->reloc.exp.X_op = O_register;
-	      return end;
-	    }
-	}
-    }
   save_input_line_pointer = input_line_pointer;
   input_line_pointer = str;
   seg = expression (&operand->reloc.exp);
@@ -672,12 +621,6 @@ md_assemble (char *instruction_string)
   {
     char *to = NULL;
 
-    if (err)
-      {
-	as_bad ("%s", err);
-	return;
-      }
-
     to = frag_more (size);
 
     md_number_to_chars (to, insn.code, 4);
@@ -737,8 +680,19 @@ propeller_frob_symbol (symbolS * sym, int punt ATTRIBUTE_UNUSED)
 {
   if (sym->sy_tc)
     {
-        sym->sy_value.X_add_number /= 4;
+      S_SET_OTHER (sym, PROPELLER_OTHER_COG_RAM
+		   | (S_GET_OTHER (sym) & ~PROPELLER_OTHER_FLAGS));
     }
+}
+
+valueT
+propeller_s_get_value (symbolS *s)
+{
+  valueT val = S_GET_VALUE(s);
+  if(s->sy_tc){
+    val /= 4;
+  }
+  return val;
 }
 
 int md_short_jump_size = 4;

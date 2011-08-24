@@ -101,7 +101,7 @@ const struct propeller_opcode propeller_opcodes[] = {
   /* jmp      010111 zc0i cccc --------- sssssssss *//* These two are in the */
   {"jmp", 0x5c000000, 0xfc800000, PROPELLER_OPERAND_SOURCE_ONLY, NR, PROP_1},
   /* ret      010111 zc01 cccc --------- --------- *//* wrong order either way */
-  {"ret", 0x5c000000, 0xfcc00000, PROPELLER_OPERAND_NO_OPS, NR, PROP_1},
+  {"ret", 0x5c400000, 0xfcc00000, PROPELLER_OPERAND_NO_OPS, NR, PROP_1},
   /* jmpret   010111 zc1i cccc ddddddddd sssssssss *//* these, */
   {"jmpret", 0x5c800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
   /* call     010111 zc11 cccc DDDDDDDDD sssssssss *//* too. */
