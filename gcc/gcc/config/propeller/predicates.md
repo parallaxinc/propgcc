@@ -94,8 +94,9 @@
 
 (define_predicate "propeller_big_const"
   (and (match_operand 0 "immediate_operand")
-       (match_test "propeller_const_ok_for_letter_p(INTVAL(op), 'W')"
-)))
+       (ior (match_code "symbol_ref,label_ref,const")
+            (and (match_code "const_int")
+	         (match_test "!IN_RANGE (INTVAL (op), -511, 511)")))))
 
 (define_predicate "immediate_1_9"
   (and (match_code "const_int")
