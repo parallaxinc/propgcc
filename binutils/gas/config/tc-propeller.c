@@ -143,13 +143,13 @@ md_chars_to_number (con, nbytes)
     case 0:
       return 0;
     case 1:
-      return con[3];
+      return con[0];
     case 2:
-      return (con[2] << BITS_PER_CHAR) | con[3];
+      return (con[1] << BITS_PER_CHAR) | con[0];
     case 4:
       return
-	(((con[0] << BITS_PER_CHAR) | con[1]) << (2 * BITS_PER_CHAR))
-	| ((con[2] << BITS_PER_CHAR) | con[3]);
+	(((con[3] << BITS_PER_CHAR) | con[2]) << (2 * BITS_PER_CHAR))
+	| ((con[1] << BITS_PER_CHAR) | con[0]);
     default:
       BAD_CASE (nbytes);
       return 0;
@@ -196,7 +196,7 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   }
   code &= ~mask;
   code |= (val << shift) & mask;
-  number_to_chars_bigendian (buf, code, size);
+  md_number_to_chars (buf, code, size);
 
   if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
     fixP->fx_done = 1;
