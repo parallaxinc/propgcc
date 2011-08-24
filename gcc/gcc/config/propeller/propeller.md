@@ -1183,7 +1183,7 @@
 	                [(reg CC_REG) (const_int 0)])
 		      (label_ref (match_operand 0 "" ""))
 		      (pc)))]
-  ""
+  "!TARGET_LMM"
 {
   return "%p1\tjmp\t#%l0";
 }
@@ -1191,6 +1191,27 @@
 ]
 )
 
+(define_insn "*condbranch_lmm"
+  [(set (pc)
+	(if_then_else (match_operator 1 "ordered_comparison_operator"
+	                [(reg CC_REG) (const_int 0)])
+		      (label_ref (match_operand 0 "" ""))
+		      (pc)))]
+  "TARGET_LMM"
+{
+  return (get_attr_length (insn) == 4) ?
+               "%p1\tadd\tpc,#(%l0-.)" :
+	       "%p1\trdlong\tpc,pc\n\tlong\t%l0";
+}
+[(set_attr "conds" "use")
+ (set (attr "length")
+      (if_then_else 
+          (and (ge (minus (match_dup 0)(pc)) (const_int -500))
+	       (le (minus (match_dup 0)(pc)) (const_int 500)))
+	  (const_int 4)
+	  (const_int 8)))
+]
+)
 
 ;; -------------------------------------------------------------------------
 ;; Call and Jump instructions
@@ -1211,12 +1232,25 @@
 	         (match_operand 1 "" ""))
    (clobber (reg:SI LINK_REG))
   ]
-  ""
+  "!TARGET_LMM"
   "@
    jmpret\tlr,#%0
    jmpret\tlr,%0"
   [(set_attr "type" "call")
    (set_attr "predicable" "yes")]
+)
+
+(define_insn "call_std_lmm"
+  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
+	         (match_operand 1 "" ""))
+   (clobber (reg:SI LINK_REG))
+  ]
+  "TARGET_LMM"
+  "@
+   jmp\t#LMM_CALL\n\tlong\t%0
+   mov\t__TMP,%0\n\tjmp\t#LMM_CALL_INDIRECT"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
 )
 
 ;;
@@ -1253,12 +1287,26 @@
 	      (match_operand 2 "" "")))
    (clobber (reg:SI LINK_REG))
   ]
-  ""
+  "!TARGET_LMM"
   "@
    jmpret\tlr,#%1
    jmpret\tlr,%1"
   [(set_attr "type" "call")
    (set_attr "predicable" "yes")]
+ )
+
+(define_insn "*call_value_lmm"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
+	(call (mem:SI (match_operand:SI 1 "call_operand" "i,rC"))
+	      (match_operand 2 "" "")))
+   (clobber (reg:SI LINK_REG))
+  ]
+  "TARGET_LMM"
+  "@
+   jmp\t#LMM_CALL\n\tlong\t%1
+   mov\t__TMP,%1\n\tjmp\t#LMM_CALL_INDIRECT"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
  )
 
 (define_insn "call_native_value"
@@ -1277,18 +1325,35 @@
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "rC"))]
   ""
-  "jmp\t%0"
-  [(set_attr "predicable" "yes")]
+{ if (TARGET_LMM)
+    return "mov pc,%0";
+  else
+    return "jmp\t%0";
+}
 )
 
-(define_insn "jump"
+(define_expand "jump"
   [(set (pc)
 	(label_ref (match_operand 0 "" "")))]
   ""
+  ""
+)
+
+(define_insn "*jump_std"
+  [(set (pc)
+	(label_ref (match_operand 0 "" "")))]
+  "!TARGET_LMM"
   "jmp\t#%0"
   [(set_attr "predicable" "yes")]
 )
 
+(define_insn "*jump_lmm"
+  [(set (pc)
+	(label_ref (match_operand 0 "" "")))]
+  "TARGET_LMM"
+  "rdlong\tpc,pc\n\tlong\t%0"
+  [(set_attr "length" "8")]
+)
 
 ;; -------------------------------------------------------------------------
 ;; Prologue & Epilogue
