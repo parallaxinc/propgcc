@@ -9,7 +9,7 @@
    any later version.
 
    It is distributed in the hope that it will be useful, but WITHOUT
-   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   ANY WARRANTY; without even the implied warranty of MERCHANTABIITY
    or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
    License for more details.
 
@@ -176,8 +176,8 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"addsx", 0xd8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* subsx    110111 zcri cccc ddddddddd sssssssss */
   {"subsx", 0xdc000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
-/* cmpsub   111000 zcRi cccc ddddddddd sssssssss */
-  {"cmpsub", 0xe0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
+/* cmpsub   111000 zcri cccc ddddddddd sssssssss */
+  {"cmpsub", 0xe0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* djnz     111001 zcri cccc ddddddddd sssssssss */
   {"djnz", 0xe4000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* tjnz     111010 zcRi cccc ddddddddd sssssssss */
@@ -298,7 +298,7 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 
   info->bytes_per_line = 4;
   info->bytes_per_chunk = 4;
-  info->display_endian = BFD_ENDIAN_BIG;
+  info->display_endian = BFD_ENDIAN_LITTLE;
 
   if (read_word (memaddr, &opcode, info) != 0)
     return -1;

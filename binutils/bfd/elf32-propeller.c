@@ -378,8 +378,8 @@ propeller_elf_check_relocs (bfd * abfd,
 #define ELF_MACHINE_CODE	EM_PROPELLER
 #define ELF_MAXPAGESIZE		0x1
 
-#define TARGET_BIG_SYM          bfd_elf32_propeller_vec
-#define TARGET_BIG_NAME		"elf32-propeller"
+#define TARGET_LITTLE_SYM          bfd_elf32_propeller_vec
+#define TARGET_LITTLE_NAME		"elf32-propeller"
 
 #define elf_info_to_howto_rel			NULL
 #define elf_info_to_howto			propeller_info_to_howto_rela
