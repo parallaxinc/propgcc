@@ -22,7 +22,7 @@
 
 #define TARGET_FORMAT "elf32-propeller"
 #define TARGET_ARCH bfd_arch_propeller
-#define TARGET_BYTES_BIG_ENDIAN 1
+#define TARGET_BYTES_BIG_ENDIAN 0
 #define TC_SYMFIELD_TYPE int
 #define LABELS_WITHOUT_COLONS 1
 
@@ -30,7 +30,7 @@
 #define NO_PSEUDO_DOT 1
 
 #define md_operand(x)
-#define md_number_to_chars number_to_chars_bigendian
+#define md_number_to_chars number_to_chars_littleendian
 
 long md_chars_to_number (unsigned char *, int);
 
@@ -54,4 +54,3 @@ valueT propeller_s_get_value (symbolS *s);
 //#define DEBUG3 1
 //#define DEBUG4 1
 //#define DEBUG5 1
-//#define TC_FORCE_RELOCATION(x) 1
