@@ -464,11 +464,11 @@ typedef unsigned int CUMULATIVE_ARGS;
 
 /* Switch to the text or data segment.  */
 #define TEXT_SECTION_ASM_OP  \
-  (TARGET_PASM ? "\t'.text" : ".text")
+  (TARGET_PASM ? "\t'.text" : "\t.text")
 #define DATA_SECTION_ASM_OP  \
-  (TARGET_PASM ? "\t'.data" : ".data")
+  (TARGET_PASM ? "\t'.data" : "\t.data")
 #define BSS_SECTION_ASM_OP   \
-  (TARGET_PASM ? "\t'.bss" : ".bss")
+  (TARGET_PASM ? "\t'.bss" : "\t.bss")
 
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
