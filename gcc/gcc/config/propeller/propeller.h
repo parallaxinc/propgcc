@@ -471,7 +471,7 @@ typedef unsigned int CUMULATIVE_ARGS;
   (TARGET_PASM ? "\t'.bss" : ".bss")
 
 #define GLOBAL_ASM_OP \
-  (TARGET_PASM ? "\t'global variable\t" : ".global")
+  (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
 
 /* Assembler Commands for Alignment */
 
