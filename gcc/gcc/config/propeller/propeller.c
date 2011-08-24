@@ -245,7 +245,7 @@ propeller_cogaddr_p (rtx x)
     if (0 != (SYMBOL_REF_FLAGS (x) & SYMBOL_FLAG_PROPELLER_COGMEM)) {
         return true;
     }
-    if (CONSTANT_POOL_ADDRESS_P (x)) {
+    if (CONSTANT_POOL_ADDRESS_P (x) && !TARGET_LMM) {
         return true;
     }
     return false;
@@ -1366,9 +1366,9 @@ propeller_legitimate_constant_p (rtx x)
     case CONST:
     case SYMBOL_REF:
     case CONST_VECTOR:
-        return false;
+        return TARGET_LMM;
     case CONST_INT:
-        return (INTVAL (x) >= -511 && INTVAL (x) <= 511);
+        return TARGET_LMM || (INTVAL (x) >= -511 && INTVAL (x) <= 511);
     default:
         return true;
     }

@@ -631,11 +631,24 @@
     }
 })
 
+(define_insn "*movsi_lmm"
+  [(set (match_operand:SI 0 "nonimmediate_operand" "=rC,r,r,r,Q")
+        (match_operand:SI 1 "general_operand"    "rCI,N,i,Q,r"))]
+  "TARGET_LMM"
+  "@
+   mov\t%0,%1
+   neg\t%0,#%n1
+   jmp\t#LMM_MVI_%0\n\tlong\t%1
+   rdlong\t%0, %1
+   wrlong\t%1, %0"
+  [(set_attr "length" "4,4,8,4,4")
+  ]
+)
+
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:SI 1 "general_operand"               "rCI,N,Q,rC"))]
-  "propeller_dst_operand (operands[0], SImode)
-   || propeller_dst_operand (operands[1], SImode)"
+  "!TARGET_LMM"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
