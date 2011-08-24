@@ -87,6 +87,12 @@ enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
 /*
  * options handling
  */
+
+/* sets various assembler strings depending on options */
+const char *propeller_text_asm_op;
+const char *propeller_data_asm_op;
+const char *propeller_bss_asm_op;
+
 /* Implement TARGET_OPTION_OPTIMIZATION_TABLE.  */
 
 static const struct default_options propeller_option_optimization_table[] =
@@ -116,6 +122,26 @@ propeller_option_override (void)
      */
     if (TARGET_OUTPUT_SPINCODE)
       target_flags |= MASK_PASM;
+
+    /* set up the assembly output */
+    if (TARGET_PASM)
+      {
+	propeller_text_asm_op = "\t'.text";
+	propeller_data_asm_op = "\t'.data";
+	propeller_bss_asm_op = "\t'.bss";
+      }
+    else if (TARGET_LMM)
+      {
+	propeller_text_asm_op = "\t.text";
+	propeller_data_asm_op = "\t.data";
+	propeller_bss_asm_op = "\t.bss";
+      }
+    else
+      {
+	propeller_text_asm_op = "\t.text\n\t.cog_ram";
+	propeller_data_asm_op = "\t.data\n\t.hub_ram";
+	propeller_bss_asm_op = "\t.bss\n\t.hub_ram";
+      }
 }
 
 
@@ -284,6 +310,8 @@ propeller_asm_file_start (void)
 {
     if (!TARGET_OUTPUT_SPINCODE) {
         default_file_start ();
+	if (TARGET_LMM)
+	  fprintf (asm_out_file, "\t.hub_ram\n");
         return;
     }
     fprintf (asm_out_file, "\torg\n\n");
