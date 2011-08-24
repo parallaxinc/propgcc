@@ -58,5 +58,5 @@ extern rtx propeller_gen_compare_reg (enum rtx_code, rtx, rtx);
 #endif
 
 extern bool propeller_expand_call (rtx, rtx, rtx);
-
+extern bool propeller_forward_branch_p (rtx);
 #endif
