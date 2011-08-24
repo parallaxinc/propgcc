@@ -178,13 +178,14 @@ do {                                                    \
   "r12", "r13", "r14", "lr",   \
   "sp", "pc", "?cc", "?sap", "?sfp" }
 
+/* some utility defines; the _REG definitions come from propeller.md */
 #define PROP_R0        0
 #define PROP_R1        1
-#define PROP_FP_REGNUM 14
-#define PROP_LR_REGNUM 15
-#define PROP_SP_REGNUM 16
-#define PROP_PC_REGNUM 17
-#define PROP_CC_REGNUM 18   /* not a real register */
+#define PROP_FP_REGNUM (FRAME_REG)
+#define PROP_LR_REGNUM (LINK_REG)
+#define PROP_SP_REGNUM (SP_REG)
+#define PROP_PC_REGNUM (LMM_PC_REG)
+#define PROP_CC_REGNUM (CC_REG)   /* not a real register */
 #define PROP_FAKEAP_REGNUM 19  /* similarly for the arg pointer */
 #define PROP_FAKEFP_REGNUM 20  /* a fake register for tracking the frame pointer until all offsets are known */
 
@@ -380,7 +381,6 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 
 #define REVERSIBLE_CC_MODE(MODE) 1
 
-#define STORE_FLAG_VALUE (1)
 
 /* Passing Arguments in Registers */
 
@@ -463,30 +463,40 @@ typedef unsigned int CUMULATIVE_ARGS;
 #define USER_LABEL_PREFIX "_"
 
 /* Switch to the text or data segment.  */
-#define TEXT_SECTION_ASM_OP  "\'\t.text"
-#define DATA_SECTION_ASM_OP  "\'\t.data"
-#define BSS_SECTION_ASM_OP   "\'\t.bss"
+#define TEXT_SECTION_ASM_OP  \
+  (TARGET_PASM ? "\t'.text" : ".text")
+#define DATA_SECTION_ASM_OP  \
+  (TARGET_PASM ? "\t'.data" : ".data")
+#define BSS_SECTION_ASM_OP   \
+  (TARGET_PASM ? "\t'.bss" : ".bss")
+
+#define GLOBAL_ASM_OP \
+  (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
 
 /* Assembler Commands for Alignment */
 
-#define ASM_OUTPUT_ALIGN(STREAM,POWER) \
-	fprintf (STREAM, "'\t.align\t%u\n", (1U<<POWER));
+#define ASM_OUTPUT_ALIGN(STREAM,POWER)				\
+  if (TARGET_PASM)						\
+    {								\
+      if (POWER == 1)						\
+        fprintf (STREAM, "\tword\n");				\
+      else							\
+	fprintf (STREAM, "\tlong\n");				\
+    }								\
+  else								\
+    fprintf (STREAM, "\t.balign\t%u\n", (1U<<POWER))
 
 /* This says how to output an assembler line
    to define a global common symbol.  */
 
 #define ASM_OUTPUT_COMMON(FILE, NAME, SIZE, ROUNDED)	\
-  ( fputs (".comm ", (FILE)),				\
-    assemble_name ((FILE), (NAME)),			\
-    fprintf ((FILE), ",%u\n", (int)(ROUNDED)))
+  propeller_asm_output_aligned_common (STREAM, NULL_RTX, NAME, ROUNDED, 0, 1)
 
 /* This says how to output an assembler line
    to define a local common symbol....  */
 #undef  ASM_OUTPUT_LOCAL
 #define ASM_OUTPUT_LOCAL(FILE, NAME, SIZE, ROUNDED)	\
-  (fputs ("\t.lcomm\t", FILE),				\
-  assemble_name (FILE, NAME),				\
-  fprintf (FILE, ",%d\n", (int)SIZE))
+  propeller_asm_output_aligned_common (STREAM, NULL_RTX, NAME, SIZE, 0, 1)
 
 
 /* ... and how to define a local common symbol whose alignment
@@ -501,12 +511,15 @@ typedef unsigned int CUMULATIVE_ARGS;
    that says to advance the location counter by SIZE bytes.  */
 #undef  ASM_OUTPUT_SKIP
 #define ASM_OUTPUT_SKIP(FILE,SIZE)  \
-  fprintf (FILE, "\tbyte 0[%d]\n", (int)(SIZE))
-
+  do {						\
+  if (TARGET_PASM)				\
+    fprintf (FILE, "\tbyte 0[%d]\n", (int)(SIZE));	\
+  else							\
+    fprintf (FILE, "\t.zero\t%d\n", (int)(SIZE));	\
+  } while(0)
 
 /* Output and Generation of Labels */
 
-#define GLOBAL_ASM_OP "\'\t.global\t"
 #define ASM_OUTPUT_LABEL(FILE,NAME) propeller_output_label(FILE,NAME)
 #define ASM_OUTPUT_INTERNAL_LABEL(FILE,NAME) propeller_output_label(FILE,NAME)
 
