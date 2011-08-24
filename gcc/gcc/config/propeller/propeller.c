@@ -1700,6 +1700,29 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
   return NULL_RTX;
 }
 
+/* checks for forward branches */
+bool
+propeller_forward_branch_p (rtx insn)
+{
+  rtx lab = JUMP_LABEL (insn);
+
+  /* The INSN must have a jump label.  */
+  gcc_assert (lab != NULL_RTX);
+
+  if (INSN_ADDRESSES_SET_P ())
+    return INSN_ADDRESSES (INSN_UID (lab)) > INSN_ADDRESSES (INSN_UID (insn));  
+
+  while (insn)
+    {
+      if (insn == lab)
+	return true;
+      else
+	insn = NEXT_INSN (insn);
+    }
+
+  return false;
+}
+
 /*
  * a machine dependent pass over the rtl
  * this is a chance for us to do additional machine specific

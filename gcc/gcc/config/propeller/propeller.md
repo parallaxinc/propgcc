@@ -111,6 +111,7 @@
 ; gen...).
 (define_attr "predicable" "no,yes" (const_string "no"))
 
+
 ;;
 ;; the user's __asm__ instruction has the following attributes
 ;;
@@ -1208,7 +1209,9 @@
   "TARGET_LMM"
 {
   return (get_attr_length (insn) == 4) ?
-               "%p1\tadd\tpc,#(%l0-.)" :
+               (propeller_forward_branch_p (insn) ?
+	            "%p1\tadd\tpc,#(%l0-(.+4))" :
+		    "%p1\tsub\tpc,#((.+4)-%l0)") :
 	       "%p1\trdlong\tpc,pc\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")
@@ -1359,8 +1362,20 @@
   [(set (pc)
 	(label_ref (match_operand 0 "" "")))]
   "TARGET_LMM"
-  "rdlong\tpc,pc\n\tlong\t%0"
-  [(set_attr "length" "8")]
+{
+  return (get_attr_length (insn) == 4) ?
+               (propeller_forward_branch_p (insn) ?
+	            "add\tpc,#(%l0-(.+4))" :
+		    "sub\tpc,#((.+4)-%l0)") :
+	       "rdlong\tpc,pc\n\tlong\t%l0";
+}
+[ (set (attr "length")
+      (if_then_else 
+          (and (ge (minus (match_dup 0)(pc)) (const_int -500))
+	       (le (minus (match_dup 0)(pc)) (const_int 500)))
+	  (const_int 4)
+	  (const_int 8)))
+]
 )
 
 ;; -------------------------------------------------------------------------

@@ -476,7 +476,7 @@ typedef unsigned int CUMULATIVE_ARGS;
 /* Assembler Commands for Alignment */
 
 #define ASM_OUTPUT_ALIGN(STREAM,POWER)				\
-  if (TARGET_PASM)						\
+  do { if (TARGET_PASM)						\
     {								\
       if (POWER == 1)						\
         fprintf (STREAM, "\tword\n");				\
@@ -484,7 +484,7 @@ typedef unsigned int CUMULATIVE_ARGS;
 	fprintf (STREAM, "\tlong\n");				\
     }								\
   else								\
-    fprintf (STREAM, "\t.balign\t%u\n", (1U<<POWER))
+    fprintf (STREAM, "\t.balign\t%u\n", (1U<<POWER)); } while (0)
 
 /* This says how to output an assembler line
    to define a global common symbol.  */
