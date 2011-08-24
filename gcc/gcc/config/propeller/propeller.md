@@ -25,12 +25,24 @@
 ;; Propeller specific constraints, predicates and attributes
 ;; -------------------------------------------------------------------------
 
-; make sure these values match the definition in propeller.h
+;; defines for specific registers of interest
+;; some of these are also used in propeller.h
+
+;;
+;;  
 (define_constants
-  [(CC_REG 18)
-   (SP_REG 16)
+  [
+   (FRAME_REG 14)
    (LINK_REG 15)
-   (STORE_FLAG 1)
+   (SP_REG 16)
+   (LMM_PC_REG 17)
+   (CC_REG 18)
+  ]
+)
+
+(define_constants
+  [
+   (STORE_FLAG_VALUE 1)
   ]
 )
 
@@ -619,11 +631,19 @@
     }
 })
 
+(define_insn "*movsi_lmm"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+        (match_operand:SI 1 "propeller_big_const" "i"))]
+  "TARGET_LMM"
+  "jmp\t#LMM_MVI_%0\n\tlong\t%1"
+  [(set_attr "length" "8")
+  ]
+)
+
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:SI 1 "general_operand"               "rCI,N,Q,rC"))]
-  "propeller_dst_operand (operands[0], SImode)
-   || propeller_dst_operand (operands[1], SImode)"
+  ""
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -644,6 +664,53 @@
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
+
+;; compare and set patterns
+(define_insn "*movsi_compare0"
+  [(set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_operand:SI 1 "propeller_src_operand" "rCI")
+		      (const_int 0)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_dup 1))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+(define_insn "*movsi_compare0_flip"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_operand:SI 1 "propeller_src_operand" "rCI"))
+   (set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_dup 1)
+		      (const_int 0)))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+(define_insn "*movsi_compare0b"
+  [(set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_operand:SI 0 "propeller_dst_operand" "=rC")
+		      (const_int 0)))
+   (set (match_dup 0)
+	(match_operand:SI 1 "propeller_src_operand" "rCI"))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+(define_insn "*movsi_compare0_flipb"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_operand:SI 1 "propeller_src_operand" "rCI"))
+   (set (reg:CC_Z CC_REG)
+	(compare:CC_Z (match_dup 0)
+		      (const_int 0)))]
+  ""
+  "mov\t%0,%1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
 
 (define_expand "movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand" "")
@@ -1044,7 +1111,7 @@
         (if_then_else:SI
           (match_operator 1 "predicate_operator"
             [(match_dup 4)(const_int 0)])
-          (const_int STORE_FLAG)
+          (const_int STORE_FLAG_VALUE)
           (const_int 0)))]
   ""
 {
@@ -1124,7 +1191,7 @@
 	                [(reg CC_REG) (const_int 0)])
 		      (label_ref (match_operand 0 "" ""))
 		      (pc)))]
-  ""
+  "!TARGET_LMM"
 {
   return "%p1\tjmp\t#%l0";
 }
@@ -1132,6 +1199,27 @@
 ]
 )
 
+(define_insn "*condbranch_lmm"
+  [(set (pc)
+	(if_then_else (match_operator 1 "ordered_comparison_operator"
+	                [(reg CC_REG) (const_int 0)])
+		      (label_ref (match_operand 0 "" ""))
+		      (pc)))]
+  "TARGET_LMM"
+{
+  return (get_attr_length (insn) == 4) ?
+               "%p1\tadd\tpc,#(%l0-.)" :
+	       "%p1\trdlong\tpc,pc\n\tlong\t%l0";
+}
+[(set_attr "conds" "use")
+ (set (attr "length")
+      (if_then_else 
+          (and (ge (minus (match_dup 0)(pc)) (const_int -500))
+	       (le (minus (match_dup 0)(pc)) (const_int 500)))
+	  (const_int 4)
+	  (const_int 8)))
+]
+)
 
 ;; -------------------------------------------------------------------------
 ;; Call and Jump instructions
@@ -1152,12 +1240,25 @@
 	         (match_operand 1 "" ""))
    (clobber (reg:SI LINK_REG))
   ]
-  ""
+  "!TARGET_LMM"
   "@
    jmpret\tlr,#%0
    jmpret\tlr,%0"
   [(set_attr "type" "call")
    (set_attr "predicable" "yes")]
+)
+
+(define_insn "call_std_lmm"
+  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
+	         (match_operand 1 "" ""))
+   (clobber (reg:SI LINK_REG))
+  ]
+  "TARGET_LMM"
+  "@
+   jmp\t#LMM_CALL\n\tlong\t%0
+   mov\t__TMP,%0\n\tjmp\t#LMM_CALL_INDIRECT"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
 )
 
 ;;
@@ -1194,12 +1295,26 @@
 	      (match_operand 2 "" "")))
    (clobber (reg:SI LINK_REG))
   ]
-  ""
+  "!TARGET_LMM"
   "@
    jmpret\tlr,#%1
    jmpret\tlr,%1"
   [(set_attr "type" "call")
    (set_attr "predicable" "yes")]
+ )
+
+(define_insn "*call_value_lmm"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
+	(call (mem:SI (match_operand:SI 1 "call_operand" "i,rC"))
+	      (match_operand 2 "" "")))
+   (clobber (reg:SI LINK_REG))
+  ]
+  "TARGET_LMM"
+  "@
+   jmp\t#LMM_CALL\n\tlong\t%1
+   mov\t__TMP,%1\n\tjmp\t#LMM_CALL_INDIRECT"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
  )
 
 (define_insn "call_native_value"
@@ -1218,18 +1333,35 @@
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "rC"))]
   ""
-  "jmp\t%0"
-  [(set_attr "predicable" "yes")]
+{ if (TARGET_LMM)
+    return "mov pc,%0";
+  else
+    return "jmp\t%0";
+}
 )
 
-(define_insn "jump"
+(define_expand "jump"
   [(set (pc)
 	(label_ref (match_operand 0 "" "")))]
   ""
+  ""
+)
+
+(define_insn "*jump_std"
+  [(set (pc)
+	(label_ref (match_operand 0 "" "")))]
+  "!TARGET_LMM"
   "jmp\t#%0"
   [(set_attr "predicable" "yes")]
 )
 
+(define_insn "*jump_lmm"
+  [(set (pc)
+	(label_ref (match_operand 0 "" "")))]
+  "TARGET_LMM"
+  "rdlong\tpc,pc\n\tlong\t%0"
+  [(set_attr "length" "8")]
+)
 
 ;; -------------------------------------------------------------------------
 ;; Prologue & Epilogue
@@ -1502,28 +1634,63 @@
   ""
 )
 
+;;
+;; an arithmetic operation, followed by a move and a compare
+;;
+(define_peephole2
+  [(set (match_operand:SI 0 "register_operand" "")
+        (match_operator:SI 3 "propeller_math_op2"
+	  [(match_dup 0)
+           (match_operand:SI 1 "propeller_src_operand" "")]))
+   (set (match_operand:SI 2 "propeller_dst_operand" "")
+        (match_dup 0))
+   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 0) (const_int 0)))
+  ]
+  "peep2_reg_dead_p (3, operands[0])"
+  [
+   (set (match_dup 2)(match_dup 0))
+   (parallel
+     [(set (reg:CC_Z CC_REG)
+           (compare:CC_Z 
+	     (match_op_dup 3 [(match_dup 2)(match_dup 1)])
+	     (const_int 0)))
+      (set (match_dup 2)
+           (match_op_dup 3 [(match_dup 2)(match_dup 1)]))
+      ])]
+  ""
+)
+
+;;
+;; move followed by a redundant compare
+;;
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
+  ]
+  ""
+  [(parallel
+     [(set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1)(const_int 0)))
+      (set (match_dup 0)(match_dup 1))])]
+  ""
+)
+
+;;
+;; needless move
+;;
+(define_peephole2
+  [(set (match_operand:SI 0 "register_operand" "")
+        (match_operand:SI 1 "propeller_dst_operand" ""))
+   (set (match_dup 1)(match_dup 0))
+  ]
+  "peep2_reg_dead_p (2, operands[0]) && !(MEM_P (operands[1]) && MEM_VOLATILE_P (operands[1]))"
+  [(const_int 0)]
+  ""
+)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; old-style peepholes: these work at the very end of compilation
 ;; and can occasionally catch issues that are missed by earlier
 ;; passes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;
-;; move followed by redundant compare
-;;
-(define_peephole
-  [(set (match_operand:SI 0 "propeller_dst_operand" "")
-        (match_operand:SI 1 "propeller_src_operand" ""))
-   (set (reg:CC_Z CC_REG)
-        (compare:CC_Z (match_dup 0)(const_int 0)))]
-  ""
-  "mov\t%0,%1 wz"
-)
-(define_peephole
-  [(set (match_operand:SI 0 "propeller_dst_operand" "")
-        (match_operand:SI 1 "propeller_src_operand" ""))
-   (set (reg:CC CC_REG)
-        (compare:CC (match_dup 0)(const_int 0)))]
-  ""
-  "mov\t%0,%1 wz,wc"
-)
