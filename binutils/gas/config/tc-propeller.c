@@ -191,6 +191,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       BAD_CASE (fixP->fx_r_type);
     }
 
+  if((val << shift) & ~mask){
+    as_bad_where (fixP->fx_file, fixP->fx_line,
+		  _("Relocation overflows"));
+  }
+
   if (fixP->fx_addsy != NULL){
     val += symbol_get_bfdsym (fixP->fx_addsy)->section->vma;
   }
