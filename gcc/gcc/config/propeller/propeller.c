@@ -555,7 +555,7 @@ propeller_asm_output_aligned_common (FILE *stream,
     }
   if (TARGET_PASM)
     {
-      int i;
+      int i = size;
       assemble_name (stream, name);
       fprintf (stream, "\n");
       while (i > 4) {

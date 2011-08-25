@@ -23,6 +23,30 @@
 #define GCC_PROPELLER_H
 
 /*-------------------------------*/
+/* Config for gas and binutils   */
+/*-------------------------------*/
+#undef  STARTFILE_SPEC
+#define STARTFILE_SPEC "%{pg:gcrt0.o%s}%{!pg:crt0.o%s}"
+
+#undef  ENDFILE_SPEC
+#define ENDFILE_SPEC "crtn.o%s"
+
+#undef ASM_SPEC
+#define ASM_SPEC "\
+%{!mpasm: \
+    %{mrelax:-relax}} \
+"
+#undef LIB_SPEC
+#define LIB_SPEC "				\
+--start-group					\
+-lc						\
+--end-group					\
+"
+
+#undef LINK_SPEC
+#define LINK_SPEC "%{mrelax:-relax}"
+
+/*-------------------------------*/
 /* Run-time Target Specification */
 /*-------------------------------*/
 
@@ -453,7 +477,6 @@ typedef unsigned int CUMULATIVE_ARGS;
 /*
  * the overal assembler file framework
  */
-#undef  ASM_SPEC
 #define ASM_COMMENT_START "\'"
 #define ASM_APP_ON ""
 #define ASM_APP_OFF ""
