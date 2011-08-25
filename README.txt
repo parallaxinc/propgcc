@@ -11,14 +11,17 @@ gcc	  - gcc 4.6.1 (complete) plus propeller changes
 To build under Linux, execute the following commands (starting in this
 directory, which I assume is named "propgcc" on your system):
 
-(1) mkdir -p ../build/binutils
-(2) cd ../build/binutils
-(3) ../../propgcc/binutils/configure --target=propeller-elf
-(4) make
+(1) mkdir -p ../build
+(2) cd ../build
+(3) ../propgcc/binutils/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls
+(4) make all
 
-This will start building binutils. It will fail when it gets to things
-we haven't gotten finished yet (the disassembler, linker, and/or gas).
+This will build binutils. 
 
+To install it in /usr/local/propeller (make sure that directory exists
+on your system and is writable first!) do:
+
+(5) make install
 
 ------------------------ gcc build ---------------------------------
 To build under Linux, execute the following commands (starting in this
@@ -26,14 +29,7 @@ directory, which I assume is named "propgcc" on your system):
 
 (1) mkdir -p ../build/gcc
 (2) cd ../build/gcc
-(3) ../../propgcc/gcc/configure --target=propeller
-(4) make
-
-This will fail with a message about object file types when it gets to
-the point of trying to build the gcc front end driver. But the compiler
-itself (cc1) is built at this point, and we can use it like so:
-
-gcc/cc1 -O -fomit-frame-pointer -o foo.s foo.c
-
-to produce assembly output from (already preprocessed) C code.
+(3) ../../propgcc/gcc/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls
+(4) make all-gcc
+(5) make install-gcc
 
