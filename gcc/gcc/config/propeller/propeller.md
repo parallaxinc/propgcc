@@ -636,7 +636,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (match_operand:SI 1 "propeller_big_const" "i"))]
   "TARGET_LMM"
-  "jmp\t#__LMM_MVI_%0\n\tlong\t%1"
+  "jmp\t#__LMM_MVI_%0\n\tlong\t%c1"
   [(set_attr "length" "8")
   ]
 )
@@ -1417,7 +1417,11 @@
    (use (match_operand:SI 0 "register_operand" "r"))
   ]
   ""
-  "jmp\t%0"
+{ if (TARGET_LMM)
+    return "mov\tpc,%0";
+  else
+    return "jmp\t%0";
+}
 )
 
 (define_insn "naked_return"
@@ -1441,8 +1445,16 @@
   [(return)
    (use (reg:SI LINK_REG))
   ]
-  "propeller_can_use_return ()"
+  "!TARGET_LMM && propeller_can_use_return ()"
   "jmp\tlr"
+)
+
+(define_insn "*return_lmm"
+  [(return)
+   (use (reg:SI LINK_REG))
+  ]
+  "TARGET_LMM && propeller_can_use_return ()"
+  "mov\tpc,lr"
 )
 
 (define_expand "return"
