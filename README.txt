@@ -11,9 +11,9 @@ gcc	  - gcc 4.6.1 (complete) plus propeller changes
 To build under Linux, execute the following commands (starting in this
 directory, which I assume is named "propgcc" on your system):
 
-(1) mkdir -p ../build
-(2) cd ../build
-(3) ../propgcc/binutils/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls
+(1) mkdir -p ../build/binutils
+(2) cd ../build/binutils
+(3) ../../propgcc/binutils/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls
 (4) make all
 
 This will build binutils. 
