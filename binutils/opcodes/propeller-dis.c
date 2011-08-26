@@ -255,7 +255,7 @@ read_word (bfd_vma memaddr, int *word, disassemble_info * info)
   if (status != 0)
     return -1;
 
-  *word = x[0] << 24 | x[1] << 16 | x[2] << 8 | x[3];
+  *word = x[0] | x[1] << 8 | x[2] << 16 | x[3] << 24;
   return 0;
 }
 
