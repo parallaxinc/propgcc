@@ -636,7 +636,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (match_operand:SI 1 "propeller_big_const" "i"))]
   "TARGET_LMM"
-  "jmp\t#LMM_MVI_%0\n\tlong\t%1"
+  "jmp\t#__LMM_MVI_%0\n\tlong\t%1"
   [(set_attr "length" "8")
   ]
 )
@@ -1258,8 +1258,8 @@
   ]
   "TARGET_LMM"
   "@
-   jmp\t#LMM_CALL\n\tlong\t%0
-   mov\t__TMP,%0\n\tjmp\t#LMM_CALL_INDIRECT"
+   jmp\t#__LMM_CALL\n\tlong\t%0
+   mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
 )
@@ -1314,8 +1314,8 @@
   ]
   "TARGET_LMM"
   "@
-   jmp\t#LMM_CALL\n\tlong\t%1
-   mov\t__TMP,%1\n\tjmp\t#LMM_CALL_INDIRECT"
+   jmp\t#__LMM_CALL\n\tlong\t%1
+   mov\t__TMP0,%1\n\tjmp\t#__LMM_CALL_INDIRECT"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
  )
