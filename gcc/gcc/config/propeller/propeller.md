@@ -178,11 +178,13 @@
 (define_code_iterator muxcond [ne eq lt ge ltu geu])
 (define_code_attr muxcc [(ne "nz") (eq "z") (lt "c") (ltu "c")
                          (ge "nc") (geu "nc")])
-(define_code_attr muxccmode [(ne "CC_Z") (eq "CC_Z") (lt "CC") (ltu "CCUNS")
-                             (ge "CC") (geu "CCUNS")])
+(define_code_attr muxccmode [(ne "CC_Z") (eq "CC_Z") (lt "CC") (ltu "CC_C")
+                             (ge "CC") (geu "CC_C")])
+
+(define_code_iterator ltugeu [ltu geu])
 
 ;; types of condition codes we can branch on
-(define_mode_iterator BRCC [CC CCUNS CC_Z])
+(define_mode_iterator BRCC [CC CCUNS CC_C CC_Z])
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -222,12 +224,16 @@
 ;;
 ;; versions which set flags
 ;;
+
+;; NOTE: combine does some funky canonicalizations. In particular, it
+;; changes (compare (x+y) 0) to (compare x (-y)), so write the pattern
+;; accordingly
+
 (define_insn "*addsi3_compare0"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
-          (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
-                   (match_operand:SI 2 "propeller_add_operand"  "rCI,N"))
-          (const_int 0)))
+		(match_operand:SI 1 "propeller_dst_operand" "%0,0")
+                (neg:SI(match_operand:SI 2 "propeller_src_operand"  "rCI,N"))))
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	  (plus:SI (match_dup 1)(match_dup 2)))]
   ""
@@ -237,6 +243,19 @@
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")
   ]
+)
+(define_insn "*addsi3_compare0_only"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	    (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
+            (neg:SI (match_operand:SI 1 "propeller_src_operand" "rCI,N"))))
+   ]
+  ""
+  "@
+   add\t%0,%1 nr,wz
+   sub\t%0,#%n1 nr,wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
 )
 (define_insn "*subsi3_compare0"
   [(set (reg:CC_Z CC_REG)
@@ -317,6 +336,79 @@
   "cmpsub\t%0,%2 wz,wc"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
+)
+
+;;
+;; add with carry
+;;
+;; These insns work because they compare the result with one of
+;; the operands, and we know that the use of the condition code is
+;; either GEU or LTU, so we can use the carry flag from the addition
+;; instead of doing the compare a second time.
+
+(define_insn "*addsi3_set_carry1"
+  [(set (reg:CC_C CC_REG)
+        (compare:CC_C
+          (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
+                   (match_operand:SI 2 "propeller_add_operand"  "rCI,N"))
+          (match_dup 1)))
+  (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	  (plus:SI (match_dup 1)(match_dup 2)))]
+  ""
+  "@
+   add\t%0, %2 wc
+   sub\t%0, #%n2 wc"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")
+  ]
+)
+(define_insn "*addsi3_set_carry2"
+  [(set (reg:CC_C CC_REG)
+        (compare:CC_C
+          (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
+                   (match_operand:SI 2 "propeller_add_operand"  "rCI,N"))
+          (match_dup 2)))
+  (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	  (plus:SI (match_dup 1)(match_dup 2)))]
+  ""
+  "@
+   add\t%0, %2 wc
+   sub\t%0, #%n2 wc"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")
+  ]
+)
+
+(define_insn "*addsi3_carryin1"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(plus:SI (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
+			  (match_operand:SI 2 "propeller_src_operand" "rCI"))
+		 (if_then_else:SI
+		   (ltu:SI (reg:CC_C CC_REG) (const_int 0))
+		   (const_int 1)
+		   (const_int 0)))
+		   )]
+  ""
+  "addx\\t%0, %2"
+  [(set_attr "conds" "use")
+   (set_attr "predicable" "yes")
+  ]
+)
+(define_insn "*addsi3_carryin2"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(plus:SI (if_then_else:SI
+		   (ltu:SI (reg:CC_C CC_REG) (const_int 0))
+		   (const_int 1)
+		   (const_int 0))
+	         (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0")
+			  (match_operand:SI 2 "propeller_src_operand" "rCI"))
+		 ))
+  ]
+  ""
+  "addx\\t%0, %2"
+  [(set_attr "conds" "use")
+   (set_attr "predicable" "yes")
+  ]
 )
 
 ;; -------------------------------------------------------------------------
@@ -1019,7 +1111,7 @@
 (define_insn "*or_andn_<muxcond:code>"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
         (if_then_else:SI
-	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+	  (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
 	  (ior:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 	          (match_operand:SI 2 "propeller_src_operand" "rCI"))
 	  (and:SI (not:SI (match_dup 2))
@@ -1034,7 +1126,7 @@
 (define_insn "*movesi<muxcond:code>_allones"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
         (if_then_else:SI
-	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+	    (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
             (const_int -1)
 	    (const_int 0)))]
   ""
@@ -1055,7 +1147,7 @@
 (define_insn_and_split "*movesi<muxcond:code>_one"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
         (if_then_else:SI
-	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+	    (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
             (match_operand:SI 1 "propeller_src_operand" "rCI")
 	    (const_int 0)))]
   ""
@@ -1064,7 +1156,7 @@
   [(set (match_dup 0)(const_int 0))
    (set (match_dup 0)
         (if_then_else:SI
-	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
+	  (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
           (ior:SI (match_dup 0)(match_dup 1))
           (and:SI (not:SI (match_dup 1))(match_dup 0))))
   ]
@@ -1078,7 +1170,7 @@
 (define_insn "*movsicc_insn"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC,rC,rC,rC,rC,rC,rC")
         (if_then_else:SI
-	  (match_operator 3 "predicate_operator"
+	  (match_operator:SI 3 "predicate_operator"
 	    [(match_operand 4 "cc_register" "") (const_int 0)])
 	  (match_operand:SI 1 "propeller_add_operand" "0,0,rCI,N,rCI,rCI,N,N")
 	  (match_operand:SI 2 "propeller_add_operand" "rCI,N,0,0,rCI,N,rCI,N" )))]
@@ -1110,7 +1202,7 @@
           (match_operand:SI 3 "propeller_src_operand" "")]))
    (set (match_operand:SI 0)
         (if_then_else:SI
-          (match_operator 1 "predicate_operator"
+          (match_operator:SI 1 "predicate_operator"
             [(match_dup 4)(const_int 0)])
           (const_int STORE_FLAG_VALUE)
           (const_int 0)))]
@@ -1146,6 +1238,16 @@
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
   "cmp\t%0, %1 wz"
+  [(set_attr "conds" "set")]
+)
+
+(define_insn "compare_carryonly"
+  [(set (reg:CC_C CC_REG)
+	(compare:CC_C
+	 (match_operand:SI 0 "propeller_dst_operand" "rC")
+	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
+  ""
+  "cmp\t%0, %1 wc"
   [(set_attr "conds" "set")]
 )
 
@@ -1627,6 +1729,21 @@
 ;; -------------------------------------------------------------------------
 
 ;;
+;; move followed by a redundant compare
+;;
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
+  ]
+  ""
+  [(parallel
+     [(set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1)(const_int 0)))
+      (set (match_dup 0)(match_dup 1))])]
+  ""
+)
+
+;;
 ;; reload will generate constant pool addresses for a lot of things
 ;; if those fall in cog memory, we can optimize away the move to register
 ;;
@@ -1687,20 +1804,6 @@
   ""
 )
 
-;;
-;; move followed by a redundant compare
-;;
-(define_peephole2
-  [(set (match_operand:SI 0 "propeller_dst_operand" "")
-        (match_operand:SI 1 "propeller_src_operand" ""))
-   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
-  ]
-  ""
-  [(parallel
-     [(set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1)(const_int 0)))
-      (set (match_dup 0)(match_dup 1))])]
-  ""
-)
 
 ;;
 ;; needless move

@@ -966,7 +966,10 @@ propeller_select_cc_mode (RTX_CODE op, rtx x ATTRIBUTE_UNUSED, rtx y ATTRIBUTE_U
 {
   if (op == EQ || op == NE)
     return CC_Zmode;
-  if (op == GTU || op == LTU || op == GEU || op == LEU)
+  /* for unsigned ltu and geu only the carry matters */
+  if (op == LTU || op == GEU)
+    return CC_Cmode;
+  if (op == GTU || op == LEU)
     return CCUNSmode;
 
   return CCmode;
@@ -1012,14 +1015,17 @@ propeller_match_ccmode (rtx insn, enum machine_mode req_mode)
   /* Ensure that the mode of FLAGS is compatible with REQ_MODE.
    * For example, CC_Z is compatible with both CCUNS and CC,
    * but not necessarily vice-versa
+   * similarly CC_C (where only the carry is set) is compatible with CCUNS
    */
   switch (flags_mode)
-  {
-  case CC_Zmode:
+    {
+    case CC_Zmode:
       return (req_mode == CC_Zmode || req_mode == CCmode || req_mode == CCUNSmode);
-  default:
+    case CC_Cmode:
+      return (req_mode == CC_Cmode || req_mode == CCUNSmode);
+    default:
       return (req_mode == flags_mode);
-  }
+    }
 }
 
 
