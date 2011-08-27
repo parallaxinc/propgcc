@@ -109,7 +109,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* test     011000 zc0i cccc ddddddddd sssssssss */
   {"test", 0x60000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
 /* and      011000 zc1i cccc ddddddddd sssssssss */
-  {"and", 0x60000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
+  {"and", 0x60000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* andn     011001 zcri cccc ddddddddd sssssssss */
   {"andn", 0x64000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* or       011010 zcri cccc ddddddddd sssssssss */
@@ -341,22 +341,38 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 	    FPRINTF (F, OP.name);
 	    FPRINTF (F, AFTER_INSTRUCTION);
 	    if (immediate)
-	      FPRINTF (F, "#");
-	    FPRINTF (F, "%d", src);
+	      {
+		FPRINTF (F, "#");
+	      }
+	    info->target = src<<2;
+	    (*info->print_address_func) (info->target, info);
 	    goto done;
 	  case PROPELLER_OPERAND_DEST_ONLY:
 	    FPRINTF (F, OP.name);
 	    FPRINTF (F, AFTER_INSTRUCTION);
-	    FPRINTF (F, "%d", dst);
+	    {
+	      info->target = dst<<2;
+	      (*info->print_address_func) (info->target, info);
+	    }
 	    goto done;
 	  case PROPELLER_OPERAND_TWO_OPS:
 	    FPRINTF (F, OP.name);
 	    FPRINTF (F, AFTER_INSTRUCTION);
-	    FPRINTF (F, "%d", dst);
+	      {
+		info->target = dst<<2;
+		(*info->print_address_func) (info->target, info);
+	      }
 	    FPRINTF (F, OPERAND_SEPARATOR);
 	    if (immediate)
+	      {
 	      FPRINTF (F, "#");
-	    FPRINTF (F, "%d", src);
+	      FPRINTF (F, "%d", src);
+	      }
+	    else
+	      {
+		info->target = src<<2;
+		(*info->print_address_func) (info->target, info);
+	      }
 	    goto done;
 	  default:
 	    /* TODO: is this a proper way of signalling an error? */
