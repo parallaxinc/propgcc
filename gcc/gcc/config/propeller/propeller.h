@@ -424,7 +424,7 @@ typedef unsigned int CUMULATIVE_ARGS;
 
 /* A C statement (sans semicolon) for initializing the variable CUM
    for the state at the beginning of the argument list.  
-   For moxie, the first arg is passed in register 2 (aka $r0).  */
+   For propeller, the first arg is passed in register 0  */
 #define INIT_CUMULATIVE_ARGS(CUM,FNTYPE,LIBNAME,FNDECL,N_NAMED_ARGS) \
     (CUM = PROP_R0)
 
@@ -441,7 +441,10 @@ typedef unsigned int CUMULATIVE_ARGS;
 /* Offset from the frame pointer to the first local variable slot to
    be allocated.  */
 #define STARTING_FRAME_OFFSET (UNITS_PER_WORD)
-#define STACK_POINTER_OFFSET  (UNITS_PER_WORD)
+
+/* Offset from the stack pointer register to the first location at which
+   outgoing arguments are placed */
+#define STACK_POINTER_OFFSET  (0)
 
 /* Define this if the above stack space is to be considered part of the
    space allocated by the caller.  */
