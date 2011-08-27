@@ -1448,8 +1448,8 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
   if (!TARGET_LMM)
     {
-      /* not many constants can go into the text section */
-      if (TREE_CODE (decl) != VAR_DECL)
+      /* put constants into the data section (in hub ram) */
+      if (TREE_CODE (decl) != VAR_DECL && TREE_CODE (decl) != FUNCTION_DECL)
 	return data_section;
     }
   return default_elf_select_section (decl, reloc, align);
