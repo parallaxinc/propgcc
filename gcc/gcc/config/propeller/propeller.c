@@ -1421,6 +1421,42 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 }
 
 /*
+ * code for selecting which section a constant or declaration should go in
+ */
+
+/* where should we put a constant?
+ * in cog mode, only integer constants should go in text,
+ * everything else should go in data
+ */
+static section *
+propeller_select_rtx_section (enum machine_mode mode, rtx x,
+			      unsigned HOST_WIDE_INT align)
+{
+  if (!TARGET_LMM)
+    {
+      if (GET_MODE_SIZE (mode) >= BITS_PER_UNIT
+	  || mode == BLKmode)
+	{
+	  return data_section;
+	}
+    }
+  return default_elf_select_rtx_section (mode, x, align);
+}
+
+static section *
+propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
+{
+  if (!TARGET_LMM)
+    {
+      /* not many constants can go into the text section */
+      if (TREE_CODE (decl) != VAR_DECL)
+	return data_section;
+    }
+  return default_elf_select_section (decl, reloc, align);
+}
+
+
+/*
  * builtin functions
  * here are the builtins we support:
  *
@@ -1809,6 +1845,11 @@ propeller_reorg(void)
 
 #undef TARGET_MACHINE_DEPENDENT_REORG
 #define TARGET_MACHINE_DEPENDENT_REORG propeller_reorg
+
+#undef TARGET_ASM_SELECT_SECTION
+#define TARGET_ASM_SELECT_SECTION propeller_select_section
+#undef TARGET_ASM_SELECT_RTX_SECTION
+#define TARGET_ASM_SELECT_RTX_SECTION propeller_select_rtx_section
 
 #undef TARGET_ASM_BYTE_OP
 #define TARGET_ASM_BYTE_OP "\tbyte\t"
