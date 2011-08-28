@@ -165,6 +165,8 @@ propeller_final_link_relocate (reloc_howto_type * howto,
 
   switch (howto->type)
     {
+    case R_PROPELLER_SRC:
+    case R_PROPELLER_DST:
     default:
       r = _bfd_final_link_relocate (howto, input_bfd, input_section,
 				    contents, rel->r_offset,
@@ -246,7 +248,13 @@ propeller_elf_relocate_section (bfd * output_bfd,
 	{
 	  sym = local_syms + r_symndx;
 	  sec = local_sections[r_symndx];
-	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
+	  if(sym->st_other & PROPELLER_OTHER_COG_RAM){
+	    Elf_Internal_Sym s = *sym;
+	    s.st_value /= 4;
+	    relocation = _bfd_elf_rela_local_sym (output_bfd, &s, &sec, rel);
+	  } else {
+	    relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
+	  }
 
 	  name = bfd_elf_string_from_elf_section
 	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
