@@ -93,6 +93,8 @@ const char *propeller_text_asm_op;
 const char *propeller_data_asm_op;
 const char *propeller_bss_asm_op;
 
+static const char *hex_prefix;
+
 /* Implement TARGET_OPTION_OPTIMIZATION_TABLE.  */
 
 static const struct default_options propeller_option_optimization_table[] =
@@ -123,12 +125,14 @@ propeller_option_override (void)
     if (TARGET_OUTPUT_SPINCODE)
       target_flags |= MASK_PASM;
 
+    hex_prefix = "0x"; /* default to gas syntax */
     /* set up the assembly output */
     if (TARGET_PASM)
       {
 	propeller_text_asm_op = "\t'.text";
 	propeller_data_asm_op = "\t'.data";
 	propeller_bss_asm_op = "\t'.bss";
+	hex_prefix = "$";
       }
     else if (TARGET_LMM)
       {
@@ -364,32 +368,32 @@ propeller_asm_file_start (void)
  */
 static void
 pasm_clzsi(FILE *f) {
-    fprintf(f, "__MASK_00FF00FF\tlong\t$00FF00FF\n");
-    fprintf(f, "__MASK_0F0F0F0F\tlong\t$0F0F0F0F\n");
-    fprintf(f, "__MASK_33333333\tlong\t$33333333\n");
-    fprintf(f, "__MASK_55555555\tlong\t$55555555\n");
-    fprintf(f, "__CLZSI\trev\tr0,#0\n");
-    fprintf(f, "__CTZSI\tneg\t__TMP0,r0\n"); 
-    fprintf(f, "\tand\t__TMP0,r0 wz\n");
-    /* slight wrinkle: we want ctzsi(0) == 32, so start
-       the count as (x == 0) ? 1 : 0
-    */
-    fprintf(f, "\tmov\tr0,#0\n");
-    fprintf(f, "\tIF_Z\tmov\tr0,#1\n");
-    fprintf(f, "\ttest\t__TMP0, __MASK_0000FFFF wz\n");
-    fprintf(f, "\tIF_Z\tadd\tr0,#16\n");
-    fprintf(f, "\ttest\t__TMP0, __MASK_00FF00FF wz\n");
-    fprintf(f, "\tIF_Z\tadd\tr0,#8\n");
-    fprintf(f, "\ttest\t__TMP0, __MASK_0F0F0F0F wz\n");
-    fprintf(f, "\tIF_Z\tadd\tr0,#4\n");
-    fprintf(f, "\ttest\t__TMP0, __MASK_33333333 wz\n");
-    fprintf(f, "\tIF_Z\tadd\tr0,#2\n");
-    fprintf(f, "\ttest\t__TMP0, __MASK_55555555 wz\n");
-    fprintf(f, "\tIF_Z\tadd\tr0,#1\n");
-    /* note: when calling ctz we need to use jmpret instead of
-       call, since the return is named for C_CLZSI
-    */
-    fprintf(f, "__CLZSI_ret ret\n");
+  fprintf(f, "__MASK_00FF00FF\tlong\t%s00FF00FF\n", hex_prefix);
+  fprintf(f, "__MASK_0F0F0F0F\tlong\t%s0F0F0F0F\n", hex_prefix);
+  fprintf(f, "__MASK_33333333\tlong\t%s33333333\n", hex_prefix);
+  fprintf(f, "__MASK_55555555\tlong\t%s55555555\n", hex_prefix);
+  fprintf(f, "__CLZSI\trev\tr0,#0\n");
+  fprintf(f, "__CTZSI\tneg\t__TMP0,r0\n"); 
+  fprintf(f, "\tand\t__TMP0,r0 wz\n");
+  /* slight wrinkle: we want ctzsi(0) == 32, so start
+     the count as (x == 0) ? 1 : 0
+  */
+  fprintf(f, "\tmov\tr0,#0\n");
+  fprintf(f, "\tIF_Z\tmov\tr0,#1\n");
+  fprintf(f, "\ttest\t__TMP0, __MASK_0000FFFF wz\n");
+  fprintf(f, "\tIF_Z\tadd\tr0,#16\n");
+  fprintf(f, "\ttest\t__TMP0, __MASK_00FF00FF wz\n");
+  fprintf(f, "\tIF_Z\tadd\tr0,#8\n");
+  fprintf(f, "\ttest\t__TMP0, __MASK_0F0F0F0F wz\n");
+  fprintf(f, "\tIF_Z\tadd\tr0,#4\n");
+  fprintf(f, "\ttest\t__TMP0, __MASK_33333333 wz\n");
+  fprintf(f, "\tIF_Z\tadd\tr0,#2\n");
+  fprintf(f, "\ttest\t__TMP0, __MASK_55555555 wz\n");
+  fprintf(f, "\tIF_Z\tadd\tr0,#1\n");
+  /* note: when calling ctz we need to use jmpret instead of
+     call, since the return is named for C_CLZSI
+  */
+  fprintf(f, "__CLZSI_ret ret\n");
 }
 
 /*
@@ -414,31 +418,31 @@ pasm_clzsi(FILE *f) {
 
 static void
 pasm_udivsi(FILE *f) {
-    fprintf(f, "__DIVR\tlong\t0\n");
-    fprintf(f, "__DIVCNT\tlong\t0\n");
+  fprintf(f, "__DIVR\tlong\t0\n");
+  fprintf(f, "__DIVCNT\tlong\t0\n");
 
-    fprintf(f, "__UDIVSI\n");
-    fprintf(f, "\tmov\t__DIVR,r0\n");
-    fprintf(f, "\tcall\t#__CLZSI\n");
-    fprintf(f, "\tneg\t__DIVCNT,r0\n");
-    fprintf(f, "\tmov\tr0,r1\n");
-    fprintf(f, "\tcall\t#__CLZSI\n");
-    fprintf(f, "\tadd\t__DIVCNT,r0\n");
-    fprintf(f, "\tmov\tr0,#0\n");
-    fprintf(f, "\tcmps\t__DIVCNT,#0 wz,wc\n");
-    fprintf(f, "  IF_C\tjmp\t#__UDIVSI_done\n");
-    fprintf(f, "\tshl\tr1,__DIVCNT\n");
-    fprintf(f, "\tadd\t__DIVCNT,#1\n");  /* adjust for DJNZ loop */
+  fprintf(f, "__UDIVSI\n");
+  fprintf(f, "\tmov\t__DIVR,r0\n");
+  fprintf(f, "\tcall\t#__CLZSI\n");
+  fprintf(f, "\tneg\t__DIVCNT,r0\n");
+  fprintf(f, "\tmov\tr0,r1\n");
+  fprintf(f, "\tcall\t#__CLZSI\n");
+  fprintf(f, "\tadd\t__DIVCNT,r0\n");
+  fprintf(f, "\tmov\tr0,#0\n");
+  fprintf(f, "\tcmps\t__DIVCNT,#0 wz,wc\n");
+  fprintf(f, "  IF_C\tjmp\t#__UDIVSI_done\n");
+  fprintf(f, "\tshl\tr1,__DIVCNT\n");
+  fprintf(f, "\tadd\t__DIVCNT,#1\n");  /* adjust for DJNZ loop */
 
-    fprintf(f, "__UDIVSI_loop\n");
-    fprintf(f, "\tcmpsub\t__DIVR,r1 wz,wc\n");
-    fprintf(f, "\taddx\tr0,r0\n");
-    fprintf(f, "\tshr\tr1,#1\n");
-    fprintf(f, "\tdjnz\t__DIVCNT,#__UDIVSI_loop\n");
+  fprintf(f, "__UDIVSI_loop\n");
+  fprintf(f, "\tcmpsub\t__DIVR,r1 wz,wc\n");
+  fprintf(f, "\taddx\tr0,r0\n");
+  fprintf(f, "\tshr\tr1,#1\n");
+  fprintf(f, "\tdjnz\t__DIVCNT,#__UDIVSI_loop\n");
 
-    fprintf(f, "__UDIVSI_done\n");
-    fprintf(f, "\tmov\tr1,__DIVR\n");
-    fprintf(f, "__UDIVSI_ret\tret\n");
+  fprintf(f, "__UDIVSI_done\n");
+  fprintf(f, "\tmov\tr1,__DIVR\n");
+  fprintf(f, "__UDIVSI_ret\tret\n");
 }
 
 /*
@@ -446,65 +450,66 @@ pasm_udivsi(FILE *f) {
  */
 static void
 pasm_divsi(FILE *f) {
-    fprintf(f, "__DIVSGN\tlong\t0\n");
-    fprintf(f, "__DIVSI\tmov\t__DIVSGN,r0\n");
-    fprintf(f, "\txor\t__DIVSGN,r1\n");
-    fprintf(f, "\tabs\tr0,r0\n");
-    fprintf(f, "\tabs\tr1,r1\n");
-    fprintf(f, "\tcall\t#__UDIVSI\n");
-    fprintf(f, "\tcmps\t__DIVSGN,#0 wz,wc\n");
-    fprintf(f, "\tIF_B\tneg\tr0,r0\n");
-    fprintf(f, "\tIF_B\tneg\tr1,r1\n");
-    fprintf(f, "__DIVSI_ret\tret\n");
+  fprintf(f, "__DIVSGN\tlong\t0\n");
+  fprintf(f, "__DIVSI\tmov\t__DIVSGN,r0\n");
+  fprintf(f, "\txor\t__DIVSGN,r1\n");
+  fprintf(f, "\tabs\tr0,r0\n");
+  fprintf(f, "\tabs\tr1,r1\n");
+  fprintf(f, "\tcall\t#__UDIVSI\n");
+  fprintf(f, "\tcmps\t__DIVSGN,#0 wz,wc\n");
+  fprintf(f, "\tIF_B\tneg\tr0,r0\n");
+  fprintf(f, "\tIF_B\tneg\tr1,r1\n");
+  fprintf(f, "__DIVSI_ret\tret\n");
 }
 
 static void
 propeller_asm_file_end (void)
 {
-    if (!TARGET_OUTPUT_SPINCODE) {
-        return;
+  if (!TARGET_OUTPUT_SPINCODE) {
+    return;
+  }
+  /* adjust for dependencies */
+  if (propeller_need_divsi) {
+    propeller_need_udivsi = true;
+  }
+  if (propeller_need_udivsi) {
+    propeller_need_clzsi = true;
+  }
+  if (propeller_need_clzsi) {
+    propeller_need_mask0000ffff = true;
+  }
+  if (propeller_need_mask0000ffff) {
+    fprintf(asm_out_file, "__MASK_0000FFFF\tlong\t%s0000FFFF\n", hex_prefix);
+  }
+  if (propeller_need_maskffffffff) {
+    fprintf(asm_out_file, "__MASK_FFFFFFFF\tlong\t%sFFFFFFFF\n", hex_prefix);
+  }
+  if (propeller_need_mulsi || propeller_need_clzsi) {
+    fprintf(asm_out_file, "__TMP0\tlong\t0\n");
+  }
+  if (propeller_need_mulsi)
+    {
+      fprintf(asm_out_file, "__MULSI\n");
+      fprintf(asm_out_file, "\tmov\t__TMP0,r0\n");
+      fprintf(asm_out_file, "\tmin\t__TMP0,r1\n");
+      fprintf(asm_out_file, "\tmax\tr1,r0\n");
+      fprintf(asm_out_file, "\tmov\tr0,#0\n");
+      fprintf(asm_out_file, "__MULSI_loop\n");
+      fprintf(asm_out_file, "\tshr\tr1,#1 wz,wc\n");
+      fprintf(asm_out_file, "  IF_C\tadd\tr0,__TMP0\n");
+      fprintf(asm_out_file, "\tadd\t__TMP0,__TMP0\n");
+      fprintf(asm_out_file, "  IF_NZ\tjmp\t#__MULSI_loop\n");
+      fprintf(asm_out_file, "__MULSI_ret\tret\n");
     }
-    /* adjust for dependencies */
-    if (propeller_need_divsi) {
-        propeller_need_udivsi = true;
-    }
-    if (propeller_need_udivsi) {
-        propeller_need_clzsi = true;
-    }
-    if (propeller_need_clzsi) {
-        propeller_need_mask0000ffff = true;
-    }
-    if (propeller_need_mask0000ffff) {
-        fprintf(asm_out_file, "__MASK_0000FFFF\tlong\t$0000FFFF\n");
-    }
-    if (propeller_need_maskffffffff) {
-        fprintf(asm_out_file, "__MASK_FFFFFFFF\tlong\t$FFFFFFFF\n");
-    }
-    if (propeller_need_mulsi || propeller_need_clzsi) {
-        fprintf(asm_out_file, "__TMP0\tlong\t0\n");
-    }
-    if (propeller_need_mulsi) {
-        fprintf(asm_out_file, "__MULSI\n");
-        fprintf(asm_out_file, "\tmov\t__TMP0,r0\n");
-        fprintf(asm_out_file, "\tmin\t__TMP0,r1\n");
-        fprintf(asm_out_file, "\tmax\tr1,r0\n");
-        fprintf(asm_out_file, "\tmov\tr0,#0\n");
-        fprintf(asm_out_file, "__MULSI_loop\n");
-        fprintf(asm_out_file, "\tshr\tr1,#1 wz,wc\n");
-        fprintf(asm_out_file, "  IF_C\tadd\tr0,__TMP0\n");
-        fprintf(asm_out_file, "\tadd\t__TMP0,__TMP0\n");
-        fprintf(asm_out_file, "  IF_NZ\tjmp\t#__MULSI_loop\n");
-        fprintf(asm_out_file, "__MULSI_ret\tret\n");
-    }
-    if (propeller_need_clzsi) {
-        pasm_clzsi(asm_out_file);
-    }
-    if (propeller_need_udivsi) {
-        pasm_udivsi(asm_out_file);
-    }
-    if (propeller_need_divsi) {
-        pasm_divsi(asm_out_file);
-    }
+  if (propeller_need_clzsi) {
+    pasm_clzsi(asm_out_file);
+  }
+  if (propeller_need_udivsi) {
+    pasm_udivsi(asm_out_file);
+  }
+  if (propeller_need_divsi) {
+    pasm_divsi(asm_out_file);
+  }
 }
 
 /*
@@ -513,8 +518,8 @@ propeller_asm_file_end (void)
 void
 propeller_output_label(FILE *file, const char * label)
 {
-    assemble_name (file, label);
-    fputs("\n", file);
+  assemble_name (file, label);
+  fputs("\n", file);
 }
 
 /* The purpose of this function is to override the default behavior of
@@ -638,21 +643,21 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       if (code != CONST_INT) {
           gcc_unreachable ();
       }
-      fprintf (file, "#$%lx", ~INTVAL (op));
+      fprintf (file, "#%s%lx", hex_prefix, ~INTVAL (op));
       return;
   }
   if (letter == 'm') {
       if (code != CONST_INT) {
           gcc_unreachable ();
       }
-      fprintf (file, "#$%lx", (1L<<INTVAL (op))-1);
+      fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op))-1);
       return;
   }
   if (letter == 'B') {
       if (code != CONST_INT) {
           gcc_unreachable ();
       }
-      fprintf (file, "#$%lx", (1L<<INTVAL (op)));
+      fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op)));
       return;
   }
   if (code == SIGN_EXTEND)
@@ -1416,6 +1421,42 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 }
 
 /*
+ * code for selecting which section a constant or declaration should go in
+ */
+
+/* where should we put a constant?
+ * in cog mode, only integer constants should go in text,
+ * everything else should go in data
+ */
+static section *
+propeller_select_rtx_section (enum machine_mode mode, rtx x,
+			      unsigned HOST_WIDE_INT align)
+{
+  if (!TARGET_LMM)
+    {
+      if (GET_MODE_SIZE (mode) >= BITS_PER_UNIT
+	  || mode == BLKmode)
+	{
+	  return data_section;
+	}
+    }
+  return default_elf_select_rtx_section (mode, x, align);
+}
+
+static section *
+propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
+{
+  if (!TARGET_LMM)
+    {
+      /* put constants into the data section (in hub ram) */
+      if (TREE_CODE (decl) != VAR_DECL && TREE_CODE (decl) != FUNCTION_DECL)
+	return data_section;
+    }
+  return default_elf_select_section (decl, reloc, align);
+}
+
+
+/*
  * builtin functions
  * here are the builtins we support:
  *
@@ -1804,6 +1845,11 @@ propeller_reorg(void)
 
 #undef TARGET_MACHINE_DEPENDENT_REORG
 #define TARGET_MACHINE_DEPENDENT_REORG propeller_reorg
+
+#undef TARGET_ASM_SELECT_SECTION
+#define TARGET_ASM_SELECT_SECTION propeller_select_section
+#undef TARGET_ASM_SELECT_RTX_SECTION
+#define TARGET_ASM_SELECT_RTX_SECTION propeller_select_rtx_section
 
 #undef TARGET_ASM_BYTE_OP
 #define TARGET_ASM_BYTE_OP "\tbyte\t"

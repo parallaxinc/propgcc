@@ -71,7 +71,7 @@ static char *skip_whitespace (char *str);
 static char *find_whitespace (char *str);
 static char *find_whitespace_or_separator (char *str);
 
-static int cog_ram = 1;		/* Use Cog ram by default */
+static int cog_ram = 0;		/* Use Cog ram if 1 */
 
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
@@ -167,6 +167,7 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   valueT val = *valP;
   char *buf;
   int shift;
+  int rshift;
   int size;
 
   buf = fixP->fx_where + fixP->fx_frag->fr_literal;
@@ -178,20 +179,23 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
     case BFD_RELOC_PROPELLER_SRC:
       mask = 0x000001ff;
       shift = 0;
+      rshift = 2;
       break;
     case BFD_RELOC_PROPELLER_DST:
       mask = 0x0003fe00;
       shift = 9;
+      rshift = 2;
       break;
     case BFD_RELOC_32:
       mask = 0xffffffff;
       shift = 0;
+      rshift = 0;
       break;
     default:
       BAD_CASE (fixP->fx_r_type);
     }
 
-  if((val << shift) & ~mask){
+  if(((val>>rshift) << shift) & ~mask){
     as_bad_where (fixP->fx_file, fixP->fx_line,
 		  _("Relocation overflows"));
   }
@@ -199,8 +203,10 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   if (fixP->fx_addsy != NULL){
     val += symbol_get_bfdsym (fixP->fx_addsy)->section->vma;
   }
-  code &= ~mask;
-  code |= (val << shift) & mask;
+  {
+    code &= ~mask;
+    code |= ((val>>rshift) << shift) & mask;
+  }
   md_number_to_chars (buf, code, size);
 
   if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
@@ -222,8 +228,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
   *reloc->sym_ptr_ptr = symbol_get_bfdsym (fixp->fx_addsy);
   reloc->address = fixp->fx_frag->fr_address + fixp->fx_where;
 
-  /* This is taken account for in md_apply_fix().  */
-  reloc->addend = -symbol_get_bfdsym (fixp->fx_addsy)->section->vma;
+  reloc->addend = fixp->fx_offset;
 
   switch (fixp->fx_r_type)
     {

@@ -62,7 +62,7 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 
   /* A 9 bit relocation of the SRC field of an instruction */
   HOWTO (R_PROPELLER_SRC,	/* type */
-	 0,			/* rightshift */
+	 2,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 9,			/* bitsize */
 	 FALSE,			/* pc_relative */
@@ -71,13 +71,13 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 bfd_elf_generic_reloc,	/* special_function */
 	 "R_PROPELLER_SRC",	/* name */
 	 FALSE,			/* partial_inplace */
-	 0x000001FF,		/* src_mask */
+	 0x00000000,		/* src_mask */
 	 0x000001FF,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* A 9 bit relocation of the DST field of an instruction */
   HOWTO (R_PROPELLER_DST,	/* type */
-	 0,			/* rightshift */
+	 2,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 9,			/* bitsize */
 	 FALSE,			/* pc_relative */
@@ -86,7 +86,7 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 bfd_elf_generic_reloc,	/* special_function */
 	 "R_PROPELLER_DST",	/* name */
 	 FALSE,			/* partial_inplace */
-	 0x0003FE00,		/* src_mask */
+	 0x00000000,		/* src_mask */
 	 0x0003FE00,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
