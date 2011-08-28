@@ -986,37 +986,14 @@ propeller_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
 }
 
 /*
- * return TRUE or FALSE depending on whether the first SET
- * in insn has source and destination with matching CC modes, and
- * that the CC mode is at least as constrained as req_mode
+ * return true if mode flags_mode is compatible with req_mode
+ * for example, CC_Z is compatible with both CCUNS and CC,
+ * but not necessarily vice-versa (CC_Z only guarantees that the
+ * Z bit is set correctly
  */
-bool
-propeller_match_ccmode (rtx insn, enum machine_mode req_mode)
+static bool
+ccmodes_compatible(enum machine_mode flags_mode, enum machine_mode req_mode)
 {
-  rtx op1, flags;
-  enum machine_mode flags_mode;
-
-  if (req_mode == VOIDmode)
-    return false;
-
-  gcc_checking_assert (XVECLEN (PATTERN (insn), 0) == 2);
-
-  op1 = XVECEXP (PATTERN (insn), 0, 1);
-  gcc_checking_assert (GET_CODE (SET_SRC (op1)) == COMPARE);
-
-  flags = SET_DEST (op1);
-  flags_mode = GET_MODE (flags);
-
-  if (GET_MODE (SET_SRC (op1)) != flags_mode)
-    return false;
-  if (GET_MODE_CLASS (flags_mode) != MODE_CC)
-    return false;
-
-  /* Ensure that the mode of FLAGS is compatible with REQ_MODE.
-   * For example, CC_Z is compatible with both CCUNS and CC,
-   * but not necessarily vice-versa
-   * similarly CC_C (where only the carry is set) is compatible with CCUNS
-   */
   switch (flags_mode)
     {
     case CC_Zmode:
@@ -1026,6 +1003,54 @@ propeller_match_ccmode (rtx insn, enum machine_mode req_mode)
     default:
       return (req_mode == flags_mode);
     }
+}
+
+/* Return true if SET either doesn't set the CC register, or else
+   the source and destination have matching CC modes and that
+   CC mode is at least as constrained as REQ_MODE.  */
+
+static bool
+propeller_match_ccmode_set (rtx set, enum machine_mode req_mode)
+{
+  enum machine_mode set_mode;
+
+  gcc_assert (GET_CODE (set) == SET);
+
+  if (GET_CODE (SET_DEST (set)) != REG || (CC_REG != REGNO (SET_DEST (set))))
+    return true;
+
+  set_mode = GET_MODE (SET_DEST (set));
+  if (!ccmodes_compatible(set_mode, req_mode))
+    return false;
+  return (GET_MODE (SET_SRC (set)) == set_mode);
+}
+
+/* Return true if every SET in INSN that sets the CC register
+   has source and destination with matching CC modes and that
+   CC mode is at least as constrained as REQ_MODE.
+   If REQ_MODE is VOIDmode, always return false.  */
+
+bool
+propeller_match_ccmode (rtx insn, enum machine_mode req_mode)
+{
+  int i;
+
+  if (req_mode == VOIDmode)
+    return false;
+
+  if (GET_CODE (PATTERN (insn)) == SET)
+    return propeller_match_ccmode_set (PATTERN(insn), req_mode);
+
+  if (GET_CODE (PATTERN (insn)) == PARALLEL)
+      for (i = 0; i < XVECLEN (PATTERN (insn), 0); i++)
+        {
+          rtx set = XVECEXP (PATTERN (insn), 0, i);
+          if (GET_CODE (set) == SET)
+            if (!propeller_match_ccmode_set (set, req_mode))
+              return false;
+        }
+
+  return true;
 }
 
 
