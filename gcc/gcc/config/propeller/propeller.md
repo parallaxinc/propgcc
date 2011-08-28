@@ -432,6 +432,50 @@
   ]
 )
 
+;;
+;; subtract with carry
+;;
+(define_insn "*subsi3_carryin1"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (minus:SI
+	  (minus:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+	            (match_operand:SI 2 "propeller_src_operand" "rCI"))
+          (ltu:SI (reg:CC_C CC_REG)(const_int 0))))]
+  ""
+  "subx\\t%0, %2"
+  [(set_attr "conds" "use")
+   (set_attr "predicable" "yes")
+  ]
+)
+
+;; 64 bit addition is done correctly with the default pattern
+;; for subtraction though the default pattern checks (x-y) > x,
+;; whereas we really want to check for x < y
+(define_insn_and_split "subdi3"
+  [(set (match_operand:DI 0 "propeller_dst_operand" "=&rC")
+        (minus:DI (match_operand:DI 1 "propeller_dst_operand" "0")
+                  (match_operand:DI 2 "propeller_dst_operand" "rC")))]
+  ""
+  "#"
+  "&& reload_completed"
+  [(parallel
+       [(set (reg:CCUNS CC_REG)
+	     (compare:CCUNS (match_dup 0) (match_dup 1)))
+	(set (match_dup 0) (minus:SI (match_dup 0) (match_dup 1)))])
+   (set (match_dup 3)
+            (minus:SI 
+		  (minus:SI (match_dup 3) (match_dup 4))
+                  (ltu:SI (reg:CC_C CC_REG) (const_int 0))))
+  ]
+  {
+    operands[3] = gen_highpart (SImode, operands[0]);
+    operands[4] = gen_highpart_mode (SImode, DImode, operands[2]);
+    operands[0] = gen_lowpart (SImode, operands[0]);
+    operands[1] = gen_lowpart (SImode, operands[2]);
+  }
+  [(set_attr "length" "8")]
+)
+
 ;; -------------------------------------------------------------------------
 ;; Unary arithmetic instructions
 ;; -------------------------------------------------------------------------
