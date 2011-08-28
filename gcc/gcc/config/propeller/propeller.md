@@ -636,7 +636,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (match_operand:SI 1 "propeller_big_const" "i"))]
   "TARGET_LMM"
-  "jmp\t#LMM_MVI_%0\n\tlong\t%1"
+  "jmp\t#__LMM_MVI_%0\n\tlong\t%c1"
   [(set_attr "length" "8")
   ]
 )
@@ -1208,7 +1208,7 @@
 		      (pc)))]
   "TARGET_LMM"
 {
-  return (get_attr_length (insn) == 4) ?
+  return (0 && get_attr_length (insn) == 4) ?
                (propeller_forward_branch_p (insn) ?
 	            "%p1\tadd\tpc,#(%l0-(.+4))" :
 		    "%p1\tsub\tpc,#((.+4)-%l0)") :
@@ -1258,8 +1258,8 @@
   ]
   "TARGET_LMM"
   "@
-   jmp\t#LMM_CALL\n\tlong\t%0
-   mov\t__TMP,%0\n\tjmp\t#LMM_CALL_INDIRECT"
+   jmp\t#__LMM_CALL\n\tlong\t%0
+   mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
 )
@@ -1314,8 +1314,8 @@
   ]
   "TARGET_LMM"
   "@
-   jmp\t#LMM_CALL\n\tlong\t%1
-   mov\t__TMP,%1\n\tjmp\t#LMM_CALL_INDIRECT"
+   jmp\t#__LMM_CALL\n\tlong\t%1
+   mov\t__TMP0,%1\n\tjmp\t#__LMM_CALL_INDIRECT"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
  )
@@ -1363,7 +1363,7 @@
 	(label_ref (match_operand 0 "" "")))]
   "TARGET_LMM"
 {
-  return (get_attr_length (insn) == 4) ?
+  return (0 && get_attr_length (insn) == 4) ?
                (propeller_forward_branch_p (insn) ?
 	            "add\tpc,#(%l0-(.+4))" :
 		    "sub\tpc,#((.+4)-%l0)") :
@@ -1417,7 +1417,11 @@
    (use (match_operand:SI 0 "register_operand" "r"))
   ]
   ""
-  "jmp\t%0"
+{ if (TARGET_LMM)
+    return "mov\tpc,%0";
+  else
+    return "jmp\t%0";
+}
 )
 
 (define_insn "naked_return"
@@ -1441,8 +1445,16 @@
   [(return)
    (use (reg:SI LINK_REG))
   ]
-  "propeller_can_use_return ()"
+  "!TARGET_LMM && propeller_can_use_return ()"
   "jmp\tlr"
+)
+
+(define_insn "*return_lmm"
+  [(return)
+   (use (reg:SI LINK_REG))
+  ]
+  "TARGET_LMM && propeller_can_use_return ()"
+  "mov\tpc,lr"
 )
 
 (define_expand "return"
