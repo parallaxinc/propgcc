@@ -497,6 +497,8 @@ extern const char *propeller_bss_asm_op;
 #define DATA_SECTION_ASM_OP  propeller_data_asm_op
 #define BSS_SECTION_ASM_OP   propeller_bss_asm_op
 
+#define TARGET_ASM_NAMED_SECTION default_elf_asm_named_section
+
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
 
@@ -558,6 +560,9 @@ extern const char *propeller_bss_asm_op;
 	       PREFIX, (unsigned) (NUM));			\
     }								\
   while (0)
+
+/* Debugging information */
+#define DWARF2_DEBUGGING_INFO
 
 /* propeller specific defines */
 #define SYMBOL_FLAG_PROPELLER_COGMEM (SYMBOL_FLAG_MACH_DEP << 0)
