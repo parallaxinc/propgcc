@@ -176,6 +176,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
 
   switch (fixP->fx_r_type)
     {
+    case BFD_RELOC_PROPELLER_SRC_IMM:
+      mask = 0x000001ff;
+      shift = 0;
+      rshift = 0;
+      break;
     case BFD_RELOC_PROPELLER_SRC:
       mask = 0x000001ff;
       shift = 0;
@@ -188,6 +193,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       break;
     case BFD_RELOC_32:
       mask = 0xffffffff;
+      shift = 0;
+      rshift = 0;
+      break;
+    case BFD_RELOC_16:
+      mask = 0x0000ffff;
       shift = 0;
       rshift = 0;
       break;
@@ -232,16 +242,12 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
 
   switch (fixp->fx_r_type)
     {
-    case BFD_RELOC_PROPELLER_SRC:
-      code = BFD_RELOC_PROPELLER_SRC;
-      break;
-
-    case BFD_RELOC_PROPELLER_DST:
-      code = BFD_RELOC_PROPELLER_DST;
-      break;
-
     case BFD_RELOC_32:
-      code = BFD_RELOC_32;
+    case BFD_RELOC_16:
+    case BFD_RELOC_PROPELLER_SRC:
+    case BFD_RELOC_PROPELLER_SRC_IMM:
+    case BFD_RELOC_PROPELLER_DST:
+      code = fixp->fx_r_type;
       break;
 
     default:
@@ -383,6 +389,7 @@ md_assemble (char *instruction_string)
   char *str;
   char *p;
   char c;
+  int integer_reloc;
 
   str = skip_whitespace (instruction_string);
   p = find_whitespace (str);
@@ -439,6 +446,7 @@ md_assemble (char *instruction_string)
 
   str = p;
   size = 4;
+  integer_reloc = 0;  /* most relocations will be addresses, so assume that */
 
   switch (op->format)
     {
@@ -454,6 +462,7 @@ md_assemble (char *instruction_string)
       break;
 
     case PROPELLER_OPERAND_TWO_OPS:
+    case PROPELLER_OPERAND_JMPRET:
     case PROPELLER_OPERAND_DEST_ONLY:
       str = skip_whitespace (str);
       str = parse_expression (str, &op1);
@@ -497,11 +506,16 @@ md_assemble (char *instruction_string)
 	}
       /* Fall through */
     case PROPELLER_OPERAND_SOURCE_ONLY:
+    case PROPELLER_OPERAND_JMP:
       str = skip_whitespace (str);
       if (*str == '#')
 	{
 	  str++;
 	  insn.code |= 1 << 22;
+	  if (op->format != PROPELLER_OPERAND_JMP && op->format != PROPELLER_OPERAND_JMPRET)
+	    {
+	      integer_reloc = 1;
+	    }
 	}
       str = parse_expression (str, &op2);
       if (op2.error)
@@ -520,7 +534,7 @@ md_assemble (char *instruction_string)
 	case O_symbol:
 	case O_add:
 	case O_subtract:
-	  op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
+	  op2.reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
 	  op2.reloc.pc_rel = 0;
 	  break;
 	case O_illegal:

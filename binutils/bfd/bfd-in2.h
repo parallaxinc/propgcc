@@ -3046,10 +3046,10 @@ relaxation.  */
   BFD_RELOC_PPC64_DTPREL16_HIGHEST,
   BFD_RELOC_PPC64_DTPREL16_HIGHESTA,
 
-/* Propeller ELF relocations.  */
+/* Propeller ELF relocations for addresses and immediate values.  */
+  BFD_RELOC_PROPELLER_SRC_IMM,
   BFD_RELOC_PROPELLER_SRC,
   BFD_RELOC_PROPELLER_DST,
-
 
 /* IBM 370/390 relocations  */
   BFD_RELOC_I370_D12,

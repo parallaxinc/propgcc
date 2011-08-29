@@ -1410,7 +1410,7 @@
 		      (pc)))]
   "TARGET_LMM"
 {
-  return (0 && get_attr_length (insn) == 4) ?
+  return (get_attr_length (insn) == 4) ?
                (propeller_forward_branch_p (insn) ?
 	            "%p1\tadd\tpc,#(%l0-(.+4))" :
 		    "%p1\tsub\tpc,#((.+4)-%l0)") :
@@ -1419,8 +1419,8 @@
 [(set_attr "conds" "use")
  (set (attr "length")
       (if_then_else 
-          (and (ge (minus (match_dup 0)(pc)) (const_int -500))
-	       (le (minus (match_dup 0)(pc)) (const_int 500)))
+          (and (ge (minus (match_dup 0)(pc)) (const_int -504))
+	       (le (minus (match_dup 0)(pc)) (const_int 504)))
 	  (const_int 4)
 	  (const_int 8)))
 ]
@@ -1565,7 +1565,7 @@
 	(label_ref (match_operand 0 "" "")))]
   "TARGET_LMM"
 {
-  return (0 && get_attr_length (insn) == 4) ?
+  return (get_attr_length (insn) == 4) ?
                (propeller_forward_branch_p (insn) ?
 	            "add\tpc,#(%l0-(.+4))" :
 		    "sub\tpc,#((.+4)-%l0)") :
@@ -1573,8 +1573,8 @@
 }
 [ (set (attr "length")
       (if_then_else 
-          (and (ge (minus (match_dup 0)(pc)) (const_int -500))
-	       (le (minus (match_dup 0)(pc)) (const_int 500)))
+          (and (ge (minus (match_dup 0)(pc)) (const_int -504))
+	       (le (minus (match_dup 0)(pc)) (const_int 504)))
 	  (const_int 4)
 	  (const_int 8)))
 ]

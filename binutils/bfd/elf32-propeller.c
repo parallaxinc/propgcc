@@ -60,6 +60,21 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0xffffffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
+  /* A 16 bit absolute relocation. */
+  HOWTO (R_PROPELLER_16,	/* type */
+	 0,			/* rightshift */
+	 1,			/* size (0 = byte, 1 = short, 2 = long) */
+	 16,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_16",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0000ffff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
   /* A 9 bit relocation of the SRC field of an instruction */
   HOWTO (R_PROPELLER_SRC,	/* type */
 	 2,			/* rightshift */
@@ -70,6 +85,24 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 complain_overflow_bitfield,	/* complain_on_overflow */
 	 bfd_elf_generic_reloc,	/* special_function */
 	 "R_PROPELLER_SRC",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x000001FF,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* A 9 bit relocation of the SRC field of an instruction */
+  /* this one is an immediate constant rather than an address,
+     so do not right shift it by 2
+  */
+  HOWTO (R_PROPELLER_SRC_IMM,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 9,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_SRC_IMM",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
 	 0x000001FF,		/* dst_mask */
@@ -104,6 +137,7 @@ static const struct propeller_reloc_map propeller_reloc_map[] = {
   {BFD_RELOC_NONE, R_PROPELLER_NONE},
   {BFD_RELOC_32, R_PROPELLER_32},
   {BFD_RELOC_PROPELLER_SRC, R_PROPELLER_SRC},
+  {BFD_RELOC_PROPELLER_SRC_IMM, R_PROPELLER_SRC_IMM},
   {BFD_RELOC_PROPELLER_DST, R_PROPELLER_DST},
 };
 
@@ -165,6 +199,7 @@ propeller_final_link_relocate (reloc_howto_type * howto,
 
   switch (howto->type)
     {
+    case R_PROPELLER_SRC_IMM:
     case R_PROPELLER_SRC:
     case R_PROPELLER_DST:
     default:
@@ -248,13 +283,17 @@ propeller_elf_relocate_section (bfd * output_bfd,
 	{
 	  sym = local_syms + r_symndx;
 	  sec = local_sections[r_symndx];
-	  if(sym->st_other & PROPELLER_OTHER_COG_RAM){
-	    Elf_Internal_Sym s = *sym;
-	    s.st_value /= 4;
-	    relocation = _bfd_elf_rela_local_sym (output_bfd, &s, &sec, rel);
-	  } else {
-	    relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
-	  }
+	  if( r_type == R_PROPELLER_SRC_IMM && 
+	      (sym->st_other & PROPELLER_OTHER_COG_RAM) )
+	    {
+	      Elf_Internal_Sym s = *sym;
+	      s.st_value /= 4;
+	      relocation = _bfd_elf_rela_local_sym (output_bfd, &s, &sec, rel);
+	    }
+	  else
+	    {
+	      relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
+	    }
 
 	  name = bfd_elf_string_from_elf_section
 	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
