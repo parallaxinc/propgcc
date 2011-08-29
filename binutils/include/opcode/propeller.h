@@ -30,6 +30,8 @@
 #define PROPELLER_OPERAND_TWO_OPS     3
 #define PROPELLER_OPERAND_CALL        4
 #define PROPELLER_OPERAND_IGNORE      5
+#define PROPELLER_OPERAND_JMP         6
+#define PROPELLER_OPERAND_JMPRET      7
 
 struct propeller_opcode
 {
