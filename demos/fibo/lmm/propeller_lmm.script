@@ -1,0 +1,17 @@
+SECTIONS
+{
+  .boot 0x0: { *(.boot) }
+  .lmmkernel 0x0 : AT (ADDR(.boot)+SIZEOF(.boot))
+          {
+	   *(.lmmkernel) 
+	  }
+  __lmm_base = SIZEOF(.boot)+SIZEOF(.lmmkernel);
+  .text (__lmm_base) : AT (__lmm_base)
+          {
+            *(.text)
+          }
+  .data : { *(.data) }
+  .bss : { *(.bss) }
+
+  __text_start = ADDR(.text);
+}
