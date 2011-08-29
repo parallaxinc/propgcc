@@ -807,7 +807,7 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
 /* Implement the TARGET_RTX_COSTS hook.
 
    Speed-relative costs are relative to COSTS_N_INSNS, which is intended
-   to represent cycles.  Size-relative costs are in bytes.  */
+   to represent cycles.  Size-relative costs are in words.  */
 static bool
 propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *total_ptr, bool speed)
 {
@@ -821,7 +821,7 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
             if (ival >= -511 && ival < 511)
                 total = 0;
             else
-                total = (speed ? COSTS_N_INSNS(1) : 4);
+                total = (speed ? COSTS_N_INSNS(1) : 1);
             done = true;
         }
         break;
@@ -829,7 +829,7 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case LABEL_REF:
     case SYMBOL_REF:
     case CONST_DOUBLE:
-        total = (speed ? COSTS_N_INSNS(1) : 4);
+        total = (speed ? COSTS_N_INSNS(1) : 1);
         done = true;
         break;
     case PLUS:
@@ -845,18 +845,18 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case ASHIFTRT:
     case LSHIFTRT:
     case ZERO_EXTRACT:
-        total = (speed ? COSTS_N_INSNS(1) : 4);
+        total = (speed ? COSTS_N_INSNS(1) : 1);
         break;
 
     case MULT:
-        total = (speed ? COSTS_N_INSNS(16) : 8);
+        total = (speed ? COSTS_N_INSNS(16) : 2);
         break;
 
     case DIV:
     case UDIV:
     case MOD:
     case UMOD:
-        total = (speed ? COSTS_N_INSNS(100) : 8);
+        total = (speed ? COSTS_N_INSNS(100) : 2);
         done = true;
         break;
 
@@ -881,7 +881,7 @@ propeller_address_cost (rtx addr, bool speed)
 
   if (GET_CODE (addr) != PLUS) {
     /* cog memory addresses are free */
-    total = propeller_cogaddr_p (addr) ? 0 : 1;
+    total = propeller_cogaddr_p (addr)  ? 0 : 1;
   } else {
     a = XEXP (addr, 0);
     b = XEXP (addr, 1);
@@ -892,7 +892,7 @@ propeller_address_cost (rtx addr, bool speed)
         total = 2;
     }
   }
-  return speed ? COSTS_N_INSNS(total) : 4*total;
+  return speed ? COSTS_N_INSNS(total) : total;
 }
 
 
@@ -966,10 +966,92 @@ propeller_select_cc_mode (RTX_CODE op, rtx x ATTRIBUTE_UNUSED, rtx y ATTRIBUTE_U
 {
   if (op == EQ || op == NE)
     return CC_Zmode;
-  if (op == GTU || op == LTU || op == GEU || op == LEU)
+  /* for unsigned ltu and geu only the carry matters */
+  if (op == LTU || op == GEU)
+    return CC_Cmode;
+  if (op == GTU || op == LEU)
     return CCUNSmode;
 
   return CCmode;
+}
+
+/*
+ * canonicalize a comparison so that we are more likely to recognize
+ * it, and it produces better code
+ * Generally on the Propeller we prefer to have conditions that just
+ * rely on either the carry or the zero flag (not combinations of them),
+ * since there are some additional predicable instructions that use these.
+ */
+enum rtx_code
+propeller_canonicalize_comparison (enum rtx_code code, rtx *op0, rtx *op1)
+{
+  enum machine_mode mode;
+  unsigned HOST_WIDE_INT i, maxval;
+  rtx temp;
+
+  mode = GET_MODE (*op0);
+  if (mode == VOIDmode)
+    mode = GET_MODE (*op1);
+
+  /* change "< 512" to "<= 511 */
+  if ( ((code == LT) || (code == LTU))
+       && GET_CODE (*op1) == CONST_INT
+       && INTVAL (*op1) == 512
+       && SCALAR_INT_MODE_P (GET_MODE (*op0)) )
+    {
+      *op1 = GEN_INT (511);
+      return (code == LT) ? LE : LEU;
+    }
+
+  maxval = 511;
+
+  /* if op1 is not a constant we can swap the comparison */
+  /* do so if it will turn GT to LT or LE to GE  (LT and GE are our
+     preferred forms)
+   */
+  if ( (code == GTU || code == LEU || code == GT || code == LE)
+       && (mode == SImode) )
+    {
+      /* first try to use the better comparison in place
+       * e.g. x > N => x >= N+1
+       */
+      if ( GET_CODE (*op1) == CONST_INT )
+	{
+	  i = INTVAL (*op1);
+	  switch (code)
+	    {
+	    case GT:
+	    case LE:
+	      if (i != maxval)
+		{
+		  *op1 = GEN_INT (i+1);
+		  return code == GT ? GE : LT;
+		}
+	      break;
+	    case GTU:
+	    case LEU:
+	      if (i != maxval)
+		{
+		  *op1 = GEN_INT (i+1);
+		  return code == GTU ? GEU : LTU;
+		}
+	      break;
+	    default:
+	      gcc_unreachable ();
+	    }
+	  /* give up if it was a constant integer, better to just
+	     compare and accept that some optimization opportunities are
+	     missed */
+	  return code;
+	}
+      /* otherwise, reverse the condition */
+      temp = *op0;
+      *op0 = *op1;
+      *op1 = temp;
+      return swap_condition (code);
+    }
+       
+  return code;
 }
 
 /*
@@ -983,43 +1065,71 @@ propeller_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
 }
 
 /*
- * return TRUE or FALSE depending on whether the first SET
- * in insn has source and destination with matching CC modes, and
- * that the CC mode is at least as constrained as req_mode
+ * return true if mode flags_mode is compatible with req_mode
+ * for example, CC_Z is compatible with both CCUNS and CC,
+ * but not necessarily vice-versa (CC_Z only guarantees that the
+ * Z bit is set correctly
  */
+static bool
+ccmodes_compatible(enum machine_mode flags_mode, enum machine_mode req_mode)
+{
+  switch (flags_mode)
+    {
+    case CC_Zmode:
+      return (req_mode == CC_Zmode || req_mode == CCmode || req_mode == CCUNSmode);
+    case CC_Cmode:
+      return (req_mode == CC_Cmode || req_mode == CCUNSmode);
+    default:
+      return (req_mode == flags_mode);
+    }
+}
+
+/* Return true if SET either doesn't set the CC register, or else
+   the source and destination have matching CC modes and that
+   CC mode is at least as constrained as REQ_MODE.  */
+
+static bool
+propeller_match_ccmode_set (rtx set, enum machine_mode req_mode)
+{
+  enum machine_mode set_mode;
+
+  gcc_assert (GET_CODE (set) == SET);
+
+  if (GET_CODE (SET_DEST (set)) != REG || (CC_REG != REGNO (SET_DEST (set))))
+    return true;
+
+  set_mode = GET_MODE (SET_DEST (set));
+  if (!ccmodes_compatible(set_mode, req_mode))
+    return false;
+  return (GET_MODE (SET_SRC (set)) == set_mode);
+}
+
+/* Return true if every SET in INSN that sets the CC register
+   has source and destination with matching CC modes and that
+   CC mode is at least as constrained as REQ_MODE.
+   If REQ_MODE is VOIDmode, always return false.  */
+
 bool
 propeller_match_ccmode (rtx insn, enum machine_mode req_mode)
 {
-  rtx op1, flags;
-  enum machine_mode flags_mode;
+  int i;
 
   if (req_mode == VOIDmode)
     return false;
 
-  gcc_checking_assert (XVECLEN (PATTERN (insn), 0) == 2);
+  if (GET_CODE (PATTERN (insn)) == SET)
+    return propeller_match_ccmode_set (PATTERN(insn), req_mode);
 
-  op1 = XVECEXP (PATTERN (insn), 0, 1);
-  gcc_checking_assert (GET_CODE (SET_SRC (op1)) == COMPARE);
+  if (GET_CODE (PATTERN (insn)) == PARALLEL)
+      for (i = 0; i < XVECLEN (PATTERN (insn), 0); i++)
+        {
+          rtx set = XVECEXP (PATTERN (insn), 0, i);
+          if (GET_CODE (set) == SET)
+            if (!propeller_match_ccmode_set (set, req_mode))
+              return false;
+        }
 
-  flags = SET_DEST (op1);
-  flags_mode = GET_MODE (flags);
-
-  if (GET_MODE (SET_SRC (op1)) != flags_mode)
-    return false;
-  if (GET_MODE_CLASS (flags_mode) != MODE_CC)
-    return false;
-
-  /* Ensure that the mode of FLAGS is compatible with REQ_MODE.
-   * For example, CC_Z is compatible with both CCUNS and CC,
-   * but not necessarily vice-versa
-   */
-  switch (flags_mode)
-  {
-  case CC_Zmode:
-      return (req_mode == CC_Zmode || req_mode == CCmode || req_mode == CCUNSmode);
-  default:
-      return (req_mode == flags_mode);
-  }
+  return true;
 }
 
 
