@@ -1210,8 +1210,8 @@
 
 (define_insn "*or_andn_<muxcond:code>"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else:SI
-	  (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
+        (if_then_else
+	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
 	  (ior:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 	          (match_operand:SI 2 "propeller_src_operand" "rCI"))
 	  (and:SI (not:SI (match_dup 2))
@@ -1225,8 +1225,8 @@
 
 (define_insn "*movesi<muxcond:code>_allones"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else:SI
-	    (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
+        (if_then_else
+	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
             (const_int -1)
 	    (const_int 0)))]
   ""
@@ -1246,8 +1246,8 @@
 
 (define_insn_and_split "*movesi<muxcond:code>_one"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else:SI
-	    (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
+        (if_then_else
+	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
             (match_operand:SI 1 "propeller_src_operand" "rCI")
 	    (const_int 0)))]
   ""
@@ -1255,8 +1255,8 @@
   "reload_completed"
   [(set (match_dup 0)(const_int 0))
    (set (match_dup 0)
-        (if_then_else:SI
-	  (muxcond:SI (reg:<muxccmode> CC_REG)(const_int 0))
+        (if_then_else
+	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
           (ior:SI (match_dup 0)(match_dup 1))
           (and:SI (not:SI (match_dup 1))(match_dup 0))))
   ]
@@ -1269,8 +1269,8 @@
 ;; the general case of movsi
 (define_insn "*movsicc_insn"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC,rC,rC,rC,rC,rC,rC")
-        (if_then_else:SI
-	  (match_operator:SI 3 "predicate_operator"
+        (if_then_else
+	  (match_operator 3 "predicate_operator"
 	    [(match_operand 4 "cc_register" "") (const_int 0)])
 	  (match_operand:SI 1 "propeller_add_operand" "0,0,rCI,N,rCI,rCI,N,N")
 	  (match_operand:SI 2 "propeller_add_operand" "rCI,N,0,0,rCI,N,rCI,N" )))]
