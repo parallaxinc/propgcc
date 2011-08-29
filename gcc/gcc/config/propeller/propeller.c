@@ -807,7 +807,7 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
 /* Implement the TARGET_RTX_COSTS hook.
 
    Speed-relative costs are relative to COSTS_N_INSNS, which is intended
-   to represent cycles.  Size-relative costs are in bytes.  */
+   to represent cycles.  Size-relative costs are in words.  */
 static bool
 propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *total_ptr, bool speed)
 {
@@ -821,7 +821,7 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
             if (ival >= -511 && ival < 511)
                 total = 0;
             else
-                total = (speed ? COSTS_N_INSNS(1) : 4);
+                total = (speed ? COSTS_N_INSNS(1) : 1);
             done = true;
         }
         break;
@@ -829,7 +829,7 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case LABEL_REF:
     case SYMBOL_REF:
     case CONST_DOUBLE:
-        total = (speed ? COSTS_N_INSNS(1) : 4);
+        total = (speed ? COSTS_N_INSNS(1) : 1);
         done = true;
         break;
     case PLUS:
@@ -845,18 +845,18 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case ASHIFTRT:
     case LSHIFTRT:
     case ZERO_EXTRACT:
-        total = (speed ? COSTS_N_INSNS(1) : 4);
+        total = (speed ? COSTS_N_INSNS(1) : 1);
         break;
 
     case MULT:
-        total = (speed ? COSTS_N_INSNS(16) : 8);
+        total = (speed ? COSTS_N_INSNS(16) : 2);
         break;
 
     case DIV:
     case UDIV:
     case MOD:
     case UMOD:
-        total = (speed ? COSTS_N_INSNS(100) : 8);
+        total = (speed ? COSTS_N_INSNS(100) : 2);
         done = true;
         break;
 
@@ -881,7 +881,7 @@ propeller_address_cost (rtx addr, bool speed)
 
   if (GET_CODE (addr) != PLUS) {
     /* cog memory addresses are free */
-    total = propeller_cogaddr_p (addr) ? 0 : 1;
+    total = propeller_cogaddr_p (addr)  ? 0 : 1;
   } else {
     a = XEXP (addr, 0);
     b = XEXP (addr, 1);
@@ -892,7 +892,7 @@ propeller_address_cost (rtx addr, bool speed)
         total = 2;
     }
   }
-  return speed ? COSTS_N_INSNS(total) : 4*total;
+  return speed ? COSTS_N_INSNS(total) : total;
 }
 
 
@@ -973,6 +973,85 @@ propeller_select_cc_mode (RTX_CODE op, rtx x ATTRIBUTE_UNUSED, rtx y ATTRIBUTE_U
     return CCUNSmode;
 
   return CCmode;
+}
+
+/*
+ * canonicalize a comparison so that we are more likely to recognize
+ * it, and it produces better code
+ * Generally on the Propeller we prefer to have conditions that just
+ * rely on either the carry or the zero flag (not combinations of them),
+ * since there are some additional predicable instructions that use these.
+ */
+enum rtx_code
+propeller_canonicalize_comparison (enum rtx_code code, rtx *op0, rtx *op1)
+{
+  enum machine_mode mode;
+  unsigned HOST_WIDE_INT i, maxval;
+  rtx temp;
+
+  mode = GET_MODE (*op0);
+  if (mode == VOIDmode)
+    mode = GET_MODE (*op1);
+
+  /* change "< 512" to "<= 511 */
+  if ( ((code == LT) || (code == LTU))
+       && GET_CODE (*op1) == CONST_INT
+       && INTVAL (*op1) == 512
+       && SCALAR_INT_MODE_P (GET_MODE (*op0)) )
+    {
+      *op1 = GEN_INT (511);
+      return (code == LT) ? LE : LEU;
+    }
+
+  maxval = 511;
+
+  /* if op1 is not a constant we can swap the comparison */
+  /* do so if it will turn GT to LT or LE to GE  (LT and GE are our
+     preferred forms)
+   */
+  if ( (code == GTU || code == LEU || code == GT || code == LE)
+       && (mode == SImode) )
+    {
+      /* first try to use the better comparison in place
+       * e.g. x > N => x >= N+1
+       */
+      if ( GET_CODE (*op1) == CONST_INT )
+	{
+	  i = INTVAL (*op1);
+	  switch (code)
+	    {
+	    case GT:
+	    case LE:
+	      if (i != maxval)
+		{
+		  *op1 = GEN_INT (i+1);
+		  return code == GT ? GE : LT;
+		}
+	      break;
+	    case GTU:
+	    case LEU:
+	      if (i != maxval)
+		{
+		  *op1 = GEN_INT (i+1);
+		  return code == GTU ? GEU : LTU;
+		}
+	      break;
+	    default:
+	      gcc_unreachable ();
+	    }
+	  /* give up if it was a constant integer, better to just
+	     compare and accept that some optimization opportunities are
+	     missed */
+	  return code;
+	}
+      /* otherwise, reverse the condition */
+      temp = *op0;
+      *op0 = *op1;
+      *op1 = temp;
+      return swap_condition (code);
+    }
+       
+  return code;
 }
 
 /*
