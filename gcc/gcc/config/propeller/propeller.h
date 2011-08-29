@@ -128,6 +128,11 @@ do {                                                    \
    on the full register even if a narrower mode is specified.  */
 #define WORD_REGISTER_OPERATIONS
 
+/* Try to generate sequences that don't involve branches, we can then use
+   conditional instructions */
+#define BRANCH_COST(speed_p, predictable_p) \
+  (TARGET_LMM ? 2 : 4)
+
 /*-------------*/
 /* Profiling.  */
 /*-------------*/
@@ -313,8 +318,6 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
   { FRAME_POINTER_REGNUM, HARD_FRAME_POINTER_REGNUM },       \
 }
 
-
-
 /* This macro is similar to `INITIAL_FRAME_POINTER_OFFSET'.  It
    specifies the initial difference between the specified pair of
    registers.  This macro must be defined if `ELIMINABLE_REGS' is
@@ -385,9 +388,14 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define MOVE_MAX 4
 #define TRULY_NOOP_TRUNCATION(op,ip) 1
 
+/* It's faster to call directly than from registers */
+#define NO_FUNCTION_CSE 1
+
 /* All load operations zero extend.  */
 #define LOAD_EXTEND_OP(MEM) ZERO_EXTEND
 
+#define CLZ_DEFINED_VALUE_AT_ZERO(MODE, VALUE)  ((VALUE) = 32, 1)
+#define CTZ_DEFINED_VALUE_AT_ZERO(MODE, VALUE)  ((VALUE) = 32, 1)
 
 #define LEGITIMATE_CONSTANT_P(X) propeller_legitimate_constant_p (X)
 
@@ -404,6 +412,14 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define SELECT_CC_MODE(OP, X, Y) propeller_select_cc_mode(OP, X, Y)
 
 #define REVERSIBLE_CC_MODE(MODE) 1
+
+#define CANONICALIZE_COMPARISON(CODE, OP0, OP1) \
+  (CODE) = propeller_canonicalize_comparison (CODE, &(OP0), &(OP1))
+
+/* indicate that we have some complex conditional move instructions
+ * that the converter should check against (not currently used)
+ */
+#define HAVE_COMPLEX_CMOVES 1
 
 
 /* Passing Arguments in Registers */
