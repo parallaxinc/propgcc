@@ -51,6 +51,18 @@
 #include "diagnostic-core.h"
 #include "tree-pass.h"
 
+/*
+ * define USE_HUBCOG_DIRECTIVES to 1 to get .hub_ram and .cog_ram put into
+ * the output sections in Cog mode
+ */
+
+#define USE_HUBCOG_DIRECTIVES 0
+
+
+
+/*
+ * frame setup
+ */
 struct propeller_frame_info
 {
   HOST_WIDE_INT total_size;	/* number of bytes of entire frame.  */
@@ -134,7 +146,7 @@ propeller_option_override (void)
 	propeller_bss_asm_op = "\t'.bss";
 	hex_prefix = "$";
       }
-    else if (TARGET_LMM)
+    else if (TARGET_LMM || !USE_HUBCOG_DIRECTIVES)
       {
 	propeller_text_asm_op = "\t.text";
 	propeller_data_asm_op = "\t.data";
