@@ -506,6 +506,10 @@ powerpcle-*-eabisim*)
 	;;
 powerpcle-*-eabi*)
 	;;
+propeller-*-elf*)
+	extra_parts="crtbegin.o"
+	tmake_file="propeller/t-propeller"
+	;;
 rs6000-ibm-aix4.[3456789]* | powerpc-ibm-aix4.[3456789]*)
 	;;
 rs6000-ibm-aix5.1.* | powerpc-ibm-aix5.1.*)
