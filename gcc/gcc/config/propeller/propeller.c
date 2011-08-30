@@ -1960,6 +1960,9 @@ propeller_reorg(void)
 #undef  TARGET_ENCODE_SECTION_INFO
 #define TARGET_ENCODE_SECTION_INFO propeller_encode_section_info
 
+#undef TARGET_EXCEPT_UNWIND_INFO
+#define TARGET_EXCEPT_UNWIND_INFO sjlj_except_unwind_info
+
 #undef TARGET_INIT_BUILTINS
 #define TARGET_INIT_BUILTINS propeller_init_builtins
 #undef TARGET_EXPAND_BUILTIN
