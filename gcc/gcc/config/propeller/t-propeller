@@ -21,45 +21,26 @@
 
 LIB2FUNCS_EXTRA = 
 
-# Prevent some of the more complicated libgcc functions from being
-# compiled. This is because they are generally too big to fit into an
-# AE anyway, so there is no point in having them. Also, some don't
-# compile properly so we'll ignore them for the moment.
-
-LIB1ASMFUNCS = _mulsc3 _divsc3
+# prevent some of the more complicated libgcc functions from being
+# compiled; these are pretty big anyway, and not often used
+LIB1ASMFUNCS = _mulsc3 _muldc3 _multc3 _divsc3 _divdc3 _divtc3 _multc3
 LIB1ASMSRC = propeller/libgccExtras/fake_libgcc.asm
 
-# Turn off the building of exception handling libraries.
-LIB2ADDEH =
-LIB2ADDEHDEP =
+# floating point emulation libraries
 
-# Turn off ranlib on target libraries.
-RANLIB_FOR_TARGET = cat
+FPBIT = fp-bit.c
+DPBIT = dp-bit.c
 
-# Special libgcc setup. Make single/double floating point the same,
-# and use our own include files.
-TARGET_LIBGCC2_CFLAGS = -DDF=SF -I../../includes/
+fp-bit.c: $(srcdir)/config/fp-bit.c
+	echo '#define FLOAT'				> fp-bit.c
+	cat $(srcdir)/config/fp-bit.c			>> fp-bit.c
 
-# Switch off all debugging for the embedded libraries.
-# (embedded processors need small libraries by default).
-# NOTE: If the debug level is increased, turn off instruction scheduling.
-LIBGCC2_DEBUG_CFLAGS = -g0
+dp-bit.c: $(srcdir)/config/fp-bit.c
+	cat $(srcdir)/config/fp-bit.c > dp-bit.c
+
 
 # Build all combinations of library for various compiler switches
 MULTILIB_OPTIONS = 
 
 # dunno if this is necessary
 MULTILIB_EXCEPTIONS = 
-
-# We want fine grained libraries, so use the new code
-# to build the floating point emulation libraries.
-FPBIT = fp-bit.c
-
-# Software floating point support. Floating point is not properly
-# supported, but is existence can be useful for some types of testing.
-fp-bit.c:	$(srcdir)/config/fp-bit.c
-	echo '#define FLOAT' > fp-bit.c
-	echo '#define FLOAT_ONLY' >> fp-bit.c
-	echo '#define SMALL_MACHINE' >> fp-bit.c
-	cat $(srcdir)/config/fp-bit.c >> fp-bit.c
-
