@@ -102,6 +102,6 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE (INTVAL (op), 1, 9)")))
 
-(define_predicate "immediate_0_31"
+(define_predicate "immediate_0_8"
   (and (match_code "const_int")
-       (match_test "IN_RANGE (INTVAL (op), 0, 31)")))
+       (match_test "IN_RANGE (INTVAL (op), 0, 8)")))
