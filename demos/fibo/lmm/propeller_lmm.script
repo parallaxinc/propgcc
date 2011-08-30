@@ -1,3 +1,28 @@
+/*
+ * simple script file for creating LMM programs
+ *
+ * here are the sections we set up:
+ * .boot:
+ *	Contains a small bit of spin code to launch the LMM kernel.
+ * .lmmkernel:
+ *	Contains the LMM kernel. Note that this has a virtual address of
+ *      0 (it runs in cog space) but a physical load address that follows
+ *      the boot section
+ * .init:
+ *      The actual LMM C code starts here. The .init section contains
+ *      code to run constructors and then call main.
+ * .text:
+ *      The main C code.
+ * .ctors:
+ *      Contains a list of constructors to call.
+ * .dtors:
+ *      Contains a list of destructors to call at program end.
+ * .data:
+ *      Initialized data.
+ * .bss:
+ *      Uninitialized data.
+ */
+
 SECTIONS
 {
   .boot 0x0: { *(.boot) }
@@ -5,13 +30,26 @@ SECTIONS
           {
 	   *(.lmmkernel) 
 	  }
-  __lmm_base = SIZEOF(.boot)+SIZEOF(.lmmkernel);
-  .text (__lmm_base) : AT (__lmm_base)
+  __ram_base = SIZEOF(.boot)+SIZEOF(.lmmkernel);
+  .init (__ram_base) : AT (__ram_base)
           {
-            *(.text)
+	    *(.init*)
+	  }
+  .text  :
+          {
+            *(.text*)
           }
+  .ctors : {
+      *(.ctors)
+   }
+  .dtors : {
+      *(.dtors)
+  }
   .data : { *(.data) }
-  .bss : { *(.bss) }
+  .bss  : { *(.bss) }
+  ___heap_start = ALIGN(4) ;
 
-  __text_start = ADDR(.text);
+  ___CTOR_LIST__ = ADDR(.ctors) ;
+  ___DTOR_LIST__ = ADDR(.dtors) ;
+
 }

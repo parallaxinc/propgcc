@@ -22,7 +22,7 @@ $(NAME).binary: $(NAME).elf
 	$(OBJCOPY) -O binary $< $@
 	$(CHKSUM) $@
 
-$(NAME).elf: propeller_lmm.script crt0.o crtbegin.o lmm.o $(OBJS) cogregs.o
+$(NAME).elf: propeller_lmm.script crt0.o crtbegin.o lmm.o $(OBJS) cogregs.o crtend.o
 	$(LD) -o $@ -T propeller_lmm.script $^
 
 %.o: %.c

@@ -38,7 +38,7 @@ r13	long	0
 r14	long	0x00008000
 lr	long	0
 sp	long	0
-pc	long	__text_start	' default pc
+pc	long	entry		' default pc
 
 
 	''

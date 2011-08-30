@@ -9,7 +9,15 @@
 #include "stdio.h"
 #include "cog.h"
 
-#define _WaitCnt(a,b) __builtin_waitcnt(a,b)
+/*
+ * For now we include the serial code directly in this file,
+ * but eventually we'll want to break it out.
+ * We use a constructor (_serial_init) to start up the serial port
+ * automatically, so main doesn't have to remember to do it. We
+ * set up with pins 31 and 30, and 115200 baud (sensible defaults for
+ * the C3 and spinsim).
+ */
+
 
 typedef struct SerialS {
     int rxpin;
@@ -30,20 +38,10 @@ int _tx(void *txarg, int value)
     value = (value | 256) << 1;
     for (i = 0; i < 10; i++)
     {
-        waitcycles = _WaitCnt(waitcycles, bitcycles);
+        waitcycles = __builtin_waitcnt(waitcycles, bitcycles);
         _OUTA = (value & 1) << txpin;
         value >>= 1;
     }
-}
-
-int puts(const char *str)
-{
-    int c;
-    int r = 0;
-    while ( 0 != (c = *str++) ) {
-        r += _tx(&SerialPort, c);
-    }
-    return r;
 }
 
 void _start_serial(int rxpin, int txpin, int baudrate)
@@ -53,6 +51,29 @@ void _start_serial(int rxpin, int txpin, int baudrate)
     SerialPort.bitcycles = *((int *)0) / baudrate;
     _OUTA = 1 << txpin;
     _DIRA = 1 << txpin;
+}
+
+/*
+ * initialization function (run automatically at startup)
+ */
+__attribute__((constructor))
+void _serial_init(void)
+{
+  _start_serial(31, 30, 115200);
+}
+
+/*
+ * GCC will optimize printf to puts if it can, so we need to
+ * provide a definition for it
+ */
+int puts(const char *str)
+{
+    int c;
+    int r = 0;
+    while ( 0 != (c = *str++) ) {
+        r += _tx(&SerialPort, c);
+    }
+    return r;
 }
 
 /*

@@ -30,7 +30,6 @@ void main (int argc,  char* argv[])
     unsigned int executionTime;
     unsigned int rawTime;
 
-    _start_serial(31, 30, 115200);
     printf("hello, world!\r\n");
     for (n = 0; n <= 26; n++)
     {
