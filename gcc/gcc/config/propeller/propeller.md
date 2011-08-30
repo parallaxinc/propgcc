@@ -657,7 +657,7 @@
 	  (zero_extract:SI
 	    (match_operand:SI 0 "propeller_dst_operand" "rC")
 	    (const_int 1)
-            (match_operand:SI 1 "immediate_0_31" "i"))
+            (match_operand:SI 1 "immediate_0_8" "i"))
           (const_int 0)))
    ]
   ""
@@ -672,7 +672,7 @@
 	  (zero_extract:SI
 	    (match_operand:SI 1 "propeller_dst_operand" "0")
 	    (const_int 1)
-            (match_operand:SI 2 "immediate_0_31" "i"))
+            (match_operand:SI 2 "immediate_0_8" "i"))
           (const_int 0)))
    (set (match_operand:SI     0 "propeller_dst_operand" "=rC")
         (zero_extract:SI (match_dup 1)(const_int 1)(match_dup 2)))
