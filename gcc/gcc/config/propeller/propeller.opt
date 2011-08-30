@@ -29,6 +29,10 @@ mlmm
 Target Mask(LMM) Report
 Generate code for large memory model (LMM).
 
+mcog
+Target RejectNegative InverseMask(LMM) Report.
+Generate code for running in internal cog space.
+
 mpasm
 Target Mask(PASM) Report
 Generate assembler output that is compatible with the PASM assembler. The default is to generate GAS compatible syntax, unless -mspin is given.

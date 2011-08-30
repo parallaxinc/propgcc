@@ -26,7 +26,7 @@ $(NAME).elf: propeller_cog.script crt0.o csupport.o $(OBJS) div.o mult.o cogregs
 	$(LD) -o $@ -T propeller_cog.script $^
 
 %.o: %.c
-	$(CC) -Os -o $@ -c $<
+	$(CC) -mcog -Os -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<

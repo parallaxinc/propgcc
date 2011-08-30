@@ -23,7 +23,10 @@ LIB2FUNCS_EXTRA =
 
 # prevent some of the more complicated libgcc functions from being
 # compiled; these are pretty big anyway, and not often used
-LIB1ASMFUNCS = _mulsc3 _muldc3 _multc3 _divsc3 _divdc3 _divtc3 _multc3
+# also, we do have a few assembly things as well
+
+FAKEASMFUNCS = _mulsc3 _muldc3 _multc3 _divsc3 _divdc3 _divtc3 _multc3
+LIB1ASMFUNCS = _udivmoddi4 $(FAKEASMFUNCS)
 LIB1ASMSRC = propeller/libgccExtras/fake_libgcc.asm
 
 # floating point emulation libraries
@@ -40,7 +43,7 @@ dp-bit.c: $(srcdir)/config/fp-bit.c
 
 
 # Build all combinations of library for various compiler switches
-MULTILIB_OPTIONS = 
-
+MULTILIB_OPTIONS = mlmm/mcog
+MULTILIB_DIRNAMES = lmm cog
 # dunno if this is necessary
 MULTILIB_EXCEPTIONS = 
