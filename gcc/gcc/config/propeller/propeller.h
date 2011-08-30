@@ -514,7 +514,8 @@ extern const char *propeller_bss_asm_op;
 #define BSS_SECTION_ASM_OP   propeller_bss_asm_op
 
 #define TARGET_ASM_NAMED_SECTION default_elf_asm_named_section
-
+#define INIT_SECTION_ASM_OP \
+  (TARGET_PASM ? "\t'init section\t" : "\tsection\t\".init\",\"ax\"")
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
 
