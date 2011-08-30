@@ -231,8 +231,9 @@
 ;; NOTE: combine does some funky canonicalizations. In particular, it
 ;; changes (compare (x+y) 0) to (compare x (-y)), so write the pattern
 ;; accordingly
-
-(define_insn "*addsi3_compare0"
+;; But elsewhere we may need the other pattern...
+;;
+(define_insn "*addsi3_compare0_neg"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 		(match_operand:SI 1 "propeller_dst_operand" "%0,0")
@@ -247,7 +248,37 @@
    (set_attr "predicable" "yes")
   ]
 )
+(define_insn "*addsi3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	    (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
+                     (match_operand:SI 2 "propeller_src_operand"  "rCI,N"))
+	    (const_int 0)))
+  (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	  (plus:SI (match_dup 1)(match_dup 2)))]
+  ""
+  "@
+   add\t%0, %2 wz
+   sub\t%0, #%n2 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")
+  ]
+)
 (define_insn "*addsi3_compare0_only"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	    (plus:SI (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
+                     (match_operand:SI 1 "propeller_src_operand" "rCI,N"))
+            (const_int 0)))
+   ]
+  ""
+  "@
+   add\t%0,%1 nr,wz
+   sub\t%0,#%n1 nr,wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+(define_insn "*addsi3_compare0_neg_only"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	    (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
