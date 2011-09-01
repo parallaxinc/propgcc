@@ -10,9 +10,13 @@
 	'' which in the ROM has a stop routine)
 	''
 	.section .boot, "ax", @progbits
+	.global __clkfreq
+	.global __clkmode
 start
-	.long 80000000		' clock frequency
-	.byte 0x6f		' clock mode
+__clkfreq
+	.long __clkfreqval	' clock frequency
+__clkmode
+	.byte __clkmodeval	' clock mode
 chksum	.byte 0x00		' checksum: see above
 
 	.word 0x0010		' PBASE
@@ -44,7 +48,6 @@ pbase
 	'' and finally some definitions for the standard
 	'' COG registers
 	''
-	.section .cogregs
 	.global PAR
 	.global CNT
 	.global INA
