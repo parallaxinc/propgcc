@@ -1,3 +1,11 @@
+# where we have located things
+PREFIX = /usr/local/propeller
+# libgcc directory
+LIBGCC = $(PREFIX)/lib/gcc/propeller-elf/4.6.1
+
+STARTOBJS = $(LIBGCC)/spinboot.o $(LIBGCC)/crt0_lmm.o $(LIBGCC)/crtbegin_lmm.o
+ENDOBJS = -lgcc $(LIBGCC)/crtend_lmm.o
+
 # basic gnu tools
 CC = propeller-elf-gcc
 LD = propeller-elf-ld
@@ -22,8 +30,8 @@ $(NAME).binary: $(NAME).elf
 	$(OBJCOPY) -O binary $< $@
 	$(CHKSUM) $@
 
-$(NAME).elf: propeller_lmm.script crt0.o crtbegin.o lmm.o $(OBJS) cogregs.o crtend.o
-	$(LD) -o $@ -T propeller_lmm.script $^
+$(NAME).elf: propeller_lmm.script $(OBJS)
+	$(LD) -o $@ -T propeller_lmm.script $(STARTOBJS) $^ $(ENDOBJS)
 
 %.o: %.c
 	$(CC) -Os -mlmm -o $@ -c $<
