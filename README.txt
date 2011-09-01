@@ -41,6 +41,10 @@ directory, which I assume is named "propgcc" on your system):
 (4) make all-gcc
 (5) make install-gcc
 
+Now we can build libgcc
+
+(6) make all-target-libgcc
+(7) make install-target-libgcc
 
 --------------------------- demos ---------------------------------
 
