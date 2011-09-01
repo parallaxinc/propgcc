@@ -45,6 +45,8 @@
 
 #undef LINK_SPEC
 #define LINK_SPEC "%{mrelax:-relax}"
+
+#define TARGET_DEFAULT (MASK_LMM)
 
 /*-------------------------------*/
 /* Run-time Target Specification */
@@ -56,13 +58,17 @@
 #endif
 
 /* Target CPU builtins.  */
-#define TARGET_CPU_CPP_BUILTINS()                       \
-  do                                                    \
-    {                                                   \
+#define TARGET_CPU_CPP_BUILTINS()			     \
+  do							     \
+    {							     \
       builtin_define ("__propeller__");                      \
       builtin_assert ("cpu=propeller");                      \
       builtin_assert ("machine=propeller");                  \
-    }                                                   \
+      if (TARGET_LMM)					     \
+	builtin_define ("__lmm__");			     \
+      else						     \
+	builtin_define ("__cog__");			     \
+    }							     \
   while (0)
 
 /*---------------------------------*/
@@ -504,6 +510,7 @@ typedef unsigned int CUMULATIVE_ARGS;
 
 #define USER_LABEL_PREFIX "_"
 
+
 /* Switch to the text or data segment.  */
 extern const char *propeller_text_asm_op;
 extern const char *propeller_data_asm_op;
@@ -513,11 +520,12 @@ extern const char *propeller_bss_asm_op;
 #define DATA_SECTION_ASM_OP  propeller_data_asm_op
 #define BSS_SECTION_ASM_OP   propeller_bss_asm_op
 
-#define TARGET_ASM_NAMED_SECTION default_elf_asm_named_section
 #define INIT_SECTION_ASM_OP \
   (TARGET_PASM ? "\t'init section\t" : "\tsection\t\".init\",\"ax\"")
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
+
+#define TARGET_ASM_NAMED_SECTION default_elf_asm_named_section
 
 /* Assembler Commands for Alignment */
 
