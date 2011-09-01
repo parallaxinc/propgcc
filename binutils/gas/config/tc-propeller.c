@@ -201,6 +201,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 0;
       rshift = 0;
       break;
+    case BFD_RELOC_8:
+      mask = 0x000000ff;
+      shift = 0;
+      rshift = 0;
+      break;
     default:
       BAD_CASE (fixP->fx_r_type);
     }
@@ -244,6 +249,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     {
     case BFD_RELOC_32:
     case BFD_RELOC_16:
+    case BFD_RELOC_8:
     case BFD_RELOC_PROPELLER_SRC:
     case BFD_RELOC_PROPELLER_SRC_IMM:
     case BFD_RELOC_PROPELLER_DST:
