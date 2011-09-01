@@ -15,7 +15,7 @@ directory, which I assume is named "propgcc" on your system):
 
 (1) mkdir -p ../build/binutils
 (2) cd ../build/binutils
-(3) ../../propgcc/binutils/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls
+(3) ../../propgcc/binutils/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls 
 (4) make all
 
 This will build binutils. 
@@ -37,7 +37,7 @@ directory, which I assume is named "propgcc" on your system):
 
 (1) mkdir -p ../build/gcc
 (2) cd ../build/gcc
-(3) ../../propgcc/gcc/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls
+(3) ../../propgcc/gcc/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls --disable-libssp
 (4) make all-gcc
 (5) make install-gcc
 
