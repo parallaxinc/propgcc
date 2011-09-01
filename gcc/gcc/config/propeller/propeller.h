@@ -26,10 +26,10 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "%{pg:gcrt0.o%s}%{!pg:crt0.o%s}"
+#define STARTFILE_SPEC "spinboot.o %{mlmm:crt0_lmm.o%s crtbegin_lmm.o%s}%{!mlmm:crt0_cog.o%s}"
 
 #undef  ENDFILE_SPEC
-#define ENDFILE_SPEC "crtn.o%s"
+#define ENDFILE_SPEC "%{mlmm:crtend_lmm.o%s}%{!mlmm:crtend_cog.o}"
 
 #undef ASM_SPEC
 #define ASM_SPEC "\
