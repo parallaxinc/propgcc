@@ -118,6 +118,11 @@ __LMM_CALL_INDIRECT
 	mov	pc,__TMP0
 	jmp	#__LMM_loop
 
+	.global __LMM_JMP
+__LMM_JMP
+	rdlong	pc,pc
+	jmp	#__LMM_loop
+
 	''
 	'' masks
 	''

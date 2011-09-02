@@ -1445,7 +1445,7 @@
                (propeller_forward_branch_p (insn) ?
 	            "%p1\tadd\tpc,#(%l0-(.+4))" :
 		    "%p1\tsub\tpc,#((.+4)-%l0)") :
-	       "%p1\trdlong\tpc,pc\n\tlong\t%l0";
+	       "%p1\tjmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")
  (set (attr "length")
@@ -1600,7 +1600,7 @@
                (propeller_forward_branch_p (insn) ?
 	            "add\tpc,#(%l0-(.+4))" :
 		    "sub\tpc,#((.+4)-%l0)") :
-	       "rdlong\tpc,pc\n\tlong\t%l0";
+	       "jmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [ (set (attr "length")
       (if_then_else 
