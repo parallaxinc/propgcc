@@ -26,10 +26,10 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "spinboot.o %{mlmm:crt0_lmm.o%s crtbegin_lmm.o%s}%{!mlmm:crt0_cog.o%s}"
+#define STARTFILE_SPEC "spinboot.o%s %{!mcog:crt0_lmm.o%s crtbegin_lmm.o%s}%{mcog:crt0_cog.o%s}"
 
 #undef  ENDFILE_SPEC
-#define ENDFILE_SPEC "%{mlmm:crtend_lmm.o%s}%{!mlmm:crtend_cog.o}"
+#define ENDFILE_SPEC "%{!mcog:crtend_lmm.o%s}%{mcog:crtend_cog.o}"
 
 #undef ASM_SPEC
 #define ASM_SPEC "\
@@ -510,6 +510,8 @@ typedef unsigned int CUMULATIVE_ARGS;
 
 #define USER_LABEL_PREFIX "_"
 
+#define DOLLARS_IN_IDENTIFIERS 0
+#define NO_DOLLAR_IN_LABEL
 
 /* Switch to the text or data segment.  */
 extern const char *propeller_text_asm_op;
