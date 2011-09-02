@@ -49,9 +49,6 @@ __LMM_loop
 	rdlong	L_ins0,pc
 	add	pc,#4
 L_ins0	nop
-
-''	jmp	#__LMM_loop	'' uncomment to make tracing easier
-	
 	rdlong	L_ins1,pc
 	add	pc,#4
 L_ins1	nop
@@ -116,6 +113,14 @@ __LMM_CALL
 __LMM_CALL_INDIRECT
 	mov	lr,pc
 	mov	pc,__TMP0
+	jmp	#__LMM_loop
+
+	''
+	'' direct jmp
+	''
+	.global __LMM_JMP
+__LMM_JMP
+	rdlong	pc,pc
 	jmp	#__LMM_loop
 
 	''

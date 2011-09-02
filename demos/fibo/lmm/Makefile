@@ -3,7 +3,7 @@ PREFIX = /usr/local/propeller
 # libgcc directory
 LIBGCC = $(PREFIX)/lib/gcc/propeller-elf/4.6.1
 
-STARTOBJS = $(LIBGCC)/spinboot.o $(LIBGCC)/crt0_lmm.o $(LIBGCC)/crtbegin_lmm.o
+STARTOBJS =  $(LIBGCC)/spinboot.o $(LIBGCC)/crt0_lmm.o $(LIBGCC)/crtbegin_lmm.o
 ENDOBJS = -lgcc $(LIBGCC)/crtend_lmm.o
 
 # basic gnu tools

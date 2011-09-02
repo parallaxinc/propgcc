@@ -5,6 +5,14 @@
 # All rights MIT licensed
 # #########################################################
 
+# where we installed the propeller binaries and libraries
+PREFIX = /usr/local/propeller
+# libgcc directory
+LIBGCC = $(PREFIX)/lib/gcc/propeller-elf/4.6.1
+
+STARTOBJS = -L$(LIBGCC) $(LIBGCC)/spinboot.o $(LIBGCC)/crt0_lmm.o $(LIBGCC)/crtbegin_lmm.o
+ENDOBJS = -lgcc $(LIBGCC)/crtend_lmm.o
+
 # Current LIBRARY and INCL
 PROPLIB = ../../libpropeller
 CFLAGS = -I../../include
@@ -40,8 +48,8 @@ $(NAME).binary: $(NAME).elf
 	$(OBJCOPY) -O binary $< $@
 	$(CHKSUM) $@
 
-$(NAME).elf: $(PROPLIB)/propeller_lmm.script $(PROPLIB)/crt0.o $(PROPLIB)/crtbegin.o $(PROPLIB)/lmm.o $(OBJS) $(PROPLIB)/cogregs.o $(PROPLIB)/crtend.o
-	$(LD) -o $@ -T $(PROPLIB)/propeller_lmm.script $^
+$(NAME).elf: $(PROPLIB)/propeller_lmm.script $(OBJS)
+	$(LD) -o $@ -T $(PROPLIB)/propeller_lmm.script $(STARTOBJS) $^ $(ENDOBJS)
 
 %.o: %.c
 	$(CC) -Os -mlmm -o $@ -c $<
