@@ -23,6 +23,8 @@
  *      Uninitialized data.
  */
 
+SEARCH_DIR(/usr/local/propeller/lib/gcc/propeller-elf/4.6.1/)
+
 SECTIONS
 {
   .boot 0x0: { *(.boot) }

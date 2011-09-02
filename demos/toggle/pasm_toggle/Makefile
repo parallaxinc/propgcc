@@ -5,6 +5,14 @@
 # MIT Licensed
 # #########################################################
 
+# where we have located things
+PREFIX = /usr/local/propeller
+# libgcc directory
+LIBGCC = $(PREFIX)/lib/gcc/propeller-elf/4.6.1
+
+STARTOBJS =  $(LIBGCC)/spinboot.o $(LIBGCC)/crt0_lmm.o $(LIBGCC)/crtbegin_lmm.o
+ENDOBJS = -lgcc $(LIBGCC)/crtend_lmm.o
+
 # Propeller Demo include
 PROPLIB = ../../libpropeller
 PROPINC = ../../include
@@ -12,9 +20,10 @@ PROPINC = ../../include
 CFLAGS = -I$(PROPINC)
 
 # basic gnu tools
-CC = propeller-elf-gcc $(CFLAGS)
+CC = propeller-elf-gcc
 LD = propeller-elf-ld
 OBJCOPY = propeller-elf-objcopy
+LDSCRIPT = $(PROPLIB)/propeller_lmm.script
 
 # BSTC program
 BSTC=bstc
@@ -43,21 +52,21 @@ $(NAME).binary: $(NAME).elf
 	$(OBJCOPY) -O binary $< $@
 	$(CHKSUM) $@
 
-$(NAME).elf: $(PROPLIB)/propeller_lmm.script $(PROPLIB)/crt0.o $(PROPLIB)/crtbegin.o $(PROPLIB)/lmm.o $(OBJS) $(PROPLIB)/cogregs.o $(PROPLIB)/crtend.o
-	$(LD) -o $@ -T $(PROPLIB)/propeller_lmm.script $^
+$(NAME).elf: $(LDSCRIPT) $(OBJS)
+	$(LD) -o $@ -T $(LDSCRIPT) $(STARTOBJS) $^ $(ENDOBJS)
 
 %.o: %.c
-	$(CC) -Os -mlmm -o $@ -c $<
+	$(CC) $(CFLAGS) -Os -mlmm -o $@ -c $<
 
 %.o: %.s
-	$(CC) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 %.dat: $(SPINDIR)/%.spin
 	$(BSTC) -Ox -c -o $(basename $@) $<
 	$(ECHO) $@
 
 %_firmware.o: %.dat
-	propeller-elf-objcopy -I binary -B propeller -O propeller-elf-gcc $< $@
+	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 	rm -rf $<
 	$(ECHO) $@
 
