@@ -91,21 +91,6 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 FALSE),		/* pcrel_offset */
 
   /* A 9 bit relocation of the SRC field of an instruction */
-  HOWTO (R_PROPELLER_SRC,	/* type */
-	 2,			/* rightshift */
-	 2,			/* size (0 = byte, 1 = short, 2 = long) */
-	 9,			/* bitsize */
-	 FALSE,			/* pc_relative */
-	 0,			/* bitpos */
-	 complain_overflow_bitfield,	/* complain_on_overflow */
-	 bfd_elf_generic_reloc,	/* special_function */
-	 "R_PROPELLER_SRC",	/* name */
-	 FALSE,			/* partial_inplace */
-	 0x00000000,		/* src_mask */
-	 0x000001FF,		/* dst_mask */
-	 FALSE),		/* pcrel_offset */
-
-  /* A 9 bit relocation of the SRC field of an instruction */
   /* this one is an immediate constant rather than an address,
      so do not right shift it by 2
   */
@@ -118,6 +103,21 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 complain_overflow_bitfield,	/* complain_on_overflow */
 	 bfd_elf_generic_reloc,	/* special_function */
 	 "R_PROPELLER_SRC_IMM",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x000001FF,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* A 9 bit relocation of the SRC field of an instruction */
+  HOWTO (R_PROPELLER_SRC,	/* type */
+	 2,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 9,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_SRC",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
 	 0x000001FF,		/* dst_mask */
@@ -300,8 +300,8 @@ propeller_elf_relocate_section (bfd * output_bfd,
 	{
 	  sym = local_syms + r_symndx;
 	  sec = local_sections[r_symndx];
-	  if( r_type == R_PROPELLER_SRC_IMM && 
-	      (sym->st_other & PROPELLER_OTHER_COG_RAM) )
+	  if( (r_type == R_PROPELLER_SRC_IMM) && 
+	      0 != (sym->st_other & PROPELLER_OTHER_COG_RAM) )
 	    {
 	      Elf_Internal_Sym s = *sym;
 	      s.st_value /= 4;
