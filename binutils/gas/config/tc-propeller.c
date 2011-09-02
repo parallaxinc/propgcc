@@ -300,11 +300,7 @@ pseudo_fit (int c ATTRIBUTE_UNUSED)
 static void
 pseudo_res (int c ATTRIBUTE_UNUSED)
 {
-  int temp;
-
-  temp = get_absolute_expression ();
-  subseg_set (bss_section, temp);
-  demand_empty_rest_of_line ();
+  s_space(4);
 }
 
 static void
