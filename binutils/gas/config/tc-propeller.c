@@ -288,7 +288,13 @@ md_atof (int type, char *litP, int *sizeP)
 static void
 pseudo_fit (int c ATTRIBUTE_UNUSED)
 {
-  /* Do nothing.  This is the linker's job */
+  /* does nothing interesting right now, but
+     we do parse the expression
+  */
+  int temp;
+
+  temp = get_absolute_expression ();
+  demand_empty_rest_of_line ();
 }
 
 static void

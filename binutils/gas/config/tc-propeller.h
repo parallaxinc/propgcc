@@ -28,6 +28,9 @@
 
 #define TC_KEEP_OPERAND_SPACES 1
 #define NO_PSEUDO_DOT 1
+/* allow $ for hex and % for bin */
+#define LITERAL_PREFIXDOLLAR_HEX
+#define LITERAL_PREFIXPERCENT_BIN
 
 #define md_operand(x)
 #define md_number_to_chars number_to_chars_littleendian
