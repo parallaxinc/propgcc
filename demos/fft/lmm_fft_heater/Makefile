@@ -16,9 +16,10 @@ ENDOBJS = -lgcc $(LIBGCC)/crtend_lmm.o
 # Current LIBRARY and INCL
 PROPLIB = ../../libpropeller
 CFLAGS = -I../../include
+LDSCRIPT = $(PROPLIB)/propeller_lmm.script
 
 # basic gnu tools
-CC = propeller-elf-gcc $(CFLAGS)
+CC = propeller-elf-gcc
 LD = propeller-elf-ld
 OBJCOPY = propeller-elf-objcopy
 
@@ -48,11 +49,11 @@ $(NAME).binary: $(NAME).elf
 	$(OBJCOPY) -O binary $< $@
 	$(CHKSUM) $@
 
-$(NAME).elf: $(PROPLIB)/propeller_lmm.script $(OBJS)
-	$(LD) -o $@ -T $(PROPLIB)/propeller_lmm.script $(STARTOBJS) $^ $(ENDOBJS)
+$(NAME).elf: $(LDSCRIPT) $(OBJS)
+	$(LD) -o $@ -T $(LDSCRIPT) $(STARTOBJS) $^ $(ENDOBJS)
 
 %.o: %.c
-	$(CC) -Os -mlmm -o $@ -c $<
+	$(CC) $(CFLAGS) -Os -mlmm -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<
@@ -62,7 +63,7 @@ $(NAME).elf: $(PROPLIB)/propeller_lmm.script $(OBJS)
 	$(ECHO) $@
 
 %_firmware.o: %.dat
-	propeller-elf-objcopy -I binary -B propeller -O propeller-elf-gcc $< $@
+	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 	rm -rf $<
 	$(ECHO) $@
 
