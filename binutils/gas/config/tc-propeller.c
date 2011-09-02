@@ -469,6 +469,7 @@ md_assemble (char *instruction_string)
 
     case PROPELLER_OPERAND_TWO_OPS:
     case PROPELLER_OPERAND_JMPRET:
+    case PROPELLER_OPERAND_MOVA:
     case PROPELLER_OPERAND_DEST_ONLY:
       str = skip_whitespace (str);
       str = parse_expression (str, &op1);
@@ -518,7 +519,7 @@ md_assemble (char *instruction_string)
 	{
 	  str++;
 	  insn.code |= 1 << 22;
-	  if (op->format != PROPELLER_OPERAND_JMP && op->format != PROPELLER_OPERAND_JMPRET)
+	  if (op->format != PROPELLER_OPERAND_JMP && op->format != PROPELLER_OPERAND_JMPRET && op->format != PROPELLER_OPERAND_MOVA)
 	    {
 	      integer_reloc = 1;
 	    }

@@ -32,6 +32,7 @@
 #define PROPELLER_OPERAND_IGNORE      5
 #define PROPELLER_OPERAND_JMP         6
 #define PROPELLER_OPERAND_JMPRET      7
+#define PROPELLER_OPERAND_MOVA        8
 
 struct propeller_opcode
 {

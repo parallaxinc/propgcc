@@ -93,9 +93,9 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* max      010011 zcri cccc ddddddddd sssssssss */
   {"max", 0x4c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* movs     010100 zcri cccc ddddddddd sssssssss */
-  {"movs", 0x50000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
+  {"movs", 0x50000000, 0xfc000000, PROPELLER_OPERAND_MOVA, R, PROP_1},
 /* movd     010101 zcri cccc ddddddddd sssssssss */
-  {"movd", 0x54000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
+  {"movd", 0x54000000, 0xfc000000, PROPELLER_OPERAND_MOVA, R, PROP_1},
 /* movi     010110 zcri cccc ddddddddd sssssssss */
   {"movi", 0x58000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
   /* jmp      010111 zc0i cccc --------- sssssssss *//* These two are in the */

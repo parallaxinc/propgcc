@@ -148,6 +148,7 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 	    goto done;
 	  case PROPELLER_OPERAND_TWO_OPS:
 	  case PROPELLER_OPERAND_JMPRET:
+	  case PROPELLER_OPERAND_MOVA:
 	    FPRINTF (F, OP.name);
 	    FPRINTF (F, AFTER_INSTRUCTION);
 	      {
@@ -155,7 +156,7 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 		(*info->print_address_func) (info->target, info);
 	      }
 	    FPRINTF (F, OPERAND_SEPARATOR);
-	    if (immediate && OP.format != PROPELLER_OPERAND_JMPRET)
+	    if (immediate && (OP.format != PROPELLER_OPERAND_JMPRET && OP.format != PROPELLER_OPERAND_MOVA))
 	      {
 	      FPRINTF (F, "#");
 	      FPRINTF (F, "%d", src);
