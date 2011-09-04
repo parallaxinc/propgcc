@@ -60,6 +60,8 @@
    (UNSPEC_WAITVID       8)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
+   (UNSPEC_LOOP_START  103)
+   (UNSPEC_LOOP_END    104)
   ])
 
 ; Most instructions are four bytes long.
@@ -1310,7 +1312,7 @@
    %p3 mov\t%0,%2
    %p3 neg\t%0,#%n2
    %P3 mov\t%0,%1
-   %P3 neg\t%0,%n1
+   %P3 neg\t%0,#%n1
    %p3 mov\t%0,%1\n\t%P3 mov\t%0,%2
    %p3 mov\t%0,%1\n\t%P3 neg\t%0,#%n2
    %p3 neg\t%0,#%n1\n\t%P3 mov\t%0,%2
@@ -1752,6 +1754,47 @@
   ]
 ""
 ""
+)
+
+;;
+;; -------------------------------------------------------------------------
+;; Low overhead looping
+;; -------------------------------------------------------------------------
+;;
+
+(define_expand "doloop_end"
+  [(use (match_operand 0 "" ""))	; loop pseudo
+   (use (match_operand 1 "" ""))	; iterations; zero if unknown
+   (use (match_operand 2 "" ""))	; max iterations
+   (use (match_operand 3 "" ""))	; loop level
+   (use (match_operand 4 "" ""))]	; label
+""
+{
+  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+    emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+  else
+    FAIL;
+  DONE;
+}
+)
+
+;; this is rather funky, because it has to be able to handle memory
+;; operands due to the way reload works
+(define_insn "djnz"
+  [(set (pc)
+        (if_then_else
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC")
+	      (const_int 1))
+	  (label_ref (match_operand 0 "" ""))
+	  (pc)))
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,*m")
+        (plus:SI (match_dup 1)(const_int -1)))]
+"!TARGET_LMM"
+"@
+ djnz %1,#%l0
+ rdlong __TMP0,%1\n\tsub __TMP0,#1\n\twrlong __TMP0,%2\n\ttjnz __TMP0,#%l0"
+[(set_attr "length" "4,16")
+ (set_attr "type" "core,multi")]
 )
 
 ;; -------------------------------------------------------------------------

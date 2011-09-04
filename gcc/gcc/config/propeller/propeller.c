@@ -143,20 +143,20 @@ propeller_option_override (void)
       {
 	propeller_text_asm_op = "\t'.text";
 	propeller_data_asm_op = "\t'.data";
-	propeller_bss_asm_op = "\t'.bss";
+	propeller_bss_asm_op = "\t'.section\t.bss";
 	hex_prefix = "$";
       }
     else if (TARGET_LMM || !USE_HUBCOG_DIRECTIVES)
       {
 	propeller_text_asm_op = "\t.text";
 	propeller_data_asm_op = "\t.data";
-	propeller_bss_asm_op = "\t.section .bss";
+	propeller_bss_asm_op = "\t.section\t.bss";
       }
     else
       {
 	propeller_text_asm_op = "\t.text\n\t.cog_ram";
 	propeller_data_asm_op = "\t.data\n\t.hub_ram";
-	propeller_bss_asm_op = "\t.section .bss\n\t.hub_ram";
+	propeller_bss_asm_op = "\t.section\t.bss\n\t.hub_ram";
       }
 }
 
