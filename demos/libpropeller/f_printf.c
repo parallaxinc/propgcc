@@ -18,21 +18,23 @@
 #include <stdarg.h>
 #include <unistd.h>
 
+#define _NOINLINE __attribute__((noinline))
+
 extern double modf(double x, double *iptr);
 
-#define ARCH_HAVE_FPU 1  /* we want float support */
+#define ARCH_HAVE_FPU 0  /* we want float support */
 #define FLT_DIG (6)
 #define DBL_DIG (15)
 
 /* Max number conversion buffer length: a long in base 2, plus NUL byte. */
 #define MAXNBUF	(sizeof(long) * 8 + 1)
 
-static unsigned char *ksprintn (unsigned char *buf, unsigned long v, unsigned char base,
+_NOINLINE static unsigned char *ksprintn (unsigned char *buf, unsigned long v, unsigned char base,
 	int width, unsigned char *lp);
-static unsigned char mkhex (unsigned char ch);
+_NOINLINE static unsigned char mkhex (unsigned char ch);
 
 #if ARCH_HAVE_FPU
-static int cvt (double number, int prec, int sharpflag, unsigned char *negp,
+_NOINLINE static int cvt (double number, int prec, int sharpflag, unsigned char *negp,
 	unsigned char fmtch, unsigned char *startp, unsigned char *endp);
 #endif
 
@@ -178,37 +180,6 @@ string:			if (! dot)
 					PUTC (' ');
 			break;
 
-		case 'r':
-			/* Saturated counters. */
-			base = 10;
-			if (lflag) {
-				ul = va_arg (ap, unsigned long);
-				if (ul == -1) {
-cnt_unknown:				if (ladjust)
-						PUTC ('-');
-					while (--width > 0)
-						PUTC (' ');
-					if (! ladjust)
-						PUTC ('-');
-					break;
-				}
-				if (ul >= -2) {
-					ul = -3;
-					neg = '>';
-					goto nosign;
-				}
-			} else {
-				ul = va_arg (ap, unsigned int);
-				if (ul == (unsigned short) -1)
-					goto cnt_unknown;
-				if (ul >= (unsigned short) -2) {
-					ul = (unsigned short) -3;
-					neg = '>';
-					goto nosign;
-				}
-			}
-			goto nosign;
-
 		case 'u':
 			ul = lflag ? va_arg (ap, unsigned long) :
 				va_arg (ap, unsigned int);
@@ -222,14 +193,6 @@ cnt_unknown:				if (ladjust)
 			base = 16;
 			uppercase = (c == 'X');
 			goto nosign;
-		case 'z':
-		case 'Z':
-			ul = lflag ? va_arg (ap, unsigned long) :
-				sign ? (unsigned long) va_arg (ap, int) :
-				va_arg (ap, unsigned int);
-			base = 16;
-			uppercase = (c == 'Z');
-			goto number;
 
 nosign:			sign = 0;
 number:		if (sign && ((long) ul != 0L)) {
@@ -327,7 +290,7 @@ number:		if (sign && ((long) ul != 0L)) {
 			 * if the first char isn't NULL, it did.
 			 */
 			if (isnan (d) || isinf (d)) {
-				strcpy_flash (nbuf, isnan (d) ? "NaN" : "Inf");
+				strcpy (nbuf, isnan (d) ? "NaN" : "Inf");
 				size = 3;
 				extrazeros = 0;
 				s = nbuf;
