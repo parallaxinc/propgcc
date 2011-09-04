@@ -65,10 +65,8 @@ typedef struct {
 /* DAT header in flash_loader.spin */
 typedef struct {
     uint32_t cache_size;
-    uint32_t baudrate;
-    uint8_t rxpin;
-    uint8_t txpin;
-    uint16_t unused;
+    uint32_t cache_param1;
+    uint32_t cache_param2;
     uint32_t vm_code_off;
     uint32_t cache_code_off;
 } FlashLoaderDatHdr;
@@ -95,7 +93,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp);
 static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c);
-static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size);
+static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
@@ -268,15 +266,9 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf;
-    int imageSize, chksum, i;
+    int imageSize, chksum, mode, i;
     ElfProgramHdr program;
 
-    /* load the '.text' section */
-    if (!FindProgramSection(c, ".text", &program)) {
-        CloseElfFile(c);
-        return Error("can't find '.text' section");
-    }
-    
     /* patch serial helper for clock mode and frequency */
     hdr->clkfreq = config->clkfreq;
     hdr->clkmode = config->clkmode;
@@ -318,6 +310,12 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         return Error("no cache driver to load external image");
     
+    /* load the '.text' section */
+    if (!FindProgramSection(c, ".text", &program)) {
+        CloseElfFile(c);
+        return Error("can't find '.text' section");
+    }
+    
     /* load the '.text' section data */
     if (!(buf = LoadProgramSection(c, &program)))
         return Error("can't load '.text' section");
@@ -338,8 +336,16 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     ||  !(buf = LoadProgramSection(c, &program)))
         return Error("can't load '.xmmkernel' section");
     
+    /* determine the download mode */
+    if (flags & LFLAG_WRITE_EEPROM)
+        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+    else if (flags & LFLAG_RUN)
+        mode = DOWNLOAD_RUN_BINARY;
+    else
+        mode = SHUTDOWN_CMD;
+    
     /* write the 'xmmkernel' to the eeprom */
-    if (!WriteFlashLoaderToEEPROM(sys, config, port, buf, program.filesz)) {
+    if (mode != SHUTDOWN_CMD && !WriteFlashLoaderToEEPROM(sys, config, port, buf, program.filesz, mode)) {
         free(buf);
         return Error("can't load '.xmmkernel' section into eeprom");
     }
@@ -347,14 +353,10 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     /* free the '.xmmkernel' section data */
     free(buf);
     
-    /* run the loaded image */
-    if ((flags & LFLAG_RUN) && !SendPacket(TYPE_RUN, (uint8_t *)"", 0))
-        return Error("run failed");
-
     return TRUE;
 }
     
-static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size)
+static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode)
 {
 	SpinHdr *hdr = (SpinHdr *)flash_loader_array;
     SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->pbase);
@@ -365,12 +367,9 @@ static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port
     if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
         return Error("reading cache driver image failed: %s", config->cacheDriver);
         
-    /* patch serial helper for clock mode and frequency */
+    /* patch flash loader for clock mode and frequency */
     hdr->clkfreq = config->clkfreq;
     hdr->clkmode = config->clkmode;
-	dat->baudrate = config->baudrate;
-	dat->rxpin = config->rxpin;
-	dat->txpin = config->txpin;
     
     /* copy the vm image to the binary file */
     memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
@@ -380,6 +379,8 @@ static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port
     
     /* get the cache size */
     dat->cache_size = config->cacheSize;
+    dat->cache_param1 = config->cacheParam1;
+    dat->cache_param2 = config->cacheParam2;
     
     /* recompute the checksum */
     hdr->chksum = 0;
@@ -388,7 +389,7 @@ static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
     
 	/* load the loader program to eeprom */
-    if (ploadbuf(flash_loader_array, flash_loader_size, port, DOWNLOAD_EEPROM) != 0)
+    if (ploadbuf(flash_loader_array, flash_loader_size, port, mode) != 0)
 		return Error("loader load failed");
 	
 	/* return successfully */
