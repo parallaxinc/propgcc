@@ -1,8 +1,15 @@
 #ifndef _STDIO_H_
 #define _STDIO_H_
 
-extern int printf(const char *fmt, ...);
+/* the transmit function (used to put a single character)
+ * returns 1 on success, 0 on failure
+ */
+extern int (*_putc)(int c);
 
-extern void _start_serial(int rxpin, int txpin, int buadrate);
+
+#define putchar(c) (_putc(c) ? c : 0);
+
+/* external definitions */
+extern int printf(const char *fmt, ...);
 
 #endif
