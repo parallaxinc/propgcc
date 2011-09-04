@@ -7,7 +7,7 @@
 extern int (*_putc)(int c);
 
 
-#define putchar(c) (_putc(c) ? c : 0);
+#define putchar(c) (_putc(c) ? c : -1)
 
 /* external definitions */
 extern int printf(const char *fmt, ...);
