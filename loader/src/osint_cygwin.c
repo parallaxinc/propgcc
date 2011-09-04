@@ -157,9 +157,9 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
 void hwreset(void)
 {
     EscapeCommFunction(hSerial, SETDTR);
-    Sleep(100);
+    Sleep(10);
     EscapeCommFunction(hSerial, CLRDTR);
-    Sleep(50);
+    Sleep(100);
     // Purge here after reset to get rid of buffered data. Prevents "Lost HW Contact 0 f9"
     PurgeComm(hSerial, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
 }
@@ -210,7 +210,7 @@ static void ShowLastError(void)
 
 /* console i/o functions for Unix/Linux courtesy of 'jazzed' */
 
-int console_kbhit(void)
+static int console_kbhit(void)
 {
   struct termios oldt, newt;
   int ch;
@@ -237,7 +237,7 @@ int console_kbhit(void)
   return 0;
 }
 
-int console_getch(void)
+static int console_getch(void)
 {
   struct termios oldt, newt;
   int ch;
@@ -258,7 +258,23 @@ int console_getch(void)
   return ch;
 }
 
-void console_putch(int ch)
+static void console_putch(int ch)
 {
     putchar(ch);
+}
+
+#define ESC     0x1b    /* escape from terminal mode */
+
+void terminal_mode(void)
+{
+    for (;;) {
+        uint8_t buf[1];
+        if (rx_timeout(buf, 1, 0) != SERIAL_TIMEOUT)
+            console_putch(buf[0]);
+        else if (console_kbhit()) {
+            if ((buf[0] = console_getch()) == ESC)
+                break;
+            tx(buf, 1);
+        }
+    }
 }

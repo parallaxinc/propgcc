@@ -44,7 +44,7 @@ endif
 ##################
 
 .PHONY:	all
-all:	propeller-load$(EXT) cache-drivers
+all:	propeller-load cache-drivers
 
 #################
 # CLEAN TARGETS #

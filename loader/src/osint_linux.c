@@ -41,8 +41,6 @@
 
 #include "osint.h"
 
-#define ESC     0x1b    /* escape from terminal mode */
-
 typedef int HANDLE;
 static HANDLE hSerial;
 static struct termios old_sparm;
@@ -241,6 +239,8 @@ void msleep(int ms)
         } while (t1.millitm == t0.millitm);
     } while(ms-- > 0);
 }
+
+#define ESC     0x1b    /* escape from terminal mode */
 
 /**
  * simple terminal emulator

@@ -167,7 +167,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
 
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp)
 {
-    int mode;
+    int mode, sts;
     
     /* determine the download mode */
     if (flags & LFLAG_WRITE_EEPROM)
@@ -178,7 +178,10 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *pa
         mode = SHUTDOWN_CMD;
     
     fseek(fp, 0, SEEK_SET);
-    return ploadfp(path, fp, port, mode) == 0;
+    sts = ploadfp(path, fp, port, mode);
+    fclose(fp);
+    
+    return sts == 0;
 }
 
 static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c)

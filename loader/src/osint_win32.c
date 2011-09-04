@@ -207,17 +207,33 @@ static void ShowLastError(void)
     LocalFree(lpMsgBuf);
 }
 
-int console_kbhit(void)
+static int console_kbhit(void)
 {
   return _kbhit();
 }
 
-int console_getch(void)
+static int console_getch(void)
 {
   return _getch();
 }
 
-void console_putch(int ch)
+static void console_putch(int ch)
 {
     _putch(ch);
+}
+
+#define ESC     0x1b    /* escape from terminal mode */
+
+void terminal_mode(void)
+{
+    for (;;) {
+        uint8_t buf[1];
+        if (rx_timeout(buf, 1, 0) != SERIAL_TIMEOUT)
+            console_putch(buf[0]);
+        else if (console_kbhit()) {
+            if ((buf[0] = console_getch()) == ESC)
+                break;
+            tx(buf, 1);
+        }
+    }
 }
