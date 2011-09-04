@@ -13,7 +13,7 @@ PROPLIB = ../libpropeller
 #
 
 NAME = fft_bench
-OBJS = fft_bench.o clock.o stdio.o printf.o serial.o
+OBJS = fft_bench.o
 
 CFLAGS = -Os
 
@@ -23,5 +23,5 @@ CFLAGS = -Os
 
 all: $(NAME).elf
 
-include $(PROPLIB)/Makefile.incl
+include $(PROPLIB)/lmmdemo.mk
 

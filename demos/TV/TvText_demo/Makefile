@@ -16,14 +16,13 @@ CFLAGS = -Os
 #
 
 NAME = TvDemo
-OBJS = TvDemo.o TvText.o TV_firmware.o \
-	clock.o stdio.o printf.o serial.o propeller.o
+OBJS = TvDemo.o TvText.o TV_firmware.o $(PROPLIB)/libpropeller.a
 
 SPINDIR = .
 
 all: $(NAME).elf
 
-include $(PROPLIB)/Makefile.incl
+include $(PROPLIB)/lmmdemo.mk
 
 %.dat: $(SPINDIR)/%.spin
 	$(BSTC) -Ox -c -o $(basename $@) $<

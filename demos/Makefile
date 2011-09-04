@@ -10,7 +10,7 @@
 all:
 	make -C libpropeller
 	make -C toggle/pasm_toggle
-	make -C fft/lmm_fft_heater
+	make -C fft
 	make -C fibo/cog
 	make -C fibo/lmm
 	make -C TV/TvText_demo
@@ -18,7 +18,7 @@ all:
 clean:
 	make clean -C libpropeller
 	make clean -C toggle/pasm_toggle
-	make clean -C fft/lmm_fft_heater
+	make clean -C fft
 	make clean -C fibo/cog
 	make clean -C fibo/lmm
 	make clean -C TV/TvText_demo
