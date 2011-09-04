@@ -8,7 +8,7 @@ extern char __heap_start[];
 
 char *_heap_base = __heap_start;
 
-#define MIN_STACK 1024
+#define MIN_STACK 128
 
 char *
 _sbrk(unsigned long n)
@@ -23,6 +23,6 @@ _sbrk(unsigned long n)
     return (char *)0;
 
   /* allocate and return */
-  _heap_base += n;
+  _heap_base = r + n;
   return r;
 }
