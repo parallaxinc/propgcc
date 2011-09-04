@@ -1,7 +1,19 @@
 # #########################################################
-# This makefile builds the fft_bench program
+# This makefile fragment builds LMM demo programs
 #   
-# Copyright (c) 2011 Steve Denson
+# To use it, define:
+#  PROPLIB to be the path to this directory
+#  NAME to be the name of project
+#       - this is used to create the final program $(NAME).elf
+#  OBJS to be the object files needed for the project
+#  CFLAGS to be desired CFLAGS
+#
+#  Then set up a default "all" target (normally this will be
+#    all: $(NAME).elf
+#  and finally
+#    include $(PROPLIB)/lmmdemo.mk
+#
+# Copyright (c) 2011 Parallax Inc.
 # All rights MIT licensed
 # #########################################################
 
@@ -14,42 +26,27 @@ STARTOBJS = -L$(LIBGCC) $(LIBGCC)/spinboot.o $(LIBGCC)/crt0_lmm.o $(LIBGCC)/crtb
 ENDOBJS = -lgcc $(LIBGCC)/crtend_lmm.o
 
 # Current LIBRARY and INCL
-PROPLIB = ../../libpropeller
-CFLAGS = -I../../include
+PROPINC = $(PROPLIB)/../include
+
+CFLAGS += -I$(PROPINC)
 LDSCRIPT = $(PROPLIB)/propeller_lmm.script
 
 # basic gnu tools
 CC = propeller-elf-gcc
 LD = propeller-elf-ld
 OBJCOPY = propeller-elf-objcopy
+CHKSUM = propeller-checksum
+LOADER = propeller-load -p1 -b c3
 
 # BSTC program
 BSTC=bstc -ls
 SPINDIR=.
 ECHO=echo
 
-# simulator command line; replace with appropriate
-# binary loader to run on real hardware
-SPINSIM = spinsim -b115200
+# C library to use
+LIBC = $(PROPLIB)/libc.a
 
-# checksum program; replace with 'echo' if you don't
-# have this, and don't care about running on real hardware
-CHKSUM = propeller-checksum
-
-#
-# objects for this program
-#
-
-NAME = fft_bench
-OBJS = fft_bench.o $(PROPLIB)/clock.o $(PROPLIB)/printf.o
-
-all: $(NAME).binary
-
-$(NAME).binary: $(NAME).elf
-	$(OBJCOPY) -O binary $< $@
-	$(CHKSUM) $@
-
-$(NAME).elf: $(LDSCRIPT) $(OBJS)
+$(NAME).elf: $(LDSCRIPT) $(OBJS) $(LIBC)
 	$(LD) -o $@ -T $(LDSCRIPT) $(STARTOBJS) $^ $(ENDOBJS)
 
 %.o: %.c
@@ -57,6 +54,10 @@ $(NAME).elf: $(LDSCRIPT) $(OBJS)
 
 %.o: %.s
 	$(CC) -o $@ -c $<
+
+%.binary: %.elf
+	$(OBJCOPY) -O binary $< $@
+	$(CHKSUM) $@
 
 %.dat: $(SPINDIR)/%.spin
 	$(BSTC) -Ox -c -o $(basename $@) $<
@@ -70,6 +71,14 @@ $(NAME).elf: $(LDSCRIPT) $(OBJS)
 clean:
 	rm -f *.o *.elf *.binary
 
+#
+# we make both libraries together
+#
+$(LIBC) $(PROPLIB)/libpropeller.a:
+	make -C $(PROPLIB)
 
-run: $(NAME).binary
-	$(SPINSIM) $(NAME).binary
+#
+# how to run
+#
+run: $(NAME).elf
+	$(LOADER) -I$(PROPLIB) $(NAME).elf -r -t
