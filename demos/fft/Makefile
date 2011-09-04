@@ -5,23 +5,23 @@
 # All rights MIT licensed
 # #########################################################
 
-# Current LIBRARY and INCL
+# Path to shared demo library
 PROPLIB = ../libpropeller
 
 #
-# objects for this program
+# name and objects for this program
 #
 
 NAME = fft_bench
 OBJS = fft_bench.o
 
+# flags to build with
 CFLAGS = -Os
+
+# default build target
+all: $(NAME).elf
 
 #
 # include the fragment that defines most of everything
 #
-
-all: $(NAME).elf
-
 include $(PROPLIB)/lmmdemo.mk
-
