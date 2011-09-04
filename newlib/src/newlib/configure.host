@@ -226,6 +226,9 @@ case "${host_cpu}" in
   powerpc*)
 	machine_dir=powerpc
 	;;
+  propeller*)
+        machine_dir=propeller
+        ;;
   rx)
 	machine_dir=rx
 	default_newlib_io_long_long="yes"

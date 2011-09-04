@@ -290,6 +290,7 @@ case $basic_machine in
 	| or32 \
 	| pdp10 | pdp11 | pj | pjl \
 	| powerpc | powerpc64 | powerpc64le | powerpcle \
+        | propeller \
 	| pyramid \
 	| rx \
 	| score \
@@ -399,6 +400,7 @@ case $basic_machine in
 	| orion-* \
 	| pdp10-* | pdp11-* | pj-* | pjl-* | pn-* | power-* \
 	| powerpc-* | powerpc64-* | powerpc64le-* | powerpcle-* \
+        | propeller-* \
 	| pyramid-* \
 	| romp-* | rs6000-* | rx-* \
 	| sh-* | sh[1234]-* | sh[24]a-* | sh[24]aeb-* | sh[23]e-* | sh[34]eb-* | sheb-* | shbe-* \
@@ -1242,6 +1244,9 @@ case $basic_machine in
 	pdp11)
 		basic_machine=pdp11-dec
 		;;
+        propeller)
+	        basic_machine=propeller-parallax
+		;;
 	we32k)
 		basic_machine=we32k-att
 		;;
@@ -1532,6 +1537,9 @@ case $basic_machine in
 		;;
 	pdp11-*)
 		os=-none
+		;;
+        propeller-*)
+                os=-elf
 		;;
 	*-dec | vax-*)
 		os=-ultrix4.2

@@ -365,6 +365,10 @@
 #define __SMALL_BITFIELDS	/* 16 Bit INT */
 #endif
 
+#ifdef __propeller__
+#define __IEEE_LITTLE_ENDIAN
+#endif
+
 #ifndef __IEEE_BIG_ENDIAN
 #ifndef __IEEE_LITTLE_ENDIAN
 #error Endianess not declared!!

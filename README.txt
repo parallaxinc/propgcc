@@ -46,6 +46,23 @@ Now we can build libgcc
 (6) make all-target-libgcc
 (7) make install-target-libgcc
 
+-------------------------- newlib ---------------------------------
+To build under Linux, execute the following commands (starting in this
+directory, which I assume is named "propgcc" on your system):
+
+(1) mkdir -p ../build/newlib
+(2) cd ../build/newlib
+(3) ../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller
+(4) make all
+
+This will build newlib. 
+
+To install it in /usr/local/propeller (make sure that directory exists
+on your system and is writable first!) do:
+
+(5) make install
+
+
 --------------------------- demos ---------------------------------
 
 The following demos are provided. In each directory there should be a

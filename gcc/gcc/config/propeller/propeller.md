@@ -626,7 +626,7 @@
   ""
   "@
    and\t%0,%2 wz
-   andn\t%0,%2 wz"
+   andn\t%0,%M2 wz"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -1310,7 +1310,7 @@
    %p3 mov\t%0,%2
    %p3 neg\t%0,#%n2
    %P3 mov\t%0,%1
-   %P3 neg\t%0,%1
+   %P3 neg\t%0,%n1
    %p3 mov\t%0,%1\n\t%P3 mov\t%0,%2
    %p3 mov\t%0,%1\n\t%P3 neg\t%0,#%n2
    %p3 neg\t%0,#%n1\n\t%P3 mov\t%0,%2
