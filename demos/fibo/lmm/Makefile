@@ -5,9 +5,9 @@
 PROPLIB = ../../libpropeller
 
 NAME = fibo
-OBJS = fibo.o printf.o clock.o stdio.o serial.o
+OBJS = fibo.o
 CFLAGS = -Os
 
 all: $(NAME).elf
 
-include $(PROPLIB)/Makefile.incl
+include $(PROPLIB)/lmmdemo.mk

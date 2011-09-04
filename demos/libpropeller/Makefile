@@ -2,24 +2,28 @@
 PROPLIB = ../libpropeller
 PROPINC = ../include
 
-CFLAGS = -I$(PROPINC)
+CFLAGS = -Os -mlmm -I$(PROPINC)
 
 # basic gnu tools
 CC = propeller-elf-gcc $(CFLAGS)
 LD = propeller-elf-ld
 AR = propeller-elf-ar
+AS = propeller-elf-as
 OBJCOPY = propeller-elf-objcopy
 
-NAME = libpropeller
-OBJS = propeller.o
+POBJS = propeller.o
+COBJS = stdio.o serial.o clock.o printf.o
 
-all: $(NAME).a
+all: libpropeller.a libc.a
 
-$(NAME).a: $(OBJS)
-	$(AR) rcs $(NAME).a propeller.o
+libpropeller.a: $(POBJS)
+	$(AR) rcs $@ $^
+
+libc.a: $(COBJS)
+	$(AR) rcs $@ $^
 
 %.o: %.c
-	$(CC) -Os -mlmm -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<

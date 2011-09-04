@@ -1,5 +1,5 @@
 # #########################################################
-# This makefile fragment builds most programs
+# This makefile fragment builds LMM demo programs
 #   
 # To use it, define:
 #  PROPLIB to be the path to this directory
@@ -7,6 +7,12 @@
 #       - this is used to create the final program $(NAME).elf
 #  OBJS to be the object files needed for the project
 #  CFLAGS to be desired CFLAGS
+#
+#  Then set up a default "all" target (normally this will be
+#    all: $(NAME).elf
+#  and finally
+#    include $(PROPLIB)/lmmdemo.mk
+#
 # Copyright (c) 2011 Parallax Inc.
 # All rights MIT licensed
 # #########################################################
@@ -37,9 +43,10 @@ BSTC=bstc -ls
 SPINDIR=.
 ECHO=echo
 
-VPATH = .:$(PROPLIB)
+# C library to use
+LIBC = $(PROPLIB)/libc.a
 
-$(NAME).elf: $(LDSCRIPT) $(OBJS)
+$(NAME).elf: $(LDSCRIPT) $(OBJS) $(LIBC)
 	$(LD) -o $@ -T $(LDSCRIPT) $(STARTOBJS) $^ $(ENDOBJS)
 
 %.o: %.c
@@ -64,6 +71,14 @@ $(NAME).elf: $(LDSCRIPT) $(OBJS)
 clean:
 	rm -f *.o *.elf *.binary
 
+#
+# we make both libraries together
+#
+$(LIBC) $(PROPLIB)/libpropeller.a:
+	make -C $(PROPLIB)
 
+#
+# how to run
+#
 run: $(NAME).elf
 	$(LOADER) -I$(PROPLIB) $(NAME).elf -r -t
