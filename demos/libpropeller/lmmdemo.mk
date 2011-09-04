@@ -34,6 +34,7 @@ LDSCRIPT = $(PROPLIB)/propeller_lmm.script
 # basic gnu tools
 CC = propeller-elf-gcc
 LD = propeller-elf-ld
+AS = propeller-elf-as
 OBJCOPY = propeller-elf-objcopy
 CHKSUM = propeller-checksum
 LOADER = propeller-load -p1 -b c3
@@ -74,7 +75,7 @@ clean:
 #
 # we make both libraries together
 #
-$(LIBC) $(PROPLIB)/libpropeller.a:
+$(LIBC) $(PROPLIB)/libpropeller.a: .FORCE
 	make -C $(PROPLIB)
 
 #
@@ -82,3 +83,5 @@ $(LIBC) $(PROPLIB)/libpropeller.a:
 #
 run: $(NAME).elf
 	$(LOADER) -I$(PROPLIB) $(NAME).elf -r -t
+
+.FORCE:
