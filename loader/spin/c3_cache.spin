@@ -64,7 +64,8 @@ CON
 OBJ
   int: "cache_interface"
 
-PUB dummy
+PUB image
+  return @init_vm
 
 DAT
         org   $0
