@@ -2,8 +2,7 @@
 PROPLIB = ../libpropeller
 PROPINC = ../include
 
-#CFLAGS = -Os -mlmm -I$(PROPINC)
-CFLAGS = -O -mlmm -I$(PROPINC)
+CFLAGS = -Os -mlmm -I$(PROPINC)
 
 # basic gnu tools
 CC = propeller-elf-gcc $(CFLAGS)
