@@ -10,21 +10,6 @@
 #include "cog.h"
 
 /*
- * GCC will optimize printf to puts if it can, so we need to
- * provide a definition for it
- */
-int puts(const char *str)
-{
-    int c;
-    int r = 0;
-    while ( 0 != (c = *str++) ) {
-        r += _putc(c);
-    }
-    r += _putc('\n');
-    return r;
-}
-
-/*
  * very simple printf -- just understands a few format features
  */
 
@@ -32,9 +17,10 @@ static int
 PUTC(int c, int width) {
 	int put = 0;
 
-	put += _putc(c);
+	_putc(c); put++;
 	while (--width > 0) {
-		put += _putc(' ');
+		_putc(' ');
+		put++;
 	}
 	return put;
 }
@@ -44,11 +30,11 @@ PUTS(const char *s, int width) {
 	int put = 0;
 
 	while (*s) {
-		put +=  _putc(*s++);
-		width--;
+	  _putc(*s++); put++;
+	  width--;
 	}
 	while (width-- > 0) {
-		put += _putc(' ');
+	  _putc(' '); put++;
 	}
 	return put;
 }
@@ -57,7 +43,7 @@ static int
 PUTL(unsigned long u, int base, int width, int fill_char)
 {
 	int put = 0;
-	static char obuf[32];
+	char obuf[16];
 	char *t;
 
 	t = obuf;
@@ -69,10 +55,10 @@ PUTL(unsigned long u, int base, int width, int fill_char)
 	} while (u > 0);
 
 	while (width-- > 0) {
-		put += _putc(fill_char);
+	  _putc(fill_char); put++;
 	}
 	while (t != obuf) {
-		put += _putc(*--t);
+	  _putc(*--t); put++;
 	}
 	return put;
 }

@@ -12,7 +12,10 @@ AS = propeller-elf-as
 OBJCOPY = propeller-elf-objcopy
 
 POBJS = propeller.o
-COBJS = stdio.o serial.o clock.o printf.o
+COBJS = stdio.o serial.o clock.o printf.o puts.o f_printf.o \
+	strcat.o strncat.o strcmp.o strncmp.o strcpy.o strcpy.o strncpy.o \
+	strlen.o memcpy.o \
+	exit.o
 
 all: libpropeller.a libc.a
 
