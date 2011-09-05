@@ -111,6 +111,7 @@ static const char *hex_prefix;
 
 static const struct default_options propeller_option_optimization_table[] =
   {
+    /* turn this on to disable frame pointer by default */
     { OPT_LEVELS_1_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
     { OPT_LEVELS_NONE, 0, NULL, 0 }
   };
@@ -126,6 +127,11 @@ propeller_option_override (void)
         error ("-fPIC and -fpic are not supported");
         flag_pic = 0;
     }
+
+    /* -mxmm implies -mlmm */
+    if (TARGET_XMM)
+      target_flags |= MASK_LMM;
+
     /* function CSE does not make sense for Cog mode
        we'll have to revisit this for LMM
     */
@@ -1188,25 +1194,25 @@ propeller_initial_elimination_offset (int from, int to)
 
 
   if (from == ARG_POINTER_REGNUM)
-  {
+    {
       if (to == STACK_POINTER_REGNUM)
-          offset = base;
+	offset = base;
       else if (to == HARD_FRAME_POINTER_REGNUM)
-          offset = current_frame_info.callee_size;
+	offset = current_frame_info.callee_size - UNITS_PER_WORD;
       else
-          gcc_unreachable ();
-  }
+	gcc_unreachable ();
+    }
   else if (from == FRAME_POINTER_REGNUM)
-  {
+    {
       if (to == STACK_POINTER_REGNUM)
-          offset = base - (current_frame_info.callee_size + current_frame_info.locals_size);
+	offset = base - (current_frame_info.callee_size + current_frame_info.locals_size);
       else if (to == HARD_FRAME_POINTER_REGNUM)
-          offset = -(current_frame_info.locals_size+UNITS_PER_WORD);
+	offset = -(current_frame_info.locals_size+UNITS_PER_WORD);
       else
-          gcc_unreachable ();
-  }
+	gcc_unreachable ();
+    }
   else
-      gcc_unreachable();
+    gcc_unreachable();
   return offset;
 }
 /* Generate and emit RTL to save callee save registers.  */
@@ -1547,8 +1553,10 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
  */
 
 /* where should we put a constant?
- * in cog mode, only integer constants should go in text,
+ * in Cog mode, only integer constants should go in text,
  * everything else should go in data
+ * in XMM mode things are even more severe, no constants
+ * at all should go in text
  */
 static section *
 propeller_select_rtx_section (enum machine_mode mode, rtx x,
@@ -1562,13 +1570,15 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
 	  return data_section;
 	}
     }
+  if (TARGET_XMM)
+    return data_section;
   return default_elf_select_rtx_section (mode, x, align);
 }
 
 static section *
 propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
-  if (!TARGET_LMM)
+  if (TARGET_XMM || !TARGET_LMM)
     {
       /* put constants into the data section (in hub ram) */
       if (TREE_CODE (decl) != VAR_DECL && TREE_CODE (decl) != FUNCTION_DECL)
