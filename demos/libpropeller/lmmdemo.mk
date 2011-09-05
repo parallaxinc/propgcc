@@ -48,7 +48,7 @@ ECHO=echo
 LIBC = $(PROPLIB)/libc.a
 
 $(NAME).elf: $(LDSCRIPT) $(OBJS) $(LIBC)
-	$(LD) -o $@ -T $(LDSCRIPT) $(STARTOBJS) $^ $(ENDOBJS)
+	$(LD) -o $@ -T $(LDSCRIPT) $(STARTOBJS) $(OBJS) -lgcc $(LIBC) $(ENDOBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -Os -mlmm -o $@ -c $<
