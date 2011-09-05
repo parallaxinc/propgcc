@@ -1,0 +1,51 @@
+; Command line options for the Parallax Propeller port of GCC.
+; Copyright (C) 2011 Parallax, Inc.
+; Contributed by Eric R. Smith <ersmith@totalspectrum.ca>
+;
+; This file is part of GCC.
+;
+; GCC is free software; you can redistribute it and/or modify it under
+; the terms of the GNU General Public License as published by the Free
+; Software Foundation; either version 3, or (at your option) any later
+; version.
+;
+; GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+; WARRANTY; without even the implied warranty of MERCHANTABILITY or
+; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+; for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with GCC; see the file COPYING3.  If not see
+; <http://www.gnu.org/licenses/>.
+;---------------------------------------------------
+
+; options for the propeller
+
+mspin
+Target Mask(OUTPUT_SPINCODE) Report
+Output spin wrapper code for the assembly language.
+
+mlmm
+Target Mask(LMM) Report
+Generate code for large memory model (LMM).
+
+mxmm
+Target Mask(XMM) Report
+Generate code for external memory model (XMM). Implies -mlmm too.
+
+mcog
+Target RejectNegative InverseMask(LMM) Report.
+Generate code for running in internal cog space.
+
+mpasm
+Target Mask(PASM) Report
+Generate assembler output that is compatible with the PASM assembler. The default is to generate GAS compatible syntax, unless -mspin is given.
+
+m64bit-doubles
+Target RejectNegative Mask(32BIT_DOUBLES) Report
+Store doubles in 64 bits. This is the default.
+
+m32bit-doubles
+Target RejectNegative InverseMask(32BIT_DOUBLES) REport
+Store doubles in 32 bits for faster and smaller code.
+
