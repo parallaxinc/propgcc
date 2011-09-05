@@ -950,6 +950,15 @@
     operands[1] = force_reg (HImode, operands[1]);
 }")
 
+(define_insn "*movhi_lmm"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+        (match_operand:HI 1 "propeller_big_const" "i"))]
+  "TARGET_LMM"
+  "jmp\t#__LMM_MVI_%0\n\tlong\t%c1"
+  [(set_attr "length" "8")
+  ]
+)
+
 (define_insn "*movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
