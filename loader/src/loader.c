@@ -345,7 +345,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         mode = SHUTDOWN_CMD;
     
-    /* write the 'xmmkernel' to the eeprom */
+    /* write the 'xmmkernel' loader to the eeprom */
     if (mode != SHUTDOWN_CMD && !WriteFlashLoaderToEEPROM(sys, config, port, buf, program.filesz, mode)) {
         free(buf);
         return Error("can't load '.xmmkernel' section into eeprom");
@@ -389,7 +389,7 @@ static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port
         chksum += flash_loader_array[i];
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
     
-	/* load the loader program to eeprom */
+	/* load the lflash oader program */
     if (ploadbuf(flash_loader_array, flash_loader_size, port, mode) != 0)
 		return Error("loader load failed");
 	
