@@ -159,8 +159,9 @@ do {                                                    \
 #define LONG_TYPE_SIZE		    32
 #define LONG_LONG_TYPE_SIZE	    64
 
+/* size of C floating point types */
 #define FLOAT_TYPE_SIZE		    32
-#define DOUBLE_TYPE_SIZE	    64
+#define DOUBLE_TYPE_SIZE	    (TARGET_32BIT_DOUBLES ? 32 : 64)
 #define LONG_DOUBLE_TYPE_SIZE       64
 
 #define DEFAULT_SIGNED_CHAR         0
