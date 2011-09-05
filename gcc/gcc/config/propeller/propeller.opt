@@ -42,10 +42,9 @@ Target Mask(PASM) Report
 Generate assembler output that is compatible with the PASM assembler. The default is to generate GAS compatible syntax, unless -mspin is given.
 
 m64bit-doubles
-Target RejectNegative Mask(32BIT_DOUBLES) Report
+Target RejectNegative InverseMask(32BIT_DOUBLES) Report
 Store doubles in 64 bits. This is the default.
 
 m32bit-doubles
-Target RejectNegative InverseMask(32BIT_DOUBLES) REport
+Target RejectNegative Mask(32BIT_DOUBLES) Report
 Store doubles in 32 bits for faster and smaller code.
-
