@@ -584,7 +584,7 @@ extern const char *propeller_bss_asm_op;
 #define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
   do								\
     {								\
-      sprintf (LABEL, "L_%s%u", \
+      sprintf (LABEL, "*L_%s%u", \
 	       PREFIX, (unsigned) (NUM));			\
     }								\
   while (0)
