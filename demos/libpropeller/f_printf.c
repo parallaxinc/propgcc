@@ -22,7 +22,7 @@
 
 extern double modf(double x, double *iptr);
 
-#define ARCH_HAVE_FPU 0  /* we want float support */
+#define ARCH_HAVE_FPU 1  /* we want float support */
 #define FLT_DIG (6)
 #define DBL_DIG (15)
 
