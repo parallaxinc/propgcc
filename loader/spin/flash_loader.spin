@@ -27,7 +27,7 @@ PUB start | cache
   cache_line_mask := cacheint.start(@cache_code, cache_mbox, cache, p_cache_param1, p_cache_param2)
 
    ' start the xmm kernel boot code
-  coginit(cogid, @boot, 0)
+  coginit(cogid, @boot, @vm_code)
 
 DAT
 
@@ -58,7 +58,7 @@ data_start          long     FLASH_BASE + HDR_DATA_START
 data_end            long     FLASH_BASE + HDR_DATA_END
 
 'Copy PAR block into COG
-boot_next           
+boot_next
                     'clear .bss
                     mov     t1, bss_start
                     call    #read_long
@@ -103,17 +103,15 @@ boot_next
                     sub     dst, #4
                     wrlong  cache_mbox, dst
 
-'Launch Zog in this COG.
-go_zog              cogid   coginit_dest            'Get id of this cog for restarting
-                    mov     temp, #vm_code          'Set pasm code address for coginit
+'Launch the xmm kernel in this cog.
+launch              cogid   coginit_dest            'Get id of this cog for restarting
+                    mov     temp, PAR               'Set pasm code address for coginit
                     shl     temp, #2                'Shift into bits 17:4 (only high 14 bits required)
                     or      coginit_dest, temp      'Place in dest for coginit
-
                     mov     temp, dst               'Set PAR to sp for coginit
                     shl     temp, #16               'Move to bits 31:18 (only high 14 bits required)
                     or      coginit_dest, temp      'Combine PASM addr and PAR addr
-
-                    coginit coginit_dest
+                    coginit coginit_dest            'Start the XMM kernel
 
 read_long           call    #cache_read
                     rdlong  t1, memp
