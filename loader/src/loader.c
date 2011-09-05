@@ -64,6 +64,7 @@ typedef struct {
 
 /* DAT header in flash_loader.spin */
 typedef struct {
+    uint32_t jmp_boot_inst;
     uint32_t cache_size;
     uint32_t cache_param1;
     uint32_t cache_param2;
