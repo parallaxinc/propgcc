@@ -86,13 +86,17 @@ __LMM_MVI_\reg
 	'' call functions
 	''
 	.global	__LMM_CALL
-	.global __LMM_CALL_INDIRECT
 __LMM_CALL
     call	#read_code
 	add	pc,#4
-__LMM_CALL_INDIRECT
 	mov	lr,pc
 	mov	pc,L_ins0
+	jmp	#__LMM_loop
+
+	.global __LMM_CALL_INDIRECT
+__LMM_CALL_INDIRECT
+	mov	lr,pc
+	mov	pc,__TMP0
 	jmp	#__LMM_loop
 
 	''
@@ -202,7 +206,7 @@ __MULSI_ret	ret
     .set CACHE_READ_CMD,        0x00000003
 
 ' read a long from the current pc
-read_code               muxc    save_c_z, #1
+read_code               muxc    save_z_c, #1
                         cmp     pc,external_start wc    'check for normal memory access
                 IF_NC   jmp     #read_hub_code
                         mov     t1, pc
@@ -210,7 +214,7 @@ read_code               muxc    save_c_z, #1
                         rdlong  L_ins0, memp
                         jmp     #read_restore_c
 read_hub_code           rdlong	L_ins0, pc
-read_restore_c          shr     save_c_z, #1 wc
+read_restore_c          shr     save_z_c, #1 wc
 read_code_ret           ret
                         
 ' read a long from external memory
@@ -229,7 +233,7 @@ write_external_long_ret ret
 
 t1                      long    0
 t2                      long    0
-save_c_z                long    0
+save_z_c                long    0
 cache_linemask          long    0
 cache_mboxcmd           long    0
 cache_mboxdat           long    0
@@ -240,35 +244,35 @@ cacheptr                long    0
 
 external_start          long    EXTERNAL_MEMORY_START       'start of external memory access window
 
-cache_write             muxz    save_c_z, #2                'save the z flag
+cache_write             muxz    save_z_c, #2                'save the z flag
                         mov     memp, t1                    'save address for index
                         andn    t1, #CACHE_CMD_MASK         'ensure a write is not a read
                         or      t1, #CACHE_WRITE_CMD
                         jmp     #cache_access
 
-cache_read              muxz    save_c_z, #2                'save the z flag
+cache_read              muxz    save_z_c, #2                'save the z flag
                         mov     temp, t1                    'ptr + cache_mboxdat = hub address of byte to load
                         andn    temp, cache_linemask
-                        cmp     cacheaddr,temp wz           'if cacheaddr == addr, just pull form cache
+                        cmp     cacheaddr, temp wz          'if cacheaddr == addr, just pull form cache
             if_e        jmp     #cache_hit                  'memp gets overwriteen on a miss
                         
 cache_read_miss         mov     memp, t1                    'save address for index
                         or      t1, #CACHE_READ_CMD         'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
 
 cache_access            wrlong  t1, cache_mboxcmd
-                        mov     cacheaddr,t1                'save new cache address. it's free time here
-                        andn    cacheaddr,cache_linemask    'kill command bits in free time
+                        mov     cacheaddr, t1               'save new cache address. it's free time here
+                        andn    cacheaddr, cache_linemask   'kill command bits in free time
 _waitres                rdlong  temp, cache_mboxcmd wz
             if_nz       jmp     #_waitres
                         and     memp, cache_linemask        'memp is index into buffer
                         rdlong  cacheptr, cache_mboxdat     'Get new buffer
                         add     memp, cacheptr              'memp is now HUB buf address of data to read
-                        jmp     cache_read_ret              'indirect jump to save an instruction
+                        jmp     #cache_restore_z
 
 cache_hit               mov     memp, t1                    'ptr + cache_mboxdat = hub address of byte to load
                         and     memp, cache_linemask
                         add     memp, cacheptr              'add ptr to memp to get data address
                         
+cache_restore_z         test    save_z_c, #2 wz             'restore the z flag
 cache_read_ret
-cache_write_ret         test    save_c_z, #2 wz             'restore the z flag
-                        ret
+cache_write_ret         ret
