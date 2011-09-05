@@ -12,7 +12,8 @@ extern _COGMEM volatile unsigned int _OUTA __asm__("OUTA");
 extern _COGMEM volatile unsigned int _INA __asm__("INA");
 extern _COGMEM volatile unsigned int _DIRA __asm__("DIRA");
 
-#define _CLKFREQ (*(unsigned int *)0)
+extern unsigned int _clkfreq; /* in the spin boot code */
+#define _CLKFREQ _clkfreq
 
 
 #endif
