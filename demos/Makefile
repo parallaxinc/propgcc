@@ -10,6 +10,7 @@
 all:
 	make -C libpropeller
 	make -C toggle/pasm_toggle
+	make -C dhrystone
 	make -C fft
 	make -C fibo/cog
 	make -C fibo/lmm
@@ -18,6 +19,7 @@ all:
 clean:
 	make clean -C libpropeller
 	make clean -C toggle/pasm_toggle
+	make clean -C dhrystone
 	make clean -C fft
 	make clean -C fibo/cog
 	make clean -C fibo/lmm
