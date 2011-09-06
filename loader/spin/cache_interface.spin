@@ -41,10 +41,10 @@ CON
   READ_CMD              = %11
 
   ' extended commands
-  ERASE_CHIP_CMD        = %000_01
-  ERASE_BLOCK_CMD       = %001_01
-  WRITE_DATA_CMD        = %010_01
-  SD_INIT_CMD           = %011_01
+  ERASE_CHIP_CMD        = %000_01  ' only for flash
+  ERASE_BLOCK_CMD       = %001_01  ' only for flash
+  WRITE_DATA_CMD        = %010_01  ' only for flash
+  SD_INIT_CMD           = %011_01  ' only for C3 because of shared SPI pins
   SD_READ_CMD           = %100_01  ' only for C3 because of shared SPI pins
   SD_WRITE_CMD          = %101_01  ' only for C3 because of shared SPI pins
 
