@@ -207,7 +207,7 @@ __MULSI_ret	ret
 
 ' read a long from the current pc
 read_code               muxc    save_z_c, #1
-                        cmp     pc,external_start wc    'check for normal memory access
+                        cmp     pc, external_start wc   'check for normal memory access
                 IF_NC   jmp     #read_hub_code
                         mov     t1, pc
                         call    #cache_read
