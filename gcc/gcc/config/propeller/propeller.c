@@ -1570,6 +1570,7 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
 	{
 	  return data_section;
 	}
+      return default_elf_select_rtx_section (mode, x, align);
     }
   /* in XMM mode we cannot access constants in the data section
      except for that, XMM and LMM are pretty compatible, so let's
