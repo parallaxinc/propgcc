@@ -23,8 +23,8 @@ PUB start | cache
 
   ' initialize the cache driver
   cache := hub_memory_size - p_cache_size
-  cache_mbox := cache - cache_mbox_size
-  cache_line_mask := cacheint.start(@cache_code, cache_mbox, cache, p_cache_param1, p_cache_param2)
+  cache_mboxcmd := cache - cache_mbox_size
+  cache_linemask := cacheint.start(@cache_code, cache_mboxcmd, cache, p_cache_param1, p_cache_param2)
 
    ' start the xmm kernel boot code
   coginit(cogid, @boot, @vm_code)
@@ -41,9 +41,9 @@ p_cache_param2      long    0
 p_vm_code_off       long    @vm_code - @boot
 p_cache_code_off    long    @cache_code - @boot
 
-cache_mbox          long    0
-cache_mbox_dat      long    0
-cache_line_mask     long    0
+cache_mboxcmd       long    0
+cache_mboxdat       long    0
+cache_linemask      long    0
 
 src                 long    0
 dst                 long    0
@@ -57,10 +57,10 @@ bss_end             long     FLASH_BASE + HDR_BSS_END
 data_start          long     FLASH_BASE + HDR_DATA_START
 data_end            long     FLASH_BASE + HDR_DATA_END
 
-'Copy PAR block into COG
-boot_next
-                    'clear .bss
-                    mov     t1, bss_start
+boot_next           mov     cache_mboxdat, cache_mboxcmd
+                    add     cache_mboxdat, #4
+
+clear_bss           mov     t1, bss_start
                     call    #read_long
                     mov     dst, t1
                     mov     t1, bss_end
@@ -75,8 +75,7 @@ boot_next
                     djnz    count, #:loop_bss
 :done_bss
 
-                    'initialize .data
-                    mov     t1, data_start
+initialize_data     mov     t1, data_start
                     call    #read_long
                     mov     dst, t1
                     mov     t1, data_end
@@ -93,15 +92,15 @@ boot_next
                     djnz    count, #:loop_data
 :done_data
 
-                    mov     dst, cache_mbox
+initialize_stack    mov     dst, cache_mboxcmd
                     mov     t1, entry
                     call    #read_long
                     sub     dst, #4
                     wrlong  t1, dst
                     sub     dst, #4
-                    wrlong  cache_line_mask, dst
+                    wrlong  cache_linemask, dst
                     sub     dst, #4
-                    wrlong  cache_mbox, dst
+                    wrlong  cache_mboxcmd, dst
 
 'Launch the xmm kernel in this cog.
 launch              cogid   coginit_dest            'Get id of this cog for restarting
@@ -137,22 +136,19 @@ cache_read          mov     temp, t1                    'ptr + cache_mboxdat = h
 :next               mov     memp, t1                    'save address for index
                     or      t1, #cacheint#READ_CMD      'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
 
-cache_access        wrlong  t1, cache_mbox
+cache_access        wrlong  t1, cache_mboxcmd
                     mov     cacheaddr,t1                'Save new cache address. it's free time here
                     andn    cacheaddr,cache_linemask    'Kill command bits in free time
-:waitres            rdlong  temp, cache_mbox wz
+:waitres            rdlong  temp, cache_mboxcmd wz
         if_nz       jmp     #:waitres
                     and     memp, cache_linemask        'memp is index into buffer
-                    rdlong  cacheptr, cache_mbox_dat    'Get new buffer
+                    rdlong  cacheptr, cache_mboxdat     'Get new buffer
                     add     memp, cacheptr              'memp is now HUB buf address of data to read
 cache_read_ret
 cache_write_ret     ret
 
 t1                  long    0
 t2                  long    0
-cache_linemask      long    0
-cache_mboxcmd       long    0
-cache_mboxdat       long    0
 memp                long    0
 cacheaddr           long    0
 cacheptr            long    0
