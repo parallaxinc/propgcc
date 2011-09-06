@@ -107,6 +107,7 @@ const char *propeller_bss_asm_op;
 
 static const char *hex_prefix;
 
+
 /* Implement TARGET_OPTION_OPTIMIZATION_TABLE.  */
 
 static const struct default_options propeller_option_optimization_table[] =

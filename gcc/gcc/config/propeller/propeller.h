@@ -62,14 +62,23 @@
   do							     \
     {							     \
       builtin_define ("__propeller__");                      \
+      builtin_define ("__PROPELLER__");                      \
       builtin_assert ("cpu=propeller");                      \
       builtin_assert ("machine=propeller");                  \
       if (TARGET_LMM)					     \
-	builtin_define ("__lmm__");			     \
+	builtin_define ("__PROPELLER_LMM__");		     \
       else						     \
-	builtin_define ("__cog__");			     \
+	builtin_define ("__PROPELLER_COG__");		     \
+      if (TARGET_64BIT_DOUBLES)				     \
+	builtin_define ("__PROPELLER_64BIT_DOUBLES__");	     \
+      else						     \
+	builtin_define ("__PROPELLER_32BIT_DOUBLES__");	     \
     }							     \
   while (0)
+
+/* we always have C99 functions available if floating point is used */
+#undef TARGET_C99_FUNCTIONS
+#define TARGET_C99_FUNCTIONS 1
 
 /*---------------------------------*/
 /* Target machine storage layout.  */
@@ -161,7 +170,7 @@ do {                                                    \
 
 /* size of C floating point types */
 #define FLOAT_TYPE_SIZE		    32
-#define DOUBLE_TYPE_SIZE	    (TARGET_32BIT_DOUBLES ? 32 : 64)
+#define DOUBLE_TYPE_SIZE	    (TARGET_64BIT_DOUBLES ? 64 : 32)
 #define LONG_DOUBLE_TYPE_SIZE       64
 
 #define DEFAULT_SIGNED_CHAR         0
