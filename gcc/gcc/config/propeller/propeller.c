@@ -1571,20 +1571,19 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
 	  return data_section;
 	}
     }
-  if (TARGET_XMM)
-    return data_section;
-  return default_elf_select_rtx_section (mode, x, align);
+  /* in XMM mode we cannot access constants in the data section
+     except for that, XMM and LMM are pretty compatible, so let's
+     just always put constants in data */
+  return data_section;
 }
 
 static section *
 propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
-  if (TARGET_XMM || !TARGET_LMM)
-    {
-      /* put constants into the data section (in hub ram) */
-      if (TREE_CODE (decl) != VAR_DECL && TREE_CODE (decl) != FUNCTION_DECL)
-	return data_section;
-    }
+  /* put constants into the data section (in hub ram) */
+  if (TREE_CODE (decl) != VAR_DECL && TREE_CODE (decl) != FUNCTION_DECL)
+    return data_section;
+
   return default_elf_select_section (decl, reloc, align);
 }
 
