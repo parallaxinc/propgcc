@@ -266,9 +266,10 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
 	SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
-    uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf;
+    uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf, *buf2;
     int imageSize, chksum, mode, i;
     ElfProgramHdr program;
+    uint32_t size, size2;
 
     /* patch serial helper for clock mode and frequency */
     hdr->clkfreq = config->clkfreq;
@@ -320,16 +321,37 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     /* load the '.text' section data */
     if (!(buf = LoadProgramSection(c, &program)))
         return Error("can't load '.text' section");
+    size = program.filesz;
+    
+    /* load the '.data' section initializers */
+    if (!FindProgramSection(c, ".data", &program)) {
+        CloseElfFile(c);
+        return Error("can't find '.data' section image");
+    }
+    
+    /* load the '.data' section data initializers */
+    if (!(buf2 = LoadProgramSection(c, &program)))
+        return Error("can't load '.data' section image");
+    size2 = program.filesz;
+    
+    /* combine the buffers */
+    if (!(buf = (uint8_t *)realloc(buf, size + size2))) {
+        free(buf);
+        free(buf2);
+        return Error("Insufficient memory for '.text' section buffer: %d", size + size2);
+    }
+    memcpy(&buf[size], buf2, size2);
+    free(buf2);
     
     /* write the '.text' section to memory */
-	printf("Loading image\n");
+	printf("Loading .text\n");
     if (!SendPacket(TYPE_FLASH_WRITE, (uint8_t *)"", 0)
-    ||  !WriteBuffer(buf, program.filesz)) {
+    ||  !WriteBuffer(buf, size + size2)) {
         free(buf);
         return Error("Loading '.text' section failed");
 	}
     
-    /* free the '.text' section data */
+    /* free the '.text' section data and the .data section initializers */
     free(buf);
 
     /* load the '.xmmkernel' section */

@@ -71,6 +71,9 @@ PUB start | cache
   ser.str(STRING("data_end: "))
   ser.hex(cacheint.readLong(data_end), 8)
   ser.crlf
+  ser.str(STRING("CLKFREQ: "))
+  ser.hex(cacheint.readLong(cacheint.readLong(data_image)), 8)
+  ser.crlf
 #endif
 
    ' start the xmm kernel boot code
@@ -208,4 +211,3 @@ cacheptr            long    0
 
 vm_code             long    0[496]
 cache_code          long    0[496]
-
