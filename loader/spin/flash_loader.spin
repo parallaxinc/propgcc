@@ -1,3 +1,5 @@
+'#define DEBUG
+
 CON
 
   _clkmode = XTAL1 + PLL16X
@@ -18,16 +20,20 @@ CON
 OBJ
 
   cacheint : "cache_interface"
+#ifdef DEBUG
   ser : "FullDuplexSerial"
+#endif
 
 PUB start | cache
 
-  ser.start(31, 30, 0, 115200)
 
   ' initialize the cache driver
   cache := hub_memory_size - p_cache_size
   cache_mboxcmd := cache - cache_mbox_size
   cache_linemask := cacheint.start(@cache_code, cache_mboxcmd, cache, p_cache_param1, p_cache_param2)
+
+#ifdef DEBUG
+  ser.start(31, 30, 0, 115200)
 
   ser.str(STRING("p_cache_size: "))
   ser.hex(p_cache_size, 8)
@@ -65,6 +71,7 @@ PUB start | cache
   ser.str(STRING("data_end: "))
   ser.hex(cacheint.readLong(data_end), 8)
   ser.crlf
+#endif
 
    ' start the xmm kernel boot code
   coginit(cogid, @boot, @vm_code)
