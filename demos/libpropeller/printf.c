@@ -7,10 +7,30 @@
 
 #include <stdarg.h>
 #include "stdio.h"
-#include "cog.h"
+
+/*
+ * define FLOAT_SUPPORT to get floating point support
+ */
+/*#define FLOAT_SUPPORT*/
+/*
+ * similarly, define LONGLONG_SUPPORT for long long support
+ * (needed for FLOAT_SUPPORT)
+ */
+#ifdef FLOAT_SUPPORT
+#define LONGLONG_SUPPORT
+#endif
+
+#ifdef LONGLONG_SUPPORT
+#define ULONG unsigned long long
+#define LONG long long
+#else
+#define ULONG unsigned long
+#define LONG long
+#endif
 
 /*
  * very simple printf -- just understands a few format features
+ * does c,s,u,d,x
  */
 
 static int
@@ -40,10 +60,10 @@ PUTS(const char *s, int width) {
 }
 
 static int
-PUTL(unsigned long u, int base, int width, int fill_char)
+PUTL(ULONG u, int base, int width, int fill_char)
 {
 	int put = 0;
-	char obuf[16];
+	char obuf[24]; /* 64 bits -> 22 digits maximum in octal */ 
 	char *t;
 
 	t = obuf;
@@ -63,15 +83,73 @@ PUTL(unsigned long u, int base, int width, int fill_char)
 	return put;
 }
 
+#ifdef FLOAT_SUPPORT
+/* not terribly great floating point support, but it will do */
+/* this is not at all standards compliant! */
+
+#define MAX_PRECISION 18
+static double
+precmult[MAX_PRECISION+1] = {
+    1.0, 10.0, 100.0, 1000.0, 10000.0,
+    1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
+    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18
+};
+
+static int
+PUTFLOAT(char c, double d, int width, int prec, int fill_char)
+{
+    int outbytes = 0;
+    int digits;
+    double power_of_ten;
+    int exp;
+    int sign = 0;
+    ULONG integer_part, frac_part;
+    const ULONG max_integer = 4000000000000000000ULL;
+    if (d < 0.0) {
+        sign = '-';
+        d = -d;
+    }
+    /* figure out the integer part */
+    if (d > (double)max_integer) {
+        if (sign) outbytes += PUTC(sign,1);
+        outbytes += PUTS("<number too big for this printf>", width-1);
+        return outbytes;
+    }
+    integer_part = (ULONG)d;
+    d -= (double)integer_part;
+    if (prec < 0) prec = 0;
+    if (prec > MAX_PRECISION) prec = MAX_PRECISION;
+    d *= precmult[prec];
+    d += 0.5;
+    frac_part = (ULONG)d;
+    if (frac_part >= max_integer) {
+        integer_part++;
+        frac_part -= max_integer;
+    }
+    width -= (prec+1); 
+    if (sign) {
+        outbytes += PUTC(sign,1); width--;
+    }
+    if (width < 0) width = 0;
+    outbytes += PUTL(integer_part,10,width,fill_char);
+    outbytes += PUTC('.',1);
+    if (prec > 0)
+        outbytes += PUTL(frac_part, 10, prec, '0');
+    return outbytes;
+}
+#endif
+
 static int
 _doprnt( const char *fmt, va_list args )
 {
    char c, fill_char;
    char *s_arg;
    int i_arg;
-   long l_arg;
+   ULONG l_arg;
    int width, long_flag;
    int outbytes = 0;
+   int base;
+   int prec;
 
    while( (c = *fmt++) != 0 ) {
      if (c != '%') {
@@ -80,6 +158,7 @@ _doprnt( const char *fmt, va_list args )
      }
      c = *fmt++;
      width = 0;
+     prec = -1;
      long_flag = 0;
      fill_char = ' ';
      if (c == '0') fill_char = '0';
@@ -87,11 +166,19 @@ _doprnt( const char *fmt, va_list args )
        width = 10*width + (c-'0');
        c = *fmt++;
      }
-
+#ifdef FLOAT_SUPPORT
+     if (c == '.') {
+         c = *fmt++;
+         prec = 0;
+         while (c && isdigit(c)) {
+             prec = 10*prec + (c-'0');
+             c = *fmt++;
+         }
+     }
+#endif
      /* for us "long int" and "int" are the same size, so
-	we can ignore the 'l' flag. Someday we may wish to
-	support long long (ll)
-     */
+	we can ignore one 'l' flag; use long long if two
+    'l flags are seen */
      while (c == 'l' || c == 'L') {
        long_flag++;
        c = *fmt++;
@@ -111,36 +198,43 @@ _doprnt( const char *fmt, va_list args )
        outbytes += PUTS(s_arg, width);
        break;
      case 'd':
-       l_arg = va_arg(args, int);
-       if (l_arg < 0) {
-	 outbytes += PUTC('-', 1);
-	 width--;
-	 l_arg = -l_arg;
+     case 'x':
+     case 'u':
+       base = (c == 'x') ? 16 : 10;
+       if (long_flag > 1) {
+         l_arg = va_arg(args, ULONG);
+       } else {
+         i_arg = va_arg(args, unsigned int);
+         if (c == 'd') {
+             l_arg = (ULONG)(LONG)i_arg;
+         }
        }
-       outbytes += PUTL(l_arg, 10, width, fill_char);
+       if (c == 'd' && l_arg < 0) {
+           outbytes += PUTC('-', 1);
+           width--;
+           l_arg = -l_arg;
+       }
+       outbytes += PUTL(l_arg, base, width, fill_char);
        break;
-#if 0
-       /* do we really care about octal numbers? */
-     case 'o':
-       l_arg = va_arg(args, unsigned int);
-       outbytes += PUTL(l_arg, 8, width, fill_char);
+#ifdef FLOAT_SUPPORT
+     case 'f':
+       {
+         double d_arg = va_arg(args, double);
+         if (prec < 0) prec = (width ? width/2 : 6);
+         outbytes += PUTFLOAT(c, d_arg, width, prec, fill_char);
+       }
        break;
 #endif
-     case 'x':
-       l_arg = va_arg(args, unsigned int);
-       outbytes += PUTL(l_arg, 16, width, fill_char);
-       break;
-     case 'u':
-       l_arg = va_arg(args, unsigned int);
-       outbytes += PUTL(l_arg, 10, width, fill_char);
-       break;
-
      }
    }
    return outbytes;
 }
 
+#ifdef FLOAT_SUPPORT
+int f_printf(const char *fmt, ...)
+#else
 int printf(const char *fmt, ...)
+#endif
 {
     va_list args;
     int r;
@@ -149,3 +243,33 @@ int printf(const char *fmt, ...)
     va_end(args);
     return r;
 }
+
+#ifdef TEST
+/*
+ * for testing purposes on linux or a similar "real" OS
+ */
+#include <math.h>
+int _putc(int c)
+{
+    return (putchar(c) == c);
+}
+
+void
+test(const char *msg, double d)
+{
+    printf("printf:   "); printf(msg, d);
+    printf("f_printf: "); f_printf(msg, d);
+}
+
+int
+main()
+{
+    double d;
+
+    test("sqrt(2)=%f\n", sqrt(2));
+    test("a=%8.1f\n", 1001.55);
+    test("b=%.5f\n", -9999.0001);
+    test("c=%10.7f\n", -0.0000123456789);
+    return 0;
+}
+#endif
