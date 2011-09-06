@@ -10,4 +10,6 @@ typedef _SIZE_T_DEFINED size_t;
 #define NULL (0)
 #endif
 
+void *malloc(size_t n);
+
 #endif
