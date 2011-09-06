@@ -201,18 +201,25 @@ _doprnt( const char *fmt, va_list args )
      case 'x':
      case 'u':
        base = (c == 'x') ? 16 : 10;
-       if (long_flag > 1) {
-         l_arg = va_arg(args, ULONG);
-       } else {
-         i_arg = va_arg(args, unsigned int);
-         if (c == 'd') {
+#ifdef LONGLONG_SUPPORT
+       if (long_flag > 1)
+	 {
+	   l_arg = va_arg(args, ULONG);
+	 }
+       else
+	 {
+	   i_arg = va_arg(args, unsigned int);
+	   if (c == 'd') {
              l_arg = (ULONG)(LONG)i_arg;
-         }
-       }
-       if (c == 'd' && l_arg < 0) {
+	   }
+	 }
+#else
+       l_arg = va_arg(args, ULONG);
+#endif
+       if (c == 'd' && (((LONG)l_arg < 0))) {
            outbytes += PUTC('-', 1);
            width--;
-           l_arg = -l_arg;
+           l_arg = (ULONG)(-((LONG)l_arg));
        }
        outbytes += PUTL(l_arg, base, width, fill_char);
        break;
