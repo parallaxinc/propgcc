@@ -29,6 +29,24 @@ PUB start | cache
   cache_mboxcmd := cache - cache_mbox_size
   cache_linemask := cacheint.start(@cache_code, cache_mboxcmd, cache, p_cache_param1, p_cache_param2)
 
+  ser.str(STRING("p_cache_size: "))
+  ser.hex(p_cache_size, 8)
+  ser.crlf
+  ser.str(STRING("p_cache_param1: "))
+  ser.hex(p_cache_param1, 8)
+  ser.crlf
+  ser.str(STRING("p_cache_param2: "))
+  ser.hex(p_cache_param2, 8)
+  ser.crlf
+  ser.str(STRING("cache: "))
+  ser.hex(cache, 8)
+  ser.crlf
+  ser.str(STRING("cache_mboxcmd: "))
+  ser.hex(cache_mboxcmd, 8)
+  ser.crlf
+  ser.str(STRING("cache_linemask: "))
+  ser.hex(cache_linemask, 8)
+  ser.crlf
   ser.str(STRING("entry: "))
   ser.hex(cacheint.readLong(entry), 8)
   ser.crlf
@@ -82,7 +100,7 @@ data_end            long     FLASH_BASE + HDR_DATA_END
 
 boot_next           mov     cache_mboxdat, cache_mboxcmd
                     add     cache_mboxdat, #4
-
+                    
 clear_bss           mov     t1, bss_start
                     call    #read_long
                     mov     dst, t1
@@ -155,7 +173,8 @@ cache_read          mov     temp, t1                    'ptr + cache_mboxdat = h
                     andn    temp, cache_linemask
                     cmp     cacheaddr, temp wz          'if cacheaddr == addr, just pull form cache
         if_e        jmp     #cache_hit                  'memp gets overwriteen on a miss
-:next               mov     memp, t1                    'save address for index
+        
+cache_read_miss     mov     memp, t1                    'save address for index
                     or      t1, #cacheint#READ_CMD      'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
 
 cache_access        wrlong  t1, cache_mboxcmd
