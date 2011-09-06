@@ -648,6 +648,27 @@
    (set_attr "predicable" "yes")]
 )
 
+;;
+;; slightly funky version that sets the carry bit for parity
+;; if C is set that usually means "ltu", so we do a compare 0<parity
+;; rather than parity<0
+(define_insn "*andsi3_compare0_parity"
+  [(set (reg:CC_C CC_REG)
+        (compare:CC_C
+	    (const_int 0)
+	    (parity:SI
+	      (and:SI
+	        (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
+              	(match_operand:SI 1 "propeller_and_operand" "rCI,M")))))
+   ]
+  ""
+  "@
+   test\t%0,%1 wc
+   testn\t%0,%1 wc"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
 ;; sometimes in combine "ands" are converted to "zero extract"
 ;; this seems to happen for contiguous bit fields in the low
 ;; bits (so operand 2 is 0) or for single bits (so operand 1 is 1)
@@ -1765,6 +1786,22 @@
 ""
 )
 
+;; parity calculation
+(define_expand "paritysi2"
+  [(set (reg:CC_C CC_REG)
+        (compare:CC_C
+	  (const_int 0)
+	  (parity:SI (and:SI
+	      (match_operand:SI 1 "propeller_dst_operand" "rC")
+	      (const_int -1)))))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (if_then_else (ltu (reg:CC_C CC_REG)(const_int 0))
+	              (const_int 1)
+		      (const_int 0)))
+   ]
+   ""
+   ""
+)
 ;;
 ;; -------------------------------------------------------------------------
 ;; Low overhead looping
@@ -1789,6 +1826,9 @@
 
 ;; this is rather funky, because it has to be able to handle memory
 ;; operands due to the way reload works
+;; this is simplified by our having the __TMP0 register available
+;; that isn't allocable by the compiler
+
 (define_insn "djnz"
   [(set (pc)
         (if_then_else
