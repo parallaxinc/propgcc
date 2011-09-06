@@ -208,7 +208,7 @@ __MULSI_ret	ret
 ' read a long from the current pc
 read_code               muxc    save_z_c, #1
                         cmp     pc, external_start wc   'check for normal memory access
-                IF_NC   jmp     #read_hub_code
+                IF_B    jmp     #read_hub_code
                         mov     t1, pc
                         call    #cache_read
                         rdlong  L_ins0, memp
@@ -230,19 +230,6 @@ read_external_long_ret  ret
 write_external_long     call    #cache_write
                         wrlong  t2, memp
 write_external_long_ret ret
-
-t1                      long    0
-t2                      long    0
-save_z_c                long    0
-cache_linemask          long    0
-cache_mboxcmd           long    0
-cache_mboxdat           long    0
-temp                    long    0
-memp                    long    0
-cacheaddr               long    0
-cacheptr                long    0
-
-external_start          long    EXTERNAL_MEMORY_START       'start of external memory access window
 
 cache_write             muxz    save_z_c, #2                'save the z flag
                         mov     memp, t1                    'save address for index
@@ -266,13 +253,24 @@ _waitres                rdlong  temp, cache_mboxcmd wz
             if_nz       jmp     #_waitres
                         and     memp, cache_linemask        'memp is index into buffer
                         rdlong  cacheptr, cache_mboxdat     'Get new buffer
-                        add     memp, cacheptr              'memp is now HUB buf address of data to read
-                        jmp     #cache_restore_z
-
+                        jmp     #cache_done
 cache_hit               mov     memp, t1                    'ptr + cache_mboxdat = hub address of byte to load
                         and     memp, cache_linemask
-                        add     memp, cacheptr              'add ptr to memp to get data address
+cache_done              add     memp, cacheptr              'add ptr to memp to get data address
                         
-cache_restore_z         test    save_z_c, #2 wz             'restore the z flag
+                        test    save_z_c, #2 wz             'restore the z flag
 cache_read_ret
 cache_write_ret         ret
+
+t1                      long    0
+t2                      long    0
+save_z_c                long    0
+cache_linemask          long    0
+cache_mboxcmd           long    0
+cache_mboxdat           long    0
+temp                    long    0
+memp                    long    0
+cacheaddr               long    0
+cacheptr                long    0
+
+external_start          long    EXTERNAL_MEMORY_START       'start of external memory access window
