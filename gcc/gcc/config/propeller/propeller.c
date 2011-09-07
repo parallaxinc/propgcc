@@ -2270,8 +2270,8 @@ fcache_func_reorg (bool recursive)
   insn = gen_rtx_UNSPEC_VOLATILE (VOIDmode, gen_rtvec (2, start_label, end_label),
 			 UNSPEC_FCACHE_LOAD);
 
-  anchor = emit_insn_before (insn, anchor);
-  INSN_ADDRESSES_NEW (anchor, -1);
+  insn = emit_insn_before (insn, anchor);
+  INSN_ADDRESSES_NEW (insn, -1);
 
   /* emit code to get the return correct */
   /* we have to output
