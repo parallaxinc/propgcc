@@ -1,5 +1,4 @@
 	.section .lmmkernel, "ax"
-
 	.global r0
 	.global r1
 	.global r2
@@ -233,16 +232,21 @@ __LMM_RET
 __LMM_FCACHE_LOAD
 	rdlong	__TMP0,pc	'' read count of bytes for load
 	add	pc,#4
-	movd	lmm_fcache_loop,#(__LMM_FCACHE_START)/4
 	cmp	__LMM_FCACHE_ADDR,pc wz	'' is this the same fcache block we loaded last?
-  IF_Z	jmp	Lmm_fcache_doit
+  IF_Z	jmp	#Lmm_fcache_doit
 
-lmm_fcache_loop
+	'' assembler awkwardness here
+	'' we would like to just write
+	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
+	'' but binutils doesn't work right with this now
+	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
+	nop
+Lmm_fcache_loop
 	rdlong	0-0,pc
 	add	pc,#4
-	add	lmm_fcache_loop,inc_dest
+	add	Lmm_fcache_loop,inc_dest
 	sub	__TMP0,#4 wz
-  IF_NZ	jmp	lmm_fcache_loop
+  IF_NZ	jmp	#Lmm_fcache_loop
 
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
