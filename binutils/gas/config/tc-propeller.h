@@ -32,6 +32,9 @@
 #define LITERAL_PREFIXDOLLAR_HEX
 #define LITERAL_PREFIXPERCENT_BIN
 
+/* special hack to ignore underscores in constants */
+#define IGNORE_UNDERSCORES_IN_INTEGER_CONSTANTS 1
+
 #define md_operand(x)
 #define md_number_to_chars number_to_chars_littleendian
 

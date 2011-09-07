@@ -212,3 +212,46 @@ __MULSI_loop
 	add	__TMP0, __TMP0
  IF_NZ	jmp	#__MULSI_loop
 __MULSI_ret	ret
+
+	''
+	'' FCACHE region
+	'' The FCACHE is an area where we can
+	'' execute small functions or loops entirely
+	'' in Cog memory, providing a significant
+	'' speedup.
+	''
+
+__LMM_FCACHE_ADDR
+	long 0
+inc_dest
+	long (1<<9)
+	
+	.global	__LMM_RET
+	.global	__LMM_FCACHE_LOAD
+__LMM_RET
+	long 0
+__LMM_FCACHE_LOAD
+	rdlong	__TMP0,pc	'' read count of bytes for load
+	add	pc,#4
+	movd	lmm_fcache_loop,#(__LMM_FCACHE_START)/4
+	cmp	__LMM_FCACHE_ADDR,pc wz	'' is this the same fcache block we loaded last?
+  IF_Z	jmp	Lmm_fcache_doit
+
+lmm_fcache_loop
+	rdlong	0-0,pc
+	add	pc,#4
+	add	lmm_fcache_loop,inc_dest
+	sub	__TMP0,#4 wz
+  IF_NZ	jmp	lmm_fcache_loop
+
+Lmm_fcache_doit
+	jmpret	__LMM_RET,#__LMM_FCACHE_START
+	jmp	#__LMM_loop
+
+
+	''
+	'' the fcache area should come last in the file
+	''
+	.global __LMM_FCACHE_START
+__LMM_FCACHE_START
+	res	512

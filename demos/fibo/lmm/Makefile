@@ -6,7 +6,7 @@ PROPLIB = ../../libpropeller
 
 NAME = fibo
 OBJS = fibo.o
-CFLAGS = -Os
+CFLAGS = -Os -mexperimental
 
 all: $(NAME).elf
 
