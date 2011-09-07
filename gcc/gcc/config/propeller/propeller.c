@@ -1926,6 +1926,238 @@ propeller_forward_branch_p (rtx insn)
 }
 
 /*
+ * helper function
+ * extract the destination of a call insn
+ */
+static rtx
+get_call_dest(rtx branch)
+{
+  rtx call;
+  call = PATTERN (branch);
+  /* there might be a parallel in here with a clobber */
+  if (GET_CODE (call) == PARALLEL)
+    call = XVECEXP (call, 0, 0);
+
+  if (GET_CODE (call) == SET)
+    {
+      call = SET_SRC (call);
+    }
+  if (GET_CODE (call) != CALL)
+    gcc_unreachable ();
+  return XEXP (XEXP (call, 0), 0);
+}
+
+/*
+ * helper function
+ * extract the destination of a jump insn
+ * returns the RETURN insn for a return
+ * otherwise tries to guess the jump address
+ */
+static rtx
+get_jump_dest(rtx branch)
+{
+  rtx call;
+  rtx set, src;
+
+  call = PATTERN (branch);
+  /*
+   * this may be a parallel (e.g. a (return) and use)
+   * all of our parallel branches are set up so that
+   * the branch is first
+   */
+  if (GET_CODE (call) == PARALLEL)
+    {
+      call = XVECEXP (call, 0, 0);
+    }
+  if (GET_CODE (call) == RETURN)
+    return call;
+
+  if (GET_CODE (call) == ADDR_VEC
+      || GET_CODE (call) == ADDR_DIFF_VEC)
+    return NULL;
+
+  /* watch out for user asm */
+  if (extract_asm_operands (call) != NULL)
+    return NULL;
+
+  set = single_set (branch);
+  src = SET_SRC (set);
+  if (GET_CODE (SET_DEST (set)) != PC)
+    abort ();
+  if (GET_CODE (src) == IF_THEN_ELSE)
+    {
+      if (GET_CODE (XEXP (src, 1)) != PC)
+	src = XEXP (src, 1);
+      else
+	src = XEXP (src, 2);
+    }
+
+  return src;
+}
+
+/*
+ * dest_ok_for_fcache: returns true if a jump destination is OK
+ * for fcache mode
+ */
+static bool
+dest_ok_for_fcache(rtx dest)
+{
+  if (!dest)
+    return false;
+  if (GET_CODE (dest) == RETURN)
+    return true;
+  if (GET_CODE (dest) != LABEL_REF)
+    return false;
+
+  return true;
+}
+
+/*
+ * see if we can load this function into internal memory (fcache)
+ * the final requirements are in place:
+ * (1) the function must fit (be < MAX_FCACHE_SIZE bytes long)
+ * (2) it can be recursive, but no other function calls may be made
+ * sets the "recursive" flag depending on whether or not the function
+ * is recursive
+ */
+#define MAX_FCACHE_SIZE (512)
+
+static bool
+fcache_func_ok (bool *recursive)
+{
+  rtx dest;
+  rtx anchor = get_insns ();
+  rtx insn;
+  HOST_WIDE_INT total_len = 0;
+  int loop_count = 0;
+
+  if (dump_file)
+    fprintf(dump_file, "considering %s for fcache\n", current_function_name ());
+
+  *recursive = false;
+  for (insn = anchor; insn; insn = NEXT_INSN (insn))
+    {
+      if (!INSN_P (insn))
+	continue;
+
+      if (GET_CODE (insn) == CALL_INSN)
+	{
+	  /* check for recursive call */
+	  dest = get_call_dest (insn);
+	  if (!dest || GET_CODE(dest) != SYMBOL_REF)
+	    {
+	      if (dump_file)
+		{
+		  fprintf (dump_file, "call not to a symbol\n");
+		}
+	      return false;
+	    }
+	  /* allow recursive functions */
+	  if (dest == XEXP (DECL_RTL (current_function_decl), 0))
+	    {
+	      loop_count++;
+	      *recursive = true;
+	    }
+	  else
+	    {	  
+	      if (dump_file)
+		{
+		  fprintf (dump_file, "not a leaf function\n");
+		}
+	      return false;
+	    }
+	}
+      else if (GET_CODE (insn) == JUMP_INSN)
+	{
+	  dest = get_jump_dest (insn);
+	  if (!dest_ok_for_fcache (dest))
+	    {
+	      if (dump_file)
+		{
+		  fprintf (dump_file, "jump not to a label\n");
+		}
+	      return false;
+	    }
+	  if (GET_CODE (dest) == LABEL_REF
+	      && !propeller_forward_branch_p (insn))
+	    {
+	      loop_count++;
+	    }
+	}
+      total_len += get_attr_length (insn);
+      if (total_len > MAX_FCACHE_SIZE)
+	{
+	  if (dump_file)
+	    {
+	      fprintf (dump_file, "function too long to fit in fcache\n");
+	    }
+	  return false;
+	}
+    } 
+
+  if (loop_count == 0)
+    {
+      if (dump_file)
+	fprintf (dump_file, "no loops in function\n");
+      return false;
+    }
+
+  return true;
+}
+
+/*
+ * convert a function so it will work in fcache space
+ * this basically means converting all label references to
+ * (unspec FCACHE_LABEL_REF), returns to (unspec FCACHE_RET),
+ * and fixing up immediate moves
+ */
+static void
+fcache_func_reorg (bool recursive)
+{
+  rtx start_label, end_label;
+  rtx anchor, last;
+  rtx insn;
+
+  if (dump_file)
+    fprintf(dump_file, " *** trying to put %s into fcache\n", current_function_name ());
+
+  /* first, we have to insert FCACHE_LOAD and the start and end labels */
+  /* find first and last real insns */
+  anchor = get_insns ();
+  while (!INSN_P (anchor))
+    anchor = NEXT_INSN (anchor);
+  last = NULL;
+  insn = NEXT_INSN (anchor);
+  while (insn)
+    {
+      if (INSN_P (insn))
+	last = insn;
+      insn = NEXT_INSN (insn);
+    }
+  start_label = gen_label_rtx ();
+  LABEL_NUSES (start_label)++;
+  LABEL_PRESERVE_P (start_label) = 1;
+  anchor = emit_label_before (start_label, anchor);
+  INSN_ADDRESSES_NEW (anchor, -1);
+  start_label = gen_rtx_LABEL_REF (VOIDmode, start_label);
+
+  end_label = gen_label_rtx ();
+  LABEL_NUSES (end_label)++;
+  LABEL_PRESERVE_P (end_label) = 1;
+  insn = emit_label_after (end_label, last);
+  INSN_ADDRESSES_NEW (insn, -1);
+
+  end_label = gen_rtx_LABEL_REF (VOIDmode, end_label);
+
+  /* now add in the FCACHE_LOAD */
+  insn = gen_rtx_UNSPEC_VOLATILE (VOIDmode, gen_rtvec (2, start_label, end_label),
+			 UNSPEC_FCACHE_LOAD);
+
+  anchor = emit_insn_before (insn, anchor);
+  INSN_ADDRESSES_NEW (anchor, -1);
+}
+
+/*
  * a machine dependent pass over the rtl
  * this is a chance for us to do additional machine specific
  * optimizations
@@ -1934,7 +2166,24 @@ propeller_forward_branch_p (rtx insn)
 static void
 propeller_reorg(void)
 {
+  FILE *save_dump_file;
+  bool fcache_recursive;
+
   /* for now, this does nothing */
+  if (!TARGET_EXPERIMENTAL)
+    return;
+
+  save_dump_file = dump_file;
+  dump_file = stderr;
+
+  if (TARGET_LMM)
+    {
+      if (fcache_func_ok (&fcache_recursive))
+	{
+	  fcache_func_reorg (fcache_recursive);
+	}
+    }
+  dump_file = save_dump_file;
 }
 
 

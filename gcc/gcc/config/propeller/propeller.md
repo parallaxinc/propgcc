@@ -58,10 +58,15 @@
    (UNSPEC_WAITPEQ       6)
    (UNSPEC_WAITPNE       7)
    (UNSPEC_WAITVID       8)
+   (UNSPEC_FCACHE_LOAD   9)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
    (UNSPEC_LOOP_END    104)
+  ; for FCACHE operations
+   (UNSPEC_FCACHE_LABEL_REF 121)
+   (UNSPEC_FCACHE_RET       122)
+   (UNSPEC_FCACHE_CALL      123)
   ])
 
 ; Most instructions are four bytes long.
@@ -1542,6 +1547,18 @@
     DONE;
 })
 
+(define_insn "call_in_fcache"
+  [(call (unspec [(mem:SI (match_operand:SI 0 "call_operand" "i,r"))]
+                 UNSPEC_FCACHE_CALL)
+	 (match_operand 1 "" ""))
+   (clobber (reg:SI LINK_REG))
+  ]
+  ""
+  "jmpret\tlr,#__LMM_FCACHE_START + 8"
+  [(set_attr "type" "call")
+   (set_attr "predicable" "yes")]
+)
+
 (define_insn "call_std"
   [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
 	         (match_operand 1 "" ""))
@@ -1624,6 +1641,20 @@
    (set_attr "length" "8")]
  )
 
+(define_insn "*call_value_in_fcache"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC")
+	(call (unspec
+	        [(mem:SI (match_operand:SI 1 "call_operand" "i"))]
+		 UNSPEC_FCACHE_CALL)
+	      (match_operand 2 "" "")))
+   (clobber (reg:SI LINK_REG))
+  ]
+  ""
+  "jmpret\tlr,#__LMM_FCACHE_START + 8"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
+ )
+
 (define_insn "call_native_value"
   [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
         (call (mem:SI (match_operand:SI 1 "call_operand" "i,r"))
@@ -1659,6 +1690,19 @@
 	(label_ref (match_operand 0 "" "")))]
   "!TARGET_LMM"
   "jmp\t#%0"
+  [(set_attr "predicable" "yes")]
+)
+
+;;
+;; in fcache we give two labels, the target %0 and an anchor %1
+;;
+(define_insn "*jump_in_fcache"
+  [(set (pc)
+	(unspec [(label_ref (match_operand 0 "" ""))
+	         (label_ref (match_operand 1 "" ""))]
+		UNSPEC_FCACHE_LABEL_REF))]
+  ""
+  "jmp\t#(%0-%1)+__LMM_FCACHE_START"
   [(set_attr "predicable" "yes")]
 )
 
@@ -1716,6 +1760,17 @@
 }
 ")
 
+
+(define_insn "return_in_fcache"
+  [(unspec [(return)] UNSPEC_FCACHE_RET)
+   (use (match_operand:SI 0 "register_operand" "r"))
+  ]
+  ""
+{
+    return "jmp\t%0";
+}
+)
+
 (define_insn "return_internal"
   [(return)
    (use (match_operand:SI 0 "register_operand" "r"))
@@ -1745,22 +1800,6 @@
   "\n%0_ret\tret"
 )
 
-(define_insn "*return"
-  [(return)
-   (use (reg:SI LINK_REG))
-  ]
-  "!TARGET_LMM && propeller_can_use_return ()"
-  "jmp\tlr"
-)
-
-(define_insn "*return_lmm"
-  [(return)
-   (use (reg:SI LINK_REG))
-  ]
-  "TARGET_LMM && propeller_can_use_return ()"
-  "mov\tpc,lr"
-)
-
 (define_expand "return"
   [(parallel [(return)
               (use (reg:SI LINK_REG))])
@@ -1769,6 +1808,51 @@
   "")
 
 
+;;
+;; -------------------------------------------------------------------------
+;; Low overhead looping
+;; -------------------------------------------------------------------------
+;;
+
+(define_expand "doloop_end"
+  [(use (match_operand 0 "" ""))	; loop pseudo
+   (use (match_operand 1 "" ""))	; iterations; zero if unknown
+   (use (match_operand 2 "" ""))	; max iterations
+   (use (match_operand 3 "" ""))	; loop level
+   (use (match_operand 4 "" ""))]	; label
+""
+{
+  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+    emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+  else
+    FAIL;
+  DONE;
+}
+)
+
+;; this is rather funky, because it has to be able to handle memory
+;; operands due to the way reload works
+;; this is simplified by our having the __TMP0 register available
+;; that isn't allocable by the compiler
+
+(define_insn "djnz"
+  [(set (pc)
+        (if_then_else
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC")
+	      (const_int 1))
+	  (label_ref (match_operand 0 "" ""))
+	  (pc)))
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,*m")
+        (plus:SI (match_dup 1)(const_int -1)))]
+"!TARGET_LMM"
+"@
+ djnz %1,#%l0
+ rdlong __TMP0,%1\n\tsub __TMP0,#1\n\twrlong __TMP0,%2\n\ttjnz __TMP0,#%l0"
+[(set_attr "length" "4,16")
+ (set_attr "type" "core,multi")]
+)
+
+
 ;; -------------------------------------------------------------------------
 ;; Some library functions
 ;; -------------------------------------------------------------------------
@@ -1841,50 +1925,8 @@
    ""
    ""
 )
-;;
-;; -------------------------------------------------------------------------
-;; Low overhead looping
-;; -------------------------------------------------------------------------
-;;
 
-(define_expand "doloop_end"
-  [(use (match_operand 0 "" ""))	; loop pseudo
-   (use (match_operand 1 "" ""))	; iterations; zero if unknown
-   (use (match_operand 2 "" ""))	; max iterations
-   (use (match_operand 3 "" ""))	; loop level
-   (use (match_operand 4 "" ""))]	; label
-""
-{
-  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
-    emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
-  else
-    FAIL;
-  DONE;
-}
-)
-
-;; this is rather funky, because it has to be able to handle memory
-;; operands due to the way reload works
-;; this is simplified by our having the __TMP0 register available
-;; that isn't allocable by the compiler
-
-(define_insn "djnz"
-  [(set (pc)
-        (if_then_else
-	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC")
-	      (const_int 1))
-	  (label_ref (match_operand 0 "" ""))
-	  (pc)))
-   (set (match_operand:SI 2 "nonimmediate_operand" "=1,*m")
-        (plus:SI (match_dup 1)(const_int -1)))]
-"!TARGET_LMM"
-"@
- djnz %1,#%l0
- rdlong __TMP0,%1\n\tsub __TMP0,#1\n\twrlong __TMP0,%2\n\ttjnz __TMP0,#%l0"
-[(set_attr "length" "4,16")
- (set_attr "type" "core,multi")]
-)
-
+
 ;; -------------------------------------------------------------------------
 ;; Special insns for built in instructions
 ;; -------------------------------------------------------------------------
@@ -1986,6 +2028,21 @@
    (set_attr "predicable" "yes")]
 )
 
+;;
+;; fcache load 
+;; parameters are the start and stop labels where we should do the load
+;;
+(define_insn "fcache_load"
+  [(unspec_volatile
+    [(label_ref (match_operand 0 "" ""))
+     (label_ref (match_operand 1 "" ""))]
+    UNSPEC_FCACHE_LOAD)]
+  ""
+  "jmp\t#__LMM_FCACHE_LOAD\n\tlong\t%1-%0"
+  [(set_attr "type" "multi")]
+)
+
+
 ;; -------------------------------------------------------------------------
 ;; machine specific peepholes to catch things the combiner misses
 ;; -------------------------------------------------------------------------
