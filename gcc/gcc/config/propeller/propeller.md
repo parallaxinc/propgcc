@@ -1545,7 +1545,7 @@
 		      (pc)))]
   ""
 {
-  return "%p2\tjmp\t#__LMM_FCACHE_START+%l0-%l1";
+  return "%p2\tjmp\t#__LMM_FCACHE_START+(%l0-%l1)";
 }
 [(set_attr "conds" "use")
 ]
@@ -1562,7 +1562,7 @@
         ))]
   ""
 {
-  return "%P2\tjmp\t#__LMM_FCACHE_START+%l0-%l1";
+  return "%P2\tjmp\t#__LMM_FCACHE_START+(%l0-%l1)";
 }
 [(set_attr "conds" "use")
 ]
