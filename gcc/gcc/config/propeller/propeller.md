@@ -67,6 +67,7 @@
    (UNSPEC_FCACHE_LABEL_REF 121)
    (UNSPEC_FCACHE_RET       122)
    (UNSPEC_FCACHE_CALL      123)
+   (UNSPEC_FCACHE_FUNC_START  124)
   ])
 
 ; Most instructions are four bytes long.
@@ -1533,6 +1534,40 @@
 ]
 )
 
+
+(define_insn "*condbranch_fcache"
+  [(set (pc)
+	(if_then_else (match_operator 2 "ordered_comparison_operator"
+	                [(reg CC_REG) (const_int 0)])
+		      (unspec [(label_ref (match_operand 0 "" ""))
+		               (label_ref (match_operand 1 "" ""))]
+			      UNSPEC_FCACHE_LABEL_REF)
+		      (pc)))]
+  ""
+{
+  return "%p2\tjmp\t#__LMM_FCACHE_START+%l0-%l1";
+}
+[(set_attr "conds" "use")
+]
+)
+
+(define_insn "*condbranch_fcache_reverse"
+  [(set (pc)
+	(if_then_else (match_operator 2 "ordered_comparison_operator"
+	                 [(reg CC_REG) (const_int 0)])
+		      (pc)
+		      (unspec [(label_ref (match_operand 0 "" ""))
+		               (label_ref (match_operand 1 "" ""))]
+			      UNSPEC_FCACHE_LABEL_REF)
+        ))]
+  ""
+{
+  return "%P2\tjmp\t#__LMM_FCACHE_START+%l0-%l1";
+}
+[(set_attr "conds" "use")
+]
+)
+
 ;; -------------------------------------------------------------------------
 ;; Call and Jump instructions
 ;; -------------------------------------------------------------------------
@@ -1547,17 +1582,6 @@
     DONE;
 })
 
-(define_insn "call_in_fcache"
-  [(call (unspec [(mem:SI (match_operand:SI 0 "call_operand" "i,r"))]
-                 UNSPEC_FCACHE_CALL)
-	 (match_operand 1 "" ""))
-   (clobber (reg:SI LINK_REG))
-  ]
-  ""
-  "jmpret\tlr,#__LMM_FCACHE_START + 8"
-  [(set_attr "type" "call")
-   (set_attr "predicable" "yes")]
-)
 
 (define_insn "call_std"
   [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
@@ -1573,14 +1597,15 @@
 )
 
 (define_insn "call_std_lmm"
-  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
+  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r,U"))
 	         (match_operand 1 "" ""))
    (clobber (reg:SI LINK_REG))
   ]
   "TARGET_LMM"
   "@
    jmp\t#__LMM_CALL\n\tlong\t%0
-   mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT"
+   mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT
+   jmpret\tlr,#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
 )
@@ -1628,29 +1653,16 @@
  )
 
 (define_insn "*call_value_lmm"
-  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
-	(call (mem:SI (match_operand:SI 1 "call_operand" "i,rC"))
+  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC,rC")
+	(call (mem:SI (match_operand:SI 1 "call_operand" "i,rC,U"))
 	      (match_operand 2 "" "")))
    (clobber (reg:SI LINK_REG))
   ]
   "TARGET_LMM"
   "@
    jmp\t#__LMM_CALL\n\tlong\t%1
-   mov\t__TMP0,%1\n\tjmp\t#__LMM_CALL_INDIRECT"
-  [(set_attr "type" "call")
-   (set_attr "length" "8")]
- )
-
-(define_insn "*call_value_in_fcache"
-  [(set (match_operand 0 "propeller_dst_operand" "=rC")
-	(call (unspec
-	        [(mem:SI (match_operand:SI 1 "call_operand" "i"))]
-		 UNSPEC_FCACHE_CALL)
-	      (match_operand 2 "" "")))
-   (clobber (reg:SI LINK_REG))
-  ]
-  ""
-  "jmpret\tlr,#__LMM_FCACHE_START + 8"
+   mov\t__TMP0,%1\n\tjmp\t#__LMM_CALL_INDIRECT
+   jmpret\tlr,#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
  )
@@ -1696,13 +1708,13 @@
 ;;
 ;; in fcache we give two labels, the target %0 and an anchor %1
 ;;
-(define_insn "*jump_in_fcache"
+(define_insn "fcache_jump"
   [(set (pc)
 	(unspec [(label_ref (match_operand 0 "" ""))
 	         (label_ref (match_operand 1 "" ""))]
 		UNSPEC_FCACHE_LABEL_REF))]
   ""
-  "jmp\t#(%0-%1)+__LMM_FCACHE_START"
+  "jmp\t#__LMM_FCACHE_START+(%0-%1)"
   [(set_attr "predicable" "yes")]
 )
 
@@ -1724,6 +1736,17 @@
 	  (const_int 4)
 	  (const_int 8)))
 ]
+)
+
+;;
+;; special code for starting an fcache
+;;
+(define_insn "fcache_func_start"
+  [(unspec_volatile [(const_int 0)] UNSPEC_FCACHE_FUNC_START)]
+  ""
+  "mov\tpc,lr\n\tmov\tlr,__LMM_RET"
+  [(set_attr "length" "8")
+   (set_attr "type" "multi")]
 )
 
 ;; -------------------------------------------------------------------------

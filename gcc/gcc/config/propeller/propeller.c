@@ -1951,7 +1951,6 @@ get_call_dest(rtx branch)
  * helper function
  * extract the destination of a jump insn
  * returns the RETURN insn for a return
- * otherwise tries to guess the jump address
  */
 static rtx
 get_jump_dest(rtx branch)
@@ -1960,6 +1959,7 @@ get_jump_dest(rtx branch)
   rtx set, src;
 
   call = PATTERN (branch);
+
   /*
    * this may be a parallel (e.g. a (return) and use)
    * all of our parallel branches are set up so that
@@ -1970,7 +1970,9 @@ get_jump_dest(rtx branch)
       call = XVECEXP (call, 0, 0);
     }
   if (GET_CODE (call) == RETURN)
-    return call;
+    {
+      return call;
+    }
 
   if (GET_CODE (call) == ADDR_VEC
       || GET_CODE (call) == ADDR_DIFF_VEC)
@@ -1982,6 +1984,7 @@ get_jump_dest(rtx branch)
 
   set = single_set (branch);
   src = SET_SRC (set);
+
   if (GET_CODE (SET_DEST (set)) != PC)
     abort ();
   if (GET_CODE (src) == IF_THEN_ELSE)
@@ -2106,6 +2109,119 @@ fcache_func_ok (bool *recursive)
 }
 
 /*
+ * convert a CALL insn to fcache mode
+ */
+static void
+fcache_convert_call (rtx insn)
+{
+  rtx pattern;
+  rtx addr;
+
+  pattern = PATTERN (insn);
+  /* look inside parallels if necessary (assume branches are at start) */
+  if (GET_CODE (pattern) == PARALLEL)
+    pattern = XVECEXP (pattern, 0, 0);
+
+  /* handle call_value */
+  if (GET_CODE (pattern) == SET)
+    pattern = SET_SRC(pattern);
+
+  if (GET_CODE (pattern) == CALL)
+    {
+      if (dump_file) fprintf (dump_file, "replacing call\n");
+      if (GET_CODE (pattern) == SET)
+	pattern = SET_SRC (pattern);
+      if (GET_CODE (pattern) != CALL)
+	gcc_unreachable ();
+      pattern = XEXP (pattern, 0);
+      if (GET_CODE (pattern) != MEM)
+	gcc_unreachable ();
+      addr = gen_rtx_UNSPEC ( Pmode, gen_rtvec (1, XEXP (pattern, 0)),
+			      UNSPEC_FCACHE_CALL );
+      XEXP (pattern, 0) = addr;
+    }
+  else
+    {
+      gcc_unreachable ();
+    }
+}
+
+/*
+ * convert a jump insn
+ * this pretty much requires that we re-generate the insn
+ * "fcache_base" is the label at the start of the fcache block
+ */
+static void
+fcache_convert_jump(rtx orig_insn, rtx fcache_base)
+{
+  rtx pattern;
+  rtx src;
+  rtx next;
+  rtx addr;
+
+  pattern = PATTERN (orig_insn);
+
+  /*
+   * delete the original insn
+   */
+  next = delete_insn (orig_insn);
+
+  /*
+   * this may be a parallel (e.g. a (return) and use)
+   * all of our parallel branches are set up so that
+   * the branch is first
+   */
+  if (GET_CODE (pattern) == PARALLEL)
+    {
+      src = XVECEXP (pattern, 0, 0);
+      if (GET_CODE (src) == RETURN)
+	{
+	  addr = gen_rtx_UNSPEC (Pmode, gen_rtvec (1, src),
+				 UNSPEC_FCACHE_RET);
+	  XVECEXP (pattern, 0, 0) = addr;
+	}
+    }
+  else if (GET_CODE (pattern) == RETURN)
+    {
+      pattern = gen_rtx_UNSPEC (Pmode, gen_rtvec (1, pattern),
+				UNSPEC_FCACHE_RET);
+    }
+  else if (GET_CODE (pattern) == ADDR_VEC
+	   || GET_CODE (pattern) == ADDR_DIFF_VEC
+	   || extract_asm_operands (pattern) != NULL)
+    {
+      gcc_unreachable ();
+    }
+  else
+    {
+      src = SET_SRC (pattern);
+
+      if (GET_CODE (SET_DEST (pattern)) != PC)
+	abort ();
+      if (GET_CODE (src) == IF_THEN_ELSE)
+	{
+	  if (GET_CODE (XEXP (src, 1)) != PC)
+	    {
+	      addr = XEXP (src, 1);
+	      XEXP (src, 1) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	    }
+	  else
+	    {
+	      addr = XEXP (src, 2);
+	      XEXP (src, 2) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	    }
+	}
+      else
+	{
+	  SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, src, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	}
+    }
+
+  /* generate a new insn with the given pattern */
+  emit_jump_insn_before (pattern, next);
+}
+
+/*
  * convert a function so it will work in fcache space
  * this basically means converting all label references to
  * (unspec FCACHE_LABEL_REF), returns to (unspec FCACHE_RET),
@@ -2117,6 +2233,7 @@ fcache_func_reorg (bool recursive)
   rtx start_label, end_label;
   rtx anchor, last;
   rtx insn;
+  rtx pattern;
 
   if (dump_file)
     fprintf(dump_file, " *** trying to put %s into fcache\n", current_function_name ());
@@ -2155,6 +2272,47 @@ fcache_func_reorg (bool recursive)
 
   anchor = emit_insn_before (insn, anchor);
   INSN_ADDRESSES_NEW (anchor, -1);
+
+  /* emit code to get the return correct */
+  /* we have to output
+       mov pc,lr
+       mov lr,__LMM_RET
+     at the start of the function
+     we do this with a special pattern named "fcache_func_start"
+  */
+  insn = gen_fcache_func_start ();
+  anchor = emit_insn_after (insn, anchor);
+  INSN_ADDRESSES_NEW (anchor, -1);
+
+  /* finally adjust all instructions for fcache mode */
+  for (insn = anchor; insn; insn = NEXT_INSN (insn))
+    {
+      if (!INSN_P (insn)) continue;
+
+      if (dump_file)
+	{
+	  fprintf (dump_file, "considering: ");
+	  print_rtl_single (dump_file, insn);
+	}
+      if (GET_CODE (insn) == CALL_INSN)
+	{
+	  fcache_convert_call (insn);
+	}
+      else if (GET_CODE (insn) == JUMP_INSN)
+	{
+	  fcache_convert_jump (insn, start_label);
+	}
+      else
+	{
+	  pattern = PATTERN (insn);
+	  if ( GET_CODE (pattern) == SET
+	       && propeller_big_const (SET_SRC (pattern), SImode) )
+	    
+	    {
+	      gcc_unreachable ();
+	    }
+	}
+    }
 }
 
 /*

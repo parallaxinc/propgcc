@@ -90,3 +90,12 @@
 
 (define_register_constraint "y" "R1_REGS"
   "R1 register")
+
+;;
+;; constraints for fcache mode
+;;
+
+(define_constraint "U"
+  "A call destination in fcache"
+  (and (match_code "unspec")
+       (match_test "XINT (op, 1) == UNSPEC_FCACHE_CALL")))
