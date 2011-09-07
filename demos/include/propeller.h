@@ -11,8 +11,25 @@
 
 #include "cog.h"
 
-/* some defines */
+/* some defines for special purpose COG registers */
+#define PAR     _PAR
 #define CNT     _CNT
+#define INA     _INA
+#define INB     _INB
+#define OUTA    _OUTA
+#define OUTB    _OUTB
+#define DIRA    _DIRA
+#define DIRB    _DIRB
+#define CTRA    _CTRA
+#define CTRB    _CTRB
+#define FRQA    _FRQA
+#define FRQB    _FRQB
+#define PHSA    _PHSA
+#define PHSB    _PHSB
+#define VCFG    _VCFG
+#define VSCL    _VSCL
+
+/* clock frequency define */
 #define CLKFREQ _CLKFREQ
 
 /*
