@@ -1,5 +1,6 @@
-{{
-PASM toggle demo
+/*
+This shows an example for creating an LMM program and Makefile.
+It simply toggles the pins at 1Hz rate.
 
 Copyright (c) 2011 Parallax, Inc.
 MIT Licensed.
@@ -26,25 +27,18 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 +--------------------------------------------------------------------
-}}
+*/
 
-pub start(pinptr)
-    cognew(@pasm, pinptr)
+#include "propeller.h"
 
-dat             org 0
+int main(int argc, char* argv[])
+{
+    int mask = 0x3fffffff;
+    int freq = CLKFREQ>>1;
+    DIRA = mask;
+    for(;;) {
+        OUTA ^= DIRA;
+        waitcnt(freq+CNT);
+    }    
+}
 
-pasm
-                rdlong  waitdelay, #0       ' read from hub to get
-                shr     waitdelay, #1       ' the user's clkfreq delay
-
-                mov     dira, pins          ' set pins to output
-                mov     nextcnt, waitdelay
-                add     nextcnt, cnt        ' best to add cnt last
-:loop
-                xor     outa, pins          ' toggle pins
-                waitcnt nextcnt, waitdelay  ' wait for half second
-                jmp     #:loop
-
-pins            long    $3fffffff
-waitdelay       long    0                   ' read from hub to int
-nextcnt         long    0

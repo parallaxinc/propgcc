@@ -1,7 +1,7 @@
 Demo programs are MIT licensed unless otherwise stated.
 All files should include a copyright statement. For example:
 
-Copyright (c) 2011 Steve Denson
+Copyright (c) 2011 Parallax, Inc.
 MIT Licensed.
 
 +--------------------------------------------------------------------
