@@ -137,10 +137,10 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
     if (!(c = OpenElfFile(fp, hdr)))
         return Error("failed to open elf file");
         
-    /* load the '.text' section */
-    if (!FindSectionTableEntry(c, ".text", &section)) {
+    /* load the '.init' section */
+    if (!FindSectionTableEntry(c, ".init", &section)) {
         CloseElfFile(c);
-        return Error("can't load '.text' section");
+        return Error("can't load '.init' section");
     }
     
     /* check for loading into hub or external memory */
@@ -312,15 +312,15 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         return Error("no cache driver to load external image");
     
-    /* load the '.text' section */
-    if (!FindProgramSection(c, ".text", &program)) {
+    /* load the '.init' section */
+    if (!FindProgramSection(c, ".init", &program)) {
         CloseElfFile(c);
-        return Error("can't find '.text' section");
+        return Error("can't find '.init' section");
     }
     
-    /* load the '.text' section data */
+    /* load the '.init' section data */
     if (!(buf = LoadProgramSection(c, &program)))
-        return Error("can't load '.text' section");
+        return Error("can't load '.init' section");
     size = program.filesz;
     
     /* load the '.data' section initializers */
@@ -338,20 +338,20 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     if (!(buf = (uint8_t *)realloc(buf, size + size2))) {
         free(buf);
         free(buf2);
-        return Error("Insufficient memory for '.text' section buffer: %d", size + size2);
+        return Error("Insufficient memory for '.init' section buffer: %d", size + size2);
     }
     memcpy(&buf[size], buf2, size2);
     free(buf2);
     
-    /* write the '.text' section to memory */
-	printf("Loading .text\n");
+    /* write the '.init' section to memory */
+	printf("Loading .init\n");
     if (!SendPacket(TYPE_FLASH_WRITE, (uint8_t *)"", 0)
     ||  !WriteBuffer(buf, size + size2)) {
         free(buf);
-        return Error("Loading '.text' section failed");
+        return Error("Loading '.init' section failed");
 	}
     
-    /* free the '.text' section data and the .data section initializers */
+    /* free the '.init' section data and the .data section initializers */
     free(buf);
 
     /* load the '.xmmkernel' section */
