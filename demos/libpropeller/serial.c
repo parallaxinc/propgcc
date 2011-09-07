@@ -21,7 +21,12 @@ int _txpin = 30;
 int _baud = 115200;
 static int _bitcycles;
 
-int _serial_tx(int value)
+/*
+ * We need _serial_tx to always be in HUB memory for speed.
+ * Time critical functions like this can't live in external memory.
+ */
+
+int __attribute__((section(".hubtext"))) _serial_tx(int value)
 {
     int i;
     int txpin = _txpin;

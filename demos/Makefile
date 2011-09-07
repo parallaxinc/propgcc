@@ -9,19 +9,25 @@
 
 all:
 	make -C libpropeller
+	make -C toggle/lmm_toggle
 	make -C toggle/pasm_toggle
+	make -C toggle/xmm_toggle
 	make -C dhrystone
 	make -C fft
 	make -C fibo/cog
 	make -C fibo/lmm
+	make -C fibo/xmm
 	make -C TV/TvText_demo
 
 clean:
 	make clean -C libpropeller
+	make clean -C toggle/lmm_toggle
 	make clean -C toggle/pasm_toggle
+	make clean -C toggle/xmm_toggle
 	make clean -C dhrystone
 	make clean -C fft
 	make clean -C fibo/cog
 	make clean -C fibo/lmm
+	make clean -C fibo/xmm
 	make clean -C TV/TvText_demo
 

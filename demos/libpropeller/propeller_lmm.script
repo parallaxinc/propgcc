@@ -13,6 +13,8 @@
  *      code to run constructors and then call main.
  * .text:
  *      The main C code.
+ * .hubtext:
+ *      C code that should always be in HUB.
  * .ctors:
  *      Contains a list of constructors to call.
  * .dtors:
@@ -41,6 +43,9 @@ SECTIONS
           {
             *(.text*)
           }
+  .hubtext : {
+      *(.hubtext)
+   }
   .ctors : {
       *(.ctors)
    }

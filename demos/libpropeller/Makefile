@@ -5,7 +5,7 @@ PROPINC = ../include
 CFLAGS = -Os -mlmm -I$(PROPINC)
 
 # basic gnu tools
-CC = propeller-elf-gcc $(CFLAGS)
+CC = propeller-elf-gcc
 LD = propeller-elf-ld
 AR = propeller-elf-ar
 AS = propeller-elf-as
