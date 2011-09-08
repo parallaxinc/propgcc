@@ -258,4 +258,4 @@ Lmm_fcache_doit
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	512
+	res	256	'' reserve 256 longs = 1K
