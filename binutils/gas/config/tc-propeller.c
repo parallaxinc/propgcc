@@ -498,7 +498,14 @@ md_assemble (char *instruction_string)
 	  op1.error = _("Illegal operand in operand 1");
 	  break;
 	default:
-	  op1.error = _("Unhandled case in op1");
+	  if (cog_ram)
+	    op1.error = _("Destination operand in .cog_ram too complicated");
+	  else
+	    {
+	      op1.reloc.type = BFD_RELOC_PROPELLER_DST;
+	      op1.reloc.pc_rel = 0;
+	    }
+	  break;
 	}
       if (op->format == PROPELLER_OPERAND_DEST_ONLY)
 	{
@@ -550,7 +557,14 @@ md_assemble (char *instruction_string)
 	  op2.error = _("Illegal operand in operand 2");
 	  break;
 	default:
-	  op2.error = _("Unhandled case in op2");
+	  if (cog_ram)
+	    op2.error = _("Source operand too complicated for .cog_ram");
+	  else
+	    {
+	      op2.reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+	      op2.reloc.pc_rel = 0;
+	    }
+	  break;
 	}
       break;
     case PROPELLER_OPERAND_CALL:
@@ -580,17 +594,13 @@ md_assemble (char *instruction_string)
 	      }
 	    insn.code |= op2.reloc.exp.X_add_number;
 	    break;
-	  case O_symbol:
-	  case O_add:
-	  case O_subtract:
-	    op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
-	    op2.reloc.pc_rel = 0;
-	    break;
 	  case O_illegal:
 	    op1.error = _("Illegal operand in call");
 	    break;
 	  default:
-	    op2.error = _("Unhandled case in call");
+	    op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
+	    op2.reloc.pc_rel = 0;
+	    break;
 	  }
 	strcat (str2, "_ret");
 	parse_expression (str2, &op1);
