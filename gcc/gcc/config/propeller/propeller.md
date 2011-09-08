@@ -2086,7 +2086,7 @@
     [(use (match_operand:SI 0 "immediate_operand" "i"))]
     UNSPEC_CONST_WORD)]
 ""
-".long %0"
+".long %c0"
 )
 
 

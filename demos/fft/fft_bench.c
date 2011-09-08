@@ -37,6 +37,13 @@
 #include "stdio.h"
 #include "propeller.h"
 
+#if defined(__GNUC__)
+#define GNU_OPTIMIZE
+#define _NOINLINE __attribute__((noinline))
+#else
+#define _NOINLINE
+#endif
+
 #define int32_t int
 #define int16_t short int
 
@@ -202,7 +209,7 @@ static unsigned int bitReverse(unsigned int x,  unsigned int length)
 //----------------------------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------------------------
-static void decimate()
+_NOINLINE static void decimate()
 {
     int32_t i, revi, tx1, ty1;
 
@@ -233,7 +240,7 @@ static int16_t wy[512];
 //----------------------------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------------------------
-static void butterflies()
+_NOINLINE static void butterflies()
 {
     int32_t k1, k2, k3, a, b, c, d, flightSize, noFlights, b0, b1, wIndex, level, flight, butterfly, flightIndex, tx, ty;
 
