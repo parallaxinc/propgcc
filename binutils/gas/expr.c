@@ -353,12 +353,25 @@ integer_constant (int radix, expressionS *expressionP)
 #undef valuesize
   start = input_line_pointer;
   c = *input_line_pointer++;
+
+#if defined(IGNORE_UNDERSCORES_IN_INTEGER_CONSTANTS)
+  number = 0;
+  do {
+    while (c == '_') c = *input_line_pointer++;
+    if (!c) break;
+    digit = hex_value (c);
+    if (digit >= maxdig) break;
+    number = number * radix + digit;
+    c = *input_line_pointer++;
+  } while (c != 0);
+#else
   for (number = 0;
        (digit = hex_value (c)) < maxdig;
        c = *input_line_pointer++)
     {
       number = number * radix + digit;
     }
+#endif
   /* c contains character after number.  */
   /* input_line_pointer->char after c.  */
   small = (input_line_pointer - start - 1) < too_many_digits;
