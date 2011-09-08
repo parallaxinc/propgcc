@@ -770,8 +770,8 @@ propeller_hard_regno_mode_ok (unsigned int reg, enum machine_mode mode)
         return false;
     }
     /* for 64 bit constants make sure there is room for the following register */
-    if (GET_MODE_SIZE (MODE) > UNITS_PER_WORD)
-      return (regno < PROP_LR_REGNUM);
+    if (GET_MODE_SIZE (mode) > UNITS_PER_WORD)
+      return (reg < PROP_LR_REGNUM);
 
     return true;
 }
@@ -780,9 +780,9 @@ propeller_hard_regno_mode_ok (unsigned int reg, enum machine_mode mode)
  * true if a value in mode A is accessible in mode B without copying
  */
 bool
-propeller_modes_tieable_p (enum machine_mode A ATTRIBUTE_UNUSED, enum machine_mode B ATTRIBUTE_UNUSED)
+propeller_modes_tieable_p (enum machine_mode A, enum machine_mode B)
 {
-    return true;
+  return GET_MODE_CLASS (A) == GET_MODE_CLASS (B);
 }
 
 
