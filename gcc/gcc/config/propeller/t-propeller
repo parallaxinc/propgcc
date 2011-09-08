@@ -76,3 +76,15 @@ $(T)crtbegin_lmm.o: $(srcdir)/config/propeller/crtbegin_lmm.s
 
 $(T)crtend_lmm.o: $(srcdir)/config/propeller/crtend_lmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)crt0_xmm.o: $(srcdir)/config/propeller/crt0_xmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)crtbegin_xmm.o: $(srcdir)/config/propeller/crtbegin_xmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)crtend_xmm.o: $(srcdir)/config/propeller/crtend_xmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)hubstart_xmm.o: $(srcdir)/config/propeller/hubstart_xmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
