@@ -1,0 +1,78 @@
+# Copyright (C) 2011 Parallax, Inc.
+# Copyright (C) 2008 Free Software Foundation, Inc.
+#
+# This file is part of GCC.
+#
+# GCC is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+#
+# GCC is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+
+# Compile the extra library functions.
+
+LIB2FUNCS_EXTRA = 
+
+# prevent some of the more complicated libgcc functions from being
+# compiled; these are pretty big anyway, and not often used
+# also, we do have a few assembly things as well
+
+FAKEASMFUNCS = _mulsc3 _muldc3 _multc3 _divsc3 _divdc3 _divtc3
+LIB1ASMFUNCS = _udivmoddi4 $(FAKEASMFUNCS)
+LIB1ASMSRC = propeller/libgccExtras/fake_libgcc.asm
+
+LIBGCC2_CFLAGS += -Os
+TARGET_LIBGCC2_CFLAGS = -Os -fomit-frame-pointer
+
+# floating point emulation libraries
+
+FPBIT = fp-bit.c
+DPBIT = dp-bit.c
+
+fp-bit.c: $(srcdir)/config/fp-bit.c
+	echo '#define FLOAT'				> fp-bit.c
+	cat $(srcdir)/config/fp-bit.c			>> fp-bit.c
+
+dp-bit.c: $(srcdir)/config/fp-bit.c
+	cat $(srcdir)/config/fp-bit.c > dp-bit.c
+
+
+# Build all combinations of library for various compiler switches
+# for now we'll just build with the default switches (for LMM based systems)
+# because -mcog is so restricted that much of libgcc would not fit in it
+# anyway!
+
+#MULTILIB_OPTIONS = mlmm/mcog
+#MULTILIB_DIRNAMES = lmm cog
+# dunno if this is necessary
+#MULTILIB_EXCEPTIONS = 
+#
+#don't think we need these
+#EXTRA_MULTILIB_PARTS = crtbegin.o crtend.o
+
+EXTRA_PARTS += spinboot.o crt0_lmm.o crtbegin_lmm.o crtend_lmm.o \
+	    crt0_xmm.o crtbegin_xmm.o crtend_xmm.o hubstart_xmm.o
+
+#
+# Assemble startup files
+#
+
+$(T)spinboot.o: $(srcdir)/config/propeller/spinboot.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)crt0_lmm.o: $(srcdir)/config/propeller/crt0_lmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)crtbegin_lmm.o: $(srcdir)/config/propeller/crtbegin_lmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)crtend_lmm.o: $(srcdir)/config/propeller/crtend_lmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
