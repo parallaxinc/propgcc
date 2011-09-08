@@ -59,6 +59,8 @@
    (UNSPEC_WAITPNE       7)
    (UNSPEC_WAITVID       8)
    (UNSPEC_FCACHE_LOAD   9)
+   (UNSPEC_CONST_WORD   10)
+
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -884,12 +886,23 @@
     }
 })
 
-(define_insn "*movsi_lmm"
+(define_insn "*movsi_imm_lmm"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (match_operand:SI 1 "propeller_big_const" "i"))]
   "TARGET_LMM"
   "jmp\t#__LMM_MVI_%0\n\tlong\t%c1"
   [(set_attr "length" "8")
+  ]
+)
+(define_insn "*movsi_imm_fcache"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+        (unspec [(label_ref (match_operand 1 "" ""))
+	         (label_ref (match_operand 2 "" ""))]
+         UNSPEC_FCACHE_LABEL_REF))
+  ]
+  "TARGET_LMM"
+  "mov\t%0,__LMM_FCACHE_START+(%l1-%l2)"
+  [(set_attr "length" "4")
   ]
 )
 
@@ -2063,6 +2076,17 @@
   ""
   "jmp\t#__LMM_FCACHE_LOAD\n\tlong\t%1-%0"
   [(set_attr "type" "multi")]
+)
+
+;;
+;; define a word of data
+;;
+(define_insn "fcache_const_word"
+  [(unspec_volatile
+    [(use (match_operand:SI 0 "immediate_operand" "i"))]
+    UNSPEC_CONST_WORD)]
+""
+".long %0"
 )
 
 

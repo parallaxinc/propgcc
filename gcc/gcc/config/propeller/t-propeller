@@ -58,7 +58,8 @@ dp-bit.c: $(srcdir)/config/fp-bit.c
 #don't think we need these
 #EXTRA_MULTILIB_PARTS = crtbegin.o crtend.o
 
-EXTRA_PARTS += spinboot.o crt0_lmm.o crtbegin_lmm.o crtend_lmm.o
+EXTRA_PARTS += spinboot.o crt0_lmm.o crtbegin_lmm.o crtend_lmm.o \
+	    crt0_xmm.o crtbegin_xmm.o crtend_xmm.o hubstart_xmm.o
 
 #
 # Assemble startup files
