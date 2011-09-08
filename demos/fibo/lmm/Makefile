@@ -6,7 +6,10 @@ PROPLIB = ../../libpropeller
 
 NAME = fibo
 OBJS = fibo.o
-CFLAGS = -Os
+#
+# enable experimental fcache code for this demo
+#
+CFLAGS = -Os -mexperimental
 
 all: $(NAME).elf
 
