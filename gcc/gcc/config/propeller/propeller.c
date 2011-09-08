@@ -769,6 +769,10 @@ propeller_hard_regno_mode_ok (unsigned int reg, enum machine_mode mode)
     if (reg == PROP_CC_REGNUM) {
         return false;
     }
+    /* for 64 bit constants make sure there is room for the following register */
+    if (GET_MODE_SIZE (MODE) > UNITS_PER_WORD)
+      return (regno < PROP_LR_REGNUM);
+
     return true;
 }
 
