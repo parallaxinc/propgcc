@@ -2309,7 +2309,36 @@ fcache_func_reorg (bool recursive)
 	       && propeller_big_const (SET_SRC (pattern), SImode) )
 	    
 	    {
-	      gcc_unreachable ();
+	      /* we have to split this up */
+	      /* normally in LMM mode the constant immediately
+		 follows the move (as part of the instruction)
+		 but now we need it to go to the end of the
+		 fcache section
+	      */
+	      rtx const_label;
+	      rtx const_insn;
+	      rtx next;
+	      rtx mov_insn = insn;
+
+	      const_label = gen_label_rtx ();
+	      LABEL_NUSES (const_label)++;
+	      LABEL_PRESERVE_P (const_label) = 1;
+
+	      last = emit_label_after (const_label, last);
+	      INSN_ADDRESSES_NEW (last, -1);
+	      const_label = gen_rtx_LABEL_REF (SImode, const_label);
+
+	      /* now the actual word */
+	      const_insn = gen_fcache_const_word (SET_SRC (pattern));
+	      last = emit_insn_after (const_insn, last);
+	      INSN_ADDRESSES_NEW (last, -1);
+
+	      /* finally, modify the existing move instruction */
+	      /* delete it */
+	      next = delete_insn (mov_insn);
+	      /* update the pattern */
+	      SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, const_label, start_label), UNSPEC_FCACHE_LABEL_REF);
+	      emit_jump_insn_before (pattern, next);
 	    }
 	}
     }
@@ -2324,15 +2353,11 @@ fcache_func_reorg (bool recursive)
 static void
 propeller_reorg(void)
 {
-  FILE *save_dump_file;
   bool fcache_recursive;
 
   /* for now, this does nothing */
   if (!TARGET_EXPERIMENTAL)
     return;
-
-  save_dump_file = dump_file;
-  dump_file = stderr;
 
   if (TARGET_LMM)
     {
@@ -2341,7 +2366,6 @@ propeller_reorg(void)
 	  fcache_func_reorg (fcache_recursive);
 	}
     }
-  dump_file = save_dump_file;
 }
 
 
