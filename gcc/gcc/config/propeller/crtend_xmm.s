@@ -11,10 +11,10 @@
 	mov	pc,lr
 
 	'' make sure the ctors and dtors are null terminated
-	.section .ctors
+	.section .ctors, "ax"
 	long	0
 
-	.section .dtors
+	.section .dtors, "ax"
 	long	0
 
 	'' provide (weak) default values for __clkfreqval and __clkmodeval
