@@ -105,7 +105,7 @@ do {                                                    \
 
 #define STACK_BOUNDARY 32
 
-#define BIGGEST_ALIGNMENT 64
+#define BIGGEST_ALIGNMENT 32
 
 #define FUNCTION_BOUNDARY  32
 
