@@ -25,35 +25,39 @@
  *      Uninitialized data.
  */
 
-SEARCH_DIR(/usr/local/propeller/lib/gcc/propeller-elf/4.6.1/)
+MEMORY {
+    hub : ORIGIN = 0x00000000, LENGTH = 32K
+    rom : ORIGIN = 0x30000000, LENGTH = 1M
+    cog : ORIGIN = 0x00000000, LENGTH = 2K
+}
 
 SECTIONS
 {
-  .boot 0x0: { *(.boot) }
-  .lmmkernel 0x0 : AT (ADDR(.boot)+SIZEOF(.boot))
+  .boot : { *(.boot) } >hub
+  .lmmkernel : 
           {
 	   *(.lmmkernel) 
-	  }
-  __ram_base = SIZEOF(.boot)+SIZEOF(.lmmkernel);
-  .init (__ram_base) : AT (__ram_base)
+	  } >cog AT>hub
+
+  .init :
           {
 	    *(.init*)
-	  }
+	  } >hub AT>hub
   .text  :
           {
             *(.text*)
-          }
+          } >hub
   .hubtext : {
       *(.hubtext)
-   }
+   } >hub
   .ctors : {
       *(.ctors)
-   }
+   } >hub
   .dtors : {
       *(.dtors)
-  }
-  .data : { *(.data) }
-  .bss  : { *(.bss) }
+   } >hub
+  .data : { *(.data) } >hub
+  .bss  : { *(.bss) } >hub
   ___heap_start = ALIGN(4) ;
 
   ___CTOR_LIST__ = ADDR(.ctors) ;
