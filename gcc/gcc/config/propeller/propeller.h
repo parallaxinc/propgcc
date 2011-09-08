@@ -46,7 +46,7 @@
 #undef LINK_SPEC
 #define LINK_SPEC "%{mrelax:-relax}"
 
-#define TARGET_DEFAULT (MASK_LMM)
+#define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)
 
 /*-------------------------------*/
 /* Run-time Target Specification */
