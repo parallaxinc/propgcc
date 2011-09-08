@@ -1382,7 +1382,7 @@
         (match_op_dup 5
          [(match_operand:SI 2 "propeller_dst_operand" "")
           (match_operand:SI 3 "propeller_src_operand" "")]))
-   (set (match_operand:SI 0)
+   (set (match_operand:SI 0 "propeller_dst_operand" "")
         (if_then_else:SI
           (match_operator:SI 1 "predicate_operator"
             [(match_dup 4)(const_int 0)])
