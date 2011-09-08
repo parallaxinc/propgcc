@@ -10,22 +10,12 @@ lib_a_SOURCES = \
 	access.c	\
 	close.c		\
 	creat.c		\
-	crt0.s		\
-	crtbegin.s	\
-	crtend.s	\
-	crt0_lmm.s	\
-	crtbegin_lmm.s	\
-	crtend_lmm.s	\
-	crt0_xmm.s	\
-	crtbegin_xmm.s	\
-	crtend_xmm.s	\
 	dup2.c		\
 	exec.c		\
 	execvp.c	\
 	fork.c		\
 	fstat.c		\
 	gettimeofday.c	\
-	hubstart_xmm.s	\
 	initlib.c	\
 	ioctl.c		\
 	isatty.c	\

@@ -53,15 +53,12 @@ ARFLAGS = cru
 lib_a_AR = $(AR) $(ARFLAGS)
 lib_a_LIBADD =
 am_lib_a_OBJECTS = access.$(OBJEXT) close.$(OBJEXT) creat.$(OBJEXT) \
-	crt0.$(OBJEXT) crtbegin.$(OBJEXT) crtend.$(OBJEXT) \
-	crt0_lmm.$(OBJEXT) crtbegin_lmm.$(OBJEXT) crtend_lmm.$(OBJEXT) \
-	crt0_xmm.$(OBJEXT) crtbegin_xmm.$(OBJEXT) crtend_xmm.$(OBJEXT) \
 	dup2.$(OBJEXT) exec.$(OBJEXT) execvp.$(OBJEXT) fork.$(OBJEXT) \
-	fstat.$(OBJEXT) gettimeofday.$(OBJEXT) hubstart_xmm.$(OBJEXT) \
-	initlib.$(OBJEXT) ioctl.$(OBJEXT) isatty.$(OBJEXT) \
-	kill.$(OBJEXT) link.$(OBJEXT) lseek.$(OBJEXT) lstat.$(OBJEXT) \
-	open.$(OBJEXT) params.$(OBJEXT) pipe.$(OBJEXT) read.$(OBJEXT) \
-	sbrk.$(OBJEXT) stat.$(OBJEXT) times.$(OBJEXT) unlink.$(OBJEXT) \
+	fstat.$(OBJEXT) gettimeofday.$(OBJEXT) initlib.$(OBJEXT) \
+	ioctl.$(OBJEXT) isatty.$(OBJEXT) kill.$(OBJEXT) link.$(OBJEXT) \
+	lseek.$(OBJEXT) lstat.$(OBJEXT) open.$(OBJEXT) \
+	params.$(OBJEXT) pipe.$(OBJEXT) read.$(OBJEXT) sbrk.$(OBJEXT) \
+	stat.$(OBJEXT) times.$(OBJEXT) unlink.$(OBJEXT) \
 	usleep.$(OBJEXT) version.$(OBJEXT) write.$(OBJEXT)
 lib_a_OBJECTS = $(am_lib_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -185,22 +182,12 @@ lib_a_SOURCES = \
 	access.c	\
 	close.c		\
 	creat.c		\
-	crt0.s		\
-	crtbegin.s	\
-	crtend.s	\
-	crt0_lmm.s	\
-	crtbegin_lmm.s	\
-	crtend_lmm.s	\
-	crt0_xmm.s	\
-	crtbegin_xmm.s	\
-	crtend_xmm.s	\
 	dup2.c		\
 	exec.c		\
 	execvp.c	\
 	fork.c		\
 	fstat.c		\
 	gettimeofday.c	\
-	hubstart_xmm.s	\
 	initlib.c	\
 	ioctl.c		\
 	isatty.c	\
