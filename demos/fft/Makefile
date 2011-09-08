@@ -16,7 +16,7 @@ NAME = fft_bench
 OBJS = fft_bench.o
 
 # flags to build with
-CFLAGS = -Os -mexperimental
+CFLAGS = -Os
 
 # default build target
 all: $(NAME).elf
