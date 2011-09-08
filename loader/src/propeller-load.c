@@ -155,7 +155,8 @@ int main(int argc, char *argv[])
 */
 
     /* finish the include path */
-    xbAddFilePath(infile);
+    if (infile)
+        xbAddFilePath(infile);
     xbAddEnvironmentPath("PROPELLER_LOAD_PATH");
     xbAddProgramPath(argv);
     

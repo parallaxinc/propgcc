@@ -7,12 +7,17 @@ SPINDIR=spin
 OBJDIR=obj/$(OS)
 BINDIR=bin/$(OS)
 DRVDIR=include
+INSTALLDIR=/usr/local/propeller
+INSTALLBINDIR=$(INSTALLDIR)/bin
+INSTALLLIBDIR=$(INSTALLDIR)/propeller-load
 
-DIRS = $(OBJDIR) $(BINDIR) $(DRVDIR)
+DIRS = $(OBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
 
 CC=gcc
 ECHO=echo
 MKDIR=mkdir -p
+CP=cp
+RM=rm
 
 CFLAGS=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
@@ -52,17 +57,17 @@ all:	propeller-load cache-drivers
 
 .PHONY:	clean clean-for-release
 clean:
-	@rm -f -r $(OBJDIR)
-	@rm -f -r $(BINDIR)
-	@rm -f $(DRVDIR)/*.dat
-	@rm -f *.binary
+	@$(RM) -f -r $(OBJDIR)
+	@$(RM) -f -r $(BINDIR)
+	@$(RM) -f $(DRVDIR)/*.dat
+	@$(RM) -f *.binary
 	
 .PHONY:
 clean-all:	clean
-	@rm -f -r obj
-	@rm -f -r bin
-	@rm -f $(DRVDIR)/*.dat
-	@rm -f *.binary
+	@$(RM) -f -r obj
+	@$(RM) -f -r bin
+	@$(RM) -f $(DRVDIR)/*.dat
+	@$(RM) -f *.binary
 	
 #####################
 # OBJECT FILE LISTS #
@@ -195,16 +200,25 @@ $(DIRS):
 	$(MKDIR) $@
 	
 ##################
+# INSTALL TARGET #
+##################
+
+.PHONY:	install
+install:	$(INSTALLBINDIR) $(INSTALLLIBDIR)
+	$(CP) -f bin/$(OS)/propeller-load $(INSTALLBINDIR)
+	$(CP) -f include/* $(INSTALLLIBDIR)
+
+##################
 # RELEASE TARGET #
 ##################
 
 .PHONY:	release
 release:	clean-for-release
-	rm -rf ../loader-rel/loader
-	mkdir -p ../loader-rel/loader
-	cp -r src ../loader-rel/loader
-	cp -r spin ../loader-rel/loader
-	cp -r include ../loader-rel/loader
-	cp makefile ../loader-rel/loader
-	cp setenv.* ../loader-rel/loader
-	cp README.txt ../loader-rel/loader
+	$(RM) -rf ../loader-rel/loader
+	$(MKDIR) ../loader-rel/loader
+	$(CP) -r src ../loader-rel/loader
+	$(CP) -r spin ../loader-rel/loader
+	$(CP) -r include ../loader-rel/loader
+	$(CP) makefile ../loader-rel/loader
+	$(CP) setenv.* ../loader-rel/loader
+	$(CP) README.txt ../loader-rel/loader

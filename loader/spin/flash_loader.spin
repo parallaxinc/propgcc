@@ -1,4 +1,4 @@
-'#define DEBUG
+#define DEBUG
 
 CON
 
@@ -74,6 +74,10 @@ PUB start | cache
   ser.str(STRING("CLKFREQ: "))
   ser.hex(cacheint.readLong(cacheint.readLong(data_image)), 8)
   ser.crlf
+  
+  waitcnt(cnt + clkfreq)
+  ser.stop
+  
 #endif
 
    ' start the xmm kernel boot code
@@ -111,21 +115,6 @@ data_end            long     FLASH_BASE + HDR_DATA_END
 boot_next           mov     cache_mboxdat, cache_mboxcmd
                     add     cache_mboxdat, #4
                     
-clear_bss           mov     t1, bss_start
-                    call    #read_long
-                    mov     dst, t1
-                    mov     t1, bss_end
-                    call    #read_long
-                    mov     count, t1
-                    sub     count, dst
-                    shr     count, #2 wz
-        if_z        jmp     #:done_bss
-                    mov     t2, #0
-:loop_bss           wrlong  t2, dst
-                    add     dst, #4
-                    djnz    count, #:loop_bss
-:done_bss
-
 initialize_data     mov     t1, data_image
                     call    #read_long
                     mov     src, t1
@@ -145,6 +134,21 @@ initialize_data     mov     t1, data_image
                     add     dst, #4
                     djnz    count, #:loop_data
 :done_data
+
+clear_bss           mov     t1, bss_start
+                    call    #read_long
+                    mov     dst, t1
+                    mov     t1, bss_end
+                    call    #read_long
+                    mov     count, t1
+                    sub     count, dst
+                    shr     count, #2 wz
+        if_z        jmp     #:done_bss
+                    mov     t2, #0
+:loop_bss           wrlong  t2, dst
+                    add     dst, #4
+                    djnz    count, #:loop_bss
+:done_bss
 
 initialize_stack    mov     dst, cache_mboxcmd
                     mov     t1, entry
