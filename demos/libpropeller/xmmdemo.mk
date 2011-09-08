@@ -22,11 +22,8 @@ PREFIX = /usr/local/propeller
 # libgcc directory
 LIBGCC = $(PREFIX)/lib/gcc/propeller-elf/4.6.1
 
-# use this until we really know what to do with _xmm.o
-LIBGCCSRC = $(PROPLIB)/../../gcc/gcc/config/propeller
-
-STARTOBJS = -L$(LIBGCC) $(LIBGCCSRC)/hubstart_xmm.o $(LIBGCCSRC)/crt0_xmm.o $(LIBGCCSRC)/crtbegin_xmm.o
-ENDOBJS = -lgcc $(LIBGCCSRC)/crtend_xmm.o
+STARTOBJS = -L$(LIBGCC) $(LIBGCC)/hubstart_xmm.o $(LIBGCC)/crt0_xmm.o $(LIBGCC)/crtbegin_xmm.o
+ENDOBJS = -lgcc $(LIBGCC)/crtend_xmm.o
 
 # Current LIBRARY and INCL
 PROPINC = $(PROPLIB)/../include
