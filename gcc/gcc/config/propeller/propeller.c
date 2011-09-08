@@ -2098,6 +2098,10 @@ fcache_func_ok (bool *recursive)
 	}
     } 
 
+  /*
+   * FIXME -- need to check here for builtin_taskswitch calls!!!
+   */
+
   if (loop_count == 0)
     {
       if (dump_file)
