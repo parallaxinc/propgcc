@@ -144,7 +144,7 @@ _doprnt( const char *fmt, va_list args )
 {
    char c, fill_char;
    char *s_arg;
-   int i_arg;
+   unsigned int i_arg;
    ULONG l_arg;
    int width, long_flag;
    int outbytes = 0;
@@ -190,7 +190,7 @@ _doprnt( const char *fmt, va_list args )
        outbytes += PUTC(c, width);
        break;
      case 'c':
-       i_arg = va_arg(args, int);
+       i_arg = va_arg(args, unsigned int);
        outbytes += PUTC(i_arg, width);
        break;
      case 's':
@@ -211,6 +211,8 @@ _doprnt( const char *fmt, va_list args )
 	   i_arg = va_arg(args, unsigned int);
 	   if (c == 'd') {
              l_arg = (ULONG)(LONG)i_arg;
+	   } else {
+	     l_arg = i_arg;
 	   }
 	 }
 #else
