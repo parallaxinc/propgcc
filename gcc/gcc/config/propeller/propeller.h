@@ -29,7 +29,7 @@
 #define STARTFILE_SPEC "spinboot.o%s %{!mcog:crt0_lmm.o%s crtbegin_lmm.o%s}%{mcog:crt0_cog.o%s}"
 
 #undef  ENDFILE_SPEC
-#define ENDFILE_SPEC "%{!mcog:crtend_lmm.o%s}%{mcog:crtend_cog.o}"
+#define ENDFILE_SPEC "%{!mcog:crtend_lmm.o%s}%{mcog:crtend_cog.o%s}"
 
 #undef ASM_SPEC
 #define ASM_SPEC "\
