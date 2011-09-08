@@ -2023,7 +2023,7 @@ dest_ok_for_fcache(rtx dest)
  * sets the "recursive" flag depending on whether or not the function
  * is recursive
  */
-#define MAX_FCACHE_SIZE (512)
+#define MAX_FCACHE_SIZE (1024)
 
 static bool
 fcache_func_ok (bool *recursive)
@@ -2289,11 +2289,6 @@ fcache_func_reorg (bool recursive)
     {
       if (!INSN_P (insn)) continue;
 
-      if (dump_file)
-	{
-	  fprintf (dump_file, "considering: ");
-	  print_rtl_single (dump_file, insn);
-	}
       if (GET_CODE (insn) == CALL_INSN)
 	{
 	  fcache_convert_call (insn);
