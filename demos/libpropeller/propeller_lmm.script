@@ -86,7 +86,9 @@ SECTIONS
 
   } >coguser AT>hub
 
-  ___heap_start = ALIGN(4) ;
+  .heap : { LONG(0) } > hub
+
+  ___heap_start = ADDR(.heap) ;
   __load_start_kernel = LOADADDR (.lmmkernel) ;
   ___CTOR_LIST__ = ADDR(.ctors) ;
   ___DTOR_LIST__ = ADDR(.dtors) ;
