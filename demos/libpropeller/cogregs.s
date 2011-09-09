@@ -1,3 +1,7 @@
+	''
+	'' some definitions for the standard
+	'' COG registers
+	''
 	.global PAR
 	.global CNT
 	.global INA
@@ -15,21 +19,19 @@
 	.global VCFG
 	.global VSCL
 
-	.section .cogregs
-	.org 4*0x1F0
-PAR	.skip 4
-CNT	.skip 4
-INA	.skip 4
-INB	.skip 4
-OUTA	.skip 4
-OUTB	.skip 4
-DIRA	.skip 4
-DIRB	.skip 4
-CTRA	.skip 4
-CTRB	.skip 4
-FRQA	.skip 4
-FRQB	.skip 4
-PHSA	.skip 4
-PHSB	.skip 4
-VCFG	.skip 4
-VSCL	.skip 4
+	PAR = (4*0x1F0)
+	CNT = (4*0x1F1)
+	INA = (4*0x1F2)
+	INB = (4*0x1F3)
+	OUTA = (4*0x1F4)
+	OUTB = (4*0x1F5)
+	DIRA = (4*0x1F6)
+	DIRB = (4*0x1F7)
+	CTRA = (4*0x1F8)
+	CTRB = (4*0x1F9)
+	FRQA = (4*0x1FA)
+	FRQB = (4*0x1FB)
+	PHSA = (4*0x1FC)
+	PHSB = (4*0x1FD)
+	VCFG = (4*0x1FE)
+	VSCL = (4*0x1FF)

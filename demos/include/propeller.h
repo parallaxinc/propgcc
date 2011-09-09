@@ -61,7 +61,7 @@
  * @param par  - value of par parameter usually an address
  * @returns COG ID provided by __builtin_coginit(...)
  */
-int cognew(unsigned int code, unsigned int par);
+int cognew(void *code, void *par);
 
 #endif
 // _PROPELLER_H_

@@ -17,13 +17,17 @@ COBJS = stdio.o serial.o clock.o printf.o puts.o f_printf.o \
 	strlen.o memcpy.o malloc.o sbrk.o \
 	exit.o sleep.o \
 
+COGOBJS = udiv.o div.o mult.o mask.o cogregs.o
 
-all: libpropeller.a libc.a
+all: libpropeller.a libc.a crt0_cog.o libcog.a
 
 libpropeller.a: $(POBJS)
 	$(AR) rcs $@ $^
 
 libc.a: $(COBJS)
+	$(AR) rcs $@ $^
+
+libcog.a: $(COGOBJS)
 	$(AR) rcs $@ $^
 
 %.o: %.c
