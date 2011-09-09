@@ -1,0 +1,3 @@
+export OS=linux
+export PORT=/dev/ttyUSB0
+export BOARD=hub
