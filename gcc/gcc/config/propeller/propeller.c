@@ -2007,7 +2007,7 @@ get_jump_dest(rtx branch)
  * for fcache mode
  */
 static bool
-dest_ok_for_fcache(rtx dest)
+dest_ok_for_fcache (rtx dest)
 {
   if (!dest)
     return false;
@@ -2020,28 +2020,106 @@ dest_ok_for_fcache(rtx dest)
 }
 
 /*
- * see if we can load this function into internal memory (fcache)
- * the requirements for this to work are:
- * (1) the function must fit (be < MAX_FCACHE_SIZE bytes long)
- * (2) it can be recursive, but no other function calls may be made
+ * verify that a jump destination is in between two insns
  */
-#define MAX_FCACHE_SIZE (1024)
+static bool
+fcache_jump_dest_in_block (rtx jump, rtx first, rtx last)
+{
+  rtx label;
+  rtx insn;
+  unsigned long label_addr;
+  unsigned long first_addr, last_addr;
+
+  label = JUMP_LABEL (jump);
+  if (INSN_ADDRESSES_SET_P ())
+    {
+      label_addr = INSN_ADDRESSES (INSN_UID (label));
+      first_addr = INSN_ADDRESSES (INSN_UID (first));
+      last_addr = INSN_ADDRESSES (INSN_UID (last));
+      if (dump_file)
+	{
+	  fprintf (dump_file, "checking destination label for: ");
+	  print_rtl_single (dump_file, jump);
+	  fprintf (dump_file, ">>>address (first, dest, last): (%lx,%lx,%lx)\n",
+		   first_addr, label_addr, last_addr);
+	}
+      return (label_addr >= first_addr) && (label_addr <= last_addr);
+    }
+  last = NEXT_INSN (last);
+  for (insn = first; insn != last; insn = NEXT_INSN (insn))
+    {
+      if (insn == label)
+	return true;
+    }
+  return false;
+}
+
+/*
+ * count how many uses of a label are in a block
+ */
+static int
+fcache_label_refs_in_block (rtx lab, rtx first, rtx last)
+{
+  rtx insn;
+  int count = 0;
+
+  insn = first;
+  last = NEXT_INSN (last);  /* go one past */
+  while (insn && insn != last)
+    {
+      if ( (GET_CODE (insn) == JUMP_INSN)
+	   && (lab == JUMP_LABEL(insn)) )
+	{
+	  count++;
+	}
+      insn = NEXT_INSN (insn);
+    }
+  
+  return count;
+}
+
+/*
+ * see if we can load this block into internal memory (fcache)
+ * the requirements for this to work are:
+ * (1) the block must fit (be < MAX_FCACHE_SIZE bytes long)
+ * (2) if func_p is true, recursive calls are OK; 
+ *     no other function calls may be made
+ * (3) there must be no branches into or out of the block
+ */
+
+#define MAX_FCACHE_SIZE (TARGET_XMM ? 508 : 1020)
 
 static bool
-fcache_func_ok (void)
+fcache_block_ok (rtx first, rtx last, bool func_p)
 {
   rtx dest;
-  rtx anchor = get_insns ();
   rtx insn;
-  HOST_WIDE_INT total_len = 0;
+  rtx last_next;
+  HOST_WIDE_INT total_len;
   int loop_count = 0;
 
   if (dump_file)
-    fprintf(dump_file, "considering %s for fcache\n", current_function_name ());
+    fprintf (dump_file, "checking block, func_p = %s\n",
+	     func_p ? "TRUE" : "FALSE");
 
-  for (insn = anchor; insn; insn = NEXT_INSN (insn))
+  /* quick check for block too big */
+  if (INSN_ADDRESSES_SET_P ())
     {
-      if (!INSN_P (insn))
+      total_len = INSN_ADDRESSES (INSN_UID (last)) - INSN_ADDRESSES (INSN_UID (first));
+      if (total_len > MAX_FCACHE_SIZE)
+	{
+	  if (dump_file)
+	    {
+	      fprintf (dump_file, "...block too long to fit in fcache\n");
+	    }
+	  return false;
+	}
+    }
+  total_len = 0;
+  last_next = NEXT_INSN (last);
+  for (insn = first; insn && insn != last_next; insn = NEXT_INSN (insn))
+    {
+      if (!INSN_P (insn) && !LABEL_P (insn))
 	continue;
 
       if (GET_CODE (insn) == CALL_INSN)
@@ -2052,12 +2130,13 @@ fcache_func_ok (void)
 	    {
 	      if (dump_file)
 		{
-		  fprintf (dump_file, "call not to a symbol\n");
+		  fprintf (dump_file, "...call not to a symbol:\n");
+		  print_rtl_single (dump_file, insn);
 		}
 	      return false;
 	    }
 	  /* allow recursive functions */
-	  if (dest == XEXP (DECL_RTL (current_function_decl), 0))
+	  if (func_p && dest == XEXP (DECL_RTL (current_function_decl), 0))
 	    {
 	      loop_count++;
 	    }
@@ -2065,7 +2144,7 @@ fcache_func_ok (void)
 	    {	  
 	      if (dump_file)
 		{
-		  fprintf (dump_file, "not a leaf function\n");
+		  fprintf (dump_file, "...call inside block\n");
 		}
 	      return false;
 	    }
@@ -2073,18 +2152,72 @@ fcache_func_ok (void)
       else if (GET_CODE (insn) == JUMP_INSN)
 	{
 	  dest = get_jump_dest (insn);
+	  /* we probably already checked all jumps earlier, but
+	     better safe than sorry */
 	  if (!dest_ok_for_fcache (dest))
 	    {
 	      if (dump_file)
 		{
-		  fprintf (dump_file, "jump not to a label\n");
+		  fprintf (dump_file, "...jump not to a label\n");
 		}
 	      return false;
 	    }
-	  if (GET_CODE (dest) == LABEL_REF
-	      && !propeller_forward_branch_p (insn))
+	  if (GET_CODE (dest) == LABEL_REF)
 	    {
-	      loop_count++;
+	      /* if it's a function, we want to see at least one loop */
+	      if (func_p)
+		{
+		  if (!propeller_forward_branch_p (insn))
+		    {
+		      loop_count++;
+		    }
+		}
+	      else
+		{
+		  /* not a function: verify that the jump stays inside
+		     the block */
+		  if (!fcache_jump_dest_in_block (insn, first, last))
+		    {
+		      if (dump_file)
+			{
+			  fprintf (dump_file, "...jump outside block:\n");
+			  print_rtl_single (dump_file, insn);
+			}
+		      return false;
+		    }
+		}
+	    }
+	}
+      else if (LABEL_P (insn))
+	{
+	  /* check here to make sure all references to the label are inside the block */
+	  int label_uses = LABEL_NUSES (insn);
+	  int uses_in_block;
+	  if (label_uses <= 0)
+	    {
+	      if (dump_file)
+		{
+		  fprintf (dump_file, "...unable to find uses of label: ");
+		  print_rtl_single (dump_file, insn);
+		}
+	      return false;
+	    }
+
+	  uses_in_block = fcache_label_refs_in_block (insn, first, last);
+	  if (dump_file)
+	    {
+	      fprintf (dump_file, "label refs=%d, in block=%d for label",
+		       label_uses, uses_in_block);
+	      print_rtl_single (dump_file, insn);
+	    }
+	  if (label_uses != uses_in_block)
+	    {
+	      if (dump_file)
+		{
+		  fprintf (dump_file, "...label used outside block: ");
+		  print_rtl_single (dump_file, insn);
+		}
+	      return false;
 	    }
 	}
       total_len += get_attr_length (insn);
@@ -2092,17 +2225,14 @@ fcache_func_ok (void)
 	{
 	  if (dump_file)
 	    {
-	      fprintf (dump_file, "function too long to fit in fcache\n");
+	      fprintf (dump_file, "...block too long to fit in fcache\n");
 	    }
 	  return false;
 	}
     } 
 
-  /*
-   * FIXME -- need to check here for builtin_taskswitch calls!!!
-   */
 
-  if (loop_count == 0)
+  if (func_p && loop_count == 0)
     {
       if (dump_file)
 	fprintf (dump_file, "no loops in function\n");
@@ -2110,6 +2240,18 @@ fcache_func_ok (void)
     }
 
   return true;
+}
+
+static bool
+fcache_func_ok (void)
+{
+  rtx first = get_insns ();
+  rtx last = get_last_insn ();
+
+  if (dump_file)
+    fprintf(dump_file, "considering whole function %s for fcache\n", current_function_name ());
+
+  return fcache_block_ok (first, last, true);
 }
 
 /*
@@ -2235,14 +2377,18 @@ fcache_convert_jump(rtx orig_insn, rtx fcache_base)
  * jumps inside the Cog memory; we also have to fix up
  * any other LMM kernel functions like LMM_MVI which
  * rely on embedded data.
+ *
+ * returns the new first rtx (the FCACHE instruction itself)
  */
 
-static void
+static rtx
 fcache_convert_block (rtx first, rtx last, bool func_p)
 {
   rtx start_label, end_label;
   rtx insn;
   rtx pattern;
+  rtx fcache_insn;
+  rtx last_next;
 
   start_label = gen_label_rtx ();
   LABEL_NUSES (start_label)++;
@@ -2260,11 +2406,11 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
   end_label = gen_rtx_LABEL_REF (VOIDmode, end_label);
 
   /* now add in the FCACHE_LOAD */
-  insn = gen_rtx_UNSPEC_VOLATILE (VOIDmode, gen_rtvec (2, start_label, end_label),
+  fcache_insn = gen_rtx_UNSPEC_VOLATILE (VOIDmode, gen_rtvec (2, start_label, end_label),
 			 UNSPEC_FCACHE_LOAD);
 
-  insn = emit_insn_before (insn, first);
-  INSN_ADDRESSES_NEW (insn, -1);
+  fcache_insn = emit_insn_before (fcache_insn, first);
+  INSN_ADDRESSES_NEW (fcache_insn, -1);
 
   /* for a function, emit code to get the return correct */
   /* we have to output
@@ -2279,7 +2425,7 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
       first = emit_insn_after (insn, first);
       INSN_ADDRESSES_NEW (first, -1);
     }
-  /* if not a function, insert a return back to the fcache handler */
+  /* if not a function, insert a return back to the fcache handler at the end */
   else
     {
       insn = gen_fcache_done ();
@@ -2288,7 +2434,10 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
     }
 
   /* finally adjust all instructions for fcache mode */
-  for (insn = first; insn; insn = NEXT_INSN (insn))
+  last_next = last;
+  if (INSN_P (last_next))
+    last_next = NEXT_INSN (last_next);
+  for (insn = first; insn && insn != last_next; insn = NEXT_INSN (insn))
     {
       if (!INSN_P (insn)) continue;
 
@@ -2340,7 +2489,61 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
 	    }
 	}
     }
+  return fcache_insn;
+}
 
+/*
+ * scan for indirect jumps in the current function
+ */
+static bool
+current_func_has_indirect_jumps (void)
+{
+  rtx insn;
+  rtx dest;
+
+  for (insn = get_insns(); insn; insn = next_real_insn (insn))
+    {
+      if (!INSN_P (insn))
+	continue;
+      if (GET_CODE (insn) == JUMP_INSN)
+	{
+	  dest = get_jump_dest (insn);
+	  if (!dest_ok_for_fcache (dest))
+	    {
+	      if (dump_file)
+		{
+		  fprintf (dump_file, " cannot determine destination address for:\n");
+		  print_rtl_single (dump_file, insn);
+		}
+	      return true;
+	    }
+	}
+      else if (GET_CODE (insn) == INSN)
+	{
+	  rtx pattern;
+
+	  pattern = PATTERN (insn);
+	  /* check for __builtin_taskswitch */
+	  if (GET_CODE (pattern) == SET)
+	    {
+	      pattern = SET_SRC (pattern);
+	      if (GET_CODE (pattern) == UNSPEC_VOLATILE
+		  && XINT (pattern, 1) == UNSPEC_TASKSWITCH)
+		{
+		  if (dump_file)
+		    {
+		      fprintf (dump_file, " cannot determine destination address for:\n");
+		      print_rtl_single (dump_file, insn);
+		    }
+		  return true;
+		}
+	    }
+	}
+    }
+
+  if (dump_file)
+    fprintf (dump_file, " *** function looks OK\n");
+  return false;
 }
 
 /*
@@ -2370,12 +2573,63 @@ fcache_func_reorg (void)
 }
 
 /*
- * try to convert loops within this function
+ * try to convert the loop that starts at label first and
+ * goes to jump instruction last
+ * returns the new first instruction (the FCACHE) if successful,
+ * and NULL if not
+ */
+static rtx
+try_convert_loop (rtx first, rtx last)
+{
+  /* first, validate that there are no bad constructs in the loop */
+  if (dump_file)
+    {
+      fprintf (dump_file, "considering loop from jump: ");
+      print_rtl_single (dump_file, last);
+    }
+  if (! fcache_block_ok (first, last, false))
+    return NULL;
+  if (dump_file)
+    fprintf (dump_file, "converting loop\n");
+  return fcache_convert_block (first, last, false);
+}
+
+/*
+ * try to convert all loops within this function
  */
 static bool
-fcache_convert_loops ()
+fcache_convert_loops (void)
 {
-  return false;
+  bool done_some = false;
+  rtx last, first, dest;
+
+  last = get_last_insn ();
+  if (!INSN_P (last))
+    last = prev_real_insn (last);
+
+  for (; last; last = prev_real_insn (last))
+    {
+      if (GET_CODE (last) == JUMP_INSN)
+	{
+	  dest = get_jump_dest (last);
+	  if ( dest_ok_for_fcache (dest)
+	       && GET_CODE (dest) == LABEL_REF
+	       && !propeller_forward_branch_p (last) )
+	    {
+	      first = JUMP_LABEL (last);
+	      first = try_convert_loop (first, last);
+	      if (first != NULL)
+		{
+		  /* we got the whole loop into fcache, so skip
+		     over it */
+		  last = first;
+		  done_some = true;
+		}
+	    }
+	}
+    }
+
+  return done_some;
 }
 /*
  * a machine dependent pass over the rtl
@@ -2394,15 +2648,28 @@ propeller_reorg(void)
 
   if (TARGET_LMM)
     {
+      if (dump_file)
+	fprintf (dump_file, " *** Checking fcache for jumps\n");
+      /* if the current function contains indirect jumps do not
+	 try to process it (too risky) */
+      done = current_func_has_indirect_jumps ();
+
       /* scan to see if there are any loops in the current function
 	 that we can convert to fcache mode
       */
-      done = fcache_convert_loops();
+      if (!done)
+	{
+	  if (dump_file)
+	    fprintf (dump_file, " *** Trying to convert loops to fcache\n");
+	  done = fcache_convert_loops();
+	}
 
       /* if we converted some loops, don't bother trying the whole
 	 function */
       if (!done && fcache_func_ok ())
 	{
+	  if (dump_file)
+	    fprintf (dump_file, " *** Trying to place whole function in fcache\n");
 	  fcache_func_reorg ();
 	}
     }
