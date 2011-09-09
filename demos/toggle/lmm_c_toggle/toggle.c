@@ -17,7 +17,8 @@
  * function to start up a new cog running the toggle
  * code (which we've placed in the .coguser1 section)
  * "func" is the function to run, and
- * "stack_top" is the top of the stack
+ * "stack_top" is the top of the stack to be used by
+ * the new cog
  */
 void start_lmm(void *func, int *stack_top)
 {
