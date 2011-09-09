@@ -40,7 +40,7 @@ sp	long	0
 	.global __MASK_FFFFFFFF
 
 __MASK_0000FFFF	long	0x0000FFFF
-__MASK_FFFFFFFF	long	0x0000FFFF
+__MASK_FFFFFFFF	long	0xFFFFFFFF
 
 	.global ___main
 ___main	jmp	lr
