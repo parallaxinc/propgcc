@@ -70,7 +70,7 @@ $(NAME).elf: $(LDSCRIPT) $(OBJS) $(LIBC)
 	$(ECHO) $@
 
 clean:
-	rm -f *.o *.elf *.binary
+	rm -f *.o *.elf *.cog *.binary
 
 #
 # we make both libraries together

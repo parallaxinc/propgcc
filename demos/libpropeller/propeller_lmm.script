@@ -23,12 +23,15 @@
  *      Initialized data.
  * .bss:
  *      Uninitialized data.
+ * .cogsys0-.cogsys9: system COG drivers
+ * .coguser0-.coguser9: user COG drivers
  */
 
 MEMORY {
     hub : ORIGIN = 0x00000000, LENGTH = 32K
     rom : ORIGIN = 0x30000000, LENGTH = 1M
     cog : ORIGIN = 0x00000000, LENGTH = 2K
+    coguser : ORIGIN = 0x00000000, LENGTH = 2K
 }
 
 SECTIONS
@@ -45,7 +48,7 @@ SECTIONS
 	  } >hub AT>hub
   .text  :
           {
-            *(.text*)
+            *(EXCLUDE_FILE (*.cog) .text*)
           } >hub
   .hubtext : {
       *(.hubtext)
@@ -58,9 +61,40 @@ SECTIONS
    } >hub
   .data : { *(.data) } >hub
   .bss  : { *(.bss) } >hub
+
+  ___bss_end = ALIGN(4) ;
+  /* put the cog drivers after bss and just before the heap */
+  /* that way we may later be able to free the hub memory they take up */
+  OVERLAY : {
+      .cogsys0 { *(.cogsys0) }
+      .cogsys1 { *(.cogsys1) }
+      .cogsys2 { *(.cogsys2) }
+      .cogsys3 { *(.cogsys3) }
+      .cogsys4 { *(.cogsys4) }
+      .cogsys5 { *(.cogsys5) }
+      .cogsys6 { *(.cogsys6) }
+      .cogsys7 { *(.cogsys7) }
+
+      .coguser0 { *(.coguser0) *0.cog(.text*) }
+      .coguser1 { *(.coguser1) *1.cog(.text*) }
+      .coguser2 { *(.coguser2) *2.cog(.text*) }
+      .coguser3 { *(.coguser3) *3.cog(.text*) }
+      .coguser4 { *(.coguser4) *4.cog(.text*) }
+      .coguser5 { *(.coguser5) *5.cog(.text*) }
+      .coguser6 { *(.coguser6) *6.cog(.text*) }
+      .coguser7 { *(.coguser7) *7.cog(.text*) }
+
+  } >coguser AT>hub
+
   ___heap_start = ALIGN(4) ;
 
   ___CTOR_LIST__ = ADDR(.ctors) ;
   ___DTOR_LIST__ = ADDR(.dtors) ;
 
+  /* provide some case-sensitive aliases */
+  PROVIDE(par = PAR) ;
+  PROVIDE(cnt = CNT) ;
+  PROVIDE(dira = DIRA) ;
+  PROVIDE(outa = OUTA) ;
+  PROVIDE(ina = INA) ;
 }
