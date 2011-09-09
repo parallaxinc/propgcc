@@ -10,11 +10,6 @@ PROPLIB = ../../libpropeller
 
 CFLAGS = -Os -mlmm
 
-# BSTC program
-BSTC=bstc
-SPINDIR=.
-ECHO=echo
-
 #
 # objects for this program
 #
