@@ -24,12 +24,4 @@ OBJS = toggle.o toggle_firmware.o $(PROPLIB)/libpropeller.a
 
 include $(PROPLIB)/lmmdemo.mk
 
-%.dat: $(SPINDIR)/%.spin
-	$(BSTC) -Ox -c -o $(basename $@) $<
-	$(ECHO) $@
-
-%_firmware.o: %.dat
-	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
-	rm -rf $<
-	$(ECHO) $@
 

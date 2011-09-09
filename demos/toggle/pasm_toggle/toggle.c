@@ -15,8 +15,8 @@ static unsigned int pins;
 
 void start(pinptr)
 {
-    extern unsigned int binary_toggle_dat_start;
-    cognew(&binary_toggle_dat_start, pinptr);
+    extern unsigned int _load_start_coguser0[];
+    cognew(_load_start_coguser0, pinptr);
 }
 
 void main (int argc,  char* argv[])
