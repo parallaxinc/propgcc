@@ -34,13 +34,3 @@ r13	long	0
 r14	long	0
 lr	long	0
 sp	long	0
-
-
-	.global __MASK_0000FFFF
-	.global __MASK_FFFFFFFF
-
-__MASK_0000FFFF	long	0x0000FFFF
-__MASK_FFFFFFFF	long	0x0000FFFF
-
-	.global ___main
-___main	jmp	lr

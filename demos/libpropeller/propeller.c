@@ -16,10 +16,13 @@
  * @param par  - parameter address
  * @returns COG ID allocated by coginit
  */
-int cognew(unsigned int code, unsigned int par)
+int cognew(void *code_p, void *par_p)
 {
     unsigned int value = 8;
     int cog = 0;
+    unsigned code = (unsigned)(code_p);
+    unsigned par = (unsigned)(par_p);
+
     par &= ~3;
     code &= ~3;
     value |= (code << 2);
