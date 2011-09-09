@@ -2021,16 +2021,14 @@ dest_ok_for_fcache(rtx dest)
 
 /*
  * see if we can load this function into internal memory (fcache)
- * the final requirements are in place:
+ * the requirements for this to work are:
  * (1) the function must fit (be < MAX_FCACHE_SIZE bytes long)
  * (2) it can be recursive, but no other function calls may be made
- * sets the "recursive" flag depending on whether or not the function
- * is recursive
  */
 #define MAX_FCACHE_SIZE (1024)
 
 static bool
-fcache_func_ok (bool *recursive)
+fcache_func_ok (void)
 {
   rtx dest;
   rtx anchor = get_insns ();
@@ -2041,7 +2039,6 @@ fcache_func_ok (bool *recursive)
   if (dump_file)
     fprintf(dump_file, "considering %s for fcache\n", current_function_name ());
 
-  *recursive = false;
   for (insn = anchor; insn; insn = NEXT_INSN (insn))
     {
       if (!INSN_P (insn))
@@ -2063,7 +2060,6 @@ fcache_func_ok (bool *recursive)
 	  if (dest == XEXP (DECL_RTL (current_function_decl), 0))
 	    {
 	      loop_count++;
-	      *recursive = true;
 	    }
 	  else
 	    {	  
@@ -2230,40 +2226,29 @@ fcache_convert_jump(rtx orig_insn, rtx fcache_base)
 }
 
 /*
- * convert a function so it will work in fcache space
- * this basically means converting all label references to
- * (unspec FCACHE_LABEL_REF), returns to (unspec FCACHE_RET),
- * and fixing up immediate moves
+ * convert a block of code from "first" to "last" to
+ * fit into fcache
+ * if "func_p" is true then this is a whole function
+ * block, so we need to add stub and convert returns
+ *
+ * We have to convert any jumps within the block to
+ * jumps inside the Cog memory; we also have to fix up
+ * any other LMM kernel functions like LMM_MVI which
+ * rely on embedded data.
  */
+
 static void
-fcache_func_reorg (bool recursive)
+fcache_convert_block (rtx first, rtx last, bool func_p)
 {
   rtx start_label, end_label;
-  rtx anchor, last;
   rtx insn;
   rtx pattern;
 
-  if (dump_file)
-    fprintf(dump_file, " *** trying to put %s into fcache\n", current_function_name ());
-
-  /* first, we have to insert FCACHE_LOAD and the start and end labels */
-  /* find first and last real insns */
-  anchor = get_insns ();
-  while (!INSN_P (anchor))
-    anchor = NEXT_INSN (anchor);
-  last = NULL;
-  insn = NEXT_INSN (anchor);
-  while (insn)
-    {
-      if (INSN_P (insn))
-	last = insn;
-      insn = NEXT_INSN (insn);
-    }
   start_label = gen_label_rtx ();
   LABEL_NUSES (start_label)++;
   LABEL_PRESERVE_P (start_label) = 1;
-  anchor = emit_label_before (start_label, anchor);
-  INSN_ADDRESSES_NEW (anchor, -1);
+  first = emit_label_before (start_label, first);
+  INSN_ADDRESSES_NEW (first, -1);
   start_label = gen_rtx_LABEL_REF (VOIDmode, start_label);
 
   end_label = gen_label_rtx ();
@@ -2278,22 +2263,32 @@ fcache_func_reorg (bool recursive)
   insn = gen_rtx_UNSPEC_VOLATILE (VOIDmode, gen_rtvec (2, start_label, end_label),
 			 UNSPEC_FCACHE_LOAD);
 
-  insn = emit_insn_before (insn, anchor);
+  insn = emit_insn_before (insn, first);
   INSN_ADDRESSES_NEW (insn, -1);
 
-  /* emit code to get the return correct */
+  /* for a function, emit code to get the return correct */
   /* we have to output
        mov pc,lr
        mov lr,__LMM_RET
      at the start of the function
      we do this with a special pattern named "fcache_func_start"
   */
-  insn = gen_fcache_func_start ();
-  anchor = emit_insn_after (insn, anchor);
-  INSN_ADDRESSES_NEW (anchor, -1);
+  if (func_p)
+    {
+      insn = gen_fcache_func_start ();
+      first = emit_insn_after (insn, first);
+      INSN_ADDRESSES_NEW (first, -1);
+    }
+  /* if not a function, insert a return back to the fcache handler */
+  else
+    {
+      insn = gen_fcache_done ();
+      last = emit_insn_after (insn, last);
+      INSN_ADDRESSES_NEW (last, -1);
+    }
 
   /* finally adjust all instructions for fcache mode */
-  for (insn = anchor; insn; insn = NEXT_INSN (insn))
+  for (insn = first; insn; insn = NEXT_INSN (insn))
     {
       if (!INSN_P (insn)) continue;
 
@@ -2345,8 +2340,43 @@ fcache_func_reorg (bool recursive)
 	    }
 	}
     }
+
 }
 
+/*
+ * convert a function so it will work in fcache space
+ * this basically means converting all label references to
+ * (unspec FCACHE_LABEL_REF), returns to (unspec FCACHE_RET),
+ * and fixing up immediate moves
+ */
+static void
+fcache_func_reorg (void)
+{
+  rtx first, last;
+
+  if (dump_file)
+    fprintf(dump_file, " *** trying to put %s into fcache\n", current_function_name ());
+
+  /* first, we have to insert FCACHE_LOAD and the start and end labels */
+  /* find first and last real insns */
+  first = get_insns ();
+  if (GET_CODE (first) == NOTE)
+    first = next_real_insn (first);
+  last = get_last_insn ();
+  if (GET_CODE (last) == NOTE)
+    last = prev_real_insn (last);
+
+  fcache_convert_block (first, last, true);
+}
+
+/*
+ * try to convert loops within this function
+ */
+static bool
+fcache_convert_loops ()
+{
+  return false;
+}
 /*
  * a machine dependent pass over the rtl
  * this is a chance for us to do additional machine specific
@@ -2356,17 +2386,24 @@ fcache_func_reorg (bool recursive)
 static void
 propeller_reorg(void)
 {
-  bool fcache_recursive;
-
+  bool done;
+  
   /* for now, this does nothing */
   if (!TARGET_EXPERIMENTAL)
     return;
 
   if (TARGET_LMM)
     {
-      if (fcache_func_ok (&fcache_recursive))
+      /* scan to see if there are any loops in the current function
+	 that we can convert to fcache mode
+      */
+      done = fcache_convert_loops();
+
+      /* if we converted some loops, don't bother trying the whole
+	 function */
+      if (!done && fcache_func_ok ())
 	{
-	  fcache_func_reorg (fcache_recursive);
+	  fcache_func_reorg ();
 	}
     }
 }
