@@ -70,6 +70,7 @@
    (UNSPEC_FCACHE_RET       122)
    (UNSPEC_FCACHE_CALL      123)
    (UNSPEC_FCACHE_FUNC_START  124)
+   (UNSPEC_FCACHE_DONE      125)
   ])
 
 ; Most instructions are four bytes long.
@@ -1752,7 +1753,8 @@
 )
 
 ;;
-;; special code for starting an fcache
+;; special code for starting an entire function that's been placed
+;; in fcache
 ;;
 (define_insn "fcache_func_start"
   [(unspec_volatile [(const_int 0)] UNSPEC_FCACHE_FUNC_START)]
@@ -1760,6 +1762,14 @@
   "mov\tpc,lr\n\tmov\tlr,__LMM_RET"
   [(set_attr "length" "8")
    (set_attr "type" "multi")]
+)
+
+;; and for jumping back
+(define_insn "fcache_done"
+  [(unspec_volatile [(const_int 0)] UNSPEC_FCACHE_DONE)]
+  ""
+  "jmp\t__LMM_RET"
+  [(set_attr "length" "4")]
 )
 
 ;; -------------------------------------------------------------------------
