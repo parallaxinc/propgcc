@@ -27,6 +27,14 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # +--------------------------------------------------------------------
 
+		''
+		'' .coguser0 - .coguser7 are special sections for the default
+		'' linker script: it knows that these need to be relocated to
+		'' COG memory but loaded into hub.
+		'' The "ax" flag says the section will contain executable
+		'' code. The assembler should figure this out on its own,
+		'' but it never hurts to be explicit!
+		''
 		.section .coguser0, "ax"
 		.cog_ram
 	
