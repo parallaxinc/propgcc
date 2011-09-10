@@ -1,7 +1,7 @@
 /**
  * @file toggle.c
  * This program demonstrates starting another COG running
- * LMM code.
+ * GAS code.
  * The cog makes all IO except 30/31 toggle.
  *
  * Copyright (c) 2011, Parallax, Inc.
