@@ -49,6 +49,10 @@ m32bit-doubles
 Target RejectNegative InverseMask(64BIT_DOUBLES) Report
 Store doubles in 32 bits for faster and smaller code.
 
+mfcache
+Target Mask(FCACHE) Report
+Enable support for loading external code into the cog memory fcache.
+
 mexperimental
 Target Mask(EXPERIMENTAL)
 Enable experimental optimizations which may or may not work correctly.
