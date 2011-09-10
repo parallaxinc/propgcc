@@ -2573,25 +2573,72 @@ fcache_func_reorg (void)
 }
 
 /*
- * try to convert the loop that starts at label first and
- * goes to jump instruction last
- * returns the new first instruction (the FCACHE) if successful,
- * and NULL if not
+ * try to convert the loop that starts at label *first_ptr and
+ * goes to instruction *last_ptr
+ * updates "first" and "last" if successful, and returns true
+ * returns false if not successful
  */
-static rtx
-try_convert_loop (rtx first, rtx last)
+static bool
+try_convert_loop (rtx *first_ptr, rtx *last_ptr)
 {
-  /* first, validate that there are no bad constructs in the loop */
+  rtx first = *first_ptr;
+  rtx last = *last_ptr;
+  rtx prev, next;
+  /* An interesting case: there may be a jump instruction right
+     before the label, going inside the loop (common for while
+     loops). If so, stretch our loop to include it.
+  */
+  prev = prev_real_insn (first);
+  if (prev && GET_CODE (prev) == JUMP_INSN)
+    {
+      rtx dest = get_jump_dest (prev);
+      if (GET_CODE (dest) == LABEL_REF
+	  && fcache_jump_dest_in_block (prev, first, last))
+	{
+	  first = prev;
+	}
+    }
+
+  /* Another interesting case: if there is a label immediately
+     after the last jump, it may be used to get out of the loop,
+     in which case we want to include it in the loop
+  */
+  next = next_real_insn (last);
+  if (next && LABEL_P (next))
+    {
+      /* is it referenced only in the block? */
+      int uses = fcache_label_refs_in_block (next, first, last);
+      if (uses == LABEL_NUSES (next))
+	last = next;
+      else if (uses > 0)
+	{
+	  if (dump_file)
+	    {
+	      fprintf (dump_file, "...label referenced outside block: ");
+	      print_rtl_single (dump_file, next);
+	    }
+	  return false;
+	}
+    }
+
+  /* validate that there are no bad constructs in the loop */
   if (dump_file)
     {
       fprintf (dump_file, "considering loop from jump: ");
       print_rtl_single (dump_file, last);
     }
   if (! fcache_block_ok (first, last, false))
-    return NULL;
+    return false;
   if (dump_file)
     fprintf (dump_file, "converting loop\n");
-  return fcache_convert_block (first, last, false);
+  first = fcache_convert_block (first, last, false);
+  if (first)
+    {
+      *first_ptr = first;
+      *last_ptr = last;
+      return true;
+    }
+  return false;
 }
 
 /*
@@ -2601,6 +2648,7 @@ static bool
 fcache_convert_loops (void)
 {
   bool done_some = false;
+  bool gotit;
   rtx last, first, dest;
 
   last = get_last_insn ();
@@ -2617,8 +2665,8 @@ fcache_convert_loops (void)
 	       && !propeller_forward_branch_p (last) )
 	    {
 	      first = JUMP_LABEL (last);
-	      first = try_convert_loop (first, last);
-	      if (first != NULL)
+	      gotit = try_convert_loop (&first, &last);
+	      if (gotit)
 		{
 		  /* we got the whole loop into fcache, so skip
 		     over it */
