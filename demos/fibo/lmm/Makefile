@@ -9,7 +9,7 @@ OBJS = fibo.o
 #
 # enable experimental fcache code for this demo
 #
-CFLAGS = -Os -mexperimental
+CFLAGS = -Os -mfcache
 
 all: $(NAME).elf
 
