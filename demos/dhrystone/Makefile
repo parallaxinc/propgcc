@@ -21,7 +21,7 @@ OBJS = dry1.o dry2.o
 # -DINTEGER_ONLY removes floating point
 
 DEFINES = -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=50000
-CFLAGS = -O2 $(DEFINES)
+CFLAGS = -O2 -mfcache $(DEFINES)
 
 include $(PROPLIB)/lmmdemo.mk
 

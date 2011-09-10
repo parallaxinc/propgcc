@@ -165,7 +165,9 @@ __CTZSI	neg	__TMP0, r0
  IF_Z	add	r0, #1
 __CLZSI_ret	ret
 __DIVR	long	0
-__DIVCNT	long	0
+__TMP1
+__DIVCNT
+	long	0
 __UDIVSI
 	mov	__DIVR, r0
 	call	#__CLZSI
@@ -222,8 +224,8 @@ __MULSI_ret	ret
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest
-	long (1<<9)
+inc_dest4
+	long (4<<9)
 	
 	.global	__LMM_RET
 	.global	__LMM_FCACHE_LOAD
@@ -232,19 +234,40 @@ __LMM_RET
 __LMM_FCACHE_LOAD
 	rdlong	__TMP0,pc	'' read count of bytes for load
 	add	pc,#4
+	mov	__TMP1,pc
 	cmp	__LMM_FCACHE_ADDR,pc wz	'' is this the same fcache block we loaded last?
+	add	pc,__TMP0	'' skip over data
   IF_Z	jmp	#Lmm_fcache_doit
 
+	mov	__LMM_FCACHE_ADDR, __TMP1
+	
 	'' assembler awkwardness here
 	'' we would like to just write
 	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
 	'' but binutils doesn't work right with this now
 	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-	shr  __TMP0,#2
+	movd Lmm_fcache_loop2,#1+(__LMM_FCACHE_START-__LMM_entry)/4
+	movd Lmm_fcache_loop3,#2+(__LMM_FCACHE_START-__LMM_entry)/4
+	movd Lmm_fcache_loop4,#3+(__LMM_FCACHE_START-__LMM_entry)/4
+	add  __TMP0,#15		'' round up to next multiple of 16
+	shr  __TMP0,#4		'' we process 16 bytes per loop iteration
 Lmm_fcache_loop
-	rdlong	0-0,pc
-	add	pc,#4
-	add	Lmm_fcache_loop,inc_dest
+	rdlong	0-0,__TMP1
+	add	__TMP1,#4
+	add	Lmm_fcache_loop,inc_dest4
+Lmm_fcache_loop2
+	rdlong	0-0,__TMP1
+	add	__TMP1,#4
+	add	Lmm_fcache_loop2,inc_dest4
+Lmm_fcache_loop3
+	rdlong	0-0,__TMP1
+	add	__TMP1,#4
+	add	Lmm_fcache_loop3,inc_dest4
+Lmm_fcache_loop4
+	rdlong	0-0,__TMP1
+	add	__TMP1,#4
+	add	Lmm_fcache_loop4,inc_dest4
+
 	djnz	__TMP0,#Lmm_fcache_loop
 
 Lmm_fcache_doit
