@@ -238,25 +238,22 @@ cache_write             muxz    save_z_c, #2                'save the z flag
                         jmp     #cache_access
 
 cache_read              muxz    save_z_c, #2                'save the z flag
+                        mov     memp, t1                    'save address for index
                         mov     temp, t1                    'ptr + cache_mboxdat = hub address of byte to load
                         andn    temp, cache_linemask
                         cmp     cacheaddr, temp wz          'if cacheaddr == addr, just pull form cache
             if_e        jmp     #cache_hit                  'memp gets overwriteen on a miss
                         
-cache_read_miss         mov     memp, t1                    'save address for index
-                        or      t1, #CACHE_READ_CMD         'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
+cache_read_miss         or      t1, #CACHE_READ_CMD         'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
 
 cache_access            wrlong  t1, cache_mboxcmd
                         mov     cacheaddr, t1               'save new cache address. it's free time here
                         andn    cacheaddr, cache_linemask   'kill command bits in free time
 _waitres                rdlong  temp, cache_mboxcmd wz
             if_nz       jmp     #_waitres
-                        and     memp, cache_linemask        'memp is index into buffer
                         rdlong  cacheptr, cache_mboxdat     'Get new buffer
-                        jmp     #cache_done
-cache_hit               mov     memp, t1                    'ptr + cache_mboxdat = hub address of byte to load
-                        and     memp, cache_linemask
-cache_done              add     memp, cacheptr              'add ptr to memp to get data address
+cache_hit               and     memp, cache_linemask
+                        add     memp, cacheptr              'add ptr to memp to get data address
                         
                         test    save_z_c, #2 wz             'restore the z flag
 cache_read_ret
