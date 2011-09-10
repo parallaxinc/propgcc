@@ -240,13 +240,12 @@ __LMM_FCACHE_LOAD
 	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
 	'' but binutils doesn't work right with this now
 	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-	nop
+	shr  __TMP0,#2
 Lmm_fcache_loop
 	rdlong	0-0,pc
 	add	pc,#4
 	add	Lmm_fcache_loop,inc_dest
-	sub	__TMP0,#4 wz
-  IF_NZ	jmp	#Lmm_fcache_loop
+	djnz	__TMP0,#Lmm_fcache_loop
 
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
