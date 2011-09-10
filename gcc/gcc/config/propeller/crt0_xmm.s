@@ -22,15 +22,15 @@
 	.global __LMM_entry
 __LMM_entry
 r0	mov	sp, PAR
-r1	rdlong cache_mboxcmd, sp
-r2  add sp, #4
-r3  mov cache_mboxdat, cache_mboxcmd
-r4  add cache_mboxdat, #4
-r5  rdlong cache_linemask, sp
-r6	add sp, #4
-r7	rdlong pc, sp
-r8	add sp, #4
-r9	jmp #__LMM_loop
+r1	rdlong	cache_mboxcmd, sp
+r2	add	sp, #4
+r3	mov	cache_mboxdat, cache_mboxcmd
+r4	add	cache_mboxdat, #4
+r5	rdlong	cache_linemask, sp
+r6	add	sp, #4
+r7	rdlong	pc, sp
+r8	add	sp, #4
+r9	jmp	#__LMM_loop
 r10	long	0
 r11	long	0
 r12	long	0
@@ -46,7 +46,7 @@ pc	long	0
 	'' and executes them
 	''
 __LMM_loop
-    call	#read_code
+	call	#read_code
 	add	pc,#4
 L_ins0	nop
 	jmp	#__LMM_loop
@@ -59,7 +59,7 @@ L_ins0	nop
 	.macro LMM_movi reg
 	.global __LMM_MVI_\reg
 __LMM_MVI_\reg
-    call	#read_code
+	call	#read_code
 	mov	\reg,L_ins0
 	add	pc,#4
 	jmp	#__LMM_loop
@@ -87,7 +87,7 @@ __LMM_MVI_\reg
 	''
 	.global	__LMM_CALL
 __LMM_CALL
-    call	#read_code
+	call	#read_code
 	add	pc,#4
 	mov	lr,pc
 	mov	pc,L_ins0
@@ -104,8 +104,8 @@ __LMM_CALL_INDIRECT
 	''
 	.global __LMM_JMP
 __LMM_JMP
-    call	#read_code
-    mov pc,L_ins0
+	call	#read_code
+	mov	pc,L_ins0
 	jmp	#__LMM_loop
 
 	''
