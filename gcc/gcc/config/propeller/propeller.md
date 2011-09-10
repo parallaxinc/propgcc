@@ -1716,7 +1716,6 @@
 	(label_ref (match_operand 0 "" "")))]
   "!TARGET_LMM"
   "jmp\t#%0"
-  [(set_attr "predicable" "yes")]
 )
 
 ;;
@@ -1729,7 +1728,6 @@
 		UNSPEC_FCACHE_LABEL_REF))]
   ""
   "jmp\t#__LMM_FCACHE_START+(%0-%1)"
-  [(set_attr "predicable" "yes")]
 )
 
 (define_insn "*jump_lmm"
@@ -2085,7 +2083,8 @@
     UNSPEC_FCACHE_LOAD)]
   ""
   "jmp\t#__LMM_FCACHE_LOAD\n\tlong\t%1-%0"
-  [(set_attr "type" "multi")]
+  [(set_attr "type" "multi")
+   (set_attr "length" "8")]
 )
 
 ;;
