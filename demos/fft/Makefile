@@ -16,7 +16,8 @@ NAME = fft_bench
 OBJS = fft_bench.o
 
 # flags to build with
-CFLAGS = -Os
+#CFLAGS = -Os
+CFLAGS = -Os -fno-inline-functions-called-once -mfcache
 
 # default build target
 all: $(NAME).elf
