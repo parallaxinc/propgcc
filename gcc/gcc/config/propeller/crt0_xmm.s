@@ -22,15 +22,15 @@
 	.global __LMM_entry
 __LMM_entry
 r0	mov	sp, PAR
-r1	rdlong cache_mboxcmd, sp
-r2  add sp, #4
-r3  mov cache_mboxdat, cache_mboxcmd
-r4  add cache_mboxdat, #4
-r5  rdlong cache_linemask, sp
-r6	add sp, #4
-r7	rdlong pc, sp
-r8	add sp, #4
-r9	jmp #__LMM_loop
+r1	rdlong	cache_mboxcmd, sp
+r2	add	sp, #4
+r3	mov	cache_mboxdat, cache_mboxcmd
+r4	add	cache_mboxdat, #4
+r5	rdlong	cache_linemask, sp
+r6	add	sp, #4
+r7	rdlong	pc, sp
+r8	add	sp, #4
+r9	jmp	#__LMM_loop
 r10	long	0
 r11	long	0
 r12	long	0
@@ -46,7 +46,7 @@ pc	long	0
 	'' and executes them
 	''
 __LMM_loop
-    call	#read_code
+	call	#read_code
 	add	pc,#4
 L_ins0	nop
 	jmp	#__LMM_loop
@@ -59,7 +59,7 @@ L_ins0	nop
 	.macro LMM_movi reg
 	.global __LMM_MVI_\reg
 __LMM_MVI_\reg
-    call	#read_code
+	call	#read_code
 	mov	\reg,L_ins0
 	add	pc,#4
 	jmp	#__LMM_loop
@@ -87,7 +87,7 @@ __LMM_MVI_\reg
 	''
 	.global	__LMM_CALL
 __LMM_CALL
-    call	#read_code
+	call	#read_code
 	add	pc,#4
 	mov	lr,pc
 	mov	pc,L_ins0
@@ -104,8 +104,8 @@ __LMM_CALL_INDIRECT
 	''
 	.global __LMM_JMP
 __LMM_JMP
-    call	#read_code
-    mov pc,L_ins0
+	call	#read_code
+	mov	pc,L_ins0
 	jmp	#__LMM_loop
 
 	''
@@ -237,26 +237,23 @@ cache_write             muxz    save_z_c, #2                'save the z flag
                         or      t1, #CACHE_WRITE_CMD
                         jmp     #cache_access
 
-cache_read              muxz    save_z_c, #2                'save the z flag
+cache_read              muxnz   save_z_c, #2                'save the z flag
+                        mov     memp, t1                    'save address for index
                         mov     temp, t1                    'ptr + cache_mboxdat = hub address of byte to load
                         andn    temp, cache_linemask
                         cmp     cacheaddr, temp wz          'if cacheaddr == addr, just pull form cache
             if_e        jmp     #cache_hit                  'memp gets overwriteen on a miss
                         
-cache_read_miss         mov     memp, t1                    'save address for index
-                        or      t1, #CACHE_READ_CMD         'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
+cache_read_miss         or      t1, #CACHE_READ_CMD         'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
 
 cache_access            wrlong  t1, cache_mboxcmd
                         mov     cacheaddr, t1               'save new cache address. it's free time here
                         andn    cacheaddr, cache_linemask   'kill command bits in free time
 _waitres                rdlong  temp, cache_mboxcmd wz
             if_nz       jmp     #_waitres
-                        and     memp, cache_linemask        'memp is index into buffer
                         rdlong  cacheptr, cache_mboxdat     'Get new buffer
-                        jmp     #cache_done
-cache_hit               mov     memp, t1                    'ptr + cache_mboxdat = hub address of byte to load
-                        and     memp, cache_linemask
-cache_done              add     memp, cacheptr              'add ptr to memp to get data address
+cache_hit               and     memp, cache_linemask
+                        add     memp, cacheptr              'add ptr to memp to get data address
                         
                         test    save_z_c, #2 wz             'restore the z flag
 cache_read_ret
