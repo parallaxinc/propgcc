@@ -2686,8 +2686,7 @@ propeller_reorg(void)
 {
   bool done;
   
-  /* fcache not yet implemented for XMM */
-  if (TARGET_LMM && TARGET_FCACHE && !TARGET_XMM)
+  if (TARGET_LMM && TARGET_FCACHE)
     {
       if (dump_file)
 	fprintf (dump_file, " *** Checking fcache for jumps\n");
