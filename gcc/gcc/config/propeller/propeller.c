@@ -2563,11 +2563,7 @@ fcache_func_reorg (void)
   /* first, we have to insert FCACHE_LOAD and the start and end labels */
   /* find first and last real insns */
   first = get_insns ();
-  if (GET_CODE (first) == NOTE)
-    first = next_real_insn (first);
   last = get_last_insn ();
-  if (GET_CODE (last) == NOTE)
-    last = prev_real_insn (last);
 
   fcache_convert_block (first, last, true);
 }
@@ -2690,11 +2686,8 @@ propeller_reorg(void)
 {
   bool done;
   
-  /* for now, this does nothing */
-  if (!TARGET_EXPERIMENTAL)
-    return;
-
-  if (TARGET_LMM)
+  /* fcache not yet implemented for XMM */
+  if (TARGET_LMM && TARGET_FCACHE && !TARGET_XMM)
     {
       if (dump_file)
 	fprintf (dump_file, " *** Checking fcache for jumps\n");
