@@ -1,5 +1,5 @@
 /* Opcode table for Parallax Propeller
-   Copyright 2011 Parallax Semiconductor, Inc.
+   Copyright 2011 Parallax Inc.
 
    This file is part of the GNU opcodes library.
 

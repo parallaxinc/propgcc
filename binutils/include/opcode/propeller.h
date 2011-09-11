@@ -1,5 +1,5 @@
 /* Parallax Propeller opcde list.
-   Copyright 2011 Parallax Semiconductor, Inc.
+   Copyright 2011 Parallax Inc.
 
    This file is part of GDB and GAS.
 
