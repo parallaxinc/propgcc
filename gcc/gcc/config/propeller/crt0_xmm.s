@@ -21,17 +21,17 @@
 
 	.global __LMM_entry
 __LMM_entry
-r0	mov	sp, PAR
-r1	rdlong	cache_mboxcmd, sp
-r2	add	sp, #4
-r3	mov	cache_mboxdat, cache_mboxcmd
-r4	add	cache_mboxdat, #4
-r5	rdlong	cache_linemask, sp
-r6	add	sp, #4
-r7	rdlong	pc, sp
-r8	add	sp, #4
-r9	jmp	#__LMM_loop
-r10	long	0
+r0	rdlong	sp, PAR
+r1	tjz	sp, #__LMM_entry
+r2	rdlong	cache_mboxcmd, sp
+r3	add	sp, #4
+r4	mov	cache_mboxdat, cache_mboxcmd
+r5	add	cache_mboxdat, #4
+r6	rdlong	cache_linemask, sp
+r7	add	sp, #4
+r8	rdlong	pc, sp
+r9	add	sp, #4
+r10	jmp	#__LMM_loop
 r11	long	0
 r12	long	0
 r13	long	0

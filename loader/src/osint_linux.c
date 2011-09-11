@@ -231,6 +231,7 @@ void hwreset(void)
  */
 void msleep(int ms)
 {
+#if 0
     volatile struct timeb t0, t1;
     do {
         ftime((struct timeb*)&t0);
@@ -238,6 +239,9 @@ void msleep(int ms)
             ftime((struct timeb*)&t1);
         } while (t1.millitm == t0.millitm);
     } while(ms-- > 0);
+#else
+    usleep(ms * 1000);
+#endif
 }
 
 #define ESC     0x1b    /* escape from terminal mode */

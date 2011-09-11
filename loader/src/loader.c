@@ -94,7 +94,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp);
 static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c);
-static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode);
+static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
@@ -368,7 +368,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
         mode = SHUTDOWN_CMD;
     
     /* write the 'xmmkernel' loader to the eeprom */
-    if (mode != SHUTDOWN_CMD && !WriteFlashLoaderToEEPROM(sys, config, port, buf, program.filesz, mode)) {
+    if (mode != SHUTDOWN_CMD && !WriteFlashLoader(sys, config, port, buf, program.filesz, mode)) {
         free(buf);
         return Error("can't load '.xmmkernel' section into eeprom");
     }
@@ -379,7 +379,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     return TRUE;
 }
     
-static int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode)
+static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode)
 {
 	SpinHdr *hdr = (SpinHdr *)flash_loader_array;
     SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->pbase);
