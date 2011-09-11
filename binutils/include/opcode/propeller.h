@@ -22,6 +22,7 @@
  * LMM on Propeller-1, */
 #define PROP_1 0
 #define PROP_2 1
+#define PROP_1_LMM 2
 
 /* List of instruction formats */
 #define PROPELLER_OPERAND_NO_OPS      0
@@ -33,6 +34,7 @@
 #define PROPELLER_OPERAND_JMP         6
 #define PROPELLER_OPERAND_JMPRET      7
 #define PROPELLER_OPERAND_MOVA        8
+#define PROPELLER_OPERAND_LDI         9
 
 struct propeller_opcode
 {

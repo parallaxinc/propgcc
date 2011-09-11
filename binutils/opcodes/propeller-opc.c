@@ -50,22 +50,17 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* cogid    000011 zcr1 cccc ddddddddd ------001 */
   {"cogid", 0x0c400001, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, R, PROP_1},
 /* coginit  000011 zcR1 cccc ddddddddd ------010 */
-  {"coginit", 0x0c400002, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR,
-   PROP_1},
+  {"coginit", 0x0c400002, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1},
 /* cogstop  000011 zcR1 cccc ddddddddd ------011 */
-  {"cogstop", 0x0c400003, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR,
-   PROP_1},
+  {"cogstop", 0x0c400003, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1},
 /* locknew  000011 zcr1 cccc ddddddddd ------100 */
   {"locknew", 0x0c400004, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, R, PROP_1},
 /* lockret  000011 zcR1 cccc ddddddddd ------101 */
-  {"lockret", 0x0c400005, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR,
-   PROP_1},
+  {"lockret", 0x0c400005, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1},
 /* lockset  000011 zcR1 cccc ddddddddd ------110 */
-  {"lockset", 0x0c400006, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR,
-   PROP_1},
+  {"lockset", 0x0c400006, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1},
 /* lockclr  000011 zcR1 cccc ddddddddd ------111 */
-  {"lockclr", 0x0c400007, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR,
-   PROP_1},
+  {"lockclr", 0x0c400007, 0xfc400007, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1},
 /* hubop    000011 zcRi cccc ddddddddd sssssssss */
   {"hubop", 0x0c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
 /* ror      001000 zcri cccc ddddddddd sssssssss */
@@ -192,6 +187,10 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"waitcnt", 0xf8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* waitvid  111111 zcRi cccc ddddddddd sssssssss */
   {"waitvid", 0xfc000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
+
+/* ldi is a fake instruction built from a mov and a constant that decodes as NOP */
+/* ldi      101000 zcri cccc ddddddddd sssssssss */
+  {"ldi", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_LDI, R, PROP_1_LMM},
 };
 
 const int propeller_num_opcodes =
