@@ -271,3 +271,56 @@ cacheaddr               long    0
 cacheptr                long    0
 
 external_start          long    EXTERNAL_MEMORY_START       'start of external memory access window
+
+	''
+	'' FCACHE region
+	'' The FCACHE is an area where we can
+	'' execute small functions or loops entirely
+	'' in Cog memory, providing a significant
+	'' speedup.
+	''
+
+__LMM_FCACHE_ADDR
+	long 0
+inc_dest4
+	long (4<<9)
+	
+	.global	__LMM_RET
+	.global	__LMM_FCACHE_LOAD
+__LMM_RET
+	long 0
+__LMM_FCACHE_LOAD
+	call	#read_code	'' read count of bytes for load
+	mov	__TMP0,L_ins0
+	add	pc,#4
+	cmp	__LMM_FCACHE_ADDR,pc wz	'' is this the same fcache block we loaded last?
+  IF_Z	add	pc,__TMP0	'' skip over data
+  IF_Z	jmp	#Lmm_fcache_doit
+
+	mov	__LMM_FCACHE_ADDR, pc
+	
+	'' assembler awkwardness here
+	'' we would like to just write
+	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
+	'' but binutils doesn't work right with this now
+	movd Lmm_fcache_fetch,#(__LMM_FCACHE_START-__LMM_entry)/4
+	shr  __TMP0,#2		'' we process 4 bytes per loop iteration
+Lmm_fcache_loop
+	call	#read_code
+Lmm_fcache_fetch
+	mov	0-0,L_ins0
+	add	pc,#4
+	add	Lmm_fcache_loop,inc_dest4
+	djnz	__TMP0,#Lmm_fcache_loop
+
+Lmm_fcache_doit
+	jmpret	__LMM_RET,#__LMM_FCACHE_START
+	jmp	#__LMM_loop
+
+
+	''
+	'' the fcache area should come last in the file
+	''
+	.global __LMM_FCACHE_START
+__LMM_FCACHE_START
+	res	128	'' reserve 128 longs = 512 bytes
