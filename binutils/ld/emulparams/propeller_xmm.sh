@@ -16,7 +16,7 @@ KERNEL="
     (*.xmmkernel) *(.kernel)
   } >cog
 "
-
+KERNEL_NAME=.xmmkernel
 XMM_HEADER="
     .header : {
         LONG(entry)
