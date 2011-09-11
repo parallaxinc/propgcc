@@ -231,7 +231,7 @@ write_external_long     call    #cache_write
                         wrlong  t2, memp
 write_external_long_ret ret
 
-cache_write             muxz    save_z_c, #2                'save the z flag
+cache_write             muxnz   save_z_c, #2                'save the z flag
                         mov     memp, t1                    'save address for index
                         andn    t1, #CACHE_CMD_MASK         'ensure a write is not a read
                         or      t1, #CACHE_WRITE_CMD
