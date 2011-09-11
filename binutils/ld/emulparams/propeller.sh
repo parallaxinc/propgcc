@@ -7,12 +7,13 @@ EXTRA_EM_FILE=propeller
 
 KERNEL="
   /* the LMM kernel that is loaded into the cog */
-  .kernel ${RELOCATING-0} :
+  .lmmkernel ${RELOCATING-0} :
   {
     *(.lmmkernel)
     *(.kernel)
   } >cog AT>hub
 "
+KERNEL_NAME=.lmmkernel
 TEXT_MEMORY=">hub AT>hub"
 HUBTEXT_MEMORY=">hub AT>hub"
 DATA_MEMORY=">hub"

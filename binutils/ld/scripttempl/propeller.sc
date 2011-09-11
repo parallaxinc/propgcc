@@ -95,7 +95,7 @@ SECTIONS
   ${RELOCATING+ ".heap : \{ LONG(0) \} > hub"}
   ${RELOCATING+ ___heap_start = ADDR(.heap) ;}
 
-  ${RELOCATING+ __load_start_kernel = LOADADDR (.kernel) ;}
+  ${RELOCATING+ ${KERNEL_NAME+ __load_start_kernel = LOADADDR (${KERNEL_NAME}) ;}}
   ${RELOCATING+ ___CTOR_LIST__ = ADDR(.ctors) ;}
   ${RELOCATING+ ___DTOR_LIST__ = ADDR(.dtors) ;}
 
