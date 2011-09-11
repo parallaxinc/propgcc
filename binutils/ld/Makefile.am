@@ -383,6 +383,8 @@ ALL_EMULATION_SOURCES = \
 	eppcpe.c \
 	eppclynx.c \
 	epropeller.c \
+	epropeller_cog.c \
+	epropeller_xmm.c \
 	eriscix.c \
 	escore3_elf.c \
 	escore7_elf.c \
@@ -1711,8 +1713,14 @@ eppclynx.c: $(srcdir)/emulparams/ppclynx.sh \
   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} ppclynx "$(tdir_ppclynx)"
 epropeller.c: $(srcdir)/emulparams/propeller.sh \
-  $(srcdir)/emultempl/generic.em $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller "$(tdir_propeller)"
+epropeller_cog.c: $(srcdir)/emulparams/propeller_cog.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller_cog "$(tdir_propeller)"
+epropeller_xmm.c: $(srcdir)/emulparams/propeller_xmm.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller_xmm "$(tdir_propeller)"
 eriscix.c: $(srcdir)/emulparams/riscix.sh \
   $(srcdir)/emultempl/generic.em $(srcdir)/scripttempl/aout.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} riscix "$(tdir_riscix)"
