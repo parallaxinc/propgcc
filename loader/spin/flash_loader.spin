@@ -7,6 +7,7 @@ CON
 
   hub_memory_size = 32 * 1024
   cache_mbox_size = cacheint#_MBOX_SIZE * 4
+  vm_mbox_size    = 4
   
   FLASH_BASE        = $30000000
   
@@ -26,12 +27,16 @@ OBJ
 
 PUB start | cache
 
-
   ' initialize the cache driver
   cache := hub_memory_size - p_cache_size
   cache_mboxcmd := cache - cache_mbox_size
   cache_linemask := cacheint.start(@cache_code, cache_mboxcmd, cache, p_cache_param1, p_cache_param2)
-
+  
+  ' load the vm
+  vm_mbox := cache_mboxcmd - vm_mbox_size
+  long[vm_mbox] := 0
+  cognew(@vm_code, vm_mbox)
+  
 #ifdef DEBUG
   ser.start(31, 30, 0, 115200)
 
@@ -49,6 +54,9 @@ PUB start | cache
   ser.crlf
   ser.str(STRING("cache_mboxcmd: "))
   ser.hex(cache_mboxcmd, 8)
+  ser.crlf
+  ser.str(STRING("vm_mbox: "))
+  ser.hex(vm_mbox, 8)
   ser.crlf
   ser.str(STRING("cache_linemask: "))
   ser.hex(cache_linemask, 8)
@@ -75,8 +83,7 @@ PUB start | cache
   ser.hex(cacheint.readLong(cacheint.readLong(data_image)), 8)
   ser.crlf
   
-  waitcnt(cnt + clkfreq)
-  ser.stop
+  repeat
   
 #endif
 
@@ -98,11 +105,11 @@ p_cache_code_off    long    @cache_code - @boot
 cache_mboxcmd       long    0
 cache_mboxdat       long    0
 cache_linemask      long    0
+vm_mbox             long    0
 
 src                 long    0
 dst                 long    0
 count               long    0
-coginit_dest        long    0
 temp                long    0
 
 entry               long     FLASH_BASE + HDR_ENTRY
@@ -150,7 +157,7 @@ clear_bss           mov     t1, bss_start
                     djnz    count, #:loop_bss
 :done_bss
 
-initialize_stack    mov     dst, cache_mboxcmd
+initialize_stack    mov     dst, vm_mbox
                     mov     t1, entry
                     call    #read_long
                     sub     dst, #4
@@ -160,15 +167,10 @@ initialize_stack    mov     dst, cache_mboxcmd
                     sub     dst, #4
                     wrlong  cache_mboxcmd, dst
 
-'Launch the xmm kernel in this cog.
-launch              cogid   coginit_dest            'Get id of this cog for restarting
-                    mov     temp, PAR               'Set pasm code address for coginit
-                    shl     temp, #2                'Shift into bits 17:4 (only high 14 bits required)
-                    or      coginit_dest, temp      'Place in dest for coginit
-                    mov     temp, dst               'Set PAR to sp for coginit
-                    shl     temp, #16               'Move to bits 31:18 (only high 14 bits required)
-                    or      coginit_dest, temp      'Combine PASM addr and PAR addr
-                    coginit coginit_dest            'Start the XMM kernel
+'Start the xmm kernel cog and stop this cog.
+launch              wrlong  dst, vm_mbox
+                    cogid   t1
+                    cogstop t1
 
 read_long           call    #cache_read
                     rdlong  t1, memp
