@@ -1558,10 +1558,9 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
  */
 
 /* where should we put a constant?
- * in Cog mode, only integer constants should go in text,
+ * in Cog mode, integer constants should go in text,
  * everything else should go in data
- * in XMM mode things are even more severe, no constants
- * at all should go in text
+ * in XMM mode no constants at all should go in text
  */
 static section *
 propeller_select_rtx_section (enum machine_mode mode, rtx x,
@@ -1569,26 +1568,18 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
 {
   if (!TARGET_LMM)
     {
-      if (GET_MODE_SIZE (mode) >= BITS_PER_UNIT
-	  || mode == BLKmode)
+      if (GET_MODE_SIZE (mode) <= BITS_PER_UNIT
+	  && mode != BLKmode)
 	{
-	  return data_section;
+	  return text_section;
 	}
-      return default_elf_select_rtx_section (mode, x, align);
     }
-  /* in XMM mode we cannot access constants in the data section
-     except for that, XMM and LMM are pretty compatible, so let's
-     just always put constants in data */
-  return data_section;
+  return default_elf_select_rtx_section (mode, x, align);
 }
 
 static section *
 propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
-  /* put constants into the data section (in hub ram) */
-  if (TREE_CODE (decl) != VAR_DECL && TREE_CODE (decl) != FUNCTION_DECL)
-    return data_section;
-
   return default_elf_select_section (decl, reloc, align);
 }
 

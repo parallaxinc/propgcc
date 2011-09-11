@@ -537,6 +537,11 @@ extern const char *propeller_bss_asm_op;
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
 
+/* For now put read-only data into the data section; that works
+   on all current targets. If someday we get ROMable code we
+   may want to revisit this. */
+#define READONLY_DATA_SECTION_ASM_OP propeller_data_asm_op
+
 #define TARGET_ASM_NAMED_SECTION default_elf_asm_named_section
 
 /* Assembler Commands for Alignment */
