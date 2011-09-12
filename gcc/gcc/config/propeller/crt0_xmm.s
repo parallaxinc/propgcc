@@ -310,7 +310,7 @@ Lmm_fcache_loop
 Lmm_fcache_fetch
 	mov	0-0,L_ins0
 	add	pc,#4
-	add	Lmm_fcache_loop,inc_dest4
+	add	Lmm_fcache_fetch,inc_dest4
 	djnz	__TMP0,#Lmm_fcache_loop
 
 Lmm_fcache_doit
