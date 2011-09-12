@@ -282,8 +282,8 @@ external_start          long    EXTERNAL_MEMORY_START       'start of external m
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest4
-	long (4<<9)
+inc_dest
+	long (1<<9)
 	
 	.global	__LMM_RET
 	.global	__LMM_FCACHE_LOAD
@@ -310,7 +310,7 @@ Lmm_fcache_loop
 Lmm_fcache_fetch
 	mov	0-0,L_ins0
 	add	pc,#4
-	add	Lmm_fcache_fetch,inc_dest4
+	add	Lmm_fcache_fetch,inc_dest
 	djnz	__TMP0,#Lmm_fcache_loop
 
 Lmm_fcache_doit
