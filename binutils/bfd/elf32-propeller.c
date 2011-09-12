@@ -60,6 +60,21 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0xffffffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
+  /* A 23 bit absolute relocation. */
+  HOWTO (R_PROPELLER_23,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 23,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_dont,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_23",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x007fffff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
   /* A 16 bit absolute relocation. */
   HOWTO (R_PROPELLER_16,	/* type */
 	 0,			/* rightshift */
@@ -151,10 +166,11 @@ struct propeller_reloc_map
 static const struct propeller_reloc_map propeller_reloc_map[] = {
   {BFD_RELOC_NONE, R_PROPELLER_NONE},
   {BFD_RELOC_32, R_PROPELLER_32},
+  {BFD_RELOC_PROPELLER_23, R_PROPELLER_23},
   {BFD_RELOC_16, R_PROPELLER_16},
   {BFD_RELOC_8, R_PROPELLER_8},
-  {BFD_RELOC_PROPELLER_SRC, R_PROPELLER_SRC},
   {BFD_RELOC_PROPELLER_SRC_IMM, R_PROPELLER_SRC_IMM},
+  {BFD_RELOC_PROPELLER_SRC, R_PROPELLER_SRC},
   {BFD_RELOC_PROPELLER_DST, R_PROPELLER_DST},
 };
 
