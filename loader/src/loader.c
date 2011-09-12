@@ -138,9 +138,10 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
         return Error("failed to open elf file");
         
     /* load the '.init' section */
-    if (!FindSectionTableEntry(c, ".init", &section)) {
+    if (!FindSectionTableEntry(c, ".init", &section)
+    &&  !FindSectionTableEntry(c, ".text", &section)) {
         CloseElfFile(c);
-        return Error("can't load '.init' section");
+        return Error("can't find an '.init' or '.text' section");
     }
     
     /* check for loading into hub or external memory */
