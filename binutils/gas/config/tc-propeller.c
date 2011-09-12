@@ -32,11 +32,6 @@ struct propeller_code
 {
   char *error;
   int code;
-  /* Is there an additional word?  */
-  /* No real instructions need any, */
-  /* but some fake ones might */
-  int additional;
-  int word;			/* Additional word, if any.  */
   struct
   {
     bfd_reloc_code_real_type type;
@@ -72,6 +67,7 @@ static char *find_whitespace (char *str);
 static char *find_whitespace_or_separator (char *str);
 
 static int cog_ram = 0;		/* Use Cog ram if 1 */
+static int lmm = 0;             /* Enable LMM pseudo-instructions */
 
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
@@ -85,9 +81,10 @@ static struct hash_control *insn_hash = NULL;
 static struct hash_control *cond_hash = NULL;
 static struct hash_control *eff_hash = NULL;
 
-const char *md_shortopts = "m:";
+const char *md_shortopts = "";
 
 struct option md_longopts[] = {
+  {"lmm", no_argument, NULL, OPTION_MD_BASE},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -122,9 +119,19 @@ md_begin (void)
   if (eff_hash == NULL)
     as_fatal (_("Virtual memory exhausted"));
 
-  for (i = 0; i < propeller_num_opcodes; i++)
+  for (i = 0; i < propeller_num_opcodes; i++){
+    switch(propeller_opcodes[i].hardware){
+    case PROP_1:
+      break;
+    case PROP_1_LMM:
+      if(lmm) break;
+      continue;
+    default:
+      continue;
+    }
     hash_insert (insn_hash, propeller_opcodes[i].name,
 		 (void *) (propeller_opcodes + i));
+  }
   for (i = 0; i < propeller_num_conditions; i++)
     hash_insert (cond_hash, propeller_conditions[i].name,
 		 (void *) (propeller_conditions + i));
@@ -191,6 +198,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 9;
       rshift = 2;
       break;
+    case BFD_RELOC_PROPELLER_23:
+      mask = 0x007fffff;
+      shift = 0;
+      rshift = 0;
+      break;
     case BFD_RELOC_32:
       mask = 0xffffffff;
       shift = 0;
@@ -253,6 +265,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_PROPELLER_SRC:
     case BFD_RELOC_PROPELLER_SRC_IMM:
     case BFD_RELOC_PROPELLER_DST:
+    case BFD_RELOC_PROPELLER_23:
       code = fixp->fx_r_type;
       break;
 
@@ -384,13 +397,149 @@ lc (char *str)
     }
 }
 
+static char *
+parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
+  int integer_reloc = 0;
+
+  str = skip_whitespace (str);
+  if (*str == '#')
+    {
+      str++;
+      insn->code |= 1 << 22;
+      if (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA)
+	{
+	  integer_reloc = 1;
+	}
+    }
+
+  str = parse_expression (str, operand);
+  if (operand->error)
+    return str;
+  switch (operand->reloc.exp.X_op)
+    {
+    case O_constant:
+    case O_register:
+      if (operand->reloc.exp.X_add_number & ~0x1ff)
+	{
+	  operand->error = _("9-bit value out of range");
+	  break;
+	}
+      insn->code |= operand->reloc.exp.X_add_number;
+      break;
+    case O_symbol:
+    case O_add:
+    case O_subtract:
+      operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+      operand->reloc.pc_rel = 0;
+      break;
+    case O_illegal:
+      operand->error = _("Illegal operand in source");
+      break;
+    default:
+      if (cog_ram)
+	operand->error = _("Source operand too complicated for .cog_ram");
+      else
+	{
+	  operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+	  operand->reloc.pc_rel = 0;
+	}
+      break;
+    }
+  return str;
+}
+
+static char *
+parse_src23(char *str, struct propeller_code *operand){
+
+  str = skip_whitespace (str);
+  if (*str++ != '#')
+    {
+      operand->error = _("immediate operand required");
+      return str;
+    }
+
+  str = parse_expression (str, operand);
+  if (operand->error)
+    return str;
+  switch (operand->reloc.exp.X_op)
+    {
+    case O_constant:
+    case O_register:
+      if (operand->reloc.exp.X_add_number & ~0x7fffff)
+	{
+	  operand->error = _("23-bit value out of range");
+	  break;
+	}
+      operand->code = operand->reloc.exp.X_add_number;
+      break;
+    case O_symbol:
+    case O_add:
+    case O_subtract:
+      operand->reloc.type = BFD_RELOC_PROPELLER_23;
+      operand->reloc.pc_rel = 0;
+      break;
+    case O_illegal:
+      operand->error = _("Illegal operand in source");
+      break;
+    default:
+      if (cog_ram)
+	operand->error = _("Source operand too complicated for .cog_ram");
+      else
+	{
+	  operand->reloc.type = BFD_RELOC_PROPELLER_23;
+	  operand->reloc.pc_rel = 0;
+	}
+      break;
+    }
+  return str;
+}
+
+static char *
+parse_dest(char *str, struct propeller_code *operand, struct propeller_code *insn){
+  str = skip_whitespace (str);
+  str = parse_expression (str, operand);
+  if (operand->error)
+    return str;
+  switch (operand->reloc.exp.X_op)
+    {
+    case O_constant:
+    case O_register:
+      if (operand->reloc.exp.X_add_number & ~0x1ff)
+	{
+	  operand->error = _("9-bit value out of range");
+	  break;
+	}
+      insn->code |= operand->reloc.exp.X_add_number << 9;
+      break;
+    case O_symbol:
+    case O_add:
+    case O_subtract:
+      operand->reloc.type = BFD_RELOC_PROPELLER_DST;
+      operand->reloc.pc_rel = 0;
+      break;
+    case O_illegal:
+      operand->error = _("Illegal operand in destination");
+      break;
+    default:
+      if (cog_ram)
+	operand->error = _("Destination operand in .cog_ram too complicated");
+      else
+	{
+	  operand->reloc.type = BFD_RELOC_PROPELLER_DST;
+	  operand->reloc.pc_rel = 0;
+	}
+      break;
+    }
+  return str;
+}
+
 void
 md_assemble (char *instruction_string)
 {
   const struct propeller_opcode *op;
   const struct propeller_condition *cond;
   const struct propeller_effect *eff;
-  struct propeller_code insn, op1, op2;
+  struct propeller_code insn, op1, op2, op3;
   int error;
   int size;
   char *err = NULL;
@@ -446,11 +595,11 @@ md_assemble (char *instruction_string)
   insn.code |= op->opcode;
   insn.reloc.type = BFD_RELOC_NONE;
   op1.error = NULL;
-  op1.additional = FALSE;
   op1.reloc.type = BFD_RELOC_NONE;
   op2.error = NULL;
-  op2.additional = FALSE;
   op2.reloc.type = BFD_RELOC_NONE;
+  op3.error = NULL;
+  op3.reloc.type = BFD_RELOC_NONE;
 
   str = p;
   size = 4;
@@ -463,110 +612,55 @@ md_assemble (char *instruction_string)
        * suppress the condition. */
       insn.code = 0;
       break;
+
     case PROPELLER_OPERAND_NO_OPS:
       str = skip_whitespace (str);
       if (*str == 0)
 	str = "";
       break;
 
+    case PROPELLER_OPERAND_DEST_ONLY:
+      str = parse_dest(str, &op1, &insn);
+      break;
+
     case PROPELLER_OPERAND_TWO_OPS:
     case PROPELLER_OPERAND_JMPRET:
     case PROPELLER_OPERAND_MOVA:
-    case PROPELLER_OPERAND_DEST_ONLY:
-      str = skip_whitespace (str);
-      str = parse_expression (str, &op1);
-      if (op1.error)
-	break;
-      switch (op1.reloc.exp.X_op)
+      str = parse_dest(str, &op1, &insn);
+      str = parse_separator (str, &error);
+      if (error)
 	{
-	case O_constant:
-	case O_register:
-	  if (op1.reloc.exp.X_add_number & ~0x1ff)
-	    {
-	      op1.error = _("9-bit value out of range");
-	      break;
-	    }
-	  insn.code |= op1.reloc.exp.X_add_number << 9;
-	  break;
-	case O_symbol:
-	case O_add:
-	case O_subtract:
-	  op1.reloc.type = BFD_RELOC_PROPELLER_DST;
-	  op1.reloc.pc_rel = 0;
-	  break;
-	case O_illegal:
-	  op1.error = _("Illegal operand in operand 1");
-	  break;
-	default:
-	  if (cog_ram)
-	    op1.error = _("Destination operand in .cog_ram too complicated");
-	  else
-	    {
-	      op1.reloc.type = BFD_RELOC_PROPELLER_DST;
-	      op1.reloc.pc_rel = 0;
-	    }
+	  op2.error = _("Missing ','");
 	  break;
 	}
-      if (op->format == PROPELLER_OPERAND_DEST_ONLY)
-	{
-	  break;
-	}
-      else
-	{
-	  str = parse_separator (str, &error);
-	  if (error)
-	    {
-	      op2.error = _("Missing ','");
-	      break;
-	    }
-	}
-      /* Fall through */
+      str = parse_src(str, &op2, &insn, op->format);
+      break;
+
+    case PROPELLER_OPERAND_LDI:
+      {
+	char *pc;
+	str = parse_dest(str, &op1, &insn);
+	str = parse_separator (str, &error);
+	if (error)
+	  {
+	    op3.error = _("Missing ','");
+	    break;
+	  }
+	pc = malloc(3);
+	if (pc == NULL)
+	  as_fatal (_("Virtual memory exhausted"));
+  	strcpy (pc, "pc");
+	parse_src(pc, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+	str = parse_src23(str, &op3);
+	size = 8;
+      }
+      break;
+
     case PROPELLER_OPERAND_SOURCE_ONLY:
     case PROPELLER_OPERAND_JMP:
-      str = skip_whitespace (str);
-      if (*str == '#')
-	{
-	  str++;
-	  insn.code |= 1 << 22;
-	  if (op->format != PROPELLER_OPERAND_JMP && op->format != PROPELLER_OPERAND_JMPRET && op->format != PROPELLER_OPERAND_MOVA)
-	    {
-	      integer_reloc = 1;
-	    }
-	}
-      str = parse_expression (str, &op2);
-      if (op2.error)
-	break;
-      switch (op2.reloc.exp.X_op)
-	{
-	case O_constant:
-	case O_register:
-	  if (op2.reloc.exp.X_add_number & ~0x1ff)
-	    {
-	      op2.error = _("9-bit value out of range");
-	      break;
-	    }
-	  insn.code |= op2.reloc.exp.X_add_number;
-	  break;
-	case O_symbol:
-	case O_add:
-	case O_subtract:
-	  op2.reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
-	  op2.reloc.pc_rel = 0;
-	  break;
-	case O_illegal:
-	  op2.error = _("Illegal operand in operand 2");
-	  break;
-	default:
-	  if (cog_ram)
-	    op2.error = _("Source operand too complicated for .cog_ram");
-	  else
-	    {
-	      op2.reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
-	      op2.reloc.pc_rel = 0;
-	    }
-	  break;
-	}
+      str = parse_src(str, &op2, &insn, op->format);
       break;
+
     case PROPELLER_OPERAND_CALL:
       {
 	char *str2;
@@ -618,6 +712,7 @@ md_assemble (char *instruction_string)
 	  }
       }
       break;
+
     default:
       BAD_CASE (op->format);
     }
@@ -649,6 +744,8 @@ md_assemble (char *instruction_string)
     err = op1.error;
   else if (op2.error)
     err = op2.error;
+  else if (op3.error)
+    err = op3.error;
   else
     {
       str = skip_whitespace (str);
@@ -678,23 +775,16 @@ md_assemble (char *instruction_string)
 		   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
     to += 4;
 
-    /* These are never used for real instructions, but might be useful */
-    /* for some pseudoinstruction for LMM or such. */
-    if (op1.additional)
+    /* op3 is never used for real instructions, but is useful */
+    /* for some pseudoinstruction for LMM and such. */
+    if (op3.reloc.type != BFD_RELOC_NONE || op3.code)
       {
-	md_number_to_chars (to, op1.word, 4);
-	if (op1.reloc.type != BFD_RELOC_NONE)
+	md_number_to_chars (to, op3.code, 4);
+	if(op3.reloc.type != BFD_RELOC_NONE){
 	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
-		       &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
+		       &op3.reloc.exp, op3.reloc.pc_rel, op3.reloc.type);
+	}
 	to += 4;
-      }
-
-    if (op2.additional)
-      {
-	md_number_to_chars (to, op2.word, 4);
-	if (op2.reloc.type != BFD_RELOC_NONE)
-	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
-		       &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
       }
   }
 }
@@ -762,13 +852,19 @@ md_create_long_jump (char *ptr ATTRIBUTE_UNUSED,
 
 /* Invocation line includes a switch not recognized by the base assembler.
    See if it's a processor-specific option.  */
-
 int
 md_parse_option (int c, char *arg)
 {
-  (void) c;
-  (void) arg;
-  return 0;
+  (void)arg;
+  switch (c)
+    {
+    case OPTION_MD_BASE:
+      lmm = 1;
+      break;
+    default:
+      return 0;
+    }
+  return 1;
 }
 
 void
