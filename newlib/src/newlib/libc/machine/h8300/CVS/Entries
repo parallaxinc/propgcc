@@ -1,0 +1,15 @@
+/Makefile.am/1.6/Thu May 24 17:33:34 2007/-ko/
+/Makefile.in/1.19/Thu Dec 16 21:58:45 2010/-ko/
+/aclocal.m4/1.25/Thu Dec 16 21:58:45 2010/-ko/
+/configure/1.30/Thu Dec 16 21:58:45 2010/-ko/
+/configure.in/1.2/Thu Apr 13 19:56:25 2006/-ko/
+/defines.h/1.3/Tue Jun 22 21:54:52 2004/-ko/
+/h8sx_strcpy.S/1.1/Wed Jun 23 14:01:58 2004//
+/memcpy.S/1.5/Tue Jun 22 21:54:52 2004/-ko/
+/memset.S/1.4/Tue Jun 22 21:54:52 2004/-ko/
+/reg_memcpy.S/1.4/Thu Nov 20 19:59:03 2003/-ko/
+/reg_memset.S/1.4/Thu Nov 20 19:59:03 2003/-ko/
+/setarch.h/1.2/Tue Jun 22 21:54:52 2004//
+/setjmp.S/1.5/Tue Jun 22 21:54:52 2004/-ko/
+/strcmp.S/1.5/Tue Jun 22 21:54:52 2004/-ko/
+D
