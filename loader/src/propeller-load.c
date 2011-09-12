@@ -150,8 +150,8 @@ int main(int argc, char *argv[])
 1) look in the directory specified by the -I command line option (added above)
 2) look in the directory where the elf file resides
 3) look in the directory pointed to by the environment variable PROPELLER_ELF_LOAD
-4) look in the directory where the loader executable resides if a path was given on the command line
-5) look in ~/.propeller-elf-load.cfg
+4) look in the directory where the loader executable resides if possible
+5) look in /usr/local/propeller/propeller-load
 */
 
     /* finish the include path */
@@ -159,6 +159,7 @@ int main(int argc, char *argv[])
         xbAddFilePath(infile);
     xbAddEnvironmentPath("PROPELLER_LOAD_PATH");
     xbAddProgramPath(argv);
+    xbAddPath("/usr/local/propeller/propeller-load");
     
     sys.ops = &myOps;
     ParseConfigurationFile(&sys, "propeller-load.cfg");
