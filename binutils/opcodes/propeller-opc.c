@@ -191,6 +191,10 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* ldi is a fake instruction built from a rdlong and a constant that decodes as NOP */
 /* ldi      000010 zc1i cccc ddddddddd sssssssss */
   {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, R, PROP_1_LMM},
+
+/* br is also made of rdlong and a constant.  We may shrink it later. */
+/* br       000010 zc1i cccc ddddddddd sssssssss */
+  {"br", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BR, R, PROP_1_LMM},
 };
 
 const int propeller_num_opcodes =
