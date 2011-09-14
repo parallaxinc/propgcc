@@ -653,6 +653,37 @@ md_assemble (char *instruction_string)
 	parse_src(pc, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
 	str = parse_src23(str, &op3);
 	size = 8;
+	free(pc);
+      }
+      break;
+
+    case PROPELLER_OPERAND_BR:
+      {
+        char *arg;
+	char *arg2;
+        int len = strlen(str);
+	arg = malloc(len+16);
+	if (arg == NULL)
+	  as_fatal (_("Virtual memory exhausted"));
+	sprintf(arg, "pc,pc,#%s", str);
+	str += len;
+        arg2 = parse_dest(arg, &op1, &insn);
+        arg2 = parse_separator (arg2, &error);
+        if (error)
+	  {
+	   op2.error = _("Missing ','");
+	   break;
+	  }
+        arg2 = parse_src(arg2, &op2, &insn, op->format);
+        arg2 = parse_separator (arg2, &error);
+        if (error)
+	  {
+	   op3.error = _("Missing ','");
+	   break;
+	  }
+	arg2 = parse_src23(arg2, &op3);
+	size = 8;
+	free(arg);
       }
       break;
 
@@ -872,7 +903,7 @@ md_show_usage (FILE * stream)
 {
   fprintf (stream, "\
 Propeller options\n\
-\tNone at this time.\n\
+  --lmm\t\tEnable LMM instructions.\n\
 ");
 }
 
