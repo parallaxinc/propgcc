@@ -19,6 +19,9 @@
 	.global sp
 	.global pc
 
+    .set SIMPLE_XMM_RDWR, 1
+    .set COMPLEX_XMM_RDWR, 0
+
 	.global __LMM_entry
 __LMM_entry
 r0	rdlong	sp, PAR
@@ -108,8 +111,85 @@ __LMM_JMP
 	mov	pc,L_ins0
 	jmp	#__LMM_loop
     
+    .if SIMPLE_XMM_RDWR
+    
     ''
-    '' memory read instructions
+    '' simple memory read instructions
+    ''
+    '' On call:
+    ''   __TMP0 contains the address from which to read
+    '' On return:
+    ''   __TMP0 contains the value at that address
+    ''
+
+    .set RDBYTE_OPCODE, 0x00
+    .set RDWORD_OPCODE, 0x01
+    .set RDLONG_OPCODE, 0x02
+
+	.global __LMM_RDBYTE
+__LMM_RDBYTE
+    movi    rd_common_read, #RDBYTE_OPCODE
+    jmp     #rd_common
+
+	.global __LMM_RDWORD
+__LMM_RDWORD
+    movi    rd_common_read, #RDWORD_OPCODE
+    jmp     #rd_common
+
+	.global __LMM_RDLONG
+__LMM_RDLONG
+    movi    rd_common_read, #RDLONG_OPCODE
+
+rd_common
+    muxnz   save_z_c, #2    'save the z flag
+    mov     t1, __TMP0
+    call    #cache_read
+rd_common_read
+    rdlong  __TMP0, memp
+    jmp     #__LMM_loop
+    
+    ''
+    '' simple memory write instructions
+    ''
+    '' On call:
+    ''   __TMP0 contains the address to which to write
+    ''   __TMP1 contains the value to write to that address
+    ''
+
+    .set WRBYTE_OPCODE, 0x00
+    .set WRWORD_OPCODE, 0x01
+    .set WRLONG_OPCODE, 0x02
+
+	.global __LMM_WRBYTE
+__LMM_WRBYTE
+    movi    wr_common_write, #WRBYTE_OPCODE
+    jmp     #wr_common
+
+	.global __LMM_WRWORD
+__LMM_WRWORD
+    movi    wr_common_write, #WRWORD_OPCODE
+    jmp     #wr_common
+
+	.global __LMM_WRLONG
+__LMM_WRLONG
+    movi    wr_common_write, #WRLONG_OPCODE
+
+wr_common
+    muxnz   save_z_c, #2    'save the z flag
+    mov     t1, __TMP0
+    call    #cache_write
+wr_common_write
+    wrlong  __TMP1, memp
+    jmp     #__LMM_loop
+
+__TMP1	long	0
+
+    .endif 'SIMPLE_XMM_RDWR
+    
+    .if COMPLEX_XMM_RDWR
+    
+    ''
+    '' complex memory read instructions
     ''
     '' JMP iddddssss,#__LMM_RDxxxx
     '' ssss is the register containing the address from which to read
@@ -120,45 +200,44 @@ __LMM_JMP
     .set RDWORD_OPCODE, 0x01
     .set RDLONG_OPCODE, 0x02
 
-	.global __LMM_RDBYTE
-__LMM_RDBYTE
-    movi    rd_common_store, #RDBYTE_OPCODE
-    movs    rd_common_inc, #1
-    jmp     #rd_common
+	.global __LMM_RDBYTEX
+__LMM_RDBYTEX
+    movi    rdx_common_store, #RDBYTE_OPCODE
+    movs    rdx_common_inc, #1
+    jmp     #rdx_common
 
-	.global __LMM_RDWORD
-__LMM_RDWORD
-    movi    rd_common_store, #RDWORD_OPCODE
-    movs    rd_common_inc, #2
-    jmp     #rd_common
+	.global __LMM_RDWORDX
+__LMM_RDWORDX
+    movi    rdx_common_store, #RDWORD_OPCODE
+    movs    rdx_common_inc, #2
+    jmp     #rdx_common
 
-	.global __LMM_RDLONG
-__LMM_RDLONG
-    movi    rd_common_store, #RDLONG_OPCODE
-    movs    rd_common_inc, #4
+	.global __LMM_RDLONGX
+__LMM_RDLONGX
+    movi    rdx_common_store, #RDLONG_OPCODE
+    movs    rdx_common_inc, #4
 
-rd_common
+rdx_common
     muxnz   save_z_c, #2    'save the z flag
     shr	    L_ins0, #9
-    movs    rd_common_fetch_addr, L_ins0
-    andn    rd_common_fetch_addr, #0x1f0
+    movs    rdx_common_fetch_addr, L_ins0
+    andn    rdx_common_fetch_addr, #0x1f0
     shr	    L_ins0, #4
     test    L_ins0, #0x10 wz
     and     L_ins0, #0xf    
-    movd    rd_common_inc, L_ins0
-    movd    rd_common_store, L_ins0
-rd_common_inc
+    movd    rdx_common_inc, L_ins0
+    movd    rdx_common_store, L_ins0
+rdx_common_inc
  IF_NZ  add 0-0, #4
-rd_common_fetch_addr
+rdx_common_fetch_addr
     mov     t1, 0-0
     call    #cache_read
-    test    save_z_c, #2 wz 'restore the z flag
-rd_common_store
+rdx_common_store
     rdlong  0-0, memp
     jmp     #__LMM_loop
     
     ''
-    '' memory write instructions
+    '' complex memory write instructions
     ''
     '' JMP iddddssss,#__LMM_WRxxxx
     '' ssss is the register containing the address to which to write
@@ -169,42 +248,43 @@ rd_common_store
     .set WRWORD_OPCODE, 0x01
     .set WRLONG_OPCODE, 0x02
 
-	.global __LMM_WRBYTE
-__LMM_WRBYTE
-    movi    wr_common_fetch_data, #WRBYTE_OPCODE
-    movs    wr_common_inc, #1
-    jmp     #wr_common
+	.global __LMM_WRBYTEX
+__LMM_WRBYTEX
+    movi    wrx_common_fetch_data, #WRBYTE_OPCODE
+    movs    wrx_common_inc, #1
+    jmp     #wrx_common
 
-	.global __LMM_WRWORD
-__LMM_WRWORD
-    movi    wr_common_fetch_data, #WRWORD_OPCODE
-    movs    wr_common_inc, #2
-    jmp     #wr_common
+	.global __LMM_WRWORDX
+__LMM_WRWORDX
+    movi    wrx_common_fetch_data, #WRWORD_OPCODE
+    movs    wrx_common_inc, #2
+    jmp     #wrx_common
 
-	.global __LMM_WRLONG
-__LMM_WRLONG
-    movi    wr_common_fetch_data, #WRLONG_OPCODE
-    movs    wr_common_inc, #4
+	.global __LMM_WRLONGX
+__LMM_WRLONGX
+    movi    wrx_common_fetch_data, #WRLONG_OPCODE
+    movs    wrx_common_inc, #4
 
-wr_common
+wrx_common
     muxnz   save_z_c, #2    'save the z flag
     shr	    L_ins0, #9
-    movs    wr_common_fetch_addr, L_ins0
-    andn    wr_common_fetch_addr, #0x1f0
+    movs    wrx_common_fetch_addr, L_ins0
+    andn    wrx_common_fetch_addr, #0x1f0
     shr	    L_ins0, #4
     test    L_ins0, #0x10  wz
     and     L_ins0, #0xf    
-    movd    wr_common_inc, L_ins0
-    movd    wr_common_fetch_data, L_ins0
-wr_common_inc
+    movd    wrx_common_inc, L_ins0
+    movd    wrx_common_fetch_data, L_ins0
+wrx_common_inc
  IF_NZ  add 0-0, #4
-wr_common_fetch_addr
+wrx_common_fetch_addr
     mov     t1, 0-0
     call    #cache_write
-    test    save_z_c, #2 wz 'restore the z flag
-wr_common_fetch_data
+wrx_common_fetch_data
     wrlong  0-0, memp
     jmp     #__LMM_loop
+    
+    .endif 'COMPLEX_XMM_RDWR
 
 	''
 	'' masks
@@ -305,23 +385,28 @@ __MULSI_ret	ret
 
 ' read a long from the current pc
 read_code               muxc    save_z_c, #1                'save the c flag
-                        cmp     pc, external_start wc   'check for normal memory access
-                IF_B    jmp     #read_hub_code
+                        cmp     pc, external_start wc       'check for normal memory access
+            if_b        jmp     #read_hub_code
                         mov     t1, pc
                         muxnz   save_z_c, #2                'save the z flag
                         call    #cache_read
-                        test    save_z_c, #2 wz             'restore the z flag
                         rdlong  L_ins0, memp
                         jmp     #read_restore_c
 read_hub_code           rdlong	L_ins0, pc
 read_restore_c          shr     save_z_c, #1 wc             'restore the c flag
 read_code_ret           ret
                         
+'get the hub address of a location in external memory to write
+' z must be saved using the instruction "muxnz   save_z_c, #2" before calling
+' z will be restored on return
 cache_write             mov     memp, t1                    'save address for index
                         andn    t1, #CACHE_CMD_MASK         'ensure a write is not a read
                         or      t1, #CACHE_WRITE_CMD
                         jmp     #cache_access
 
+'get the hub address of a location in external memory to read
+' z must be saved using the instruction "muxnz   save_z_c, #2" before calling
+' z will be restored on return
 cache_read              mov     memp, t1                    'save address for index
                         mov     temp, t1                    'ptr + cache_mboxdat = hub address of byte to load
                         andn    temp, cache_linemask
@@ -338,11 +423,11 @@ _waitres                rdlong  temp, cache_mboxcmd wz
                         rdlong  cacheptr, cache_mboxdat     'Get new buffer
 cache_hit               and     memp, cache_linemask
                         add     memp, cacheptr              'add ptr to memp to get data address
+                        test    save_z_c, #2 wz             'restore the z flag
 cache_read_ret
 cache_write_ret         ret
 
 t1                      long    0
-t2                      long    0
 save_z_c                long    0
 cache_linemask          long    0
 cache_mboxcmd           long    0
