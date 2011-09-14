@@ -107,6 +107,100 @@ __LMM_JMP
 	call	#read_code
 	mov	pc,L_ins0
 	jmp	#__LMM_loop
+    
+    ''
+    '' memory read instructions
+    ''
+    '' JMP iddddssss,#__LMM_RDxxxx
+    '' ssss is the register containing the address from which to read
+    '' dddd is the register in which to return the value at that address
+    '' i=0 for no increment, i=1 to increment by the size of the data
+
+    .set RDBYTE_OPCODE, 0x00
+    .set RDWORD_OPCODE, 0x01
+    .set RDLONG_OPCODE, 0x02
+
+	.global __LMM_RDBYTE
+__LMM_RDBYTE
+    movi    rd_common_store, #RDBYTE_OPCODE
+    movs    rd_common_inc, #1
+    jmp     #rd_common
+
+	.global __LMM_RDWORD
+__LMM_RDWORD
+    movi    rd_common_store, #RDWORD_OPCODE
+    movs    rd_common_inc, #2
+    jmp     #rd_common
+
+	.global __LMM_RDLONG
+__LMM_RDLONG
+    movi    rd_common_store, #RDLONG_OPCODE
+    movs    rd_common_inc, #4
+
+rd_common
+    shr	    L_ins0, #9
+    movs    rd_common_fetch_addr, L_ins0
+    andn    rd_common_fetch_addr, #0x1f0
+    shr	    L_ins0, #4
+    test    L_ins0, #0x10 wz
+    and     L_ins0, #0xf    
+    movd    rd_common_inc, L_ins0
+    movd    rd_common_store, L_ins0
+rd_common_inc
+ IF_NZ  add 0-0, #4
+rd_common_fetch_addr
+    mov     t1, 0-0
+    call    #cache_read
+rd_common_store
+    rdlong  0-0, memp
+    jmp     #__LMM_loop
+    
+    ''
+    '' memory write instructions
+    ''
+    '' JMP iddddssss,#__LMM_WRxxxx
+    '' ssss is the register containing the address to which to write
+    '' dddd is the register containing the value to write to that address
+    '' i=0 for no increment, i=1 to increment by the size of the data
+
+    .set WRBYTE_OPCODE, 0x00
+    .set WRWORD_OPCODE, 0x01
+    .set WRLONG_OPCODE, 0x02
+
+	.global __LMM_WRBYTE
+__LMM_WRBYTE
+    movi    wr_common_fetch_data, #WRBYTE_OPCODE
+    movs    wr_common_inc, #1
+    jmp     #wr_common
+
+	.global __LMM_WRWORD
+__LMM_WRWORD
+    movi    wr_common_fetch_data, #WRWORD_OPCODE
+    movs    wr_common_inc, #2
+    jmp     #wr_common
+
+	.global __LMM_WRLONG
+__LMM_WRLONG
+    movi    wr_common_fetch_data, #WRLONG_OPCODE
+    movs    wr_common_inc, #4
+
+wr_common
+    shr	    L_ins0, #9
+    movs    wr_common_fetch_addr, L_ins0
+    andn    wr_common_fetch_addr, #0x1f0
+    shr	    L_ins0, #4
+    test    L_ins0, #0x10  wz
+    and     L_ins0, #0xf    
+    movd    wr_common_inc, L_ins0
+    movd    wr_common_fetch_data, L_ins0
+wr_common_inc
+ IF_NZ  add 0-0, #4
+wr_common_fetch_addr
+    mov     t1, 0-0
+    call    #cache_write
+wr_common_fetch_data
+    wrlong  0-0, memp
+    jmp     #__LMM_loop
 
 	''
 	'' masks

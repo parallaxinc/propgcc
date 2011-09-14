@@ -159,7 +159,9 @@ int main(int argc, char *argv[])
         xbAddFilePath(infile);
     xbAddEnvironmentPath("PROPELLER_LOAD_PATH");
     xbAddProgramPath(argv);
+#if defined(LINUX) || defined(MACOSX) || defined(CYGWIN)
     xbAddPath("/usr/local/propeller/propeller-load");
+#endif
     
     sys.ops = &myOps;
     ParseConfigurationFile(&sys, "propeller-load.cfg");
