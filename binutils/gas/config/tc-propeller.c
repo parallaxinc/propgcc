@@ -449,7 +449,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
 }
 
 static char *
-parse_src23(char *str, struct propeller_code *operand){
+parse_src_n(char *str, struct propeller_code *operand, int nbits){
 
   str = skip_whitespace (str);
   if (*str++ != '#')
@@ -465,9 +465,9 @@ parse_src23(char *str, struct propeller_code *operand){
     {
     case O_constant:
     case O_register:
-      if (operand->reloc.exp.X_add_number & ~0x7fffff)
+      if (operand->reloc.exp.X_add_number & ((1 << nbits)-1))
 	{
-	  operand->error = _("23-bit value out of range");
+	  operand->error = _("value out of range");
 	  break;
 	}
       operand->code = operand->reloc.exp.X_add_number;
@@ -651,8 +651,17 @@ md_assemble (char *instruction_string)
 	  as_fatal (_("Virtual memory exhausted"));
   	strcpy (pc, "pc");
 	parse_src(pc, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
-	str = parse_src23(str, &op3);
+	str = parse_src_n(str, &op3, 32);
 	size = 8;
+	if(op3.reloc.exp.X_op == O_constant){
+	  /* Be sure to adjust this as needed for Prop-2! FIXME */
+	  if((op3.reloc.exp.X_add_number & 0x003c0000) && (op3.reloc.exp.X_add_number & 0x03800000))
+	    {
+	      op3.error = _("value out of range");
+	      break;
+	    }
+	  op3.code = op3.reloc.exp.X_add_number;
+	}
 	free(pc);
       }
       break;
@@ -681,7 +690,7 @@ md_assemble (char *instruction_string)
 	   op3.error = _("Missing ','");
 	   break;
 	  }
-	arg2 = parse_src23(arg2, &op3);
+	arg2 = parse_src_n(arg2, &op3, 23);
 	size = 8;
 	free(arg);
       }
