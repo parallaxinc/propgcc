@@ -150,7 +150,9 @@ rd_common_inc
  IF_NZ  add 0-0, #4
 rd_common_fetch_addr
     mov     t1, 0-0
+    muxnz   save_z_c, #2    'save the z flag
     call    #cache_read
+    test    save_z_c, #2 wz 'restore the z flag
 rd_common_store
     rdlong  0-0, memp
     jmp     #__LMM_loop
@@ -197,7 +199,9 @@ wr_common_inc
  IF_NZ  add 0-0, #4
 wr_common_fetch_addr
     mov     t1, 0-0
+    muxnz   save_z_c, #2    'save the z flag
     call    #cache_write
+    test    save_z_c, #2 wz 'restore the z flag
 wr_common_fetch_data
     wrlong  0-0, memp
     jmp     #__LMM_loop
@@ -300,33 +304,20 @@ __MULSI_ret	ret
     .set CACHE_READ_CMD,        0x00000003
 
 ' read a long from the current pc
-read_code               muxc    save_z_c, #1
+read_code               muxc    save_z_c, #1                'save the c flag
                         cmp     pc, external_start wc   'check for normal memory access
                 IF_B    jmp     #read_hub_code
                         mov     t1, pc
+                        muxnz   save_z_c, #2                'save the z flag
                         call    #cache_read
+                        test    save_z_c, #2 wz             'restore the z flag
                         rdlong  L_ins0, memp
                         jmp     #read_restore_c
 read_hub_code           rdlong	L_ins0, pc
-read_restore_c          shr     save_z_c, #1 wc
+read_restore_c          shr     save_z_c, #1 wc             'restore the c flag
 read_code_ret           ret
                         
-' read a long from external memory
-' address is in t1
-' result returned in t1
-read_external_long      call    #cache_read
-                        rdlong  t1, memp
-read_external_long_ret  ret
-
-' write a long to external memory
-' address is in t1
-' value to write is in t2
-write_external_long     call    #cache_write
-                        wrlong  t2, memp
-write_external_long_ret ret
-
-cache_write             muxnz   save_z_c, #2                'save the z flag
-                        mov     memp, t1                    'save address for index
+cache_write             mov     memp, t1                    'save address for index
                         andn    t1, #CACHE_CMD_MASK         'ensure a write is not a read
                         or      t1, #CACHE_WRITE_CMD
                         jmp     #cache_access
@@ -348,8 +339,6 @@ _waitres                rdlong  temp, cache_mboxcmd wz
                         rdlong  cacheptr, cache_mboxdat     'Get new buffer
 cache_hit               and     memp, cache_linemask
                         add     memp, cacheptr              'add ptr to memp to get data address
-                        
-                        test    save_z_c, #2 wz             'restore the z flag
 cache_read_ret
 cache_write_ret         ret
 
