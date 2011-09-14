@@ -322,8 +322,7 @@ cache_write             mov     memp, t1                    'save address for in
                         or      t1, #CACHE_WRITE_CMD
                         jmp     #cache_access
 
-cache_read              muxnz   save_z_c, #2                'save the z flag
-                        mov     memp, t1                    'save address for index
+cache_read              mov     memp, t1                    'save address for index
                         mov     temp, t1                    'ptr + cache_mboxdat = hub address of byte to load
                         andn    temp, cache_linemask
                         cmp     cacheaddr, temp wz          'if cacheaddr == addr, just pull form cache
