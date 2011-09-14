@@ -138,6 +138,7 @@ __LMM_RDLONG
     movs    rd_common_inc, #4
 
 rd_common
+    muxnz   save_z_c, #2    'save the z flag
     shr	    L_ins0, #9
     movs    rd_common_fetch_addr, L_ins0
     andn    rd_common_fetch_addr, #0x1f0
@@ -150,7 +151,6 @@ rd_common_inc
  IF_NZ  add 0-0, #4
 rd_common_fetch_addr
     mov     t1, 0-0
-    muxnz   save_z_c, #2    'save the z flag
     call    #cache_read
     test    save_z_c, #2 wz 'restore the z flag
 rd_common_store
@@ -187,6 +187,7 @@ __LMM_WRLONG
     movs    wr_common_inc, #4
 
 wr_common
+    muxnz   save_z_c, #2    'save the z flag
     shr	    L_ins0, #9
     movs    wr_common_fetch_addr, L_ins0
     andn    wr_common_fetch_addr, #0x1f0
@@ -199,7 +200,6 @@ wr_common_inc
  IF_NZ  add 0-0, #4
 wr_common_fetch_addr
     mov     t1, 0-0
-    muxnz   save_z_c, #2    'save the z flag
     call    #cache_write
     test    save_z_c, #2 wz 'restore the z flag
 wr_common_fetch_data
