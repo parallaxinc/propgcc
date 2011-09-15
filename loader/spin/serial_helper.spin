@@ -6,14 +6,14 @@ CON
   _clkmode    = xtal1 + pll16x
   _xinfreq    = 5_000_000
 
-  TYPE_VM_INIT = 1      ' not implemented
+  TYPE_VM_INIT = 1
   TYPE_CACHE_INIT = 2
   TYPE_FLASH_WRITE = 3
   TYPE_RAM_WRITE = 4
-  TYPE_HUB_WRITE = 5    ' not implemented
+  TYPE_HUB_WRITE = 5
   TYPE_DATA = 6
   TYPE_EOF = 7
-  TYPE_RUN = 8          ' not implemented
+  TYPE_RUN = 8
 
   ' character codes
   CR = $0d
@@ -27,9 +27,11 @@ CON
 ' hub memory layout
 '   cache
 '   cache_mbox
+'   vm_mbox
 
   hub_memory_size = 32 * 1024
   cache_mbox_size = cache#_MBOX_SIZE * 4
+  vm_mbox_size = 4
 
 OBJ
   pkt : "packet_driver"
@@ -37,12 +39,11 @@ OBJ
   tv   : "TV_Text"
 #endif
   cache : "cache_interface"
-
+  vmstart : "vm_start"
 VAR
 
-  long write_mode
   long load_address
-  long cache_line_mask
+  long write_mode
 
 PUB start | type, packet, len, ok
 
@@ -69,12 +70,14 @@ PUB start | type, packet, len, ok
 
     if ok
       case type
+        TYPE_VM_INIT:           VM_INIT_handler
         TYPE_CACHE_INIT:        CACHE_INIT_handler(packet)
         TYPE_FLASH_WRITE:       FLASH_WRITE_handler
         TYPE_RAM_WRITE:         RAM_WRITE_handler
         TYPE_HUB_WRITE:         HUB_WRITE_handler
         TYPE_DATA:              DATA_handler(packet, len)
         TYPE_EOF:               EOF_handler
+        TYPE_RUN:               RUN_handler
         other:
 #ifdef TV_DEBUG
           tv.str(string("Bad packet type: "))
@@ -83,7 +86,14 @@ PUB start | type, packet, len, ok
 #endif
       pkt.release_packet
 
-PRI CACHE_INIT_handler(packet) | cache_size, param1, param2
+PRI VM_INIT_handler
+#ifdef TV_DEBUG
+  tv.str(string("VM_INIT", CR))
+#endif
+  long[p_vm_mbox] := 0
+  cognew(@mm_data, p_vm_mbox)
+
+PRI CACHE_INIT_handler(packet) | cache_size, param1, param2, cache_lines
   cache_size := long[packet]
   param1 := long[packet+4]
   param2 := long[packet+8]
@@ -92,9 +102,10 @@ PRI CACHE_INIT_handler(packet) | cache_size, param1, param2
   tv.dec(cache_size)
   crlf
 #endif
-  mm_cache := hub_memory_size - cache_size
-  mm_cache_mbox := mm_cache - cache_mbox_size
-  cache_line_mask := cache.start(@mm_data, mm_cache_mbox, mm_cache, param1, param2)
+  cache_lines := hub_memory_size - cache_size
+  p_cache_mbox := cache_lines - cache_mbox_size
+  p_cache_line_mask := cache.start(@mm_data, p_cache_mbox, cache_lines, param1, param2)
+  p_vm_mbox := p_cache_mbox - vm_mbox_size
 
 PRI FLASH_WRITE_handler
 #ifdef TV_DEBUG
@@ -102,6 +113,7 @@ PRI FLASH_WRITE_handler
 #endif
   write_mode := WRITE_FLASH
   load_address := $00000000 ' offset into flash
+  p_image_base := $30000000
   cache.eraseFlashBlock(load_address)
 
 PRI RAM_WRITE_handler
@@ -109,7 +121,8 @@ PRI RAM_WRITE_handler
   tv.str(string("RAM_WRITE", CR))
 #endif
   write_mode := WRITE_RAM
-  load_address := $00000000
+  load_address := $20000000
+  p_image_base := load_address
 
 PRI HUB_WRITE_handler
 #ifdef TV_DEBUG
@@ -162,12 +175,25 @@ PRI EOF_handler
       crlf
 #endif
 
+PRI RUN_handler
 #ifdef TV_DEBUG
-PRI crlf
-  tv.out(CR)
+  tv.str(string("RUN", CR))
+#endif
+
+  ' stop all COGs except the one running the vm
+  pkt.stop
+
+   ' start the xmm kernel boot code
+  coginit(cogid, vmstart.entry, @p_image_base)
+
+#ifdef TV_DEBUG
+  tv.stop
 #endif
 
 #ifdef TV_DEBUG
+PRI crlf
+  tv.out(CR)
+
 PRI taghex8(tag, val)
   tv.str(tag)
   tv.hex(val, 8)
@@ -177,13 +203,15 @@ PRI taghex8(tag, val)
 DAT
 
 ' parameters filled in before downloading serial_helper.binary
-p_baudrate    long      0
-p_rxpin       byte      0
-p_txpin       byte      0
-p_tvpin       byte      0
+p_baudrate          long    0
+p_rxpin             byte    0
+p_txpin             byte    0
+p_tvpin             byte    0
 
-mm_cache      long      0
-mm_cache_mbox long      0
+p_image_base        long    0
+p_cache_mbox        long    0
+p_cache_line_mask   long    0
+p_vm_mbox           long    0
 
 ' additional data
 mm_data       long      0[512]
