@@ -121,7 +121,9 @@ $(SPINDIR)/ssf_cache.spin
 
 CACHE_DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
-$(DRVDIR)/ssf_cache.dat
+$(DRVDIR)/ssf_cache.dat \
+$(DRVDIR)/dracblade_cache.dat \
+$(DRVDIR)/sdram_cache.dat
 
 .PHONY:	cache-drivers
 cache-drivers:	$(DRVDIR) $(CACHE_DRIVERS)
