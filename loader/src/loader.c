@@ -64,7 +64,6 @@ typedef struct {
 
 /* DAT header in flash_loader.spin */
 typedef struct {
-    uint32_t jmp_boot;
     uint32_t cache_size;
     uint32_t cache_param1;
     uint32_t cache_param2;
@@ -268,7 +267,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf, *buf2;
-    int imageSize, chksum, mode, i;
+    int imageSize, chksum, target, i;
     ElfProgramHdr program;
     uint32_t size, size2;
 
@@ -346,7 +345,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     
     /* write the '.init' section to memory */
 	printf("Loading .init\n");
-    if (!SendPacket(TYPE_FLASH_WRITE, (uint8_t *)"", 0)
+    target = (program.paddr >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
+    if (!SendPacket(target, (uint8_t *)"", 0)
     ||  !WriteBuffer(buf, size + size2)) {
         free(buf);
         return Error("Loading '.init' section failed");
@@ -360,18 +360,27 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     ||  !(buf = LoadProgramSection(c, &program)))
         return Error("can't load '.xmmkernel' section");
     
-    /* determine the download mode */
-    if (flags & LFLAG_WRITE_EEPROM)
-        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
-    else if (flags & LFLAG_RUN)
-        mode = DOWNLOAD_RUN_BINARY;
-    else
-        mode = SHUTDOWN_CMD;
+    /* handle downloads to eeprom */
+    if (flags & LFLAG_WRITE_EEPROM) {
+        int mode = (flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM);
+        if (target == TYPE_FLASH_WRITE) {
+            if (!WriteFlashLoader(sys, config, port, buf, program.filesz, mode)) {
+                free(buf);
+                return Error("can't load '.xmmkernel' section into eeprom");
+            }
+        }
+        else
+            return Error("no external ram eeprom loader is currently available");
+    }
     
-    /* write the 'xmmkernel' loader to the eeprom */
-    if (mode != SHUTDOWN_CMD && !WriteFlashLoader(sys, config, port, buf, program.filesz, mode)) {
-        free(buf);
-        return Error("can't load '.xmmkernel' section into eeprom");
+    /* handle downloads to hub memory */
+    else if (flags & LFLAG_RUN) {
+        if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
+        ||  !WriteBuffer(buf, program.filesz)
+        ||  !SendPacket(TYPE_VM_INIT, (uint8_t *)"", 0))
+            return Error("can't loading xmm kernel");
+        if (!SendPacket(TYPE_RUN, (uint8_t *)"", 0))
+            return Error("can't run program");
     }
     
     /* free the '.xmmkernel' section data */
