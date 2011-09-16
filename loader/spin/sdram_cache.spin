@@ -560,6 +560,15 @@ _PHSA1          long $1000_0000
 
 _CTRA           long (%100_000 << 23) | CLK_PIN
 
+data            long 0
+dat1            long 0
+dat2            long 0
+dat3            long 0
+dat4            long 0
+dat5            long 0
+dat6            long 0
+dat7            long 0
+
 zero            long 0
 dirty           long 0
 set2            long 0
@@ -568,16 +577,35 @@ set2            long 0
 ' setup hardware and mailbox interface
 '
 sdram_setup
+' initialization structure offsets
+' $0: pointer to a two word mailbox
+' $4: pointer to where to store the cache lines in hub ram
+' $8: number of bits in the cache line index if non-zero (default is DEFAULT_INDEX_WIDTH)
+' $a: number of bits in the cache line offset if non-zero (default is DEFAULT_OFFSET_WIDTH)
+' note that $4 must be at least 2^($8+$a)*2 bytes in size
+' the cache line mask is returned in $0
 
-' get mailbox pointers
-data                mov     tmp,par
-dat1                rdlong  cmdptr,tmp
-dat2                add     tmp,#4
-dat3                rdlong  datptr,tmp
-dat4                add     tmp,#4
-dat5                rdlong  tagptr,tmp
-dat6                add     tmp,#4
-dat7                rdlong  cacheptr,tmp
+init_vm mov     tmp,par             ' get the address of the initialization structure
+        rdlong  cmdptr, tmp         ' pvmcmd is a pointer to the virtual address and read/write bit
+        mov     datptr,  cmdptr     ' pvmaddr is a pointer into the cache line on return
+        add     datptr,  #4
+        add     tmp,#4
+        rdlong  cacheptr, tmp       ' cacheptr is the base address in hub ram of the cache
+'       add     t1, #4
+'       rdlong  t2, t1 wz
+' if_nz mov     index_width, t2     ' override the index_width default value
+'       add     t1, #4
+'       rdlong  t2, t1 wz
+' if_nz mov     offset_width, t2    ' override the offset_width default value
+
+'       mov     index_count, #1
+'       shl     index_count, index_width
+'       mov     index_mask, index_count
+'       sub     index_mask, #1
+
+        mov     tmp,#(LINELEN-1)
+        wrlong  tmp,par
+
 sdram_enable
 
 ' enable outputs
