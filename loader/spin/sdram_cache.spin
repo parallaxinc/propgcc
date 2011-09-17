@@ -1,6 +1,6 @@
 {{
 =====================================================================
-SdramCache.spin - defines a device driver for ISSI 32Mx8 SDRAM
+sdram_cache.spin - defines a device driver for ISSI 32Mx8 SDRAM
 =====================================================================
 
     Change History
@@ -8,6 +8,8 @@ SdramCache.spin - defines a device driver for ISSI 32Mx8 SDRAM
     Oct 25, 2010: Initial release for use with SdramTest.spin
     Nov  5, 2010: Added dirty write-back handling for better read performance.
     Nov  6, 2010: Reverted an aggressive optimization - performance is same.
+    Sep 17, 2011: Removed Spin code for use with PropGCC and xBasic.
+                  SdramTest not supported.
 }}
 
 {{
@@ -114,27 +116,6 @@ con
 
     MODE_REG    = $37           ' CAS latency 3, full burst
 
-{{
-=====================================================================
-These constants define the driver commands.
-Currently, the driver doesn't really care if the command
-is a read or write. Use these for future compatibility.
-}}
-con
-    CMD_MASK    = $3
-    READ_CMD    = $3
-    WRITE_CMD   = $2
-    DIRTY_BIT   = $1
-
-{{
-=====================================================================
-Driver mailbox interface - these longs must stay in this order.
-}}
-var long    mbcmd, mbdata, mbtags, mbcache
-
-' cog store
-var long    cog
-
 con
 {{
 =====================================================================
@@ -149,18 +130,13 @@ The actual number of ignored bits depends on the cache line length.
 }}
 
 con
-'#define CACHE_8K        ' 16K cache is usually too big. Use one of these defines.
-'#define CACHE_4K
-#define CACHE_2K
-#ifdef  CACHE_8K
-    CACHESIZE   = $2000>>2          ' power of 2 cache size ... 64B to 16KB
-#elseifdef CACHE_4K
-    CACHESIZE   = $1000>>2          ' power of 2 cache size ... 64B to 16KB
-#elseifdef CACHE_2K
-    CACHESIZE   =  $800>>2          ' power of 2 cache size ... 64B to 16KB
-#else
-#error "Please define CACHE_2K, CACHE_4K, or CACHE_8K"
-#endif
+{{
+It will be difficult to support dynamica cache size with this driver.
+Leave it as is for now and only use 8K Cache.
+}}
+  CACHESIZE   = $2000>>2          ' power of 2  8K cache
+' CACHESIZE   = $1000>>2          ' power of 2 4K cache
+' CACHESIZE   =  $800>>2          ' power of 2 2K cache
 
 con
     TAGCOUNT    = CACHESIZE/LINELEN ' cache with linelen bytes
@@ -171,209 +147,7 @@ con
     DIRTYSHFT   = 31                ' shift by N to get dirty bit   test tag,DIRTYMASK wc
     DIRTYMASK   = 1 << DIRTYSHFT    ' dirty bit mask                muxc tag,DIRTYSHFT
 
-'#define BMAD
-
-{{
-=====================================================================
-start(mbptr)
-mbptr = start address of command interface
-Example:
-var long command, data
-pub main
-  start(@command)
-  repeat
-}}
-pub start(mbptr)
-    mbcmd  := mbptr
-    mbdata := mbptr+4
-#ifndef XCACHE
-    mbcache:= @cache
-#endif
-    long[mbcmd]~~               ' set now so we know when startup is done
-#ifdef BMAD
-    bu.debug(@pasm,@mbcmd)
-obj bu : "BMAUtility"
-#else
-    cog := cognew(@pasm,@mbcmd)+1
-    repeat while long[mbcmd]    ' wait for startup to finish
-    return cog                  ' start failed if return is 0
-#endif
-
-{{
-=====================================================================
-startx(mbptr,cacheptr)
-mbptr = start address of command interface
-Example:
-obj sd "SdramCache"
-var long command, data
-var long cache[sd#CACHESIZE]
-pub main
-  start(@command,@cache)
-  repeat
-}}
-#ifdef XCACHE
-pub startx(mbptr,cptr)
-    mbcmd  := mbptr
-    mbdata := mbptr+4
-    mbcache:= cptr              ' get cache pointer from user
-    long[mbcmd]~~               ' set now so we know when startup is done
-    cog := cognew(@pasm,@mbcmd)+1
-    repeat while long[mbcmd]    ' wait for startup to finish
-    return cog                  ' start failed if return is 0
-#endif
-
-{{
-=====================================================================
-stop
-}}
-pub stop
-    if cog                      ' if cog is zero, don't stop
-        cogstop(cog~ - 1)       ' stop cog and set cog var to zero
-
-{{
-=====================================================================
-dataptr - returns address of cache data buffer
-}}
-pub dataptr
-    return long[mbdata]
-
-{{
-=====================================================================
-mboxptr  - returns address of cache command mailbox
-}}
-pub mboxptr 
-    return long[mbcmd]
-
-{{
-=====================================================================
-read a long
-madr - long address to read
-returns value read
-}}
-pub readLong(madr)
-    long[mbcmd] := madr | READ_CMD
-    repeat while long[mbcmd]
-    madr &= LINELEN-1
-    return long[long[mbdata]+madr]
-
-{{
-=====================================================================
-write a long
-madr - long address to write
-val  - value to write
-}}
-pub writeLong(madr,val)
-    long[mbcmd] := madr | WRITE_CMD
-    repeat while long[mbcmd]
-    madr &= LINELEN-1
-    ' sending write command says this data will be written on next cache flush
-    long[long[mbdata]+madr] := val
-
-{{
-=====================================================================
-read a word
-madr - word address to read
-returns value read
-}}
-pub readWord(madr)
-    long[mbcmd] := madr | READ_CMD
-    repeat while long[mbcmd]
-    madr &= LINELEN-1
-    return word[long[mbdata]+madr]
-
-{{
-=====================================================================
-write a word
-madr - word address to write
-val  - value to write
-}}
-pub writeWord(madr,val)
-    long[mbcmd] := madr | WRITE_CMD
-    repeat while long[mbcmd]
-    madr &= LINELEN-1
-    ' sending write command says this data will be written on next cache flush
-    word[long[mbdata]+madr] := val
-
-{{
-=====================================================================
-read a byte
-madr - byte address to read
-returns value read
-}}
-pub readByte(madr)
-    long[mbcmd] := madr | READ_CMD
-    repeat while long[mbcmd]
-    madr &= LINELEN-1
-    return byte[long[mbdata]+madr]
-
-{{
-=====================================================================
-write a byte
-madr - byte address to write
-val  - value to write
-}}
-pub writeByte(madr,val)
-    long[mbcmd] := madr | WRITE_CMD
-    repeat while long[mbcmd]
-    madr &= LINELEN-1
-    ' sending write command says this data will be written on next cache flush
-    byte[long[mbdata]+madr] := val
-
-{{
-=====================================================================
-read buffer
-}}
-pub readBuffer(madr,datp) | n
-    long[mbcmd] := madr | READ_CMD
-    repeat while long[mbcmd]
-    longmove(datp,long[mbdata],LINELEN>>2)
-
-{{
-=====================================================================
-write buffer
-}}
-pub writeBuffer(madr,datp) | n
-    long[mbcmd] := madr | WRITE_CMD
-    repeat while long[mbcmd]
-    ' sending write command says this buffer will be written on next flush
-    longmove(long[mbdata],datp,LINELEN>>2)
-
-{{
-=====================================================================
-read cache tag line
-madr - tag line address entry to read
-returns value read
-}}
-pub readTags(madr)
-    ' tagram is in cog now, so we're faking the address
-    return (madr/constant(LINELEN>>2))<<LINESHFT
-'   return tagram[madr/constant(LINELEN>>2)]
-
-{{
-=====================================================================
-read cache buffer
-madr - cache address to read
-returns value read
-}}
-pub readCache(madr)
-    return long[mbcache][madr]
-
-{{
-=====================================================================
-zero cache buffer
-clears contents of the cache
-}}
-pub zeroCache
-    bytefill(mbcache,0,CACHESIZE)
-
-{{
-=====================================================================
-cache
-}}
-#ifndef XCACHE
-dat ' cache
-cache           long 0 [CACHESIZE-$1e0]     ' reclaim PASM code for cache
-#endif
+pub unused
 
 {{
 =====================================================================
@@ -382,7 +156,7 @@ PASM Cache Driver
 }}
 dat                 org 0
 pasm
-long    0 [8]                               ' debugger stub space - or beginning of tag RAM
+'long    0 [8]                               ' debugger stub space - or beginning of tag RAM
 
 '--------------------------------------------------------------------
 ' startup and some variables
