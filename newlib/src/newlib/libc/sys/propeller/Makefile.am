@@ -36,7 +36,7 @@ lib_a_SOURCES = \
 	write.c
 
 
-all: crt0.o crtend.o
+all:
 
 ACLOCAL_AMFLAGS = -I ../../..
 CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host
