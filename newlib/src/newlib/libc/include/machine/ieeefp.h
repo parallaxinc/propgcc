@@ -367,6 +367,9 @@
 
 #ifdef __propeller__
 #define __IEEE_LITTLE_ENDIAN
+#ifdef __PROPELLER_32BIT_DOUBLES__
+#define _DOUBLE_IS_32BITS
+#endif
 #endif
 
 #ifndef __IEEE_BIG_ENDIAN

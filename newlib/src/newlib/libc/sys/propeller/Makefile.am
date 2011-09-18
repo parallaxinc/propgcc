@@ -8,6 +8,7 @@ noinst_LIBRARIES = lib.a
 
 lib_a_SOURCES = \
 	access.c	\
+	clock.c		\
 	close.c		\
 	creat.c		\
 	dup2.c		\
@@ -16,7 +17,7 @@ lib_a_SOURCES = \
 	fork.c		\
 	fstat.c		\
 	gettimeofday.c	\
-	initlib.c	\
+	glue.c		\
 	ioctl.c		\
 	isatty.c	\
 	kill.c		\
@@ -27,7 +28,8 @@ lib_a_SOURCES = \
 	params.c	\
 	pipe.c		\
 	read.c		\
-	sbrk.s		\
+	sbrk.c		\
+	serial.c	\
 	stat.c		\
 	times.c		\
 	unlink.c	\
@@ -36,7 +38,7 @@ lib_a_SOURCES = \
 	write.c
 
 
-all: crt0.o crtend.o
+all:
 
 ACLOCAL_AMFLAGS = -I ../../..
 CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host

@@ -465,6 +465,10 @@ case "${host}" in
   powerpcle-*-pe)
 	posix_dir=posix
 	;;
+  propeller*)
+        sys_dir=propeller
+	have_crt0="no"
+	;;
   sh*-*)
 	sys_dir=sh
 	;;
@@ -701,6 +705,10 @@ case "${host}" in
   powerpcle-*-pe)
 	newlib_cflags="${newlib_cflags} -DHAVE_OPENDIR -DHAVE_RENAME -DHAVE_FCNTL"
 	syscall_dir=syscalls
+	;;
+  propeller*)
+        syscall_dir=
+	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED -DSMALL_MEMORY -D_REENT_SMALL -DSMALL_MEMORY -DCLOCK_PROVIDED"
 	;;
   sh*-*-*)
 	default_newlib_io_long_long="yes"
