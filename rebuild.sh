@@ -32,6 +32,6 @@ cd ../../propgcc
 #
 mkdir -p ../build/newlib
 cd ../build/newlib
-../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller
+../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller --enable-target-optspace
 make all
 make install

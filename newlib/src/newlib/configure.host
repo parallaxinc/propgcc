@@ -706,6 +706,10 @@ case "${host}" in
 	newlib_cflags="${newlib_cflags} -DHAVE_OPENDIR -DHAVE_RENAME -DHAVE_FCNTL"
 	syscall_dir=syscalls
 	;;
+  propeller*)
+        syscall_dir=syscalls
+	newlib_cflags="${newlib_cflags} -DSMALL_MEMORY -D_REENT_SMALL -DSMALL_MEMORY"
+	;;
   sh*-*-*)
 	default_newlib_io_long_long="yes"
 	syscall_dir=syscalls
