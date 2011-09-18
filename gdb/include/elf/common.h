@@ -400,6 +400,9 @@
 
 #define EM_MICROBLAZE_OLD	0xbaab	/* Old MicroBlaze */
 
+/* Parallax Propeller magic number */
+#define EM_PROPELLER  0x5072
+
 /* See the above comment before you add a new EM_* value here.  */
 
 /* Values for e_version.  */
