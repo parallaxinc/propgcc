@@ -157,6 +157,11 @@
 #define _REENT_SMALL
 #endif /* __m32c__ */
 
+#ifdef __propeller__
+#define __BUFSIZ__ 16
+#define _REENT_SMALL
+#endif
+
 #ifdef __SPU__
 #define MALLOC_ALIGNMENT 16
 #define __CUSTOM_FILE_IO__

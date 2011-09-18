@@ -52,7 +52,7 @@ directory, which I assume is named "propgcc" on your system):
 
 (1) mkdir -p ../build/newlib
 (2) cd ../build/newlib
-(3) ../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller
+(3) ../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller --enable-target-optspace
 (4) make all
 
 This will build newlib. 
