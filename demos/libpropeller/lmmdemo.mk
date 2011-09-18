@@ -33,11 +33,14 @@ LDSCRIPT = $(PROPLIB)/propeller_lmm.script
 
 # basic gnu tools
 CC = propeller-elf-gcc
+CXX = propeller-elf-g++
 LD = propeller-elf-ld
 AS = propeller-elf-as
 OBJCOPY = propeller-elf-objcopy
 CHKSUM = propeller-checksum
 LOADER = propeller-load -p1 -b c3
+
+CXXFLAGS += $(CFLAGS)
 
 # BSTC program
 BSTC=bstc -ls
