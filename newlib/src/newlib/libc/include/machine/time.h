@@ -14,6 +14,11 @@
 int nanosleep (const struct timespec *, struct timespec *);
 #endif
 
+#ifdef __propeller__
+#include <machine/cog.h>
+#define _CLOCKS_PER_SEC_ _clkfreq
+#endif
+
 #endif	/* _MACHTIME_H_ */
 
 

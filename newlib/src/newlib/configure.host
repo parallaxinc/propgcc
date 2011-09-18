@@ -707,8 +707,8 @@ case "${host}" in
 	syscall_dir=syscalls
 	;;
   propeller*)
-        syscall_dir=syscalls
-	newlib_cflags="${newlib_cflags} -DSMALL_MEMORY -D_REENT_SMALL -DSMALL_MEMORY"
+        syscall_dir=
+	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED -DSMALL_MEMORY -D_REENT_SMALL -DSMALL_MEMORY -DCLOCK_PROVIDED"
 	;;
   sh*-*-*)
 	default_newlib_io_long_long="yes"
