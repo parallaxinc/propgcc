@@ -786,6 +786,7 @@ linux
 m88kbug
 mmixware
 netware
+propeller
 rdos
 rtems
 sh
@@ -11795,6 +11796,8 @@ subdirs="$subdirs a29khif"
 	mmixware) subdirs="$subdirs mmixware"
  ;;
 	netware) subdirs="$subdirs netware"
+ ;;
+	propeller) subdirs="$subdirs propeller"
  ;;
 	rdos) subdirs="$subdirs rdos"
  ;;

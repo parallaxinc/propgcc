@@ -465,6 +465,10 @@ case "${host}" in
   powerpcle-*-pe)
 	posix_dir=posix
 	;;
+  propeller*)
+        sys_dir=propeller
+	have_crt0="no"
+	;;
   sh*-*)
 	sys_dir=sh
 	;;
