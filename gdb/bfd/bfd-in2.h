@@ -2124,6 +2124,9 @@ enum bfd_architecture
   bfd_arch_lm32,      /* Lattice Mico32 */
 #define bfd_mach_lm32      1
   bfd_arch_microblaze,/* Xilinx MicroBlaze. */
+  bfd_arch_propeller,      /* Parallax Propeller */
+#define bfd_mach_prop1      1
+#define bfd_mach_prop2      2
   bfd_arch_last
   };
 
@@ -3059,6 +3062,12 @@ relaxation.  */
   BFD_RELOC_PPC64_DTPREL16_HIGHERA,
   BFD_RELOC_PPC64_DTPREL16_HIGHEST,
   BFD_RELOC_PPC64_DTPREL16_HIGHESTA,
+
+/* Propeller ELF relocations for addresses and immediate values.  */
+  BFD_RELOC_PROPELLER_SRC_IMM,
+  BFD_RELOC_PROPELLER_SRC,
+  BFD_RELOC_PROPELLER_DST,
+  BFD_RELOC_PROPELLER_23,
 
 /* IBM 370/390 relocations  */
   BFD_RELOC_I370_D12,
