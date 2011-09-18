@@ -3,7 +3,7 @@
 
 _ssize_t _write_r(struct _reent *reent, int fd, const void *buf_p, size_t bytes)
 {
-  extern int _putc(int);
+  extern int (*_putc)(int);
   unsigned char *buf = buf_p;
   _ssize_t sent = 0;
 
