@@ -31,7 +31,6 @@ void main (int argc,  char* argv[])
     unsigned int rawTime;
 
     printf("hello, world!\r\n");
-    while (1) {
     for (n = 0; n <= 26; n++)
     {
         printf("fibo(%02d) = ", n);
@@ -42,5 +41,5 @@ void main (int argc,  char* argv[])
         executionTime = rawTime / (CLKFREQ / 1000);
         printf ("%06d (%05ums) (%u ticks)\n", result, executionTime, rawTime);
     }
-    }
+    while(1);
 }
