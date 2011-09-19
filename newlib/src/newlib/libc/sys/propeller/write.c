@@ -11,6 +11,7 @@ _ssize_t _write_r(struct _reent *reent, int fd, const void *buf_p, size_t bytes)
     _putc(*buf);
     buf++;
     sent++;
+    --bytes;
   }
   return sent;
 }
