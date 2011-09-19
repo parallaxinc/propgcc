@@ -1352,7 +1352,7 @@
 ;;  where we know the "&~N" will have no effect
 
 (define_insn_and_split "*movesi<muxcond:code>_one"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=&rC")
         (if_then_else
 	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
             (match_operand:SI 1 "propeller_src_operand" "rCI")
