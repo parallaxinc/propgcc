@@ -71,20 +71,20 @@ $(T)spinboot.o: $(srcdir)/config/propeller/spinboot.s
 $(T)crt0_lmm.o: $(srcdir)/config/propeller/crt0_lmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
-$(T)crtbegin_lmm.o: $(srcdir)/config/propeller/crtbegin_lmm.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
-
-$(T)crtend_lmm.o: $(srcdir)/config/propeller/crtend_lmm.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
-
 $(T)crt0_xmm.o: $(srcdir)/config/propeller/crt0_xmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
-$(T)crtbegin_xmm.o: $(srcdir)/config/propeller/crtbegin_xmm.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
+$(T)crtbegin_lmm.o: $(srcdir)/config/propeller/crtbegin.S
+	$(GCC_FOR_TARGET) -DLMM -o $@ -c $<
 
-$(T)crtend_xmm.o: $(srcdir)/config/propeller/crtend_xmm.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
+$(T)crtend_lmm.o: $(srcdir)/config/propeller/crtend.S
+	$(GCC_FOR_TARGET) -DLMM -o $@ -c $<
+
+$(T)crtbegin_xmm.o: $(srcdir)/config/propeller/crtbegin.S
+	$(GCC_FOR_TARGET) -DXMM -o $@ -c $<
+
+$(T)crtend_xmm.o: $(srcdir)/config/propeller/crtend.S
+	$(GCC_FOR_TARGET) -DXMM -o $@ -c $<
 
 $(T)hubstart_xmm.o: $(srcdir)/config/propeller/hubstart_xmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
