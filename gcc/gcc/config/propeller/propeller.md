@@ -179,12 +179,17 @@
 		        [(ashift "") (ashiftrt "") (lshiftrt "")
 			 (rotate "") (rotatert "")
 			])
+(define_code_iterator minmaxop
+		      [(umax "")(umin "") (smax "")(smin "")])
+
 (define_code_attr     opcode
 		        [(plus "add") (ior "or") (xor "xor")
                       	 (ashift "shl") (ashiftrt "sar") (lshiftrt "shr")
 			 (rotate "rol") (rotatert "ror")
+			 ;; propeller has backwards max and min names
+			 (umax "min") (umin "max")
+			 (smax "mins") (smin "maxs")
 			 ])
-
 
 (define_code_iterator muxcond [ne eq lt ge ltu geu])
 (define_code_attr muxcc [(ne "nz") (eq "z") (lt "c") (ltu "c")
@@ -1256,6 +1261,25 @@
   [(set_attr "predicable" "yes")]
 )
 
+;;
+;; combinations that set the condition codes
+;;
+(define_insn "*<minmaxop:code>si3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (minmaxop:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+	               (match_operand:SI 2 "propeller_src_operand" "rCI"))
+          (const_int 0)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (minmaxop:SI (match_dup 1)(match_dup 2)))
+  ]
+  ""
+  "<opcode>\t%0, %2 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")
+  ]
+)
+	
 ;; -------------------------------------------------------------------------
 ;; Conditional moves and stores
 ;; -------------------------------------------------------------------------
