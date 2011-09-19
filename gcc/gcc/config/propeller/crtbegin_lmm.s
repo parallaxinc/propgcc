@@ -16,11 +16,10 @@ entry
 	jmp	#__LMM_CALL
 	.long	_main	' call main
 
-	'' fall througn to _exit
-__exit
-	cogid	r0
-	cogstop	r0
-
+	'' and call _exit with whatever main returns
+	jmp	#__LMM_CALL
+	.long	__exit
+	
 	''
 	'' initialization function, responsible for calling all ctors
 	'' we can be careless here about saving registers, because
@@ -52,3 +51,16 @@ L_loopend
 argv
 	long	0
 
+
+	.section .fini
+__exit
+	jmp	#__LMM_MVI_r8
+	.long	___DTOR_LIST__
+L_loopn
+	rdlong	__TMP0,r8 wz
+	IF_Z add pc,#(L_loopnend - (.+4))
+	jmp	#__LMM_CALL_INDIRECT
+	add	r8,#4
+	sub	pc,#((.+4) - L_loopn)
+L_loopnend
+	

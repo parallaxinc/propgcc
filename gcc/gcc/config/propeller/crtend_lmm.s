@@ -10,6 +10,11 @@
 	add	sp,#4
 	mov	pc,lr
 
+	.section .fini
+	'' finish up the __exit function
+	cogid	r0
+	cogstop	r0
+	
 	'' make sure the ctors and dtors are null terminated
 	.section .ctors, "ax"
 	long	0
