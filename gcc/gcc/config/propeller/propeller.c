@@ -1614,7 +1614,7 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  * int __builtin_propeller_lockset(int x)
  *     set a hardware lock and return its previous state (-1 if set, 0 if clear)
  * void __builtin_propeller_lockclr(int x)
- *     clear a hardare lock
+ *     clear a hardware lock
  *
  * void * __builtin_propeller_taskswitch(void *newfunc)
  *     switch to a new function
