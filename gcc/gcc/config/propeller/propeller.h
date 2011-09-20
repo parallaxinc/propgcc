@@ -45,7 +45,10 @@
 "
 
 #undef LINK_SPEC
-#define LINK_SPEC "%{mrelax:-relax}"
+#define LINK_SPEC "                                             \
+%{mrelax:-relax}						\
+%{mcog:-mpropeller_cog; mxmm: -mpropeller_xmm; :-mpropeller}	\
+"
 
 #define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)
 
