@@ -32,15 +32,10 @@ SECTIONS
     ${RELOCATING+ _etext = . ; }
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
-  .hubtext ${RELOCATING-0} :
-  {
-    *(.hubtext*)
-  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
-  ${TEXT_DYNAMIC+${DYNAMIC}}
-
   .data	${RELOCATING-0} :
   {
     ${RELOCATING+ PROVIDE (__data_start = .) ; }
+    *(.hubstart)
     *(.data)
     *(.data*)
     *(.rodata)  /* We need to include .rodata here if gcc is used */
@@ -50,6 +45,12 @@ SECTIONS
     ${RELOCATING+ _edata = . ; }
     ${RELOCATING+ PROVIDE (__data_end = .) ; }
   } ${RELOCATING+ ${DATA_MEMORY}}
+
+  .hubtext ${RELOCATING-0} :
+  {
+    *(.hubtext*)
+  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
+  ${TEXT_DYNAMIC+${DYNAMIC}}
 
   .ctors ${RELOCATING-0} :
   {
@@ -67,7 +68,7 @@ SECTIONS
     *(.bss*)
     *(COMMON)
     ${RELOCATING+ PROVIDE (__bss_end = .) ; }
-  } ${RELOCATING+ > hub}
+  } ${RELOCATING+ >hub AT>hub}
 
   /* put the cog drivers after bss and just before the heap */
   /* that way we may later be able to free the hub memory they take up */
