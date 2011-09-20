@@ -60,7 +60,11 @@
    (UNSPEC_WAITVID       8)
    (UNSPEC_FCACHE_LOAD   9)
    (UNSPEC_CONST_WORD   10)
-
+   (UNSPEC_LOCKSTATE    11)
+   (UNSPEC_LOCKNEW      12)
+   (UNSPEC_LOCKRET      13)
+   (UNSPEC_LOCKCLR      14)
+   (UNSPEC_LOCKSET      15)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -2051,6 +2055,79 @@
   "rev\t%0,%2"
   [(set_attr "predicable" "yes")]
 )
+
+;; allocate and return locks
+(define_insn "locknew"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (unspec_volatile [(const_int 0)]
+                    UNSPEC_LOCKNEW))]
+  ""
+  "locknew\t%0"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+(define_insn "lockret"
+  [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+                    UNSPEC_LOCKRET)]
+  ""
+  "lockret\t%0"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+;; clear lock
+(define_insn "lockclr"
+  [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+                    UNSPEC_LOCKCLR)]
+  ""
+  "lockclr\t%0"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+
+;; set lock
+;; this needs to be split into 2 insns, one to set the lock and the
+;; second to update its state from the carry flag
+;; the lockset raw sets the carry flag to mean that the flag was set,
+;; which will mean that the register is set to -1 (i.e. < 0)
+
+(define_insn "*lockset_raw"
+  [ (set (reg:CC_C CC_REG)
+         (compare:CC_C
+	   (const_int 0)
+	   (unspec [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+	           UNSPEC_LOCKSTATE)))
+    (unspec_volatile [(match_dup 0)]
+                    UNSPEC_LOCKSET)]
+  ""
+  "lockset\t%0 wc"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+
+(define_insn_and_split "lockset"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=&rC")
+        (unspec [(match_operand:SI 1 "propeller_dst_operand" "rC")]
+	        UNSPEC_LOCKSTATE))
+   (unspec_volatile [(match_dup 1)] UNSPEC_LOCKSET)]
+  ""
+  "#"
+  "reload_completed"
+  [(parallel
+     [(set (reg:CC_C CC_REG)
+           (compare:CC_C
+               (const_int 0)
+	       (unspec [(match_dup 1)] UNSPEC_LOCKSTATE)))
+       (unspec_volatile [(match_dup 1)] UNSPEC_LOCKSET) ])
+    (set (match_dup 0)
+         (if_then_else (ltu (reg:CC_C CC_REG)(const_int 0))
+                       (const_int -1)
+                       (const_int 0)))
+   ]
+   ""
+   [(set_attr "conds" "set")
+    (set_attr "length" "8")]
+)
+
 
 (define_insn "waitcnt"
   [(set (match_operand:SI       0 "propeller_dst_operand" "=rC")
