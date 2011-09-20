@@ -1607,6 +1607,15 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  * void __builtin_propeller_waitvid(unsigned colors, unsigned pixels)
  *     wait for video generator
  *
+ * int __builtin_propeller_locknew(void)
+ *     allocate a new hardware lock
+ * void __builtin_propeller_lockret(int x)
+ *     free a hardware lock
+ * int __builtin_propeller_lockset(int x)
+ *     set a hardware lock and return its previous state (-1 if set, 0 if clear)
+ * void __builtin_propeller_lockclr(int x)
+ *     clear a hardare lock
+ *
  * void * __builtin_propeller_taskswitch(void *newfunc)
  *     switch to a new function
  *
@@ -1624,6 +1633,11 @@ enum propeller_builtins
     PROPELLER_BUILTIN_WAITPNE,
     PROPELLER_BUILTIN_WAITVID,
 
+    PROPELLER_BUILTIN_LOCKNEW,
+    PROPELLER_BUILTIN_LOCKRET,
+    PROPELLER_BUILTIN_LOCKSET,
+    PROPELLER_BUILTIN_LOCKCLR,
+
     PROPELLER_BUILTIN_TASKSWITCH
 };
 
@@ -1636,6 +1650,7 @@ propeller_init_builtins (void)
 {
   tree endlink = void_list_node;
   tree uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, endlink);
+  tree int_endlink = tree_cons (NULL_TREE, integer_type_node, endlink);
   tree uns_uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, uns_endlink);
   tree ptr_endlink = tree_cons (NULL_TREE, ptr_type_node, endlink);
 
@@ -1644,6 +1659,10 @@ propeller_init_builtins (void)
   tree uns_ftype_void;
   tree uns_ftype_uns;
   tree uns_ftype_uns_uns;
+
+  tree int_ftype_void;
+  tree int_ftype_int;
+  tree void_ftype_int;
 
   /* void func (void) */
   void_ftype_void = build_function_type (void_type_node, endlink);
@@ -1659,6 +1678,13 @@ propeller_init_builtins (void)
   /* unsigned func(unsigned,unsigned) */
   uns_ftype_uns = build_function_type (unsigned_type_node, uns_endlink);
   uns_ftype_uns_uns = build_function_type (unsigned_type_node, uns_uns_endlink);
+
+  /* int func (void) */
+  int_ftype_void = build_function_type (integer_type_node, endlink);
+  /* void func (int) */
+  void_ftype_int = build_function_type (void_type_node, int_endlink);
+  /* int func (int) */
+  int_ftype_int = build_function_type (integer_type_node, int_endlink);
 
   /* void (*)(void) func(void (*f)(void)) */
   vfunc_ftype_vfunc = build_function_type(ptr_type_node, ptr_endlink);
@@ -1686,6 +1712,19 @@ propeller_init_builtins (void)
                        BUILT_IN_MD, NULL, NULL_TREE);
   add_builtin_function("__builtin_propeller_waitvid", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITVID,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+
+  add_builtin_function("__builtin_propeller_locknew", int_ftype_void,
+                       PROPELLER_BUILTIN_LOCKNEW,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_lockret", void_ftype_int,
+                       PROPELLER_BUILTIN_LOCKRET,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_lockset", int_ftype_int,
+                       PROPELLER_BUILTIN_LOCKSET,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_lockclr", void_ftype_int,
+                       PROPELLER_BUILTIN_LOCKCLR,
                        BUILT_IN_MD, NULL, NULL_TREE);
 
   add_builtin_function("__builtin_propeller_taskswitch", vfunc_ftype_vfunc,
@@ -1889,6 +1928,16 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpeq, exp);
     case PROPELLER_BUILTIN_WAITPNE:
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpne, exp);
+
+    case PROPELLER_BUILTIN_LOCKNEW:
+        return propeller_expand_builtin_1op (CODE_FOR_locknew, target);
+    case PROPELLER_BUILTIN_LOCKRET:
+        return propeller_expand_builtin_1opvoid (CODE_FOR_lockret, exp);
+    case PROPELLER_BUILTIN_LOCKSET:
+        return propeller_expand_builtin_2op (CODE_FOR_lockset, exp, target);
+    case PROPELLER_BUILTIN_LOCKCLR:
+        return propeller_expand_builtin_1opvoid (CODE_FOR_lockclr, exp);
+
     case PROPELLER_BUILTIN_TASKSWITCH:
         return propeller_expand_builtin_2op (CODE_FOR_taskswitch, exp, target);
     default:
