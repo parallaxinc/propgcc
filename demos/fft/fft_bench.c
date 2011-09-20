@@ -191,7 +191,7 @@ static void fillInput()
 
 //----------------------------------------------------------------------------------------------------------------------
 #if defined(__propeller__) && defined(__GNUC__)
-#define bitReverse(x, length) __builtin_reverse(x, 32-(length))
+#define bitReverse(x, length) __builtin_propeller_rev(x, 32-(length))
 #else
 static unsigned int bitReverse(unsigned int x,  unsigned int length)
 {

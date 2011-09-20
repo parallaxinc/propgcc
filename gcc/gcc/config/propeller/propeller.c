@@ -1588,26 +1588,26 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  * builtin functions
  * here are the builtins we support:
  *
- * unsigned __builtin_cogid(void)
+ * unsigned __builtin_propeller_cogid(void)
  *     get the current cog id
- * unsigned __builtin_coginit(unsigned mode)
+ * unsigned __builtin_propeller_coginit(unsigned mode)
  *     start or restart a cog
- * void __builtin_cogstop(unsigned id)
+ * void __builtin_propeller_cogstop(unsigned id)
  *     stop a cog
  *
- * unsigned __builtin_reverse(unsigned x, unsigned n)
- *     reverse the bottom n bits of x, and 0 the others
- * unsigned __builtin_waitcnt(unsigned c, unsigned d)
+ * unsigned __builtin_propeller_rev(unsigned x, unsigned n)
+ *     reverse the bottom 32-n bits of x, and 0 the others
+ * unsigned __builtin_propeller_waitcnt(unsigned c, unsigned d)
  *     wait until the frequency counter reaches c;
  *     returns c+d
- * void __builtin_waitpeq(unsigned state, unsigned mask)
+ * void __builtin_propeller_waitpeq(unsigned state, unsigned mask)
  *     wait until (INA & mask) == state
- * void __builtin_waitpne(unsigned state, unsigned mask)
+ * void __builtin_propeller_waitpne(unsigned state, unsigned mask)
  *     wait until (INA & mask) != state
- * void __builtin_waitvid(unsigned colors, unsigned pixels)
+ * void __builtin_propeller_waitvid(unsigned colors, unsigned pixels)
  *     wait for video generator
  *
- * void * __builtin_taskswitch(void *newfunc)
+ * void * __builtin_propeller_taskswitch(void *newfunc)
  *     switch to a new function
  *
  */
@@ -1663,32 +1663,32 @@ propeller_init_builtins (void)
   /* void (*)(void) func(void (*f)(void)) */
   vfunc_ftype_vfunc = build_function_type(ptr_type_node, ptr_endlink);
 
-  add_builtin_function("__builtin_cogid", uns_ftype_void,
+  add_builtin_function("__builtin_propeller_cogid", uns_ftype_void,
                        PROPELLER_BUILTIN_COGID,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_coginit", uns_ftype_uns,
+  add_builtin_function("__builtin_propeller_coginit", uns_ftype_uns,
                        PROPELLER_BUILTIN_COGINIT,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_cogstop", void_ftype_uns,
+  add_builtin_function("__builtin_propeller_cogstop", void_ftype_uns,
                        PROPELLER_BUILTIN_COGSTOP,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_reverse", uns_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_rev", uns_ftype_uns_uns,
                        PROPELLER_BUILTIN_REVERSE,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitcnt", uns_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitcnt", uns_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITCNT,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitpeq", void_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitpeq", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITPEQ,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitpne", void_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitpne", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITPNE,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitvid", void_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitvid", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITVID,
                        BUILT_IN_MD, NULL, NULL_TREE);
 
-  add_builtin_function("__builtin_taskswitch", vfunc_ftype_vfunc,
+  add_builtin_function("__builtin_propeller_taskswitch", vfunc_ftype_vfunc,
                        PROPELLER_BUILTIN_TASKSWITCH,
                        BUILT_IN_MD, NULL, NULL_TREE);
 
@@ -2514,7 +2514,7 @@ current_func_has_indirect_jumps (void)
 	  rtx pattern;
 
 	  pattern = PATTERN (insn);
-	  /* check for __builtin_taskswitch */
+	  /* check for __builtin_propeller_taskswitch */
 	  if (GET_CODE (pattern) == SET)
 	    {
 	      pattern = SET_SRC (pattern);

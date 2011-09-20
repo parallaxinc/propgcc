@@ -36,7 +36,7 @@ int __attribute__((section(".hubtext"))) _serial_tx(int value)
     value = (value | 256) << 1;
     for (i = 0; i < 10; i++)
     {
-        waitcycles = __builtin_waitcnt(waitcycles, bitcycles);
+        waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
         _OUTA = (value & 1) << txpin;
         value >>= 1;
     }
@@ -62,11 +62,11 @@ void _serial_fini(void)
   int waitcycles = _CNT + delay;
 
   /* sleep a bit to let things drain */
-  waitcycles = __builtin_waitcnt(waitcycles, delay);
+  waitcycles = __builtin_propeller_waitcnt(waitcycles, delay);
 
   /* send a break */
   _OUTA = 0;
-  __builtin_waitcnt(waitcycles, delay);
+  __builtin_propeller_waitcnt(waitcycles, delay);
 }
 
 /*
