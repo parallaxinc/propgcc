@@ -11,9 +11,9 @@ HUBTEXT_MEMORY=">hub AT>rom"
 
 KERNEL="
   /* the LMM kernel that is loaded into the cog */
-  .kernel ${RELOCATING-0} :
+  .xmmkernel ${RELOCATING-0} :
   {
-    (*.xmmkernel) *(.kernel)
+    *(.xmmkernel) *(.kernel)
   } >cog
 "
 KERNEL_NAME=.xmmkernel
