@@ -30,9 +30,6 @@ void main (int argc,  char* argv[])
     unsigned int executionTime;
     unsigned int rawTime;
 
-    /* constructors do not work yet for xmm mode */
-    _serial_init();
-
     printf("hello, world!\r\n");
     for (n = 0; n <= 26; n++)
     {
