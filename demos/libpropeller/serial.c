@@ -55,6 +55,20 @@ void _serial_init(void)
   _DIRA = (1 << _txpin);
 }
 
+__attribute__((destructor))
+void _serial_fini(void)
+{
+  int delay = CLOCKS_PER_SEC/2;
+  int waitcycles = _CNT + delay;
+
+  /* sleep a bit to let things drain */
+  waitcycles = __builtin_waitcnt(waitcycles, delay);
+
+  /* send a break */
+  _OUTA = 0;
+  __builtin_waitcnt(waitcycles, delay);
+}
+
 /*
 +--------------------------------------------------------------------
 ¦  TERMS OF USE: MIT License
