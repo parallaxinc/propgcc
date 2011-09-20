@@ -29,7 +29,7 @@ void main (volatile struct toggle_mailbox *m)
   for(;;) {
     waitdelay = m->wait_time;
     _OUTA ^= pins;
-    nextcnt = __builtin_waitcnt(nextcnt, waitdelay);
+    nextcnt = __builtin_propeller_waitcnt(nextcnt, waitdelay);
   }
 }
 

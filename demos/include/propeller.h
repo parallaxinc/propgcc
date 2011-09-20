@@ -36,7 +36,7 @@
  * wait until system counter reaches a value
  * @param a - target value
  */
-#define waitcnt(a) __builtin_waitcnt((a),_CNT)
+#define waitcnt(a) __builtin_propeller_waitcnt((a),_CNT)
 
 /*
  * start a cog with a parameter
@@ -47,13 +47,13 @@
  * 2:0     = Cog ID if New bit is 0
  * @param a - parameter value
  */
-#define coginit(a) __builtin_coginit((a))
+#define coginit(a) __builtin_propeller_coginit((a))
 
 /*
  * stop a cog
  * @param a - cog value
  */
-#define cogstop(a) __builtin_cogstop((a))
+#define cogstop(a) __builtin_propeller_cogstop((a))
 
 /*
  * start a new propeller cog 
