@@ -1252,7 +1252,9 @@ push_multiple (int first_reg, int reg_count)
   if (TARGET_LMM && reg_count > 1) {
     insn = gen_pushm ( GEN_INT(first_reg), GEN_INT(reg_count) );
     insn = emit_insn ( insn );
-    RTX_FRAME_RELATED_P (insn) = 1;
+    /* setting RTX_FRAME_RELATED_P does not work right, because the
+       pushm is not a set insn */
+    /* RTX_FRAME_RELATED_P (insn) = 1; */
     return reg_count * UNITS_PER_WORD;
   }
 
