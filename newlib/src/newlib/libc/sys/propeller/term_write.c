@@ -2,9 +2,11 @@
 #include <reent.h>
 #include "propdev.h"
 
+int _serial_tx(int);
+
 static int null_term_putc(int ch);
 
-int (*_term_putc_p)(int ch) = null_term_putc;
+int (*_term_putc_p)(int ch) = _serial_tx; // BUG -- should be null_term_putc;
 
 _ssize_t _term_write(const void *buf, size_t bytes)
 {

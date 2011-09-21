@@ -2,9 +2,11 @@
 #include <reent.h>
 #include "propdev.h"
 
+int _serial_tx(int);
+
 static int null_error_putc(int ch);
 
-int (*_error_putc_p)(int ch) = null_error_putc;
+int (*_error_putc_p)(int ch) = _serial_tx; // BUG -- should be null_error_putc;
 
 _ssize_t _error_write(const void *buf, size_t bytes)
 {
@@ -13,6 +15,11 @@ _ssize_t _error_write(const void *buf, size_t bytes)
     while (i < bytes)
         (*_error_putc_p)(cbuf[i++]);
     return bytes;
+}
+
+int _errbyte(int ch)
+{
+    return (*_error_putc_p)(ch);
 }
 
 static int null_error_putc(int ch)
