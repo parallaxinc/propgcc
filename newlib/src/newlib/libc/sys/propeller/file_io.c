@@ -4,14 +4,9 @@
 #include "propdev.h"
 #include "dosfs.h"
 
-#ifndef TRUE
-#define TRUE    1
-#define FALSE   0
-#endif
-
 #define FS_DEBUG
 
-static _fs_state_t _fs_state = { FALSE };
+_fs_state_t _fs_state = { FALSE };
 
 static _ssize_t file_read(int fd, void *buf, size_t bytes);
 static _ssize_t file_write(int fd, const void *buf, size_t bytes);
@@ -114,51 +109,3 @@ static _ssize_t file_write(int fd, const void *buf, size_t bytes)
     err = DFS_WriteFile(&_fs_state.files[i].file, _fs_state.scratch, buf, &count, bytes);
     return count > 0 ? count : EOF;
 }
-
-#if 0
-
-int open(const char *name, int flags, ...)
-{
-    int dfs_mode, i;
-	if (!fileInit) {
-		if (!MountFS())
-			return -1;
-	}
-    switch (flags & O_ACCMODE) {
-    case O_RDONLY:
-        dfs_mode = DFS_READ;
-        break;
-    case O_WRONLY:
-        dfs_mode = DFS_WRITE;
-        break;
-    default:
-        return -1;
-    }
-    for (i = 0; i < MAX_FILES; ++i)
-        if (!Files[i].inUse)
-            break;
-    if (i >= MAX_FILES)
-        return -1;
-    if (DFS_OpenFile(&vinfo, (char *)name, dfs_mode, scratch, &Files[i].file) != DFS_OK)
-        return -1;
-    Files[i].inUse = TRUE;
-    return BASE_FD + i;
-}
-
-int close(int fd)
-{
-    int i = fd - BASE_FD;
-    if (!fileInit || i < 0 || i >= MAX_FILES)
-        return -1;
-    if (!Files[i].inUse)
-        return -1;
-    Files[i].inUse = FALSE;
-    return 0;
-}
-
-off_t lseek(int fd, off_t offset, int whence)
-{
-    return -1;
-}
-
-#endif

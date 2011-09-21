@@ -1,12 +1,17 @@
 #ifndef __PROPDEV_H__
 #define __PROPDEV_H__
 
-#include <stdint.h>
-#include "dosfs.h"
-
 #ifdef __cplusplus
 extern "C" 
 {
+#endif
+
+#include <stdint.h>
+#include "dosfs.h"
+
+#ifndef TRUE
+#define TRUE    1
+#define FALSE   0
 #endif
 
 #define coginit(id, code, param)    __builtin_coginit(                                  \
@@ -25,11 +30,6 @@ extern "C"
 #define TERM_IO		(TERM_IN | TERM_OUT)
 
 int InitSerialTerm(int rxpin, int txpin, int mode, int baudrate, int flags);
-int InitKeyboardTerm(int dpin, int cpin);
-int InitTvTerm(int tvpin);
-int InitTv2Term(int tvpin);
-int InitFileIO(void);
-int InitC3FileIO(int retries);
 
 int _inbyte(void);
 int _outbyte(int ch);
