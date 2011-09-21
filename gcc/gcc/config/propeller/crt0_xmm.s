@@ -294,6 +294,8 @@ wrx_common_fetch_data
 	'' note that we push from low register first (so registers
 	'' increment as the stack decrements) and pop the other way
 	''
+
+	.global __LMM_PUSHM
 __LMM_PUSHM
 	mov	__TMP1,__TMP0
 	and	__TMP1,#0x0f
@@ -304,12 +306,13 @@ L_pushloop
 L_pushins
 	wrlong	0-0,sp
 	add	L_pushins,inc_dest1
-	djnz	__TMP1,#L_pushloop
+	djnz	__TMP0,#L_pushloop
 
 	jmp	#__LMM_loop
 inc_dest1
 	long	(1<<9)
 
+	.global __LMM_POPM
 __LMM_POPM
 	mov	__TMP1,__TMP0
 	and	__TMP1,#0x0f
@@ -319,7 +322,7 @@ L_poploop
 	rdlong	0-0,sp
 	add	sp,#4
 	sub	L_poploop,inc_dest1
-	djnz	__TMP1,#L_pushloop
+	djnz	__TMP0,#L_pushloop
 
 	jmp	#__LMM_loop
 
