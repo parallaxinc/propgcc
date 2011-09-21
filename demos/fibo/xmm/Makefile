@@ -24,4 +24,4 @@ all: $(NAME).elf
 #
 # include the fragment that defines most of everything
 #
-include $(PROPLIB)/xmmdemo.mk
+include $(PROPLIB)/xmmcdemo.mk
