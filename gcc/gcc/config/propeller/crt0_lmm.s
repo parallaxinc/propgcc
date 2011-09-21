@@ -123,6 +123,45 @@ __LMM_JMP
 	jmp	#__LMM_loop
 
 	''
+	'' push and pop multiple
+	'' these take in __TMP0 a mask
+	'' of (first_register|(count<<4))
+	''
+	'' note that we push from low register first (so registers
+	'' increment as the stack decrements) and pop the other way
+	''
+	
+__LMM_PUSHM
+	mov	__TMP1,__TMP0
+	and	__TMP1,#0x0f
+	movd	L_pushins,__TMP1
+	shr	__TMP0,#4
+L_pushloop
+	sub	sp,#4
+L_pushins
+	wrlong	0-0,sp
+	add	L_pushins,inc_dest1
+	djnz	__TMP1,#L_pushloop
+
+	jmp	#__LMM_loop
+inc_dest1
+	long	(1<<9)
+
+__LMM_POPM
+	mov	__TMP1,__TMP0
+	and	__TMP1,#0x0f
+	movd	L_poploop,__TMP1
+	shr	__TMP0,#4
+L_poploop
+	rdlong	0-0,sp
+	add	sp,#4
+	sub	L_poploop,inc_dest1
+	djnz	__TMP1,#L_pushloop
+
+	jmp	#__LMM_loop
+
+	
+	''
 	'' masks
 	''
 	
