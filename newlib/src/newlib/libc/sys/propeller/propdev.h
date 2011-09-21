@@ -33,13 +33,17 @@ int InitC3FileIO(int retries);
 
 int _inbyte(void);
 int _outbyte(int ch);
-
-_ssize_t _term_read(void *buf, size_t bytes);
-_ssize_t _term_write(const void *buf, size_t bytes);
+int _errbyte(int ch);
 
 extern int (*_term_getc_p)(void);
 extern int (*_term_putc_p)(int ch);
 extern int (*_error_putc_p)(int ch);
+
+_ssize_t _term_read(void *buf, size_t bytes);
+_ssize_t _term_write(const void *buf, size_t bytes);
+_ssize_t _error_write(const void *buf, size_t bytes);
+_ssize_t _file_read(int fd, void *buf, size_t bytes);
+_ssize_t _file_write(int fd, const void *buf, size_t bytes);
 
 extern _ssize_t (*_term_read_p)(void *buf, size_t bytes);
 extern _ssize_t (*_term_write_p)(const void *buf, size_t bytes);
