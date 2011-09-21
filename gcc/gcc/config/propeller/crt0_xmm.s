@@ -127,16 +127,19 @@ __LMM_JMP
     .set RDLONG_OPCODE, 0x02
 
 	.global __LMM_RDBYTE
+	.global __LMM_RDBYTE_ret
 __LMM_RDBYTE
     movi    rd_common_read, #RDBYTE_OPCODE
     jmp     #rd_common
 
 	.global __LMM_RDWORD
+	.global __LMM_RDWORD_ret
 __LMM_RDWORD
     movi    rd_common_read, #RDWORD_OPCODE
     jmp     #rd_common
 
 	.global __LMM_RDLONG
+	.global __LMM_RDLONG_ret
 __LMM_RDLONG
     movi    rd_common_read, #RDLONG_OPCODE
 
@@ -146,7 +149,10 @@ rd_common
     call    #cache_read
 rd_common_read
     rdlong  __TMP0, memp
-    jmp     #__LMM_loop
+__LMM_RDBYTE_ret
+__LMM_RDWORD_ret
+__LMM_RDLONG_ret
+    ret
     
     ''
     '' simple memory write instructions
@@ -161,16 +167,19 @@ rd_common_read
     .set WRLONG_OPCODE, 0x02
 
 	.global __LMM_WRBYTE
+	.global __LMM_WRBYTE_ret
 __LMM_WRBYTE
     movi    wr_common_write, #WRBYTE_OPCODE
     jmp     #wr_common
 
 	.global __LMM_WRWORD
+	.global __LMM_WRWORD_ret
 __LMM_WRWORD
     movi    wr_common_write, #WRWORD_OPCODE
     jmp     #wr_common
 
 	.global __LMM_WRLONG
+	.global __LMM_WRLONG_ret
 __LMM_WRLONG
     movi    wr_common_write, #WRLONG_OPCODE
 
@@ -180,7 +189,10 @@ wr_common
     call    #cache_write
 wr_common_write
     wrlong  __TMP1, memp
-    jmp     #__LMM_loop
+__LMM_WRBYTE_ret
+__LMM_WRWORD_ret
+__LMM_WRLONG_ret
+    ret
 
 __TMP1	long	0
 
