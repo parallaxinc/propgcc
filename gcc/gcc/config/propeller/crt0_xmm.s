@@ -322,7 +322,7 @@ L_poploop
 	rdlong	0-0,sp
 	add	sp,#4
 	sub	L_poploop,inc_dest1
-	djnz	__TMP0,#L_pushloop
+	djnz	__TMP0,#L_poploop
 
 	jmp	#__LMM_loop
 
