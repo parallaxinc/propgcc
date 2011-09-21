@@ -296,6 +296,7 @@ wrx_common_fetch_data
 	''
 
 	.global __LMM_PUSHM
+	.global __LMM_PUSHM_ret
 __LMM_PUSHM
 	mov	__TMP1,__TMP0
 	and	__TMP1,#0x0f
@@ -307,12 +308,14 @@ L_pushins
 	wrlong	0-0,sp
 	add	L_pushins,inc_dest1
 	djnz	__TMP0,#L_pushloop
-
-	jmp	#__LMM_loop
+__LMM_PUSHM_ret
+	ret
+	
 inc_dest1
 	long	(1<<9)
 
 	.global __LMM_POPM
+	.global __LMM_POPM_ret
 __LMM_POPM
 	mov	__TMP1,__TMP0
 	and	__TMP1,#0x0f
@@ -323,8 +326,8 @@ L_poploop
 	add	sp,#4
 	sub	L_poploop,inc_dest1
 	djnz	__TMP0,#L_poploop
-
-	jmp	#__LMM_loop
+__LMM_POPM_ret
+	ret
 
 	''
 	'' masks

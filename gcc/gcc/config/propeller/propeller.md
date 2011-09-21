@@ -892,7 +892,7 @@
             (match_operand:SI 1 "immediate_operand" "i")]
 	  UNSPEC_PUSHM)]
   "TARGET_LMM"
-  "mov __TMP0,#(%c1<<4)+%c0\n\tjmp\t#__LMM_PUSHM"
+  "mov __TMP0,#(%c1<<4)+%c0\n\tcall\t#__LMM_PUSHM"
   [(set_attr "type" "multi")
    (set_attr "length" "8")]
 )
@@ -902,7 +902,7 @@
             (match_operand:SI 1 "immediate_operand" "i")]
 	  UNSPEC_POPM)]
   "TARGET_LMM"
-  "mov __TMP0,#(%c1<<4)+%c0\n\tjmp\t#__LMM_POPM"
+  "mov __TMP0,#(%c1<<4)+%c0\n\tcall\t#__LMM_POPM"
   [(set_attr "type" "multi")
    (set_attr "length" "8")]
 )
