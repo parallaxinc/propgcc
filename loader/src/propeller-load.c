@@ -85,21 +85,23 @@ int main(int argc, char *argv[])
                     port = argv[i];
                 else
                     Usage(port);
+#if defined(CYGWIN) || defined(WIN32) || defined(LINUX)
                 if (isdigit((int)port[0])) {
 #if defined(CYGWIN) || defined(WIN32)
                     static char buf[10];
                     sprintf(buf, "COM%d", atoi(port));
                     port = buf;
 #endif
-#ifdef LINUX
-                    static char buf[10];
+#if defined(LINUX)
+                    static char buf[64];
                     sprintf(buf, "/dev/ttyUSB%d", atoi(port));
                     port = buf;
 #endif
                 }
+#endif
 #if defined(MACOSX)
-                if (isdigit(port[0] != '/')) {
-                    static char buf[10];
+                if (port[0] != '/') {
+                    static char buf[64];
                     sprintf(buf, "/dev/cu.usbserial-%s", port);
                     port = buf;
                 }
