@@ -1336,7 +1336,7 @@ pop_multiple (int last_reg, int reg_count)
   for (regno = last_reg; reg_count > 0; --regno,--reg_count)
     {
       mem = gen_rtx_MEM (word_mode, sp);
-      insn = emit_move_insn (mem, gen_rtx_REG (word_mode, regno));
+      insn = emit_move_insn (gen_rtx_REG (word_mode, regno), mem);
       insn = emit_add (sp, sp, GEN_INT(4));
     }
 
