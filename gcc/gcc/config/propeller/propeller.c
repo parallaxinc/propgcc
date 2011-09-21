@@ -129,8 +129,12 @@ propeller_option_override (void)
         flag_pic = 0;
     }
 
-    /* -mxmm implies -mlmm */
+    /* -mxmm implies -mxmmc */
     if (TARGET_XMM)
+      target_flags |= MASK_XMM_CODE;
+
+    /* -mxmm and -mxmmc implies -mlmm */
+    if (TARGET_XMM_CODE)
       target_flags |= MASK_LMM;
 
     /* function CSE does not make sense for Cog mode
@@ -2233,7 +2237,11 @@ fcache_label_refs_in_block (rtx lab, rtx first, rtx last)
  * (3) there must be no branches into or out of the block
  */
 
-#define MAX_FCACHE_SIZE (TARGET_XMM ? 508 : 1020)
+#if 0
+#define MAX_FCACHE_SIZE ( TARGET_LARGE_FCACHE : 1020 : 508 )
+#else
+#define MAX_FCACHE_SIZE (508)
+#endif
 
 static bool
 fcache_block_ok (rtx first, rtx last, bool func_p)

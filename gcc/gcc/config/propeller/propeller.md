@@ -955,8 +955,8 @@
    neg\t%0, #%n1
    rdlong\t%0, %1
    wrlong\t%1, %0
-   mov\t__TMP0,%1\n\tjmp #__LMM_RDLONG\n\tmov\t%0,__TMP0
-   mov\t__TMP0,%0\n\tmov__TMP1,%1\n\tjmp #__LMM_WRLONG"
+   mov\t__TMP0,%1\n\tcall #__LMM_RDLONG\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%0\n\tmov__TMP1,%1\n\tcall #__LMM_WRLONG"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
     (set_attr "length" "4,4,4,4,12,12")
     (set_attr "predicable" "no")
@@ -1056,6 +1056,23 @@
   ]
 )
 
+(define_insn "*movhi_xmm"
+  [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
+	(match_operand:HI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
+  "TARGET_XMM"
+  "@
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdword\t%0, %1
+   wrword\t%1, %0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%0\n\tmov__TMP1,%1\n\tcall #__LMM_WRWORD"
+   [(set_attr "type" "core,core,hub,hub,multi,multi")
+    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "predicable" "no")
+   ]
+)
+
 (define_insn "*movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
@@ -1081,6 +1098,23 @@
       && !propeller_dst_operand (operands[1], QImode))
     operands[1] = force_reg (QImode, operands[1]);
 }")
+
+(define_insn "*movqi_xmm"
+  [(set (match_operand:QI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
+	(match_operand:QI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
+  "TARGET_XMM"
+  "@
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdbyte\t%0, %1
+   wrbyte\t%1, %0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDBYTE\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%0\n\tmov__TMP1,%1\n\tcall #__LMM_WRBYTE"
+   [(set_attr "type" "core,core,hub,hub,multi,multi")
+    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "predicable" "no")
+   ]
+)
 
 (define_insn "*movqi"
   [(set (match_operand:QI 0 "nonimmediate_operand"   "=rC,rC,rC,Q")
