@@ -1940,6 +1940,7 @@
   [(unspec_volatile [(return)] UNSPEC_NAKED_RET) ]
   ""
   "' Naked function: epilogue provided by programmer."
+  [(set_attr "length" "0")]
 )
 
 ;; we pretend that "native return" uses the link register
@@ -1967,6 +1968,36 @@
 ;; -------------------------------------------------------------------------
 ;;
 
+(define_expand "doloop_begin"
+  [(use (match_operand 0 "register_operand" ""))	; loop pseudo
+   (use (match_operand 1 "" ""))	; iterations; zero if unknown
+   (use (match_operand 2 "" ""))	; max iterations
+   (use (match_operand 3 "" ""))	; loop level
+  ]
+""
+{
+  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+    {
+      if (INTVAL (operands[3]) > 1)
+      	 FAIL;
+      emit_insn (gen_doloop_begin_internal (operands[0], operands[0], operands[3]));
+    }
+  else
+    FAIL;
+  DONE;
+}
+)
+
+(define_insn "doloop_begin_internal"
+   [(set (match_operand:SI 0 "register_operand" "=r")
+	(unspec_volatile:SI
+	 [(match_operand:SI 1 "register_operand" "0")
+	  (match_operand 2 "const_int_operand" "")] UNSPEC_LOOP_START))]
+""
+"'' loop_start register %0 level %2"
+ [(set_attr "length" "0")]
+)
+
 (define_expand "doloop_end"
   [(use (match_operand 0 "" ""))	; loop pseudo
    (use (match_operand 1 "" ""))	; iterations; zero if unknown
@@ -1976,7 +2007,11 @@
 ""
 {
   if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
-    emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+    {
+      if (INTVAL (operands[3]) > 1)
+      	 FAIL;
+      emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+    }
   else
     FAIL;
   DONE;
