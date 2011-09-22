@@ -7,6 +7,7 @@ extern _fs_state_t _fs_state;
 
 off_t _lseek_r(struct _reent *reent, int fd, off_t offset, int whence)
 {
+#if 0
     int i = fd - _FS_BASE_FD;
     if (!_fs_state.initialized) {
         reent->_errno = EIO;
@@ -45,6 +46,7 @@ off_t _lseek_r(struct _reent *reent, int fd, off_t offset, int whence)
         return -1;
     }
     DFS_Seek(&_fs_state.files[i].file, offset, _fs_state.scratch);
+#endif
     return 0;
 }
 

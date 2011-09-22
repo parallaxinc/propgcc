@@ -12,6 +12,8 @@ int InitFileIO(void)
 {
 	_file_read_p = _file_read;
 	_file_write_p = _file_write;
+    _file_close_p = _file_close;
+    _file_unlink_p = _file_unlink;
 	return 0;
 }
 

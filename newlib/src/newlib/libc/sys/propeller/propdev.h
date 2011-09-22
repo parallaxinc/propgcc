@@ -42,14 +42,20 @@ extern int (*_error_putc_p)(int ch);
 _ssize_t _term_read(void *buf, size_t bytes);
 _ssize_t _term_write(const void *buf, size_t bytes);
 _ssize_t _error_write(const void *buf, size_t bytes);
-_ssize_t _file_read(int fd, void *buf, size_t bytes);
-_ssize_t _file_write(int fd, const void *buf, size_t bytes);
 
 extern _ssize_t (*_term_read_p)(void *buf, size_t bytes);
 extern _ssize_t (*_term_write_p)(const void *buf, size_t bytes);
 extern _ssize_t (*_error_write_p)(const void *buf, size_t bytes);
+
+_ssize_t _file_read(int fd, void *buf, size_t bytes);
+_ssize_t _file_write(int fd, const void *buf, size_t bytes);
+int _file_close(int fd);
+int _file_unlink(const char *pathname);
+
 extern _ssize_t (*_file_read_p)(int fd, void *buf, size_t bytes);
 extern _ssize_t (*_file_write_p)(int fd, const void *buf, size_t bytes);
+extern int (*_file_close_p)(int fd);
+extern int (*_file_unlink_p)(const char *pathname);
 
 #define _FS_MAX_FILES   4
 #define _FS_BASE_FD     3
