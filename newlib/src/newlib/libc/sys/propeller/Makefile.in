@@ -62,7 +62,7 @@ am_lib_a_OBJECTS = access.$(OBJEXT) clock.$(OBJEXT) close.$(OBJEXT) creat.$(OBJE
 	usleep.$(OBJEXT) version.$(OBJEXT) write.$(OBJEXT) \
 	term_read.$(OBJEXT) term_write.$(OBJEXT) error_write.$(OBJEXT) \
 	serial_term.$(OBJEXT) FdSerial.$(OBJEXT) FullDuplexSerial_firmware.$(OBJEXT) \
-	file_io.$(OBJEXT) file_read.$(OBJEXT) file_write.$(OBJEXT) dosfs.$(OBJEXT)
+	file_io.$(OBJEXT) file_read.$(OBJEXT) file_write.$(OBJEXT) file_close.$(OBJEXT) file_unlink.$(OBJEXT) dosfs.$(OBJEXT)
 
 lib_a_OBJECTS = $(am_lib_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -221,6 +221,8 @@ lib_a_SOURCES = \
 	file_io.c	\
 	file_read.c	\
 	file_write.c	\
+	file_close.c	\
+	file_unlink.c	\
 	dosfs.c
 
 ACLOCAL_AMFLAGS = -I ../../..
