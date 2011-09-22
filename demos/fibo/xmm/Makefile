@@ -16,7 +16,7 @@ NAME = fibo
 OBJS = fibo.o
 
 # flags to build with
-CFLAGS = -Os
+CFLAGS = -Os -mfcache
 
 # default build target
 all: $(NAME).elf
