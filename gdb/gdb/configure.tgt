@@ -429,7 +429,7 @@ powerpc*-*-*)
 	;;
 
 propeller-*-*)
-	gdb_target_obs="mt_propeller.o"
+	gdb_target_obs="propeller-tdep.o"
 	;;
 
 s390*-*-*)
