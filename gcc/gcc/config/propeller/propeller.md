@@ -1380,10 +1380,16 @@
   "
   {
     enum rtx_code code = GET_CODE (operands[1]);
+    enum machine_mode mode;
     rtx ccreg;
+    rtx x = XEXP (operands[1], 0);
+    rtx y = XEXP (operands[1], 1);
 
-    ccreg = propeller_gen_compare_reg (code, XEXP (operands[1], 0),
-				 XEXP (operands[1], 1));
+    ccreg = propeller_gen_compare_reg (code, x, y);
+    mode = GET_MODE (ccreg);
+
+    /* we have to actually emit the compare! */
+    emit_insn (gen_rtx_SET (VOIDmode, ccreg, gen_rtx_COMPARE (mode, x, y)));
     operands[1] = gen_rtx_fmt_ee (code, VOIDmode, ccreg, const0_rtx);
   }"
 )
