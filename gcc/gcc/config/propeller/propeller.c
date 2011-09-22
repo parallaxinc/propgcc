@@ -129,8 +129,12 @@ propeller_option_override (void)
         flag_pic = 0;
     }
 
-    /* -mxmm implies -mlmm */
+    /* -mxmm implies -mxmmc */
     if (TARGET_XMM)
+      target_flags |= MASK_XMM_CODE;
+
+    /* -mxmm and -mxmmc implies -mlmm */
+    if (TARGET_XMM_CODE)
       target_flags |= MASK_LMM;
 
     /* function CSE does not make sense for Cog mode
@@ -314,6 +318,22 @@ propeller_cogmem_p (rtx op)
     if (propeller_cogaddr_p (op))
         return 1;
     return 0;
+}
+
+/*
+ * test whether this operand is known to be memory pointing into the stack
+ */
+bool
+propeller_stack_operand_p (rtx op)
+{
+  if (GET_CODE (op) != MEM)
+    return false;
+  op = XEXP (op, 0);
+  if (op == stack_pointer_rtx)
+    return true;
+  if (op == frame_pointer_rtx || op == arg_pointer_rtx)
+    return true;
+  return false;
 }
 
 /*
@@ -1220,6 +1240,43 @@ propeller_initial_elimination_offset (int from, int to)
     gcc_unreachable();
   return offset;
 }
+
+/* push multiple registers on the stack; return bytes pushed */
+static int
+push_multiple (int first_reg, int reg_count)
+{
+  int pushed = 0;
+  rtx mem;
+  rtx insn;
+  rtx sp;
+  int regno;
+
+  if (first_reg < 0 || first_reg + reg_count > 16)
+    gcc_unreachable ();
+  if (TARGET_LMM && reg_count > 1) {
+    insn = gen_pushm ( GEN_INT(first_reg), GEN_INT(reg_count) );
+    insn = emit_insn ( insn );
+    /* setting RTX_FRAME_RELATED_P does not work right, because the
+       pushm is not a set insn */
+    /* RTX_FRAME_RELATED_P (insn) = 1; */
+    return reg_count * UNITS_PER_WORD;
+  }
+
+
+  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
+
+  for (regno = first_reg; regno < first_reg + reg_count; regno++)
+    {
+      insn = emit_add (sp, sp, GEN_INT(-4));
+      RTX_FRAME_RELATED_P (insn) = 1;
+      mem = gen_rtx_MEM (word_mode, sp);
+      insn = emit_move_insn (mem, gen_rtx_REG (word_mode, regno));
+      RTX_FRAME_RELATED_P (insn) = 1;
+      pushed += UNITS_PER_WORD;
+    }
+  return pushed;
+}
+
 /* Generate and emit RTL to save callee save registers.  */
 /* returns total number of bytes pushed on stack */
 static int
@@ -1228,28 +1285,65 @@ expand_save_registers (struct propeller_frame_info *info)
   unsigned int reg_save_mask = info->reg_save_mask;
   int regno;
   int pushed = 0;
-  rtx insn;
-  rtx sp;
+  int reg_start, last_reg, reg_count;
 
-  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
 
   /* Callee saves are below locals and above outgoing arguments.  */
   /* push registers from low to high (so r15 gets pushed last, and
      hence is available early for us to use in the epilogue) */
+  reg_start = -9999;
+  last_reg = -9999;
+  reg_count = 0;
+
   for (regno = 0; regno <= 15; regno++)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
-          rtx mem;
-          insn = emit_add (sp, sp, GEN_INT(-4));
-          RTX_FRAME_RELATED_P (insn) = 1;
-          mem = gen_rtx_MEM (word_mode, sp);
-          insn = emit_move_insn (mem, gen_rtx_REG (word_mode, regno));
-          RTX_FRAME_RELATED_P (insn) = 1;
-          pushed += UNITS_PER_WORD;
+	if (last_reg == regno-1) {
+	  reg_count++;
+	} else {
+	  /* spit out a single push or a sequence of push multiples */
+	  if (reg_start > 0)
+	    pushed += push_multiple (reg_start, reg_count);
+	  reg_count = 1;
+	  reg_start = regno;
+	}
+	last_reg = regno;
       }
     }
+  if (reg_count > 0) {
+    pushed += push_multiple (reg_start, reg_count);
+  }
   return pushed;
+}
+
+/* pop multiple registers off the stack */
+static void
+pop_multiple (int last_reg, int reg_count)
+{
+  rtx mem;
+  rtx insn;
+  rtx sp;
+  int regno;
+
+  if (last_reg >= 16 || last_reg - reg_count < 0)
+    gcc_unreachable ();
+  if (TARGET_LMM && reg_count > 1) {
+    insn = gen_popm ( GEN_INT(last_reg), GEN_INT(reg_count) );
+    insn = emit_insn ( insn );
+    return;
+  }
+
+
+  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
+
+  for (regno = last_reg; reg_count > 0; --regno,--reg_count)
+    {
+      mem = gen_rtx_MEM (word_mode, sp);
+      insn = emit_move_insn (gen_rtx_REG (word_mode, regno), mem);
+      insn = emit_add (sp, sp, GEN_INT(4));
+    }
+
 }
 
 /* Generate and emit RTL to restore callee save registers.  */
@@ -1258,10 +1352,12 @@ expand_restore_registers (struct propeller_frame_info *info)
 {
   unsigned int reg_save_mask = info->reg_save_mask;
   int regno;
-  rtx insn;
-  rtx sp;
+  int reg_end, last_reg, reg_count;
 
-  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
+
+  reg_end = -9999;
+  last_reg = -9999;
+  reg_count = 0;
 
   /* Callee saves are below locals and above outgoing arguments.  */
   /* we pushed registers from high to low (so r0 gets pushed first),
@@ -1271,12 +1367,26 @@ expand_restore_registers (struct propeller_frame_info *info)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
-          rtx mem;
-          mem = gen_rtx_MEM (word_mode, sp);
-          insn = emit_move_insn (gen_rtx_REG (word_mode, regno), mem);
-          insn = emit_add (sp, sp, GEN_INT(4));
+	if (last_reg == regno+1)
+	  {
+	    reg_count++;
+	  }
+	else
+	  {
+	    /* spit out a single pop or pop multiple */
+	    if (reg_end > 0)
+	      {
+		pop_multiple (reg_end, reg_count);
+	      }
+	    reg_count = 1;
+	    reg_end = regno;
+	  }
+	last_reg = regno;
       }
     }
+
+  if (reg_count > 0)
+    pop_multiple (reg_end, reg_count);
 }
 
 static void
@@ -2127,7 +2237,11 @@ fcache_label_refs_in_block (rtx lab, rtx first, rtx last)
  * (3) there must be no branches into or out of the block
  */
 
-#define MAX_FCACHE_SIZE (TARGET_XMM ? 508 : 1020)
+#if 0
+#define MAX_FCACHE_SIZE ( TARGET_LARGE_FCACHE : 1020 : 508 )
+#else
+#define MAX_FCACHE_SIZE (508)
+#endif
 
 static bool
 fcache_block_ok (rtx first, rtx last, bool func_p)

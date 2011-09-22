@@ -26,10 +26,10 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "%{mxmm:hubstart_xmm.o%s; :spinboot.o%s} %{mcog:crt0_cog.o%s; mxmm:crt0_xmm.o%s crtbegin_xmm.o%s; :crt0_lmm.o%s crtbegin_lmm.o%s}"
+#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; :spinboot.o%s} %{mcog:crt0_cog.o%s; mxmm*:crt0_xmm.o%s crtbegin_xmm.o%s; :crt0_lmm.o%s crtbegin_lmm.o%s}"
 
 #undef  ENDFILE_SPEC
-#define ENDFILE_SPEC "%{mcog:crtend_cog.o%s; mxmm:crtend_xmm.o%s; :crtend_lmm.o%s}"
+#define ENDFILE_SPEC "%{mcog:crtend_cog.o%s; mxmm*:crtend_xmm.o%s; :crtend_lmm.o%s}"
 
 #undef ASM_SPEC
 #define ASM_SPEC "\
@@ -47,7 +47,7 @@
 #undef LINK_SPEC
 #define LINK_SPEC "                                             \
 %{mrelax:-relax}						\
-%{mcog:-mpropeller_cog; mxmm: -mpropeller_xmm; :-mpropeller}	\
+%{mcog:-mpropeller_cog; mxmmc: -mpropeller_xmmc; mxmm: -mpropeller_xmm; :-mpropeller}	\
 "
 
 #define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)

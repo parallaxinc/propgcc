@@ -28,8 +28,8 @@ ENDOBJS = -lgcc $(LIBGCC)/crtend_xmm.o
 # Current LIBRARY and INCL
 PROPINC = $(PROPLIB)/../include
 
-CFLAGS += -mxmm -I$(PROPINC)
-LDSCRIPT = $(PROPLIB)/propeller_xmm.script
+CFLAGS += -mxmmc -I$(PROPINC)
+LDSCRIPT = $(PROPLIB)/propeller_xmmc.script
 
 # basic gnu tools
 CC = propeller-elf-gcc

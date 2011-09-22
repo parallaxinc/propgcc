@@ -127,16 +127,19 @@ __LMM_JMP
     .set RDLONG_OPCODE, 0x02
 
 	.global __LMM_RDBYTE
+	.global __LMM_RDBYTE_ret
 __LMM_RDBYTE
     movi    rd_common_read, #RDBYTE_OPCODE
     jmp     #rd_common
 
 	.global __LMM_RDWORD
+	.global __LMM_RDWORD_ret
 __LMM_RDWORD
     movi    rd_common_read, #RDWORD_OPCODE
     jmp     #rd_common
 
 	.global __LMM_RDLONG
+	.global __LMM_RDLONG_ret
 __LMM_RDLONG
     movi    rd_common_read, #RDLONG_OPCODE
 
@@ -146,7 +149,10 @@ rd_common
     call    #cache_read
 rd_common_read
     rdlong  __TMP0, memp
-    jmp     #__LMM_loop
+__LMM_RDBYTE_ret
+__LMM_RDWORD_ret
+__LMM_RDLONG_ret
+    ret
     
     ''
     '' simple memory write instructions
@@ -161,16 +167,19 @@ rd_common_read
     .set WRLONG_OPCODE, 0x02
 
 	.global __LMM_WRBYTE
+	.global __LMM_WRBYTE_ret
 __LMM_WRBYTE
     movi    wr_common_write, #WRBYTE_OPCODE
     jmp     #wr_common
 
 	.global __LMM_WRWORD
+	.global __LMM_WRWORD_ret
 __LMM_WRWORD
     movi    wr_common_write, #WRWORD_OPCODE
     jmp     #wr_common
 
 	.global __LMM_WRLONG
+	.global __LMM_WRLONG_ret
 __LMM_WRLONG
     movi    wr_common_write, #WRLONG_OPCODE
 
@@ -180,7 +189,10 @@ wr_common
     call    #cache_write
 wr_common_write
     wrlong  __TMP1, memp
-    jmp     #__LMM_loop
+__LMM_WRBYTE_ret
+__LMM_WRWORD_ret
+__LMM_WRLONG_ret
+    ret
 
 __TMP1	long	0
 
@@ -285,6 +297,49 @@ wrx_common_fetch_data
     jmp     #__LMM_loop
     
     .endif 'COMPLEX_XMM_RDWR
+
+	''
+	'' push and pop multiple
+	'' these take in __TMP0 a mask
+	'' of (first_register|(count<<4))
+	''
+	'' note that we push from low register first (so registers
+	'' increment as the stack decrements) and pop the other way
+	''
+
+	.global __LMM_PUSHM
+	.global __LMM_PUSHM_ret
+__LMM_PUSHM
+	mov	__TMP1,__TMP0
+	and	__TMP1,#0x0f
+	movd	L_pushins,__TMP1
+	shr	__TMP0,#4
+L_pushloop
+	sub	sp,#4
+L_pushins
+	wrlong	0-0,sp
+	add	L_pushins,inc_dest1
+	djnz	__TMP0,#L_pushloop
+__LMM_PUSHM_ret
+	ret
+	
+inc_dest1
+	long	(1<<9)
+
+	.global __LMM_POPM
+	.global __LMM_POPM_ret
+__LMM_POPM
+	mov	__TMP1,__TMP0
+	and	__TMP1,#0x0f
+	movd	L_poploop,__TMP1
+	shr	__TMP0,#4
+L_poploop
+	rdlong	0-0,sp
+	add	sp,#4
+	sub	L_poploop,inc_dest1
+	djnz	__TMP0,#L_poploop
+__LMM_POPM_ret
+	ret
 
 	''
 	'' masks

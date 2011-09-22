@@ -6,7 +6,7 @@ TEMPLATE_NAME=elf32
 EXTRA_EM_FILE=propeller
 
 TEXT_MEMORY=">rom"
-DATA_MEMORY=">rom AT>rom"
+DATA_MEMORY=">hub AT>rom"
 HUBTEXT_MEMORY=">hub AT>rom"
 
 KERNEL="
