@@ -1474,10 +1474,10 @@
 	  (match_operand:SI 2 "propeller_add_operand" "rCI,N,0,0,rCI,N,rCI,N" )))]
   ""
   "@
-   %p3 mov\t%0,%2
-   %p3 neg\t%0,#%n2
-   %P3 mov\t%0,%1
-   %P3 neg\t%0,#%n1
+   %P3 mov\t%0,%2
+   %P3 neg\t%0,#%n2
+   %p3 mov\t%0,%1
+   %p3 neg\t%0,#%n1
    %p3 mov\t%0,%1\n\t%P3 mov\t%0,%2
    %p3 mov\t%0,%1\n\t%P3 neg\t%0,#%n2
    %p3 neg\t%0,#%n1\n\t%P3 mov\t%0,%2
