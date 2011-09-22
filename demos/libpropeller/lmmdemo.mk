@@ -54,7 +54,7 @@ $(NAME).elf: $(LDSCRIPT) $(OBJS) $(LIBC)
 	$(LD) -o $@ -T $(LDSCRIPT) $(STARTOBJS) $(OBJS) -lgcc $(LIBC) $(ENDOBJS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -Os -mlmm -o $@ -c $<
+	$(CC) $(CFLAGS) -mlmm -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<
