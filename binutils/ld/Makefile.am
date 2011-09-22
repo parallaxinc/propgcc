@@ -1724,7 +1724,7 @@ epropeller_xmm.c: $(srcdir)/emulparams/propeller_xmm.sh \
 	${GENSCRIPTS} propeller_xmm "$(tdir_propeller)"
 epropeller_xmmc.c: $(srcdir)/emulparams/propeller_xmmc.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
-	${GENSCRIPTS} propeller_xmm "$(tdir_propeller)"
+	${GENSCRIPTS} propeller_xmmc "$(tdir_propeller)"
 eriscix.c: $(srcdir)/emulparams/riscix.sh \
   $(srcdir)/emultempl/generic.em $(srcdir)/scripttempl/aout.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} riscix "$(tdir_riscix)"
