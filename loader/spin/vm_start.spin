@@ -83,6 +83,9 @@ initialize_stack    mov     dst, vm_mbox
                     wrlong  cache_linemask, dst
                     sub     dst, #4
                     wrlong  cache_mboxcmd, dst
+                    
+'Store the cache driver mailbox address at $00000006
+                    wrword  cache_mboxcmd, #$00000006 '__xmm_mbox
 
 'Start the xmm kernel cog and stop this cog.
 launch              wrlong  dst, vm_mbox
