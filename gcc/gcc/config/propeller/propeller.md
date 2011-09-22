@@ -259,7 +259,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 		(match_operand:SI 1 "propeller_dst_operand" "%0,0")
-                (neg:SI(match_operand:SI 2 "propeller_src_operand"  "rCI,N"))))
+                (neg:SI(match_operand:SI 2 "propeller_add_operand"  "rCI,N"))))
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	  (plus:SI (match_dup 1)(match_dup 2)))]
   ""
@@ -274,7 +274,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	    (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
-                     (match_operand:SI 2 "propeller_src_operand"  "rCI,N"))
+                     (match_operand:SI 2 "propeller_add_operand"  "rCI,N"))
 	    (const_int 0)))
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	  (plus:SI (match_dup 1)(match_dup 2)))]
@@ -290,7 +290,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	    (plus:SI (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
-                     (match_operand:SI 1 "propeller_src_operand" "rCI,N"))
+                     (match_operand:SI 1 "propeller_add_operand" "rCI,N"))
             (const_int 0)))
    ]
   ""
@@ -304,7 +304,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	    (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
-            (neg:SI (match_operand:SI 1 "propeller_src_operand" "rCI,N"))))
+            (neg:SI (match_operand:SI 1 "propeller_add_operand" "rCI,N"))))
    ]
   ""
   "@
@@ -1985,24 +1985,41 @@
 
 ;; this is rather funky, because it has to be able to handle memory
 ;; operands due to the way reload works
-;; this is simplified by our having the __TMP0 register available
-;; that isn't allocable by the compiler
+;; we handle this by doing a split if the memory load is required
 
-(define_insn "djnz"
+(define_insn_and_split "djnz"
   [(set (pc)
         (if_then_else
-	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC")
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC,rC")
 	      (const_int 1))
 	  (label_ref (match_operand 0 "" ""))
 	  (pc)))
-   (set (match_operand:SI 2 "nonimmediate_operand" "=1,*m")
-        (plus:SI (match_dup 1)(const_int -1)))]
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,?X,?X")
+        (plus:SI (match_dup 1)(const_int -1)))
+   (clobber (match_scratch:SI 3 "=X,&1,&?r"))
+  ]
 "!TARGET_LMM"
-"@
- djnz %1,#%l0
- rdlong __TMP0,%1\n\tsub __TMP0,#1\n\twrlong __TMP0,%2\n\ttjnz __TMP0,#%l0"
-[(set_attr "length" "4,16")
- (set_attr "type" "core,multi")]
+{
+ if (which_alternative != 0)
+   return "#";
+ return "djnz\t%1,#%l0";
+}
+ "&& reload_completed
+  && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
+ [(set (match_dup 3)(match_dup 1))
+  (parallel
+    [(set (reg:CC_Z CC_REG)
+          (compare:CC_Z (plus:SI (match_dup 3)(const_int -1))
+	                (const_int 0)))
+      (set (match_dup 3)(plus:SI (match_dup 3)(const_int -1)))])
+  (set (match_dup 2)(match_dup 3))
+  (set (pc) (if_then_else (ne (reg:CC_Z CC_REG)(const_int 0))
+                          (label_ref (match_dup 0))
+                          (pc)))]
+ ""
+ [(set_attr "type" "core,multi,multi")
+  (set_attr "length" "4,8,8")
+ ]
 )
 
 
