@@ -8,12 +8,17 @@
 
 _fs_state_t _fs_state = { FALSE };
 
+static _ssize_t file_read(int fd, void *buf, size_t bytes);
+static _ssize_t file_write(int fd, const void *buf, size_t bytes);
+static int file_close(int fd);
+static int file_unlink(const char *pathname);
+
 int InitFileIO(void)
 {
-	_file_read_p = _file_read;
-	_file_write_p = _file_write;
-    _file_close_p = _file_close;
-    _file_unlink_p = _file_unlink;
+	_file_read_p = file_read;
+	_file_write_p = file_write;
+    _file_close_p = file_close;
+    _file_unlink_p = file_unlink;
 	return 0;
 }
 
@@ -82,3 +87,46 @@ int MountFS(void)
 
     return TRUE;
 }
+
+static _ssize_t file_read(int fd, void *buf, size_t bytes)
+{
+    int i = fd - _FS_BASE_FD;
+    uint32_t count;
+    int err;
+    if (!_fs_state.initialized || i < 0 || i >= _FS_MAX_FILES)
+        return -1;
+    if (!_fs_state.files[i].inUse)
+        return -1;
+    err = DFS_ReadFile(&_fs_state.files[i].file, _fs_state.scratch, buf, &count, bytes);
+    return count > 0 ? count : EOF;
+}
+
+static _ssize_t file_write(int fd, const void *buf, size_t bytes)
+{
+    int i = fd - _FS_BASE_FD;
+    _ssize_t count;
+    int err;
+    if (!_fs_state.initialized || i < 0 || i >= _FS_MAX_FILES)
+        return -1;
+    if (!_fs_state.files[i].inUse)
+        return -1;
+    err = DFS_WriteFile(&_fs_state.files[i].file, _fs_state.scratch, buf, &count, bytes);
+    return count > 0 ? count : -1;
+}
+
+static int file_close(int fd)
+{
+    int i = fd - _FS_BASE_FD;
+    if (!_fs_state.initialized || i < 0 || i >= _FS_MAX_FILES)
+        return -1;
+    if (!_fs_state.files[i].inUse)
+        return -1;
+    _fs_state.files[i].inUse = FALSE;
+    return 0;
+}
+
+static int file_unlink(const char *pathname)
+{
+    return DFS_UnlinkFile(&_fs_state.vinfo, pathname, _fs_state.scratch) == DFS_OK ? 0 : -1;
+}
+
