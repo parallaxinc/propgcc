@@ -11,7 +11,11 @@
 	mov	pc,lr
 
 	.section .fini
-	'' finish up the __exit function
+	'' finish up the exit function
+	.global __Exit
+	.global __exit
+__Exit
+__exit
 	cogid	r0
 	cogstop	r0
 	

@@ -5,7 +5,7 @@
 	''
 	.section .init
 	.global entry
-	.global __exit
+	.global _exit
 	
 entry
 	jmp	#__LMM_CALL
@@ -53,7 +53,7 @@ argv
 
 
 	.section .fini
-__exit
+_exit
 	jmp	#__LMM_MVI_r8
 	.long	___DTOR_LIST__
 L_loopn
