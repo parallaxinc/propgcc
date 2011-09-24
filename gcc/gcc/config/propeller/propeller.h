@@ -26,7 +26,7 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; :spinboot.o%s} %{_crt0.o%s _crtbegin.o%s}"
+#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; :spinboot.o%s} _crt0.o%s _crtbegin.o%s"
 
 #undef  ENDFILE_SPEC
 #define ENDFILE_SPEC "_crtend.o%s"
