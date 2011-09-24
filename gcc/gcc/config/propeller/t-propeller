@@ -71,13 +71,13 @@ $(T)spinboot.o: $(PROPDIR)/spinboot.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
 $(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
 
 $(T)_crtbegin.o: $(PROPDIR)/crtbegin.S
-	$(GCC_FOR_TARGET) -DLMM -o $@ -c $<
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
 
 $(T)_crtend.o: $(PROPDIR)/crtend.S
-	$(GCC_FOR_TARGET) -DLMM -o $@ -c $<
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
 
 $(T)hubstart_xmm.o: $(PROPDIR)/hubstart_xmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
