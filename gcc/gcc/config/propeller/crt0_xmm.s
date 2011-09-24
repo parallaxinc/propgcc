@@ -194,6 +194,7 @@ __LMM_WRWORD_ret
 __LMM_WRLONG_ret
     ret
 
+	.global __TMP1
 __TMP1	long	0
 
     .endif 'SIMPLE_XMM_RDWR

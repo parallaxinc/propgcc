@@ -1,6 +1,7 @@
 MEMORY {
     hub (wxa) : ORIGIN = 0x00000000, LENGTH = 32K
-    rom (rx) : ORIGIN = 0x30000000, LENGTH = 1M
+    ram (wxa) : ORIGIN = 0x20000000, LENGTH = 256M
+    rom (rx)  : ORIGIN = 0x30000000, LENGTH = 256M
     cog (wxa) : ORIGIN = 0x00000000, LENGTH = 2K
 }
 
