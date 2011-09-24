@@ -115,11 +115,14 @@ fopen(const char *name, const char *mode)
     }
 
   /* see if the driver is happy about this file */
-  i = (*d->fopen)(fp, name + plen, mode);
-  if (i < 0)
+  if (d->fopen)
     {
-      /* driver unhappy, it should have set errno */
-      return NULL;
+      i = (*d->fopen)(fp, name + plen, mode);
+      if (i < 0)
+	{
+	  /* driver unhappy, it should have set errno */
+	  return NULL;
+	}
     }
 
   fp->drv = d;
@@ -138,7 +141,8 @@ fclose(FILE *fp)
       return EOF;
     }
   fflush(fp);
-  (*fp->drv->fclose)(fp);
+  if (fp->drv->fclose)
+    (*fp->drv->fclose)(fp);
   fp->drv = 0;
   return 0;
 }

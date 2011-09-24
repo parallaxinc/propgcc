@@ -119,17 +119,13 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
   return 0;
 }
 
-/* close down transmission */
+/* send a break on the default transmit pin */
 
-static int _serial_fclose(FILE *fp)
+void _serial_break(void)
 {
   int delay = _clkfreq/2;
   int waitcycles = _CNT + delay;
-  int txpin = fp->drvarg[1];
-
-  /* only send the break if open for writing */
-  if (! (fp->flags & _SFOUT) )
-    return 0;
+  int txpin = _txpin;
 
   _DIRA |= (1<<txpin);
   _OUTA |= (1<<txpin);
@@ -153,7 +149,7 @@ _Driver _SimpleSerialDriver =
   {
     _SimpleSerialName,
     _serial_fopen,
-    _serial_fclose,
+    NULL,       /* fclose hook, not needed */
     NULL,       /* flush hook, not needed */
     _serial_rx,
     _serial_tx,
