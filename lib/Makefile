@@ -13,7 +13,7 @@ MODELS=lmm xmm
 
 VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers
 
-all: $(foreach x, $(MODELS), $(OBJDIR)/$(x)) libc.a libc_xmm.a
+all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a)
 
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o \
@@ -37,10 +37,10 @@ OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS)
 LMM_OBJS = $(addprefix $(OBJDIR)/lmm/, $(OBJS))
 XMM_OBJS = $(addprefix $(OBJDIR)/xmm/, $(OBJS))
 
-libc.a: $(LMM_OBJS)
+$(OBJDIR)/lmm/libc.a: $(LMM_OBJS)
 	$(AR) rs $@ $^
 
-libc_xmm.a: $(XMM_OBJS)
+$(OBJDIR)/xmm/libc.a: $(XMM_OBJS)
 	$(AR) rs $@ $^
 
 $(OBJDIR)/lmm/%.o: %.c
@@ -52,10 +52,11 @@ $(OBJDIR)/xmm/%.o: %.c
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
 
-install: libc.a
-	mkdir -p $(PREFIX)/propeller-elf/lib
+install: $(OBJDIR)/lmm/libc.a $(OBJDIR)/xmm/libc.a
+	mkdir -p $(PREFIX)/propeller-elf/lib/xmm/
 	cp -r include $(PREFIX)/propeller-elf
-	cp libc.a libc_xmm.a $(PREFIX)/propeller-elf/lib
+	cp $(OBJDIR)/lmm/libc.a $(PREFIX)/propeller-elf/lib
+	cp $(OBJDIR)/xmm/libc.a $(PREFIX)/propeller-elf/lib/xmm/
 
 clean:
 	rm -rf $(OBJDIR) *.a
