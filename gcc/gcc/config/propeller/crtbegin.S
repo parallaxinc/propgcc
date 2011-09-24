@@ -18,7 +18,7 @@ entry
 
 	'' and call _exit with whatever main returns
 	jmp	#__LMM_CALL
-	.long	__exit
+	.long	_exit
 	
 	''
 	'' initialization function, responsible for calling all ctors
