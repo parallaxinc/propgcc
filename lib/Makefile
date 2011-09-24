@@ -5,10 +5,15 @@ PREFIX = /usr/local/propeller
 CFLAGS = -Os -nostdinc -I./include
 AR = propeller-elf-ar
 CC = propeller-elf-gcc
+MKDIR = mkdir -p
+
+OBJDIR=obj
+
+MODELS=lmm xmm
 
 VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers
 
-all: libc.a
+all: $(foreach x, $(MODELS), $(OBJDIR)/$(x)) libc.a libc_xmm.a
 
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o \
@@ -29,8 +34,20 @@ DRIVERS = SimpleSerial.o
 
 OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS)
 
-libc.a: $(OBJS)
-	$(AR) rs libc.a $(OBJS)
+LMM_OBJS = $(addprefix $(OBJDIR)/lmm/, $(OBJS))
+XMM_OBJS = $(addprefix $(OBJDIR)/xmm/, $(OBJS))
+
+libc.a: $(LMM_OBJS)
+	$(AR) rs $@ $^
+
+libc_xmm.a: $(XMM_OBJS)
+	$(AR) rs $@ $^
+
+$(OBJDIR)/lmm/%.o: %.c
+	$(CC) $(CFLAGS) -mlmm -o $@ -c $<
+
+$(OBJDIR)/xmm/%.o: %.c
+	$(CC) $(CFLAGS) -mxmm -o $@ -c $<
 
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
@@ -38,7 +55,10 @@ hello.elf: hello.c
 install: libc.a
 	mkdir -p $(PREFIX)/propeller-elf/lib
 	cp -r include $(PREFIX)/propeller-elf
-	cp libc.a $(PREFIX)/propeller-elf/lib
+	cp libc.a libc_xmm.a $(PREFIX)/propeller-elf/lib
 
 clean:
-	rm -f *.a *.o
+	rm -rf $(OBJDIR) *.a
+
+$(foreach x, $(MODELS), $(OBJDIR)/$(x)):
+	$(MKDIR) $@
