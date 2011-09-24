@@ -124,12 +124,16 @@ free(void *ptr)
 	  return;
 	}
 
+      if (thisp < p)
+	break;
+
       prev = &p->next;
       p = *prev;
     }
 
   /* could not find a mergable block */
   /* just add it to the free list */
+  thisp->next = *prev;
   *prev = thisp;
 }
 
