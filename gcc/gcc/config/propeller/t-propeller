@@ -50,41 +50,34 @@ dp-bit.c: $(srcdir)/config/fp-bit.c
 # because -mcog is so restricted that much of libgcc would not fit in it
 # anyway!
 
-#MULTILIB_OPTIONS = mlmm/mcog
-#MULTILIB_DIRNAMES = lmm cog
+MULTILIB_OPTIONS = mxmm/mxmmc m32bit-doubles
+MULTILIB_DIRNAMES = xmm xmmc short-doubles
+
 # dunno if this is necessary
-#MULTILIB_EXCEPTIONS = 
+MULTILIB_EXCEPTIONS = 
 #
 #don't think we need these
 #EXTRA_MULTILIB_PARTS = crtbegin.o crtend.o
 
-EXTRA_PARTS += spinboot.o crt0_lmm.o crtbegin_lmm.o crtend_lmm.o \
-	    crt0_xmm.o crtbegin_xmm.o crtend_xmm.o hubstart_xmm.o
+EXTRA_PARTS += spinboot.o hubstart_xmm.o _crt0.o _crtbegin.o _crtend.o
 
 #
 # Assemble startup files
 #
 
-$(T)spinboot.o: $(srcdir)/config/propeller/spinboot.s
+PROPDIR = $(srcdir)/config/propeller
+
+$(T)spinboot.o: $(PROPDIR)/spinboot.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
-$(T)crt0_lmm.o: $(srcdir)/config/propeller/crt0_lmm.s
+$(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
-$(T)crt0_xmm.o: $(srcdir)/config/propeller/crt0_xmm.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
-
-$(T)crtbegin_lmm.o: $(srcdir)/config/propeller/crtbegin.S
+$(T)_crtbegin.o: $(PROPDIR)/crtbegin.S
 	$(GCC_FOR_TARGET) -DLMM -o $@ -c $<
 
-$(T)crtend_lmm.o: $(srcdir)/config/propeller/crtend.S
+$(T)_crtend.o: $(PROPDIR)/crtend.S
 	$(GCC_FOR_TARGET) -DLMM -o $@ -c $<
 
-$(T)crtbegin_xmm.o: $(srcdir)/config/propeller/crtbegin.S
-	$(GCC_FOR_TARGET) -DXMM -o $@ -c $<
-
-$(T)crtend_xmm.o: $(srcdir)/config/propeller/crtend.S
-	$(GCC_FOR_TARGET) -DXMM -o $@ -c $<
-
-$(T)hubstart_xmm.o: $(srcdir)/config/propeller/hubstart_xmm.s
+$(T)hubstart_xmm.o: $(PROPDIR)/hubstart_xmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
