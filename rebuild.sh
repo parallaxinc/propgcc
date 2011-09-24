@@ -4,6 +4,35 @@
 #
 
 #
+# ADJUST THE FOLLOWING VARIABLES IF NECESSARY
+#
+export PREFIX=/usr/local/propeller
+
+#
+# attempt to auto-detect the OS
+UNAME=`uname -s`
+
+if test x$UNAME = xDarwin
+then
+  export OS=macosx
+  export PORT=/dev/cu.usbserial-A8004ILf
+  export BOARD=hub
+elif test x$UNAME = xCygwin
+then
+  export OS=cygwin
+  export PORT=COM16
+  export BOARD=c3
+elif test x$UNAME = xLinux
+then
+  export OS=linux
+  export PORT=/dev/ttyUSB0
+  export BOARD=c3
+else
+  echo "Unknown system: " $UNAME
+  exit 1
+fi
+
+#
 # if we have an argument don't remove build
 #
 if test NOARG$1 = NOARG
@@ -17,7 +46,7 @@ fi
 #
 mkdir -p ../build/binutils
 cd ../build/binutils
-../../propgcc/binutils/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls
+../../propgcc/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls
 if test $? != 0
 then
    echo "binutils configure failed."
@@ -45,7 +74,7 @@ cd ../../propgcc
 #
 mkdir -p ../build/gcc
 cd ../build/gcc
-../../propgcc/gcc/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls --disable-libssp
+../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp
 if test $? != 0
 then
    echo "gcc configure failed."
@@ -128,6 +157,11 @@ then
   cd ..
   exit 1
 fi
+cd ..
 
+#
+# build propeller-load
+#
+make -C loader install
 echo "Build complete."
 exit 0
