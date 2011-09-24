@@ -1,6 +1,6 @@
 /*
- * @exit.c
- * The last function called.
+ * @atexit.c
+ * Register functions to be called at exit.
  *
  * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
@@ -9,14 +9,38 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/exit.h>
+#include <compiler.h>
+
+struct _atexit_handler {
+  struct _atexit_handler *next;
+  void (*func)(void);
+};
 
 struct _atexit_handler *__atexitlist = 0;
 
-void
-exit(int status)
+int
+atexit(void (*function)(void))
 {
-  int i;
+  struct atexit_handler *ah;
+
+  ah = malloc(sizeof(*ah));
+  if (ah == NULL)
+    {
+      return -1;
+    }
+  ah->next = __atexitlist;
+  ah->func = function;
+  __atexitlist = ah;
+}
+
+/*
+ * destructor to call all the registered functions
+ */
+
+_DESTRUCTOR
+static void
+_run_atexit(void)
+{
   struct _atexit_handler *ah;
 
   /* run the atexit functions */
@@ -24,13 +48,4 @@ exit(int status)
     {
       (*ah->func)();
     }
-
-  /* clean up the buffers */
-  for (i = FOPEN_MAX-1; i >= 0; --i)
-    {
-      fclose(&__file[i]);
-    }
-
-  /* now really exit */
-  _Exit(status);
 }

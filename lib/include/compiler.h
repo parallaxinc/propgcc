@@ -20,6 +20,9 @@
 #define _WCHAR_SIZE 4
 #define _NORETURN __attribute__((noreturn))
 #define _CONST    __attribute__((const))
+
+#define _CONSTRUCTOR __attribute__((constructor))
+#define _DESTRUCTOR __attribute__((destructor))
 #else
 #error "compiler not yet supported"
 #endif

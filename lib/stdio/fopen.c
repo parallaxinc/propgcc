@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <compiler.h>
 
 /* the open file descriptors */
 FILE __files[FOPEN_MAX];
@@ -140,6 +141,23 @@ fclose(FILE *fp)
   (*fp->drv->fclose)(fp);
   fp->drv = 0;
   return 0;
+}
+
+/*
+ * arrange to close files automatically at end of program
+ */
+
+_DESTRUCTOR static void
+_do_stdio_cleanup(void)
+{
+  int i;
+
+  /* clean up the buffers */
+  for (i = FOPEN_MAX-1; i >= 0; --i)
+    {
+      fclose(&__files[i]);
+    }
+
 }
 
 /* +--------------------------------------------------------------------
