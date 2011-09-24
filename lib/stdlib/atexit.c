@@ -21,7 +21,7 @@ struct _atexit_handler *__atexitlist = 0;
 int
 atexit(void (*function)(void))
 {
-  struct atexit_handler *ah;
+  struct _atexit_handler *ah;
 
   ah = malloc(sizeof(*ah));
   if (ah == NULL)

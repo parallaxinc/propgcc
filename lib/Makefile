@@ -16,7 +16,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	simple_printf.o \
 	default_io.o
 
-MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o errno.o
+MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o errno.o atexit.o
 
 STRING = memcpy.o memmove.o memset.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
