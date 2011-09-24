@@ -20,6 +20,7 @@
 	.global pc
 
     .set SIMPLE_XMM_RDWR, 1
+    .set INTERMEDIATE_XMM_RDWR, 0
     .set COMPLEX_XMM_RDWR, 0
 
 	.global __LMM_entry
@@ -146,7 +147,7 @@ __LMM_RDLONG
 rd_common
     muxnz   save_z_c, #2    'save the z flag
     mov     t1, __TMP0
-    call    #cache_read
+    call    #cache_read     'also restores the z flag
 rd_common_read
     rdlong  __TMP0, memp
 __LMM_RDBYTE_ret
@@ -186,7 +187,7 @@ __LMM_WRLONG
 wr_common
     muxnz   save_z_c, #2    'save the z flag
     mov     t1, __TMP0
-    call    #cache_write
+    call    #cache_write    'also restores the z flag
 wr_common_write
     wrlong  __TMP1, memp
 __LMM_WRBYTE_ret
@@ -194,11 +195,108 @@ __LMM_WRWORD_ret
 __LMM_WRLONG_ret
     ret
 
-	.global __TMP1
-__TMP1	long	0
-
     .endif 'SIMPLE_XMM_RDWR
     
+    .if INTERMEDIATE_XMM_RDWR
+    
+    ''
+    '' intermediate memory read instructions
+    ''
+    '' JMP #__LMM_RDxxxx
+    '' the low order bits of __TMP0 are encoded as iddddssss
+    '' ssss is the register containing the address from which to read
+    '' dddd is the register in which to return the value at that address
+    '' i=0 for no increment, i=1 to increment by the size of the data
+
+    .set RDBYTE_OPCODE, 0x00
+    .set RDWORD_OPCODE, 0x01
+    .set RDLONG_OPCODE, 0x02
+
+	.global __LMM_RDBYTEI
+__LMM_RDBYTEI
+    movi    rdi_common_store, #RDBYTE_OPCODE
+    movs    rdi_common_inc, #1
+    jmp     #rdi_common
+
+	.global __LMM_RDWORDI
+__LMM_RDWORDI
+    movi    rdi_common_store, #RDWORD_OPCODE
+    movs    rdi_common_inc, #2
+    jmp     #rdi_common
+
+	.global __LMM_RDLONGI
+__LMM_RDLONGI
+    movi    rdi_common_store, #RDLONG_OPCODE
+    movs    rdi_common_inc, #4
+
+rdi_common
+    muxnz   save_z_c, #2    'save the z flag
+    movs    rdi_common_fetch_addr, __TMP0
+    andn    rdi_common_fetch_addr, #0x1f0
+    shr	    __TMP0, #4
+    test    __TMP0, #0x10 wz
+    and     __TMP0, #0xf    
+    movd    rdi_common_inc, __TMP0
+    movd    rdi_common_store, __TMP0
+rdi_common_inc
+ IF_NZ  add 0-0, #4
+rdi_common_fetch_addr
+    mov     t1, 0-0
+    call    #cache_read
+rdi_common_store
+    rdlong  0-0, memp
+    jmp     #__LMM_loop
+    
+    ''
+    '' intermediate memory write instructions
+    ''
+    '' JMP iddddssss,#__LMM_WRxxxx
+    '' the low order bits of __TMP0 are encoded as iddddssss
+    '' ssss is the register containing the address to which to write
+    '' dddd is the register containing the value to write to that address
+    '' i=0 for no increment, i=1 to increment by the size of the data
+
+    .set WRBYTE_OPCODE, 0x00
+    .set WRWORD_OPCODE, 0x01
+    .set WRLONG_OPCODE, 0x02
+
+	.global __LMM_WRBYTEI
+__LMM_WRBYTEI
+    movi    wri_common_fetch_data, #WRBYTE_OPCODE
+    movs    wri_common_inc, #1
+    jmp     #wri_common
+
+	.global __LMM_WRWORDI
+__LMM_WRWORDI
+    movi    wri_common_fetch_data, #WRWORD_OPCODE
+    movs    wri_common_inc, #2
+    jmp     #wri_common
+
+	.global __LMM_WRLONGI
+__LMM_WRLONGI
+    movi    wri_common_fetch_data, #WRLONG_OPCODE
+    movs    wri_common_inc, #4
+
+wri_common
+    muxnz   save_z_c, #2    'save the z flag
+    movs    wri_common_fetch_addr, __TMP0
+    andn    wri_common_fetch_addr, #0x1f0
+    shr	    __TMP0, #4
+    test    __TMP0, #0x10  wz
+    and     __TMP0, #0xf    
+    movd    wri_common_inc, __TMP0
+    movd    wri_common_fetch_data, __TMP0
+wri_common_inc
+ IF_NZ  add 0-0, #4
+wri_common_fetch_addr
+    mov     t1, 0-0
+    call    #cache_write
+wri_common_fetch_data
+    wrlong  0-0, memp
+    jmp     #__LMM_loop
+    
+    .endif 'INTERMEDIATE_XMM_RDWR
+
     .if COMPLEX_XMM_RDWR
     
     ''
@@ -356,6 +454,7 @@ __MASK_FFFFFFFF	long	0xFFFFFFFF
 	'' math support functions
 	''
 	.global __TMP0
+	.global __TMP1
 	.global __DIVSI
 	.global __DIVSI_ret
 	.global __UDIVSI
@@ -364,6 +463,7 @@ __MASK_FFFFFFFF	long	0xFFFFFFFF
 	.global __CLZSI_ret
 	.global __CTZSI
 __TMP0	long	0
+__TMP1	long	0
 __MASK_00FF00FF	long	0x00FF00FF
 __MASK_0F0F0F0F	long	0x0F0F0F0F
 __MASK_33333333	long	0x33333333
