@@ -11,7 +11,7 @@
 int
 fflush(FILE *fp)
 {
-  if (fp->drv->flush)
+  if (fp->drv && fp->drv->flush)
     return (*fp->drv->flush)(fp);
   return 0;
 }

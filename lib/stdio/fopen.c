@@ -132,7 +132,7 @@ fopen(const char *name, const char *mode)
 int
 fclose(FILE *fp)
 {
-  if (fp->drv != 0)
+  if (fp->drv == 0)
     {
       errno = EBADF;
       return EOF;
