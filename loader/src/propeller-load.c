@@ -38,7 +38,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #endif
 #define DEF_BOARD   "default"
 
-static void Usage(char *port);
+static void Usage(char *board, char *port);
 
 static void MyInfo(System *sys, const char *fmt, va_list ap);
 static void MyError(System *sys, const char *fmt, va_list ap);
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
                 else if (++i < argc)
                     board = argv[i];
                 else
-                    Usage(port);
+                    Usage(board, port);
                 break;
             case 'p':
                 if(argv[i][2])
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
                 else if(++i < argc)
                     port = argv[i];
                 else
-                    Usage(port);
+                    Usage(board, port);
 #if defined(CYGWIN) || defined(WIN32) || defined(LINUX)
                 if (isdigit((int)port[0])) {
 #if defined(CYGWIN) || defined(WIN32)
@@ -125,11 +125,11 @@ int main(int argc, char *argv[])
                 else if(++i < argc)
                     p = argv[i];
                 else
-                    Usage(port);
+                    Usage(board, port);
                 xbAddPath(p);
                 break;
             default:
-                Usage(port);
+                Usage(board, port);
                 break;
             }
         }
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
         /* handle the input filename */
         else {
             if (infile)
-                Usage(port);
+                Usage(board, port);
             infile = argv[i];
         }
     }
@@ -201,18 +201,18 @@ int main(int argc, char *argv[])
 }
 
 /* Usage - display a usage message and exit */
-static void Usage(char *port)
+static void Usage(char *board, char *port)
 {
     fprintf(stderr, "\
 usage: propeller-elf-load\n\
-         [ -b <type> ]   select target board\n\
+         [ -b <type> ]   select target board (default is %s)\n\
          [ -p <port> ]   serial port (default is %s)\n\
          [ -e ]          write the program into EEPROM\n\
          [ -r ]          run the program after loading\n\
          [ -s ]          write a spin binary file for use with the Propeller Tool\n\
          [ -t ]          enter terminal mode after running the program\n\
          <name>          file to compile\n\
-", port);
+", board, port);
     exit(1);
 }
 
