@@ -1,13 +1,14 @@
 #
 # Makefile for Propeller C library
 #
+PREFIX = /usr/local/propeller
 CFLAGS = -Os -nostdinc -I./include
 AR = propeller-elf-ar
 CC = propeller-elf-gcc
 
 VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers
 
-all: libc.a hello.elf
+all: libc.a
 
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o \
@@ -31,8 +32,13 @@ OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS)
 libc.a: $(OBJS)
 	$(AR) rs libc.a $(OBJS)
 
-hello.elf: hello.c libc.a
-	$(CC) $(CFLAGS) -o hello.elf hello.c ./libc.a
+hello.elf: hello.c
+	$(CC) -o hello.elf hello.c
+
+install: libc.a
+	mkdir -p $(PREFIX)/propeller-elf/lib
+	cp -r include $(PREFIX)/propeller-elf
+	cp libc.a $(PREFIX)/propeller-elf/lib
 
 clean:
 	rm -f *.a *.o

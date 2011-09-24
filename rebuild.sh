@@ -86,28 +86,47 @@ cd ../../propgcc
 #
 # build newlibs
 #
-mkdir -p ../build/newlib
-cd ../build/newlib
-../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller --enable-target-optspace
+#mkdir -p ../build/newlib
+#cd ../build/newlib
+#../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller --enable-target-optspace
+#if test $? != 0
+#then
+#   echo "newlib configure failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
+#make all
+#if test $? != 0
+#then
+#   echo "newlib make all failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
+#make install
+#if test $? != 0
+#then
+#   echo "newlib make install failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
+
+#
+# build library
+#
+cd lib
+make
 if test $? != 0
 then
-   echo "newlib configure failed."
-   cd ../../propgcc
-   exit 1
-fi
-make all
-if test $? != 0
-then
-   echo "newlib make all failed."
-   cd ../../propgcc
-   exit 1
+  echo "library build failed"
+  cd ..
+  exit 1
 fi
 make install
 if test $? != 0
 then
-   echo "newlib make install failed."
-   cd ../../propgcc
-   exit 1
+  echo "library install failed"
+  cd ..
+  exit 1
 fi
 
 echo "Build complete."
