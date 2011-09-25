@@ -14,9 +14,12 @@ SECTIONS {
         LONG(entry)
         LONG(ADDR(.bss))
         LONG(ADDR(.bss) + SIZEOF(.bss))
-        LONG(LOADADDR(.data))
-        LONG(ADDR(.data))
-        LONG(ADDR(.data) + SIZEOF(.data) + SIZEOF(.hubtext) + SIZEOF(.ctors) + SIZEOF(.dtors))
+        LONG(0)
+        LONG(0)
+        LONG(0)
+        LONG(LOADADDR(.hub))
+        LONG(ADDR(.hub))
+        LONG(ADDR(.hub) + SIZEOF(.hub) + SIZEOF(.ctors) + SIZEOF(.dtors))
     } >rom
     .init : {
 	    *(.init*)
@@ -25,12 +28,10 @@ SECTIONS {
         *(.text*)
     } >rom
     
-    .data : {
+    .hub : {
         *(.hubstart)
-        *(.data*)
-    } >hub AT>rom
-    .hubtext : {
         *(.hubtext)
+        *(.data*)
     } >hub AT>rom
     .ctors : {
         *(.ctors*)

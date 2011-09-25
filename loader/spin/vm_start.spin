@@ -11,6 +11,9 @@ CON
   HDR_DATA_IMAGE    = 12
   HDR_DATA_START    = 16
   HDR_DATA_END      = 20
+  HDR_HUB_IMAGE     = 24
+  HDR_HUB_START     = 28
+  HDR_HUB_END       = 32
 
 OBJ
 
@@ -50,11 +53,36 @@ initialize_data     mov     t1, image_base
         if_z        jmp     #:done_data
 :loop_data          mov     t1, src
                     call    #read_long
-                    wrlong  t1, dst
+                    mov     t2, t1
+                    mov     t1, dst
+                    call    #write_long
                     add     src, #4
                     add     dst, #4
                     djnz    count, #:loop_data
 :done_data
+
+initialize_hub      mov     t1, image_base
+                    add     t1, #HDR_HUB_IMAGE
+                    call    #read_long
+                    mov     src, t1
+                    mov     t1, image_base
+                    add     t1, #HDR_HUB_START
+                    call    #read_long
+                    mov     dst, t1
+                    mov     t1, image_base
+                    add     t1, #HDR_HUB_END
+                    call    #read_long
+                    mov     count, t1
+                    sub     count, dst
+                    shr     count, #2 wz
+        if_z        jmp     #:done_hub
+:loop_hub           mov     t1, src
+                    call    #read_long
+                    wrlong  t1, dst
+                    add     src, #4
+                    add     dst, #4
+                    djnz    count, #:loop_hub
+:done_hub
 
 clear_bss           mov     t1, image_base
                     add     t1, #HDR_BSS_START
