@@ -8,7 +8,10 @@ MEMORY
   cog	 : ORIGIN = 0, LENGTH = 2K
   /* coguser is just an alias for cog, but for overlays */
   coguser : ORIGIN = 0, LENGTH = 2K
+  ram    : ORIGIN = 0x20000000, LENGTH = 64K
   rom    : ORIGIN = 0x30000000, LENGTH = 1M
+  /* some sections (like the .xmm kernel) are handled specially by the loader */
+  dummy  : ORIGIN = 0xe0000000, LENGTH = 1M
 }
 
 SECTIONS
@@ -93,7 +96,7 @@ SECTIONS
 
   } ${RELOCATING+ >coguser AT>hub}
 
-  ${RELOCATING+ ".heap : \{ LONG(0) \} > hub"}
+  ${RELOCATING+ ".heap : \{ LONG(0) \} >hub AT>hub"}
   ${RELOCATING+ ___heap_start = ADDR(.heap) ;}
 
   ${RELOCATING+ ${KERNEL_NAME+ __load_start_kernel = LOADADDR (${KERNEL_NAME}) ;}}

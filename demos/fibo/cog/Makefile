@@ -19,9 +19,6 @@ CHKSUM = propeller-checksum
 NAME = fibo
 OBJS = fibo.o miniprintf.o clock.o
 
-$(NAME).binary: $(NAME).elf
-	$(OBJCOPY) -O binary $< $@
-	$(CHKSUM) $@
 
 $(NAME).elf: propeller_cog.script crt0.o csupport.o $(OBJS) div.o mult.o cogregs.o
 	$(LD) -o $@ -T propeller_cog.script $^
