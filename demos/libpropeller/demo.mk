@@ -38,23 +38,24 @@ endif
 
 ifeq ($(MODEL),lmm)
 STARTOBJ=spinboot.o
-KERNELOBJ=crt0_lmm.o
-BEGINOBJ=crtbegin_lmm.o
-ENDOBJ=crtend_lmm.o
 endif
 
 ifeq ($(MODEL),xmm)
 STARTOBJ=hubstart_xmm.o
-KERNELOBJ=crt0_xmm.o
-BEGINOBJ=crtbegin_xmm.o
-ENDOBJ=crtend_xmm.o
 endif
 
 ifeq ($(MODEL),xmmc)
 STARTOBJ=hubstart_xmm.o
-KERNELOBJ=crt0_xmm.o
-BEGINOBJ=crtbegin_xmm.o
-ENDOBJ=crtend_xmm.o
+endif
+
+ifeq ($(MODEL),lmm)
+KERNELOBJ=_crt0.o
+BEGINOBJ=_crtbegin.o
+ENDOBJ=_crtend.o
+else
+KERNELOBJ=$(MODEL)/_crt0.o
+BEGINOBJ=$(MODEL)/_crtbegin.o
+ENDOBJ=$(MODEL)/_crtend.o
 endif
 
 ifeq ($(STARTOBJ),)
