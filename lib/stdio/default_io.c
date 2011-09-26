@@ -18,11 +18,11 @@ _CONSTRUCTOR void
 _InitIO(void)
 {
   /* open stdin */
-  fopen("SSER:", "r");
+  __fopen_driver(stdin, &_SimpleSerialDriver, "", "r");
   /* open stdout */
-  fopen("SSER:", "w");
+  __fopen_driver(stdout, &_SimpleSerialDriver, "", "w");
   /* open stderr */
-  fopen("SSER:", "w");
+  __fopen_driver(stderr, &_SimpleSerialDriver, "", "w");
 }
 
 /* tear down I/O */
