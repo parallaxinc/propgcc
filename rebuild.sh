@@ -6,31 +6,47 @@
 #
 # ADJUST THE FOLLOWING VARIABLES IF NECESSARY
 #
-export PREFIX=/usr/local/propeller
+PREFIX=/usr/local/propeller
+export PREFIX
 
 #
 # attempt to auto-detect the OS
 UNAME=`uname -s`
+if test NAME`echo $UNAME | grep "[_-]"` != NAME
+then
+  # if system has [-_] try uname -o ... Cygwin for example
+  UNAME=`uname -o`
+fi
+echo "OS '$UNAME' detected."
 
 if test x$UNAME = xDarwin
 then
-  export OS=macosx
-  export PORT=/dev/cu.usbserial-A8004ILf
-  export BOARD=hub
+  OS=macosx
+  PORT=/dev/cu.usbserial-A8004ILf
+  BOARD=hub
 elif test x$UNAME = xCygwin
 then
-  export OS=cygwin
-  export PORT=COM16
-  export BOARD=c3
+  OS=cygwin
+  PORT=COM16
+  BOARD=c3
 elif test x$UNAME = xLinux
 then
-  export OS=linux
-  export PORT=/dev/ttyUSB0
-  export BOARD=c3
+  OS=linux
+  PORT=/dev/ttyUSB0
+  BOARD=c3
 else
   echo "Unknown system: " $UNAME
   exit 1
 fi
+
+#
+# We have a valid system. export variables.
+# Bourne shell must set and export separately for some linux.
+# This seems to be an issue with debian ....
+#
+export OS
+export PORT
+export BOARD
 
 #
 # if we have an argument don't remove build
@@ -162,6 +178,7 @@ cd ..
 #
 # build propeller-load
 #
+make -C loader
 make -C loader install
 echo "Build complete."
 exit 0
