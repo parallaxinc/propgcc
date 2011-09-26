@@ -154,7 +154,9 @@ _doprnt( const char *fmt, va_list args )
    int width, long_flag;
    int outbytes = 0;
    int base;
+#ifdef FLOAT_SUPPORT
    int prec;
+#endif
 
    while( (c = *fmt++) != 0 ) {
      if (c != '%') {
@@ -163,7 +165,9 @@ _doprnt( const char *fmt, va_list args )
      }
      c = *fmt++;
      width = 0;
+#ifdef FLOAT_SUPPORT
      prec = -1;
+#endif
      long_flag = 0;
      fill_char = ' ';
      if (c == '0') fill_char = '0';

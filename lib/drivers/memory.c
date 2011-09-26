@@ -59,7 +59,6 @@ mem_getc(FILE *fp)
 static int
 mem_seek(FILE *fp, long offset, int whence)
 {
-  char *base = (char *)fp->drvarg[0];
   long max = fp->drvarg[1];
   long cur = fp->drvarg[2];
   long pos;
