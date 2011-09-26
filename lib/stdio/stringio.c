@@ -1,65 +1,20 @@
 /*
- * @fopen.c
- * Implementation of stdio library functions
- *
  * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
  * MIT licensed (see terms at end of file)
  */
 #include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <compiler.h>
+#include <stdarg.h>
+#include <sys/thread.h>
 
-/*
- * the actual fopen routine
- */
-FILE *
-fopen(const char *name, const char *mode)
+extern _Driver _memory_driver;
+
+FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len)
 {
-  size_t plen = 0;
-  _Driver *d;
-  int i;
-  FILE *fp;
-
-  /*
-   * find an open slot
-   */
-  for (i = 0; i < FOPEN_MAX; i++)
-    {
-      if (__files[i].drv == NULL)
-	break;
-    }
-  if (i == FOPEN_MAX)
-    {
-      errno = EMFILE;
-      return NULL;
-    }
-
-  fp = &__files[i];
-
-  /*
-   * find the driver corresponding to the name
-   * every driver has a prefix, like "DOS:"
-   */
-
-  for (i = 0; (d = _driverlist[i]) != 0; i++)
-    {
-      if (!d->prefix)
-	continue;
-      plen = strlen(d->prefix);
-      if (!strncmp(d->prefix, name, plen))
-	break;
-    }
-
-  if (!d)
-    {
-      /* driver not found */
-      errno = ENOENT;
-      return NULL;
-    }
-
-  return __fopen_driver(fp, d, name+plen, mode);
+  fp = __fopen_driver(fp, &_memory_driver, str, mode);
+  if (fp)
+    fp->drvarg[1] = (unsigned long)len;
+  return fp;
 }
 
 /* +--------------------------------------------------------------------

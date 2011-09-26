@@ -18,8 +18,9 @@ all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a $(OBJDIR)/$(x)
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o \
 	ungetc.o \
-	fopen.o \
+	fopen.o fopen_intern.o \
 	printf.o fprintf.o vprintf.o vfprintf.o \
+	stringio.o sprintf.o snprintf.o \
 	simple_printf.o \
 	default_io.o
 
@@ -31,7 +32,7 @@ STRING = memcpy.o memmove.o memset.o \
 
 TIME = clock.o 
 
-DRIVERS = SimpleSerial.o
+DRIVERS = SimpleSerial.o memory.o
 
 MATH = 	k_standard.o k_rem_pio2.o \
 	k_cos.o k_sin.o k_tan.o \

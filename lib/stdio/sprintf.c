@@ -1,65 +1,21 @@
 /*
- * @fopen.c
- * Implementation of stdio library functions
- *
  * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
  * MIT licensed (see terms at end of file)
  */
 #include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <compiler.h>
+#include <stdarg.h>
 
-/*
- * the actual fopen routine
- */
-FILE *
-fopen(const char *name, const char *mode)
+int sprintf(char *str, const char *fmt, ...)
 {
-  size_t plen = 0;
-  _Driver *d;
-  int i;
-  FILE *fp;
-
-  /*
-   * find an open slot
-   */
-  for (i = 0; i < FOPEN_MAX; i++)
-    {
-      if (__files[i].drv == NULL)
-	break;
-    }
-  if (i == FOPEN_MAX)
-    {
-      errno = EMFILE;
-      return NULL;
-    }
-
-  fp = &__files[i];
-
-  /*
-   * find the driver corresponding to the name
-   * every driver has a prefix, like "DOS:"
-   */
-
-  for (i = 0; (d = _driverlist[i]) != 0; i++)
-    {
-      if (!d->prefix)
-	continue;
-      plen = strlen(d->prefix);
-      if (!strncmp(d->prefix, name, plen))
-	break;
-    }
-
-  if (!d)
-    {
-      /* driver not found */
-      errno = ENOENT;
-      return NULL;
-    }
-
-  return __fopen_driver(fp, d, name+plen, mode);
+  FILE tmpfile;
+  va_list args;
+  int r;
+  size_t len = 0x7fffffff;
+  va_start(args, fmt);
+  r = vfprintf(_string_file(&tmpfile, str, "w", len), fmt, args);
+  va_end(args);
+  return r;
 }
 
 /* +--------------------------------------------------------------------
