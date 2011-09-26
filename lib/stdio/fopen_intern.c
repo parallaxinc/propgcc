@@ -49,6 +49,10 @@ __fopen_driver(FILE *fp, _Driver *d, const char *name, const char *mode)
   size_t plen = 0;
   int i;
 
+  /* force a reference to _driverlist */
+  if (_driverlist[0] == 0)
+    return NULL;
+
   fp->flags = 0;
   fp->putbyte = no_write;
   fp->getbyte = no_read;
