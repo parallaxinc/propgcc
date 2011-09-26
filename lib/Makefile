@@ -2,7 +2,9 @@
 # Makefile for Propeller C library
 #
 PREFIX = /usr/local/propeller
-CFLAGS = -Os -nostdinc -I./include
+#WARN = -Wall -Werror
+WARN =
+CFLAGS = $(WARN) -Os -nostdinc -I./include
 AR = propeller-elf-ar
 CC = propeller-elf-gcc
 MKDIR = mkdir -p
