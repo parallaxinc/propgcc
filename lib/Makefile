@@ -26,12 +26,12 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	simple_printf.o \
 	default_io.o
 
-MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o errno.o atexit.o
+MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
 	strncat.o strncmp.o strncpy.o \
-	strchr.o strrchr.o
+	strchr.o strrchr.o strspn.o strcspn.o strtok.o
 
 TIME = clock.o 
 

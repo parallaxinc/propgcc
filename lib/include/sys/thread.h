@@ -9,6 +9,7 @@
  */
 struct _TLS {
   int errno;
+  char *strtok_scanpoint;
 };
 
 /*
