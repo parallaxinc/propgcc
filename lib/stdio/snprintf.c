@@ -13,6 +13,7 @@ int snprintf(char *str, size_t len, const char *fmt, ...)
   int r;
   va_start(args, fmt);
   r = vfprintf(__string_file(&tmpfile, str, "w", len), fmt, args);
+  fclose(&tmpfile);
   va_end(args);
   return r;
 }
