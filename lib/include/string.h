@@ -15,6 +15,10 @@ int    strncmp(const char *s1, const char *s2, size_t n);
 char *strchr(const char *, int);
 char *strrchr(const char *, int);
 
+char *strtok(char *str, const char *delim);
+size_t strspn(const char *, const char *);
+size_t strcspn(const char *, const char *);
+
 void *memcpy(void *dest, const void *src, size_t n);
 void *memset(void *dest, int c, size_t n);
 void *memchr(const void *s, int c, size_t n);
