@@ -112,6 +112,13 @@ __LMM_JMP
 	mov	pc,L_ins0
 	jmp	#__LMM_loop
     
+    .set RDBYTE_OPCODE, 0x001
+    .set RDWORD_OPCODE, 0x009
+    .set RDLONG_OPCODE, 0x011
+    .set WRBYTE_OPCODE, 0x000
+    .set WRWORD_OPCODE, 0x008
+    .set WRLONG_OPCODE, 0x010
+
     .if SIMPLE_XMM_RDWR
     
     ''
@@ -122,10 +129,6 @@ __LMM_JMP
     '' On return:
     ''   __TMP0 contains the value at that address
     ''
-
-    .set RDBYTE_OPCODE, 0x00
-    .set RDWORD_OPCODE, 0x01
-    .set RDLONG_OPCODE, 0x02
 
 	.global __LMM_RDBYTE
 	.global __LMM_RDBYTE_ret
@@ -167,10 +170,6 @@ __LMM_RDLONG_ret
     ''   __TMP0 contains the address to which to write
     ''   __TMP1 contains the value to write to that address
     ''
-
-    .set WRBYTE_OPCODE, 0x00
-    .set WRWORD_OPCODE, 0x01
-    .set WRLONG_OPCODE, 0x02
 
 	.global __LMM_WRBYTE
 	.global __LMM_WRBYTE_ret
@@ -218,10 +217,6 @@ __LMM_WRLONG_ret
     '' dddd is the register in which to return the value at that address
     '' i=0 for no increment, i=1 to increment by the size of the data
 
-    .set RDBYTE_OPCODE, 0x00
-    .set RDWORD_OPCODE, 0x01
-    .set RDLONG_OPCODE, 0x02
-
 	.global __LMM_RDBYTEI
 __LMM_RDBYTEI
     movi    rdi_common_store, #RDBYTE_OPCODE
@@ -265,10 +260,6 @@ rdi_common_store
     '' ssss is the register containing the address to which to write
     '' dddd is the register containing the value to write to that address
     '' i=0 for no increment, i=1 to increment by the size of the data
-
-    .set WRBYTE_OPCODE, 0x00
-    .set WRWORD_OPCODE, 0x01
-    .set WRLONG_OPCODE, 0x02
 
 	.global __LMM_WRBYTEI
 __LMM_WRBYTEI
@@ -317,10 +308,6 @@ wri_common_fetch_data
     '' dddd is the register in which to return the value at that address
     '' i=0 for no increment, i=1 to increment by the size of the data
 
-    .set RDBYTE_OPCODE, 0x00
-    .set RDWORD_OPCODE, 0x01
-    .set RDLONG_OPCODE, 0x02
-
 	.global __LMM_RDBYTEX
 __LMM_RDBYTEX
     movi    rdx_common_store, #RDBYTE_OPCODE
@@ -364,10 +351,6 @@ rdx_common_store
     '' ssss is the register containing the address to which to write
     '' dddd is the register containing the value to write to that address
     '' i=0 for no increment, i=1 to increment by the size of the data
-
-    .set WRBYTE_OPCODE, 0x00
-    .set WRWORD_OPCODE, 0x01
-    .set WRLONG_OPCODE, 0x02
 
 	.global __LMM_WRBYTEX
 __LMM_WRBYTEX
