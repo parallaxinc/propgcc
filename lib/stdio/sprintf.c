@@ -14,6 +14,7 @@ int sprintf(char *str, const char *fmt, ...)
   size_t len = 0x7fffffff;
   va_start(args, fmt);
   r = vfprintf(__string_file(&tmpfile, str, "w", len), fmt, args);
+  fclose(&tmpfile);
   va_end(args);
   return r;
 }
