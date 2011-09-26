@@ -2,8 +2,8 @@
 # Makefile for Propeller C library
 #
 PREFIX = /usr/local/propeller
-#WARN = -Wall -Werror
-WARN =
+WARN = -Wall -Werror
+#WARN =
 CFLAGS = $(WARN) -Os -nostdinc -I./include
 AR = propeller-elf-ar
 CC = propeller-elf-gcc
@@ -19,7 +19,7 @@ all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a $(OBJDIR)/$(x)
 
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o \
-	ungetc.o \
+	ungetc.o gets.o fgets.o \
 	fopen.o fopen_intern.o \
 	printf.o fprintf.o vprintf.o vfprintf.o \
 	stringio.o sprintf.o snprintf.o \
