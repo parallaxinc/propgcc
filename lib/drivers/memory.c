@@ -96,7 +96,16 @@ mem_fopen(FILE *fp, const char *str, const char *mode)
   return 0;
 }
 
-_Driver _memoryDriver =
+/*
+ * force a terminating 0, if necessary
+ */
+static int
+mem_fclose(FILE *fp)
+{
+  fp->putbyte(0, fp);
+}
+
+_Driver _memory_driver =
   {
     NULL,  /* no opening via normal fopen() */
     mem_fopen,
