@@ -15,7 +15,7 @@
 #define ALIGNED(a) ( 0 == ( ((sizeof(uint32_t))-1) & ((unsigned)a) ) )
 
 void *
-memmove(void *dest_p, int c, size_t n)
+memset(void *dest_p, int c, size_t n)
 {
   void *orig_dest = dest_p;
   char *dst;
