@@ -307,61 +307,61 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         return Error("no cache driver to load external image");
     
-    /* load the '.header' section */
+    /* load the .header section */
     if (!FindProgramSection(c, ".header", &program))
-        return Error("can't find '.header' section");
+        return Error("can't find .header section");
     size = program.filesz;
     
-    /* load the '.data' section */
+    /* load the .data section */
     dataPresent = FindProgramSection(c, ".data", &program_data);
     if (dataPresent) size += program_data.filesz;
     
-    /* load the '.hub' section */
+    /* load the .hub section */
     hubPresent = FindProgramSection(c, ".hub", &program_hub);
     if (hubPresent) size += program_hub.filesz;
     
-    /* load the '.header' section data */
+    /* load the .header section data */
     if (!(buf = LoadProgramSection(c, &program)))
-        return Error("can't load '.header' section");
+        return Error("can't load .header section");
     offset = program.filesz;
     
     /* expand the buffer to make space for .data and .hub */
     if (!(buf = (uint8_t *)realloc(buf, size)))
         return Error("Insufficient memory for program image buffer: %d", size);
 
-    /* load the '.data' section initializers */
+    /* load the .data section initializers */
     if (dataPresent) {
         if (!(buf2 = LoadProgramSection(c, &program_data)))
-            return Error("can't load '.data' section image");
+            return Error("can't load .data section image");
         memcpy(&buf[offset], buf2, program_data.filesz);
         offset += program_data.filesz;
         free(buf2);
     }
         
-    /* load the '.hub' section initializers */
+    /* load the .hub section initializers */
     if (hubPresent) {
         if (!(buf2 = LoadProgramSection(c, &program_hub)))
-            return Error("can't load '.hub' section image");
+            return Error("can't load .hub section image");
         memcpy(&buf[offset], buf2, program_hub.filesz);
         free(buf2);
     }
         
-    /* write the '.header' section to memory */
-	printf("Loading .header\n");
+    /* write the .header section data and the .data and .hub section initializers to memory */
+	printf("Loading .header, .data, and .hub\n");
     target = (program.paddr >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
     if (!SendPacket(target, (uint8_t *)"", 0)
     ||  !WriteBuffer(buf, size)) {
         free(buf);
-        return Error("Loading '.header' section failed");
+        return Error("Loading .header, .data, and .hub sections failed");
 	}
     
-    /* free the '.header' section data and the .data and .hub section initializers */
+    /* free the .header section data and the .data and .hub section initializers */
     free(buf);
 
-    /* load the '.xmmkernel' section */
+    /* load the .xmmkernel section */
     if (!FindProgramSection(c, ".xmmkernel", &program)
     ||  !(buf = LoadProgramSection(c, &program)))
-        return Error("can't load '.xmmkernel' section");
+        return Error("can't load .xmmkernel section");
     
     /* handle downloads to eeprom */
     if (flags & LFLAG_WRITE_EEPROM) {
