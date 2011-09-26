@@ -11,14 +11,15 @@ OBJDIR=obj
 
 MODELS=lmm xmm
 
-VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers
+VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm
 
-all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a)
+all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a $(OBJDIR)/$(x)/libm.a)
 
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o \
 	ungetc.o \
 	fopen.o \
+	printf.o fprintf.o vprintf.o vfprintf.o \
 	simple_printf.o \
 	default_io.o
 
@@ -32,15 +33,44 @@ TIME = clock.o
 
 DRIVERS = SimpleSerial.o
 
+MATH = 	k_standard.o k_rem_pio2.o \
+	k_cos.o k_sin.o k_tan.o \
+	e_acos.o e_acosh.o e_asin.o e_atan2.o \
+	e_atanh.o e_cosh.o e_exp.o e_fmod.o \
+	e_gamma.o e_gamma_r.o e_hypot.o e_j0.o \
+	e_j1.o e_jn.o e_lgamma.o e_lgamma_r.o \
+	e_log.o e_log10.o e_pow.o e_rem_pio2.o e_remainder.o  \
+	e_scalb.o e_sinh.o e_sqrt.o \
+	w_acos.o w_acosh.o w_asin.o w_atan2.o \
+	w_atanh.o w_cosh.o w_exp.o w_fmod.o \
+	w_gamma.o w_gamma_r.o w_hypot.o w_j0.o \
+	w_j1.o w_jn.o w_lgamma.o w_lgamma_r.o \
+	w_log.o w_log10.o w_pow.o w_remainder.o \
+	w_scalb.o w_sinh.o w_sqrt.o \
+	s_asinh.o s_atan.o s_cbrt.o s_ceil.o s_copysign.o \
+	s_cos.o s_erf.o s_expm1.o s_fabs.o s_finite.o s_floor.o \
+	s_frexp.o s_ilogb.o s_isnan.o s_ldexp.o s_lib_version.o \
+	s_log1p.o s_logb.o s_matherr.o s_modf.o s_nextafter.o \
+	s_rint.o s_scalbn.o s_signgam.o s_significand.o s_sin.o \
+	s_tan.o s_tanh.o
+
 OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS)
 
 LMM_OBJS = $(addprefix $(OBJDIR)/lmm/, $(OBJS))
 XMM_OBJS = $(addprefix $(OBJDIR)/xmm/, $(OBJS))
+LMM_MATH_OBJS = $(addprefix $(OBJDIR)/lmm/, $(MATH))
+XMM_MATH_OBJS = $(addprefix $(OBJDIR)/xmm/, $(MATH))
 
 $(OBJDIR)/lmm/libc.a: $(LMM_OBJS)
 	$(AR) rs $@ $^
 
 $(OBJDIR)/xmm/libc.a: $(XMM_OBJS)
+	$(AR) rs $@ $^
+
+$(OBJDIR)/lmm/libm.a: $(LMM_MATH_OBJS)
+	$(AR) rs $@ $^
+
+$(OBJDIR)/xmm/libm.a: $(XMM_MATH_OBJS)
 	$(AR) rs $@ $^
 
 $(OBJDIR)/lmm/%.o: %.c
@@ -52,11 +82,11 @@ $(OBJDIR)/xmm/%.o: %.c
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
 
-install: $(OBJDIR)/lmm/libc.a $(OBJDIR)/xmm/libc.a
+install: $(OBJDIR)/lmm/libc.a $(OBJDIR)/lmm/libm.a $(OBJDIR)/xmm/libc.a $(OBJDIR)/xmm/libm.a
 	mkdir -p $(PREFIX)/propeller-elf/lib/xmm/
 	cp -r include $(PREFIX)/propeller-elf
-	cp $(OBJDIR)/lmm/libc.a $(PREFIX)/propeller-elf/lib
-	cp $(OBJDIR)/xmm/libc.a $(PREFIX)/propeller-elf/lib/xmm/
+	cp $(OBJDIR)/lmm/libc.a $(OBJDIR)/lmm/libm.a $(PREFIX)/propeller-elf/lib
+	cp $(OBJDIR)/xmm/libc.a $(OBJDIR)/xmm/libm.a $(PREFIX)/propeller-elf/lib/xmm/
 
 clean:
 	rm -rf $(OBJDIR) *.a

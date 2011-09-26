@@ -11,6 +11,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <ctype.h>
 
 /*
  * very simple printf -- just understands a few format features
