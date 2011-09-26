@@ -145,11 +145,16 @@ __LMM_RDLONG
     movi    rd_common_read, #RDLONG_OPCODE
 
 rd_common
-    muxnz   save_z_c, #2    'save the z flag
+    muxc    save_z_c, #1                    'save the c flag
+    cmp     __TMP0, external_start wc       'check for normal memory access
+ IF_B   mov     memp, __TMP0
+ IF_B   jmp     #rd_common_read
     mov     t1, __TMP0
-    call    #cache_read     'also restores the z flag
+    muxnz   save_z_c, #2                    'save the z flag
+    call    #cache_read                     'also restores the z flag
 rd_common_read
     rdlong  __TMP0, memp
+    shr     save_z_c, #1 wc                 'restore the c flag
 __LMM_RDBYTE_ret
 __LMM_RDWORD_ret
 __LMM_RDLONG_ret
@@ -185,11 +190,16 @@ __LMM_WRLONG
     movi    wr_common_write, #WRLONG_OPCODE
 
 wr_common
-    muxnz   save_z_c, #2    'save the z flag
+    muxc    save_z_c, #1                    'save the c flag
+    cmp     __TMP0, external_start wc       'check for normal memory access
+ IF_B   mov     memp, __TMP0
+ IF_B   jmp     #wr_common_write
     mov     t1, __TMP0
-    call    #cache_write    'also restores the z flag
+    muxnz   save_z_c, #2                    'save the z flag
+    call    #cache_write                    'also restores the z flag
 wr_common_write
     wrlong  __TMP1, memp
+    shr     save_z_c, #1 wc                 'restore the c flag
 __LMM_WRBYTE_ret
 __LMM_WRWORD_ret
 __LMM_WRLONG_ret

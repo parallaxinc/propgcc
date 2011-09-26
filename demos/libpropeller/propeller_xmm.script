@@ -27,6 +27,13 @@ SECTIONS {
     .text : {
         *(.text*)
     } >rom
+    .fini : {
+        *(.fini*)
+    } >rom
+
+    .data : {
+        *(.data*)
+    } >ram AT>rom
     
     .hub : {
         *(.hubstart)
@@ -38,10 +45,6 @@ SECTIONS {
     .dtors : {
         *(.dtors*)
     } >hub AT>rom
-
-    .data : {
-        *(.data*)
-    } >ram AT>rom
     
     .bss : {
         *(.bss*)
