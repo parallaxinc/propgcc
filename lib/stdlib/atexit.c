@@ -31,6 +31,7 @@ atexit(void (*function)(void))
   ah->next = __atexitlist;
   ah->func = function;
   __atexitlist = ah;
+  return 0;
 }
 
 /*

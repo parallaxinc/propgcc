@@ -5,8 +5,10 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <cog.h>
+#include <errno.h>
 #include <sys/driver.h>
 
 /* globals that the loader may change; these represent the default
