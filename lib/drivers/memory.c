@@ -103,6 +103,7 @@ static int
 mem_fclose(FILE *fp)
 {
   fp->putbyte(0, fp);
+  return 0;
 }
 
 _Driver _memory_driver =

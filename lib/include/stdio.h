@@ -74,6 +74,7 @@ extern "C" {
 
   int fgetc(FILE *fp);
   char *fgets(char *s, int size, FILE *fp);
+  char *gets(char *buf);
   int ungetc(int c, FILE *fp);
 
   int printf(const char *fmt, ...);
