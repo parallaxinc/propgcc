@@ -76,7 +76,7 @@ static int __attribute__((section(".hubtext"))) _serial_rx(FILE *fp)
 
   for (i = 0; i < 8; i++) {
     waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-    value = ((_INA & mask) << 7) | (value >> 1);
+    value = ( (0 != (_INA & mask)) << 7) | (value >> 1);
   }
   __builtin_propeller_waitcnt(waitcycles, bitcycles);
 
