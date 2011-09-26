@@ -76,10 +76,6 @@ extern "C" {
   char *fgets(char *s, int size, FILE *fp);
   int ungetc(int c, FILE *fp);
 
-#if defined(printf)
-#undef printf
-#endif
-
   int printf(const char *fmt, ...);
   int fprintf(FILE *fp, const char *fmt, ...);
   int sprintf(char *str, const char *format, ...);
