@@ -109,7 +109,7 @@ _Driver _memory_driver =
   {
     NULL,  /* no opening via normal fopen() */
     mem_fopen,
-    NULL,  /* fclose hook, not needed */
+    mem_fclose,  /* fclose hook, not needed */
     NULL,  /* flush hook, not needed */
     mem_getc,
     mem_putc,
