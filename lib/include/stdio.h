@@ -45,7 +45,7 @@ extern "C" {
     struct __driver *drv;
 
     /* auxiliary information that the driver may need */
-    unsigned int drvarg[4];
+    unsigned long drvarg[4];
 
     /* putc and getc functions, from the driver */
     /* we cache them here so that we can optimize away checks
@@ -106,6 +106,12 @@ extern "C" {
 #define putchar(x)         fputc(x, stdout)
 #define getc(x, stream)    fgetc(x, stream)
 #define getchar()          fgetc(x, stdout)
+
+  /* internal functions */
+  /* set up the FILE pointer in fp to point to a particular driver */
+  FILE *__fopen_driver(FILE *fp, struct __driver *drv, const char *name, const char *mode);
+  /* set up a FILE pointer to do I/O from a string */
+  FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len);
 
 #if defined(__cplusplus)
 }
