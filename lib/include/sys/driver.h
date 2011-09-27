@@ -20,13 +20,9 @@ struct __driver {
   int (*fopen)(FILE *fp, const char *name, const char *mode);
   int (*fclose)(FILE *fp);
 
-  /* flush pending data to disk; may be NULL if driver does not need this */
-  int (*flush)(FILE *fp);
-
-  /* single byte I/O; this may actually buffer the data */
-  /* putbyte should return the byte transmitted, or EOF on error */
-  int (*getbyte)(FILE *fp);
-  int (*putbyte)(int c, FILE *fp);
+  /* multi byte I/O */
+  int (*read)(FILE *fp, unsigned char *buf, int size);
+  int (*write)(FILE *fp, unsigned char *buf, int size);
 
   /* seek to a position in the file */
   int (*seek)(FILE *fp, long offset, int whence);

@@ -12,7 +12,7 @@
 int
 feof(FILE *fp)
 {
-  return fp->flags & _SFEOF;
+  return 0 != (fp->_flag & _IOEOF);
 }
 
 /* +--------------------------------------------------------------------

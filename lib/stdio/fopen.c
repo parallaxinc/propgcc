@@ -27,7 +27,7 @@ fopen(const char *name, const char *mode)
    */
   for (i = 0; i < FOPEN_MAX; i++)
     {
-      if (__files[i].drv == NULL)
+      if (__files[i]._drv == NULL)
 	break;
     }
   if (i == FOPEN_MAX)

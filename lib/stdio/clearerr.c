@@ -12,7 +12,7 @@
 void
 clearerr(FILE *fp)
 {
-  fp->flags &= ~(_SFERR|_SFEOF);
+  fp->_flag &= ~(_IOERR|_IOEOF);
 }
 
 /* +--------------------------------------------------------------------

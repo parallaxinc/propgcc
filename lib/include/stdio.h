@@ -29,32 +29,39 @@ extern "C" {
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-  typedef long fpos_t;
+  typedef unsigned long fpos_t;
 
   struct _FILE {
-#define _SFEOF 0x01  /* EOF seen on stream */
-#define _SFERR 0x02  /* error seen on stream */
-#define _SFINP 0x04  /* stream is open for input */
-#define _SFOUT 0x08  /* stream is open for output */
-#define _SFAPPEND 0x10 /* append data to end of file */
-#define _SFUNGET 0x20 /* the ungetc character is valid */
-    unsigned int flags;
-    unsigned char ungetc;
+
+/* FILE structure flags */
+#define	_IOREAD		0x0001		/* file may be read from */
+#define	_IOWRT		0x0002		/* file may be written to */
+#define	_IOBIN		0x0004		/* file is in "binary" mode */
+#define	_IODEV		0x0008		/* file is a character device */
+#define	_IORW		0x0080		/* file is open for update (r+w) */
+#define	_IOFBF		0x0100		/* i/o is fully buffered */
+#define	_IOLBF		0x0200		/* i/o is line buffered */
+#define	_IONBF		0x0400		/* i/o is not buffered */
+#define	_IOMYBUF	0x0800		/* standard buffer */
+#define	_IOEOF		0x1000		/* EOF has been reached */
+#define	_IOERR		0x2000		/* an error has occured */
+#define _IOAPPEND       0x4000
+
+    long		_cnt;		/* # of bytes in buffer */
+    unsigned char	*_ptr;		/* current buffer pointer */
+    unsigned char	*_base;		/* base of file buffer */
+    unsigned int	_flag;		/* file status flags */
+    long		_bsiz;		/* buffer size */
 
     /* driver for this file */
-    struct __driver *drv;
+    struct __driver *_drv;
+
+    #define _SMALL_BUFSIZ 8
+    /* a default buffer for character I/O */
+    unsigned char _chbuf[_SMALL_BUFSIZ];
 
     /* auxiliary information that the driver may need */
     unsigned long drvarg[4];
-
-    /* putc and getc functions, from the driver */
-    /* we cache them here so that we can optimize away checks
-       for read/write allowed; if reading is not allowed,
-       for example, getbyte() will be a function that just
-       returns EOF
-    */
-    int (*getbyte)(FILE *fp);
-    int (*putbyte)(int c, FILE *fp);
 
   };
 

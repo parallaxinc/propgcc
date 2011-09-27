@@ -11,7 +11,8 @@ extern _Driver _memory_driver;
 
 FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len)
 {
-  fp->drv = 0;
+  fp->_drv = 0;
+  fp->_flag = 0;
   fp = __fopen_driver(fp, &_memory_driver, str, mode);
   if (fp)
     fp->drvarg[1] = (unsigned long)len;
