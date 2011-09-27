@@ -4,7 +4,8 @@
 PREFIX = /usr/local/propeller
 WARN = -Wall -Werror
 #WARN =
-CFLAGS = $(WARN) -Os -nostdinc -I./include
+#CFLAGS = $(WARN) -Os -nostdinc -I./include
+CFLAGS = $(WARN) -Os -mfcache -nostdinc -I./include
 AR = propeller-elf-ar
 CC = propeller-elf-gcc
 MKDIR = mkdir -p
@@ -18,7 +19,7 @@ VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm
 all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a $(OBJDIR)/$(x)/libm.a)
 
 STDIO = clearerr.o feof.o ferror.o fflush.o \
-	fgetc.o fputc.o fputs.o puts.o \
+	fgetc.o fputc.o fputs.o puts.o putchar.o \
 	ungetc.o gets.o fgets.o \
 	fopen.o fopen_intern.o \
 	printf.o fprintf.o vprintf.o vfprintf.o \
@@ -35,7 +36,8 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 
 TIME = clock.o 
 
-DRIVERS = SimpleSerial.o memory.o
+DRIVERS = SimpleSerial.o memory.o \
+	FdSerial.o FullDuplexSerial.o
 
 MATH = 	k_standard.o k_rem_pio2.o \
 	k_cos.o k_sin.o k_tan.o \
@@ -82,6 +84,12 @@ $(OBJDIR)/lmm/%.o: %.c
 	$(CC) $(CFLAGS) -mlmm -o $@ -c $<
 
 $(OBJDIR)/xmm/%.o: %.c
+	$(CC) $(CFLAGS) -mxmm -o $@ -c $<
+
+$(OBJDIR)/lmm/%.o: %.s
+	$(CC) $(CFLAGS) -mlmm -o $@ -c $<
+
+$(OBJDIR)/xmm/%.o: %.s
 	$(CC) $(CFLAGS) -mxmm -o $@ -c $<
 
 hello.elf: hello.c
