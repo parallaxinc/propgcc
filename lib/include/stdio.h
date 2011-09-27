@@ -84,6 +84,9 @@ extern "C" {
   char *gets(char *buf);
   int ungetc(int c, FILE *fp);
 
+  size_t fread(void *ptr, size_t size, size_t nmeb, FILE *fp);
+  size_t fwrite(const void *ptr, size_t size, size_t nmeb, FILE *fp);
+
   int printf(const char *fmt, ...);
   int fprintf(FILE *fp, const char *fmt, ...);
   int sprintf(char *str, const char *format, ...);
