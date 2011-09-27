@@ -110,7 +110,9 @@ _do_stdio_cleanup(void)
 {
   int i;
 
-  /* clean up the buffers */
+  fflush(NULL);  /* flush all data out */
+
+  /* close all buffers */
   for (i = 0; i < FOPEN_MAX; i++)
     {
       fclose(&__files[i]);
