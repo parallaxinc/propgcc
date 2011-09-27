@@ -42,8 +42,8 @@
 	   return x+y;				
 	if(x==y) return x;		/* x=y, return x */
 	if((ix|lx)==0) {			/* x == 0 */
-	    __HI(x) = hy&0x80000000;	/* return +-minsubnormal */
-	    __LO(x) = 1;
+	    __PUT_HI(x, hy&0x80000000);	/* return +-minsubnormal */
+	    __PUT_LO(x,1);
 	    y = x*x;
 	    if(y==x) return y; else return x;	/* raise underflow flag */
 	} 
@@ -69,10 +69,10 @@
 	if(hy<0x00100000) {		/* underflow */
 	    y = x*x;
 	    if(y!=x) {		/* raise underflow flag */
-		__HI(y) = hx; __LO(y) = lx;
+	        __PUT_HI(y,hx); __PUT_LO(y,lx);
 		return y;
 	    }
 	}
-	__HI(x) = hx; __LO(x) = lx;
+	__PUT_HI(x,hx); __PUT_LO(x,lx);
 	return x;
 }

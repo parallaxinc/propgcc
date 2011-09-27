@@ -213,6 +213,7 @@ static double zero=  0.00000000000000000000e+00;
 	double t,y,z,nadj,p,p1,p2,p3,q,r,w;
 	int i,hx,lx,ix;
 
+	nadj = 0.0;
 	hx = __HI(x);
 	lx = __LO(x);
 

@@ -94,7 +94,7 @@ qS4 =  7.70381505559019352791e-02; /* 0x3FB3B8C5, 0xB12E9282 */
 	    z = (one-x)*0.5;
 	    s = sqrt(z);
 	    df = s;
-	    __LO(df) = 0;
+	    __PUT_LO(df,0);
 	    c  = (z-df*df)/(s+df);
 	    p = z*(pS0+z*(pS1+z*(pS2+z*(pS3+z*(pS4+z*pS5)))));
 	    q = one+z*(qS1+z*(qS2+z*(qS3+z*qS4)));

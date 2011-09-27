@@ -1,5 +1,3 @@
-#pragma ident "@(#)k_tan.c 1.5 04/04/22 SMI"
-
 /*
  * ====================================================
  * Copyright 2004 Sun Microsystems, Inc.  All Rights Reserved.
@@ -88,10 +86,10 @@ __kernel_tan(double x, double y, int iy) {
 					double a, t;
 
 					z = w = x + y;
-					__LO(z) = 0;
+					__PUT_LO(z,0);
 					v = y - (z - x);
 					t = a = -one / w;
-					__LO(t) = 0;
+					__PUT_LO(t,0);
 					s = one + t * z;
 					return t + a * (s + t * v);
 				}
@@ -138,10 +136,10 @@ __kernel_tan(double x, double y, int iy) {
 		/* compute -1.0 / (x+r) accurately */
 		double a, t;
 		z = w;
-		__LO(z) = 0;
+		__PUT_LO(z,0);
 		v = r - (z - x);	/* z+v = r+x */
 		t = a = -1.0 / w;	/* a = -1.0/w */
-		__LO(t) = 0;
+		__PUT_LO(t,0);
 		s = 1.0 + t * z;
 		return t + a * (s + t * v);
 	}

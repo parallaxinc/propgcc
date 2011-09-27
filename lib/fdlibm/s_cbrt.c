@@ -55,14 +55,14 @@ G =  3.57142857142857150787e-01; /* 5/14      = 0x3FD6DB6D, 0xB6DB6DB7 */
 	if((hx|__LO(x))==0) 
 	    return(x);		/* cbrt(0) is itself */
 
-	__HI(x) = hx;	/* x <- |x| */
+	__PUT_HI(x, hx);	/* x <- |x| */
     /* rough cbrt to 5 bits */
 	if(hx<0x00100000) 		/* subnormal number */
-	  {__HI(t)=0x43500000; 		/* set t= 2**54 */
-	   t*=x; __HI(t)=__HI(t)/3+B2;
+	  {__PUT_HI(t,0x43500000); 		/* set t= 2**54 */
+	    t*=x; __PUT_HI(t,__HI(t)/3+B2);
 	  }
 	else
-	  __HI(t)=hx/3+B1;	
+	  __PUT_HI(t,hx/3+B1);	
 
 
     /* new cbrt to 23 bits, may be implemented in single precision */
@@ -71,7 +71,7 @@ G =  3.57142857142857150787e-01; /* 5/14      = 0x3FD6DB6D, 0xB6DB6DB7 */
 	t*=G+F/(s+E+D/s);	
 
     /* chopped to 20 bits and make it larger than cbrt(x) */ 
-	__LO(t)=0; __HI(t)+=0x00000001;
+	__PUT_LO(t,0); __PUT_HI(t, __HI(t)+0x00000001);
 
 
     /* one step newton iteration to 53 bits with error less than 0.667 ulps */
@@ -82,6 +82,6 @@ G =  3.57142857142857150787e-01; /* 5/14      = 0x3FD6DB6D, 0xB6DB6DB7 */
 	t=t+t*r;
 
     /* retore the sign bit */
-	__HI(t) |= sign;
+	__PUT_HI(t, __HI(t) | sign);
 	return(t);
 }

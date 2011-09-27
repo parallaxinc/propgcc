@@ -19,17 +19,37 @@
 #define __LITTLE_ENDIAN
 #endif
 
+union __d_or_i {
+  double d;
+  int    i[2];
+};
+
 #ifdef __LITTLE_ENDIAN
-#define __HI(x) *(1+(int*)&x)
-#define __LO(x) *(int*)&x
-#define __HIp(x) *(1+(int*)x)
-#define __LOp(x) *(int*)x
+#define __HI_IDX 1
+#define __LO_IDX 0
 #else
-#define __HI(x) *(int*)&x
-#define __LO(x) *(1+(int*)&x)
-#define __HIp(x) *(int*)x
-#define __LOp(x) *(1+(int*)x)
+#define __HI_IDX 0
+#define __LO_IDX 1
 #endif
+
+static inline int __fdlibm_gethilo(double d, int idx)
+{
+  union __d_or_i x;
+  x.d = d;
+  return x.i[idx];
+}
+static inline double __fdlibm_puthilo(double d, int q, int idx)
+{
+  union __d_or_i x;
+  x.d = d;
+  x.i[idx] = q;
+  return x.d;
+}
+
+#define __HI(x) __fdlibm_gethilo((x), __HI_IDX)
+#define __LO(x) __fdlibm_gethilo((x), __LO_IDX)
+#define __PUT_HI(x, q) (x) = __fdlibm_puthilo((x), (q), __HI_IDX)
+#define __PUT_LO(x, q) (x) = __fdlibm_puthilo((x), (q), __LO_IDX)
 
 #if defined(__propeller__)
 #define FIXED_LIB_VERSION_TYPE fdlibm_posix

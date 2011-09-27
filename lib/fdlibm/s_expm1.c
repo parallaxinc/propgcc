@@ -191,24 +191,25 @@ Q5  =  -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 	    e  = (x*(e-c)-c);
 	    e -= hxs;
 	    if(k== -1) return 0.5*(x-e)-0.5;
-	    if(k==1) 
-	       	if(x < -0.25) return -2.0*(e-(x+0.5));
-	       	else 	      return  one+2.0*(x-e);
+	    if(k==1) {
+	      if(x < -0.25)   return -2.0*(e-(x+0.5));
+	      else 	      return  one+2.0*(x-e);
+	    }
 	    if (k <= -2 || k>56) {   /* suffice to return exp(x)-1 */
 	        y = one-(e-x);
-	        __HI(y) += (k<<20);	/* add k to y's exponent */
+	       	__PUT_HI(y, __HI(y) + (k<<20));	/* add k to y's exponent */
 	        return y-one;
 	    }
 	    t = one;
 	    if(k<20) {
-	       	__HI(t) = 0x3ff00000 - (0x200000>>k);  /* t=1-2^-k */
+	        __PUT_HI(t, 0x3ff00000 - (0x200000>>k));  /* t=1-2^-k */
 	       	y = t-(e-x);
-	       	__HI(y) += (k<<20);	/* add k to y's exponent */
+	       	__PUT_HI(y, __HI(y) + (k<<20));	/* add k to y's exponent */
 	   } else {
-	       	__HI(t)  = ((0x3ff-k)<<20);	/* 2^-k */
+	        __PUT_HI(t,  ((0x3ff-k)<<20));	/* 2^-k */
 	       	y = x-(e+t);
 	       	y += one;
-	       	__HI(y) += (k<<20);	/* add k to y's exponent */
+	       	__PUT_HI(y, __HI(y) + (k<<20));	/* add k to y's exponent */
 	    }
 	}
 	return y;

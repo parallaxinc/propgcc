@@ -186,8 +186,8 @@ static	double	one	= 1.0, tiny=1.0e-300;
 	ix1 =  q1>>1;
 	if ((q&1)==1) ix1 |= sign;
 	ix0 += (m <<20);
-	__HI(z) = ix0;
-	__LO(z) = ix1;
+	__PUT_HI(z,ix0);
+	__PUT_LO(z,ix1);
 	return z;
 }
 
