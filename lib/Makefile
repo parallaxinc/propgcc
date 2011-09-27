@@ -22,6 +22,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o putchar.o \
 	ungetc.o gets.o fgets.o \
 	fopen.o fopen_intern.o \
+	fwrite.o fread.o \
 	printf.o fprintf.o vprintf.o vfprintf.o \
 	stringio.o sprintf.o snprintf.o \
 	simple_printf.o \
