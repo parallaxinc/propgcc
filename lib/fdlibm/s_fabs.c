@@ -24,6 +24,6 @@
 	double x;
 #endif
 {
-	__HI(x) &= 0x7fffffff;
+	__PUT_HI(x, __HI(x) & 0x7fffffff);
         return x;
 }

@@ -76,9 +76,9 @@ static double one = 1.0, half=0.5, huge = 1.0e300;
 	if (ix < 0x40862E42)  return half*__ieee754_exp(fabs(x));
 
     /* |x| in [log(maxdouble), overflowthresold] */
-	lx = *( (((*(unsigned*)&one)>>29)) + (unsigned*)&x);
+	lx = __LO(x);
 	if (ix<0x408633CE || 
-	      (ix==0x408633ce)&&(lx<=(unsigned)0x8fb9f87d)) {
+	    (ix==0x408633ce && lx<=(unsigned)0x8fb9f87d)) {
 	    w = __ieee754_exp(half*fabs(x));
 	    t = half*w;
 	    return t*w;

@@ -53,11 +53,11 @@ TWO52[2]={
 		i1 |= (i0&0x0fffff);
 		i0 &= 0xfffe0000;
 		i0 |= ((i1|-i1)>>12)&0x80000;
-		__HI(x)=i0;
+		__PUT_HI(x,i0);
 	        w = TWO52[sx]+x;
 	        t =  w-TWO52[sx];
 	        i0 = __HI(t);
-	        __HI(t) = (i0&0x7fffffff)|(sx<<31);
+	        __PUT_HI(t,(i0&0x7fffffff)|(sx<<31));
 	        return t;
 	    } else {
 		i = (0x000fffff)>>j0;
@@ -77,8 +77,8 @@ TWO52[2]={
 	    i>>=1;
 	    if((i1&i)!=0) i1 = (i1&(~i))|((0x40000000)>>(j0-20));
 	}
-	__HI(x) = i0;
-	__LO(x) = i1;
+	__PUT_HI(x,i0);
+	__PUT_LO(x,i1);
 	w = TWO52[sx]+x;
 	return w-TWO52[sx];
 }

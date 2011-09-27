@@ -120,8 +120,8 @@ static double one = 1.0, Zero[] = {0.0, -0.0,};
 	}
 	if(iy>= -1022) {	/* normalize output */
 	    hx = ((hx-0x00100000)|((iy+1023)<<20));
-	    __HI(x) = hx|sx;
-	    __LO(x) = lx;
+	    __PUT_HI(x, (hx|sx));
+	    __PUT_LO(x, lx);
 	} else {		/* subnormal output */
 	    n = -1022 - iy;
 	    if(n<=20) {
@@ -132,8 +132,8 @@ static double one = 1.0, Zero[] = {0.0, -0.0,};
 	    } else {
 		lx = hx>>(n-32); hx = sx;
 	    }
-	    __HI(x) = hx|sx;
-	    __LO(x) = lx;
+	    __PUT_HI(x, (hx|sx));
+	    __PUT_LO(x, lx);
 	    x *= one;		/* create necessary signal */
 	}
 	return x;		/* exact output */

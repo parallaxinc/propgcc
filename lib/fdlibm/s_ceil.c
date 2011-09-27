@@ -72,7 +72,7 @@ static double huge = 1.0e300;
 		i1 &= (~i);
 	    }
 	}
-	__HI(x) = i0;
-	__LO(x) = i1;
+	__PUT_HI(x,i0);
+	__PUT_LO(x,i1);
 	return x;
 }

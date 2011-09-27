@@ -85,7 +85,7 @@ static double zero   =  0.0;
 	i  = ((unsigned)k&0x80000000)>>31;
         hx = (hx&0x000fffff)|((0x3ff-i)<<20);
         y  = (double)(k+i);
-        __HI(x) = hx;
+        __PUT_HI(x, hx);
 	z  = y*log10_2lo + ivln10*__ieee754_log(x);
 	return  z+y*log10_2hi;
 }

@@ -72,6 +72,6 @@ static double zero = 0.0;
 		if(x>=p_half) x -= p;
 	    }
 	}
-	__HI(x) ^= sx;
+	__PUT_HI(x, __HI(x) ^ sx);
 	return x;
 }
