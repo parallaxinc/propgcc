@@ -4,8 +4,8 @@
 PREFIX = /usr/local/propeller
 WARN = -Wall -Werror
 #WARN =
-#CFLAGS = $(WARN) -Os -nostdinc -I./include
-CFLAGS = $(WARN) -Os -mfcache -nostdinc -I./include
+CFLAGS = $(WARN) -Os -nostdinc -I./include
+#CFLAGS = $(WARN) -Os -mfcache -nostdinc -I./include
 AR = propeller-elf-ar
 CC = propeller-elf-gcc
 MKDIR = mkdir -p
