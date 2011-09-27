@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
     int baud = 0;
     int flags = 0;
     int i;
+    int terminalBaud = 0;
 
     /* get the environment settings */
     if (!(port = getenv("PROPELLER_LOAD_PORT")))
@@ -118,6 +119,8 @@ int main(int argc, char *argv[])
                 break;
             case 't':
                 terminalMode = TRUE;
+		if (argv[i][2])
+		  terminalBaud = atoi(&argv[i][2]);
                 break;
             case 'I':
                 if(argv[i][2])
@@ -195,8 +198,14 @@ int main(int argc, char *argv[])
     
     /* enter terminal mode if requested */
     if (terminalMode)
+      {
+	if (terminalBaud != 0)
+	  {
+	    serial_done();
+	    serial_init(port, terminalBaud);
+	  }
         terminal_mode();
-    
+      }
     return 0;
 }
 
@@ -211,6 +220,7 @@ usage: propeller-elf-load\n\
          [ -r ]          run the program after loading\n\
          [ -s ]          write a spin binary file for use with the Propeller Tool\n\
          [ -t ]          enter terminal mode after running the program\n\
+         [ -t<baud> ]       enter terminal mode with a different baud rate\n\
          <name>          file to compile\n\
 ", board, port);
     exit(1);
