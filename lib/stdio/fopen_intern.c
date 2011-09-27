@@ -14,30 +14,6 @@
 /* the open file descriptors */
 FILE __files[FOPEN_MAX];
 
-/* dummy i/o functions */
-static int
-no_read(FILE *fp)
-{
-  return EOF;
-}
-
-static int
-no_write(int c, FILE *fp)
-{
-  return EOF;
-}
-
-/*
- * special function to force all data to be appended
- */
-static int
-write_at_end(int c, FILE *fp)
-{
-  if (0 != (*fp->drv->seek)(fp, 0L, SEEK_END))
-    return EOF;
-  return (*fp->drv->putbyte)(c, fp);
-}
-
 /*
  * the fopen worker routine
  * this one takes a FILE * and sets it up for I/O
@@ -46,47 +22,39 @@ write_at_end(int c, FILE *fp)
 FILE *
 __fopen_driver(FILE *fp, _Driver *d, const char *name, const char *mode)
 {
-  size_t plen = 0;
   int i;
+  int flag = 0;
 
   /* force a reference to _driverlist */
   if (_driverlist[0] == 0)
     return NULL;
 
-  fp->flags = 0;
-  fp->putbyte = no_write;
-  fp->getbyte = no_read;
+  flag = 0;
 
-  if (mode[0] == 'r') {
-    fp->flags |= _SFINP;
-    if (mode[1] == '+')
-      fp->flags |= _SFOUT;
-  }
-  if (mode[0] == 'w' || mode[0] == 'a')
+  if (mode[0] == 'r')
     {
-      fp->flags |= _SFOUT;
+      flag = _IOREAD;
       if (mode[1] == '+')
-	fp->flags |= _SFINP;
+	flag = _IORW;
+    }
+  else if (mode[0] == 'w' || mode[0] == 'a')
+    {
+      flag = _IOWRT;
+      if (mode[1] == '+')
+	flag = _IORW;
       if (mode[0] == 'a')
 	{
-	  fp->flags |= _SFAPPEND;
+	  flag |= _IOAPPEND;
 	}
     }
 
-  if (fp->flags & _SFINP)
-    fp->getbyte = d->getbyte;
-  if (fp->flags & _SFOUT)
-    {
-      if (d->seek && (fp->flags & _SFAPPEND))
-	fp->putbyte = write_at_end;
-      else
-	fp->putbyte = d->putbyte;
-    }
+  fp->_flag = flag;
+  fp->_base = NULL;  /* assume null buffer */
 
   /* see if the driver is happy about this file */
   if (d->fopen)
     {
-      i = (*d->fopen)(fp, name + plen, mode);
+      i = (*d->fopen)(fp, name, mode);
       if (i < 0)
 	{
 	  /* driver unhappy, it should have set errno */
@@ -94,7 +62,17 @@ __fopen_driver(FILE *fp, _Driver *d, const char *name, const char *mode)
 	}
     }
 
-  fp->drv = d;
+  /* driver may have allocated a buffer; if not, use a small one */
+  if (NULL == fp->_base)
+    {
+      fp->_base = &fp->_chbuf[0];
+      fp->_bsiz = _SMALL_BUFSIZ;
+    }
+  fp->_ptr = fp->_base;
+  fp->_cnt = 0;
+  fp->_drv = d;
+  if (flag & _IOAPPEND)
+    (*d->seek)(fp, 0L, SEEK_END);
   return fp;
 }
 
@@ -104,16 +82,23 @@ __fopen_driver(FILE *fp, _Driver *d, const char *name, const char *mode)
 int
 fclose(FILE *fp)
 {
-  if (fp->drv == 0)
+  int error = 0;
+
+  if (fp == NULL || fp->_drv == NULL || 0 == (fp->_flag & (_IORW|_IOREAD|_IOWRT)))
     {
       errno = EBADF;
       return EOF;
     }
-  fflush(fp);
-  if (fp->drv->fclose)
-    (*fp->drv->fclose)(fp);
-  fp->drv = 0;
-  return 0;
+  if (fp->_flag & _IOWRT)
+    fflush(fp);
+  if (fp->_drv->fclose)
+    error |= (*fp->_drv->fclose)(fp);
+  fp->_base = NULL;
+  fp->_ptr = NULL;
+  fp->_bsiz = 0;
+  fp->_flag = 0;
+  fp->_drv = 0;
+  return error ? EOF : 0;
 }
 
 /*
@@ -126,7 +111,7 @@ _do_stdio_cleanup(void)
   int i;
 
   /* clean up the buffers */
-  for (i = FOPEN_MAX-1; i >= 0; --i)
+  for (i = 0; i < FOPEN_MAX; i++)
     {
       fclose(&__files[i]);
     }

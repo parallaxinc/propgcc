@@ -1,7 +1,8 @@
 /*
  * @fputc.c
  * Implementation of stdio library functions
- *
+ * Original from dLibs library, via the MiNT library
+ * Propeller specific modifications are
  * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
  * MIT licensed (see terms at end of file)
@@ -11,13 +12,31 @@
 int
 fputc(int c, FILE *fp)
 {
-  if (fp->flags & (_SFEOF|_SFERR))
-    return EOF;
+	register long m;
+	unsigned int f = fp->_flag;
 
-  c = fp->putbyte(c, fp);
-  if (c < 0)
-    fp->flags |= _SFEOF;
-  return c;
+	if(f & _IORW)
+	{
+	    fp->_flag |= _IOWRT;
+	    f = (fp->_flag &= ~(_IOREAD | _IOEOF));
+	}
+	if(!(f & _IOWRT)			/* not opened for write? */
+	   || (f & (_IOERR | _IOEOF)))		/* error/eof conditions? */
+		return(EOF);
+
+	*(fp->_ptr)++ = c; fp->_cnt++;
+	if( (fp->_cnt >= fp->_bsiz) || 
+	    ((f & _IOLBF) && (c == '\n'))  ) /* flush line buffd stream on \n */
+	{
+		m = fp->_cnt;
+		fp->_cnt = 0;
+		fp->_ptr = fp->_base;
+		if(fp->_drv->write(fp, fp->_base, m) != m) {
+			fp->_flag |= _IOERR;
+			return(EOF);
+		}
+	}
+	return c;
 }
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License

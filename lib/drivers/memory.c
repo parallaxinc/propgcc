@@ -22,38 +22,40 @@
  */
 
 static int
-mem_putc(int c, FILE *fp)
-{
-  char *base = (char *)fp->drvarg[0];
-  long max = fp->drvarg[1];
-  long cur = fp->drvarg[2];
-
-  if (cur < max)
-    {
-      base[cur++] = c;
-      fp->drvarg[2] = cur;
-      return c;
-    }
-  else
-    return EOF;
-}
-
-static int
-mem_getc(FILE *fp)
+mem_write(FILE *fp, unsigned char *buf, int size)
 {
   char *base = (char *)fp->drvarg[0];
   long max = fp->drvarg[1];
   long cur = fp->drvarg[2];
   int c;
+  int count = 0;
+  
 
-  if (cur < max)
+  while (cur < max && count < size)
+    {
+      c = buf[count++];
+      base[cur++] = c;
+    }
+  fp->drvarg[2] = cur;
+  return count;
+}
+
+static int
+mem_read(FILE *fp, unsigned char *buf, int size)
+{
+  char *base = (char *)fp->drvarg[0];
+  long max = fp->drvarg[1];
+  long cur = fp->drvarg[2];
+  int c;
+  int count = 0;
+
+  while (cur < max && count < size)
     {
       c = base[cur++];
-      fp->drvarg[2] = cur;
-      return c;
+      buf[count++] = c;
     }
-  else
-    return EOF;
+  fp->drvarg[2] = cur;
+  return count;
 }
 
 static int
@@ -102,7 +104,8 @@ mem_fopen(FILE *fp, const char *str, const char *mode)
 static int
 mem_fclose(FILE *fp)
 {
-  fp->putbyte(0, fp);
+  unsigned char c = 0;
+  mem_write(fp, &c, 1);
   return 0;
 }
 
@@ -111,9 +114,8 @@ _Driver _memory_driver =
     NULL,  /* no opening via normal fopen() */
     mem_fopen,
     mem_fclose,  /* fclose hook, not needed */
-    NULL,  /* flush hook, not needed */
-    mem_getc,
-    mem_putc,
+    mem_read,
+    mem_write,
     mem_seek,
     NULL
   };

@@ -12,7 +12,7 @@
 int
 ferror(FILE *fp)
 {
-  return fp->flags & (_SFERR);
+  return 0 != (fp->_flag & _IOERR);
 }
 
 /* +--------------------------------------------------------------------

@@ -31,56 +31,67 @@ unsigned int _baud = 115200;
  * Time critical functions like this can't live in external memory.
  */
 
-/* here is the putbyte function */
-static int __attribute__((section(".hubtext"))) _serial_tx(int value, FILE *fp)
+/* here is the write function */
+static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned char *buf, int size)
 {
     int i;
     unsigned int txpin = fp->drvarg[1];
     unsigned int bitcycles = fp->drvarg[3];
     unsigned int waitcycles = _CNT + bitcycles;
-    int orig = value;
+    int value;
+    int count = 0;
 
     /* set output */
     _OUTA = (1<<txpin);
     _DIRA = (1<<txpin);
 
-    value = (value | 256) << 1;
-    for (i = 0; i < 10; i++)
-    {
-        waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-        _OUTA = (value & 1) << txpin;
-        value >>= 1;
-    }
-    return orig;
+    while (count < size)
+      {
+	value = (*buf++ | 256) << 1;
+	for (i = 0; i < 10; i++)
+	  {
+	    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
+	    _OUTA = (value & 1) << txpin;
+	    value >>= 1;
+	  }
+	count++;
+      }
+    return count;
 }
 
-/* and here is getbyte */
-static int __attribute__((section(".hubtext"))) _serial_rx(FILE *fp)
+/* and here is read */
+static int __attribute__((section(".hubtext"))) _serial_read(FILE *fp, unsigned char *buf, int size)
 {
   unsigned int rxpin = fp->drvarg[0];
   unsigned int bitcycles = fp->drvarg[3];
   unsigned int waitcycles;
-  int value = 0;
+  int value;
   int i;
+  int count = 0;
 
   int mask = 1<<rxpin;
 
   /* set input */
   _DIRA &= ~mask;
 
-  /* wait for a start bit */
-  __builtin_propeller_waitpeq(0, mask);
+  while (count < size)
+    {
+      /* wait for a start bit */
+      __builtin_propeller_waitpeq(0, mask);
 
-  /* sync for one half bit */
-  waitcycles = _CNT + (bitcycles>>1) + bitcycles;
-
-  for (i = 0; i < 8; i++) {
-    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-    value = ( (0 != (_INA & mask)) << 7) | (value >> 1);
-  }
-  __builtin_propeller_waitcnt(waitcycles, bitcycles);
-
-  return value;
+      /* sync for one half bit */
+      waitcycles = _CNT + (bitcycles>>1) + bitcycles;
+      value = 0;
+      for (i = 0; i < 8; i++) {
+	waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
+	value = ( (0 != (_INA & mask)) << 7) | (value >> 1);
+      }
+      __builtin_propeller_waitcnt(waitcycles, bitcycles);
+      buf[count++] = value;
+      /* end of line stops the read */
+      if (value == '\n') break;
+    }
+  return count;
 }
 
 /*
@@ -152,9 +163,8 @@ _Driver _SimpleSerialDriver =
     _SimpleSerialName,
     _serial_fopen,
     NULL,       /* fclose hook, not needed */
-    NULL,       /* flush hook, not needed */
-    _serial_rx,
-    _serial_tx,
+    _serial_read,
+    _serial_write,
     NULL,       /* seek, not needed */
     NULL,       /* remove */
   };

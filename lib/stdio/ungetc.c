@@ -1,7 +1,8 @@
 /*
  * @ungetc.c
  * Implementation of stdio library functions
- *
+ * Original from the dLibs library via the MiNT library.
+ * Propeller modifications are:
  * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
  * MIT licensed (see terms at end of file)
@@ -11,11 +12,12 @@
 int
 ungetc(int c, FILE *fp)
 {
-  if (fp->flags & _SFUNGET)
-    return EOF; /* character already pushed back */
-  fp->ungetc = c;
-  fp->flags |= _SFUNGET;
-  return c;
+  if((fp->_flag & (_IOERR | _IOEOF))	/* error or eof */
+     || (fp->_ptr <= fp->_base)		/* or too many ungets */
+     || (c < 0))				/* or trying to unget EOF */
+    return(EOF);
+  ++(fp->_cnt);
+  return(*--(fp->_ptr) = c);
 }
 
 
