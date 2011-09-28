@@ -26,7 +26,7 @@ SCANF =  scanf.o vscanf.o sscanf.o
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o putchar.o \
 	ungetc.o gets.o fgets.o \
-	fopen.o fopen_intern.o \
+	fopen.o fopen_intern.o freopen.o \
 	fwrite.o fread.o fseek.o ftell.o fgetpos.o fsetpos.o \
 	stringio.o vfprintf.o vfscanf.o \
 	$(PRINTF) $(SCANF) \
@@ -39,6 +39,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
 	strncat.o strncmp.o strncpy.o \
 	strchr.o strrchr.o strspn.o strcspn.o strtok.o \
+	strcoll.o strxfrm.o \
 	strerror.o
 
 TIME = clock.o 
