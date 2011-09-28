@@ -93,6 +93,7 @@ extern "C" {
   int snprintf(char *str, size_t size, const char *format, ...);
   int __simple_printf(const char *fmt, ...) _PRINTF_FUNC;
   int __simple_float_printf(const char *fmt, ...) _PRINTF_FUNC;
+  void perror(const char *msg);
 
   int vprintf(const char *fmt, __va_list ap);
   int vfprintf(FILE *fp, const char *fmt, __va_list ap);
