@@ -1138,10 +1138,30 @@
 ;; -------------------------------------------------------------------------
 
 ;; the h constraint says that alternative cannot be in cog memory
-(define_insn "zero_extendhisi2"
+(define_insn "*zero_extendhisi2_xmm"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
-  ""
+  "TARGET_XMM"
+{
+  switch(which_alternative) {
+    case 0:
+      propeller_need_mask0000ffff = true;
+      return "and\\t%0,__MASK_0000FFFF";
+    case 1:
+      return "mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP0";
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "core,multi")
+   (set_attr "length" "4,12")
+  ]
+)
+
+(define_insn "*zero_extendhisi2_noxmm"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
+  "!TARGET_XMM"
 {
   switch(which_alternative) {
     case 0:
@@ -1156,10 +1176,36 @@
   [(set_attr "type" "core,hub")]
 )
 
-(define_insn "zero_extendqisi2"
+(define_expand "zero_extendhisi2"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
+  ""
+  ""
+)
+
+(define_insn "*zero_extendqisi2_xmm"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
-  ""
+  "TARGET_XMM"
+{
+  switch(which_alternative) {
+    case 0:
+      return "and\\t%0,#255";
+    case 1:
+      return "mov\t__TMP0,%1\n\tcall\t#__LMM_RDBYTE\n\tmov\t%0,__TMP0";
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "core,multi")
+   (set_attr "length" "4,12")
+  ]
+)
+
+(define_insn "*zero_extendqisi2_noxmm"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
+  "!TARGET_XMM"
 {
   switch(which_alternative) {
     case 0:
@@ -1173,6 +1219,13 @@
   [(set_attr "type" "core,hub")]
 )
 
+(define_expand "zero_extendqisi2"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
+  ""
+  ""
+)
+
 ;; the "h" constraint says the operand cannot be in cog memory
 (define_insn "*zero_extendqisi2_compare0"
   [(set (reg:CC_Z CC_REG)
@@ -1181,7 +1234,7 @@
 	  (const_int 0)))
    (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
         (zero_extend:SI (match_dup 1)))]
-  ""
+  "!TARGET_XMM"
 {
   switch(which_alternative) {
     case 0:
