@@ -21,14 +21,15 @@ all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a $(OBJDIR)/$(x)
 # $(PRINTF) are the functions which depend on vfprintf;
 # we include floating point versions of these in the math library
 PRINTF = printf.o fprintf.o vprintf.o sprintf.o snprintf.o
+SCANF =  scanf.o vscanf.o sscanf.o
  
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o putchar.o \
 	ungetc.o gets.o fgets.o \
 	fopen.o fopen_intern.o \
 	fwrite.o fread.o fseek.o ftell.o fgetpos.o fsetpos.o \
-	stringio.o vfprintf.o \
-	$(PRINTF) \
+	stringio.o vfprintf.o vfscanf.o \
+	$(PRINTF) $(SCANF) \
 	simple_printf.o \
 	default_io.o
 
@@ -65,7 +66,8 @@ MATH = 	k_standard.o k_rem_pio2.o \
 	s_log1p.o s_logb.o s_matherr.o s_modf.o s_nextafter.o \
 	s_rint.o s_scalbn.o s_signgam.o s_significand.o s_sin.o \
 	s_tan.o s_tanh.o \
-	float_printf.o $(PRINTF)
+	float_printf.o $(PRINTF) \
+	float_scanf.o $(SCANF)
 
 OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS)
 
