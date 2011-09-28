@@ -1,14 +1,40 @@
-/*
+/* @ftell.c
+ * Originally from the public domain dLibs library via the MiNT library
+ * Propeller specific changes
  * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
  * MIT licensed (see terms at end of file)
  */
+
 #include <stdio.h>
-#include <stdarg.h>
+#include <errno.h>
 
-#define FLOAT_SUPPORT
-#include "vfprintf.c"
+long
+ftell(FILE *fp)
+{
+  long rv, count = fp->_cnt, adjust = 0;
+  unsigned int f = fp->_flag;
 
+  if (f & _IOREAD)
+    adjust = -count;
+  else if (f & (_IOWRT | _IORW))
+    {
+      if(f & _IOWRT)
+        adjust = count;
+    }
+  else return -1L;
+
+  if (fp->_drv->seek)
+    {
+      rv = fp->_drv->seek(fp, 0L, SEEK_CUR);
+    }
+  else
+    {
+      rv = -1L;
+      errno = ENOSEEK;
+    }
+  return (rv < 0) ? -1L : rv + adjust;
+}
 
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
