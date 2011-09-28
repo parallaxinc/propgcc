@@ -100,6 +100,14 @@ extern "C" {
   int vsprintf(char *str, const char *format, __va_list ap);
   int vsnprintf(char *str, size_t size, const char *format, __va_list ap);
 
+  int scanf(const char *fmt, ...);
+  int fscanf(FILE *fp, const char *fmt, ...);
+  int sscanf(const char *str, const char *fmt, ...);
+
+  int vscanf(const char *fmt, __va_list ap);
+  int vfscanf(FILE *fp, const char *fmt, __va_list ap);
+  int vsscanf(const char *str, const char *fmt, __va_list ap);
+
   int remove(const char *filename);
   int rename(const char *oldname, const char *newname);
 
