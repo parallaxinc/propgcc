@@ -12,20 +12,17 @@ SECTIONS {
     
     .header : {
         LONG(entry)
-        LONG(ADDR(.bss))
-        LONG(ADDR(.bss) + SIZEOF(.bss))
         LONG(0)
         LONG(0)
-        LONG(0)
-        LONG(LOADADDR(.hub))
-        LONG(ADDR(.hub))
-        LONG(ADDR(.hub) + SIZEOF(.hub) + SIZEOF(.ctors) + SIZEOF(.dtors))
     } >rom
     .init : {
 	    *(.init*)
     } >rom
     .text : {
         *(.text*)
+    } >rom
+    .fini : {
+        *(.fini*)
     } >rom
     
     .hub : {
@@ -39,6 +36,7 @@ SECTIONS {
     .dtors : {
         *(.dtors*)
     } >hub AT>rom
+    
     .bss : {
         *(.bss*)
     } >hub AT>hub
