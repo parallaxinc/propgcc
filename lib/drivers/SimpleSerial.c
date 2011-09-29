@@ -14,9 +14,9 @@
 /* globals that the loader may change; these represent the default
  * pins to use
  */
-unsigned int _rxpin = 31;
-unsigned int _txpin = 30;
-unsigned int _baud = 115200;
+extern unsigned int _rxpin;
+extern unsigned int _txpin;
+extern unsigned int _baud;
 
 /*
  * we use the following elements of the FILE structure

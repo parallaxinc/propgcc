@@ -45,6 +45,10 @@ typedef struct FdSerial_struct
     char rxbuff[FDSERIAL_BUFF_MASK+1];  // receive buffer
     char txbuff[FDSERIAL_BUFF_MASK+1];  // transmit buffer
     int cogId;     // cog flag/id
+
+    // make a linked list so we can find which pins are in use by other cogs
+    struct FdSerial_struct *next;
+    int users;  // number of FILE handles using this struct
 } FdSerial_t;
 
 /**
