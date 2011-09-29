@@ -13,21 +13,22 @@ _Driver *_driverlist[] = {
 _CONSTRUCTOR void
 _InitIO(void)
 {
-  /* open stdin; we open it for writing too so that
-     we can share with stdout and stderr (see below)
-   */
-  __fopen_driver(stdin, _driverlist[0], "", "r+");
-  /* copy stdin to stdout and stderr */
-  /* we do it this way because we want just one serial cog to be running
-     if we opened new file handles for each one we would get new cogs
-  */
-  *stdout = *stdin;
-  *stderr = *stdout;
+  /* open the standard file handles */
+  /* we could use freopen here, but __fopen_driver is a bit faster
+     and drags in less library */
+  __fopen_driver(stdin, _driverlist[0], "", "r");
+  __fopen_driver(stdout, _driverlist[0], "", "w");
+  __fopen_driver(stderr, _driverlist[0], "", "w");
+
+  /* default to flushing on every newline */
+  stdout->_flag |= _IOLBF;
+  stderr->_flag |= _IOLBF;
 }
 
 int
 main(void)
 {
   printf("hello, world\n");
+  fprintf(stderr, "hello, stderr\n");
   return 0;
 }

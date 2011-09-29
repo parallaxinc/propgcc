@@ -15,6 +15,8 @@
 #include "FdSerial.h"
 #include "propdev.h"
 
+static FdSerial_t *coglist;
+
 /**
  * start initializes and starts native assembly driver in a cog.
  * @param rxpin is pin number for receive input
@@ -34,6 +36,8 @@ int _FdSerial_start(FdSerial_t *data, int rxpin, int txpin, int mode, int baudra
     data->ticks   = _clkfreq / baudrate;    // baud
     data->buffptr = (int)&data->rxbuff[0];
     data->cogId = cognew(_FullDuplexCogCode, data) + 1;
+    data->users = 1;
+
     //waitcnt(_clkfreq + _CNT);
     return data->cogId;
 }
@@ -123,9 +127,9 @@ _FdSerial_drain(FdSerial_t *data)
 /* globals that the loader may change; these represent the default
  * pins to use
  */
-unsigned int _rxpin = 31;
-unsigned int _txpin = 30;
-unsigned int _baud = 115200;
+extern unsigned int _rxpin;
+extern unsigned int _txpin;
+extern unsigned int _baud;
 
 static int
 fdserial_fopen(FILE *fp, const char *name, const char *mode)
@@ -147,16 +151,30 @@ fdserial_fopen(FILE *fp, const char *name, const char *mode)
 	txpin = atoi(name);
     }
   }
-  data = malloc(sizeof(FdSerial_t));
-  if (!data)
-    return -1;
-  fp->drvarg[0] = (unsigned long)data;
-  r = _FdSerial_start(data, rxpin, txpin, 0, baud);
-  if (r <= 0)
+
+  /* look for an existing cog that handles these pins */
+  for (data = coglist; data; data = data->next)
     {
-      free(data);
-      return -1;
+      if (data->tx_pin == txpin || data->rx_pin == rxpin)
+	break;
     }
+
+  if (!data)
+    {
+      data = malloc(sizeof(FdSerial_t));
+      if (!data)
+	return -1;
+      r = _FdSerial_start(data, rxpin, txpin, 0, baud);
+      if (r <= 0)
+	{
+	  free(data);
+	  return -1;
+	}
+
+      data->next = coglist;
+      coglist = data;
+    }
+  fp->drvarg[0] = (unsigned long)data;
   return 0;
 }
 
@@ -164,12 +182,37 @@ static int
 fdserial_fclose(FILE *fp)
 {
   FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
+  FdSerial_t **prev_p, *p;
   fp->drvarg[0] = 0;
+
+  data->users--;
+  if (data->users > 0)
+    {
+      /* still other open handles */
+      return 0;
+    }
+
   /* wait for all data to be transmitted */
   _FdSerial_drain(data);
 
   /* now stop */
   _FdSerial_stop(data);
+
+  /* remove from the list */
+  prev_p = &coglist;
+  p = coglist;
+  while (p)
+    {
+      if (p == data)
+	{
+	  *prev_p = p->next;
+	  break;
+	}
+      prev_p = &p->next;
+      p = *prev_p;
+    }
+
+  /* release memory */
   free(data);
   return 0;
 }
