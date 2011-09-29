@@ -136,11 +136,11 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
  * and the actual driver 
  */
 
-const char _SimpleSerialName[] = "SSER:";
+const char _SimpleSerialPrefix[] = "SSER:";
 
 _Driver _SimpleSerialDriver =
   {
-    _SimpleSerialName,
+    _SimpleSerialPrefix,
     _serial_fopen,
     NULL,       /* fclose hook, not needed */
     _serial_read,
