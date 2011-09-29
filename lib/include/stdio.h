@@ -42,7 +42,7 @@ extern "C" {
 #define	_IOFBF		0x0100		/* i/o is fully buffered */
 #define	_IOLBF		0x0200		/* i/o is line buffered */
 #define	_IONBF		0x0400		/* i/o is not buffered */
-#define	_IOMYBUF	0x0800		/* standard buffer */
+#define	_IOFREEBUF	0x0800		/* buffer needs freeing */
 #define	_IOEOF		0x1000		/* EOF has been reached */
 #define	_IOERR		0x2000		/* an error has occured */
 #define _IOAPPEND       0x4000
@@ -74,6 +74,13 @@ extern "C" {
   FILE *freopen(const char *name, const char *mode, FILE *fp);
   int fclose(FILE *fp);
   int fflush(FILE *fp);
+
+  void setbuf(FILE *fp, char *buf);
+  int  setvbuf(FILE *fp, char *buf, int mode, size_t size);
+#ifdef _BSD_SOURCE
+  void setbuffer(FILE *fp, char *buf, size_t size);
+  void setlinebuf(FILE *fp);
+#endif
 
   int fputc(int c, FILE *fp);
   int fputs(const char *s, FILE *fp);
