@@ -6,15 +6,15 @@ TEMPLATE_NAME=elf32
 EXTRA_EM_FILE=propeller
 
 TEXT_MEMORY=">rom"
-DATA_MEMORY=">hub AT>rom"
+DATA_MEMORY=">rom AT>rom"
 HUBTEXT_MEMORY=">hub AT>rom"
 
 KERNEL="
   /* the LMM kernel that is loaded into the cog */
-  .kernel ${RELOCATING-0} :
+  .xmmkernel ${RELOCATING-0} :
   {
-    (*.xmmkernel) *(.kernel)
-  } >cog
+    *(.xmmkernel) *(.kernel)
+  } >cog AT>dummy
 "
 KERNEL_NAME=.xmmkernel
 XMM_HEADER="

@@ -100,6 +100,7 @@ int serial_init(const char* port, unsigned long baud)
     sparm.c_cflag     = CS8 | CLOCAL | CREAD;
     sparm.c_lflag     = 0; // &= ~(ICANON | ECHO | ECHOE | ISIG);
     sparm.c_oflag     = 0; // &= ~OPOST;
+
     sparm.c_iflag     = IGNPAR | IGNBRK;
     sparm.c_cc[VTIME] = 0;
     sparm.c_cc[VMIN] = 1;
@@ -255,20 +256,47 @@ void terminal_mode(void)
     char buf[128];
     ssize_t cnt;
     fd_set set;
-    
+    int sawescape = 0;
+    int sawbreak = 0;
+
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
     newt.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-    for (;;) {
+    /* make it possible to detect breaks */
+    tcgetattr(hSerial, &newt);
+    newt.c_iflag &= ~IGNBRK;
+    newt.c_iflag |= PARMRK;
+    tcsetattr(hSerial, TCSANOW, &newt);
+
+    do {
         FD_ZERO(&set);
         FD_SET(hSerial, &set);
         FD_SET(STDIN_FILENO, &set);
         if (select(hSerial + 1, &set, NULL, NULL, NULL) > 0) {
             if (FD_ISSET(hSerial, &set)) {
-                if ((cnt = read(hSerial, buf, sizeof(buf))) > 0)
-                    write(fileno(stdout), buf, cnt);
+	        if ((cnt = read(hSerial, buf, sizeof(buf))) > 0) {
+		    int i;
+		    // check for breaks
+		    ssize_t realbytes = 0;
+		    for (i = 0; i < cnt; i++) {
+		      if (sawescape) {
+			if (buf[i] == '\377') {
+			  buf[realbytes++] = '\377';
+			  sawescape = 0;
+			} else {
+			  sawbreak = 1;
+			}
+		      } else if (buf[i] == '\377') {
+			sawescape = 1;
+		      } else {
+			buf[realbytes++] = buf[i];
+			sawescape = 0;
+		      }
+		    }
+		    write(fileno(stdout), buf, realbytes);
+		}
             }
             if (FD_ISSET(STDIN_FILENO, &set)) {
                 if ((cnt = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
@@ -280,7 +308,7 @@ void terminal_mode(void)
                 }
             }
         }
-    }
+    } while (!sawbreak);
 done:
     
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);

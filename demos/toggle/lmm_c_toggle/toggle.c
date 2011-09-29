@@ -59,7 +59,7 @@ do_toggle(void)
     _OUTA ^= pins; /* update the pins */
 
     /* sleep until _CNT == nextcnt, and return the new _CNT + wait_time */
-    nextcnt = __builtin_waitcnt(nextcnt, wait_time);
+    nextcnt = __builtin_propeller_waitcnt(nextcnt, wait_time);
   }
 }
 

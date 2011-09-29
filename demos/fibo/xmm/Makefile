@@ -15,8 +15,11 @@ PROPLIB = ../../libpropeller
 NAME = fibo
 OBJS = fibo.o
 
+# memory model
+MODEL = xmm
+
 # flags to build with
-CFLAGS = -Os
+CFLAGS = -Os -mfcache
 
 # default build target
 all: $(NAME).elf
@@ -24,4 +27,4 @@ all: $(NAME).elf
 #
 # include the fragment that defines most of everything
 #
-include $(PROPLIB)/xmmdemo.mk
+include $(PROPLIB)/demo.mk

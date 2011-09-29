@@ -41,5 +41,4 @@ void main (int argc,  char* argv[])
         executionTime = rawTime / (CLKFREQ / 1000);
         printf ("%06d (%05ums) (%u ticks)\n", result, executionTime, rawTime);
     }
-    while(1);
 }
