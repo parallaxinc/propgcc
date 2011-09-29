@@ -45,7 +45,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 TIME = clock.o 
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o memory.o \
-	FdSerial.o FullDuplexSerial.o
+	FdSerial.o FullDuplexSerial.o null.o
 
 MATH = 	k_standard.o k_rem_pio2.o \
 	k_cos.o k_sin.o k_tan.o \
