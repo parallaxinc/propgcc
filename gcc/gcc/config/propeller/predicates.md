@@ -105,3 +105,10 @@
 (define_predicate "immediate_0_8"
   (and (match_code "const_int")
        (match_test "IN_RANGE (INTVAL (op), 0, 8)")))
+
+;;
+;; true for an operand that we know is on the stack
+;;
+(define_predicate "stack_operand"
+  (and (match_code "mem")
+       (match_test "propeller_stack_operand_p (op)")))

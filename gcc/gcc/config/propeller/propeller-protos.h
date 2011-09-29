@@ -31,6 +31,7 @@ extern int propeller_can_use_return (void);
 
 extern bool propeller_cogaddr_p (rtx x);
 extern bool propeller_cogmem_p (rtx op);
+extern bool propeller_stack_operand_p (rtx op);
 extern bool propeller_legitimate_constant_p (rtx x);
 extern bool propeller_legitimate_address_p (enum machine_mode mode, rtx x, bool strict);
 extern bool propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c);

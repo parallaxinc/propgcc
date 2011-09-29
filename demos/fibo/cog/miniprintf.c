@@ -8,7 +8,7 @@
 #include "stdio.h"
 #include "cog.h"
 
-#define _WaitCnt(a,b) __builtin_waitcnt(a,b)
+#define _WaitCnt(a,b) __builtin_propeller_waitcnt(a,b)
 
 typedef struct SerialS {
     int rxpin;

@@ -60,7 +60,13 @@
    (UNSPEC_WAITVID       8)
    (UNSPEC_FCACHE_LOAD   9)
    (UNSPEC_CONST_WORD   10)
-
+   (UNSPEC_LOCKSTATE    11)
+   (UNSPEC_LOCKNEW      12)
+   (UNSPEC_LOCKRET      13)
+   (UNSPEC_LOCKCLR      14)
+   (UNSPEC_LOCKSET      15)
+   (UNSPEC_PUSHM        16)
+   (UNSPEC_POPM         17)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -179,12 +185,17 @@
 		        [(ashift "") (ashiftrt "") (lshiftrt "")
 			 (rotate "") (rotatert "")
 			])
+(define_code_iterator minmaxop
+		      [(umax "")(umin "") (smax "")(smin "")])
+
 (define_code_attr     opcode
 		        [(plus "add") (ior "or") (xor "xor")
                       	 (ashift "shl") (ashiftrt "sar") (lshiftrt "shr")
 			 (rotate "rol") (rotatert "ror")
+			 ;; propeller has backwards max and min names
+			 (umax "min") (umin "max")
+			 (smax "mins") (smin "maxs")
 			 ])
-
 
 (define_code_iterator muxcond [ne eq lt ge ltu geu])
 (define_code_attr muxcc [(ne "nz") (eq "z") (lt "c") (ltu "c")
@@ -248,7 +259,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 		(match_operand:SI 1 "propeller_dst_operand" "%0,0")
-                (neg:SI(match_operand:SI 2 "propeller_src_operand"  "rCI,N"))))
+                (neg:SI(match_operand:SI 2 "propeller_add_operand"  "rCI,N"))))
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	  (plus:SI (match_dup 1)(match_dup 2)))]
   ""
@@ -263,7 +274,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	    (plus:SI (match_operand:SI 1 "propeller_dst_operand" "%0,0")
-                     (match_operand:SI 2 "propeller_src_operand"  "rCI,N"))
+                     (match_operand:SI 2 "propeller_add_operand"  "rCI,N"))
 	    (const_int 0)))
   (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	  (plus:SI (match_dup 1)(match_dup 2)))]
@@ -279,7 +290,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	    (plus:SI (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
-                     (match_operand:SI 1 "propeller_src_operand" "rCI,N"))
+                     (match_operand:SI 1 "propeller_add_operand" "rCI,N"))
             (const_int 0)))
    ]
   ""
@@ -293,7 +304,7 @@
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	    (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
-            (neg:SI (match_operand:SI 1 "propeller_src_operand" "rCI,N"))))
+            (neg:SI (match_operand:SI 1 "propeller_add_operand" "rCI,N"))))
    ]
   ""
   "@
@@ -870,6 +881,33 @@
 )
 
 ;; -------------------------------------------------------------------------
+;; special push/pop instructions
+;; -------------------------------------------------------------------------
+
+;; push registers on the stack
+;; operand 0 is the first register to push, operand 1 is the count of registers
+
+(define_insn "pushm"
+  [(unspec_volatile [(match_operand:SI 0 "immediate_operand" "i")
+            (match_operand:SI 1 "immediate_operand" "i")]
+	  UNSPEC_PUSHM)]
+  "TARGET_LMM"
+  "mov __TMP0,#(%c1<<4)+%c0\n\tcall\t#__LMM_PUSHM"
+  [(set_attr "type" "multi")
+   (set_attr "length" "8")]
+)
+
+(define_insn "popm"
+  [(unspec_volatile [(match_operand:SI 0 "immediate_operand" "i")
+            (match_operand:SI 1 "immediate_operand" "i")]
+	  UNSPEC_POPM)]
+  "TARGET_LMM"
+  "mov __TMP0,#(%c1<<4)+%c0\n\tcall\t#__LMM_POPM"
+  [(set_attr "type" "multi")
+   (set_attr "length" "8")]
+)
+
+;; -------------------------------------------------------------------------
 ;; Move instructions
 ;; -------------------------------------------------------------------------
 
@@ -897,14 +935,32 @@
 )
 (define_insn "*movsi_imm_fcache"
   [(set (match_operand:SI 0 "register_operand" "=r")
-        (unspec [(label_ref (match_operand 1 "" ""))
-	         (label_ref (match_operand 2 "" ""))]
+        (unspec:SI [(label_ref (match_operand 1 "" ""))
+	            (label_ref (match_operand 2 "" ""))]
          UNSPEC_FCACHE_LABEL_REF))
   ]
   "TARGET_LMM"
   "mov\t%0,__LMM_FCACHE_START+(%l1-%l2)"
   [(set_attr "length" "4")
   ]
+)
+
+
+(define_insn "*movsi_xmm"
+  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
+	(match_operand:SI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
+  "TARGET_XMM"
+  "@
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdlong\t%0, %1
+   wrlong\t%1, %0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDLONG\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRLONG"
+   [(set_attr "type" "core,core,hub,hub,multi,multi")
+    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "predicable" "no")
+   ]
 )
 
 (define_insn "*movsi"
@@ -1000,6 +1056,23 @@
   ]
 )
 
+(define_insn "*movhi_xmm"
+  [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
+	(match_operand:HI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
+  "TARGET_XMM"
+  "@
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdword\t%0, %1
+   wrword\t%1, %0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRWORD"
+   [(set_attr "type" "core,core,hub,hub,multi,multi")
+    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "predicable" "no")
+   ]
+)
+
 (define_insn "*movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
@@ -1026,6 +1099,23 @@
     operands[1] = force_reg (QImode, operands[1]);
 }")
 
+(define_insn "*movqi_xmm"
+  [(set (match_operand:QI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
+	(match_operand:QI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
+  "TARGET_XMM"
+  "@
+   mov\t%0, %1
+   neg\t%0, #%n1
+   rdbyte\t%0, %1
+   wrbyte\t%1, %0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDBYTE\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRBYTE"
+   [(set_attr "type" "core,core,hub,hub,multi,multi")
+    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "predicable" "no")
+   ]
+)
+
 (define_insn "*movqi"
   [(set (match_operand:QI 0 "nonimmediate_operand"   "=rC,rC,rC,Q")
 	(match_operand:QI 1 "general_operand"         "rCI,N,Q,rC"))]
@@ -1048,10 +1138,30 @@
 ;; -------------------------------------------------------------------------
 
 ;; the h constraint says that alternative cannot be in cog memory
-(define_insn "zero_extendhisi2"
+(define_insn "*zero_extendhisi2_xmm"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
-  ""
+  "TARGET_XMM"
+{
+  switch(which_alternative) {
+    case 0:
+      propeller_need_mask0000ffff = true;
+      return "and\\t%0,__MASK_0000FFFF";
+    case 1:
+      return "mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP0";
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "core,multi")
+   (set_attr "length" "4,12")
+  ]
+)
+
+(define_insn "*zero_extendhisi2_noxmm"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
+  "!TARGET_XMM"
 {
   switch(which_alternative) {
     case 0:
@@ -1066,10 +1176,36 @@
   [(set_attr "type" "core,hub")]
 )
 
-(define_insn "zero_extendqisi2"
+(define_expand "zero_extendhisi2"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
+  ""
+  ""
+)
+
+(define_insn "*zero_extendqisi2_xmm"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
-  ""
+  "TARGET_XMM"
+{
+  switch(which_alternative) {
+    case 0:
+      return "and\\t%0,#255";
+    case 1:
+      return "mov\t__TMP0,%1\n\tcall\t#__LMM_RDBYTE\n\tmov\t%0,__TMP0";
+    default:
+      gcc_unreachable ();
+  }
+}
+  [(set_attr "type" "core,multi")
+   (set_attr "length" "4,12")
+  ]
+)
+
+(define_insn "*zero_extendqisi2_noxmm"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
+  "!TARGET_XMM"
 {
   switch(which_alternative) {
     case 0:
@@ -1083,6 +1219,13 @@
   [(set_attr "type" "core,hub")]
 )
 
+(define_expand "zero_extendqisi2"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
+  ""
+  ""
+)
+
 ;; the "h" constraint says the operand cannot be in cog memory
 (define_insn "*zero_extendqisi2_compare0"
   [(set (reg:CC_Z CC_REG)
@@ -1091,7 +1234,7 @@
 	  (const_int 0)))
    (set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
         (zero_extend:SI (match_dup 1)))]
-  ""
+  "!TARGET_XMM"
 {
   switch(which_alternative) {
     case 0:
@@ -1256,6 +1399,25 @@
   [(set_attr "predicable" "yes")]
 )
 
+;;
+;; combinations that set the condition codes
+;;
+(define_insn "*<minmaxop:code>si3_compare0"
+  [(set (reg:CC_Z CC_REG)
+        (compare:CC_Z
+	  (minmaxop:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+	               (match_operand:SI 2 "propeller_src_operand" "rCI"))
+          (const_int 0)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (minmaxop:SI (match_dup 1)(match_dup 2)))
+  ]
+  ""
+  "<opcode>\t%0, %2 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")
+  ]
+)
+	
 ;; -------------------------------------------------------------------------
 ;; Conditional moves and stores
 ;; -------------------------------------------------------------------------
@@ -1271,10 +1433,16 @@
   "
   {
     enum rtx_code code = GET_CODE (operands[1]);
+    enum machine_mode mode;
     rtx ccreg;
+    rtx x = XEXP (operands[1], 0);
+    rtx y = XEXP (operands[1], 1);
 
-    ccreg = propeller_gen_compare_reg (code, XEXP (operands[1], 0),
-				 XEXP (operands[1], 1));
+    ccreg = propeller_gen_compare_reg (code, x, y);
+    mode = GET_MODE (ccreg);
+
+    /* we have to actually emit the compare! */
+    emit_insn (gen_rtx_SET (VOIDmode, ccreg, gen_rtx_COMPARE (mode, x, y)));
     operands[1] = gen_rtx_fmt_ee (code, VOIDmode, ccreg, const0_rtx);
   }"
 )
@@ -1293,7 +1461,7 @@
 
 (define_insn "*or_andn_<muxcond:code>"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else
+        (if_then_else:SI
 	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
 	  (ior:SI (match_operand:SI 1 "propeller_dst_operand" "0")
 	          (match_operand:SI 2 "propeller_src_operand" "rCI"))
@@ -1308,7 +1476,7 @@
 
 (define_insn "*movesi<muxcond:code>_allones"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else
+        (if_then_else:SI
 	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
             (const_int -1)
 	    (const_int 0)))]
@@ -1328,8 +1496,8 @@
 ;;  where we know the "&~N" will have no effect
 
 (define_insn_and_split "*movesi<muxcond:code>_one"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=&rC")
+        (if_then_else:SI
 	    (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
             (match_operand:SI 1 "propeller_src_operand" "rCI")
 	    (const_int 0)))]
@@ -1338,7 +1506,7 @@
   "reload_completed"
   [(set (match_dup 0)(const_int 0))
    (set (match_dup 0)
-        (if_then_else
+        (if_then_else:SI
 	  (muxcond (reg:<muxccmode> CC_REG)(const_int 0))
           (ior:SI (match_dup 0)(match_dup 1))
           (and:SI (not:SI (match_dup 1))(match_dup 0))))
@@ -1352,17 +1520,17 @@
 ;; the general case of movsi
 (define_insn "*movsicc_insn"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC,rC,rC,rC,rC,rC,rC")
-        (if_then_else
+        (if_then_else:SI
 	  (match_operator 3 "predicate_operator"
 	    [(match_operand 4 "cc_register" "") (const_int 0)])
 	  (match_operand:SI 1 "propeller_add_operand" "0,0,rCI,N,rCI,rCI,N,N")
 	  (match_operand:SI 2 "propeller_add_operand" "rCI,N,0,0,rCI,N,rCI,N" )))]
   ""
   "@
-   %p3 mov\t%0,%2
-   %p3 neg\t%0,#%n2
-   %P3 mov\t%0,%1
-   %P3 neg\t%0,#%n1
+   %P3 mov\t%0,%2
+   %P3 neg\t%0,#%n2
+   %p3 mov\t%0,%1
+   %p3 neg\t%0,#%n1
    %p3 mov\t%0,%1\n\t%P3 mov\t%0,%2
    %p3 mov\t%0,%1\n\t%P3 neg\t%0,#%n2
    %p3 neg\t%0,#%n1\n\t%P3 mov\t%0,%2
@@ -1831,6 +1999,7 @@
   [(unspec_volatile [(return)] UNSPEC_NAKED_RET) ]
   ""
   "' Naked function: epilogue provided by programmer."
+  [(set_attr "length" "0")]
 )
 
 ;; we pretend that "native return" uses the link register
@@ -1858,6 +2027,36 @@
 ;; -------------------------------------------------------------------------
 ;;
 
+(define_expand "doloop_begin"
+  [(use (match_operand 0 "register_operand" ""))	; loop pseudo
+   (use (match_operand 1 "" ""))	; iterations; zero if unknown
+   (use (match_operand 2 "" ""))	; max iterations
+   (use (match_operand 3 "" ""))	; loop level
+  ]
+""
+{
+  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+    {
+      if (INTVAL (operands[3]) > 1)
+      	 FAIL;
+      emit_insn (gen_doloop_begin_internal (operands[0], operands[0], operands[3]));
+    }
+  else
+    FAIL;
+  DONE;
+}
+)
+
+(define_insn "doloop_begin_internal"
+   [(set (match_operand:SI 0 "register_operand" "=r")
+	(unspec_volatile:SI
+	 [(match_operand:SI 1 "register_operand" "0")
+	  (match_operand 2 "const_int_operand" "")] UNSPEC_LOOP_START))]
+""
+"'' loop_start register %0 level %2"
+ [(set_attr "length" "0")]
+)
+
 (define_expand "doloop_end"
   [(use (match_operand 0 "" ""))	; loop pseudo
    (use (match_operand 1 "" ""))	; iterations; zero if unknown
@@ -1867,7 +2066,11 @@
 ""
 {
   if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
-    emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+    {
+      if (INTVAL (operands[3]) > 1)
+      	 FAIL;
+      emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+    }
   else
     FAIL;
   DONE;
@@ -1876,24 +2079,41 @@
 
 ;; this is rather funky, because it has to be able to handle memory
 ;; operands due to the way reload works
-;; this is simplified by our having the __TMP0 register available
-;; that isn't allocable by the compiler
+;; we handle this by doing a split if the memory load is required
 
-(define_insn "djnz"
+(define_insn_and_split "djnz"
   [(set (pc)
         (if_then_else
-	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC")
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC,rC")
 	      (const_int 1))
 	  (label_ref (match_operand 0 "" ""))
 	  (pc)))
-   (set (match_operand:SI 2 "nonimmediate_operand" "=1,*m")
-        (plus:SI (match_dup 1)(const_int -1)))]
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,?X,?X")
+        (plus:SI (match_dup 1)(const_int -1)))
+   (clobber (match_scratch:SI 3 "=X,&1,&?r"))
+  ]
 "!TARGET_LMM"
-"@
- djnz %1,#%l0
- rdlong __TMP0,%1\n\tsub __TMP0,#1\n\twrlong __TMP0,%2\n\ttjnz __TMP0,#%l0"
-[(set_attr "length" "4,16")
- (set_attr "type" "core,multi")]
+{
+ if (which_alternative != 0)
+   return "#";
+ return "djnz\t%1,#%l0";
+}
+ "&& reload_completed
+  && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
+ [(set (match_dup 3)(match_dup 1))
+  (parallel
+    [(set (reg:CC_Z CC_REG)
+          (compare:CC_Z (plus:SI (match_dup 3)(const_int -1))
+	                (const_int 0)))
+      (set (match_dup 3)(plus:SI (match_dup 3)(const_int -1)))])
+  (set (match_dup 2)(match_dup 3))
+  (set (pc) (if_then_else (ne (reg:CC_Z CC_REG)(const_int 0))
+                          (label_ref (match_dup 0))
+                          (pc)))]
+ ""
+ [(set_attr "type" "core,multi,multi")
+  (set_attr "length" "4,8,8")
+ ]
 )
 
 
@@ -2027,6 +2247,79 @@
   "rev\t%0,%2"
   [(set_attr "predicable" "yes")]
 )
+
+;; allocate and return locks
+(define_insn "locknew"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (unspec_volatile:SI [(const_int 0)]
+                    UNSPEC_LOCKNEW))]
+  ""
+  "locknew\t%0"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+(define_insn "lockret"
+  [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+                    UNSPEC_LOCKRET)]
+  ""
+  "lockret\t%0"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+;; clear lock
+(define_insn "lockclr"
+  [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+                    UNSPEC_LOCKCLR)]
+  ""
+  "lockclr\t%0"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+
+;; set lock
+;; this needs to be split into 2 insns, one to set the lock and the
+;; second to update its state from the carry flag
+;; the lockset raw sets the carry flag to mean that the flag was set,
+;; which will mean that the register is set to -1 (i.e. < 0)
+
+(define_insn "*lockset_raw"
+  [ (set (reg:CC_C CC_REG)
+         (compare:CC_C
+	   (const_int 0)
+	   (unspec [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+	           UNSPEC_LOCKSTATE)))
+    (unspec_volatile [(match_dup 0)]
+                    UNSPEC_LOCKSET)]
+  ""
+  "lockset\t%0 wc"
+  [(set_attr "predicable" "yes")
+   (set_attr "type" "hub")]
+)
+
+(define_insn_and_split "lockset"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=&rC")
+        (unspec:SI [(match_operand:SI 1 "propeller_dst_operand" "rC")]
+	        UNSPEC_LOCKSTATE))
+   (unspec_volatile [(match_dup 1)] UNSPEC_LOCKSET)]
+  ""
+  "#"
+  "reload_completed"
+  [(parallel
+     [(set (reg:CC_C CC_REG)
+           (compare:CC_C
+               (const_int 0)
+	       (unspec [(match_dup 1)] UNSPEC_LOCKSTATE)))
+       (unspec_volatile [(match_dup 1)] UNSPEC_LOCKSET) ])
+    (set (match_dup 0)
+         (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
+                       (const_int -1)
+                       (const_int 0)))
+   ]
+   ""
+   [(set_attr "conds" "set")
+    (set_attr "length" "8")]
+)
+
 
 (define_insn "waitcnt"
   [(set (match_operand:SI       0 "propeller_dst_operand" "=rC")

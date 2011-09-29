@@ -74,6 +74,20 @@ typedef struct {
 /* target checksum for a binary file */
 #define SPIN_TARGET_CHECKSUM    0x14
 
+/* image header */
+typedef struct {
+    uint32_t entry;
+    uint32_t initCount;
+    uint32_t initTableOffset;
+} ImageHdr;
+
+/* init section */
+typedef struct {
+    uint32_t vaddr;
+    uint32_t paddr;
+    uint32_t size;
+} InitSection;
+
 /* packet types */
 #define TYPE_VM_INIT            1
 #define TYPE_CACHE_INIT         2
@@ -136,20 +150,15 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
     if (!(c = OpenElfFile(fp, hdr)))
         return Error("failed to open elf file");
         
-    /* load the '.init' section */
-    if (!FindSectionTableEntry(c, ".init", &section)
-    &&  !FindSectionTableEntry(c, ".text", &section)) {
-        CloseElfFile(c);
-        return Error("can't find an '.init' or '.text' section");
-    }
-    
-    /* check for loading into hub or external memory */
-	if (section.addr >= EXTERNAL_BASE) {
+    /* '.header' section used for external loads */
+    if (FindSectionTableEntry(c, ".header", &section)) {
         if (!LoadExternalImage(sys, config, port, path, flags, c)) {
             CloseElfFile(c);
             return FALSE;
         }
     }
+    
+    /* no '.header' section for internal loads */
     else {
         if (!LoadInternalImage(sys, config, port, path, flags, c)) {
             CloseElfFile(c);
@@ -266,10 +275,11 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
 	SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
-    uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf, *buf2;
-    int imageSize, chksum, target, i;
-    ElfProgramHdr program;
-    uint32_t size, size2;
+    uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf, *imagebuf;
+    ElfProgramHdr program, program_kernel, program_header;
+    int imageSize, initTableSize, chksum, target, i;
+    InitSection *initSection;
+    ImageHdr *image;
 
     /* patch serial helper for clock mode and frequency */
     hdr->clkfreq = config->clkfreq;
@@ -312,59 +322,96 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         return Error("no cache driver to load external image");
     
-    /* load the '.init' section */
-    if (!FindProgramSection(c, ".init", &program)) {
-        CloseElfFile(c);
-        return Error("can't find '.init' section");
+    /* find the .xmmkernel section */
+    if (!FindProgramSection(c, ".xmmkernel", &program_kernel))
+        return Error("can't find .xmmkernel section");
+    
+    /* find the .header section */
+    if (!FindProgramSection(c, ".header", &program_header))
+        return Error("can't find .header section");
+    
+    /* allocate a table of init sections */
+    initTableSize = (c->hdr.phnum - 2) * sizeof(InitSection);
+    
+    /* determine the full image size including the hub/ram initializers */
+    for (i = 0, imageSize = program_header.filesz; i < c->hdr.phnum; ++i) {
+        if (!LoadProgramTableEntry(c, i, &program))
+            return Error("can't load program table entry %d", i);
+        if (program.vaddr != program.paddr)
+            imageSize += program.filesz;
+    }
+    printf("image size: %d\n", imageSize);
+    
+    /* allocate a buffer big enough for the entire image */
+    if (!(imagebuf = (uint8_t *)malloc(imageSize + initTableSize)))
+        return Error("insufficent memory for %d byte image", imageSize + initTableSize);
+    
+    /* load the image data */
+    for (i = 0; i < c->hdr.phnum; ++i) {
+        if (!LoadProgramTableEntry(c, i, &program)) {
+            free(imagebuf);
+            return Error("can't load program table entry %d", i);
+        }
+        if (program.offset != program_kernel.offset
+        &&  (program.offset == program_header.offset || program.vaddr != program.paddr)) {
+            if (program.filesz > 0) {
+                if (!(buf = LoadProgramSection(c, &program))) {
+                    free(imagebuf);
+                    return Error("can't load program section %d", i);
+                }
+                printf("paddr %08x, size %08x\n", program.paddr, program.filesz);
+                memcpy(&imagebuf[program.paddr - program_header.paddr], buf, program.filesz);
+                free(buf);
+            }
+        }
     }
     
-    /* load the '.init' section data */
-    if (!(buf = LoadProgramSection(c, &program)))
-        return Error("can't load '.init' section");
-    size = program.filesz;
+    /* fill in the image header */
+    image = (ImageHdr *)imagebuf;
+    image->initCount = c->hdr.phnum - 2;
+    image->initTableOffset = imageSize;
     
-    /* load the '.data' section initializers */
-    if (!FindProgramSection(c, ".data", &program)) {
-        CloseElfFile(c);
-        return Error("can't find '.data' section image");
+    /* populate the init section table */
+    initSection = (InitSection *)(imagebuf + imageSize);
+    for (i = 0; i < c->hdr.phnum; ++i) {
+        if (!LoadProgramTableEntry(c, i, &program)) {
+            free(imagebuf);
+            return Error("can't load program table entry %d", i);
+        }
+        if (program.filesz == 0
+        ||  (program.offset != program_kernel.offset && program.offset != program_header.offset)) {
+            initSection->vaddr = program.vaddr;
+            initSection->paddr = program.paddr;
+            if (program.vaddr == program.paddr)
+                initSection->size = program.memsz;
+            else
+                initSection->size = program.filesz;
+            printf("vaddr %08x, paddr %08x, size %08x\n", initSection->vaddr, initSection->paddr, initSection->size);
+            ++initSection;
+        }
     }
     
-    /* load the '.data' section data initializers */
-    if (!(buf2 = LoadProgramSection(c, &program)))
-        return Error("can't load '.data' section image");
-    size2 = program.filesz;
-    
-    /* combine the buffers */
-    if (!(buf = (uint8_t *)realloc(buf, size + size2))) {
-        free(buf);
-        free(buf2);
-        return Error("Insufficient memory for '.init' section buffer: %d", size + size2);
-    }
-    memcpy(&buf[size], buf2, size2);
-    free(buf2);
-    
-    /* write the '.init' section to memory */
-	printf("Loading .init\n");
-    target = (program.paddr >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
+    /* write the full image to memory */
+	printf("Loading program image\n");
+    target = (program_header.paddr >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
     if (!SendPacket(target, (uint8_t *)"", 0)
-    ||  !WriteBuffer(buf, size + size2)) {
-        free(buf);
-        return Error("Loading '.init' section failed");
+    ||  !WriteBuffer(imagebuf, imageSize + initTableSize)) {
+        free(imagebuf);
+        return Error("Loading program image failed");
 	}
     
-    /* free the '.init' section data and the .data section initializers */
-    free(buf);
-
-    /* load the '.xmmkernel' section */
-    if (!FindProgramSection(c, ".xmmkernel", &program)
-    ||  !(buf = LoadProgramSection(c, &program)))
-        return Error("can't load '.xmmkernel' section");
+    /* free the image buffer */
+    free(imagebuf);
     
+    /* load the .kernel section */
+    if (!(buf = LoadProgramSection(c, &program_kernel)))
+        return Error("can't load .xmmkernel section");
+
     /* handle downloads to eeprom */
     if (flags & LFLAG_WRITE_EEPROM) {
         int mode = (flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM);
         if (target == TYPE_FLASH_WRITE) {
-            if (!WriteFlashLoader(sys, config, port, buf, program.filesz, mode)) {
+            if (!WriteFlashLoader(sys, config, port, buf, program_kernel.filesz, mode)) {
                 free(buf);
                 return Error("can't load '.xmmkernel' section into eeprom");
             }
@@ -375,8 +422,9 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     
     /* handle downloads to hub memory */
     else if (flags & LFLAG_RUN) {
+        printf("Loading .xmmkernel\n");
         if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
-        ||  !WriteBuffer(buf, program.filesz)
+        ||  !WriteBuffer(buf, program_kernel.filesz)
         ||  !SendPacket(TYPE_VM_INIT, (uint8_t *)"", 0))
             return Error("can't loading xmm kernel");
         if (!SendPacket(TYPE_RUN, (uint8_t *)"", 0))

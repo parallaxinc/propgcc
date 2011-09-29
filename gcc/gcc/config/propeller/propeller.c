@@ -129,8 +129,12 @@ propeller_option_override (void)
         flag_pic = 0;
     }
 
-    /* -mxmm implies -mlmm */
+    /* -mxmm implies -mxmmc */
     if (TARGET_XMM)
+      target_flags |= MASK_XMM_CODE;
+
+    /* -mxmm and -mxmmc implies -mlmm */
+    if (TARGET_XMM_CODE)
       target_flags |= MASK_LMM;
 
     /* function CSE does not make sense for Cog mode
@@ -314,6 +318,22 @@ propeller_cogmem_p (rtx op)
     if (propeller_cogaddr_p (op))
         return 1;
     return 0;
+}
+
+/*
+ * test whether this operand is known to be memory pointing into the stack
+ */
+bool
+propeller_stack_operand_p (rtx op)
+{
+  if (GET_CODE (op) != MEM)
+    return false;
+  op = XEXP (op, 0);
+  if (op == stack_pointer_rtx)
+    return true;
+  if (op == frame_pointer_rtx || op == arg_pointer_rtx)
+    return true;
+  return false;
 }
 
 /*
@@ -1220,6 +1240,43 @@ propeller_initial_elimination_offset (int from, int to)
     gcc_unreachable();
   return offset;
 }
+
+/* push multiple registers on the stack; return bytes pushed */
+static int
+push_multiple (int first_reg, int reg_count)
+{
+  int pushed = 0;
+  rtx mem;
+  rtx insn;
+  rtx sp;
+  int regno;
+
+  if (first_reg < 0 || first_reg + reg_count > 16)
+    gcc_unreachable ();
+  if (TARGET_LMM && reg_count > 1) {
+    insn = gen_pushm ( GEN_INT(first_reg), GEN_INT(reg_count) );
+    insn = emit_insn ( insn );
+    /* setting RTX_FRAME_RELATED_P does not work right, because the
+       pushm is not a set insn */
+    /* RTX_FRAME_RELATED_P (insn) = 1; */
+    return reg_count * UNITS_PER_WORD;
+  }
+
+
+  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
+
+  for (regno = first_reg; regno < first_reg + reg_count; regno++)
+    {
+      insn = emit_add (sp, sp, GEN_INT(-4));
+      RTX_FRAME_RELATED_P (insn) = 1;
+      mem = gen_rtx_MEM (word_mode, sp);
+      insn = emit_move_insn (mem, gen_rtx_REG (word_mode, regno));
+      RTX_FRAME_RELATED_P (insn) = 1;
+      pushed += UNITS_PER_WORD;
+    }
+  return pushed;
+}
+
 /* Generate and emit RTL to save callee save registers.  */
 /* returns total number of bytes pushed on stack */
 static int
@@ -1228,28 +1285,65 @@ expand_save_registers (struct propeller_frame_info *info)
   unsigned int reg_save_mask = info->reg_save_mask;
   int regno;
   int pushed = 0;
-  rtx insn;
-  rtx sp;
+  int reg_start, last_reg, reg_count;
 
-  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
 
   /* Callee saves are below locals and above outgoing arguments.  */
   /* push registers from low to high (so r15 gets pushed last, and
      hence is available early for us to use in the epilogue) */
+  reg_start = -9999;
+  last_reg = -9999;
+  reg_count = 0;
+
   for (regno = 0; regno <= 15; regno++)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
-          rtx mem;
-          insn = emit_add (sp, sp, GEN_INT(-4));
-          RTX_FRAME_RELATED_P (insn) = 1;
-          mem = gen_rtx_MEM (word_mode, sp);
-          insn = emit_move_insn (mem, gen_rtx_REG (word_mode, regno));
-          RTX_FRAME_RELATED_P (insn) = 1;
-          pushed += UNITS_PER_WORD;
+	if (last_reg == regno-1) {
+	  reg_count++;
+	} else {
+	  /* spit out a single push or a sequence of push multiples */
+	  if (reg_start > 0)
+	    pushed += push_multiple (reg_start, reg_count);
+	  reg_count = 1;
+	  reg_start = regno;
+	}
+	last_reg = regno;
       }
     }
+  if (reg_count > 0) {
+    pushed += push_multiple (reg_start, reg_count);
+  }
   return pushed;
+}
+
+/* pop multiple registers off the stack */
+static void
+pop_multiple (int last_reg, int reg_count)
+{
+  rtx mem;
+  rtx insn;
+  rtx sp;
+  int regno;
+
+  if (last_reg >= 16 || last_reg - reg_count < 0)
+    gcc_unreachable ();
+  if (TARGET_LMM && reg_count > 1) {
+    insn = gen_popm ( GEN_INT(last_reg), GEN_INT(reg_count) );
+    insn = emit_insn ( insn );
+    return;
+  }
+
+
+  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
+
+  for (regno = last_reg; reg_count > 0; --regno,--reg_count)
+    {
+      mem = gen_rtx_MEM (word_mode, sp);
+      insn = emit_move_insn (gen_rtx_REG (word_mode, regno), mem);
+      insn = emit_add (sp, sp, GEN_INT(4));
+    }
+
 }
 
 /* Generate and emit RTL to restore callee save registers.  */
@@ -1258,10 +1352,12 @@ expand_restore_registers (struct propeller_frame_info *info)
 {
   unsigned int reg_save_mask = info->reg_save_mask;
   int regno;
-  rtx insn;
-  rtx sp;
+  int reg_end, last_reg, reg_count;
 
-  sp = gen_rtx_REG (word_mode, PROP_SP_REGNUM);
+
+  reg_end = -9999;
+  last_reg = -9999;
+  reg_count = 0;
 
   /* Callee saves are below locals and above outgoing arguments.  */
   /* we pushed registers from high to low (so r0 gets pushed first),
@@ -1271,12 +1367,26 @@ expand_restore_registers (struct propeller_frame_info *info)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
-          rtx mem;
-          mem = gen_rtx_MEM (word_mode, sp);
-          insn = emit_move_insn (gen_rtx_REG (word_mode, regno), mem);
-          insn = emit_add (sp, sp, GEN_INT(4));
+	if (last_reg == regno+1)
+	  {
+	    reg_count++;
+	  }
+	else
+	  {
+	    /* spit out a single pop or pop multiple */
+	    if (reg_end > 0)
+	      {
+		pop_multiple (reg_end, reg_count);
+	      }
+	    reg_count = 1;
+	    reg_end = regno;
+	  }
+	last_reg = regno;
       }
     }
+
+  if (reg_count > 0)
+    pop_multiple (reg_end, reg_count);
 }
 
 static void
@@ -1588,26 +1698,35 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  * builtin functions
  * here are the builtins we support:
  *
- * unsigned __builtin_cogid(void)
+ * unsigned __builtin_propeller_cogid(void)
  *     get the current cog id
- * unsigned __builtin_coginit(unsigned mode)
+ * unsigned __builtin_propeller_coginit(unsigned mode)
  *     start or restart a cog
- * void __builtin_cogstop(unsigned id)
+ * void __builtin_propeller_cogstop(unsigned id)
  *     stop a cog
  *
- * unsigned __builtin_reverse(unsigned x, unsigned n)
- *     reverse the bottom n bits of x, and 0 the others
- * unsigned __builtin_waitcnt(unsigned c, unsigned d)
+ * unsigned __builtin_propeller_rev(unsigned x, unsigned n)
+ *     reverse the bottom 32-n bits of x, and 0 the others
+ * unsigned __builtin_propeller_waitcnt(unsigned c, unsigned d)
  *     wait until the frequency counter reaches c;
  *     returns c+d
- * void __builtin_waitpeq(unsigned state, unsigned mask)
+ * void __builtin_propeller_waitpeq(unsigned state, unsigned mask)
  *     wait until (INA & mask) == state
- * void __builtin_waitpne(unsigned state, unsigned mask)
+ * void __builtin_propeller_waitpne(unsigned state, unsigned mask)
  *     wait until (INA & mask) != state
- * void __builtin_waitvid(unsigned colors, unsigned pixels)
+ * void __builtin_propeller_waitvid(unsigned colors, unsigned pixels)
  *     wait for video generator
  *
- * void * __builtin_taskswitch(void *newfunc)
+ * int __builtin_propeller_locknew(void)
+ *     allocate a new hardware lock
+ * void __builtin_propeller_lockret(int x)
+ *     free a hardware lock
+ * int __builtin_propeller_lockset(int x)
+ *     set a hardware lock and return its previous state (-1 if set, 0 if clear)
+ * void __builtin_propeller_lockclr(int x)
+ *     clear a hardware lock
+ *
+ * void * __builtin_propeller_taskswitch(void *newfunc)
  *     switch to a new function
  *
  */
@@ -1624,6 +1743,11 @@ enum propeller_builtins
     PROPELLER_BUILTIN_WAITPNE,
     PROPELLER_BUILTIN_WAITVID,
 
+    PROPELLER_BUILTIN_LOCKNEW,
+    PROPELLER_BUILTIN_LOCKRET,
+    PROPELLER_BUILTIN_LOCKSET,
+    PROPELLER_BUILTIN_LOCKCLR,
+
     PROPELLER_BUILTIN_TASKSWITCH
 };
 
@@ -1636,6 +1760,7 @@ propeller_init_builtins (void)
 {
   tree endlink = void_list_node;
   tree uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, endlink);
+  tree int_endlink = tree_cons (NULL_TREE, integer_type_node, endlink);
   tree uns_uns_endlink = tree_cons (NULL_TREE, unsigned_type_node, uns_endlink);
   tree ptr_endlink = tree_cons (NULL_TREE, ptr_type_node, endlink);
 
@@ -1644,6 +1769,10 @@ propeller_init_builtins (void)
   tree uns_ftype_void;
   tree uns_ftype_uns;
   tree uns_ftype_uns_uns;
+
+  tree int_ftype_void;
+  tree int_ftype_int;
+  tree void_ftype_int;
 
   /* void func (void) */
   void_ftype_void = build_function_type (void_type_node, endlink);
@@ -1660,35 +1789,55 @@ propeller_init_builtins (void)
   uns_ftype_uns = build_function_type (unsigned_type_node, uns_endlink);
   uns_ftype_uns_uns = build_function_type (unsigned_type_node, uns_uns_endlink);
 
+  /* int func (void) */
+  int_ftype_void = build_function_type (integer_type_node, endlink);
+  /* void func (int) */
+  void_ftype_int = build_function_type (void_type_node, int_endlink);
+  /* int func (int) */
+  int_ftype_int = build_function_type (integer_type_node, int_endlink);
+
   /* void (*)(void) func(void (*f)(void)) */
   vfunc_ftype_vfunc = build_function_type(ptr_type_node, ptr_endlink);
 
-  add_builtin_function("__builtin_cogid", uns_ftype_void,
+  add_builtin_function("__builtin_propeller_cogid", uns_ftype_void,
                        PROPELLER_BUILTIN_COGID,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_coginit", uns_ftype_uns,
+  add_builtin_function("__builtin_propeller_coginit", uns_ftype_uns,
                        PROPELLER_BUILTIN_COGINIT,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_cogstop", void_ftype_uns,
+  add_builtin_function("__builtin_propeller_cogstop", void_ftype_uns,
                        PROPELLER_BUILTIN_COGSTOP,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_reverse", uns_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_rev", uns_ftype_uns_uns,
                        PROPELLER_BUILTIN_REVERSE,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitcnt", uns_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitcnt", uns_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITCNT,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitpeq", void_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitpeq", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITPEQ,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitpne", void_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitpne", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITPNE,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_waitvid", void_ftype_uns_uns,
+  add_builtin_function("__builtin_propeller_waitvid", void_ftype_uns_uns,
                        PROPELLER_BUILTIN_WAITVID,
                        BUILT_IN_MD, NULL, NULL_TREE);
 
-  add_builtin_function("__builtin_taskswitch", vfunc_ftype_vfunc,
+  add_builtin_function("__builtin_propeller_locknew", int_ftype_void,
+                       PROPELLER_BUILTIN_LOCKNEW,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_lockret", void_ftype_int,
+                       PROPELLER_BUILTIN_LOCKRET,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_lockset", int_ftype_int,
+                       PROPELLER_BUILTIN_LOCKSET,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_lockclr", void_ftype_int,
+                       PROPELLER_BUILTIN_LOCKCLR,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+
+  add_builtin_function("__builtin_propeller_taskswitch", vfunc_ftype_vfunc,
                        PROPELLER_BUILTIN_TASKSWITCH,
                        BUILT_IN_MD, NULL, NULL_TREE);
 
@@ -1889,6 +2038,16 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpeq, exp);
     case PROPELLER_BUILTIN_WAITPNE:
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpne, exp);
+
+    case PROPELLER_BUILTIN_LOCKNEW:
+        return propeller_expand_builtin_1op (CODE_FOR_locknew, target);
+    case PROPELLER_BUILTIN_LOCKRET:
+        return propeller_expand_builtin_1opvoid (CODE_FOR_lockret, exp);
+    case PROPELLER_BUILTIN_LOCKSET:
+        return propeller_expand_builtin_2op (CODE_FOR_lockset, exp, target);
+    case PROPELLER_BUILTIN_LOCKCLR:
+        return propeller_expand_builtin_1opvoid (CODE_FOR_lockclr, exp);
+
     case PROPELLER_BUILTIN_TASKSWITCH:
         return propeller_expand_builtin_2op (CODE_FOR_taskswitch, exp, target);
     default:
@@ -2078,7 +2237,11 @@ fcache_label_refs_in_block (rtx lab, rtx first, rtx last)
  * (3) there must be no branches into or out of the block
  */
 
-#define MAX_FCACHE_SIZE (TARGET_XMM ? 508 : 1020)
+#if 0
+#define MAX_FCACHE_SIZE ( TARGET_LARGE_FCACHE : 1020 : 508 )
+#else
+#define MAX_FCACHE_SIZE (508)
+#endif
 
 static bool
 fcache_block_ok (rtx first, rtx last, bool func_p)
@@ -2514,7 +2677,7 @@ current_func_has_indirect_jumps (void)
 	  rtx pattern;
 
 	  pattern = PATTERN (insn);
-	  /* check for __builtin_taskswitch */
+	  /* check for __builtin_propeller_taskswitch */
 	  if (GET_CODE (pattern) == SET)
 	    {
 	      pattern = SET_SRC (pattern);

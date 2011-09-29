@@ -5,7 +5,8 @@ OBJCOPY = propeller-elf-objcopy
 
 # simulator command line; replace with appropriate
 # binary loader to run on real hardware
-SPINSIM = spinsim -b115200
+#LOAD = spinsim -b115200
+LOAD = propeller-load -I../../libpropeller -p1 -b c3
 
 # checksum program; replace with 'echo' if you don't
 # have this, and don't care about running on real hardware
@@ -18,9 +19,6 @@ CHKSUM = propeller-checksum
 NAME = fibo
 OBJS = fibo.o miniprintf.o clock.o
 
-$(NAME).binary: $(NAME).elf
-	$(OBJCOPY) -O binary $< $@
-	$(CHKSUM) $@
 
 $(NAME).elf: propeller_cog.script crt0.o csupport.o $(OBJS) div.o mult.o cogregs.o
 	$(LD) -o $@ -T propeller_cog.script $^
@@ -35,6 +33,5 @@ clean:
 	rm -f *.o *.elf *.binary
 
 
-run: $(NAME).binary
-	$(SPINSIM) $(NAME).binary
-
+run: $(NAME).elf
+	$(LOAD) $(NAME).elf -r -t

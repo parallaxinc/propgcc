@@ -1,6 +1,7 @@
 MEMORY {
     hub (wxa) : ORIGIN = 0x00000000, LENGTH = 32K
-    rom (rx) : ORIGIN = 0x30000000, LENGTH = 1M
+    ram (wxa) : ORIGIN = 0x20000000, LENGTH = 256M
+    rom (rx)  : ORIGIN = 0x30000000, LENGTH = 256M
     cog (wxa) : ORIGIN = 0x00000000, LENGTH = 2K
 }
 
@@ -11,11 +12,8 @@ SECTIONS {
     
     .header : {
         LONG(entry)
-        LONG(ADDR(.bss))
-        LONG(ADDR(.bss) + SIZEOF(.bss))
-        LONG(LOADADDR(.data))
-        LONG(ADDR(.data))
-        LONG(ADDR(.data) + SIZEOF(.data) + SIZEOF(.hubtext) + SIZEOF(.ctors) + SIZEOF(.dtors))
+        LONG(0)
+        LONG(0)
     } >rom
     .init : {
 	    *(.init*)
@@ -23,12 +21,16 @@ SECTIONS {
     .text : {
         *(.text*)
     } >rom
-    
+    .fini : {
+        *(.fini*)
+    } >rom
+
     .data : {
-        *(.hubstart)
         *(.data*)
-    } >hub AT>rom
-    .hubtext : {
+    } >ram AT>rom
+    
+    .hub : {
+        *(.hubstart)
         *(.hubtext)
     } >hub AT>rom
     .ctors : {
@@ -37,9 +39,10 @@ SECTIONS {
     .dtors : {
         *(.dtors*)
     } >hub AT>rom
+    
     .bss : {
         *(.bss*)
-    } >hub AT>hub
+    } >ram AT>ram
     
   ___heap_start = ALIGN(4);
 

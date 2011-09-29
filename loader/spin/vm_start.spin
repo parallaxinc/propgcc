@@ -1,16 +1,18 @@
 CON
 
-  P_IMAGE_BASE      = 0
-  P_CACHE_MBOX      = 4
-  P_CACHE_LINE_MASK = 8
-  P_VM_MBOX         = 12
+  P_IMAGE_BASE          = 0
+  P_CACHE_MBOX          = 4
+  P_CACHE_LINE_MASK     = 8
+  P_VM_MBOX             = 12
   
-  HDR_ENTRY         = 0
-  HDR_BSS_START     = 4
-  HDR_BSS_END       = 8
-  HDR_DATA_IMAGE    = 12
-  HDR_DATA_START    = 16
-  HDR_DATA_END      = 20
+  HDR_ENTRY             = 0
+  HDR_INIT_COUNT        = 4
+  HDR_INIT_TABLE_OFFSET = 8
+
+  INIT_VADDR            = 0
+  INIT_PADDR            = 4
+  INIT_SIZE             = 8
+  INIT_ENTRY_SIZE       = 12
 
 OBJ
 
@@ -34,44 +36,53 @@ boot                mov     t1, PAR
                     rdlong  vm_mbox, t1
                     
 initialize_data     mov     t1, image_base
-                    add     t1, #HDR_DATA_IMAGE
+                    add     t1, #HDR_INIT_COUNT
+                    call    #read_long
+                    mov     entry_count, t1 wz
+        if_z        jmp     #:done_init
+                    mov     t1, image_base
+                    add     t1, #HDR_INIT_TABLE_OFFSET
+                    call    #read_long
+                    mov     init_entry, t1
+                    add     init_entry, image_base
+
+:loop_entry         mov     t1, init_entry
+                    add     t1, #INIT_VADDR
+                    call    #read_long
+                    mov     dst, t1
+                    mov     t1, init_entry
+                    add     t1, #INIT_PADDR
                     call    #read_long
                     mov     src, t1
-                    mov     t1, image_base
-                    add     t1, #HDR_DATA_START
-                    call    #read_long
-                    mov     dst, t1
-                    mov     t1, image_base
-                    add     t1, #HDR_DATA_END
+                    mov     t1, init_entry
+                    add     t1, #INIT_SIZE
                     call    #read_long
                     mov     count, t1
-                    sub     count, dst
                     shr     count, #2 wz
         if_z        jmp     #:done_data
-:loop_data          mov     t1, src
+
+:clear_or_copy      cmp     src, dst wz
+        if_z        jmp     #:clear
+
+:loop_copy          mov     t1, src
                     call    #read_long
-                    wrlong  t1, dst
+                    mov     t2, t1
+                    mov     t1, dst
+                    call    #write_long
                     add     src, #4
                     add     dst, #4
-                    djnz    count, #:loop_data
-:done_data
+                    djnz    count, #:loop_copy
+                    jmp     #:done_data
 
-clear_bss           mov     t1, image_base
-                    add     t1, #HDR_BSS_START
-                    call    #read_long
-                    mov     dst, t1
-                    mov     t1, image_base
-                    add     t1, #HDR_BSS_END
-                    call    #read_long
-                    mov     count, t1
-                    sub     count, dst
-                    shr     count, #2 wz
-        if_z        jmp     #:done_bss
-                    mov     t2, #0
-:loop_bss           wrlong  t2, dst
+:clear              mov     t2, #0
+:loop_clear         mov     t1, dst
+                    call    #write_long
                     add     dst, #4
-                    djnz    count, #:loop_bss
-:done_bss
+                    djnz    count, #:loop_clear
+
+:done_data          add     init_entry, #INIT_ENTRY_SIZE
+                    djnz    entry_count, #:loop_entry
+:done_init
 
 initialize_stack    mov     dst, vm_mbox
                     mov     t1, image_base
@@ -83,6 +94,9 @@ initialize_stack    mov     dst, vm_mbox
                     wrlong  cache_linemask, dst
                     sub     dst, #4
                     wrlong  cache_mboxcmd, dst
+                    
+'Store the cache driver mailbox address at $00000006
+                    wrword  cache_mboxcmd, #$00000006 '__xmm_mbox
 
 'Start the xmm kernel cog and stop this cog.
 launch              wrlong  dst, vm_mbox
@@ -95,16 +109,21 @@ cache_mboxdat       long    0
 cache_linemask      long    0
 vm_mbox             long    0
 
+external_start      long    $20000000
 src                 long    0
 dst                 long    0
 count               long    0
+entry_count         long    0
+init_entry          long    0
 temp                long    0
 
 read_long           call    #cache_read
                     rdlong  t1, memp
 read_long_ret       ret
 
-write_long          call    #cache_write
+write_long          cmp     t1, external_start wc       'check for normal memory access
+             if_b   mov     memp, t1
+             if_ae  call    #cache_write
                     wrlong  t2, memp
 write_long_ret      ret
 

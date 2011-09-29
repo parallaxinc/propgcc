@@ -26,10 +26,10 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "spinboot.o%s %{!mcog:crt0_lmm.o%s crtbegin_lmm.o%s}%{mcog:crt0_cog.o%s}"
+#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; :spinboot.o%s} _crt0.o%s _crtbegin.o%s"
 
 #undef  ENDFILE_SPEC
-#define ENDFILE_SPEC "%{!mcog:crtend_lmm.o%s}%{mcog:crtend_cog.o%s}"
+#define ENDFILE_SPEC "_crtend.o%s"
 
 #undef ASM_SPEC
 #define ASM_SPEC "\
@@ -39,12 +39,15 @@
 #undef LIB_SPEC
 #define LIB_SPEC "				\
 --start-group					\
--lc						\
+  -lc -lgcc					\
 --end-group					\
 "
 
 #undef LINK_SPEC
-#define LINK_SPEC "%{mrelax:-relax}"
+#define LINK_SPEC "                                             \
+%{mrelax:-relax}						\
+%{mcog:-mpropeller_cog; mxmmc: -mpropeller_xmmc; mxmm: -mpropeller_xmm; :-mpropeller}	\
+"
 
 #define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)
 
@@ -65,7 +68,11 @@
       builtin_define ("__PROPELLER__");                      \
       builtin_assert ("cpu=propeller");                      \
       builtin_assert ("machine=propeller");                  \
-      if (TARGET_LMM)					     \
+      if (TARGET_XMM)					     \
+	builtin_define ("__PROPELLER_XMM__");		     \
+      else if (TARGET_XMM_CODE)				     \
+	builtin_define ("__PROPELLER_XMMC__");		     \
+      else if (TARGET_LMM)				     \
 	builtin_define ("__PROPELLER_LMM__");		     \
       else						     \
 	builtin_define ("__PROPELLER_COG__");		     \

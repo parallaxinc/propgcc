@@ -14,8 +14,20 @@
     
 __clkfreq
 	.long __clkfreqval	' clock frequency
-
-'' here is where the pasm code actually goes
+__clkmode
+	.byte __clkmodeval	' clock mode
+	.byte 0				' checksum (unused)
+__xmm_mbox_p
+	.word 0				' pointer to xmm memory driver mailbox in hub memory
+__sys_mbox
+    .long 0				' system (debug) mailbox
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    
+'' here is where the .data and .bss actually goes
 
 	''
 	'' and finally some definitions for the standard

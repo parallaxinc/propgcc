@@ -35,10 +35,16 @@
 //----------------------------------------------------------------------------------------------------------------------
 //#include <stdio.h>
 #include "stdio.h"
-#include "propeller.h"
 
+#if defined(__propeller__)
+#include "propeller.h"
 #define int32_t int
 #define int16_t short int
+#else
+#include <stdint.h>
+#include <sys/time.h>
+#endif
+
 
 // Specify size of FFT buffer here with length and log base 2 of the length.
 // N.B. Changing this will require changing the "twiddle factor" tables.
@@ -63,12 +69,12 @@ static void printSpectrum();
 // Return a timestamp in microsecond resolution.
 int time_ms()
 {
-
+#if defined(__propeller__)
     //printf("CLKFREQ: %lu\n", CLKFREQ);
     //printf("CNT %08x\n", CNT);
     return (CNT / (CLKFREQ / 1000));
 
-/*
+#else
     struct timeval timeval;
 
     if (gettimeofday(&timeval, 0) == 0)
@@ -80,7 +86,7 @@ int time_ms()
     {
         return(0);
     }
-*/
+#endif
 }
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -191,7 +197,7 @@ static void fillInput()
 
 //----------------------------------------------------------------------------------------------------------------------
 #if defined(__propeller__) && defined(__GNUC__)
-#define bitReverse(x, length) __builtin_reverse(x, 32-(length))
+#define bitReverse(x, length) __builtin_propeller_rev(x, 32-(length))
 #else
 static unsigned int bitReverse(unsigned int x,  unsigned int length)
 {
@@ -295,7 +301,6 @@ static void butterflies()
 //----------------------------------------------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-    waitcnt(CLKFREQ+CNT);
     fft_bench();
     return(0);
 }
