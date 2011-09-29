@@ -11,6 +11,10 @@
 #include <errno.h>
 #include <compiler.h>
 
+/* force _InitIO to be linked */
+extern void _InitIO(void);
+long __dummy = (long)&_InitIO;
+
 /* the open file descriptors */
 FILE __files[FOPEN_MAX];
 
@@ -67,6 +71,8 @@ __fopen_driver(FILE *fp, _Driver *d, const char *name, const char *mode)
     {
       fp->_base = &fp->_chbuf[0];
       fp->_bsiz = _SMALL_BUFSIZ;
+      /* this is probably a terminal, so apply line buffering */
+      fp->_flag |= _IOLBF;
     }
   fp->_ptr = fp->_base;
   fp->_cnt = 0;
