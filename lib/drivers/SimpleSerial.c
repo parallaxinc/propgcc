@@ -37,7 +37,7 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
     int i;
     unsigned int txpin = fp->drvarg[1];
     unsigned int bitcycles = fp->drvarg[3];
-    unsigned int waitcycles = _CNT + bitcycles;
+    unsigned int waitcycles;
     int value;
     int count = 0;
 
@@ -48,6 +48,7 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
     while (count < size)
       {
 	value = (*buf++ | 256) << 1;
+	waitcycles = _CNT + bitcycles;
 	for (i = 0; i < 10; i++)
 	  {
 	    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
