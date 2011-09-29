@@ -26,6 +26,7 @@ SCANF =  scanf.o vscanf.o sscanf.o
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o putchar.o \
 	ungetc.o gets.o fgets.o \
+	setvbuf.o setbuf.o setlinebuf.o setbuffer.o \
 	fopen.o fopen_intern.o freopen.o \
 	fwrite.o fread.o fseek.o ftell.o fgetpos.o fsetpos.o \
 	stringio.o vfprintf.o vfscanf.o \
@@ -42,7 +43,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcoll.o strxfrm.o \
 	strerror.o
 
-TIME = clock.o 
+TIME = clock.o sleep.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o
