@@ -31,7 +31,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	stringio.o vfprintf.o vfscanf.o \
 	$(PRINTF) $(SCANF) \
 	simple_printf.o \
-	default_io.o
+	default_io.o init_io.o
 
 MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o
 
@@ -44,7 +44,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 
 TIME = clock.o 
 
-DRIVERS = SimpleSerial.o serialparam.o memory.o \
+DRIVERS = SimpleSerial.o serialparam.o serial_break.o memory.o \
 	FdSerial.o FullDuplexSerial.o
 
 MATH = 	k_standard.o k_rem_pio2.o \
