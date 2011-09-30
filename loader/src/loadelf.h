@@ -71,13 +71,20 @@ typedef struct {
     FILE *fp;
 } ElfContext;
 
+#define SectionInProgramSegment(s, p) \
+        ((s)->offset >= (p)->offset && (s)->offset < (p)->offset + (p)->filesz \
+     &&  (s)->addr   >= (p)->vaddr  && (s)->addr   < (p)->vaddr  + (p)->memsz)
+
+#define ProgramSegmentsMatch(p1, p2) \
+        ((p1)->offset == (p2)->offset && (p1)->vaddr == (p2)->vaddr)
+
 int ReadAndCheckElfHdr(FILE *fp, ElfHdr *hdr);
 ElfContext *OpenElfFile(FILE *fp, ElfHdr *hdr);
 void CloseElfFile(ElfContext *c);
 int GetProgramSize(ElfContext *c, uint32_t *pStart, uint32_t *pSize);
 int FindSectionTableEntry(ElfContext *c, const char *name, ElfSectionHdr *section);
-int FindProgramSection(ElfContext *c, const char *name, ElfProgramHdr *program);
-uint8_t *LoadProgramSection(ElfContext *c, ElfProgramHdr *program);
+int FindProgramSegment(ElfContext *c, const char *name, ElfProgramHdr *program);
+uint8_t *LoadProgramSegment(ElfContext *c, ElfProgramHdr *program);
 int LoadSectionTableEntry(ElfContext *c, int i, ElfSectionHdr *section);
 int LoadProgramTableEntry(ElfContext *c, int i, ElfProgramHdr *program);
 void ShowElfFile(ElfContext *c);
