@@ -26,12 +26,13 @@ SCANF =  scanf.o vscanf.o sscanf.o
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o putchar.o \
 	ungetc.o gets.o fgets.o \
+	setvbuf.o setbuf.o setlinebuf.o setbuffer.o \
 	fopen.o fopen_intern.o freopen.o \
 	fwrite.o fread.o fseek.o ftell.o fgetpos.o fsetpos.o \
 	stringio.o vfprintf.o vfscanf.o \
 	$(PRINTF) $(SCANF) \
 	simple_printf.o \
-	default_io.o
+	default_io.o init_io.o
 
 MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o
 
@@ -42,10 +43,10 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcoll.o strxfrm.o \
 	strerror.o
 
-TIME = clock.o 
+TIME = clock.o sleep.o
 
-DRIVERS = SimpleSerial.o serialparam.o memory.o \
-	FdSerial.o FullDuplexSerial.o
+DRIVERS = SimpleSerial.o serialparam.o serial_break.o memory.o \
+	FdSerial.o FullDuplexSerial.o null.o
 
 MATH = 	k_standard.o k_rem_pio2.o \
 	k_cos.o k_sin.o k_tan.o \

@@ -37,7 +37,7 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
     int i;
     unsigned int txpin = fp->drvarg[1];
     unsigned int bitcycles = fp->drvarg[3];
-    unsigned int waitcycles = _CNT + bitcycles;
+    unsigned int waitcycles;
     int value;
     int count = 0;
 
@@ -48,6 +48,7 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
     while (count < size)
       {
 	value = (*buf++ | 256) << 1;
+	waitcycles = _CNT + bitcycles;
 	for (i = 0; i < 10; i++)
 	  {
 	    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
@@ -132,35 +133,15 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
   return 0;
 }
 
-/* send a break on the default transmit pin */
-
-void _serial_break(void)
-{
-  int delay = _clkfreq/2;
-  int waitcycles = _CNT + delay;
-  int txpin = _txpin;
-
-  _DIRA |= (1<<txpin);
-  _OUTA |= (1<<txpin);
-
-  /* sleep a bit to let things drain */
-  waitcycles = __builtin_propeller_waitcnt(waitcycles, delay);
-
-  /* send a break */
-  _OUTA = 0;
-  __builtin_propeller_waitcnt(waitcycles, delay);
-}
-
-
 /*
  * and the actual driver 
  */
 
-const char _SimpleSerialName[] = "SSER:";
+const char _SimpleSerialPrefix[] = "SSER:";
 
 _Driver _SimpleSerialDriver =
   {
-    _SimpleSerialName,
+    _SimpleSerialPrefix,
     _serial_fopen,
     NULL,       /* fclose hook, not needed */
     _serial_read,

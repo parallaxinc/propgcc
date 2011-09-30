@@ -8,8 +8,8 @@ MEMORY
   cog	 : ORIGIN = 0, LENGTH = 2K
   /* coguser is just an alias for cog, but for overlays */
   coguser : ORIGIN = 0, LENGTH = 2K
-  ram    : ORIGIN = 0x20000000, LENGTH = 64K
-  rom    : ORIGIN = 0x30000000, LENGTH = 1M
+  ram    : ORIGIN = 0x20000000, LENGTH = 256M
+  rom    : ORIGIN = 0x30000000, LENGTH = 256M
   /* some sections (like the .xmm kernel) are handled specially by the loader */
   dummy  : ORIGIN = 0xe0000000, LENGTH = 1M
 }
@@ -35,34 +35,34 @@ SECTIONS
     ${RELOCATING+ _etext = . ; }
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
+  /* the final cleanup code (including destructors) */
+  .fini ${RELOCATING-0} :
+  {
+    *(.fini*)
+  } ${RELOCATING+ ${TEXT_MEMORY}}
+
   .data	${RELOCATING-0} :
   {
-    ${RELOCATING+ PROVIDE (__data_start = .) ; }
-    *(.hubstart)
-    *(.data)
-    *(.data*)
-    *(.rodata)  /* We need to include .rodata here if gcc is used */
-    *(.rodata*) /* with -fdata-sections.  */
-    *(.gnu.linkonce.d*)
+    ${DATA_DATA}
     ${RELOCATING+. = ALIGN(4);}
-    ${RELOCATING+ _edata = . ; }
-    ${RELOCATING+ PROVIDE (__data_end = .) ; }
   } ${RELOCATING+ ${DATA_MEMORY}}
 
-  .hubtext ${RELOCATING-0} :
+  .hub ${RELOCATING-0} :
   {
+    *(.hubstart)
     *(.hubtext*)
+    ${HUB_DATA}
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
   ${TEXT_DYNAMIC+${DYNAMIC}}
 
   .ctors ${RELOCATING-0} :
   {
     *(.ctors*)
-  } ${RELOCATING+ ${DATA_MEMORY}}
+  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
   .dtors ${RELOCATING-0} :
   {
     *(.dtors*)
-  } ${RELOCATING+ ${DATA_MEMORY}}
+  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
 
   .bss ${RELOCATING-0} :
   {
@@ -71,7 +71,7 @@ SECTIONS
     *(.bss*)
     *(COMMON)
     ${RELOCATING+ PROVIDE (__bss_end = .) ; }
-  } ${RELOCATING+ >hub AT>hub}
+  } ${RELOCATING+ ${DATA_MEMORY}}
 
   /* put the cog drivers after bss and just before the heap */
   /* that way we may later be able to free the hub memory they take up */
