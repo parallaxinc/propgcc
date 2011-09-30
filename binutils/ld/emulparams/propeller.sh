@@ -16,4 +16,14 @@ KERNEL="
 KERNEL_NAME=.lmmkernel
 TEXT_MEMORY=">hub AT>hub"
 HUBTEXT_MEMORY=">hub AT>hub"
-DATA_MEMORY=">hub"
+DATA_MEMORY=">hub AT>hub"
+DATA_BSS_MEMORY=">hub AT>hub"
+HUB_DATA="
+    *(.data)
+    *(.data*)
+    *(.rodata)  /* We need to include .rodata here if gcc is used */
+    *(.rodata*) /* with -fdata-sections.  */
+    *(.gnu.linkonce.d*)
+"
+DATA_DATA="
+"

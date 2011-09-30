@@ -7,4 +7,5 @@ EXTRA_EM_FILE=propeller
 
 TEXT_MEMORY=">cog"
 DATA_MEMORY=">hub AT>hub"
+DATA_BSS_MEMORY=">hub AT>hub"
 HUBTEXT_MEMORY=">hub AT>hub"

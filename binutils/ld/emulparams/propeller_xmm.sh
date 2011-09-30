@@ -6,7 +6,8 @@ TEMPLATE_NAME=elf32
 EXTRA_EM_FILE=propeller
 
 TEXT_MEMORY=">rom"
-DATA_MEMORY=">rom AT>rom"
+DATA_MEMORY=">ram AT>rom"
+DATA_BSS_MEMORY=">ram AT>ram"
 HUBTEXT_MEMORY=">hub AT>rom"
 
 KERNEL="
@@ -20,10 +21,16 @@ KERNEL_NAME=.xmmkernel
 XMM_HEADER="
     .header : {
         LONG(entry)
-        LONG(ADDR(.bss))
-        LONG(ADDR(.bss) + SIZEOF(.bss))
-        LONG(LOADADDR(.data))
-        LONG(ADDR(.data))
-        LONG(ADDR(.data) + SIZEOF(.data) + SIZEOF(.hubtext) + SIZEOF(.ctors) + SIZEOF(.dtors))
+        LONG(0)
+        LONG(0)
     } >rom
+"
+HUB_DATA="
+"
+DATA_DATA="
+    *(.data)
+    *(.data*)
+    *(.rodata)  /* We need to include .rodata here if gcc is used */
+    *(.rodata*) /* with -fdata-sections.  */
+    *(.gnu.linkonce.d*)
 "

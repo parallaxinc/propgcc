@@ -212,7 +212,7 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char 
     /* load each program section */
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program)
-        ||  !(buf = LoadProgramSection(c, &program))) {
+        ||  !(buf = LoadProgramSegment(c, &program))) {
             free(imagebuf);
             return Error("can't load program section %d", i);
         }
@@ -277,7 +277,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf, *imagebuf;
     ElfProgramHdr program, program_kernel, program_header;
-    int imageSize, initTableSize, chksum, target, i;
+    int imageSize, initTableSize, chksum, target, ki, hi, i;
     InitSection *initSection;
     ImageHdr *image;
 
@@ -322,13 +322,13 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         return Error("no cache driver to load external image");
     
-    /* find the .xmmkernel section */
-    if (!FindProgramSection(c, ".xmmkernel", &program_kernel))
-        return Error("can't find .xmmkernel section");
+    /* find the .xmmkernel segment */
+    if ((ki = FindProgramSegment(c, ".xmmkernel", &program_kernel)) < 0)
+        return Error("can't find .xmmkernel segment");
     
-    /* find the .header section */
-    if (!FindProgramSection(c, ".header", &program_header))
-        return Error("can't find .header section");
+    /* find the .header segment */
+    if ((hi = FindProgramSegment(c, ".header", &program_header)) < 0)
+        return Error("can't find .header segment");
     
     /* allocate a table of init sections */
     initTableSize = (c->hdr.phnum - 2) * sizeof(InitSection);
@@ -337,10 +337,9 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     for (i = 0, imageSize = program_header.filesz; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program))
             return Error("can't load program table entry %d", i);
-        if (program.vaddr != program.paddr)
+        if (i != ki && program.paddr >= program_header.paddr)
             imageSize += program.filesz;
     }
-    printf("image size: %d\n", imageSize);
     
     /* allocate a buffer big enough for the entire image */
     if (!(imagebuf = (uint8_t *)malloc(imageSize + initTableSize)))
@@ -352,14 +351,13 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
             free(imagebuf);
             return Error("can't load program table entry %d", i);
         }
-        if (program.offset != program_kernel.offset
-        &&  (program.offset == program_header.offset || program.vaddr != program.paddr)) {
+        if (i != ki && (i == hi || program.paddr >= program_header.paddr)) {
             if (program.filesz > 0) {
-                if (!(buf = LoadProgramSection(c, &program))) {
+                if (!(buf = LoadProgramSegment(c, &program))) {
                     free(imagebuf);
                     return Error("can't load program section %d", i);
                 }
-                printf("paddr %08x, size %08x\n", program.paddr, program.filesz);
+                //printf("paddr %08x, size %08x\n", program.paddr, program.filesz);
                 memcpy(&imagebuf[program.paddr - program_header.paddr], buf, program.filesz);
                 free(buf);
             }
@@ -386,7 +384,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
                 initSection->size = program.memsz;
             else
                 initSection->size = program.filesz;
-            printf("vaddr %08x, paddr %08x, size %08x\n", initSection->vaddr, initSection->paddr, initSection->size);
+            //printf("vaddr %08x, paddr %08x, size %08x\n", initSection->vaddr, initSection->paddr, initSection->size);
             ++initSection;
         }
     }
@@ -404,7 +402,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     free(imagebuf);
     
     /* load the .kernel section */
-    if (!(buf = LoadProgramSection(c, &program_kernel)))
+    if (!(buf = LoadProgramSegment(c, &program_kernel)))
         return Error("can't load .xmmkernel section");
 
     /* handle downloads to eeprom */

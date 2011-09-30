@@ -42,7 +42,7 @@ static uint8_t ident[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00    // padding
 };
 
-static int FindProgramTableEntry(ElfContext *c, uint32_t offset, ElfProgramHdr *program);
+static int FindProgramTableEntry(ElfContext *c, ElfSectionHdr *section, ElfProgramHdr *program);
 static void ShowSectionHdr(ElfSectionHdr *section);
 static void ShowProgramHdr(ElfProgramHdr *program);
 
@@ -102,14 +102,15 @@ int GetProgramSize(ElfContext *c, uint32_t *pStart, uint32_t *pSize)
     return TRUE;
 }
 
-int FindProgramSection(ElfContext *c, const char *name, ElfProgramHdr *program)
+int FindProgramSegment(ElfContext *c, const char *name, ElfProgramHdr *program)
 {
     ElfSectionHdr section;
-    return FindSectionTableEntry(c, name, &section)
-        && FindProgramTableEntry(c, section.offset, program);
+    if (!FindSectionTableEntry(c, name, &section))
+        return -1;
+    return FindProgramTableEntry(c, &section, program);
 }
 
-uint8_t *LoadProgramSection(ElfContext *c, ElfProgramHdr *program)
+uint8_t *LoadProgramSegment(ElfContext *c, ElfProgramHdr *program)
 {
     uint8_t *buf;
     if (!(buf = (uint8_t *)malloc(program->filesz)))
@@ -151,18 +152,18 @@ int LoadSectionTableEntry(ElfContext *c, int i, ElfSectionHdr *section)
         && fread(section, 1, sizeof(ElfSectionHdr), c->fp) == sizeof(ElfSectionHdr);
 }
 
-static int FindProgramTableEntry(ElfContext *c, uint32_t offset, ElfProgramHdr *program)
+static int FindProgramTableEntry(ElfContext *c, ElfSectionHdr *section, ElfProgramHdr *program)
 {
     int i;
     for (i = 0; i < c->hdr.shnum; ++i) {
         if (!LoadProgramTableEntry(c, i, program)) {
             fprintf(stderr, "error: can't read program header %d\n", i);
-            return 1;
+            return -1;
         }
-        if (offset >= program->offset && offset < program->offset + program->filesz)
-            return TRUE;
+        if (SectionInProgramSegment(section, program))
+            return i;
     }
-    return FALSE;
+    return -1;
 }
 
 int LoadProgramTableEntry(ElfContext *c, int i, ElfProgramHdr *program)
