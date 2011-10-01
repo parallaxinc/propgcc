@@ -178,7 +178,7 @@ cd ..
 #
 # build propeller-load
 #
-make -C loader
-make -C loader install
+make -C loader TARGET=../../build/loader
+make -C loader TARGET=../../build/loader install
 echo "Build complete."
 exit 0

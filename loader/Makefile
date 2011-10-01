@@ -1,11 +1,15 @@
-###################
-# XBASIC Makefile #
-###################
+###########################
+# propeller-load Makefile #
+###########################
+
+ifndef TARGET
+TARGET=.
+endif
 
 SRCDIR=src
 SPINDIR=spin
-OBJDIR=obj/$(OS)
-BINDIR=bin/$(OS)
+OBJDIR=$(TARGET)/obj/$(OS)
+BINDIR=$(TARGET)/bin/$(OS)
 DRVDIR=include
 INSTALLDIR=/usr/local/propeller
 INSTALLBINDIR=$(INSTALLDIR)/bin
@@ -64,8 +68,8 @@ clean:
 	
 .PHONY:
 clean-all:	clean
-	@$(RM) -f -r obj
-	@$(RM) -f -r bin
+	@$(RM) -f -r $(TARGET)/obj
+	@$(RM) -f -r $(TARGET)/bin
 	@$(RM) -f $(DRVDIR)/*.dat
 	@$(RM) -f *.binary
 	
@@ -207,7 +211,7 @@ $(DIRS):
 
 .PHONY:	install
 install:	$(INSTALLBINDIR) $(INSTALLLIBDIR)
-	$(CP) -f bin/$(OS)/propeller-load $(INSTALLBINDIR)
+	$(CP) -f $(TARGET)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
 	$(CP) -f include/* $(INSTALLLIBDIR)
 
 ##################
