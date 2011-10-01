@@ -156,7 +156,7 @@ rd_common
     muxnz   save_z_c, #2                    'save the z flag
     call    #cache_read                     'also restores the z flag
 rd_common_read
-    rdlong  __TMP0, memp
+    rdlong  __TMP1, memp
     shr     save_z_c, #1 wc                 'restore the c flag
 __LMM_RDBYTE_ret
 __LMM_RDWORD_ret
