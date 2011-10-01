@@ -10,7 +10,7 @@ SRCDIR=src
 SPINDIR=spin
 OBJDIR=$(TARGET)/obj/$(OS)
 BINDIR=$(TARGET)/bin/$(OS)
-DRVDIR=include
+DRVDIR=$(TARGET)/include
 INSTALLDIR=/usr/local/propeller
 INSTALLBINDIR=$(INSTALLDIR)/bin
 INSTALLLIBDIR=$(INSTALLDIR)/propeller-load
@@ -212,6 +212,7 @@ $(DIRS):
 .PHONY:	install
 install:	$(INSTALLBINDIR) $(INSTALLLIBDIR)
 	$(CP) -f $(TARGET)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
+	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
 	$(CP) -f include/* $(INSTALLLIBDIR)
 
 ##################
