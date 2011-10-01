@@ -9,6 +9,7 @@ TEXT_MEMORY=">rom"
 DATA_MEMORY=">ram AT>rom"
 DATA_BSS_MEMORY=">ram AT>ram"
 HUBTEXT_MEMORY=">hub AT>rom"
+DRIVER_MEMORY=">coguser AT>rom"
 
 KERNEL="
   /* the LMM kernel that is loaded into the cog */
