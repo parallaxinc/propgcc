@@ -118,7 +118,10 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
       rxpin = atoi(name);
       while (*name && *name != ',') name++;
       if (*name)
-	txpin = atoi(name);
+	{
+	  name++;
+	  txpin = atoi(name);
+	}
     }
   }
   bitcycles = _clkfreq / baud;
