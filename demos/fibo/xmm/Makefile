@@ -16,7 +16,7 @@ NAME = fibo
 OBJS = fibo.o
 
 # memory model
-MODEL = lmm
+MODEL = xmm
 
 # flags to build with
 CFLAGS = -Os -mfcache

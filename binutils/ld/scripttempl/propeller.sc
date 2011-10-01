@@ -94,7 +94,7 @@ SECTIONS
       .coguser6 { *(.coguser6) *6.cog(.text*) }
       .coguser7 { *(.coguser7) *7.cog(.text*) }
 
-  } ${RELOCATING+ >coguser AT>hub}
+  } ${RELOCATING+ ${DRIVER_MEMORY}}
 
   ${RELOCATING+ ".heap : \{ LONG(0) \} >hub AT>hub"}
   ${RELOCATING+ ___heap_start = ADDR(.heap) ;}
