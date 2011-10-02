@@ -2299,15 +2299,41 @@
 )
 
 ;; allocate and return locks
-(define_insn "locknew"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (unspec_volatile:SI [(const_int 0)]
-                    UNSPEC_LOCKNEW))]
+(define_insn "*locknew_internal"
+  [(set (reg:CC_C CC_REG)
+        (compare:CC_C
+	  (const_int 0)
+	  (unspec [(const_int UNSPEC_LOCKNEW)] UNSPEC_LOCKSTATE)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (unspec_volatile:SI [(const_int 0)] UNSPEC_LOCKNEW))]
   ""
-  "locknew\t%0"
+  "locknew\t%0 wc"
   [(set_attr "predicable" "yes")
    (set_attr "type" "hub")]
 )
+(define_insn_and_split "locknew"
+   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+         (unspec_volatile:SI [(const_int UNSPEC_LOCKNEW)] UNSPEC_LOCKSTATE))]
+  ""
+  "#"
+  "reload_completed"
+  [(parallel
+     [(set (reg:CC_C CC_REG)
+           (compare:CC_C
+               (const_int 0)
+	       (unspec [(const_int UNSPEC_LOCKNEW)] UNSPEC_LOCKSTATE)))
+      (set (match_dup 0)(unspec_volatile:SI [(const_int 0)] UNSPEC_LOCKNEW))
+      ])
+    (set (match_dup 0)
+         (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
+                       (const_int -1)
+                       (match_dup 0)))
+   ]
+   ""
+   [(set_attr "conds" "set")
+    (set_attr "length" "8")]
+)
+
 (define_insn "lockret"
   [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
                     UNSPEC_LOCKRET)]
