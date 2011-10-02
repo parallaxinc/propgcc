@@ -763,6 +763,12 @@ Objective-C and Objective-C++ Dialects}.
 @emph{PowerPC Options}
 See RS/6000 and PowerPC Options.
 
+@emph{Propeller Options}
+@gccoptlist{-mcog  -mlmm  -mxmm  -mxmmc  @gol
+-mfcache -mno-fcache @gol
+-m32bit-doubles -m64bit-doubles @gol
+-mpasm -mspin}
+
 @emph{RS/6000 and PowerPC Options}
 @gccoptlist{-mcpu=@var{cpu-type} @gol
 -mtune=@var{cpu-type} @gol
@@ -10000,6 +10006,7 @@ platform.
 * PDP-11 Options::
 * picoChip Options::
 * PowerPC Options::
+* Propeller Options::
 * RS/6000 and PowerPC Options::
 * RX Options::
 * S/390 and zSeries Options::
@@ -15311,6 +15318,73 @@ the warning to be turned off.
 @cindex PowerPC options
 
 These are listed under @xref{RS/6000 and PowerPC Options}.
+
+@node Propeller Options
+@subsection Propeller Options
+@cindex Propeller Options
+
+These options are defined for the Parallax Propeller:
+
+@table @gcctabopt
+@item -mcog
+@opindex mcog
+Generate code for COG model. In this model the code is placed in cog
+internal memory (which has only 2K). Data is placed in hub
+memory. This is the native execution mode, but is very restricted
+because of the small code size available.
+
+@item -mlmm
+@opindex mlmm
+Generate code for LMM (Large Memory Model). In this model both code
+and data are placed in hub. A small kernel runs in cog memory to fetch
+code and execute it. This is the default.
+
+@item -mxmmc
+@opindex mxmmc
+Generate code for XMMC (eXternal Memory Model -- Code). In this model
+code is placed in external memory (flash or RAM) and data is placed in
+the hub. A kernel is run in cog memory to fetch instructions from the
+external memory.
+
+@item -mxmm
+@opindex mxmm
+Generate code for XMM (eXternal Memory Model). In this model
+both code and data are placed in external memory (flash or RAM); only
+the stack remains in the hub memory.
+A kernel is run in cog memory to fetch instructions and data from the
+external memory.
+
+@item -mfcache
+@opindex mfcache
+Enable FastCache. This causes loops and small functions to be compiled
+so that they will be loaded into cog memory at run time, executing
+much faster.
+
+@item -m32bit-doubles
+@opindex m32bit-doubles
+Make the floating point double type 32 bits long. This is not
+compliant with the C standard, but does cause programs to execute much
+faster if the full 64 bit precision is not required.
+
+@item -m64bit-doubles
+@opindex m32bit-doubles
+Make the double type be 64 bits long. This is the default.
+
+@item -mpasm
+@opindex mpasm
+Output PASM syntax assembly code, instead of GAS syntax. PASM is
+missing a number of features that the compiler relies on, so not all
+functionality will work correctly.
+
+@item -mspin
+@opindex mspin
+Output code suitable for inclusion in Spin DAT sections. This feature
+is experimental, and may not work correctly in all situations, but is
+intended to facilitate using GCC to compile the PASM portion of Spin
+device drivers. This option imples @option{-mpasm}.
+
+@end table
+
 
 @node RS/6000 and PowerPC Options
 @subsection IBM RS/6000 and PowerPC Options
