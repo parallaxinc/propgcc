@@ -35,15 +35,15 @@ extern unsigned int _baud;
 static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned char *buf, int size)
 {
     int i;
-    unsigned int txpin = fp->drvarg[1];
+    unsigned int txmask = fp->drvarg[1];
     unsigned int bitcycles = fp->drvarg[3];
     unsigned int waitcycles;
     int value;
     int count = 0;
 
     /* set output */
-    _OUTA = (1<<txpin);
-    _DIRA = (1<<txpin);
+    _OUTA |= txmask;
+    _DIRA |= txmask;
 
     while (count < size)
       {
@@ -52,7 +52,10 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
 	for (i = 0; i < 10; i++)
 	  {
 	    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-	    _OUTA = (value & 1) << txpin;
+	    if (value & 1)
+	      _OUTA |= txmask;
+	    else
+	      _OUTA &= ~txmask;
 	    value >>= 1;
 	  }
 	count++;
@@ -63,29 +66,27 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
 /* and here is read */
 static int __attribute__((section(".hubtext"))) _serial_read(FILE *fp, unsigned char *buf, int size)
 {
-  unsigned int rxpin = fp->drvarg[0];
+  unsigned int rxmask = fp->drvarg[0];
   unsigned int bitcycles = fp->drvarg[3];
   unsigned int waitcycles;
   int value;
   int i;
   int count = 0;
 
-  int mask = 1<<rxpin;
-
   /* set input */
-  _DIRA &= ~mask;
+  _DIRA &= ~rxmask;
 
   while (count < size)
     {
       /* wait for a start bit */
-      __builtin_propeller_waitpeq(0, mask);
+      __builtin_propeller_waitpeq(0, rxmask);
 
       /* sync for one half bit */
       waitcycles = _CNT + (bitcycles>>1) + bitcycles;
       value = 0;
       for (i = 0; i < 8; i++) {
 	waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-	value = ( (0 != (_INA & mask)) << 7) | (value >> 1);
+	value = ( (0 != (_INA & rxmask)) << 7) | (value >> 1);
       }
       __builtin_propeller_waitcnt(waitcycles, bitcycles);
       buf[count++] = value;
@@ -118,14 +119,17 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
       rxpin = atoi(name);
       while (*name && *name != ',') name++;
       if (*name)
-	txpin = atoi(name);
+	{
+	  name++;
+	  txpin = atoi(name);
+	}
     }
   }
   bitcycles = _clkfreq / baud;
 
   /* set up the array */
-  fp->drvarg[0] = rxpin;
-  fp->drvarg[1] = txpin;
+  fp->drvarg[0] = (1U<<rxpin);
+  fp->drvarg[1] = (1U<<txpin);
   fp->drvarg[2] = baud;
   fp->drvarg[3] = bitcycles;
 
