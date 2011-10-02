@@ -67,6 +67,8 @@
    (UNSPEC_LOCKSET      15)
    (UNSPEC_PUSHM        16)
    (UNSPEC_POPM         17)
+   (UNSPEC_CLKSET       18)
+   (UNSPEC_COGSTATE     19)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -2204,15 +2206,54 @@
    (set_attr "predicable" "yes")]
 )
 
-(define_insn "coginit"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+;;
+;; we split coginit up into 2 insns, one to set the lock and the
+;; second to update its state from the carry flag
+;; the coginit raw sets the carry flag to mean that the locknew failed,
+;; which menas that the register is to be set to -1 (i.e. < 0)
+;;
+(define_insn "*coginit_raw"
+  [
+    (set (reg:CC_C CC_REG)
+         (compare:CC_C
+	   (const_int 0)
+	   (unspec [(match_operand:SI 1 "propeller_dst_operand" "0")]
+	           UNSPEC_COGSTATE)))
+    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
        (unspec_volatile:SI
-         [(match_operand:SI 1 "propeller_dst_operand" "0")] UNSPEC_COGINIT))
+         [(match_dup 1)] UNSPEC_COGINIT))
   ]
   ""
-  "coginit\t%0 wr"
+  "coginit\t%0 wc,wr"
   [(set_attr "type" "hub")
    (set_attr "predicable" "yes")]
+)
+
+(define_insn_and_split "coginit"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=&rC")
+        (unspec:SI [(match_operand:SI 1 "propeller_dst_operand" "0")]
+	        UNSPEC_COGSTATE))
+   (unspec_volatile [(match_dup 1)] UNSPEC_COGINIT)]
+  ""
+  "#"
+  "reload_completed"
+  [(parallel
+     [(set (reg:CC_C CC_REG)
+           (compare:CC_C
+               (const_int 0)
+	       (unspec [(match_dup 1)] UNSPEC_COGSTATE)))
+      (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+       (unspec_volatile:SI
+         [(match_dup 1)] UNSPEC_COGINIT))
+      ])
+   (set (match_dup 0)
+         (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
+                       (const_int -1)
+                       (match_dup 0)))
+   ]
+   ""
+   [(set_attr "conds" "set")
+    (set_attr "length" "8")]
 )
 
 (define_insn "cogstop"
@@ -2220,6 +2261,15 @@
       UNSPEC_COGSTOP)]
   ""
   "cogstop\t%0"
+  [(set_attr "type" "hub")
+   (set_attr "predicable" "yes")]
+)
+
+(define_insn "clkset"
+  [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+      UNSPEC_CLKSET)]
+  ""
+  "clkset\t%0"
   [(set_attr "type" "hub")
    (set_attr "predicable" "yes")]
 )
@@ -2279,8 +2329,8 @@
 ;; set lock
 ;; this needs to be split into 2 insns, one to set the lock and the
 ;; second to update its state from the carry flag
-;; the lockset raw sets the carry flag to mean that the flag was set,
-;; which will mean that the register is set to -1 (i.e. < 0)
+;; the lockset raw sets the carry flag to mean that the locknew failed,
+;; which will mean that the register is to be set to -1 (i.e. < 0)
 
 (define_insn "*lockset_raw"
   [ (set (reg:CC_C CC_REG)
