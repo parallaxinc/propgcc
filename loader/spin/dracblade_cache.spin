@@ -1,4 +1,7 @@
 {
+  SRAM JCACHE driver for the DracBlade
+  by David Betz
+
   Based on code from VMCOG - virtual memory server for the Propeller
   Copyright (c) February 3, 2010 by William Henning
 
