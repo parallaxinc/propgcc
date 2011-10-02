@@ -665,7 +665,7 @@
   ""
   "@
    test\t%0,%1 wz
-   testn\t%0,%1 wz"
+   andn\t%0,%M1 wz,nr"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -686,7 +686,7 @@
   ""
   "@
    test\t%0,%1 wc
-   testn\t%0,%1 wc"
+   andn\t%0,%M1 wc,nr"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
