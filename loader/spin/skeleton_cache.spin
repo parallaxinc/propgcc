@@ -154,6 +154,10 @@ line_size       long    0                       ' line size in longs
 empty_mask      long    (1<<EMPTY_BIT)
 dirty_mask      long    (1<<DIRTY_BIT)
 
+' input parameters to BREAD and BWRITE
+vmaddr          long    0       ' external address to read or write
+hubaddr         long    0       ' hub memory address to read from or write to
+
 '----------------------------------------------------------------------------------------------------
 '
 ' BREAD - read a block of data from external memory
@@ -182,8 +186,4 @@ BWRITE
 BWRITE_RET
         ret
 
-' input parameters to BREAD and BWRITE
-vmaddr      long    0       ' external address to read or write
-hubaddr     long    0       ' hub memory address to read from or write to
-
-            fit     496
+        fit     496
