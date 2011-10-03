@@ -228,7 +228,7 @@ do {                                                    \
   "r4", "r5", "r6", "r7",   \
   "r8", "r9", "r10", "r11",   \
   "r12", "r13", "r14", "lr",   \
-  "sp", "pc", "?cc", "?sap", "?sfp" }
+  "sp", "pc", "cc", "?sap", "?sfp" }
 
 /* some utility defines; the _REG definitions come from propeller.md */
 #define PROP_R0        0
