@@ -1,9 +1,12 @@
 {
-  Skeleton JCACHE driver
-  by David Betz
+  Skeleton JCACHE external RAM driver
+  Copyright (c) 2011 by David Betz
 
-  based on code
-  Copyright (c) 2010 by John Steven Denson (jazzed)
+  Based on code by Steve Denson (jazzed)
+  Copyright (c) 2010 by John Steven Denson
+
+  Inspired by VMCOG - virtual memory server for the Propeller
+  Copyright (c) February 3, 2010 by William Henning
 
   TERMS OF USE: MIT License
 
@@ -78,7 +81,7 @@ init_vm mov     t1, par             ' get the address of the initialization stru
 
         jmp     #vmflush
 
-fillme  long    0[128-fillme]           ' first 128 cog locations are used for a direct mapped page table
+fillme  long    0[128-fillme]           ' first 128 cog locations are used for a direct mapped cache table
 
         fit   128
 
@@ -90,15 +93,14 @@ vmflush movd    :flush, #0
         djnz    t1, #:flush
 
         ' start the command loop
-waitcmd mov     dira, #0                ' release the pins for other SPI clients
-        wrlong  zero, pvmcmd
-:wait   rdlong  vmpage, pvmcmd wz
+waitcmd wrlong  zero, pvmcmd
+:wait   rdlong  vmline, pvmcmd wz
   if_z  jmp     #:wait
 
-        shr     vmpage, offset_width wc ' carry is now one for read and zero for write
+        shr     vmline, offset_width wc ' carry is now one for read and zero for write
         mov     set_dirty_bit, #0       ' make mask to set dirty bit on writes
         muxnc   set_dirty_bit, dirty_mask
-        mov     line, vmpage            ' get the cache line index
+        mov     line, vmline            ' get the cache line index
         and     line, index_mask
         mov     hubaddr, line
         shl     hubaddr, offset_width
@@ -108,26 +110,26 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
         movd    :st, line
 :ld     mov     vmcurrent, 0-0          ' get the cache line tag
         and     vmcurrent, tag_mask
-        cmp     vmcurrent, vmpage wz    ' z set means there was a cache hit
+        cmp     vmcurrent, vmline wz    ' z set means there was a cache hit
   if_nz call    #miss                   ' handle a cache miss
 :st     or      0-0, set_dirty_bit      ' set the dirty bit on writes
         jmp     #waitcmd                ' wait for a new command
 
 ' line is the cache line index
-' vmcurrent is current page
-' vmpage is new page
+' vmcurrent is current cache line
+' vmline is new cache line
 ' hubaddr is the address of the cache line
 miss    movd    :test, line
         movd    :st, line
 :test   test    0-0, dirty_mask wz
-  if_z  jmp     #:rd                    ' current page is clean, just read new page
+  if_z  jmp     #:rd                    ' current cache line is clean, just read new one
         mov     vmaddr, vmcurrent
         shl     vmaddr, offset_width
-        call    #BWRITE                 ' write current page
-:rd     mov     vmaddr, vmpage
+        call    #wr_cache_line          ' write current cache line
+:rd     mov     vmaddr, vmline
         shl     vmaddr, offset_width
-        call    #BREAD                  ' read new page
-:st     mov     0-0, vmpage
+        call    #rd_cache_line          ' read new cache line
+:st     mov     0-0, vmline
 miss_ret ret
 
 ' pointers to mailbox entries
@@ -135,8 +137,8 @@ pvmcmd          long    0       ' on call this is the virtual address and read/w
 pvmaddr         long    0       ' on return this is the address of the cache line containing the virtual address
 
 cacheptr        long    0       ' address in hub ram where cache lines are stored
-vmpage          long    0       ' page containing the virtual address
-vmcurrent       long    0       ' current page in selected cache line (same as vmpage on a cache hit)
+vmline          long    0       ' cache line containing the virtual address
+vmcurrent       long    0       ' current selected cache line (same as vmline on a cache hit)
 line            long    0       ' current cache line index
 set_dirty_bit   long    0       ' DIRTY_BIT set on writes, clear on reads
 
@@ -150,40 +152,40 @@ index_width     long    DEFAULT_INDEX_WIDTH
 index_mask      long    0
 index_count     long    0
 offset_width    long    DEFAULT_OFFSET_WIDTH
-line_size       long    0                       ' line size in longs
+line_size       long    0                       ' line size in bytes
 empty_mask      long    (1<<EMPTY_BIT)
 dirty_mask      long    (1<<DIRTY_BIT)
 
-' input parameters to BREAD and BWRITE
-vmaddr          long    0       ' external address to read or write
-hubaddr         long    0       ' hub memory address to read from or write to
+' input parameters to rd_cache_line and wr_cache_line
+vmaddr          long    0       ' external address
+hubaddr         long    0       ' hub memory address
 
 '----------------------------------------------------------------------------------------------------
 '
-' BREAD - read a block of data from external memory
+' rd_cache_line - read a cache line from external memory
 '
-' vmaddr is the virtual memory address to read
+' vmaddr is the external memory address to read
 ' hubaddr is the hub memory address to write
-' line_size is the number of longs to read
+' line_size is the number of bytes to read
 '
 '----------------------------------------------------------------------------------------------------
 
-BREAD
-BREAD_RET
+rd_cache_line
+rd_cache_line_ret
         ret
 
 '----------------------------------------------------------------------------------------------------
 '
-' BWRITE - write a block of data to external memory
+' wr_cache_line - write a cache line to external memory
 '
-' vmaddr is the virtual memory address to write
+' vmaddr is the external memory address to write
 ' hubaddr is the hub memory address to read
-' line_size is the number of longs to write
+' line_size is the number of bytes to write
 '
 '----------------------------------------------------------------------------------------------------
 
-BWRITE
-BWRITE_RET
+wr_cache_line
+wr_cache_line_ret
         ret
 
         fit     496
