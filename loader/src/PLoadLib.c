@@ -297,7 +297,6 @@ int ploadfp(char* file, FILE *fp, char* port, int type)
     //
     count = fread(dlbuf, 1, 0x8000, fp);
     printf("Downloading %d bytes of '%s'\n", count, file);
-    fclose(fp);
 
     //
     // find propeller
