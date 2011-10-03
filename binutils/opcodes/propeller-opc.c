@@ -93,13 +93,15 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"movd", 0x54000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* movi     010110 zcri cccc ddddddddd sssssssss */
   {"movi", 0x58000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
-  /* jmp      010111 zc0i cccc --------- sssssssss *//* These two are in the */
-  {"jmp", 0x5c000000, 0xfc800000, PROPELLER_OPERAND_JMP, NR, PROP_1},
-  /* ret      010111 zc01 cccc --------- --------- *//* wrong order either way */
+/* jmp      010111 zc0i cccc --------- sssssssss *//* These two are in the */
+  {"jmp", 0x5c000000, 0xfc83fe00, PROPELLER_OPERAND_JMP, NR, PROP_1},
+/* jmpn     010111 zc0i cccc --------- sssssssss */
+  {"jmpn", 0x5c000000, 0xfc800000, PROPELLER_OPERAND_JMPRET, NR, PROP_1},
+/* ret      010111 zc01 cccc --------- --------- *//* wrong order either way */
   {"ret", 0x5c400000, 0xfcc00000, PROPELLER_OPERAND_NO_OPS, NR, PROP_1},
-  /* jmpret   010111 zc1i cccc ddddddddd sssssssss *//* these, */
+/* jmpret   010111 zc1i cccc ddddddddd sssssssss *//* these, */
   {"jmpret", 0x5c800000, 0xfc800000, PROPELLER_OPERAND_JMPRET, R, PROP_1},
-  /* call     010111 zc11 cccc DDDDDDDDD sssssssss *//* too. */
+/* call     010111 zc11 cccc DDDDDDDDD sssssssss *//* too. */
   {"call", 0x5c000000, 0xfc000000, PROPELLER_OPERAND_CALL, R, PROP_1},
 /* test     011000 zcRi cccc ddddddddd sssssssss */
   {"test", 0x60000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
