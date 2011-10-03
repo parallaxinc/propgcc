@@ -181,6 +181,9 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   size = fixP->fx_size;
   code = md_chars_to_number ((unsigned char *) buf, size);
 
+  /* nothing should be wider than 32 bits */
+  val &= 0xffffffff;
+
   switch (fixP->fx_r_type)
     {
     case BFD_RELOC_PROPELLER_SRC_IMM:
@@ -225,6 +228,8 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   if(((val>>rshift) << shift) & ~mask){
     as_bad_where (fixP->fx_file, fixP->fx_line,
 		  _("Relocation overflows"));
+    //    fprintf(stderr, "val=(%08lx), mask=%08lx, shift=%d, rshift=%d\n",
+    //	    (unsigned long)val, (unsigned long)mask, shift, rshift);
   }
 
   if (fixP->fx_addsy != NULL){

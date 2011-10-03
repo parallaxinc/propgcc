@@ -1698,11 +1698,13 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  * builtin functions
  * here are the builtins we support:
  *
- * unsigned __builtin_propeller_cogid(void)
+ * void __builtin_propeller_clkset(unsigned mode)
+ *     set the system clock mode
+ * int __builtin_propeller_cogid(void)
  *     get the current cog id
- * unsigned __builtin_propeller_coginit(unsigned mode)
+ * int __builtin_propeller_coginit(unsigned mode)
  *     start or restart a cog
- * void __builtin_propeller_cogstop(unsigned id)
+ * void __builtin_propeller_cogstop(int id)
  *     stop a cog
  *
  * unsigned __builtin_propeller_rev(unsigned x, unsigned n)
@@ -1733,22 +1735,23 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 
 enum propeller_builtins
 {
-    PROPELLER_BUILTIN_COGID,
-    PROPELLER_BUILTIN_COGINIT,
-    PROPELLER_BUILTIN_COGSTOP,
-    PROPELLER_BUILTIN_REVERSE,
+  PROPELLER_BUILTIN_CLKSET,
+  PROPELLER_BUILTIN_COGID,
+  PROPELLER_BUILTIN_COGINIT,
+  PROPELLER_BUILTIN_COGSTOP,
+  PROPELLER_BUILTIN_REVERSE,
 
-    PROPELLER_BUILTIN_WAITCNT,
-    PROPELLER_BUILTIN_WAITPEQ,
-    PROPELLER_BUILTIN_WAITPNE,
-    PROPELLER_BUILTIN_WAITVID,
+  PROPELLER_BUILTIN_WAITCNT,
+  PROPELLER_BUILTIN_WAITPEQ,
+  PROPELLER_BUILTIN_WAITPNE,
+  PROPELLER_BUILTIN_WAITVID,
 
-    PROPELLER_BUILTIN_LOCKNEW,
-    PROPELLER_BUILTIN_LOCKRET,
-    PROPELLER_BUILTIN_LOCKSET,
-    PROPELLER_BUILTIN_LOCKCLR,
+  PROPELLER_BUILTIN_LOCKNEW,
+  PROPELLER_BUILTIN_LOCKRET,
+  PROPELLER_BUILTIN_LOCKSET,
+  PROPELLER_BUILTIN_LOCKCLR,
 
-    PROPELLER_BUILTIN_TASKSWITCH
+  PROPELLER_BUILTIN_TASKSWITCH
 };
 
 /* Initialise the builtin functions.  Start by initialising
@@ -1773,6 +1776,7 @@ propeller_init_builtins (void)
   tree int_ftype_void;
   tree int_ftype_int;
   tree void_ftype_int;
+  tree int_ftype_uns;
 
   /* void func (void) */
   void_ftype_void = build_function_type (void_type_node, endlink);
@@ -1786,8 +1790,10 @@ propeller_init_builtins (void)
 
   /* unsigned func(unsigned) */
   /* unsigned func(unsigned,unsigned) */
+  /* int func(unsigned) */
   uns_ftype_uns = build_function_type (unsigned_type_node, uns_endlink);
   uns_ftype_uns_uns = build_function_type (unsigned_type_node, uns_uns_endlink);
+  int_ftype_uns = build_function_type (integer_type_node, uns_endlink);
 
   /* int func (void) */
   int_ftype_void = build_function_type (integer_type_node, endlink);
@@ -1799,13 +1805,16 @@ propeller_init_builtins (void)
   /* void (*)(void) func(void (*f)(void)) */
   vfunc_ftype_vfunc = build_function_type(ptr_type_node, ptr_endlink);
 
-  add_builtin_function("__builtin_propeller_cogid", uns_ftype_void,
+  add_builtin_function("__builtin_propeller_clkset", void_ftype_uns,
+                       PROPELLER_BUILTIN_CLKSET,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_cogid", int_ftype_void,
                        PROPELLER_BUILTIN_COGID,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_propeller_coginit", uns_ftype_uns,
+  add_builtin_function("__builtin_propeller_coginit", int_ftype_uns,
                        PROPELLER_BUILTIN_COGINIT,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_propeller_cogstop", void_ftype_uns,
+  add_builtin_function("__builtin_propeller_cogstop", void_ftype_int,
                        PROPELLER_BUILTIN_COGSTOP,
                        BUILT_IN_MD, NULL, NULL_TREE);
   add_builtin_function("__builtin_propeller_rev", uns_ftype_uns_uns,
@@ -2024,6 +2033,9 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
 
   switch (fcode)
     {
+    case PROPELLER_BUILTIN_CLKSET:
+        return propeller_expand_builtin_1opvoid (CODE_FOR_clkset, exp);
+
     case PROPELLER_BUILTIN_COGID:
         return propeller_expand_builtin_1op (CODE_FOR_cogid, target);
     case PROPELLER_BUILTIN_COGINIT:
