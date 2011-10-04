@@ -561,6 +561,16 @@ propeller_output_label(FILE *file, const char * label)
   fputs("\n", file);
 }
 
+/*
+ * output a directive indicating a weak definition
+ */
+void
+propeller_weaken_label (FILE *file, const char *name)
+{
+  fprintf (file, "\t.weak ");
+  assemble_name (file, name);
+  fputs ("\n", file);
+}
 /* The purpose of this function is to override the default behavior of
    BSS objects.  Normally, they go into .bss or .sbss via ".common"
    directives, but we need to override that if they are for cog memory

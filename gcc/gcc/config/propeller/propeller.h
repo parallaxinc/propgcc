@@ -616,6 +616,8 @@ extern const char *propeller_bss_asm_op;
     }								\
   while (0)
 
+#define ASM_WEAKEN_LABEL(FILE,NAME) propeller_weaken_label(FILE,NAME)
+
 /* Debugging information */
 #define DWARF2_DEBUGGING_INFO
 
