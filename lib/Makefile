@@ -34,7 +34,8 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	simple_printf.o \
 	default_io.o init_io.o
 
-MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o abort.o
+MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o abort.o \
+	write.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
