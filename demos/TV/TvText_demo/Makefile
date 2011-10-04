@@ -5,8 +5,9 @@
 # All rights MIT licensed
 # #########################################################
 
-# where is the propeller library directory
-PROPLIB = ../../libpropeller
+CC = propeller-elf-gcc
+OBJCOPY = propeller-elf-objcopy
+BSTC = bstc
 
 # flags to use for building
 CFLAGS = -Os
@@ -16,19 +17,21 @@ CFLAGS = -Os
 #
 
 NAME = TvDemo
-OBJS = TvDemo.o TvText.o TV_firmware.o $(PROPLIB)/libpropeller.a
+OBJS = TvDemo.o TvText.o TV_firmware.o TvDriver.o
 
 SPINDIR = .
 
 all: $(NAME).elf
 
-include $(PROPLIB)/lmmdemo.mk
+clean:
+	rm -rf *.o *.elf
+
+$(NAME).elf: $(OBJS)
+	$(CC) -o $@ $(OBJS)
 
 %.dat: $(SPINDIR)/%.spin
 	$(BSTC) -Ox -c -o $(basename $@) $<
-	$(ECHO) $@
 
 %_firmware.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 	rm -rf $<
-	$(ECHO) $@
