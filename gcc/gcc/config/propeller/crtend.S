@@ -11,14 +11,27 @@
 	mov	pc,lr
 
 	.section .fini
-	'' finish up the exit function
 	.global __Exit
-	.global __exit
+	.global	__exit
 __Exit
 __exit
-	cogid	r0
-	cogstop	r0
+	'' finish up the exit function
+	mov	r0,r12		' restore exit status
+
+	'' provide for a special hook to do something like send
+	'' a message to the host to indicate we have stopped
+	jmp	#__LMM_CALL
+	long	__ExitHook
 	
+	'' and now terminate
+	cogid	r1
+	cogstop	r1
+
+	'' this is a weak reference so the user can override it
+	.weak __ExitHook
+__ExitHook
+	mov	pc,lr
+
 	'' make sure the ctors and dtors are null terminated
 	.section .ctors, "ax"
 	long	0

@@ -54,6 +54,7 @@ argv
 
 	.section .fini
 _exit
+	mov	r12,r0		' save exit status
 	jmp	#__LMM_MVI_r8
 	.long	___DTOR_LIST__
 L_loopn
