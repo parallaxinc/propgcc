@@ -43,10 +43,10 @@ int load_cog_driver_xmm(uint32_t *CODE, uint32_t codelen, uint32_t *params);
                 "mov __TMP0, %[_src]\n\t"       \
                 "call #__LMM_RDLONG\n\t"        \
                 "wrlong __TMP1, %[_dst]\n\t"    \
-                "add __TMP0, #4\n\t"            \
+                "add %[_src], #4\n\t"           \
                 "add %[_dst], #4\n\t"           \
                 "sub %[_count], #1 wz\n\t"      \
-                "if_nz sub pc, #6*4"            \
+                "if_nz sub pc, #7*4"            \
             : /* outputs */                     \
               [_dst] "=&r" (_dx),               \
               [_src] "=&r" (_sx),               \
@@ -56,7 +56,7 @@ int load_cog_driver_xmm(uint32_t *CODE, uint32_t codelen, uint32_t *params);
               "[_src]" (src),                   \
               "[_count]" (count)                \
             : /* clobbered registers */         \
-              "cc" );                          \
+              "cc" );                           \
         } while (0)
 
 #else
