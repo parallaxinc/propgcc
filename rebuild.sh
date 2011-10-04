@@ -90,7 +90,7 @@ cd ../../propgcc
 #
 mkdir -p ../build/gcc
 cd ../build/gcc
-../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp
+../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto
 if test $? != 0
 then
    echo "gcc configure failed."
