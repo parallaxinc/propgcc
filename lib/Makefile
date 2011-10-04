@@ -35,6 +35,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	default_io.o init_io.o
 
 MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o abort.o \
+	toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
 	write.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
@@ -72,7 +73,9 @@ MATH = 	k_standard.o k_rem_pio2.o \
 	float_printf.o $(PRINTF) \
 	float_scanf.o $(SCANF)
 
-OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS)
+PROPELLER = propeller.o
+
+OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
 
 LMM_OBJS = $(addprefix $(OBJDIR)/lmm/, $(OBJS))
 XMM_OBJS = $(addprefix $(OBJDIR)/xmm/, $(OBJS))
