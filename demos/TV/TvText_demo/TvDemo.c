@@ -8,37 +8,28 @@
 # #########################################################
 */
 
-#include "stdio.h"
-#include "cog.h"
-#include "propeller.h"
+#include <stdio.h>
+#include <cog.h>
+#include <propeller.h>
 #include "TvText.h"
 
 #define USE_STDIO
 
 #ifdef USE_STDIO
-/*
- * stdio hook for tv text
- * we could probably put this right into TvText.[ch], but
- * I didn't want to make such a drastic change just yet
- * returns 1 on success, 0 on failure
- */
-int
-tvText_putc(int c)
-{
-  outchar(c);
-  return 1;
-}
+extern _Driver TvDriver;
+extern _Driver _SimpleSerialDriver;
 
-static int (*old_putc)(int);
-
-/*
- * hook to print both to the TV and to serial
+/* This is a list of all drivers we can use in the
+ * program. The default _InitIO function opens stdin,
+ * stdout, and stderr based on the first driver in
+ * the list (the serial driver, for us)
  */
-static int
-both_putc(int c)
-{
-  return old_putc(c) && tvText_putc(c);
-} 
+_Driver *_driverlist[] = {
+  &_SimpleSerialDriver,
+  &TvDriver,
+  NULL
+};
+
 #endif
 
 /*
@@ -48,30 +39,30 @@ both_putc(int c)
 void main (int argc, char* argv[])
 {
 #ifdef USE_STDIO
+    FILE *tvf;
+
     /* start of printing just to serial port (the default) */
     printf("hello, serial world!\r\n");
 
-    /* start up the tvText program */
-    tvText_start(12);
+    /* start up the tvText program on pin 12 */
+    tvf = fopen("TV:12", "w");
 
-    /* save old putc and set up to print to both serial and TV */
-    old_putc = _putc;
-    _putc = both_putc;
+    /* print to both serial and TV */
     printf("Hello, world!\r\n");
+    fprintf(tvf, "Hello, world\r\n");
 
     /* print just to TV */
-    _putc = tvText_putc;
-    printf("Hello TV only!");
+    fprintf(tvf, "Hello TV only!\r\n");
+    fprintf(tvf, "TV line 2!\r\n");
 
     /* print back to serial only */
-    _putc = old_putc;
-    printf("goodbyte, world!\r\n");
+    printf("goodbye, world!\r\n");
     while(1);
 #else
     printf("hello, world!");
     tvText_start(12);
     tvText_str("Hello TV!");
-    printf("\r\ngoodbyte, world!\r\n");
+    printf("\r\ngoodbye, world!\r\n");
     while(1);
 #endif
 }

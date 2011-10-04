@@ -19,8 +19,6 @@
 #define dprintf
 //#define dprintf printf
 
-int outchar(char c);
-
 #define TV_TEXT_OUT
 
 static TvText_t tvText;
@@ -287,7 +285,7 @@ void    tvText_str(char* sptr)
 #ifdef TV_TEXT_OUT
         tvText_out(*(sptr++));
 #else
-        outchar(*(sptr++));
+        tvText_outchar(*(sptr++));
 #endif
     }
 }
@@ -421,10 +419,10 @@ void    tvText_out(int c)
  * TV_Text print null terminated char* to screen with normal stdio definitions
  * See header file for more details.
  */
-void    print(char* s)
+void    tvText_print(char* s)
 {
     while(*s) {
-        outchar(*(s++));
+        tvText_outchar(*(s++));
     }
 }
 
@@ -432,7 +430,7 @@ void    print(char* s)
  * TV_Text outchar print char to screen with normal stdio definitions
  * See header file for more details.
  */
-int     outchar(char c)
+int     tvText_outchar(char c)
 {
     switch(c)
     {
