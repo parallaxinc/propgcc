@@ -115,7 +115,7 @@ static int Error(char *fmt, ...);
 
 int InitPort(char *port, int baud)
 {
-	return serial_init(port, baud);
+    return serial_init(port, baud);
 }
 
 int LoadImage(System *sys, BoardConfig *config, char *port, char *path, int flags)
@@ -169,8 +169,8 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
     /* close the elf file */
     CloseElfFile(c);
     
-	/* return successfully */
-	return TRUE;
+    /* return successfully */
+    return TRUE;
 }
 
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp)
@@ -258,10 +258,10 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         mode = SHUTDOWN_CMD;
     
-	/* load the serial helper program */
+    /* load the serial helper program */
     if (mode != SHUTDOWN_CMD && ploadbuf(imagebuf, size, port, mode) != 0) {
         free(imagebuf);
-		return Error("load failed");
+        return Error("load failed");
     }
     
     /* free the image buffer */
@@ -272,7 +272,7 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char 
 
 static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c)
 {
-	SpinHdr *hdr = (SpinHdr *)serial_helper_array;
+    SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf, *imagebuf;
@@ -284,10 +284,10 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     /* patch serial helper for clock mode and frequency */
     hdr->clkfreq = config->clkfreq;
     hdr->clkmode = config->clkmode;
-	dat->baudrate = config->baudrate;
-	dat->rxpin = config->rxpin;
-	dat->txpin = config->txpin;
-	dat->tvpin = config->tvpin;
+    dat->baudrate = config->baudrate;
+    dat->rxpin = config->rxpin;
+    dat->txpin = config->txpin;
+    dat->tvpin = config->tvpin;
         
     /* recompute the checksum */
     hdr->chksum = 0;
@@ -295,20 +295,20 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
         chksum += serial_helper_array[i];
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
     
-	/* load the serial helper program */
+    /* load the serial helper program */
     if (ploadbuf(serial_helper_array, serial_helper_size, port, DOWNLOAD_RUN_BINARY) != 0)
-		return Error("helper load failed");
+        return Error("helper load failed");
 
-	/* wait for the serial helper to complete initialization */
+    /* wait for the serial helper to complete initialization */
     if (!WaitForInitialAck())
-		return Error("failed to connect to helper");
+        return Error("failed to connect to helper");
     
     /* load the cache driver */
     if (config->cacheDriver) {
         uint32_t params[3];
         if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
             return Error("reading cache driver image failed: %s", config->cacheDriver);
-		printf("Loading cache driver\n");
+        printf("Loading cache driver\n");
         params[0] = config->cacheSize;
         params[1] = config->cacheParam1;
         params[2] = config->cacheParam2;
@@ -337,8 +337,10 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     for (i = 0, imageSize = program_header.filesz; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program))
             return Error("can't load program table entry %d", i);
-        if (i != ki && program.paddr >= program_header.paddr)
+        if (i != ki && program.paddr >= program_header.paddr) {
+            //printf("S: paddr %08x, size %08x\n", program.paddr, program.filesz);
             imageSize += program.filesz;
+        }
     }
     
     /* allocate a buffer big enough for the entire image */
@@ -357,7 +359,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
                     free(imagebuf);
                     return Error("can't load program section %d", i);
                 }
-                //printf("paddr %08x, size %08x\n", program.paddr, program.filesz);
+                //printf("L: paddr %08x, size %08x\n", program.paddr, program.filesz);
                 memcpy(&imagebuf[program.paddr - program_header.paddr], buf, program.filesz);
                 free(buf);
             }
@@ -384,19 +386,19 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
                 initSection->size = program.memsz;
             else
                 initSection->size = program.filesz;
-            //printf("vaddr %08x, paddr %08x, size %08x\n", initSection->vaddr, initSection->paddr, initSection->size);
+            //printf("T: vaddr %08x, paddr %08x, size %08x\n", initSection->vaddr, initSection->paddr, initSection->size);
             ++initSection;
         }
     }
     
     /* write the full image to memory */
-	printf("Loading program image\n");
+    printf("Loading program image\n");
     target = (program_header.paddr >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
     if (!SendPacket(target, (uint8_t *)"", 0)
     ||  !WriteBuffer(imagebuf, imageSize + initTableSize)) {
         free(imagebuf);
         return Error("Loading program image failed");
-	}
+    }
     
     /* free the image buffer */
     free(imagebuf);
@@ -437,12 +439,12 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     
 static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode)
 {
-	SpinHdr *hdr = (SpinHdr *)flash_loader_array;
+    SpinHdr *hdr = (SpinHdr *)flash_loader_array;
     SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->pbase);
     FlashLoaderDatHdr *dat = (FlashLoaderDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX];
     int imageSize, chksum, i;
-	
+    
     if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
         return Error("reading cache driver image failed: %s", config->cacheDriver);
         
@@ -467,12 +469,12 @@ static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_
         chksum += flash_loader_array[i];
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
     
-	/* load the lflash oader program */
+    /* load the lflash oader program */
     if (ploadbuf(flash_loader_array, flash_loader_size, port, mode) != 0)
-		return Error("loader load failed");
-	
-	/* return successfully */
-	return TRUE;
+        return Error("loader load failed");
+    
+    /* return successfully */
+    return TRUE;
 }
 
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize)
