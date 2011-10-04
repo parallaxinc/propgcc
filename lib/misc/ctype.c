@@ -79,14 +79,3 @@ unsigned char __ctype[UCHAR_MAX+1] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  /* 0xF0..0xFF */
 	};
 
-int
-toupper(int c)
-{
-  return islower(c) ? (c ^ 0x20) : c;
-}
-
-int
-tolower(int c)
-{
-  return isupper(c) ? (c ^ 0x20) : c;
-}
