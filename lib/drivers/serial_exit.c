@@ -56,9 +56,11 @@ _serial_exit(int n)
   _serial_tx(n & 0xff);
 }
 
-//void _ExitHook(int) __attribute__ ((alias ("__serial_exit")));
-
+#ifdef __GNUC__
+void _ExitHook(int) __attribute__ ((alias ("_serial_exit")));
+#else
 void _ExitHook(int n)
 {
   _serial_exit(n);
 }
+#endif
