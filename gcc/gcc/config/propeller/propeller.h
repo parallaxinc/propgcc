@@ -165,7 +165,7 @@ do {                                                    \
 /* Trampolines.  */
 /*---------------*/
 
-#define TRAMPOLINE_SIZE		0
+#define TRAMPOLINE_SIZE		16
 
 /*----------------------------------------*/
 /* Layout of source language data types.  */
@@ -231,6 +231,9 @@ do {                                                    \
   "sp", "pc", "cc", "?sap", "?sfp" }
 
 /* some utility defines; the _REG definitions come from propeller.md */
+/* r14 the frame register, and r15 the
+ * link register
+ */
 #define PROP_R0        0
 #define PROP_R1        1
 #define PROP_FP_REGNUM (FRAME_REG)
@@ -322,6 +325,9 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 /* The register number of the arg pointer register, which is used to
    access the function's argument list.  */
 #define ARG_POINTER_REGNUM PROP_FAKEAP_REGNUM
+
+/* register in which the static chain is passed to a function */
+#define STATIC_CHAIN_REGNUM 7
 
 /* Definitions for register eliminations.
 
@@ -609,6 +615,8 @@ extern const char *propeller_bss_asm_op;
 	       PREFIX, (unsigned) (NUM));			\
     }								\
   while (0)
+
+#define ASM_WEAKEN_LABEL(FILE,NAME) propeller_weaken_label(FILE,NAME)
 
 /* Debugging information */
 #define DWARF2_DEBUGGING_INFO

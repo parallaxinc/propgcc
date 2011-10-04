@@ -465,7 +465,9 @@ proc check_effective_target_trampolines { } {
     }
     if { [istarget avr-*-*]
 	 || [istarget hppa2.0w-hp-hpux11.23]
-	|| [istarget hppa64-hp-hpux11.23] } {
+	|| [istarget hppa64-hp-hpux11.23] 
+	 || [istarget propeller-*]
+       } {
 	return 0;   
     }
     return 1
@@ -562,6 +564,7 @@ proc check_profiling_available { test_what } {
 	     || [istarget mep-*-elf]
 	     || [istarget mips*-*-elf*]
 	     || [istarget moxie-*-elf*]
+	     || [istarget propeller*]
 	     || [istarget rx-*-*]	
 	     || [istarget xstormy16-*]
 	     || [istarget xtensa*-*-elf]
