@@ -549,6 +549,8 @@ extern const char *propeller_bss_asm_op;
   (TARGET_PASM ? "\t'init section\t" : "\tsection\t\".init\",\"ax\"")
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
+#define SET_ASM_OP \
+  (TARGET_PASM ? "\t'set\t" : "\t.set\t")
 
 /* For now put read-only data into the data section; that works
    on all current targets. If someday we get ROMable code we
