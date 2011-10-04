@@ -34,4 +34,8 @@ struct __driver {
 
 extern _Driver *_driverlist[];
 
+/* some standard functions that are useful in drivers */
+int _null_read(FILE *fp, unsigned char *buf, int size);
+int _null_write(FILE *fp, unsigned char *buf, int size);
+
 #endif
