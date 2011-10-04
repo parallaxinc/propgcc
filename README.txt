@@ -76,3 +76,13 @@ fibo  - Generate Fibonacci numbers and print them, along with timings
 
 
  
+--------------------------- test suites ---------------------------------
+
+Copy the contents of propgcc/dejagnu to
+/usr/local/propeller/share/dejagnu.
+
+Set the environment variable DEJAGNU to
+/usr/local/propeller/share/dejagnu/site.exp.
+
+in build/gcc, do:
+   make check-gcc RUNTESTFLAGS="--target_board=propeller-sim"
