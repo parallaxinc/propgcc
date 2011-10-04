@@ -50,6 +50,7 @@ set_board_info gdb,nointerrupts 1
 
 # some gcc limitations
 set_board_info gcc,stack_size 4096
+set_board_info nosignals 1
 
 # cannot pass arguments
 set_board_info gdb,noargs 1
