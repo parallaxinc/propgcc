@@ -127,7 +127,7 @@ __LMM_JMP
     '' On call:
     ''   __TMP0 contains the address from which to read
     '' On return:
-    ''   __TMP0 contains the value at that address
+    ''   __TMP1 contains the value at that address
     ''
 
 	.global __LMM_RDBYTE
