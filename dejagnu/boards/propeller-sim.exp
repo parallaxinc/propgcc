@@ -29,14 +29,16 @@ load_generic_config "sim"
 # We don't use basic-sim.exp and setup_sim because the simulator, called
 # "propeller-load", is external to the build tree.
 set_board_info sim propeller-load
-set_board_info sim,options "-bc3 -p1 -r -t"
+set_board_info sim,options "-bc3 -p1 -r -t -x"
+#set_board_info sim spinsim
+#set_board_info sim,options "-b115200"
 set_board_info is_simulator 1
 
 # No default multilib options are needed for this board.
 process_multilib_options ""
 
 set_board_info compiler  "[find_gcc]"
-set_board_info cflags    "[libgloss_include_flags] [newlib_include_flags]"
+set_board_info cflags    "-u __serial_exit [libgloss_include_flags] [newlib_include_flags]"
 set_board_info ldflags   "[libgloss_link_flags] [newlib_link_flags]"
 
 # No linker script needed.
@@ -54,4 +56,5 @@ set_board_info gdb,noargs 1
 set_board_info noargs 1
 
 # the standard GCC wrapper will work with this target
-set_board_info needs_status_wrapper 1
+# (not needed for propeller-load, though)
+#set_board_info needs_status_wrapper 1
