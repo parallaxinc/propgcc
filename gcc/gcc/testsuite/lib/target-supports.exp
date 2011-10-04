@@ -466,7 +466,6 @@ proc check_effective_target_trampolines { } {
     if { [istarget avr-*-*]
 	 || [istarget hppa2.0w-hp-hpux11.23]
 	|| [istarget hppa64-hp-hpux11.23] 
-	 || [istarget propeller-*]
        } {
 	return 0;   
     }
