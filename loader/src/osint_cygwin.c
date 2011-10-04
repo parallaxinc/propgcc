@@ -265,16 +265,45 @@ static void console_putch(int ch)
 
 #define ESC     0x1b    /* escape from terminal mode */
 
+/* if "check_for_exit" is true, then
+ * a sequence EXIT_CHAR 00 nn indicates that we should exit
+*/
+#define EXIT_CHAR 0xff
+
 void terminal_mode(void)
 {
-    for (;;) {
+    extern int check_for_exit;
+    int sawexit_char = 0;
+    int sawexit_valid = 0;
+    int exitcode = 0;
+    int continue_terminal = 1;
+
+    while (continue_terminal) {
         uint8_t buf[1];
-        if (rx_timeout(buf, 1, 0) != SERIAL_TIMEOUT)
-            console_putch(buf[0]);
-        else if (console_kbhit()) {
+        if (rx_timeout(buf, 1, 0) != SERIAL_TIMEOUT) {
+	    if (sawexit_valid) {
+	        exitcode = buf[0];
+	        continue_terminal = 0;
+	    } else if (sawexit_char) {
+	        if (buf[0] == 0) {
+		  sawexit_valid = 1;
+		} else {
+		  console_putch(EXIT_CHAR);
+		  console_putch(buf[0]);
+		}
+	    } else if (check_for_exit && buf[0] == EXIT_CHAR) {
+	        sawexit_char = 1;
+	    } else {
+                console_putch(buf[0]);
+	    }
+        } else if (console_kbhit()) {
             if ((buf[0] = console_getch()) == ESC)
                 break;
             tx(buf, 1);
         }
+    }
+
+    if (check_for_exit && sawexit_valid) {
+      exit(exitcode);
     }
 }
