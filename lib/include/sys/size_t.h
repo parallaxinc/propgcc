@@ -1,4 +1,4 @@
-#ifndef __size_t_defined
+#ifndef _SIZE_T
   typedef unsigned long size_t;
-#define __size_t_defined
+#define _SIZE_T
 #endif

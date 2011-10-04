@@ -561,6 +561,16 @@ propeller_output_label(FILE *file, const char * label)
   fputs("\n", file);
 }
 
+/*
+ * output a directive indicating a weak definition
+ */
+void
+propeller_weaken_label (FILE *file, const char *name)
+{
+  fprintf (file, "\t.weak ");
+  assemble_name (file, name);
+  fputs ("\n", file);
+}
 /* The purpose of this function is to override the default behavior of
    BSS objects.  Normally, they go into .bss or .sbss via ".common"
    directives, but we need to override that if they are for cog memory
@@ -996,6 +1006,39 @@ propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 			   const_tree type, bool named ATTRIBUTE_UNUSED)
 {
   *cum += PROP_NUM_REGS (mode, type);
+}
+
+
+/* trampoline support */
+
+/* our basic trampoline is a simple move immediate to set the chain
+ * register and then a far jump to the function address
+ */
+static void
+propeller_asm_trampoline_template (FILE *f)
+{
+  if (!TARGET_LMM)
+    {
+      error ("nested functions not supported in cog mode\n");
+    }
+  fprintf (f, "\tjmp\t#__LMM_MVI_r%d\n", STATIC_CHAIN_REGNUM);
+  fprintf (f, "\tlong\t#0xdeadbeef\n"); /* static chain value goes here */
+  fprintf (f, "\tjmp\t#__LMM_JMP\n");
+  fprintf (f, "\tlong\t#0xdeadbeef\n"); /* function address goes here */
+}
+
+static void
+propeller_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
+{
+  rtx mem, fnaddr;
+
+  fnaddr = XEXP (DECL_RTL (fndecl), 0);
+  emit_block_move (m_tramp, assemble_trampoline_template (), GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
+
+  mem = adjust_address (m_tramp, SImode, 4);
+  emit_move_insn (mem, chain_value);
+  mem = adjust_address (m_tramp, SImode, 12);
+  emit_move_insn (mem, fnaddr);
 }
 
 
@@ -2916,6 +2959,11 @@ propeller_reorg(void)
 #define TARGET_ADDRESS_COST propeller_address_cost
 #undef  TARGET_ENCODE_SECTION_INFO
 #define TARGET_ENCODE_SECTION_INFO propeller_encode_section_info
+
+#undef TARGET_ASM_TRAMPOLINE_TEMPLATE
+#define TARGET_ASM_TRAMPOLINE_TEMPLATE propeller_asm_trampoline_template
+#undef TARGET_TRAMPOLINE_INIT
+#define TARGET_TRAMPOLINE_INIT propeller_trampoline_init
 
 #undef TARGET_EXCEPT_UNWIND_INFO
 #define TARGET_EXCEPT_UNWIND_INFO sjlj_except_unwind_info
