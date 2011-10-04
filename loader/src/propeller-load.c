@@ -47,6 +47,10 @@ static SystemOps myOps = {
     MyError
 };
 
+/* flag to terminal_mode to check for a certain sequence to indicate
+   program exit */
+int check_for_exit = 0;
+
 int main(int argc, char *argv[])
 {
     char *infile = NULL, *p;
@@ -122,6 +126,9 @@ int main(int argc, char *argv[])
 		if (argv[i][2])
 		  terminalBaud = atoi(&argv[i][2]);
                 break;
+	    case 'x':
+	        check_for_exit = 1;
+	        break;
             case 'I':
                 if(argv[i][2])
                     p = &argv[i][2];
