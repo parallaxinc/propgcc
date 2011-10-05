@@ -966,15 +966,16 @@
 )
 
 (define_insn "*movsi"
-  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
-	(match_operand:SI 1 "general_operand"               "rCI,N,Q,rC"))]
+  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,rC,Q")
+	(match_operand:SI 1 "general_operand"               "rCI,B,N,Q,rC"))]
   "!TARGET_XMM"
   "@
    mov\t%0, %1
+   mov\t%0, #%c1/4
    neg\t%0, #%n1
    rdlong\t%0, %1
    wrlong\t%1, %0"
-   [(set_attr "type" "core,core,hub,hub")
+   [(set_attr "type" "core,core,core,hub,hub")
     (set_attr "predicable" "yes")]
 )
 
