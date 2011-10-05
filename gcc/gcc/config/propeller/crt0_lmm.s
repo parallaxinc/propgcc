@@ -211,11 +211,15 @@ __DIVR	long	0
 __TMP1
 __DIVCNT
 	long	0
+	''
+	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
+	''
 __UDIVSI
 	mov	__DIVR, r0
 	call	#__CLZSI
 	neg	__DIVCNT, r0
-	mov	r0, r1
+	mov	r0, r1 wz
+ IF_Z   jmp	#__UDIV_BY_ZERO
 	call	#__CLZSI
 	add	__DIVCNT, r0
 	mov	r0, #0
@@ -234,14 +238,23 @@ __UDIVSI_ret	ret
 __DIVSGN	long	0
 __DIVSI	mov	__DIVSGN, r0
 	xor	__DIVSGN, r1
-	abs	r0, r0
+	abs	r0, r0 wc
+	muxc	__DIVSGN, #1	' save original sign of r0
 	abs	r1, r1
 	call	#__UDIVSI
 	cmps	__DIVSGN, #0	wz, wc
  IF_B	neg	r0, r0
- IF_B	neg	r1, r1
+	test	__DIVSGN, #1 wz	' check original sign of r0
+ IF_NZ	neg	r1, r1		' make the modulus result match
 __DIVSI_ret	ret
 
+	'' come here on divide by zero
+	'' we probably should raise a signal
+__UDIV_BY_ZERO
+	neg	r0,#1
+	mov	r1,#0
+	jmp	#__UDIVSI_ret
+	
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
