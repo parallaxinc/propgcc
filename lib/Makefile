@@ -20,7 +20,7 @@ all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a $(OBJDIR)/$(x)
 
 # $(PRINTF) are the functions which depend on vfprintf;
 # we include floating point versions of these in the math library
-PRINTF = printf.o fprintf.o vprintf.o sprintf.o snprintf.o
+PRINTF = printf.o fprintf.o vprintf.o sprintf.o snprintf.o vsprintf.o vsnprintf.o
 SCANF =  scanf.o vscanf.o sscanf.o
  
 STDIO = clearerr.o feof.o ferror.o fflush.o \
@@ -36,7 +36,8 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 
 MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o abort.o \
 	toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
-	write.o
+	qsort.o bsearch.o signal.o \
+	assert.o write.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
