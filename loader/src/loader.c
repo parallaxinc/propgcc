@@ -276,8 +276,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *buf, *imagebuf;
-    ElfProgramHdr program, program_kernel, program_header;
-    int imageSize, initTableSize, chksum, target, ki, hi, i;
+    ElfProgramHdr program, program_kernel, program_header, program_hub;
+    int imageSize, initTableSize, chksum, target, ki, hi, si, i;
     InitSection *initSection;
     ImageHdr *image;
 
@@ -322,6 +322,31 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     else
         return Error("no cache driver to load external image");
     
+    /*
+        Create an image to load into external memory.
+        
+        For programs with code in external flash memory:
+        
+            Load all sections with flash load addresses into flash.
+            
+            Create an initialization entry for every section that must be
+            relocated to either external RAM or hub memory at startup.
+            
+        For programs with code in external RAM:
+        
+            Load all sections with external RAM load addresses into external RAM.
+            
+            Create an initialization entry for every section that must be
+            relocated to hub memory at startup.
+            
+        Do not generate initialization entries for cogsysn or cogusern
+        sections that will eventually be loaded into a COG using coginit.
+        These sections have vaddr == 0 and PF_X set.
+        
+        Do not load the kernel section as this is handled separately by the 
+        loader.
+    */
+        
     /* find the .xmmkernel segment */
     if ((ki = FindProgramSegment(c, ".xmmkernel", &program_kernel)) < 0)
         return Error("can't find .xmmkernel segment");
@@ -330,22 +355,32 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     if ((hi = FindProgramSegment(c, ".header", &program_header)) < 0)
         return Error("can't find .header segment");
     
-    /* allocate a table of init sections */
-    initTableSize = (c->hdr.phnum - 2) * sizeof(InitSection);
+    /* find the .hubstart segment */
+    if ((si = FindProgramSegment(c, ".hub", &program_hub)) < 0)
+        return Error("can't find .hub segment");
+    
+    /* prepare to determine the init table size */
+    initTableSize = 0;
     
     /* determine the full image size including the hub/ram initializers */
     for (i = 0, imageSize = program_header.filesz; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program))
             return Error("can't load program table entry %d", i);
-        if (i != ki && program.paddr >= program_header.paddr) {
-            //printf("S: paddr %08x, size %08x\n", program.paddr, program.filesz);
+        if (i != ki) {
+            //printf("S: vaddr %08x, paddr %08x, size %08x\n", program.vaddr, program.paddr, program.filesz);
             imageSize += program.filesz;
+        }
+        if (i != ki && i != hi) {
+            if (i == si || program.filesz == 0 || (program.vaddr != program.paddr && program.vaddr > 0)) {
+                //printf("I: vaddr %08x, paddr %08x, size %08x\n", program.vaddr, program.paddr, program.filesz);
+                ++initTableSize;
+            }
         }
     }
     
     /* allocate a buffer big enough for the entire image */
-    if (!(imagebuf = (uint8_t *)malloc(imageSize + initTableSize)))
-        return Error("insufficent memory for %d byte image", imageSize + initTableSize);
+    if (!(imagebuf = (uint8_t *)malloc(imageSize + initTableSize * sizeof(InitSection))))
+        return Error("insufficent memory for %d byte image", imageSize + initTableSize * sizeof(InitSection));
     
     /* load the image data */
     for (i = 0; i < c->hdr.phnum; ++i) {
@@ -359,7 +394,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
                     free(imagebuf);
                     return Error("can't load program section %d", i);
                 }
-                //printf("L: paddr %08x, size %08x\n", program.paddr, program.filesz);
+                //printf("L: vaddr %08x, paddr %08x, size %08x\n", program.vaddr, program.paddr, program.filesz);
                 memcpy(&imagebuf[program.paddr - program_header.paddr], buf, program.filesz);
                 free(buf);
             }
@@ -368,7 +403,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     
     /* fill in the image header */
     image = (ImageHdr *)imagebuf;
-    image->initCount = c->hdr.phnum - 2;
+    image->initCount = initTableSize;
     image->initTableOffset = imageSize;
     
     /* populate the init section table */
@@ -378,16 +413,17 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
             free(imagebuf);
             return Error("can't load program table entry %d", i);
         }
-        if (program.filesz == 0
-        ||  (program.offset != program_kernel.offset && program.offset != program_header.offset)) {
-            initSection->vaddr = program.vaddr;
-            initSection->paddr = program.paddr;
-            if (program.vaddr == program.paddr)
-                initSection->size = program.memsz;
-            else
-                initSection->size = program.filesz;
-            //printf("T: vaddr %08x, paddr %08x, size %08x\n", initSection->vaddr, initSection->paddr, initSection->size);
-            ++initSection;
+        if (i != ki && i != hi) {
+            if (i == si || program.filesz == 0 || (program.vaddr != program.paddr && program.vaddr > 0)) {
+                initSection->vaddr = program.vaddr;
+                initSection->paddr = program.paddr;
+                if (program.vaddr == program.paddr)
+                    initSection->size = program.memsz;
+                else
+                    initSection->size = program.filesz;
+                //printf("T: vaddr %08x, paddr %08x, size %08x\n", initSection->vaddr, initSection->paddr, initSection->size);
+                ++initSection;
+            }
         }
     }
     
@@ -395,7 +431,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char 
     printf("Loading program image\n");
     target = (program_header.paddr >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
     if (!SendPacket(target, (uint8_t *)"", 0)
-    ||  !WriteBuffer(imagebuf, imageSize + initTableSize)) {
+    ||  !WriteBuffer(imagebuf, imageSize + initTableSize * sizeof(InitSection))) {
         free(imagebuf);
         return Error("Loading program image failed");
     }
