@@ -43,10 +43,10 @@ static __inline__ void copy_from_xmm(uint32_t *dst, uint32_t *src, int count)
         "mov __TMP0, %[_src]\n\t"
         "call #__LMM_RDLONG\n\t"
         "wrlong __TMP1, %[_dst]\n\t"
-        "add %[_src], #4\n\t"
+        "add __TMP0, #4\n\t"
         "add %[_dst], #4\n\t"
         "sub %[_count], #1 wz\n\t"
-        "if_nz sub pc, #7*4"
+        "if_nz sub pc, #6*4"
     : /* outputs */
       [_dst] "=&r" (_dx),
       [_src] "=&r" (_sx),
