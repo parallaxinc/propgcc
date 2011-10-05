@@ -292,16 +292,19 @@ propeller_encode_section_info (tree decl, rtx r, int first)
 bool
 propeller_cogaddr_p (rtx x)
 {
-    if (GET_CODE (x) != SYMBOL_REF) {
-        return false;
-    }
-    if (0 != (SYMBOL_REF_FLAGS (x) & SYMBOL_FLAG_PROPELLER_COGMEM)) {
-        return true;
-    }
-    if (CONSTANT_POOL_ADDRESS_P (x) && !TARGET_LMM) {
-        return true;
-    }
+  if (GET_CODE (x) == LABEL_REF && !TARGET_LMM) {
+    return true;
+  }
+  if (GET_CODE (x) != SYMBOL_REF) {
     return false;
+  }
+  if (0 != (SYMBOL_REF_FLAGS (x) & SYMBOL_FLAG_PROPELLER_COGMEM)) {
+    return true;
+  }
+  if (CONSTANT_POOL_ADDRESS_P (x) && !TARGET_LMM) {
+    return true;
+  }
+  return false;
 }
 
 /*
