@@ -498,7 +498,7 @@ pasm_divsi(FILE *f) {
   fprintf(f, "\tcall\t#__UDIVSI\n");
   fprintf(f, "\tcmps\t__DIVSGN,#0 wz,wc\n");
   fprintf(f, "\tIF_B\tneg\tr0,r0\n");
-  fprintf(f, "\ttest\t__DIVSGN,#1\n");
+  fprintf(f, "\ttest\t__DIVSGN,#1 wz\n");
   fprintf(f, "\tIF_NZ\tneg\tr1,r1\n");
   fprintf(f, "__DIVSI_ret\tret\n");
 }
