@@ -34,7 +34,18 @@ ___init
 	sub	sp,#4
 	wrlong	r14,sp
 	mov	r14,sp
-	
+
+	'' zero out bss
+	jmp	#__LMM_MVI_r0
+	.long	__bss_start
+	jmp	#__LMM_MVI_r2
+	.long	__bss_end
+	sub	r2,r0
+	mov	r1,#0
+	jmp	#__LMM_CALL
+	.long	_memset
+
+	'' call the constructors
 	jmp	#__LMM_MVI_r8
 	.long	___CTOR_LIST__
 L_loop
