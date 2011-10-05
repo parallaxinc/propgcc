@@ -51,4 +51,7 @@ div_t div(int num, int denom);
 ldiv_t ldiv(long num, long denom);
 lldiv_t lldiv(long long num, long long denom);
 
+void qsort(void *base, size_t nmemb, size_t size, int (*compare)(const void *, const void *));
+void *bsearch(const void *key, const void *base, size_t nmemb, size_t size,
+	      int (*compare)(const void *, const void *));
 #endif
