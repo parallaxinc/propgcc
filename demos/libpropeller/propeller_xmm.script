@@ -41,7 +41,9 @@ SECTIONS {
     } >hub AT>rom
     
     .bss : {
-        *(.bss*)
+         PROVIDE(__bss_start = .); 
+         *(.bss)
+  	 PROVIDE(__bss_end = .);
     } >ram AT>ram
     
   ___heap_start = ALIGN(4);

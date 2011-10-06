@@ -39,7 +39,9 @@ SECTIONS {
         *(.dtors*)
     } >hub AT>ram
     .bss : {
-        *(.bss*)
+         PROVIDE(__bss_start = .); 
+         *(.bss)
+  	 PROVIDE(__bss_end = .);
     } >hub AT>hub
     
   ___heap_start = ALIGN(4);

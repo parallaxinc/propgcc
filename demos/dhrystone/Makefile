@@ -6,7 +6,7 @@
 # #########################################################
 
 # Current LIBRARY
-PROPLIB = ../libpropeller
+PROPLIB = ../common
 
 #
 # objects for this program
@@ -17,10 +17,10 @@ OBJS = dry1.o dry2.o
 
 # flags to use
 # MSC_CLOCK selects the clock() function for timing
-# printf=f_printf makes sure we use the floating point printf
+# printf=__simple_printf makes sure we use the small printf
 # -DINTEGER_ONLY removes floating point
 
-DEFINES = -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=50000
+DEFINES = -Dprintf=__simple_printf -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=50000
 CFLAGS = -O2 -mfcache $(DEFINES)
 
 include $(PROPLIB)/lmmdemo.mk
