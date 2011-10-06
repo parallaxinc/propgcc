@@ -38,7 +38,7 @@ MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o abort.o \
 	toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
 	qsort.o bsearch.o signal.o \
 	assert.o write.o \
-	rand.o srand.o
+	rand.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
