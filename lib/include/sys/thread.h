@@ -10,6 +10,7 @@
 struct _TLS {
   int errno;
   char *strtok_scanpoint;
+  unsigned long rand_seed;
 };
 
 /*
