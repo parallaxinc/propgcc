@@ -2189,7 +2189,7 @@
 	      (match_operand:SI 1 "propeller_dst_operand" "rC")
 	      (const_int -1)))))
    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else (ltu (reg:CC_C CC_REG)(const_int 0))
+        (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
 	              (const_int 1)
 		      (const_int 0)))
    ]
