@@ -25,8 +25,8 @@ LIB2FUNCS_EXTRA =
 # compiled; these are pretty big anyway, and not often used
 # also, we do have a few assembly things as well
 
-FAKEASMFUNCS = _mulsc3 _muldc3 _multc3 _divsc3 _divdc3 _divtc3
-LIB1ASMFUNCS = _udivmoddi4 $(FAKEASMFUNCS)
+FAKEASMFUNCS = _multc3 _divtc3
+LIB1ASMFUNCS = $(FAKEASMFUNCS)
 LIB1ASMSRC = propeller/libgccExtras/fake_libgcc.asm
 
 LIBGCC2_CFLAGS += -Os
