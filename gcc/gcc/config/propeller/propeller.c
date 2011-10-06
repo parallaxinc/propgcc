@@ -304,6 +304,9 @@ propeller_cogaddr_p (rtx x)
   if (CONSTANT_POOL_ADDRESS_P (x) && !TARGET_LMM) {
     return true;
   }
+  if (SYMBOL_REF_FUNCTION_P (x) && !TARGET_LMM) {
+    return true;
+  }
   return false;
 }
 
@@ -1679,22 +1682,23 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
 bool
 propeller_legitimate_constant_p (rtx x)
 {
-    switch (GET_CODE (x))
+  switch (GET_CODE (x))
     {
     case LABEL_REF:
-        return true;
+      return true;
     case CONST_DOUBLE:
-        if (GET_MODE (x) == VOIDmode)
-            return true;
-        return false;
-    case CONST:
+      if (GET_MODE (x) == VOIDmode)
+	return true;
+      return false;
     case SYMBOL_REF:
+      return TARGET_LMM || SYMBOL_REF_FUNCTION_P (x);
+    case CONST:
     case CONST_VECTOR:
-        return TARGET_LMM;
+      return TARGET_LMM;
     case CONST_INT:
-        return TARGET_LMM || (INTVAL (x) >= -511 && INTVAL (x) <= 511);
+      return TARGET_LMM || (INTVAL (x) >= -511 && INTVAL (x) <= 511);
     default:
-        return true;
+      return true;
     }
 }
 bool
