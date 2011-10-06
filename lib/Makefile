@@ -12,7 +12,7 @@ MKDIR = mkdir -p
 
 OBJDIR=obj
 
-MODELS=lmm xmm
+MODELS=lmm xmm xmmc
 
 VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm
 
@@ -80,13 +80,18 @@ OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
 
 LMM_OBJS = $(addprefix $(OBJDIR)/lmm/, $(OBJS))
 XMM_OBJS = $(addprefix $(OBJDIR)/xmm/, $(OBJS))
+XMMC_OBJS = $(addprefix $(OBJDIR)/xmmc/, $(OBJS))
 LMM_MATH_OBJS = $(addprefix $(OBJDIR)/lmm/, $(MATH))
 XMM_MATH_OBJS = $(addprefix $(OBJDIR)/xmm/, $(MATH))
+XMMC_MATH_OBJS = $(addprefix $(OBJDIR)/xmmc/, $(MATH))
 
 $(OBJDIR)/lmm/libc.a: $(LMM_OBJS)
 	$(AR) rs $@ $^
 
 $(OBJDIR)/xmm/libc.a: $(XMM_OBJS)
+	$(AR) rs $@ $^
+
+$(OBJDIR)/xmmc/libc.a: $(XMMC_OBJS)
 	$(AR) rs $@ $^
 
 $(OBJDIR)/lmm/libm.a: $(LMM_MATH_OBJS)
@@ -95,11 +100,17 @@ $(OBJDIR)/lmm/libm.a: $(LMM_MATH_OBJS)
 $(OBJDIR)/xmm/libm.a: $(XMM_MATH_OBJS)
 	$(AR) rs $@ $^
 
+$(OBJDIR)/xmmc/libm.a: $(XMMC_MATH_OBJS)
+	$(AR) rs $@ $^
+
 $(OBJDIR)/lmm/%.o: %.c
 	$(CC) $(CFLAGS) -mlmm -o $@ -c $<
 
 $(OBJDIR)/xmm/%.o: %.c
 	$(CC) $(CFLAGS) -mxmm -o $@ -c $<
+
+$(OBJDIR)/xmmc/%.o: %.c
+	$(CC) $(CFLAGS) -mxmmc -o $@ -c $<
 
 $(OBJDIR)/lmm/%.o: %.s
 	$(CC) $(CFLAGS) -mlmm -o $@ -c $<
@@ -107,14 +118,19 @@ $(OBJDIR)/lmm/%.o: %.s
 $(OBJDIR)/xmm/%.o: %.s
 	$(CC) $(CFLAGS) -mxmm -o $@ -c $<
 
+$(OBJDIR)/xmmc/%.o: %.s
+	$(CC) $(CFLAGS) -mxmmc -o $@ -c $<
+
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
 
-install: $(OBJDIR)/lmm/libc.a $(OBJDIR)/lmm/libm.a $(OBJDIR)/xmm/libc.a $(OBJDIR)/xmm/libm.a
+install: $(OBJDIR)/lmm/libc.a $(OBJDIR)/lmm/libm.a $(OBJDIR)/xmm/libc.a $(OBJDIR)/xmm/libm.a $(OBJDIR)/xmmc/libc.a $(OBJDIR)/xmmc/libm.a
 	mkdir -p $(PREFIX)/propeller-elf/lib/xmm/
+	mkdir -p $(PREFIX)/propeller-elf/lib/xmmc/
 	cp -r include $(PREFIX)/propeller-elf
 	cp $(OBJDIR)/lmm/libc.a $(OBJDIR)/lmm/libm.a $(PREFIX)/propeller-elf/lib
 	cp $(OBJDIR)/xmm/libc.a $(OBJDIR)/xmm/libm.a $(PREFIX)/propeller-elf/lib/xmm/
+	cp $(OBJDIR)/xmmc/libc.a $(OBJDIR)/xmmc/libm.a $(PREFIX)/propeller-elf/lib/xmmc/
 
 clean:
 	rm -rf $(OBJDIR) *.a
