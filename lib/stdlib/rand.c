@@ -8,48 +8,30 @@
  */
 
 #include <stdlib.h>
-#include <stdio.h>
-#include <compiler.h>
-
-struct _atexit_handler {
-  struct _atexit_handler *next;
-  void (*func)(void);
-};
-
-struct _atexit_handler *__atexitlist = 0;
-
-int
-atexit(void (*function)(void))
-{
-  struct _atexit_handler *ah;
-
-  ah = malloc(sizeof(*ah));
-  if (ah == NULL)
-    {
-      return -1;
-    }
-  ah->next = __atexitlist;
-  ah->func = function;
-  __atexitlist = ah;
-  return 0;
-}
+#include <sys/thread.h>
 
 /*
- * destructor to call all the registered functions
+ * parameters for the linear congruential random number generator
+ * X_i = A * X_{i-1} + C
+ * these particular parameters are widely used
  */
+#define A 1103515245
+#define C 12345
+#define S 16  /* amount to shift before retrieving result */
 
-_DESTRUCTOR
-static void
-_run_atexit(void)
+void
+srand(unsigned int seed)
 {
-  struct _atexit_handler *ah;
-
-  /* run the atexit functions */
-  for (ah = __atexitlist; ah; ah = ah->next)
-    {
-      (*ah->func)();
-    }
+  _TLS->rand_seed = seed;
 }
+
+int
+rand(void)
+{
+  _TLS->rand_seed = _TLS->rand_seed * A + C;
+  return (_TLS->rand_seed >> S) & RAND_MAX;
+}
+
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------
