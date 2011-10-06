@@ -654,7 +654,10 @@ propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
  *   P   Select the inverse predicate for a conditional execution
  *   M   Print the complement of a constant integer
  *   m   Print a mask (1<<n)-1 where n is a constant
- *   B   Print a mask (1<<n) where n is a constant
+ *   S   Print a mask (1<<n) where n is a constant
+ *   B   Print a cog memory reference; note that the hardware wants
+ *       these to be treated as long addresses, so they have to be divided by 4
+ *         
  */
 
 #define PREDLETTER(YES, REV)  (letter == 'p') ? (YES) : (REV)
@@ -710,12 +713,22 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op))-1);
       return;
   }
-  if (letter == 'B') {
+  if (letter == 'S') {
       if (code != CONST_INT) {
           gcc_unreachable ();
       }
       fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op)));
       return;
+  }
+  if (letter == 'B') {
+    if (code != SYMBOL_REF && code != LABEL_REF)
+      {
+	gcc_unreachable();
+      }
+    fprintf (file, "(");
+    output_addr_const (file, op);
+    fprintf (file, "/4)");
+    return;
   }
   if (code == SIGN_EXTEND)
     op = XEXP (op, 0), code = GET_CODE (op);
@@ -783,7 +796,7 @@ propeller_print_operand_address (FILE * file, rtx addr)
       break;
 
     case SYMBOL_REF:
-	  output_addr_const (file, addr);
+      output_addr_const (file, addr);
       break;
 
     default:
