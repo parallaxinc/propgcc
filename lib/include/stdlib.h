@@ -18,6 +18,8 @@ unsigned long strtoul(const char *nptr, char **endptr, int base);
 long long strtoll(const char *nptr, char **endptr, int base);
 unsigned long long strtoull(const char *nptr, char **endptr, int base);
 
+#define RAND_MAX    0x7fffffff
+
 int rand(void);
 void srand(unsigned int seed);
 
