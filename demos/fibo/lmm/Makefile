@@ -2,7 +2,7 @@
 # objects for this program
 #
 
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 NAME = fibo
 OBJS = fibo.o

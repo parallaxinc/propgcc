@@ -60,9 +60,12 @@ SECTIONS
       *(.dtors)
    } >hub
   .data : { *(.data) } >hub
-  .bss  : { *(.bss) } >hub
+  .bss  : {
+           PROVIDE(__bss_start = .); 
+           *(.bss)
+	   PROVIDE(__bss_end = .);
+	  } >hub
 
-  ___bss_end = ALIGN(4) ;
   /* put the cog drivers after bss and just before the heap */
   /* that way we may later be able to free the hub memory they take up */
   OVERLAY : {
