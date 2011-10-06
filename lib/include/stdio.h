@@ -131,8 +131,8 @@ extern "C" {
 
 #define putc(x, stream)    fputc(x, stream)
 #define putchar(x)         fputc(x, stdout)
-#define getc(x, stream)    fgetc(x, stream)
-#define getchar()          fgetc(x, stdout)
+#define getc(stream)       fgetc(stream)
+#define getchar()          fgetc(stdout)
 
   /* internal functions */
   /* set up the FILE pointer in fp to point to a particular driver */
