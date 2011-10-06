@@ -304,6 +304,9 @@ propeller_cogaddr_p (rtx x)
   if (CONSTANT_POOL_ADDRESS_P (x) && !TARGET_LMM) {
     return true;
   }
+  if (SYMBOL_REF_FUNCTION_P (x) && !TARGET_LMM) {
+    return true;
+  }
   return false;
 }
 
@@ -651,7 +654,10 @@ propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
  *   P   Select the inverse predicate for a conditional execution
  *   M   Print the complement of a constant integer
  *   m   Print a mask (1<<n)-1 where n is a constant
- *   B   Print a mask (1<<n) where n is a constant
+ *   S   Print a mask (1<<n) where n is a constant
+ *   B   Print a cog memory reference; note that the hardware wants
+ *       these to be treated as long addresses, so they have to be divided by 4
+ *         
  */
 
 #define PREDLETTER(YES, REV)  (letter == 'p') ? (YES) : (REV)
@@ -707,12 +713,22 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op))-1);
       return;
   }
-  if (letter == 'B') {
+  if (letter == 'S') {
       if (code != CONST_INT) {
           gcc_unreachable ();
       }
       fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op)));
       return;
+  }
+  if (letter == 'B') {
+    if (code != SYMBOL_REF && code != LABEL_REF)
+      {
+	gcc_unreachable();
+      }
+    fprintf (file, "(");
+    output_addr_const (file, op);
+    fprintf (file, "/4)");
+    return;
   }
   if (code == SIGN_EXTEND)
     op = XEXP (op, 0), code = GET_CODE (op);
@@ -780,7 +796,7 @@ propeller_print_operand_address (FILE * file, rtx addr)
       break;
 
     case SYMBOL_REF:
-	  output_addr_const (file, addr);
+      output_addr_const (file, addr);
       break;
 
     default:
@@ -1679,22 +1695,23 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
 bool
 propeller_legitimate_constant_p (rtx x)
 {
-    switch (GET_CODE (x))
+  switch (GET_CODE (x))
     {
     case LABEL_REF:
-        return true;
+      return true;
     case CONST_DOUBLE:
-        if (GET_MODE (x) == VOIDmode)
-            return true;
-        return false;
-    case CONST:
+      if (GET_MODE (x) == VOIDmode)
+	return true;
+      return false;
     case SYMBOL_REF:
+      return TARGET_LMM || SYMBOL_REF_FUNCTION_P (x);
+    case CONST:
     case CONST_VECTOR:
-        return TARGET_LMM;
+      return TARGET_LMM;
     case CONST_INT:
-        return TARGET_LMM || (INTVAL (x) >= -511 && INTVAL (x) <= 511);
+      return TARGET_LMM || (INTVAL (x) >= -511 && INTVAL (x) <= 511);
     default:
-        return true;
+      return true;
     }
 }
 bool

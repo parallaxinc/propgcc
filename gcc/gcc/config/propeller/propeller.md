@@ -737,7 +737,7 @@
           (const_int 0)))
    ]
   ""
-  "test\t%0,%B1 wz"
+  "test\t%0,%S1 wz"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -755,7 +755,7 @@
    ]
   ""
 {
-   return "and\t%0,%B2 wz";
+   return "and\t%0,%S2 wz";
 }
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
@@ -971,7 +971,7 @@
   "!TARGET_XMM"
   "@
    mov\t%0, %1
-   mov\t%0, #%c1/4
+   mov\t%0, #%B1
    neg\t%0, #%n1
    rdlong\t%0, %1
    wrlong\t%1, %0"
@@ -2189,7 +2189,7 @@
 	      (match_operand:SI 1 "propeller_dst_operand" "rC")
 	      (const_int -1)))))
    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else (ltu (reg:CC_C CC_REG)(const_int 0))
+        (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
 	              (const_int 1)
 		      (const_int 0)))
    ]
