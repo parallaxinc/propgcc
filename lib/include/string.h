@@ -20,6 +20,7 @@ size_t strspn(const char *, const char *);
 size_t strcspn(const char *, const char *);
 
 void *memcpy(void *dest, const void *src, size_t n);
+void *memmove(void *dest, const void *src, size_t n);
 void *memset(void *dest, int c, size_t n);
 void *memchr(const void *s, int c, size_t n);
 int   memcmp(const void *s1, const void *s2, size_t n);
