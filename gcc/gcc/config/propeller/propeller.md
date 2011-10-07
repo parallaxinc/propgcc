@@ -971,7 +971,7 @@
   "!TARGET_XMM"
   "@
    mov\t%0, %1
-   mov\t%0, #%B1
+   mova\t%0, #%1
    neg\t%0, #%n1
    rdlong\t%0, %1
    wrlong\t%1, %0"
