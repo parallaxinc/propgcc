@@ -34,8 +34,8 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	simple_printf.o \
 	default_io.o init_io.o
 
-STDLIB = malloc.o calloc.o atoi.o atexit.o abort.o \
-	qsort.o bsearch.o strtol.o strtoul.o \
+STDLIB = malloc.o calloc.o atoi.o atof.o atexit.o abort.o \
+	qsort.o bsearch.o strtol.o strtoul.o strtod.o \
 	assert.o rand.o
 
 MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
