@@ -14,10 +14,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-int
-atoi(const char *str)
+long
+atol(const char *str)
 {
-  int num = 0;
+  long num = 0;
   int neg = 0;
   while (isspace(*str)) str++;
   if (*str == '-')
@@ -34,6 +34,15 @@ atoi(const char *str)
     num = -num;
   return num;
 }
+
+#if defined(__GNUC__) && (_INT_SIZE == _LONG_SIZE)
+int atoi(const char *str) __attribute__((alias("atol")));
+#else
+int atoi(const char *str)
+{
+  return (int)atol(str);
+}
+#endif
 
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License

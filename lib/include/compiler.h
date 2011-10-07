@@ -14,7 +14,7 @@
  */
 
 #if defined(__propeller__) && defined(__GNUC__)
-#define _LONG_SIZE 4
+#define _INT_SIZE  4
 #define _LONG_SIZE 4
 #define _CHAR_IS_UNSIGNED 1
 #define _WCHAR_SIZE 4
