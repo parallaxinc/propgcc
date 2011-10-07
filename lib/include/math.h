@@ -62,9 +62,11 @@ extern "C" {
 
 #ifdef __GNUC__
 #define HUGE_VAL __builtin_huge_val()
+#define HUGE_VALL __builtin_huge_vall();
 #else
 extern const double _infinitydf;	/* in normdf.cpp */
 #define HUGE_VAL  (_infinitydf)
+#define HUGE_VALL (_infinitydf)
 #endif
 
 #define HUGE HUGE_VAL
@@ -78,41 +80,38 @@ extern const double _infinitydf;	/* in normdf.cpp */
 # endif
 #endif
 
-#ifndef __PROTO
-#define __PROTO(x) x
-#endif
 
- double sin	__PROTO((double));
- double cos	__PROTO((double));
- double tan	__PROTO((double));
- double asin	__PROTO((double));
- double	acos	__PROTO((double));
- double atan	__PROTO((double));
- double atan2	__PROTO((double, double));
- double sinh	__PROTO((double));
- double cosh	__PROTO((double));
- double tanh	__PROTO((double));
- double atanh	__PROTO((double));
- double exp	__PROTO((double));
- double log	__PROTO((double));
- double log10	__PROTO((double));
- double sqrt	__PROTO((double));
- double hypot   __PROTO((double, double));
- double pow	__PROTO((double, double));
- double fabs	__PROTO((double));
- double ceil	__PROTO((double));
- double floor	__PROTO((double));
- double rint	__PROTO((double));
- double fmod	__PROTO((double, double));
+ double sin	(double);
+ double cos	(double);
+ double tan	(double);
+ double asin	(double);
+ double	acos	(double);
+ double atan	(double);
+ double atan2	(double, double);
+ double sinh	(double);
+ double cosh	(double);
+ double tanh	(double);
+ double atanh	(double);
+ double exp	(double);
+ double log	(double);
+ double log10	(double);
+ double sqrt	(double);
+ double hypot   (double, double);
+ double pow	(double, double);
+ double fabs	(double);
+ double ceil	(double);
+ double floor	(double);
+ double rint	(double);
+ double fmod	(double, double);
 
- double ldexp	__PROTO((double, int));
- double frexp	__PROTO((double, int *));
- double modf	__PROTO((double, double *));
+ double ldexp	(double, int);
+ double frexp	(double, int *);
+ double modf	(double, double *);
 
- double acosh	__PROTO((double));
- double asinh	__PROTO((double));
+ double acosh   (double);
+ double asinh   (double);
 
- double copysign	__PROTO((double, double));
+ double copysign(double, double);
 
 #ifdef __cplusplus
 }
