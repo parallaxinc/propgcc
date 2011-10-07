@@ -141,6 +141,9 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"sumnz", 0x9c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* mov      101000 zcri cccc ddddddddd sssssssss */
   {"mov", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
+/* mova is like mov, but it assumes the immediate operand is a cog address */
+/* mova      101000 zcri cccc ddddddddd sssssssss */
+  {"mova", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_MOVA, R, PROP_1},
 /* neg      101001 zcri cccc ddddddddd sssssssss */
   {"neg", 0xa4000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* abs      101010 zcri cccc ddddddddd sssssssss */
