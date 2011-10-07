@@ -34,11 +34,12 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	simple_printf.o \
 	default_io.o init_io.o
 
-MISC = malloc.o calloc.o sbrk.o ctype.o atoi.o thread.o atexit.o abort.o \
-	toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
-	qsort.o bsearch.o signal.o \
-	assert.o write.o \
-	rand.o
+STDLIB = malloc.o calloc.o atoi.o atexit.o abort.o \
+	qsort.o bsearch.o strtol.o strtoul.o \
+	assert.o rand.o
+
+MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
+	sbrk.o write.o signal.o thread.o assert.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
@@ -77,7 +78,7 @@ MATH = 	k_standard.o k_rem_pio2.o \
 
 PROPELLER = propeller.o
 
-OBJS = $(STDIO) $(MISC) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
+OBJS = $(STDIO) $(STDLIB) $(MISC) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
 
 LMM_OBJS = $(addprefix $(OBJDIR)/lmm/, $(OBJS))
 XMM_OBJS = $(addprefix $(OBJDIR)/xmm/, $(OBJS))
