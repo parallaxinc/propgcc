@@ -36,7 +36,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 
 STDLIB = malloc.o calloc.o atoi.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o \
-	assert.o rand.o
+	assert.o rand.o setjmp.o
 
 MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
 	sbrk.o write.o signal.o thread.o assert.o
