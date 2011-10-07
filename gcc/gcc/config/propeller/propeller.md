@@ -1365,6 +1365,23 @@
 ""
 "")
 
+;;
+;; we have a library udivmoddi4 routine, so try to force generation of
+;; a call to it
+;; we do this by having a simple expander that will catch divide by 2
+;;
+(define_expand "udivmoddi4"
+  [(set (match_operand:DI 0 "propeller_dst_operand")
+        (div:DI (match_operand:DI 2 "propeller_dst_operand" "")
+	        (match_operand:DI 3 "propeller_src_operand" "")))
+   (set (match_operand:DI 1 "propeller_dst_operand")
+        (mod:DI (match_dup 2)(match_dup 3)))
+  ]
+""
+{
+  FAIL;
+}
+)
 ;; -------------------------------------------------------------------------
 ;; min/max instructions
 ;; NOTE!! The Propeller instruction names are the reverse of what one
