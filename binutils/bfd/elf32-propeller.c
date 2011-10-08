@@ -454,6 +454,19 @@ propeller_elf_check_relocs (bfd * abfd,
   return TRUE;
 }
 
+/* Propeller ELF local labels start with either '.' or 'L_'.  */
+
+static bfd_boolean
+propeller_elf_is_local_label_name (bfd *abfd, const char *name)
+{
+#if 0
+  if (name[0] == 'L' && name[1] == '_')
+    return TRUE;
+#endif
+  /* accept the generic ELF local label syntax as well.  */
+  return _bfd_elf_is_local_label_name (abfd, name);
+}
+
 #define ELF_ARCH		bfd_arch_propeller
 #define ELF_MACHINE_CODE	EM_PROPELLER
 #define ELF_MAXPAGESIZE		0x1
@@ -473,4 +486,6 @@ propeller_elf_check_relocs (bfd * abfd,
 #define bfd_elf32_bfd_reloc_type_lookup		propeller_reloc_type_lookup
 #define bfd_elf32_bfd_reloc_name_lookup		propeller_reloc_name_lookup
 
+#define bfd_elf32_bfd_is_local_label_name \
+					propeller_elf_is_local_label_name
 #include "elf32-target.h"
