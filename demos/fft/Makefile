@@ -23,7 +23,4 @@ CFLAGS = -O2 -mfcache
 # default build target
 all: $(NAME).elf
 
-#
-# include the fragment that defines most of everything
-#
-include $(PROPLIB)/lmmdemo.mk
+include $(PROPLIB)/model.mk
