@@ -33,7 +33,18 @@ __ExitHook
 	mov	pc,lr
 
 	'' make sure the ctors and dtors are null terminated
+	''
+	'' Take the opportunity to provide weak aliases for argv
+	'' and environ. The user can override these, but if she
+	'' doesn't then they will just be set to arrays with a
+	'' single NULL element
+	''
+	.weak	__argv
+	.weak	__environ
+
 	.section .ctors, "ax"
+__argv
+__environ
 	long	0
 
 	.section .dtors, "ax"
@@ -48,3 +59,4 @@ __ExitHook
 
 	__clkfreqval = 80000000
 	__clkmodeval = 0x6f
+
