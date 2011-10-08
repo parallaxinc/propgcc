@@ -8,10 +8,6 @@ OBJCOPY = propeller-elf-objcopy
 #LOAD = spinsim -b115200
 LOAD = propeller-load -I../../libpropeller -p1 -b c3
 
-# checksum program; replace with 'echo' if you don't
-# have this, and don't care about running on real hardware
-CHKSUM = propeller-checksum
-
 #
 # objects for this program
 #
