@@ -77,7 +77,6 @@ CXX = propeller-elf-g++
 LD = propeller-elf-ld
 AS = propeller-elf-as
 OBJCOPY = propeller-elf-objcopy
-CHKSUM = propeller-checksum
 LOADER = propeller-load
 
 CXXFLAGS += $(CFLAGS)
