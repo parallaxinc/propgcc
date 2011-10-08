@@ -12,8 +12,15 @@ _Driver *_driverlist[] = {
 };
 #endif
 
+/*
+ * NOTE: normally argv and environ are empty. We can change this
+ * by adding global variables
+ * char *_argv[] = { "arg0", "arg1", ..., NULL };
+ * char *_environ[] = { "VAR1=val1", "VAR2=val2", ..., NULL };
+ */
+
 int
-main(void)
+main(int argc, char **argv, char **environ)
 {
   printf("hello, world\n");
   fprintf(stderr, "hello, stderr\n");
