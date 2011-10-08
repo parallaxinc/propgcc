@@ -1,13 +1,19 @@
 # #########################################################
-# this makefile allows building and cleaning the TvDemo
+# This makefile allows building and cleaning the TvDemo
 #
-# Copyright (c) 2011 Steve Denson
+# To build with LMM model, enter $ make clean; make
+# To build with XMM model, enter $ make clean; make MODEL=xmm
+# To build with XMMC model, enter $ make clean; make MODEL=xmmc
+#
+# Copyright (c) 2011 Parallax, Inc.
 # All rights MIT licensed
 # #########################################################
 
+# Common make
+COMMON = ../../common
+
 CC = propeller-elf-gcc
 OBJCOPY = propeller-elf-objcopy
-BSTC = bstc
 
 # flags to use for building
 CFLAGS = -Os
@@ -19,19 +25,9 @@ CFLAGS = -Os
 NAME = TvDemo
 OBJS = TvDemo.o TvText.o TV_firmware.o TvDriver.o
 
-SPINDIR = .
-
 all: $(NAME).elf
 
-clean:
-	rm -rf *.o *.elf
-
-$(NAME).elf: $(OBJS)
-	$(CC) -o $@ $(OBJS)
-
-%.dat: $(SPINDIR)/%.spin
-	$(BSTC) -Ox -c -o $(basename $@) $<
-
-%_firmware.o: %.dat
-	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
-	rm -rf $<
+#
+# include the fragment that defines most of everything
+#
+include $(COMMON)/common.mk
