@@ -1701,9 +1701,7 @@
   "TARGET_LMM"
 {
   return (get_attr_length (insn) == 4) ?
-               (propeller_forward_branch_p (insn) ?
-	            "%p1\tadd\tpc,#(%l0-(.+4))" :
-		    "%p1\tsub\tpc,#((.+4)-%l0)") :
+               "%p1\tbrs\t%l0" :
 	       "%P1\tadd\tpc,#8\n\tjmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")
@@ -1725,9 +1723,7 @@
   "TARGET_LMM"
 {
   return (get_attr_length (insn) == 4) ?
-               (propeller_forward_branch_p (insn) ?
-	            "%P1\tadd\tpc,#(%l0-(.+4))" :
-		    "%P1\tsub\tpc,#((.+4)-%l0)") :
+               "%P1\tbrs\t%l0" :
 	       "%p1\tadd\tpc,#8\n\tjmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")
@@ -1928,9 +1924,7 @@
   "TARGET_LMM"
 {
   return (get_attr_length (insn) == 4) ?
-               (propeller_forward_branch_p (insn) ?
-	            "add\tpc,#(%l0-(.+4))" :
-		    "sub\tpc,#((.+4)-%l0)") :
+               "brs\t%l0" :
 	       "jmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [ (set (attr "length")
