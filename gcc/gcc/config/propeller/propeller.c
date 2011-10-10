@@ -95,6 +95,11 @@ enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
     SPECIAL_REGS
 };
 
+/*
+ * flag for turning on/off the fcache processing
+ */
+static int do_fcache;
+
 
 /*
  * options handling
@@ -113,9 +118,28 @@ static const char *hex_prefix;
 static const struct default_options propeller_option_optimization_table[] =
   {
     /* turn this on to disable frame pointer by default */
-    { OPT_LEVELS_1_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
+    { OPT_LEVELS_2_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
     { OPT_LEVELS_NONE, 0, NULL, 0 }
   };
+
+/*
+ * select machine specific optimizations here
+ */
+static void
+propeller_optimization_options (int level, int size)
+{
+  do_fcache = 0;
+  if (level >= 2)
+    {
+      if (propeller_fcache_enable != 0)
+	do_fcache = 1;
+    }
+  else
+    {
+      if (propeller_fcache_enable == 1)
+	do_fcache = 1;
+    }
+}
 
 /* Validate and override various options, and do machine dependent
  * initialization
@@ -169,7 +193,10 @@ propeller_option_override (void)
 	propeller_data_asm_op = "\t.data\n\t.hub_ram";
 	propeller_bss_asm_op = "\t.section\t.bss\n\t.hub_ram";
       }
+
+    propeller_optimization_options (optimize, optimize_size);
 }
+
 
 
 /*
@@ -2917,7 +2944,7 @@ propeller_reorg(void)
 {
   bool done;
   
-  if (TARGET_LMM && TARGET_FCACHE)
+  if (TARGET_LMM && do_fcache)
     {
       if (dump_file)
 	fprintf (dump_file, " *** Checking fcache for jumps\n");
