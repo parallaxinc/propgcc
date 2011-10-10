@@ -193,13 +193,17 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* waitvid  111111 zcRi cccc ddddddddd sssssssss */
   {"waitvid", 0xfc000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
 
+  /* brs is a fake instruction that expands to either add or sub of a pc relative offset */
+/* brs      100000 zcri cccc ddddddddd sssssssss */
+  {"brs", 0x80000000, 0xfc000000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM},
+
 /* ldi is a fake instruction built from a rdlong and a constant that decodes as NOP */
 /* ldi      000010 zc1i cccc ddddddddd sssssssss */
   {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, R, PROP_1_LMM},
 
-/* br is also made of rdlong and a constant.  We may shrink it later. */
-/* br       000010 zc1i cccc ddddddddd sssssssss */
-  {"br", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BR, R, PROP_1_LMM},
+/* brl is also made of rdlong and a constant.  We may shrink it later. */
+/* brl       000010 zc1i cccc ddddddddd sssssssss */
+  {"brl", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRL, R, PROP_1_LMM},
 };
 
 const int propeller_num_opcodes =
