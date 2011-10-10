@@ -34,7 +34,8 @@
 #undef ASM_SPEC
 #define ASM_SPEC "\
 %{!mpasm: \
-    %{mrelax:-relax}} \
+  %{!mcog:-lmm} \
+  %{mrelax:-relax}} \
 "
 #undef LIB_SPEC
 #define LIB_SPEC "				\
@@ -613,15 +614,29 @@ extern const char *propeller_bss_asm_op;
 #define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
   do								\
     {								\
-      sprintf (LABEL, "*L_%s%u", \
-	       PREFIX, (unsigned) (NUM));			\
+      if (TARGET_PASM)						\
+	sprintf (LABEL, "*L_%s%u",				\
+		 PREFIX, (unsigned) (NUM));			\
+      else							\
+	sprintf (LABEL, "*.%s%u", PREFIX, (unsigned) (NUM));	\
     }								\
   while (0)
 
 #define ASM_WEAKEN_LABEL(FILE,NAME) propeller_weaken_label(FILE,NAME)
 
+#ifndef ASM_OUTPUT_EXTERNAL
+#define ASM_OUTPUT_EXTERNAL(FILE, DECL, NAME) \
+  default_elf_asm_output_external (FILE, DECL, NAME)
+#endif
+
 /* Debugging information */
-#define DWARF2_DEBUGGING_INFO
+#define PREFERRED_DEBUGGING_TYPE DWARF2_DEBUG
+#define DWARF2_DEBUGGING_INFO 1
+#define DWARF2_ASM_LINE_DEBUG_INFO 1
+
+#define TYPE_ASM_OP  "\t.type\t"
+#define SIZE_ASM_OP  "\t.size\t"
+#define TYPE_OPERAND_FMT "@%s"
 
 /* propeller specific defines */
 #define SYMBOL_FLAG_PROPELLER_COGMEM (SYMBOL_FLAG_MACH_DEP << 0)
