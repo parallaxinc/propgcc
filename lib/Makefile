@@ -21,7 +21,7 @@ all: $(foreach x, $(MODELS), $(OBJDIR)/$(x) $(OBJDIR)/$(x)/libc.a $(OBJDIR)/$(x)
 # $(PRINTF) are the functions which depend on vfprintf;
 # we include floating point versions of these in the math library
 PRINTF = printf.o fprintf.o vprintf.o sprintf.o snprintf.o vsprintf.o vsnprintf.o
-SCANF =  scanf.o vscanf.o sscanf.o
+SCANF =  scanf.o vscanf.o sscanf.o fscanf.o
  
 STDIO = clearerr.o feof.o ferror.o fflush.o \
 	fgetc.o fputc.o fputs.o puts.o putchar.o \
@@ -48,7 +48,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcoll.o strxfrm.o \
 	strerror.o
 
-TIME = clock.o sleep.o time.o difftime.o
+TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o
