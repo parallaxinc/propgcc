@@ -15,6 +15,8 @@ extern clock_t _clkfreq;
  */
 typedef unsigned long time_t;
 
+#ifndef _STRUCT_TM_DEFINED
+#define _STRUCT_TM_DEFINED
 /* time representing broken down calendar time */
 struct tm {
   int tm_sec;
@@ -27,9 +29,19 @@ struct tm {
   int tm_yday; /* days since January 1 */
   int tm_isdst; /* if > 0, DST is in effect, if < 0 info is not known */
 };
+#endif
 
 clock_t clock(void);
 time_t  time(time_t *);
 double  difftime(time_t time2, time_t time1);
+
+time_t mktime(struct tm *stm);
+
+struct tm *_gmtime_r(const time_t *t, struct tm *stm);
+struct tm *gmtime(const time_t *, struct tm *);
+struct tm *_localtime_r(const time_t *, struct tm *);
+struct tm *localtime(const time_t *);
+
+__SIZE_TYPE__ strftime(char *s, __SIZE_TYPE__ max, const char *format, const struct tm *tm);
 
 #endif
