@@ -55,4 +55,7 @@ lldiv_t lldiv(long long num, long long denom);
 void qsort(void *base, size_t nmemb, size_t size, int (*compare)(const void *, const void *));
 void *bsearch(const void *key, const void *base, size_t nmemb, size_t size,
 	      int (*compare)(const void *, const void *));
+
+char *getenv(const char *name);
+
 #endif
