@@ -1819,10 +1819,6 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  *     set a hardware lock and return its previous state (-1 if set, 0 if clear)
  * void __builtin_propeller_lockclr(int x)
  *     clear a hardware lock
- *
- * void * __builtin_propeller_taskswitch(void *newfunc)
- *     switch to a new function
- *
  */
 
 enum propeller_builtins
@@ -1842,8 +1838,6 @@ enum propeller_builtins
   PROPELLER_BUILTIN_LOCKRET,
   PROPELLER_BUILTIN_LOCKSET,
   PROPELLER_BUILTIN_LOCKCLR,
-
-  PROPELLER_BUILTIN_TASKSWITCH
 };
 
 /* Initialise the builtin functions.  Start by initialising
@@ -1937,11 +1931,6 @@ propeller_init_builtins (void)
   add_builtin_function("__builtin_propeller_lockclr", void_ftype_int,
                        PROPELLER_BUILTIN_LOCKCLR,
                        BUILT_IN_MD, NULL, NULL_TREE);
-
-  add_builtin_function("__builtin_propeller_taskswitch", vfunc_ftype_vfunc,
-                       PROPELLER_BUILTIN_TASKSWITCH,
-                       BUILT_IN_MD, NULL, NULL_TREE);
-
 }
 
 /* Given a builtin function taking 2 operands (i.e., target + source),
@@ -2152,8 +2141,6 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     case PROPELLER_BUILTIN_LOCKCLR:
         return propeller_expand_builtin_1opvoid (CODE_FOR_lockclr, exp);
 
-    case PROPELLER_BUILTIN_TASKSWITCH:
-        return propeller_expand_builtin_2op (CODE_FOR_taskswitch, exp, target);
     default:
         gcc_unreachable ();
     }
@@ -2781,21 +2768,7 @@ current_func_has_indirect_jumps (void)
 	  rtx pattern;
 
 	  pattern = PATTERN (insn);
-	  /* check for __builtin_propeller_taskswitch */
-	  if (GET_CODE (pattern) == SET)
-	    {
-	      pattern = SET_SRC (pattern);
-	      if (GET_CODE (pattern) == UNSPEC_VOLATILE
-		  && XINT (pattern, 1) == UNSPEC_TASKSWITCH)
-		{
-		  if (dump_file)
-		    {
-		      fprintf (dump_file, " cannot determine destination address for:\n");
-		      print_rtl_single (dump_file, insn);
-		    }
-		  return true;
-		}
-	    }
+	  /* check here for anything that needs special treatment */
 	}
     }
 
