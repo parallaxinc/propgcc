@@ -52,7 +52,7 @@
    (UNSPEC_COGID	 0)
    (UNSPEC_COGINIT	 1)
    (UNSPEC_COGSTOP	 2)
-   (UNSPEC_TASKSWITCH    3)
+   (UNSPEC_COGSTATE      3)
    (UNSPEC_REVERSE       4)
    (UNSPEC_WAITCNT       5)
    (UNSPEC_WAITPEQ       6)
@@ -68,7 +68,6 @@
    (UNSPEC_PUSHM        16)
    (UNSPEC_POPM         17)
    (UNSPEC_CLKSET       18)
-   (UNSPEC_COGSTATE     19)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -2287,20 +2286,6 @@
   ""
   "clkset\t%0"
   [(set_attr "type" "hub")
-   (set_attr "predicable" "yes")]
-)
-
-(define_insn "taskswitch"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
-        (unspec_volatile:SI
-	  [(match_operand:SI 1 "general_operand" "rC,A")]
-            UNSPEC_TASKSWITCH))
-  ]
-  ""
-  "@
-   jmpret\t%0,%1
-   jmpret\t%0,#%1"
-  [(set_attr "type" "call")
    (set_attr "predicable" "yes")]
 )
 
