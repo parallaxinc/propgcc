@@ -1,11 +1,11 @@
 #include <time.h>
-#include "cog.h"
+#include <sys/rtc.h>
 
 time_t
 time(time_t *tp)
 {
-  unsigned now = _CNT / _clkfreq;
-  if (*tp)
+  unsigned now = (*_rtc_gettime)();
+  if (tp)
     *tp = now;
   return now;
 }
