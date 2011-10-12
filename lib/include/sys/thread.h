@@ -29,6 +29,7 @@ struct _TLS {
   unsigned long rand_seed;
   struct tm time_temp;
   char ctime_buf[32];
+  unsigned char linebuf[80];
 };
 
 /*
