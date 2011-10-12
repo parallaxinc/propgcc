@@ -117,7 +117,8 @@ $(SPINDIR)/cache_interface.spin \
 $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
 $(SPINDIR)/c3_cache.spin \
-$(SPINDIR)/ssf_cache.spin
+$(SPINDIR)/ssf_cache.spin \
+$(SPINDIR)/eeprom_cache.spin
 
 #################
 # CACHE DRIVERS #
@@ -127,7 +128,8 @@ CACHE_DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
 $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \
-$(DRVDIR)/sdram_cache.dat
+$(DRVDIR)/sdram_cache.dat \
+$(DRVDIR)/eeprom_cache.dat
 
 .PHONY:	cache-drivers
 cache-drivers:	$(DRVDIR) $(CACHE_DRIVERS)
