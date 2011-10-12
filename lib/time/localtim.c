@@ -151,7 +151,9 @@ struct tm *_localtime_r(const time_t *t, struct tm *stm)
         time_t gmsecs;  /*time in GMT */ 
 
 	_tzset();
-        gmsecs = *t - _timezone;
+	gmsecs = *t;
+	if (gmsecs > _timezone)
+	  gmsecs = gmsecs - _timezone;
         stm = _gmtime_r(&gmsecs, stm);
 
         stm->tm_isdst = (dst == -1) ? -1 : 0;
