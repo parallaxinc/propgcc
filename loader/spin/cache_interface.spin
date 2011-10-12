@@ -55,6 +55,8 @@ VAR
    long vm_mbox
    long vm_linemask
 
+'OBJ d : "BMAUtility"
+
 PUB start(code, mbox, cache, config1, config2) | params[_INIT_SIZE]
     vm_mbox := mbox
     params[INIT_MBOX] := mbox
@@ -62,6 +64,7 @@ PUB start(code, mbox, cache, config1, config2) | params[_INIT_SIZE]
     params[INIT_CONFIG_1] := config1
     params[INIT_CONFIG_2] := config2
     long[vm_mbox] := $ffffffff
+    'd.debug(code,@params)
     cognew(code, @params)
     repeat while long[vm_mbox]
     vm_linemask := params[0]
