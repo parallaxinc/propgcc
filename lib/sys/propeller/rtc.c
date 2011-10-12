@@ -6,8 +6,14 @@
  * MIT licensed (see terms at end of file)
  */
 
+//#define DEBUG
+
 #include <sys/rtc.h>
 #include <cog.h>
+
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 
 /*
  * the default time is run off of the internal clock frequency
@@ -51,8 +57,12 @@ _default_rtc_gettime(void)
   unsigned long long t;
 
   update_ticks();
-  t = ticku.curticks - baseticks;
-  return basetime + (time_t)(t/_clkfreq);
+  t = (ticku.curticks - baseticks) / _clkfreq;
+#ifdef DEBUG
+  printf("curticks = %lld baseticks = %lld basetime=%lu t = %llu\n",
+	 ticku.curticks, baseticks, basetime, t);
+#endif
+  return basetime + (time_t)t;
 }
 
 void
