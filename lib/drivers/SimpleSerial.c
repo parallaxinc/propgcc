@@ -30,7 +30,11 @@ extern unsigned int _baud;
  * We need _serial_tx to always be in HUB memory for speed.
  * Time critical functions like this can't live in external memory.
  */
-static void __attribute__((section(".hubtext")))
+__attribute__((section(".hubtext")))
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+__attribute__((optimize("O3")))
+#endif
+static void
 _serial_tx(int value, unsigned int txmask, unsigned int bitcycles)
 {
   unsigned int waitcycles;
@@ -50,7 +54,9 @@ _serial_tx(int value, unsigned int txmask, unsigned int bitcycles)
 }
 
 /* here is the write function */
-static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned char *buf, int size)
+__attribute__((section(".hubtext")))
+static int
+_serial_write(FILE *fp, unsigned char *buf, int size)
 {
     unsigned int txmask = fp->drvarg[1];
     unsigned int bitcycles = fp->drvarg[3];
@@ -71,7 +77,13 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
 }
 
 /* and here is read */
-static int __attribute__((section(".hubtext"))) _serial_read(FILE *fp, unsigned char *buf, int size)
+/* we need to optimize with -O2 to get it to work in XMM mode */
+__attribute__((section(".hubtext")))
+#if defined(__PROPELLER_XMM__)
+__attribute__((optimize("O3")))
+#endif
+static int
+_serial_read(FILE *fp, unsigned char *buf, int size)
 {
   unsigned int rxmask = fp->drvarg[0];
   unsigned int txmask = fp->drvarg[1];
