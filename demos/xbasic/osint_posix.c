@@ -32,6 +32,7 @@ void VM_getline(char *buf, int size)
             buf[i++] = ch;
             VM_putchar(ch);
         }
+        fflush(stdout);
     }
     buf[i] = '\0';
 #else
