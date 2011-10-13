@@ -252,7 +252,7 @@ int strcasecmp(const char *s1, const char *s2);
 #define VMINTRINSIC(i)          Intrinsics[i]
 
 #define PROPELLER
-#define LINE_EDIT
+/*#define LINE_EDIT*/
 
 #endif  // PROPELLER_GCC
 
