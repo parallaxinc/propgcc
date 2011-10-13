@@ -4,14 +4,14 @@ OUTPUT_ARCH(${ARCH})
 
 MEMORY
 {
-  hub    : ORIGIN = 0, LENGTH = 32K
-  cog	 : ORIGIN = 0, LENGTH = 2K
+  hub     : ORIGIN = 0, LENGTH = 32K
+  cog	  : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
   /* coguser is just an alias for cog, but for overlays */
-  coguser : ORIGIN = 0, LENGTH = 2K
-  ram    : ORIGIN = 0x20000000, LENGTH = 256M
-  rom    : ORIGIN = 0x30000000, LENGTH = 256M
+  coguser : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
+  ram     : ORIGIN = 0x20000000, LENGTH = 256M
+  rom     : ORIGIN = 0x30000000, LENGTH = 256M
   /* some sections (like the .xmm kernel) are handled specially by the loader */
-  dummy  : ORIGIN = 0xe0000000, LENGTH = 1M
+  dummy   : ORIGIN = 0xe0000000, LENGTH = 1M
 }
 
 SECTIONS
