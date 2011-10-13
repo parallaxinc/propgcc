@@ -30,14 +30,36 @@ extern unsigned int _baud;
  * We need _serial_tx to always be in HUB memory for speed.
  * Time critical functions like this can't live in external memory.
  */
+__attribute__((section(".hubtext")))
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+__attribute__((optimize("O3")))
+#endif
+static void
+_serial_tx(int value, unsigned int txmask, unsigned int bitcycles)
+{
+  unsigned int waitcycles;
+  int i;
+
+  value = (value | 256) << 1;
+  waitcycles = _CNT + bitcycles;
+  for (i = 0; i < 10; i++)
+    {
+      waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
+      if (value & 1)
+	_OUTA |= txmask;
+      else
+	_OUTA &= ~txmask;
+      value >>= 1;
+    }
+}
 
 /* here is the write function */
-static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned char *buf, int size)
+__attribute__((section(".hubtext")))
+static int
+_serial_write(FILE *fp, unsigned char *buf, int size)
 {
-    int i;
     unsigned int txmask = fp->drvarg[1];
     unsigned int bitcycles = fp->drvarg[3];
-    unsigned int waitcycles;
     int value;
     int count = 0;
 
@@ -47,31 +69,31 @@ static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned
 
     while (count < size)
       {
-	value = (*buf++ | 256) << 1;
-	waitcycles = _CNT + bitcycles;
-	for (i = 0; i < 10; i++)
-	  {
-	    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-	    if (value & 1)
-	      _OUTA |= txmask;
-	    else
-	      _OUTA &= ~txmask;
-	    value >>= 1;
-	  }
+	value = *buf++;
+	_serial_tx(value, txmask, bitcycles);
 	count++;
       }
     return count;
 }
 
 /* and here is read */
-static int __attribute__((section(".hubtext"))) _serial_read(FILE *fp, unsigned char *buf, int size)
+/* we need to optimize with -O2 to get it to work in XMM mode */
+__attribute__((section(".hubtext")))
+#if defined(__PROPELLER_XMM__)
+__attribute__((optimize("O3")))
+#endif
+static int
+_serial_read(FILE *fp, unsigned char *buf, int size)
 {
   unsigned int rxmask = fp->drvarg[0];
+  unsigned int txmask = fp->drvarg[1];
   unsigned int bitcycles = fp->drvarg[3];
   unsigned int waitcycles;
   int value;
   int i;
   int count = 0;
+  int cooked = fp->_flag & _IOCOOKED;
+  int unbuffered = fp->_flag & _IONBF;
 
   /* set input */
   _DIRA &= ~rxmask;
@@ -90,6 +112,30 @@ static int __attribute__((section(".hubtext"))) _serial_read(FILE *fp, unsigned 
       }
       __builtin_propeller_waitcnt(waitcycles, bitcycles);
       buf[count++] = value;
+      /* do cooked mode processing */
+      /* for now this echos the input */
+      if (cooked) {
+	_OUTA |= txmask;
+	_DIRA |= txmask;
+	
+	/* process backspace */
+	if ( (value == '\b' || value == 0x7f) && !unbuffered)
+	  {
+	    if (count >= 2)
+	      {
+		count -= 2;
+		_serial_tx('\b', txmask, bitcycles);
+		_serial_tx(' ', txmask, bitcycles);
+		_serial_tx('\b', txmask, bitcycles);
+	      }
+	    else
+	      {
+		count = 0;
+	      }
+	  }
+	else
+	  _serial_tx(value, txmask, bitcycles);
+      }
       /* end of line stops the read */
       if (value == '\n') break;
     }

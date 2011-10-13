@@ -38,6 +38,7 @@ extern "C" {
 #define	_IOWRT		0x0002		/* file may be written to */
 #define	_IOBIN		0x0004		/* file is in "binary" mode */
 #define	_IODEV		0x0008		/* file is a character device */
+#define _IOCOOKED       0x0010          /* do terminal input processing */
 #define	_IORW		0x0080		/* file is open for update (r+w) */
 #define	_IOFBF		0x0100		/* i/o is fully buffered */
 #define	_IOLBF		0x0200		/* i/o is line buffered */

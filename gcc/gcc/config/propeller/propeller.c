@@ -963,6 +963,9 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
 
     case MEM:
         total = propeller_address_cost (XEXP (x, 0), speed);
+	total += COSTS_N_INSNS(4);
+	if (TARGET_XMM)
+	  total += COSTS_N_INSNS(20); /* memory is hideously expensive in XMM mode */
         done = true;
         break;
 
@@ -2762,13 +2765,6 @@ current_func_has_indirect_jumps (void)
 		}
 	      return true;
 	    }
-	}
-      else if (GET_CODE (insn) == INSN)
-	{
-	  rtx pattern;
-
-	  pattern = PATTERN (insn);
-	  /* check here for anything that needs special treatment */
 	}
     }
 
