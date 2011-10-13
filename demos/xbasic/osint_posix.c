@@ -6,7 +6,7 @@
 
 void VM_sysinit(int argc, char *argv[])
 {
-    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stdin, NULL, _IONBF, 0);
 }
 
 void VM_getline(char *buf, int size)
