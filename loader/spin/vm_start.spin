@@ -34,6 +34,7 @@ boot                mov     t1, PAR
                     rdlong  cache_linemask, t1
                     add     t1, #4
                     rdlong  vm_mbox, t1
+                    rdlong  boot_clkfreq, #0
                     
 initialize_data     mov     t1, image_base
                     add     t1, #HDR_INIT_COUNT
@@ -95,6 +96,8 @@ initialize_stack    mov     dst, vm_mbox
                     sub     dst, #4
                     wrlong  cache_mboxcmd, dst
                     
+restore_clkfreq     wrlong  boot_clkfreq, #0
+
 'Store the cache driver mailbox address at $00000006
                     wrword  cache_mboxcmd, #$00000006 '__xmm_mbox
 
@@ -110,6 +113,7 @@ cache_linemask      long    0
 vm_mbox             long    0
 
 external_start      long    $20000000
+boot_clkfreq        long    0
 src                 long    0
 dst                 long    0
 count               long    0

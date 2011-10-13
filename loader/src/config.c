@@ -91,9 +91,9 @@ BoardConfig *GetBoardConfig(const char *name)
 /* ParseConfigurationFile - parse a configuration file */
 void ParseConfigurationFile(System *sys, const char *path)
 {
-    char text[MAXLINE], data[MAXLINE], *tag, *value;
     BoardConfig *config = NULL;
     BoardConfig **pNextConfig;
+    char *tag, *value;
     LineBuf buf;
     int iValue;
     FILE *fp;
@@ -105,9 +105,6 @@ void ParseConfigurationFile(System *sys, const char *path)
         
     if (!(fp = xbOpenFileInPath(sys, path, "r")))
         return;
-
-    strcpy(text, "hub");
-    strcpy(data, "hub");
 
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {
         buf.linePtr = buf.lineBuf;
@@ -341,7 +338,7 @@ static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue)
     int op = -1;
     while (SkipSpacesStr(&p)) {
         if (isdigit(*p)) {
-            value = strtol(p, &p, 0);
+            value = (int)strtol(p, &p, 0);
             switch (*p) {
             case 'k':
             case 'K':
