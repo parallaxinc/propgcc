@@ -2256,14 +2256,17 @@ get_jump_dest(rtx branch)
 /*
  * dest_ok_for_fcache: returns true if a jump destination is OK
  * for fcache mode
+ * "func_p" is true if the entire function is being fcached (in which
+ * case returns are OK; we've put some special glue at the start of
+ * the function to handle this)
  */
 static bool
-dest_ok_for_fcache (rtx dest)
+dest_ok_for_fcache (rtx dest, bool func_p)
 {
   if (!dest)
     return false;
   if (GET_CODE (dest) == RETURN)
-    return true;
+    return func_p;
   if (GET_CODE (dest) != LABEL_REF)
     return false;
 
@@ -2408,8 +2411,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p)
 	{
 	  dest = get_jump_dest (insn);
 	  /* we probably already checked all jumps earlier, but
-	     better safe than sorry */
-	  if (!dest_ok_for_fcache (dest))
+	     at the time we did not know whether the whole function
+	     was being cached or not (func_p); check again
+	  */
+	  if (!dest_ok_for_fcache (dest, func_p))
 	    {
 	      if (dump_file)
 		{
@@ -2763,7 +2768,8 @@ current_func_has_indirect_jumps (void)
       if (GET_CODE (insn) == JUMP_INSN)
 	{
 	  dest = get_jump_dest (insn);
-	  if (!dest_ok_for_fcache (dest))
+	  /* initially assume that return instructions are OK */
+	  if (!dest_ok_for_fcache (dest, true))
 	    {
 	      if (dump_file)
 		{
@@ -2890,7 +2896,7 @@ fcache_convert_loops (void)
       if (GET_CODE (last) == JUMP_INSN)
 	{
 	  dest = get_jump_dest (last);
-	  if ( dest_ok_for_fcache (dest)
+	  if ( dest_ok_for_fcache (dest, false)
 	       && GET_CODE (dest) == LABEL_REF
 	       && !propeller_forward_branch_p (last) )
 	    {
