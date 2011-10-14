@@ -96,7 +96,7 @@ int xbAddFilePath(const char *name)
     int len;
     if (!(end = strrchr(name, DIR_SEP)))
         return FALSE;
-    len = end - name;
+    len = (int)(end - name);
     if (!(entry  = malloc(sizeof(PathEntry) + len)))
         return FALSE;
     strncpy(entry->path, name, len);
@@ -197,7 +197,7 @@ int xbCloseFile(void *file)
     return fclose((FILE *)file) == 0;
 }
 
-char *xbGetLine(void *file, char *buf, size_t size)
+char *xbGetLine(void *file, char *buf, int size)
 {
     return fgets(buf, size, (FILE *)file);
 }
