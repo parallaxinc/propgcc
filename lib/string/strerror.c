@@ -1,0 +1,43 @@
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+
+char *_sys_errlist[ENUMERRORS] = {
+  "Unknown error",
+  "Numerical argument out of domain",
+  "Result not representable",
+  "Illegal multibyte sequence",
+  "No such file or directory",
+  "Bad file number",
+  "Permission denied",
+  "Not enough memory",
+  "Temporary failure",
+  "File exists",
+  "Invalid argument",
+  "Too many open files",
+  "I/O error",
+  "Not a directory",
+  "Is a directory",
+  "Read only file system",
+  "Function not implemented",
+  "Directory not empty",
+  "Name too long",
+  "Device not seekable",
+};
+
+char *strerror(int errnum)
+{
+  if (errnum < 0 || errnum >= ENUMERRORS)
+    errnum = 0;
+  return _sys_errlist[errnum];
+}
+
+void perror(const char *s)
+{
+  int err = errno;
+
+  fputs(s, stderr);
+  fputs(": ", stderr);
+  fputs(strerror(err), stderr);
+  fputs("\n", stderr);
+}
