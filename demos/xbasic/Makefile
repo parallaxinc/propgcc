@@ -18,7 +18,6 @@ db_vmint.o \
 buffer.o \
 osint_posix.o
 
-#MODEL = xmm
 MODEL = xmmc
 
 CFLAGS = -Os -DPROPELLER_GCC
