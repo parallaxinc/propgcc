@@ -6,7 +6,9 @@
 
 void VM_sysinit(int argc, char *argv[])
 {
-    setvbuf(stdout, NULL, _IONBF, 0);
+#ifdef LINE_EDIT
+    setvbuf(stdin, NULL, _IONBF, 0);
+#endif
 }
 
 void VM_getline(char *buf, int size)
@@ -17,22 +19,29 @@ void VM_getline(char *buf, int size)
         int ch = VM_getchar();
         if (ch == '\n') {
             buf[i++] = '\n';
+#ifdef ECHO_INPUT
             VM_putchar('\n');
+#endif
             break;
         }
         else if (ch == '\b' || ch == 0x7f) {
             if (i > 0) {
+#ifdef ECHO_INPUT
                 VM_putchar('\b');
+#endif
                 VM_putchar(' ');
                 VM_putchar('\b');
+                fflush(stdout);
                 --i;
             }
         }
         else {
             buf[i++] = ch;
+#ifdef ECHO_INPUT
             VM_putchar(ch);
+            fflush(stdout);
+#endif
         }
-        fflush(stdout);
     }
     buf[i] = '\0';
 #else

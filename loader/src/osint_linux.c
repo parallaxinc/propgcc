@@ -45,7 +45,7 @@ typedef int HANDLE;
 static HANDLE hSerial;
 static struct termios old_sparm;
 
-void chk(char *fun, int sts)
+static void chk(char *fun, int sts)
 {
     if (sts != 0)
         printf("%s failed\n", fun);
@@ -136,7 +136,7 @@ int rx(uint8_t* buff, int n)
         printf("Error reading port: %d\n", (int)bytes);
         return 0;
     }
-    return bytes;
+    return (int)bytes;
 }
 
 /**
@@ -160,7 +160,7 @@ int tx(uint8_t* buff, int n)
         printf("Error writing port\n");
         return 0;
     }
-    return bytes;
+    return (int)bytes;
 }
 
 /**
@@ -169,7 +169,7 @@ int tx(uint8_t* buff, int n)
  * @param n - number of bytes in buffer to send
  * @returns zero on failure
  */
-int txwu(uint8_t* buff, int n, int waitu)
+static int txwu(uint8_t* buff, int n, int waitu)
 {
     struct timeval tv;
     ssize_t bytes;
@@ -181,7 +181,7 @@ int txwu(uint8_t* buff, int n, int waitu)
     tv.tv_sec  = 0;
     tv.tv_usec = waitu;
     select(0,0,0,0,&tv);
-    return bytes;
+    return (int)bytes;
 }
 
 /**
