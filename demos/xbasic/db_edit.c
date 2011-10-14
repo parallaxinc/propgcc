@@ -12,8 +12,6 @@
 
 /* command handlers */
 static void DoNew(ParseContext *e);
-static void DoLoad(ParseContext *e);
-static void DoSave(ParseContext *e);
 static void DoList(ParseContext *e);
 static void DoRun(ParseContext *e);
 static void DoQuit(ParseContext *e);
@@ -24,8 +22,6 @@ static struct {
     void (*handler)(ParseContext *e);
 } cmds[] = {
     {   "NEW",   DoNew   },
-    {   "LOAD",  DoLoad  },
-    {   "SAVE",  DoSave  },
     {   "LIST",  DoList  },
     {   "RUN",   DoRun   },
     {   "QUIT",  DoQuit  },
@@ -43,7 +39,7 @@ void EditWorkspace(ParseContext *c)
     int16_t lineNumber;
     char *token;
 
-    //BufInit();
+    BufInit();
 
     c->getLine = EditGetLine;
     c->getLineCookie = c;
@@ -85,43 +81,6 @@ void EditWorkspace(ParseContext *c)
 static void DoNew(ParseContext *c)
 {
     BufInit();
-}
-
-static void DoLoad(ParseContext *c)
-{
-    char *name;
-    if (!(name = NextToken(c)))
-        VM_printf("Please specify a file to load\n");
-    else {
-#if 0
-        FILE *fp;
-        if (!(fp = fopen(name, "r")))
-            VM_printf("error loading '%s'\n", name);
-        else {
-            VM_printf("Loading '%s'\n", name);
-            BufInit();
-            while (fgets(c->lineBuf, sizeof(c->lineBuf), fp) != NULL) {
-                int len = strlen(c->lineBuf);
-                int16_t lineNumber;
-                char *token;
-                if (len > 0 && c->lineBuf[len - 1] == '\n')
-                    c->lineBuf[len - 1] = '\0';
-                c->linePtr = c->lineBuf;
-                if ((token = NextToken(c)) != NULL) {
-                    if (ParseNumber(c, token, &lineNumber))
-                        BufAddLineN(lineNumber, c->linePtr);
-                    else
-                        VM_printf("expecting a line number: %s\n", token);
-                }
-            }
-            fclose(fp);
-        }
-#endif
-    }
-}
-
-static void DoSave(ParseContext *c)
-{
 }
 
 static void DoList(ParseContext *c)

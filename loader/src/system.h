@@ -63,7 +63,7 @@ int xbAddProgramPath(char *argv[]);
 void *xbOpenFileInPath(System *sys, const char *name, const char *mode);
 void *xbOpenFile(System *sys, const char *name, const char *mode);
 int xbCloseFile(void *file);
-char *xbGetLine(void *file, char *buf, size_t size);
+char *xbGetLine(void *file, char *buf, int size);
 size_t xbReadFile(void *file, void *buf, size_t size);
 size_t xbWriteFile(void *file, const void *buf, size_t size);
 int xbSeekFile(void *file, long offset, int whence);

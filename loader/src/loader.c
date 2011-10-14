@@ -518,7 +518,7 @@ static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize)
     void *file;
     if (!(file = xbOpenFileInPath(sys, name, "rb")))
         return Error("can't open cache driver: %s", name);
-    *pSize = xbReadFile(file, buf, COG_IMAGE_MAX);
+    *pSize = (int)xbReadFile(file, buf, COG_IMAGE_MAX);
     xbCloseFile(file);
     return *pSize > 0;
 }
