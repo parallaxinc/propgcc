@@ -42,7 +42,7 @@
 /* MAC */
 /*******/
 
-#ifdef MAC
+#if defined(MAC) || defined(LINUX)
 
 #include <stdio.h>
 #include <stdint.h>
@@ -55,7 +55,7 @@
 #define VMCODEBYTE(p)           *(uint8_t *)(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
 
-#endif  // WIN32
+#endif  // MAC
 
 /**********/
 /* XGSPIC */
