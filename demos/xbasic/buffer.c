@@ -30,8 +30,9 @@ void BufInit(void)
 int BufAddLineN(int16_t lineNumber, const char *text)
 {
     int newLength = sizeof(Line) + strlen(text);
-    Line *line, *next;
     int spaceNeeded;
+    uint8_t *next;
+    Line *line;
 
     /* make sure the length is a multiple of the word size */
     if (newLength & 1)
@@ -39,13 +40,13 @@ int BufAddLineN(int16_t lineNumber, const char *text)
 
     /* replace an existing line */
     if (FindLineN(lineNumber, &line)) {
-        next = (Line *)((uint8_t *)line + line->length);
+        next = (uint8_t *)line + line->length;
         spaceNeeded = newLength - line->length;
     }
 
     /* insert a new line */
     else {
-        next = line;
+        next = (uint8_t *)line;
         spaceNeeded = newLength;
     }
 
@@ -54,8 +55,8 @@ int BufAddLineN(int16_t lineNumber, const char *text)
         return VMFALSE;
 
     /* make space for the new line */
-    if ((uint8_t *)next < bufferTop)
-        memmove((uint8_t *)next + spaceNeeded, next, bufferTop - (uint8_t *)next);
+    if (next < bufferTop && spaceNeeded != 0)
+        memmove(next + spaceNeeded, next, bufferTop - next);
     bufferTop += spaceNeeded;
 
     /* insert the new line */
