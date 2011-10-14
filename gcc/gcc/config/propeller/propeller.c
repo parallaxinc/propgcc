@@ -129,6 +129,8 @@ static void
 propeller_optimization_options (int level, int size)
 {
   do_fcache = 0;
+#if 0
+  /* this code turns on fcache with -O2 and higher */
   if (level >= 2)
     {
       if (propeller_fcache_enable != 0)
@@ -139,6 +141,11 @@ propeller_optimization_options (int level, int size)
       if (propeller_fcache_enable == 1)
 	do_fcache = 1;
     }
+#else
+  /* this code turns on fcache only when explicitly requested */
+  if (propeller_fcache_enable == 1)
+    do_fcache = 1;
+#endif
 }
 
 /* Validate and override various options, and do machine dependent
