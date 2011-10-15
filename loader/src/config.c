@@ -279,6 +279,8 @@ void MergeConfigs(BoardConfig *dst, BoardConfig *src)
     }
     if (src->validMask & VALID_CACHEDRIVER) {
         dst->validMask |= VALID_CACHEDRIVER;
+        if (dst->cacheDriver)
+            free(dst->cacheDriver);
         dst->cacheDriver = CopyString(src->cacheDriver);
     }
     if (src->validMask & VALID_CACHESIZE) {
