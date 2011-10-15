@@ -35,6 +35,7 @@ boot                mov     t1, PAR
                     add     t1, #4
                     rdlong  vm_mbox, t1
                     rdlong  boot_clkfreq, #0
+                    rdbyte  boot_clkmode, #4
                     
 initialize_data     mov     t1, image_base
                     add     t1, #HDR_INIT_COUNT
@@ -97,6 +98,7 @@ initialize_stack    mov     dst, vm_mbox
                     wrlong  cache_mboxcmd, dst
                     
 restore_clkfreq     wrlong  boot_clkfreq, #0
+                    wrbyte  boot_clkmode, #4
 
 'Store the cache driver mailbox address at $00000006
                     wrword  cache_mboxcmd, #$00000006 '__xmm_mbox
@@ -114,6 +116,7 @@ vm_mbox             long    0
 
 external_start      long    $20000000
 boot_clkfreq        long    0
+boot_clkmode        long    0 ' for alignment - only using a byte here
 src                 long    0
 dst                 long    0
 count               long    0
