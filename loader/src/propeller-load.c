@@ -142,7 +142,8 @@ int main(int argc, char *argv[])
                 if ((p2 = strchr(p, '=')) == NULL)
                     Usage(board, port);
                 *p2++ = '\0';
-                SetConfigField(configSettings, p, p2);
+                if (!SetConfigField(configSettings, p, p2))
+                    return 1;
                 break;
             case 'I':
                 if(argv[i][2])
