@@ -118,7 +118,8 @@ $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
 $(SPINDIR)/c3_cache.spin \
 $(SPINDIR)/ssf_cache.spin \
-$(SPINDIR)/eeprom_cache.spin
+$(SPINDIR)/eeprom_cache.spin \
+$(SPINDIR)/vm_start.spin
 
 #################
 # CACHE DRIVERS #
