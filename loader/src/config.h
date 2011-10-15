@@ -71,8 +71,21 @@ typedef unsigned char uint8_t;
 #define DEF_TXPIN           30
 #define DEF_TVPIN           12
 
+/* valid mask bits */
+#define VALID_CLKFREQ       (1 << 0)
+#define VALID_CLKMODE       (1 << 1)
+#define VALID_BAUDRATE      (1 << 2)
+#define VALID_RXPIN         (1 << 3)
+#define VALID_TXPIN         (1 << 4)
+#define VALID_TVPIN         (1 << 5)
+#define VALID_CACHEDRIVER   (1 << 6)
+#define VALID_CACHESIZE     (1 << 7)
+#define VALID_CACHEPARAM1   (1 << 8)
+#define VALID_CACHEPARAM2   (1 << 9)
+
 typedef struct BoardConfig BoardConfig;
 struct BoardConfig {
+    uint32_t validMask;
     uint32_t clkfreq;
     uint8_t clkmode;
     uint32_t baudrate;
@@ -87,9 +100,11 @@ struct BoardConfig {
     char name[1];
 };
 
+BoardConfig *NewBoardConfig(const char *name);
 void ParseConfigurationFile(System *sys, const char *path);
-void SetConfigField(BoardConfig *config, char *tag, char *value);
+int SetConfigField(BoardConfig *config, char *tag, char *value);
 BoardConfig *GetBoardConfig(const char *name);
+void MergeConfigs(BoardConfig *dst, BoardConfig *src);
 #ifdef NEED_STRCASECMP
 int strcasecmp(const char *s1, const char *s2);
 #endif

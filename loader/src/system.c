@@ -172,7 +172,7 @@ static const char *MakePath(PathEntry *entry, const char *name)
 {
     static char fullpath[PATH_MAX];
     sprintf(fullpath, "%s%c%s", entry->path, DIR_SEP, name);
-	return fullpath;
+    return fullpath;
 }
 
 /* functions below depend on stdio */

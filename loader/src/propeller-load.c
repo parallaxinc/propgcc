@@ -53,9 +53,9 @@ int check_for_exit = 0;
 
 int main(int argc, char *argv[])
 {
-    char *infile = NULL, *p;
+    char *infile = NULL, *p, *p2;
     int terminalMode = FALSE;
-    BoardConfig *config;
+    BoardConfig *config, *configSettings;
     char *port, *board;
     System sys;
     int baud = 0;
@@ -68,6 +68,9 @@ int main(int argc, char *argv[])
         port = DEF_PORT;
     if (!(board = getenv("PROPELLER_LOAD_BOARD")))
         board = DEF_BOARD;
+        
+    /* setup a configuration to collect command line -D settings */
+    configSettings = NewBoardConfig("");
 
     /* get the arguments */
     for(i = 1; i < argc; ++i) {
@@ -123,12 +126,24 @@ int main(int argc, char *argv[])
                 break;
             case 't':
                 terminalMode = TRUE;
-		if (argv[i][2])
-		  terminalBaud = atoi(&argv[i][2]);
+                if (argv[i][2])
+                  terminalBaud = atoi(&argv[i][2]);
                 break;
-	    case 'x':
-	        check_for_exit = 1;
-	        break;
+            case 'x':
+                check_for_exit = 1;
+                break;
+            case 'D':
+                if(argv[i][2])
+                    p = &argv[i][2];
+                else if(++i < argc)
+                    p = argv[i];
+                else
+                    Usage(board, port);
+                if ((p2 = strchr(p, '=')) == NULL)
+                    Usage(board, port);
+                *p2++ = '\0';
+                SetConfigField(configSettings, p, p2);
+                break;
             case 'I':
                 if(argv[i][2])
                     p = &argv[i][2];
@@ -183,6 +198,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "error: can't find board configuration '%s'\n", board);
         return 1;
     }
+    
+    /* override with any command line settings */
+    MergeConfigs(config, configSettings);
         
     /* use the baud rate from the configuration */
     baud = config->baudrate;
@@ -206,11 +224,11 @@ int main(int argc, char *argv[])
     /* enter terminal mode if requested */
     if (terminalMode)
       {
-	if (terminalBaud != 0)
-	  {
-	    serial_done();
-	    serial_init(port, terminalBaud);
-	  }
+        if (terminalBaud != 0)
+          {
+            serial_done();
+            serial_init(port, terminalBaud);
+          }
         terminal_mode();
       }
     return 0;
@@ -221,14 +239,19 @@ static void Usage(char *board, char *port)
 {
     fprintf(stderr, "\
 usage: propeller-elf-load\n\
-         [ -b <type> ]   select target board (default is %s)\n\
-         [ -p <port> ]   serial port (default is %s)\n\
-         [ -e ]          write the program into EEPROM\n\
-         [ -r ]          run the program after loading\n\
-         [ -s ]          write a spin binary file for use with the Propeller Tool\n\
-         [ -t ]          enter terminal mode after running the program\n\
-         [ -t<baud> ]       enter terminal mode with a different baud rate\n\
-         <name>          file to compile\n\
+         [ -b <type> ]     select target board (default is %s)\n\
+         [ -p <port> ]     serial port (default is %s)\n\
+         [ -I <path> ]     add a directory to the include path\n\
+         [ -D var=value ]  define a board configuration variable\n\
+         [ -e ]            write the program into EEPROM\n\
+         [ -r ]            run the program after loading\n\
+         [ -s ]            write a spin binary file for use with the Propeller Tool\n\
+         [ -t ]            enter terminal mode after running the program\n\
+         [ -t<baud> ]      enter terminal mode with a different baud rate\n\
+         <name>            file to compile\n\
+\n\
+Variables that can be set with -D are:\n\
+  clkfreq clkmode baudrate rxpin txpin tvpin cache-driver cache-size cache-param1 cache-param2\n\
 ", board, port);
     exit(1);
 }

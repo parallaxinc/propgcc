@@ -64,16 +64,18 @@ static BoardConfig *boardConfigs = NULL;
 static BoardConfig *SetupDefaultConfiguration(void);
 static int SkipSpaces(LineBuf *buf);
 static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm);
-static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue);
-static int DoOp(LineBuf *buf, int op, int left, int right);
-static char *CopyString(LineBuf *buf, const char *str);
-static void Error(LineBuf *buf, const char *fmt, ...);
+static int ParseNumericExpr(char *token, int *pValue);
+static int DoOp(int *pValue, int op, int left, int right);
+static char *CopyString(const char *str);
+static void ParseError(LineBuf *buf, const char *fmt, ...);
+static int Error(const char *fmt, ...);
+static void Fatal(const char *fmt, ...);
 
-static BoardConfig *NewBoardConfig(const char *name)
+BoardConfig *NewBoardConfig(const char *name)
 {
     BoardConfig *config;
     if (!(config = (BoardConfig *)malloc(sizeof(BoardConfig) + strlen(name))))
-        return NULL;
+        Fatal("insufficient memory");
     memset(config, 0, sizeof(BoardConfig));
     strcpy(config->name, name);
     return config;
@@ -95,111 +97,81 @@ void ParseConfigurationFile(System *sys, const char *path)
     BoardConfig **pNextConfig;
     char *tag, *value;
     LineBuf buf;
-    int iValue;
     FILE *fp;
     int ch;
 
-    if (!(boardConfigs = SetupDefaultConfiguration()))
-        Error(&buf, "insufficient memory for default board configuration");
+    boardConfigs = SetupDefaultConfiguration();
     pNextConfig = &boardConfigs->next;
         
     if (!(fp = xbOpenFileInPath(sys, path, "r")))
         return;
 
+    /* process each line in the configuration file */
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {
+    
+        /* initialize token parser */
         buf.linePtr = buf.lineBuf;
         ++buf.lineNumber;
+        
+        /* look for the first token on the line */
         switch (SkipSpaces(&buf)) {
+        
         case '\n':  /* blank line */
         case '#':   /* comment */
             // ignore blank lines and comments
             break;
+            
         case '[':   /* board tag */
+        
+            /* get the board name */
             ++buf.linePtr;
             if (!(tag = NextToken(&buf, "]", &ch)))
-                Error(&buf, "missing board tag");
+                ParseError(&buf, "missing board tag");
             if (ch != ']') {
                 if (SkipSpaces(&buf) != ']')
-                    Error(&buf, "missing close bracket after section tag");
+                    ParseError(&buf, "missing close bracket after board tag");
                 ++buf.linePtr;
             }
             if (SkipSpaces(&buf) != '\n')
-                Error(&buf, "missing end of line");
+                ParseError(&buf, "missing end of line");
+                
+            /* add a new board configuration */
             if (!(config = NewBoardConfig(tag)))
-                Error(&buf, "insufficient memory");
+                ParseError(&buf, "insufficient memory");
             *pNextConfig = config;
             pNextConfig = &config->next;
             break;
+            
         default:    /* tag:value pair */
+        
+            /* make sure we're in a board configuration */
             if (!config)
-                Error(&buf, "not in a board definition");
+                ParseError(&buf, "not in a board configuration");
+                
+            /* get the tag */
             if (!(tag = NextToken(&buf, ":", &ch)))
-                Error(&buf, "missing tag");
+                ParseError(&buf, "missing tag");
+                
+            /* check for the colon separator */
             if (ch != ':') {
                 if (SkipSpaces(&buf) != ':')
-                    Error(&buf, "missing colon");
+                    ParseError(&buf, "missing colon");
                 ++buf.linePtr;
             }
+            
+            /* get the value */
             if (!(value = NextToken(&buf, "", &ch)))
-                Error(&buf, "missing value");
+                ParseError(&buf, "missing value");
+                
+            /* make sure this is the end of line */
             if (ch != '\n') {
-                if (SkipSpaces(&buf) != '\n')
-                    Error(&buf, "missing end of line");
+                if ((ch = SkipSpaces(&buf) != '\n') && ch != '#')
+                    ParseError(&buf, "missing end of line");
                 ++buf.linePtr;
             }
-            if (strcasecmp(tag, "clkfreq") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->clkfreq = iValue;
-            }
-            else if (strcasecmp(tag, "clkmode") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->clkmode = iValue;
-            }
-            else if (strcasecmp(tag, "baudrate") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->baudrate = iValue;
-            }
-            else if (strcasecmp(tag, "rxpin") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->rxpin = iValue;
-            }
-            else if (strcasecmp(tag, "txpin") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->txpin = iValue;
-            }
-            else if (strcasecmp(tag, "tvpin") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->tvpin = iValue;
-            }
-            else if (strcasecmp(tag, "cache-driver") == 0) {
-                if (config->cacheDriver)
-                    free(config->cacheDriver);
-                if (!(config->cacheDriver = CopyString(&buf, value)))
-                    Error(&buf, "insufficient memory");
-            }
-            else if (strcasecmp(tag, "cache-size") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->cacheSize = iValue;
-            }
-            else if (strcasecmp(tag, "cache-param1") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->cacheParam1 = iValue;
-            }
-            else if (strcasecmp(tag, "cache-param2") == 0) {
-                if (!ParseNumericExpr(&buf, value, &iValue))
-                    Error(&buf, "invalid numeric value");
-                config->cacheParam2 = iValue;
-            }
-            else
-                Error(&buf, "unknown tag: %s", tag);
+            
+            /* set the configuration value */
+            SetConfigField(config, tag, value);
             break;
         }
     }
@@ -207,63 +179,120 @@ void ParseConfigurationFile(System *sys, const char *path)
     fclose(fp);
 }
 
-void SetConfigField(BoardConfig *config, char *tag, char *value)
+int SetConfigField(BoardConfig *config, char *tag, char *value)
 {
     int iValue;
 
     if (strcasecmp(tag, "clkfreq") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->clkfreq = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_CLKFREQ;
+            config->clkfreq = iValue;
+        }
     }
     else if (strcasecmp(tag, "clkmode") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->clkmode = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_CLKMODE;
+            config->clkmode = iValue;
+        }
     }
     else if (strcasecmp(tag, "baudrate") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->baudrate = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_BAUDRATE;
+            config->baudrate = iValue;
+        }
     }
     else if (strcasecmp(tag, "rxpin") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->rxpin = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_RXPIN;
+            config->rxpin = iValue;
+        }
     }
     else if (strcasecmp(tag, "txpin") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->txpin = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_TXPIN;
+            config->txpin = iValue;
+        }
     }
     else if (strcasecmp(tag, "tvpin") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->tvpin = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_TVPIN;
+            config->tvpin = iValue;
+        }
     }
     else if (strcasecmp(tag, "cache-driver") == 0) {
         if (config->cacheDriver)
             free(config->cacheDriver);
-        if (!(config->cacheDriver = CopyString(NULL, value)))
-            Error(NULL, "insufficient memory");
+        config->validMask |= VALID_CACHEDRIVER;
+        config->cacheDriver = CopyString(value);
     }
     else if (strcasecmp(tag, "cache-size") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->cacheSize = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_CACHESIZE;
+            config->cacheSize = iValue;
+        }
     }
     else if (strcasecmp(tag, "cache-param1") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->cacheParam1 = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_CACHEPARAM1;
+            config->cacheParam1 = iValue;
+        }
     }
     else if (strcasecmp(tag, "cache-param2") == 0) {
-        if (!ParseNumericExpr(NULL, value, &iValue))
-            Error(NULL, "invalid numeric value");
-        config->cacheParam2 = iValue;
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_CACHEPARAM2;
+            config->cacheParam2 = iValue;
+        }
     }
-    else
-        Error(NULL, "unknown tag: %s", tag);
+    else {
+        Error("unknown board configuration variable: %s", tag);
+        return FALSE;
+    }
+        
+    return TRUE;
+}
+
+void MergeConfigs(BoardConfig *dst, BoardConfig *src)
+{
+    if (src->validMask & VALID_CLKFREQ) {
+        dst->validMask |= VALID_CLKFREQ;
+        dst->clkfreq = src->clkfreq;
+    }
+    if (src->validMask & VALID_CLKMODE) {
+        dst->validMask |= VALID_CLKMODE;
+        dst->clkmode = src->clkmode;
+    }
+    if (src->validMask & VALID_BAUDRATE) {
+        dst->validMask |= VALID_BAUDRATE;
+        dst->baudrate = src->baudrate;
+    }
+    if (src->validMask & VALID_RXPIN) {
+        dst->validMask |= VALID_RXPIN;
+        dst->rxpin = src->rxpin;
+    }
+    if (src->validMask & VALID_TXPIN) {
+        dst->validMask |= VALID_TXPIN;
+        dst->txpin = src->txpin;
+    }
+    if (src->validMask & VALID_TVPIN) {
+        dst->validMask |= VALID_TVPIN;
+        dst->tvpin = src->tvpin;
+    }
+    if (src->validMask & VALID_CACHEDRIVER) {
+        dst->validMask |= VALID_CACHEDRIVER;
+        dst->cacheDriver = CopyString(src->cacheDriver);
+    }
+    if (src->validMask & VALID_CACHESIZE) {
+        dst->validMask |= VALID_CACHESIZE;
+        dst->cacheSize = src->cacheSize;
+    }
+    if (src->validMask & VALID_CACHEPARAM1) {
+        dst->validMask |= VALID_CACHEPARAM1;
+        dst->cacheParam1 = src->cacheParam1;
+    }
+    if (src->validMask & VALID_CACHEPARAM2) {
+        dst->validMask |= VALID_CACHEPARAM2;
+        dst->cacheParam2 = src->cacheParam2;
+    }
 }
 
 static BoardConfig *SetupDefaultConfiguration(void)
@@ -271,7 +300,7 @@ static BoardConfig *SetupDefaultConfiguration(void)
     BoardConfig *config;
     
     if (!(config = (BoardConfig *)malloc(sizeof(BoardConfig) + strlen(DEF_NAME))))
-        return NULL;
+        Fatal("insufficient memory");
         
     memset(config, 0, sizeof(BoardConfig));
     config->clkfreq = DEF_CLKFREQ;
@@ -331,11 +360,12 @@ static int SkipSpacesStr(char **pp)
     return *p;
 }
 
-static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue)
+static int ParseNumericExpr(char *token, int *pValue)
 {
     char *p = token;
     int value = 0;
     int op = -1;
+    *pValue = 0; // makes unary + and - work
     while (SkipSpacesStr(&p)) {
         if (isdigit(*p)) {
             value = (int)strtol(p, &p, 0);
@@ -354,7 +384,8 @@ static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue)
                 // nothing to do
                 break;
             }
-            *pValue = DoOp(buf, op, *pValue, value);
+            if (!DoOp(pValue, op, *pValue, value))
+                return FALSE;
             op = -1;
         }
         else if (isalpha(*p)) {
@@ -368,12 +399,15 @@ static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue)
             *p2 = '\0';
             for (sym = configSymbols; sym->name != NULL; ++sym)
                 if (strcasecmp(id, sym->name) == 0) {
-                    *pValue = DoOp(buf, op, *pValue, sym->value);
+                    if (!DoOp(pValue, op, *pValue, sym->value))
+                        return FALSE;
                     op = -1;
                     break;
                 }
-            if (!sym)
-                Error(buf, "undefined symbol: %s\n", id);
+            if (!sym) {
+                Error("undefined symbol: %s", id);
+                return FALSE;
+            }
         }
         else {
             switch (*p) {
@@ -387,8 +421,8 @@ static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue)
                 op = *p;
                 break;
             default:
-                Error(buf, "unknown operator: %c", *p);
-                break;
+                Error("unknown operator: %c", *p);
+                return FALSE;
             }
             ++p;
         }
@@ -396,7 +430,7 @@ static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue)
     return *p == '\0';
 }
 
-static int DoOp(LineBuf *buf, int op, int left, int right)
+static int DoOp(int *pValue, int op, int left, int right)
 {
     switch (op) {
     case -1:
@@ -424,22 +458,23 @@ static int DoOp(LineBuf *buf, int op, int left, int right)
         left |= right;
         break;
     default:
-        Error(buf, "unknown operator: %c", op);
-        break;
+        Error("unknown operator: %c", op);
+        return FALSE;
     }
-    return left;
+    *pValue = left;
+    return TRUE;
 }
 
-static char *CopyString(LineBuf *buf, const char *str)
+static char *CopyString(const char *str)
 {
-	char *copy = (char *)malloc(strlen(str) + 1);
-	if (!copy)
-		Error(buf, "insufficient memory");
-	strcpy(copy, str);
-	return copy;
+    char *copy = (char *)malloc(strlen(str) + 1);
+    if (!copy)
+        Fatal("insufficient memory");
+    strcpy(copy, str);
+    return copy;
 }
 
-static void Error(LineBuf *buf, const char *fmt, ...)
+static void ParseError(LineBuf *buf, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -448,6 +483,28 @@ static void Error(LineBuf *buf, const char *fmt, ...)
     putc('\n', stderr);
     if (buf)
         fprintf(stderr, "  on line number %d\n", buf->lineNumber);
+    va_end(ap);
+    exit(1);
+}
+
+static int Error(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    fprintf(stderr, "error: ");
+    vfprintf(stderr, fmt, ap);
+    putc('\n', stderr);
+    va_end(ap);
+    return FALSE;
+}
+
+static void Fatal(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    fprintf(stderr, "error: ");
+    vfprintf(stderr, fmt, ap);
+    putc('\n', stderr);
     va_end(ap);
     exit(1);
 }
