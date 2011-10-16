@@ -1,5 +1,5 @@
 ' select debugging output to a TV
-#define TV_DEBUG
+'#define TV_DEBUG
 
 CON
   ' these will get overwritten with the correct values before loading
