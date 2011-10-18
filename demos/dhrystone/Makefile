@@ -29,7 +29,7 @@ all: $(NAME).elf
 # printf=__simple_printf makes sure we use the small printf
 # -DINTEGER_ONLY removes floating point
 
-DEFINES = -Dprintf=__simple_printf -DTIME -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=50000
+DEFINES = -Dprintf=__simple_printf -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=5000
 CFLAGS = -O2 -mfcache $(DEFINES)
 
 #

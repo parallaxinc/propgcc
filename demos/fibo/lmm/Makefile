@@ -17,4 +17,4 @@ CFLAGS = -Os -mfcache
 
 all: $(NAME).elf
 
-include $(PROPLIB)/demo.mk
+include $(PROPLIB)/common.mk

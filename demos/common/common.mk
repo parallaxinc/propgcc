@@ -52,7 +52,7 @@ SPINDIR=.
 ECHO=echo
 
 $(NAME).elf: $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS)
+	$(CC) $(LDFLAGS) $(LDSCRIPT) -o $@ $(OBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
