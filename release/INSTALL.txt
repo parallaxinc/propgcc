@@ -1,0 +1,23 @@
+release/INSTALL.txt
+
+Current instructions are for command line users.
+Integrated package installs will be available later.
+
+Propeller GCC Linux install:
+
+To install Propeller GCC on linux you need root access via root login or sudo.
+
+Move usr/local/propeller to /usr/local/propeller
+Add /usr/local/propeller/bin to your PATH. 
+Move demo files to your working directory.
+
+$ mv usr/local/propeller /usr/local/propeler
+$ PATH=/usr/local/propeller/bin:$PATH
+$ mv demo ~/.
+
+If you plan to create loader cache.dat files from spin files,
+you will need to have bstc.linux in your path.
+
+Propeller GCC MAC OSX install: TBD
+Propeller GCC Windows install: TBD
+

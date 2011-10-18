@@ -35,4 +35,5 @@ make -C ../demos clean
 tar -c /usr/local/propeller -f ${ARCHIVE}
 tar -r ../demos/ -f ${ARCHIVE}
 tar -r bstc.linux -f ${ARCHIVE}
+tar -r INSTALL.txt -f ${ARCHIVE}
 gzip ${ARCHIVE}
