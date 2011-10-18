@@ -26,11 +26,11 @@ MODEL=lmm
 endif
 
 ifndef PORT
-PORT=1
+PORT=$(PROPELLER_LOAD_PORT)
 endif
 
 ifndef BOARD
-BOARD=hub
+BOARD=$(PROPELLER_LOAD_BOARD)
 endif
 
 CFLAGS += -m$(MODEL)
