@@ -240,8 +240,8 @@ static void Usage(char *board, char *port)
 {
     fprintf(stderr, "\
 usage: propeller-elf-load\n\
-         [ -b <type> ]     select target board (default is %s)\n\
-         [ -p <port> ]     serial port (default is %s)\n\
+         [ -b <type> ]     select target board (default is '%s')\n\
+         [ -p <port> ]     serial port (default is '%s')\n\
          [ -I <path> ]     add a directory to the include path\n\
          [ -D var=value ]  define a board configuration variable\n\
          [ -e ]            write the program into EEPROM\n\
@@ -249,10 +249,12 @@ usage: propeller-elf-load\n\
          [ -s ]            write a spin binary file for use with the Propeller Tool\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
-         <name>            file to compile\n\
+         <name>            elf or spin binary file to load\n\
 \n\
 Variables that can be set with -D are:\n\
   clkfreq clkmode baudrate rxpin txpin tvpin cache-driver cache-size cache-param1 cache-param2\n\
+The -b option defaults to the value of the environment variable PROPELLER_LOAD_BOARD\n\
+The -p option defaults to the value of the environment variable PROPELLER_LOAD_PORT\n\
 ", board, port);
     exit(1);
 }
