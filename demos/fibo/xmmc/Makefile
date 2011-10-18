@@ -27,4 +27,4 @@ all: $(NAME).elf
 #
 # include the fragment that defines most of everything
 #
-include $(PROPLIB)/demo.mk
+include $(PROPLIB)/common.mk
