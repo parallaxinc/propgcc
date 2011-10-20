@@ -39,7 +39,7 @@ STDLIB = malloc.o calloc.o atoi.o atof.o atexit.o abort.o \
 	assert.o rand.o setjmp.o div.o abs.o getenv.o
 
 MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
-	sbrk.o write.o signal.o thread.o assert.o
+	sbrk.o write.o signal.o thread.o assert.o locale.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
