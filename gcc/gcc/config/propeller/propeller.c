@@ -55,10 +55,14 @@
  * define USE_HUBCOG_DIRECTIVES to 1 to get .hub_ram and .cog_ram put into
  * the output sections in Cog mode
  */
-
 #define USE_HUBCOG_DIRECTIVES 0
 
-
+/*
+ * define FCACHE_DEFAULT_OPTLEVEL to N to make -mfcache the default in optimization
+ * modes N and higher
+ * do not define it at all to disable it
+ */
+#define FCACHE_DEFAULT_OPTLEVEL 2
 
 /*
  * frame setup
@@ -129,9 +133,10 @@ static void
 propeller_optimization_options (int level, int size)
 {
   do_fcache = 0;
-#if 0
+
+#ifdef FCACHE_DEFAULT_OPTLEVEL
   /* this code turns on fcache with -O2 and higher */
-  if (level >= 2)
+  if (level >= FCACHE_DEFAULT_OPTLEVEL)
     {
       if (propeller_fcache_enable != 0)
 	do_fcache = 1;
