@@ -63405,6 +63405,9 @@ $as_echo "$ac_ld_relro" >&6; }
     $as_echo "#define HAVE_TANHF 1" >>confdefs.h
 
     ;;
+  propeller*)
+    # This is a freestanding configuration; there is nothing to do here.
+    ;;
   *)
     as_fn_error "No support for this host/target combination." "$LINENO" 5
    ;;
