@@ -1,0 +1,115 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+	<TITLE></TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 3.2  (Unix)">
+	<META NAME="AUTHOR" CONTENT="Eric Smith">
+	<META NAME="CREATED" CONTENT="20111020;13294300">
+	<META NAME="CHANGEDBY" CONTENT="Eric Smith">
+	<META NAME="CHANGED" CONTENT="20111020;16303100">
+	<META NAME="CHANGEDBY" CONTENT="Eric Smith">
+	<STYLE TYPE="text/css">
+	<!--
+		@page { margin: 2cm }
+		P { margin-bottom: 0.21cm }
+		H1 { margin-bottom: 0.21cm }
+		H1.western { font-family: "Arial", sans-serif; font-size: 16pt }
+		H1.cjk { font-family: "DejaVu Sans"; font-size: 16pt }
+		H1.ctl { font-family: "DejaVu Sans"; font-size: 16pt }
+		H2 { margin-bottom: 0.21cm }
+		H2.western { font-family: "Arial", sans-serif; font-size: 14pt; font-style: italic }
+		H2.cjk { font-size: 14pt; font-style: italic }
+		H2.ctl { font-size: 14pt; font-style: italic }
+		A:link { so-language: zxx }
+		CODE.cjk { font-family: "DejaVu Sans", monospace }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="en-CA" DIR="LTR">
+<H1 CLASS="western">Memory Models</H1>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P STYLE="margin-bottom: 0cm">The Propeller port of GCC supports a
+number of memory models, or ways of storing the program in memory.
+Basically these models provide a trade off of speed for code space.
+By far the fastest model is the native “cog” model (-<CODE CLASS="western">mcog</CODE>)
+in which machine instructions are executed directly. However, in that
+model only the 2K of internal memory (actually slightly less) is
+available for code. In the other models (LMM, XMMC, and XMM) code is
+stored in RAM external to the cog and is loaded in by a small kernel.
+This makes more space available for the code (and, in the XMM case,
+the data) but at the cost of having kernel overhead on each
+instruction executed.</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<H2 CLASS="western">COG</H2>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P STYLE="margin-bottom: 0cm">As previously mentioned, in the COG
+memory model code is stored directly in the internal memory of the
+Propeller's cogs. This memory is 512 words, or 2048 bytes, long, but
+16 words are reserved for hardware registers. The GNU C compiler
+reserves an additional 17 words for compiler registers. These
+registers, named <CODE CLASS="western">r0</CODE>-<CODE CLASS="western">r14</CODE>,<CODE CLASS="western">
+lr</CODE>, and <CODE CLASS="western">sp</CODE>, are used by the
+compiler for various purposes. <CODE CLASS="western">r0</CODE>-<CODE CLASS="western">r7</CODE>
+are temporary registers within a function (not preserved across
+function calls). <CODE CLASS="western">r8</CODE>-<CODE CLASS="western">r14</CODE>
+are working registers within a function and are preserved across
+function calls. <CODE CLASS="western">lr</CODE> is the “link
+register” which holds the return address for functions (except for
+functions declared with the “native” attribute, for which the
+return address is stored directly in the <CODE CLASS="western">ret</CODE>
+instruction). <CODE CLASS="western">sp</CODE> is the stack pointer.</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<H2 CLASS="western">LMM</H2>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P STYLE="margin-bottom: 0cm">In the Large Memory Model (LMM mode),
+the program code is stored in hub memory, which is 32K in size. The
+program's data and stack are also stored there. A small kernel
+program (the “LMM Kernel”) runs in COG memory and loads and
+executes program instructions from hub memory. In this mode the same
+17 compiler registers are available as in hub mode (<CODE CLASS="western">r0</CODE>-<CODE CLASS="western">r14</CODE>,
+<CODE CLASS="western">lr</CODE>, and <CODE CLASS="western">sp</CODE>),
+but there is an additional register <CODE CLASS="western">pc</CODE>
+which is a pointer to the next instruction to be fetched.</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<H2 CLASS="western">XMMC</H2>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P STYLE="margin-bottom: 0cm">In the eXtended Memory Model – Code
+(XMMC mode) the program code is stored in external memory, either
+flash or ram. The exact size of this memory depends on the board
+used, but it is generally quite a bit larger than hub memory. The
+program's data and stack reside in hub memory as in LMM mode.</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<H2 CLASS="western">XMM</H2>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P STYLE="margin-bottom: 0cm">In the eXtended Memory Model both the
+code and data are placed in external memory (in the case of data it
+must be an external RAM). This allows for the largest possible
+programs, but at a considerable cost in execution time, since all
+data accesses must go through functions in the XMM kernel. As in all
+other modes, the stack remains in hub memory (and hence is limited to
+32K bytes less the cache size used by the XMM kernel, which is
+typically 8K bytes).</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<H1 CLASS="western">Kernel APIs</H1>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P STYLE="margin-bottom: 0cm">The LMM, XMM, and XMMC kernels all
+provide some common functions which may be used by programs (and
+which the compiler takes advantage of).</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P STYLE="margin-bottom: 0cm"><BR>
+</P>
+</BODY>
+</HTML>
