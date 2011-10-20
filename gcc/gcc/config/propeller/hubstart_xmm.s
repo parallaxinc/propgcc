@@ -11,6 +11,8 @@
 	''
 	.section .hubstart, "ax"
 	.global __clkfreq
+	.global __clkmode
+	.global __xmm_mbox_p
     
 __clkfreq
 	.long __clkfreqval	' clock frequency
