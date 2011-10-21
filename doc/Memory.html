@@ -177,6 +177,7 @@ count down, so if regnum is 14 and count is 3 then <CODE>r14</CODE>,
 <CODE>r13</CODE>, and <CODE>r12</CODE>
 will be popped (in that order).</P>
 
+
 <H2>Branches and calls</H2>
 
 <P>
@@ -206,9 +207,9 @@ instruction into the <CODE>lr</CODE> register, and
 moves <CODE>__TMP0</CODE> into the <CODE>pc</CODE>
 register (so the LMM interpreter will begin execution at address, it
 contained, which is typically a subroutine).</P>
-<P><BR>
-</P>
+
 <H2>Math functions</H2>
+
 <P>
 <CODE>call #__UDIVSI</CODE>
 </P>
@@ -241,5 +242,61 @@ normalizing fixed and floating point numbers.</P>
 register <CODE>r0</CODE>, and returns the result in <CODE>r0</CODE>. For example, if <CODE>r0</CODE> =
 0x00008100, then the result will be 8.</P>
 
+<H2>Miscellaneous functions</H2>
+
+<P>
+<CODE>
+jmp #__LMM_FCACHE_LOAD<BR>
+long nbytes
+</CODE></P>
+
+<P>
+Loads some code into the fast cache and executes
+it. The code to be loaded and executed immediately follows the load
+sequence, and is <CODE>nbytes</CODE> bytes long (which must be a
+multiple of 4).
+
+Code executing in the fast cache must use only COG instructions, and
+must not refer to the program counter <CODE>pc</CODE>
+(<CODE>jmp</CODE> instructions must be used instead, with labels
+referring to the COG memory region starting
+at <CODE>__LMM_FCACHE_START</CODE>, which is where it will be executed
+from. At the end of the fastcached block should come a <CODE>jmp
+__LMM_RET</CODE> instruction (note that this is an indirect jump).
+</P>
+<P>
+For example, the C strcpy function:
+</P>
+<PRE>
+char *strcpy(char *dst_orig, const char *src) {
+    char *dst = dst_orig;
+    while ((*dst++ = *src++) != 0)
+        ;
+    return dst_orig;
+}
+</PRE>
+<P>
+is translated by the compiler into code using the fast cache like:
+</P>
+<P>
+<PRE>
+	.global	_strcpy
+_strcpy
+	mov	r7, r0
+	jmp	#__LMM_FCACHE_LOAD
+	long	.L6-.L5
+.L5
+.L2
+	rdbyte	r6, r1
+	cmp	r6, #0 wz
+	add	r1, #1
+	wrbyte	r6, r7
+	add	r7, #1
+	IF_NE	jmp	#__LMM_FCACHE_START+(.L2-.L5)
+	jmp	__LMM_RET
+.L6
+	mov	pc,lr
+</PRE>
+</P>
 </BODY>
 </HTML>
