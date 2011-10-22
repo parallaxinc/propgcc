@@ -187,5 +187,16 @@ cd ..
 #
 make -C loader TARGET=../../build/loader
 make -C loader TARGET=../../build/loader install
+
+#
+# copy the linker scripts
+#
+cp -f ldscripts/* $PREFIX/propeller-elf/lib
+if test $? != 0
+then
+  echo "ldscripts install failed"
+  exit 1
+fi
+
 echo "Build complete."
 exit 0
