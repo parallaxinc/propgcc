@@ -50,6 +50,7 @@
 #include "df.h"
 #include "diagnostic-core.h"
 #include "tree-pass.h"
+#include "gimple.h"
 
 /*
  * define USE_HUBCOG_DIRECTIVES to 1 to get .hub_ram and .cog_ram put into
@@ -64,6 +65,9 @@
  */
 #define FCACHE_DEFAULT_OPTLEVEL 2
 
+/* special sections */
+static section * kernel_section;
+
 /*
  * frame setup
  */
@@ -1774,6 +1778,14 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
  * code for selecting which section a constant or declaration should go in
  */
 
+static void
+propeller_asm_init_sections (void)
+{
+  kernel_section = get_unnamed_section(SECTION_WRITE|SECTION_CODE,
+				       output_section_asm_op,
+				       "\t.section .kernel,\"aw\",@progbits");
+}
+
 /* where should we put a constant?
  * in Cog mode, integer constants should go in text,
  * everything else should go in data
@@ -1794,9 +1806,24 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
   return default_elf_select_rtx_section (mode, x, align);
 }
 
+/*
+ * in LMM mode, anything declared as "cogmem" should go into the .kernel
+ * section
+ */
 static section *
 propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
+  if (TARGET_LMM)
+    {
+      switch (TREE_CODE (decl))
+	{
+	case VAR_DECL:
+	  if (lookup_attribute ("cogmem", DECL_ATTRIBUTES (decl)))
+	    return kernel_section;
+	default:
+	  break;
+	}
+    }
   return default_elf_select_section (decl, reloc, align);
 }
 
@@ -3012,6 +3039,8 @@ propeller_reorg(void)
 #undef TARGET_MACHINE_DEPENDENT_REORG
 #define TARGET_MACHINE_DEPENDENT_REORG propeller_reorg
 
+#undef TARGET_ASM_INIT_SECTIONS
+#define TARGET_ASM_INIT_SECTIONS propeller_asm_init_sections
 #undef TARGET_ASM_SELECT_SECTION
 #define TARGET_ASM_SELECT_SECTION propeller_select_section
 #undef TARGET_ASM_SELECT_RTX_SECTION
