@@ -1,6 +1,14 @@
 This is a project for the port of GCC (the GNU Compiler Collection) to
 the Parallax Propeller.
 
+Please use the rebuild.sh script to build Propeller GCC.
+
+    To build from scratch use:
+    $ ./rebuild.sh
+
+    To build without removing the build directory use:
+    $ ./rebuild.sh 1
+
 Directory organization is as follows:
 
 binutils  - binutils 2.21 (complete) plus propeller changes
@@ -25,11 +33,9 @@ on your system and is writable first!) do:
 
 (5) make install
 
-I also suggest building and installing "propeller-checksum", which is
-a program to set the checksum on binaries; without this the demos can
-only be run on a simulator, not real hardware.
+Please note that propeller-checksum is no longer used. Propeller-load is used instead.
 
-(6) gcc -o /usr/local/propeller/bin/propeller-checksum propeller-checksum.c
+(6) cd propgcc/loader; source setenv.linux; make clean; make; make install
 
 ------------------------ gcc build ---------------------------------
 To build under Linux, execute the following commands (starting in this
@@ -47,6 +53,10 @@ Now we can build libgcc
 (7) make install-target-libgcc
 
 -------------------------- newlib ---------------------------------
+
+Newlib is no longer active. Ignore this step.
+It is kept here only for future reference if required.
+
 To build under Linux, execute the following commands (starting in this
 directory, which I assume is named "propgcc" on your system):
 
@@ -62,6 +72,15 @@ on your system and is writable first!) do:
 
 (5) make install
 
+-------------------------- Propeller GCC library ------------------
+
+To build under Linux, execute the following commands (starting in this
+directory, which I assume is named "propgcc" on your system):
+
+(1) cd lib
+(2) make clean
+(3) make
+(4) make install
 
 --------------------------- demos ---------------------------------
 
@@ -86,3 +105,19 @@ Set the environment variable DEJAGNU to
 
 in build/gcc, do:
    make check-gcc RUNTESTFLAGS="--target_board=propeller-sim"
+
+--------------------------- .pdf documentation --------------------------
+
+in build/gcc do:
+  make pdf
+  make install-pdf
+
+This will copy various .pdf files to the /usr/local/propeller/share/doc
+directory. The ones in the root of that directory (gmp.pdf, libiberty.pdf,
+libquadmath.pdf, mpc.pdf, and mpfr.pdf) are not really interesting,
+since they are for libraries used in building the compiler.
+
+The ones in the gcc/ subdirectory, in particular gcc/cpp.pdf and
+gcc/gcc.pdf, are the "real" compiler documents. They do have some
+propeller specific information in them, although more is needed.
+

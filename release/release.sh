@@ -89,7 +89,7 @@ then
 elif test x$UNAME = xLinux
 then
 
-  ARCHIVE=windows-x86-32-${ARCHIVE}.tar
+  ARCHIVE=linux-x86-32-${ARCHIVE}.tar
   tar -c /usr/local/propeller -f ${ARCHIVE}
   tar -r ../demos/ -f ${ARCHIVE}
   tar -r bstc.linux -f ${ARCHIVE}
