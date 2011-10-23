@@ -17,6 +17,8 @@ CFLAGS = -Os -mlmm
 NAME = toggle
 OBJS = toggle.o toggle_1.cog $(PROPLIB)/libpropeller.a
 
+all: $(NAME).elf
+
 include $(PROPLIB)/lmmdemo.mk
 
 #

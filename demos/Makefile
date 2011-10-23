@@ -9,10 +9,11 @@
 
 all:
 	make -C libpropeller
-	#make -C toggle/cog_c_toggle    # TODO build fails. fix later.
+	make -C toggle/cog_c_toggle    # TODO build fails. fix later.
 	make -C toggle/c++_toggle
 	make -C toggle/lmm_c_toggle
 	make -C toggle/lmm_toggle
+	make -C toggle/gas_toggle
 	make -C toggle/pasm_toggle
 	make -C toggle/xmm_toggle
 	make -C dhrystone
@@ -29,6 +30,7 @@ clean:
 	make clean -C toggle/c++_toggle
 	make clean -C toggle/lmm_c_toggle
 	make clean -C toggle/lmm_toggle
+	make clean -C toggle/gas_toggle
 	make clean -C toggle/pasm_toggle
 	make clean -C toggle/xmm_toggle
 	make clean -C dhrystone

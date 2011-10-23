@@ -61,6 +61,11 @@ fi
 # build binutils
 #
 mkdir -p ../build/binutils
+
+# do this incase we texi needs it
+mkdir -p ../build/binutils/etc
+cp gnu-oids.texi ../build/binutils/etc
+
 cd ../build/binutils
 ../../propgcc/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls
 if test $? != 0
