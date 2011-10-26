@@ -29,28 +29,34 @@
 #include "hard-reg-set.h"
 #include "insn-config.h"
 #include "conditions.h"
-#include "insn-flags.h"
-#include "output.h"
 #include "insn-attr.h"
-#include "flags.h"
 #include "recog.h"
-#include "reload.h"
-#include "obstack.h"
+#include "output.h"
 #include "tree.h"
-#include "c-tree.h"
+#include "function.h"
 #include "expr.h"
 #include "optabs.h"
-#include "except.h"
-#include "function.h"
+#include "libfuncs.h"
+#include "flags.h"
+#include "reload.h"
+#include "tm_p.h"
 #include "ggc.h"
+#include "gstab.h"
+#include "hashtab.h"
+#include "debug.h"
 #include "target.h"
 #include "target-def.h"
-#include "tm_p.h"
+#include "integrate.h"
 #include "langhooks.h"
-#include "df.h"
-#include "diagnostic-core.h"
-#include "tree-pass.h"
+#include "cfglayout.h"
+#include "sched-int.h"
 #include "gimple.h"
+#include "bitmap.h"
+#include "c-tree.h"
+#include "diagnostic.h"
+#include "target-globals.h"
+
+
 
 /*
  * define USE_HUBCOG_DIRECTIVES to 1 to get .hub_ram and .cog_ram put into
@@ -71,7 +77,7 @@ static section * kernel_section;
 /*
  * frame setup
  */
-struct propeller_frame_info
+struct GTY(()) propeller_frame_info
 {
   HOST_WIDE_INT total_size;	/* number of bytes of entire frame.  */
   HOST_WIDE_INT callee_size;	/* number of bytes to save callee saves.  */
@@ -81,9 +87,15 @@ struct propeller_frame_info
   unsigned int reg_save_mask;	/* mask of saved registers.  */
 };
 
-/* Current frame information calculated by compute_frame_size.  */
-static struct propeller_frame_info current_frame_info;
-static HOST_WIDE_INT propeller_compute_frame_size (int size);
+/*
+ * machine specific info about the current function
+ */
+struct GTY(()) machine_function {
+  /* the current frame information, calculated by propeller_compute_frame_info */
+  struct propeller_frame_info frame;
+};
+
+static HOST_WIDE_INT propeller_compute_frame_info (void);
 static rtx propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
                                    const_tree type, bool named);
 static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
@@ -107,6 +119,17 @@ enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
  * flag for turning on/off the fcache processing
  */
 static int do_fcache;
+
+/*
+ * variables that save/restore cog processing state
+ */
+struct target_globals *propeller_cog_globals;
+
+/* target flags to use in non-LMM mode */
+static int propeller_base_target_flags;
+
+/* true if -mcog is the default mode */
+bool propeller_base_cog;
 
 
 /*
@@ -134,7 +157,7 @@ static const struct default_options propeller_option_optimization_table[] =
  * select machine specific optimizations here
  */
 static void
-propeller_optimization_options (int level, int size)
+propeller_optimization_options (int level, int size ATTRIBUTE_UNUSED)
 {
   do_fcache = 0;
 
@@ -155,6 +178,14 @@ propeller_optimization_options (int level, int size)
   if (propeller_fcache_enable == 1)
     do_fcache = 1;
 #endif
+}
+
+/* Allocate a chunk of memory for per-function machine-dependent data.  */
+
+static struct machine_function *
+propeller_init_machine_status (void)
+{
+  return ggc_alloc_cleared_machine_function ();
 }
 
 /* Validate and override various options, and do machine dependent
@@ -211,8 +242,25 @@ propeller_option_override (void)
       }
 
     propeller_optimization_options (optimize, optimize_size);
+
+    /* in LMM mode if we see "native" function declarations those will
+       have to be compiled in -mcog mode, so be prepared to switch
+    */
+    init_machine_status = &propeller_init_machine_status;
+
+    propeller_base_cog = !TARGET_LMM;
 }
 
+
+/* The last argument passed to propeller_set_cog_mode, or negative if the
+   function hasn't been called yet.
+
+   There are two copies of this information.  One is saved and restored
+   by the PCH process while the other is specific to this compiler
+   invocation.  The information calculated by propeller_set_cog_mode
+   is invalid unless the two variables are the same.  */
+static int was_cog_p = -1;
+static GTY(()) int was_cog_pch_p = -1;
 
 
 /*
@@ -311,8 +359,68 @@ static const struct attribute_spec propeller_attribute_table[] =
   { NULL,  0, 0, false, false, false, NULL }
 };
 
-#undef TARGET_ATTRIBUTE_TABLE
-#define TARGET_ATTRIBUTE_TABLE propeller_attribute_table
+/*
+ * function to temporarily switch to COG mode when compiling an LMM program
+ * used for native function declarations
+ */
+
+static void
+propeller_set_cog_mode (int cog_p)
+{
+  if (cog_p == was_cog_p
+      && cog_p == was_cog_pch_p)
+    return;
+
+  /* restore base settings of various flags */
+  target_flags = propeller_base_target_flags;
+
+  if (cog_p)
+    {
+      /* switch to COG mode */
+      target_flags &= ~(MASK_LMM|MASK_XMM);
+      if (!propeller_cog_globals)
+	propeller_cog_globals = save_target_globals ();
+      else
+	restore_target_globals (propeller_cog_globals);
+    }
+  else
+    {
+      /* normal (LMM) mode */
+      target_flags |= MASK_LMM;
+      restore_target_globals (&default_target_globals);
+    }
+}
+
+/* Return true if function DECL is a COG function.  Return the ambient
+   setting if DECL is null.  */
+
+static bool
+propeller_use_cog_mode_p (tree decl)
+{
+  if (decl)
+    {
+      /* Nested functions must use the same frame pointer as their
+	 parent and must therefore use the same ISA mode.  */
+      tree parent = decl_function_context (decl);
+      if (parent)
+	decl = parent;
+      if (is_native_function (decl))
+	return true;
+    }
+  return propeller_base_cog;
+}
+
+/*
+ * Implement TARGET_SET_CURRENT_FUNCTION; decides whther the current function
+ * should use the native instruction set or LMM one
+ */
+static void
+propeller_set_current_function (tree fndecl)
+{
+  propeller_set_cog_mode (propeller_use_cog_mode_p (fndecl));
+}
+
+
 
 static void
 propeller_encode_section_info (tree decl, rtx r, int first)
@@ -1325,7 +1433,8 @@ propeller_initial_elimination_offset (int from, int to)
   /* the -UNITS_PER_WORD in stack pointer offsets is
      because we predecrement the stack pointer before using it,
    */
-  base = propeller_compute_frame_size (get_frame_size ()) - UNITS_PER_WORD;
+  propeller_compute_frame_info ();
+  base = cfun->machine->frame.total_size - UNITS_PER_WORD;
 
 
   if (from == ARG_POINTER_REGNUM)
@@ -1333,16 +1442,16 @@ propeller_initial_elimination_offset (int from, int to)
       if (to == STACK_POINTER_REGNUM)
 	offset = base;
       else if (to == HARD_FRAME_POINTER_REGNUM)
-	offset = current_frame_info.callee_size - UNITS_PER_WORD;
+	offset = cfun->machine->frame.callee_size - UNITS_PER_WORD;
       else
 	gcc_unreachable ();
     }
   else if (from == FRAME_POINTER_REGNUM)
     {
       if (to == STACK_POINTER_REGNUM)
-	offset = base - (current_frame_info.callee_size + current_frame_info.locals_size);
+	offset = base - (cfun->machine->frame.callee_size + cfun->machine->frame.locals_size);
       else if (to == HARD_FRAME_POINTER_REGNUM)
-	offset = -(current_frame_info.locals_size+UNITS_PER_WORD);
+	offset = -(cfun->machine->frame.locals_size+UNITS_PER_WORD);
       else
 	gcc_unreachable ();
     }
@@ -1533,13 +1642,13 @@ propeller_use_frame_pointer(void)
 }
 
 static HOST_WIDE_INT
-propeller_compute_frame_size (int size)
+propeller_compute_frame_info (void)
 {
   int regno;
   HOST_WIDE_INT total_size, locals_size, args_size, pretend_size, callee_size;
   unsigned int reg_save_mask;
 
-  locals_size = size;
+  locals_size = get_frame_size ();
   args_size = crtl->outgoing_args_size;
   pretend_size = crtl->args.pretend_args_size;
   callee_size = 0;
@@ -1573,12 +1682,12 @@ propeller_compute_frame_size (int size)
   total_size = (total_size + 3) & ~3;
 
   /* Save computed information.  */
-  current_frame_info.total_size = total_size;
-  current_frame_info.callee_size = callee_size;
-  current_frame_info.pretend_size = pretend_size;
-  current_frame_info.locals_size = locals_size;
-  current_frame_info.args_size = args_size;
-  current_frame_info.reg_save_mask = reg_save_mask;
+  cfun->machine->frame.total_size = total_size;
+  cfun->machine->frame.callee_size = callee_size;
+  cfun->machine->frame.pretend_size = pretend_size;
+  cfun->machine->frame.locals_size = locals_size;
+  cfun->machine->frame.args_size = args_size;
+  cfun->machine->frame.reg_save_mask = reg_save_mask;
 
   return total_size;
 }
@@ -1600,13 +1709,13 @@ propeller_expand_prologue (void)
   if (is_naked_function (current_function_decl))
     return;
 
-  propeller_compute_frame_size (get_frame_size ());
+  propeller_compute_frame_info ();
 
-  if (current_frame_info.total_size > 0)
+  if (cfun->machine->frame.total_size > 0)
     {
       /* Save callee save registers.  */
-      if (current_frame_info.reg_save_mask != 0)
-          pushed = expand_save_registers (&current_frame_info);
+      if (cfun->machine->frame.reg_save_mask != 0)
+          pushed = expand_save_registers (&cfun->machine->frame);
 
       /* Setup frame pointer if it's needed.  */
       if (propeller_use_frame_pointer())
@@ -1618,7 +1727,7 @@ propeller_expand_prologue (void)
       }
 
       /* Add space on stack new frame.  */
-      stack_adjust (-(current_frame_info.total_size - pushed));
+      stack_adjust (-(cfun->machine->frame.total_size - pushed));
 
 
 #ifdef PROLOGUE_BLOCKAGE
@@ -1644,9 +1753,9 @@ propeller_expand_epilogue (bool is_sibcall)
       return;
 
   }
-  propeller_compute_frame_size (get_frame_size ());
+  propeller_compute_frame_info ();
 
-  if (current_frame_info.total_size > 0)
+  if (cfun->machine->frame.total_size > 0)
     {
 #ifdef PROLOGUE_BLOCKAGE
       /* Prevent stack code from being reordered.  */
@@ -1664,11 +1773,11 @@ propeller_expand_epilogue (bool is_sibcall)
       }
       else
       {
-          stack_adjust (current_frame_info.total_size - current_frame_info.callee_size);
+          stack_adjust (cfun->machine->frame.total_size - cfun->machine->frame.callee_size);
       }
       /* Restore callee save registers.  */
-      if (current_frame_info.reg_save_mask != 0)
-          expand_restore_registers (&current_frame_info);
+      if (cfun->machine->frame.reg_save_mask != 0)
+          expand_restore_registers (&cfun->machine->frame);
 
       }
 
@@ -1700,7 +1809,7 @@ propeller_can_use_return (void)
   if (df_regs_ever_live_p (PROP_LR_REGNUM) || crtl->profile)
     return 0;
 
-  if (propeller_compute_frame_size (get_frame_size ()) != 0)
+  if (propeller_compute_frame_info () != 0)
     return 0;
 
   return 1;
@@ -1733,7 +1842,14 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
             }
             emit_call_insn (pat);
             return true;
-        }
+        } else if (TARGET_LMM && is_native_function (current_function_decl)) {
+	  /* native function cannot call non-native in LMM mode */
+	  /* this is because the non-native function has to be interpreted
+	     from hub (or external) memory, the native is internal to
+	     cog memory
+	  */
+	  error("native function can call non-native only in -mcog mode");
+	}
     }
     return false;
 }
@@ -1820,10 +1936,18 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 	case VAR_DECL:
 	  if (lookup_attribute ("cogmem", DECL_ATTRIBUTES (decl)))
 	    return kernel_section;
+	  break;
+	case FUNCTION_DECL:
+	  if (is_native_function (decl))
+	    return kernel_section;
 	default:
 	  break;
 	}
     }
+
+  if (TREE_CODE (decl) == FUNCTION_DECL)
+    return text_section;
+
   return default_elf_select_section (decl, reloc, align);
 }
 
@@ -1879,7 +2003,7 @@ enum propeller_builtins
   PROPELLER_BUILTIN_LOCKNEW,
   PROPELLER_BUILTIN_LOCKRET,
   PROPELLER_BUILTIN_LOCKSET,
-  PROPELLER_BUILTIN_LOCKCLR,
+  PROPELLER_BUILTIN_LOCKCLR
 };
 
 /* Initialise the builtin functions.  Start by initialising
@@ -2988,6 +3112,12 @@ propeller_reorg(void)
 }
 
 
+#undef TARGET_ATTRIBUTE_TABLE
+#define TARGET_ATTRIBUTE_TABLE propeller_attribute_table
+
+#undef TARGET_SET_CURRENT_FUNCTION
+#define TARGET_SET_CURRENT_FUNCTION propeller_set_current_function
+
 #undef TARGET_DEFAULT_TARGET_FLAGS
 #define TARGET_DEFAULT_TARGET_FLAGS (TARGET_DEFAULT)
 #undef TARGET_OPTION_OVERRIDE
@@ -3058,3 +3188,5 @@ propeller_reorg(void)
 #define TARGET_ASM_UNALIGNED_SI_OP "\tlong\t"
 
 struct gcc_target targetm = TARGET_INITIALIZER;
+
+#include "gt-propeller.h"

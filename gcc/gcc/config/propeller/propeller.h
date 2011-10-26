@@ -546,6 +546,9 @@ extern const char *propeller_bss_asm_op;
 #define DATA_SECTION_ASM_OP  propeller_data_asm_op
 #define BSS_SECTION_ASM_OP   propeller_bss_asm_op
 
+/* call TARGET_ASM_SELECT_SECTION for functions as well as variables */
+#define USE_SELECT_SECTION_FOR_FUNCTIONS 1
+
 #define INIT_SECTION_ASM_OP \
   (TARGET_PASM ? "\t'init section\t" : "\tsection\t\".init\",\"ax\"")
 #define GLOBAL_ASM_OP \
@@ -642,5 +645,11 @@ extern const char *propeller_bss_asm_op;
 #define SYMBOL_FLAG_PROPELLER_COGMEM (SYMBOL_FLAG_MACH_DEP << 0)
 
 #define CONSTANT_POOL_BEFORE_FUNCTION (0)
+
+#define SWITCHABLE_TARGET 1
+
+#ifndef USED_FOR_TARGET
+extern GTY(()) struct target_globals *propeller_cog_globals;
+#endif
 
 #endif /* GCC_PROPELLER_H */
