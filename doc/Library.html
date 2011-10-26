@@ -6,13 +6,53 @@
 </HEAD>
 <BODY>
 
-<H1>Introduction</H1>
+<H1>Contents</H1>
+<A HREF="#intro">Introduction</A><BR>
+<A HREF="#environment">Environment</A><BR>
+<A HREF="#stdio">Standard I/O</A><BR>
+<A HREF="#time">Time Related Functions</A><BR>
+<A HREF="#drivers">Device Drivers</A><BR><BR>
+
+<A NAME="intro"><H1>Introduction</H1></A>
 <P>
 The Propeller GCC Library is an implementation of the standard C
 library. It attempts to conform to the C89 version of the standard,
 with some C99 extensions. This documentation assumes that the user is
 familiar with the C language and C libraries; we will focus on the
 Propeller specific details of this library rather than general usage.
+</P>
+
+<A NAME="environment"><H1>Environment</H1></A>
+<P>
+  The <CODE>main</CODE> function has prototype:
+<PRE>
+  int main(int argc, char *argv[], char *environ[]); 
+</PRE>
+</P><P>
+    <CODE>argv</CODE> are the arguments to the program; this is a NULL
+    terminated list of pointers to strings. Conventionally the first
+    argument (<CODE>argv[0]</CODE>) is the name of the program. Since
+    the Propeller has no operating system, it is up to the application
+    to supply arguments. This is done with the global variable
+    <CODE>char *_argv[]</CODE>, which is passed directly to main as
+    <CODE>argv</CODE>.
+</P><P>
+    <CODE>argc</CODE> is a count of the arguments to the program, and
+    is initialized from <CODE>_argv</CODE> automatically by the
+    startup code.
+</P><P>
+    <CODE>environ</CODE> is a list of environment variables, also NULL
+    terminated. As with <CODE>argv</CODE>, this is initialized from a
+    global variable, in this case <CODE>char *_environ[]</CODE>. The 
+    <CODE>getenv</CODE> library function also
+    uses <CODE>_environ</CODE> to look for variables.
+</P><P>
+    The strings in <CODE>_environ</CODE> should be of the form
+    <CODE>VAR=value</CODE>, where "VAR" is the name of the environment
+    variable and "value" is its value. At present <CODE>TZ</CODE> is
+    the only environment variable that is actually used by the
+    library, but some applications may also look at the environment
+    and require customized settings.
 </P>
 
 <A NAME="stdio"><H1>Stdio</H1></A>
@@ -107,7 +147,22 @@ defines for these are mostly in <CODE>&lt;time.h&gt;</CODE>.
   roll over in about 54 seconds.
 </P>
 
-<A NAME="drivers"><H1>Drivers</H1></A>
+<A NAME="TimeZones"><H2>Time Zones</H2></A>
+<P>
+  Some functions (such as <CODE>localtime</CODE>
+  or <CODE>strftime</CODE>) make use of time zone settings. The time
+  zone is set automatically from the <CODE>TZ</CODE>
+  <A HREF="#environment">environment variable</A>. This specifies the
+  standard time name, offset from GMT, and (optionally) a daylight
+  savings time name. For example, include <CODE>"TZ=EST5EDT"</CODE> as
+  one of the strings in the <CODE>_environ</CODE> array for the US
+  Eastern time zone.
+</P><P>
+  Only the North American daylight savings times rules are recognized
+  at present, and only the current ones (as of 2011) are implemented.
+</P>
+
+<A NAME="drivers"><H1>Device Drivers</H1></A>
 <P>
 Drivers for the <A HREF="#stdio">standard I/O library</A> may be
 written by the user and installed in the system. The library comes
@@ -187,6 +242,10 @@ passing a string containing <I>baud</I>,<I>rxpin</I>,<I>txpin</I>.
 
 <H2>Writing New Drivers</H2>
 <P>
+It is fairly straightforward to write a device driver. Drivers are
+represented by a <CODE>_Driver</CODE> structure, as defined in
+<CODE>&lt;driver.h&gt;</CODE>. This structure has the following
+fields, which must be set up by the driver code.
 </P>
 
 </BODY>
