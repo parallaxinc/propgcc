@@ -2027,7 +2027,7 @@
    (use (reg:SI LINK_REG))
   ]
   ""
-  "\n%0_ret\tret"
+  "'native return\n%0_ret\n\tret"
 )
 
 (define_expand "return"
