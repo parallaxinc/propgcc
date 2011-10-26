@@ -10,8 +10,11 @@
 <A HREF="#intro">Introduction</A><BR>
 <A HREF="#environment">Environment</A><BR>
 <A HREF="#stdio">Standard I/O</A><BR>
+<A HREF="#fopen">...fopen</A><BR>
 <A HREF="#time">Time Related Functions</A><BR>
-<A HREF="#drivers">Device Drivers</A><BR><BR>
+<A HREF="#TimeZones">...Time Zones</A><BR>
+<A HREF="#drivers">Device Drivers</A><BR>
+<A HREF="#WritingDrivers">...Writing New Drivers</A><BR>
 
 <A NAME="intro"><H1>Introduction</H1></A>
 <P>
@@ -240,12 +243,46 @@ and <CODE>_rxpin</CODE> variables, and these may be overridden by
 passing a string containing <I>baud</I>,<I>rxpin</I>,<I>txpin</I>.
 </P>
 
-<H2>Writing New Drivers</H2>
+<A NAME="WritingDrivers"><H2>Writing New Drivers</H2></A>
 <P>
 It is fairly straightforward to write a device driver. Drivers are
 represented by a <CODE>_Driver</CODE> structure, as defined in
 <CODE>&lt;driver.h&gt;</CODE>. This structure has the following
-fields, which must be set up by the driver code.
+fields, which must be set up by the driver code:
+<DL>
+  <DT><CODE>const char *prefix</CODE></DT>
+  <DD>The file prefix that tells <CODE>fopen</CODE> which driver to
+    use; this should end in a colon <CODE>:</CODE></DD>
+  <DT><CODE>int (*fopen)(FILE *fp, const char *name, const char *mode)</CODE></DT>
+  <DD>A hook called by the <CODE>fopen</CODE>
+    function. The <CODE>name</CODE> parameter contains the portion of
+    the name passed to <CODE>fopen</CODE> that comes <I>after</I> the
+    prefix. <CODE>fp</CODE> is the <CODE>FILE</CODE> structure that
+    is being set up. The hook should put any driver specific
+    variables that are required into the <CODE>drvarg</CODE> array
+    in <CODE>fp</CODE>; if more than 4 longs are required, it should
+    allocate memory and put a pointer
+    into <CODE>drvarg</CODE>. The <CODE>fopen</CODE> hook should
+    return 0 on success, and -1 on failure; in the latter case it
+    should set <CODE>errno</CODE> to an appropriate value.</DD>
+  <DT><CODE>int (*fclose)(FILE *fp)</CODE></DT>
+  <DD>A hook called when a file is being closed; this should free any
+    memory allocated by the <CODE>fopen</CODE> hook.</DD>
+  <DT><CODE>int (*read)(FILE *fp, unsigned char *buf, int size)</CODE></DT>
+  <DT><CODE>int (*write)(FILE *fp, unsigned char *buf, int size)</CODE></DT>
+  <DD>These are the I/O functions, called to actually read and write
+    data.</DD>
+  <DT><CODE>int (*seek)(FILE *fp, long offset, int whence)</CODE></DT>
+  <DD>A hook called to change the current read position in the file.
+    <CODE>whence</CODE> is one
+    of <CODE>SEEK_SET</CODE>, <CODE>SEEK_CUR</CODE>,
+    or <CODE>SEEK_END</CODE>, which have the same meanings as they do
+    for the <CODE>fseek</CODE> function. A driver need not implement
+    the <CODE>seek</CODE> hook; if this hook is set to NULL, then any
+    attempt to seek on the file will fail and <CODE>errno</CODE> will
+    be set to <CODE>ENOSEEK</CODE>.</DD>
+
+</DL>
 </P>
 
 </BODY>
