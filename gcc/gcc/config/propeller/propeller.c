@@ -510,7 +510,7 @@ propeller_asm_file_start (void)
 {
     if (!TARGET_OUTPUT_SPINCODE) {
         default_file_start ();
-	if (TARGET_LMM)
+	if (TARGET_LMM && USE_HUBCOG_DIRECTIVES)
 	  fprintf (asm_out_file, "\t.hub_ram\n");
         return;
     }
