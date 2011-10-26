@@ -1842,7 +1842,7 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
             }
             emit_call_insn (pat);
             return true;
-        } else if (TARGET_LMM && is_native_function (current_function_decl)) {
+        } else if (is_native_function (current_function_decl) && !propeller_base_cog) {
 	  /* native function cannot call non-native in LMM mode */
 	  /* this is because the non-native function has to be interpreted
 	     from hub (or external) memory, the native is internal to
@@ -1929,7 +1929,7 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
 static section *
 propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
-  if (TARGET_LMM)
+  if (!propeller_base_cog)
     {
       switch (TREE_CODE (decl))
 	{
