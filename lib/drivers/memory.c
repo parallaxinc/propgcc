@@ -117,7 +117,9 @@ _Driver _memory_driver =
     mem_read,
     mem_write,
     mem_seek,
-    NULL
+    NULL,   /* remove hook, not needed */
+    NULL,   /* getbyte hook, not needed */
+    NULL    /* putbyte hook, not needed */
   };
 
 /*

@@ -1,50 +1,79 @@
 /*
- * null device driver (like /dev/null)
+ * terminal driver for serial port I/O
  *
  * Copyright (c) Parallax Inc. 2011
  * MIT Licensed (see end of file)
  */
 
 #include <stdio.h>
-#include <time.h>
 #include <cog.h>
-#include <sys/driver.h>
-#include <errno.h>
 
-
+__attribute__((section(".hubtext")))
 int
-_null_write(FILE *fp, unsigned char *buf, int size)
+_term_write(FILE *fp, unsigned char *buf, int size)
 {
-  return size;
+  int count = 0;
+  int c;
+  int (*putbyte)(int, FILE *);
+
+  putbyte = fp->_drv->putbyte;
+  if (!putbyte)
+    return 0;
+  while (count < size)
+    {
+      c = *buf++;
+      putbyte(c, fp);
+      count++;
+    }
+  return count;
 }
 
+__attribute__((section(".hubtext")))
 int
-_null_read(FILE *fp, unsigned char *buf, int size)
+_term_read(FILE *fp, unsigned char *buf, int size)
 {
-  return 0;
+  int (*putbyte)(int c, FILE *fp);
+  int (*getbyte)(FILE *fp);
+  int value;
+  int count = 0;
+  int cooked = fp->_flag & _IOCOOKED;
+  int unbuffered = fp->_flag & _IONBF;
+
+  putbyte = fp->_drv->putbyte;
+  getbyte = fp->_drv->getbyte;
+  if (!putbyte || !getbyte)
+    return 0;
+
+  while (count < size)
+    {
+      value = (*getbyte)(fp);
+      buf[count++] = value;
+      /* do cooked mode processing */
+      /* for now this echos the input */
+      if (cooked) {
+	/* process backspace */
+	if ( (value == '\b' || value == 0x7f) && !unbuffered)
+	  {
+	    if (count >= 2)
+	      {
+		count -= 2;
+		putbyte('\b', fp);
+		putbyte(' ', fp);
+		putbyte('\b', fp);
+	      }
+	    else
+	      {
+		count = 0;
+	      }
+	  }
+	else
+	  putbyte(value, fp);
+      }
+      /* end of line stops the read */
+      if (value == '\n') break;
+    }
+  return count;
 }
-
-int
-_null_fopen(FILE *fp, const char *str, const char *mode)
-{
-  return 0;
-}
-
-
-const char _NullPrefix[] = "NUL:";
-
-_Driver _NullDriver =
-  {
-    _NullPrefix,
-    _null_fopen,
-    NULL,
-    _null_read,
-    _null_write,
-    NULL,
-    NULL,
-    NULL,
-    NULL
-  };
 
 /*
 +--------------------------------------------------------------------
