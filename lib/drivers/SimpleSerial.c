@@ -27,20 +27,26 @@ extern unsigned int _baud;
  */
 
 /*
- * We need _serial_tx to always be in HUB memory for speed.
+ * We need _serial_putbyte to always be in HUB memory for speed.
  * Time critical functions like this can't live in external memory.
  */
 __attribute__((section(".hubtext")))
 #if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
 __attribute__((optimize("O3")))
 #endif
-static void
-_serial_tx(int value, unsigned int txmask, unsigned int bitcycles)
+static int
+_serial_putbyte(int c, FILE *fp)
 {
+  unsigned int txmask = fp->drvarg[1];
+  unsigned int bitcycles = fp->drvarg[3];
   unsigned int waitcycles;
-  int i;
+  int i, value;
 
-  value = (value | 256) << 1;
+  /* set input */
+  _DIRA |= txmask;
+  _OUTA |= txmask;
+
+  value = (c | 256) << 1;
   waitcycles = _CNT + bitcycles;
   for (i = 0; i < 10; i++)
     {
@@ -51,96 +57,40 @@ _serial_tx(int value, unsigned int txmask, unsigned int bitcycles)
 	_OUTA &= ~txmask;
       value >>= 1;
     }
+  return c;
 }
 
-/* here is the write function */
+/* and here is getbyte */
+/* we need to optimize with -O3 to get it to work in XMM mode */
 __attribute__((section(".hubtext")))
-static int
-_serial_write(FILE *fp, unsigned char *buf, int size)
-{
-    unsigned int txmask = fp->drvarg[1];
-    unsigned int bitcycles = fp->drvarg[3];
-    int value;
-    int count = 0;
-
-    /* set output */
-    _OUTA |= txmask;
-    _DIRA |= txmask;
-
-    while (count < size)
-      {
-	value = *buf++;
-	_serial_tx(value, txmask, bitcycles);
-	count++;
-      }
-    return count;
-}
-
-/* and here is read */
-/* we need to optimize with -O2 to get it to work in XMM mode */
-__attribute__((section(".hubtext")))
-#if defined(__PROPELLER_XMM__)
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
 __attribute__((optimize("O3")))
 #endif
 static int
-_serial_read(FILE *fp, unsigned char *buf, int size)
+_serial_getbyte(FILE *fp)
 {
   unsigned int rxmask = fp->drvarg[0];
-  unsigned int txmask = fp->drvarg[1];
   unsigned int bitcycles = fp->drvarg[3];
   unsigned int waitcycles;
   int value;
   int i;
-  int count = 0;
-  int cooked = fp->_flag & _IOCOOKED;
-  int unbuffered = fp->_flag & _IONBF;
 
   /* set input */
   _DIRA &= ~rxmask;
 
-  while (count < size)
-    {
-      /* wait for a start bit */
-      __builtin_propeller_waitpeq(0, rxmask);
+  /* wait for a start bit */
+  __builtin_propeller_waitpeq(0, rxmask);
 
-      /* sync for one half bit */
-      waitcycles = _CNT + (bitcycles>>1) + bitcycles;
-      value = 0;
-      for (i = 0; i < 8; i++) {
-	waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-	value = ( (0 != (_INA & rxmask)) << 7) | (value >> 1);
-      }
-      __builtin_propeller_waitcnt(waitcycles, bitcycles);
-      buf[count++] = value;
-      /* do cooked mode processing */
-      /* for now this echos the input */
-      if (cooked) {
-	_OUTA |= txmask;
-	_DIRA |= txmask;
-	
-	/* process backspace */
-	if ( (value == '\b' || value == 0x7f) && !unbuffered)
-	  {
-	    if (count >= 2)
-	      {
-		count -= 2;
-		_serial_tx('\b', txmask, bitcycles);
-		_serial_tx(' ', txmask, bitcycles);
-		_serial_tx('\b', txmask, bitcycles);
-	      }
-	    else
-	      {
-		count = 0;
-	      }
-	  }
-	else
-	  _serial_tx(value, txmask, bitcycles);
-      }
-      /* end of line stops the read */
-      if (value == '\n') break;
-    }
-  return count;
+  /* sync for one half bit */
+  waitcycles = _CNT + (bitcycles>>1) + bitcycles;
+  value = 0;
+  for (i = 0; i < 8; i++) {
+    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
+    value = ( (0 != (_INA & rxmask)) << 7) | (value >> 1);
+  }
+  return value;
 }
+
 
 /*
  * fopen function
@@ -194,10 +144,13 @@ _Driver _SimpleSerialDriver =
     _SimpleSerialPrefix,
     _serial_fopen,
     NULL,       /* fclose hook, not needed */
-    _serial_read,
-    _serial_write,
+    _term_read,
+    _term_write,
     NULL,       /* seek, not needed */
-    NULL,       /* remove */
+    NULL,       /* remove, not needed */
+
+    _serial_getbyte,
+    _serial_putbyte
   };
 
 /*
