@@ -24,8 +24,8 @@ PRINTF = printf.o fprintf.o vprintf.o sprintf.o snprintf.o vsprintf.o vsnprintf.
 SCANF =  scanf.o vscanf.o sscanf.o fscanf.o
  
 STDIO = clearerr.o feof.o ferror.o fflush.o \
-	fgetc.o fputc.o fputs.o puts.o putchar.o \
-	ungetc.o gets.o fgets.o \
+	fgetc.o fputc.o fputs.o puts.o putchar.o getchar.o \
+	putc.o getc.o ungetc.o gets.o fgets.o \
 	setvbuf.o setbuf.o setlinebuf.o setbuffer.o \
 	fopen.o fopen_intern.o freopen.o \
 	fwrite.o fread.o fseek.o ftell.o fgetpos.o fsetpos.o \
