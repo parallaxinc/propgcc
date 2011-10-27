@@ -51,6 +51,7 @@ con
 ''
 '' Cache parameters
 ''
+'   CACHESIZE   = 4096
     CACHESIZE   = 8192
     config1     = 0     ' default config
     config2     = 0     ' default config
@@ -105,7 +106,7 @@ pub main | n, a
     if sx.rxtime(2000) < 1
         testall
         sx.str(string(EOL,EOL,"Brief RAM Test All Done. Now for full test, enter: t a",EOL,EOL))
-}
+'}
 
     testsize := $8000           ' 32KB
     help                        ' print help message at startup
@@ -276,10 +277,21 @@ pub menu | s, ad, val, upper, dels
                 while upper and not sx.rxready
 
         "x","X" :
+
+            sx.str(string(sx#EOL,"X "))
+            s := strtok(0,dels)
+            ad:= atox(s)
+            sx.hex(ad,8)
+            sx.out(" ")
+            s := strtok(0,dels)
+            val := atox(s)
+            sx.hex(val,8)
+
             repeat
-                mem.readLong($0000)
-                mem.readLong($4000)
+                mem.readLong(ad)
+                mem.readLong(val)
             while upper and not sx.rxready
+
 '{
             mem.writeLong(0,0)
             repeat
@@ -312,10 +324,23 @@ pub prompt(s)
 =====================================================================
 dumpcache - dumps contents of the cache
 }}
-pub dumpCache | n, mod
+pub dumpCache | n, m, mod
 
     sx.str(string(EOL,EOL,"Cache Dump",EOL))
     sx.str(string("TAG TAGVAL  : Cache Line"))
+{
+    mod := 8
+    repeat n from 0 to TAGCOUNT>>2-1
+        sx.out(EOL)
+        sx.hex(n,3)
+        sx.out(":")
+        repeat m from 0 to LINELEN-1
+            ifnot m // mod
+                sx.out(EOL)
+            sx.out(" ")
+            sx.hex(cache[n*LINELEN+m],8)
+}            
+'{
     mod := 8
     repeat n from 0 to constant(CACHESIZE>>2-1)
         ifnot n // mod
@@ -326,6 +351,7 @@ pub dumpCache | n, mod
             sx.out(":")
         sx.out(" ")
         sx.hex(cache[n],8)
+'}
     sx.out(EOL)
 
 {{
@@ -571,7 +597,7 @@ Algorithm:
     sx.out(EOL)
     seed := 0
     repeat a from 0 to end step LINELEN
-        repeat n from 0 to LINELEN>>2-1 step 4
+        repeat n from 0 to LINELEN-1 step 4
             'long[@mybuffer][n] := ++seed
             mem.writeLong(a+base+n, ++seed)
 {
@@ -588,7 +614,7 @@ Algorithm:
 {
     seed := 0
     repeat a from 0 to end step LINELEN
-        repeat n from 0 to LINELEN>>2-1
+        repeat n from 0 to LINELEN-1
             mem.readBuffer(a+base,@mybuffer)
 
             ifnot n & 31
@@ -603,7 +629,7 @@ Algorithm:
         'mem.readBuffer(a+base,@mybuffer)
         ifnot a & spit
             sx.out("r")
-        repeat n from 0 to LINELEN>>2-1 step 4
+        repeat n from 0 to LINELEN-1 step 4
             'd := long[@mybuffer][n]
             d := mem.readLong(a+base+n)
             if ++seed <> d
@@ -648,9 +674,9 @@ Algorithm:
     sx.out(EOL)
     seed := newseed
     repeat a from 0 to end step LINELEN
-        repeat n from 0 to LINELEN>>2-1 step 4
+        repeat n from 0 to LINELEN-1 step 4
             'long[@mybuffer][n] := ?seed
-            mem.writeLong(a+base+n, ++seed)
+            mem.writeLong(a+base+n, ?seed)
 {
             ifnot n & 31
                 sx.out(EOL)
@@ -667,7 +693,7 @@ Algorithm:
         'mem.readBuffer(a+base,@mybuffer)
         ifnot a & spit
             sx.out("r")
-        repeat n from 0 to LINELEN>>2-1 step 4
+        repeat n from 0 to LINELEN-1 step 4
             'd := long[@mybuffer][n]
             d := mem.readLong(a+base+n)
             if ?seed <> d
@@ -733,8 +759,8 @@ Algorithm:
         if mem.readLong(a+madr)    ' already have a key?
             next
 
-        long[@mybuffer][0] := seed++
-        repeat n from 1 to LINELEN>>2-1 step 4
+        'long[@mybuffer][0] := seed++
+        repeat n from 1 to LINELEN-1 step 4
             'long[@mybuffer][n] := seed++
             'mem.writeBuffer(a+madr,@mybuffer)
             mem.writeLong(a+madr+n,seed++)
@@ -758,7 +784,7 @@ Algorithm:
             sx.out("r")
         if seed <> mem.readLong(a+madr)
             next
-        repeat n from 0 to LINELEN>>2-1 step 4
+        repeat n from 0 to LINELEN-1 step 4
             'd := long[@mybuffer][n]
             d := mem.readLong(a+madr+n)
             if seed++ <> d
