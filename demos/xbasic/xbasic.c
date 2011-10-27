@@ -9,6 +9,14 @@ uint8_t __attribute__((far)) space[RAMSIZE];
 uint8_t space[RAMSIZE];
 #endif
 
+#ifdef PROPELLER_GCC
+/* list of drivers we can use */
+extern _Driver _FullDuplexSerialDriver;
+_Driver *_driverlist[] = {
+    &_FullDuplexSerialDriver,
+};
+#endif
+
 int main(int argc, char *argv[])
 {
     ParseContext *c = (ParseContext *)space;

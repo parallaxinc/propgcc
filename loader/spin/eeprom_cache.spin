@@ -82,22 +82,24 @@ init_vm
         add     t1, #4
         rdlong  cacheptr, t1        ' cacheptr is the base address in hub ram of the cache
         add     t1, #4
-        rdlong  t2, t1 wz
-  if_nz mov     index_width, t2     ' override the index_width default value
-        add     t1, #4
-        rdlong  t2, t1 wz
-  if_nz mov     offset_width, t2    ' override the offset_width default value
+
+        ' always use offset_index and offset_width default values
 
         mov     index_count, #1
         shl     index_count, index_width
         mov     index_mask, index_count
         sub     index_mask, #1
 
+        rdlong  t2, t1 wz           ' first cache param
+  if_nz mov     eebase, t2          ' override the base address used for eeprom code
+
         mov     line_size, #1
         shl     line_size, offset_width
         mov     t1, line_size
         sub     t1, #1
         wrlong  t1, par
+
+  if_nz andn    eebase, t1          ' make sure eebase is always line_size aligned
 
         call    #extMemInit
         jmp     #vmflush
@@ -538,7 +540,7 @@ buff            long 0   ' buffer pointer
 ueack           long 0   ' user early ack
 ack             long 0   ' ack bit
 val             long 0   ' accumulated value
-eebase          long $8000
+eebase          long $1300 ' eebase sb > eeprom loader size
 MSBYTE          long $F0000000
 
 eof             long $55555555           
