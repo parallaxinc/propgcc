@@ -249,6 +249,7 @@ propeller_option_override (void)
     init_machine_status = &propeller_init_machine_status;
 
     propeller_base_cog = !TARGET_LMM;
+    propeller_base_target_flags = target_flags;
 }
 
 
@@ -377,7 +378,7 @@ propeller_set_cog_mode (int cog_p)
   if (cog_p)
     {
       /* switch to COG mode */
-      target_flags &= ~(MASK_LMM|MASK_XMM);
+      target_flags &= ~(MASK_LMM|MASK_XMM|MASK_XMM_CODE);
       if (!propeller_cog_globals)
 	propeller_cog_globals = save_target_globals ();
       else
@@ -386,7 +387,6 @@ propeller_set_cog_mode (int cog_p)
   else
     {
       /* normal (LMM) mode */
-      target_flags |= MASK_LMM;
       restore_target_globals (&default_target_globals);
     }
 }
