@@ -5,9 +5,9 @@
 #ifndef _SYS_RTC_H
 #define _SYS_RTC_H
 
-#include <time.h>
+#include <sys/time.h>
 
-time_t (*_rtc_gettime)(void);
-void (*_rtc_settime)(time_t);
+int (*_rtc_gettime)(struct timeval *tv);
+int (*_rtc_settime)(const struct timeval *tv);
 
 #endif

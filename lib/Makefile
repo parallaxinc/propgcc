@@ -48,7 +48,8 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcoll.o strxfrm.o \
 	strerror.o
 
-TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o
+TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
+	settimeofday.o gettimeofday.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o

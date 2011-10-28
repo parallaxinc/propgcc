@@ -51,30 +51,37 @@ update_ticks(void)
   ticku.s.lo = now;
 }
 
-time_t
-_default_rtc_gettime(void)
+int
+_default_rtc_gettime(struct timeval *tv)
 {
   unsigned long long t;
+  unsigned long long rem;
 
   update_ticks();
   t = (ticku.curticks - baseticks) / _clkfreq;
+  rem = (ticku.curticks - baseticks) % _clkfreq;
+
 #ifdef DEBUG
   printf("curticks = %lld baseticks = %lld basetime=%lu t = %llu\n",
 	 ticku.curticks, baseticks, basetime, t);
 #endif
-  return basetime + (time_t)t;
+  tv->tv_sec = basetime + (time_t)t;
+  tv->tv_usec = rem * 1000000 / _clkfreq;
+  return 0;
 }
 
-void
-_default_rtc_settime(time_t t)
+int
+_default_rtc_settime(const struct timeval *tv)
 {
   update_ticks();
   baseticks = ticku.curticks;
-  basetime = t;
+  basetime = tv->tv_sec;
+  /* FIXME? the tv_usec field of tv is ignored */
+  return 0;
 }
 
 /*
  * variables the main code uses to retrieve the real time
  */
-time_t (*_rtc_gettime)(void) = _default_rtc_gettime;
-void (*_rtc_settime)(time_t) = _default_rtc_settime;
+int (*_rtc_gettime)(struct timeval *) = _default_rtc_gettime;
+int (*_rtc_settime)(const struct timeval *) = _default_rtc_settime;
