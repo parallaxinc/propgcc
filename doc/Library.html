@@ -11,9 +11,12 @@
 <A HREF="#environment">Environment</A><BR>
 <A HREF="#stdio">Standard I/O</A><BR>
 <A HREF="#fopen">...fopen</A><BR>
+<A HREF="#cooked">...Raw vs. Cooked mode</A><BR>
 <A HREF="#time">Time Related Functions</A><BR>
 <A HREF="#TimeZones">...Time Zones</A><BR>
 <A HREF="#drivers">Device Drivers</A><BR>
+<A HREF="#InstallDrivers">...Installing Drivers</A><BR>
+<A HREF="#DriversProvided">...Drivers Provided in the Library</A><BR>
 <A HREF="#WritingDrivers">...Writing New Drivers</A><BR>
 
 <A NAME="intro"><H1>Introduction</H1></A>
@@ -53,9 +56,9 @@ Propeller specific details of this library rather than general usage.
     The strings in <CODE>_environ</CODE> should be of the form
     <CODE>VAR=value</CODE>, where "VAR" is the name of the environment
     variable and "value" is its value. At present <CODE>TZ</CODE> is
-    the only environment variable that is actually used by the
-    library, but some applications may also look at the environment
-    and require customized settings.
+    the only environment variable that is actually used by the library
+    (for the <A HREF="TimeZOnes">time zone</A>), but some applications
+    may also look at the environment and require customized settings.
 </P>
 
 <A NAME="stdio"><H1>Stdio</H1></A>
@@ -121,6 +124,22 @@ and <CODE>freopen</CODE>, but may sometimes be useful to application
 programmers who need direct control over driver and handle usage.
 </P>
 
+<A NAME="cooked"><H2>Raw vs. Cooked mode</H2></A>
+
+<P>
+Some drivers (notably the serial drivers) support a "cooked" mode of
+input. In this mode characters are echoed when they are received, and
+backspace (or delete) may be used to delete characters. Additionally,
+input is gathered until either the requested number of characters is
+received or a newline is seen.
+</P><P>
+Cooked mode is
+selected by setting the <CODE>_IOCOOKED</CODE> bit in
+a <CODE>FILE</CODE> structure's <CODE>_flag</CODE> field. If the bit
+is clear, then "raw" mode is used, where there is no echoing and no
+interpretation of special characters.
+</P>
+
 <A NAME="time"><H1>Time Related Functions</H1></A>
 <P>
 There is a normal set of time related functions in the library. The
@@ -172,7 +191,7 @@ written by the user and installed in the system. The library comes
 with some default drivers, which are described below.
 </P>
 
-<H2>Installing Drivers</H2>
+<A NAME="InstallDrivers"><H2>Installing Drivers</H2></A>
 <P>
 In the default configuration only the simple serial driver is
 installed. This is easily modified by the program at compile time.
@@ -202,7 +221,7 @@ or define a function <CODE>_InitIO</CODE> which will set up the file
 handles.
 </P>
 
-<H2>Default Drivers</H2>
+<A NAME="DriversProvided"><H2>Drivers Provided in the Library</H2></A>
 <A NAME="simpleserial"><H3>Simple Serial Driver (Prefix SSER:)</H3></A>
 <P>
 The simple serial port driver 
@@ -271,9 +290,15 @@ fields, which must be set up by the driver code:
   <DT><CODE>int (*read)(FILE *fp, unsigned char *buf, int size)</CODE></DT>
   <DT><CODE>int (*write)(FILE *fp, unsigned char *buf, int size)</CODE></DT>
   <DD>These are the I/O functions, called to actually read and write
-    data.</DD>
+    data. Many drivers will have to implement their own versions of
+    these hooks, but some may be able to use the default
+    functions <CODE>_null_read</CODE> and <CODE>_null_write</CODE>
+    (which return EOF and do nothing, respectively)
+    or <CODE>_term_read</CODE> and <CODE>_term_write</CODE> (which do
+    terminal I/O using the <CODE>getbyte</CODE>
+    and <CODE>putbyte</CODE> hooks, see below).</DD>
   <DT><CODE>int (*seek)(FILE *fp, long offset, int whence)</CODE></DT>
-  <DD>A hook called to change the current read position in the file.
+  <DD>A hook called to change the current read or write position in the file.
     <CODE>whence</CODE> is one
     of <CODE>SEEK_SET</CODE>, <CODE>SEEK_CUR</CODE>,
     or <CODE>SEEK_END</CODE>, which have the same meanings as they do
@@ -281,9 +306,26 @@ fields, which must be set up by the driver code:
     the <CODE>seek</CODE> hook; if this hook is set to NULL, then any
     attempt to seek on the file will fail and <CODE>errno</CODE> will
     be set to <CODE>ENOSEEK</CODE>.</DD>
-
+  <DT><CODE>int (*remove)(const char *name)</CODE></DT>
+  <DD>A hook called to remove a file. File removal is not yet
+    implemented, so most drivers will simply set this to NULL.</DD>
+  <DT><CODE>int (*getbyte)(FILE *fp)</CODE></DT>
+  <DD>An optional hook for single character I/O; reads and returns a
+    single character. This hook is used by
+    the <CODE>_term_read</CODE> function for cooked terminal I/O; if a
+    driver does not wish to use <CODE>_term_read</CODE> for its reader
+    function, it may set this hook to NULL.</DD>
+  <DT><CODE>int (*putbyte)(FILE *fp)</CODE></DT>
+  <DD>An optional hook for single character I/O. This hook is used by
+    the <CODE>_term_read</CODE> and <CODE>_term_write</CODE> functions
+    for cooked terminal I/O; if a driver does not wish to
+    use these functions, it may set
+    this hook to NULL.</DD>
 </DL>
 </P>
-
+<P>
+  After the driver is written, it must also
+  be <A HREF="#InstallDrivers">installed</A>.
+</P>
 </BODY>
 </HTML>
