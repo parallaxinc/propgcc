@@ -1,0 +1,50 @@
+MEMORY {
+    hub (wxa) : ORIGIN = 0x00000000, LENGTH = 32K
+    ram (wxa) : ORIGIN = 0x20000000, LENGTH = 256M
+    rom (rx)  : ORIGIN = 0x30000000, LENGTH = 256M
+    cog (wxa) : ORIGIN = 0x00000000, LENGTH = 2K
+}
+
+SECTIONS {
+    .xmmkernel : {
+        *(.xmmkernel)
+    } >cog
+    
+    .header : {
+        LONG(entry)
+        LONG(0)
+        LONG(0)
+    } >rom
+    .init : {
+	    *(.init*)
+    } >rom
+    .text : {
+        *(.text*)
+    } >rom
+    .fini : {
+        *(.fini*)
+    } >rom
+    
+    .hub : {
+        *(.hubstart)
+        *(.hubtext)
+        *(.data*)
+    } >hub AT>rom
+    .ctors : {
+        *(.ctors*)
+    } >hub AT>rom
+    .dtors : {
+        *(.dtors*)
+    } >hub AT>rom
+    
+    .bss : {
+         PROVIDE(__bss_start = .); 
+         *(.bss)
+  	 PROVIDE(__bss_end = .);
+    } >hub AT>hub
+    
+  ___heap_start = ALIGN(4);
+
+  ___CTOR_LIST__ = ADDR(.ctors) ;
+  ___DTOR_LIST__ = ADDR(.dtors) ;
+}
