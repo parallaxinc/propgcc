@@ -164,27 +164,6 @@ int tx(uint8_t* buff, int n)
 }
 
 /**
- * transmit a buffer and wait waitu microseconds
- * @param buff - char pointer to buffer
- * @param n - number of bytes in buffer to send
- * @returns zero on failure
- */
-static int txwu(uint8_t* buff, int n, int waitu)
-{
-    struct timeval tv;
-    ssize_t bytes;
-    bytes = write(hSerial, buff, n);
-    if(bytes != n) {
-        printf("Error writing port\n");
-        return 0;
-    }
-    tv.tv_sec  = 0;
-    tv.tv_usec = waitu;
-    select(0,0,0,0,&tv);
-    return (int)bytes;
-}
-
-/**
  * receive a buffer with a timeout
  * @param buff - char pointer to buffer
  * @param n - number of bytes in buffer to read
