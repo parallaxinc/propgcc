@@ -43,10 +43,7 @@ int rx(uint8_t* buff, int n);
 int rx_timeout(uint8_t* buff, int n, int timeout);
 void hwreset(void);
 
-/* console i/o routines */
-int console_kbhit(void);
-int console_getch(void);
-void console_putch(int ch);
+/* terminal mode */
 void terminal_mode(void);
 
 /* miscellaneous functions */
