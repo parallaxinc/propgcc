@@ -30,6 +30,11 @@ toggle_cog.o: toggle_cog.c
 	$(CC) -Os -mcog -I$(PROPLIB)/../include -o $@ -c $<
 
 # link the cog C code together with support libraries
+# Note that calling our output file *_1.cog ensures that it
+# is placed in the .coguser1 section by the main program's
+# linker script; similarly *_2.cog would be placed in .coguser2,
+# and so on
+
 toggle_1.cog: toggle_cog.o
 	$(LD) -s -o $@ -T $(PROPLIB)/propeller_cog.script $(PROPLIB)/crt0_cog.o $^ $(PROPLIB)/libcog.a
 
