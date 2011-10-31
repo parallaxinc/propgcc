@@ -21,13 +21,15 @@
  * (when time was set) in "baseticks"
  */
 
-static union {
+union {
   unsigned long long curticks;
   struct {
     unsigned int lo;
     unsigned int hi;
   } s;
-} ticku;
+} _default_ticks;
+
+int _default_ticks_updated = 0;
 
 static unsigned long long baseticks;
 static time_t basetime;
@@ -37,18 +39,23 @@ update_ticks(void)
 {
   unsigned int lastlo, now;
 
+  /* if another cog is keeping _default_ticks up to date, then
+     do nothing here */
+  if (_default_ticks_updated)
+    return;
+
   /* update the "curticks" variable based on the current clock counter */
   /* note that this works only if we are called often enough to notice
      counter overflow, which happens about every 54 seconds or so
   */
   now = _CNT;
-  lastlo = ticku.s.lo;
+  lastlo = _default_ticks.s.lo;
   if (lastlo > now)
     {
       /* overflowed */
-      ticku.s.hi++;
+      _default_ticks.s.hi++;
     }
-  ticku.s.lo = now;
+  _default_ticks.s.lo = now;
 }
 
 int
@@ -58,12 +65,12 @@ _default_rtc_gettime(struct timeval *tv)
   unsigned long long rem;
 
   update_ticks();
-  t = (ticku.curticks - baseticks) / _clkfreq;
-  rem = (ticku.curticks - baseticks) % _clkfreq;
+  t = (_default_ticks.curticks - baseticks) / _clkfreq;
+  rem = (_default_ticks.curticks - baseticks) % _clkfreq;
 
 #ifdef DEBUG
   printf("curticks = %lld baseticks = %lld basetime=%lu t = %llu\n",
-	 ticku.curticks, baseticks, basetime, t);
+	 _default_ticks.curticks, baseticks, basetime, t);
 #endif
   tv->tv_sec = basetime + (time_t)t;
   tv->tv_usec = rem * 1000000 / _clkfreq;
@@ -74,7 +81,7 @@ int
 _default_rtc_settime(const struct timeval *tv)
 {
   update_ticks();
-  baseticks = ticku.curticks;
+  baseticks = _default_ticks.curticks;
   basetime = tv->tv_sec;
   /* FIXME? the tv_usec field of tv is ignored */
   return 0;
