@@ -77,6 +77,7 @@ then
   cp /bin/cygreadline7.dll ./${NAME}/bin
   cp /bin/cygwin1.dll ./${NAME}/bin
   cp /bin/cygz.dll ./${NAME}/bin
+  cp /bin/cut.exe ./${NAME}/bin
   cp /bin/echo.exe ./${NAME}/bin
   cp /bin/make.exe ./${NAME}/bin
   cp /bin/rm.exe ./${NAME}/bin
