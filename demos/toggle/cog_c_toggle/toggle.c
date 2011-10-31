@@ -33,6 +33,11 @@ void start(void *parptr)
 }
 
 /*
+ * togglecount counts how many times the LED has been toggled
+ */
+int togglecount = 0;
+
+/*
  * main code
  * This is the code running in the LMM cog (cog 0).
  * It launches another cog to actually run the 
@@ -64,6 +69,7 @@ void main (int argc,  char* argv[])
       par.m.wait_time =  par.m.wait_time >> 1;
       if (par.m.wait_time < MIN_GAP)
 	par.m.wait_time = _clkfreq;
+      printf("toggle count = %d\n", togglecount);
     }
 }
 

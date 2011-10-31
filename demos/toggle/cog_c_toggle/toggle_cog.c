@@ -16,6 +16,8 @@ static _COGMEM unsigned int waitdelay;
 static _COGMEM unsigned int pins = 0x3fffffff;  /* all pins */
 static _COGMEM unsigned int nextcnt;
 
+extern int togglecount;
+
 _NATIVE
 void main (volatile struct toggle_mailbox *m)
 {
@@ -29,6 +31,7 @@ void main (volatile struct toggle_mailbox *m)
   for(;;) {
     waitdelay = m->wait_time;
     _OUTA ^= pins;
+    togglecount++;
     nextcnt = __builtin_propeller_waitcnt(nextcnt, waitdelay);
   }
 }
