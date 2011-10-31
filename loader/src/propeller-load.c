@@ -124,12 +124,15 @@ int main(int argc, char *argv[])
             case 's':
                 flags |= LFLAG_WRITE_BINARY;
                 break;
+            case 'x':
+                flags |= LFLAG_WRITE_PEX;
+                break;
             case 't':
                 terminalMode = TRUE;
                 if (argv[i][2])
                   terminalBaud = atoi(&argv[i][2]);
                 break;
-            case 'x':
+            case 'q':
                 check_for_exit = 1;
                 break;
             case 'D':
@@ -246,9 +249,11 @@ usage: propeller-elf-load\n\
          [ -D var=value ]  define a board configuration variable\n\
          [ -e ]            write the program into EEPROM\n\
          [ -r ]            run the program after loading\n\
-         [ -s ]            write a spin binary file for use with the Propeller Tool\n\
+         [ -s ]            write a spin .binary file for use with the Propeller Tool\n\
+         [ -x ]            write a .pex binary file for use with the SD loader\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
+         [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
          <name>            elf or spin binary file to load\n\
 \n\
 Variables that can be set with -D are:\n\
