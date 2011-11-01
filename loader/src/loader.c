@@ -29,6 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "packet.h"
 #include "PLoadLib.h"
 #include "osint.h"
+#include "pex.h"
 
 /* maximum cog image size */
 #define COG_IMAGE_MAX           (496 * 4)
@@ -324,18 +325,6 @@ static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, int *pIma
     return imagebuf;
 }
     
-/* this header takes up 16 longs and is followed by the xmm kernel which takes 496 longs */
-#define PEXE_TAG        "PEXE"
-#define PEXE_VERSION    0x0100
-#define PEXE_HDR_SIZE   (16 * sizeof(uint32_t))
-
-typedef struct {
-    char tag[4];
-    uint16_t version;
-    uint8_t reserved[PEXE_HDR_SIZE - 6];
-    uint32_t kernel[496];
-} PexeFileHdr;
-
 static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c)
 {
     SpinHdr *hdr = (SpinHdr *)serial_helper_array;
@@ -463,6 +452,7 @@ static int WriteExecutableFile(char *path, ElfContext *c)
     memset(&hdr, 0, sizeof(hdr));
     strcpy(hdr.tag, PEXE_TAG);
     hdr.version = PEXE_VERSION;
+    hdr.loadAddress = loadAddress;
     memcpy(hdr.kernel, buf, program_kernel.filesz);
     
     ConstructOutputName(outfile, path, ".pex");
