@@ -12,6 +12,7 @@
 <A HREF="#stdio">Standard I/O</A><BR>
 <A HREF="#fopen">...fopen</A><BR>
 <A HREF="#cooked">...Raw vs. Cooked mode</A><BR>
+<A HREF="#printf">...Printf and Code Size</A><BR>
 <A HREF="#time">Time Related Functions</A><BR>
 <A HREF="#TimeZones">...Time Zones</A><BR>
 <A HREF="#RTC">...Real Time Clocks</A><BR>
@@ -139,6 +140,37 @@ selected by setting the <CODE>_IOCOOKED</CODE> bit in
 a <CODE>FILE</CODE> structure's <CODE>_flag</CODE> field. If the bit
 is clear, then "raw" mode is used, where there is no echoing and no
 interpretation of special characters.
+</P>
+
+<A NAME="printf"><H2>Printf and Code Size</H2></A>
+<P>
+  The <CODE>printf</CODE> function (and related functions such
+  as <CODE>sprintf</CODE>) can consume quite a bit of memory. To help
+  reduce the footprint of these functions, the library provides
+  several options:
+  <UL>
+    <LI><CODE>_simple_printf</CODE> is a simple version of printf with
+      support for the most common output formats (hex and decimal
+      integers, strings, and characters) but without support for
+      floating point, 64 bit integers, right
+      justification, precision, alternate output formats, and other
+      advanced features. You can
+      use this version of printf in your code by
+      adding <CODE>-Dprintf=_simple_printf</CODE> to the command
+      line. The simple printf is by far the smallest version of
+      printf, but obviously it is limited.
+    </LI>
+    <LI>The default <CODE>printf</CODE> function supports all integer output
+      formats and options, but leaves out floating point output
+      (the <CODE>e</CODE>, <CODE>f</CODE>, and <CODE>g</CODE>
+      formats). This is the one found in libc.
+    </LI>
+    <LI>The full version of <CODE>printf</CODE>, including floating
+      point support, is found in the math library libm, which is
+      selected by adding <CODE>-lm</CODE> to the command line of the
+      final build step.
+    </LI>
+  </UL>
 </P>
 
 <A NAME="time"><H1>Time Related Functions</H1></A>
