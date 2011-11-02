@@ -25,10 +25,10 @@
 #include "dosfs.h"
 #include "dfs.h"
 
-#if defined(__PROPELLER_XMMC__) || defined(__PROPELLER_XMM__)
-#define CACHE_SIZE 512
+#ifdef __PROPELLER_LMM__
+#define FILE_CACHE_SIZE 32
 #else
-#define CACHE_SIZE 32
+#define FILE_CACHE_SIZE 512
 #endif
 
 static VOLINFO volinfo;
@@ -69,11 +69,11 @@ int File_fopen(FILE *fp, const char *str, const char *mode)
 {
     PFILEINFO dfs_fp = (PFILEINFO)dfs_open(str, mode);
     fp->drvarg[0] = (int)dfs_fp;
-#ifdef CACHE_SIZE
+#ifdef FILE_CACHE_SIZE
     if (dfs_fp)
     {
         fp->_ptr = fp->_base = ((void *)dfs_fp) + sizeof(FILEINFO);
-        fp->_bsiz = CACHE_SIZE;
+        fp->_bsiz = FILE_CACHE_SIZE;
         fp->_flag |= _IOFREEBUF;
     }
 #endif
@@ -157,8 +157,8 @@ PFILEINFO dfs_open(const char *fname, const char *mode)
     if (!mountflag)
         return 0;
 
-#ifdef CACHE_SIZE
-    fileinfo = malloc(sizeof(FILEINFO) + CACHE_SIZE);
+#ifdef FILE_CACHE_SIZE
+    fileinfo = malloc(sizeof(FILEINFO) + FILE_CACHE_SIZE);
 #else
     fileinfo = malloc(sizeof(FILEINFO));
 #endif
@@ -259,27 +259,27 @@ int dfs_remove(char *fname)
 
 volatile uint32_t *xmm_mbox;
 
-#if !defined(__PROPELLER_XMMC__) && !defined(__PROPELLER_XMM__)
-#define CACHE_ADDR  (32*1024 - 1*1024)
-#define XMM_MBOX    (CACHE_ADDR - 2*sizeof(uint32_t))
+#ifdef __PROPELLER_LMM__
+static int32_t XMM_MBOX[2];
+static int32_t CACHE_ADDR[8];
 #endif
 
 static void LoadCacheDriver(void)
 {
-#if defined(__PROPELLER_XMMC__) || defined(__PROPELLER_XMM__)
+#ifndef __PROPELLER_LMM__
     extern uint16_t _xmm_mbox_p;
     xmm_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
 #else
     extern uint8_t c3_cache_array[];
     uint32_t params[4];
-    params[0] = XMM_MBOX;
-    params[1] = CACHE_ADDR;
-    params[2] = 0;
-    params[3] = 0;
+    params[0] = (int32_t)XMM_MBOX;
+    params[1] = (int32_t)CACHE_ADDR;
+    params[2] = 2;
+    params[3] = 2;
     cognew(c3_cache_array, params);
     xmm_mbox = (uint32_t *)XMM_MBOX;
-    while (xmm_mbox[0])
-        ;
+    xmm_mbox[0] = 1;
+    while (xmm_mbox[0]);
 #endif
 }
 
