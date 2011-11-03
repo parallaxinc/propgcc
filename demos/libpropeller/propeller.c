@@ -8,7 +8,7 @@
  * #########################################################
 */
 
-#include "propeller.h"
+#include <propeller.h>
 
 /**
  * this function lets us start a new PASM cog on Propeller.

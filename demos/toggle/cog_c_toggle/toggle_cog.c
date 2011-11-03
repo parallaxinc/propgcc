@@ -6,7 +6,7 @@
  * MIT Licensed (see at end of file for exact terms)
  */
 
-#include "cog.h"
+#include <propeller.h>
 #include "toggle.h"
 
 /*
@@ -32,7 +32,8 @@ void main (volatile struct toggle_mailbox *m)
     waitdelay = m->wait_time;
     _OUTA ^= pins;
     togglecount++;
-    nextcnt = __builtin_propeller_waitcnt(nextcnt, waitdelay);
+    nextcnt = waitcnt2(nextcnt, waitdelay);
+    //waitcnt(CNT+waitdelay);
   }
 }
 

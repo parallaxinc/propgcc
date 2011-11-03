@@ -16,7 +16,7 @@ NM = propeller-elf-nm
 #
 
 NAME = toggle
-OBJS = toggle.o toggle_1.cog $(PROPLIB)/libpropeller.a
+OBJS = toggle.o toggle_1.cog
 
 all: $(NAME).elf
 

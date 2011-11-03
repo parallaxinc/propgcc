@@ -36,7 +36,7 @@
 #include <stdio.h>
 
 #if defined(__propeller__)
-#include "propeller.h"
+#include <propeller.h>
 #define int32_t int
 #define int16_t short int
 #else
