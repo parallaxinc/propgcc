@@ -12,7 +12,7 @@ Move usr/local/propeller to /usr/local/propeller
 Add /usr/local/propeller/bin to your PATH. 
 Move demo files to some working directory.
 
-$ mv usr/local/propeller /usr/local/propeler
+$ mv usr/local/propeller /usr/local/propeller
 $ PATH=/usr/local/propeller/bin:$PATH
 $ mv demo ~/.
 

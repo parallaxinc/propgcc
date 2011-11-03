@@ -27,6 +27,9 @@ loading these programs as follows:
 
   propeller-load -p com# -b board fibo.elf -r -t
 
+  If you don't use -t, you will not get the terminal.
+  Press ESC to exit the terminal.
+
 
 Single .c file programs can be built and run like this:
 
@@ -39,10 +42,19 @@ int main()
     return 0;
 }
 
-  propeller-elf-gcc -o hello hello.c
-  propeller-load -p com25 hello -r -t
+C:\propgcc>propeller-elf-gcc -o hello hello.c
 
-  Replace com25 with your port number.
+One can use propeller-load to load the program and start the terminal.
+For example use: propeller-load -p com25 hello -r -t
+Of course, replace com25 with your port number.
+
+C:\propgcc>propeller-load -p com24 hello -r -t
+Propeller Version 1 on com24
+Writing 13536 bytes to Propeller RAM.
+Verifying ... Upload OK!
+Hello World.
+------- Press ESC -------
+C:\propgcc>
 
 
 Create a file blink.c:
@@ -59,10 +71,11 @@ int main()
     return 0;
 }
 
-  propeller-elf-gcc -o blink blink.c
-  propeller-load -p com25 blink -r
+C:\propgcc>propeller-elf-gcc -o blink blink.c
+C:\propgcc>propeller-load -p com25 blink -r
 
   Replace com25 with your port number.
+
 
 Some currently supported board types are:
 
