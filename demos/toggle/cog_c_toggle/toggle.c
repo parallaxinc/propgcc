@@ -7,8 +7,8 @@
  * MIT Licensed (see at end of file for exact terms)
  */
 
-#include "stdio.h"  // using temporary stdio
-#include "propeller.h"
+#include <stdio.h>  // using temporary stdio
+#include <propeller.h>
 #include "toggle.h"
 
 /*

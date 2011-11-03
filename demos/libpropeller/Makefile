@@ -1,5 +1,4 @@
 # Propeller Demo include
-PROPLIB = ../libpropeller
 PROPINC = ../include
 
 ifndef MODEL
@@ -15,7 +14,6 @@ AR = propeller-elf-ar
 AS = propeller-elf-as
 OBJCOPY = propeller-elf-objcopy
 
-POBJS = propeller.o
 COBJS = stdio.o serial.o clock.o printf.o puts.o f_printf.o \
 	strcat.o strncat.o strcmp.o strncmp.o strcpy.o strcpy.o strncpy.o \
 	strlen.o memcpy.o malloc.o memset.o sbrk.o \
@@ -23,10 +21,7 @@ COBJS = stdio.o serial.o clock.o printf.o puts.o f_printf.o \
 
 COGOBJS = udiv.o div.o mult.o mask.o cogregs.o
 
-all: libpropeller.a libc.a crt0_cog.o libcog.a
-
-libpropeller.a: $(POBJS)
-	$(AR) rcs $@ $^
+all: libc.a crt0_cog.o libcog.a
 
 libc.a: $(COBJS)
 	$(AR) rcs $@ $^

@@ -80,7 +80,8 @@ MATH = 	k_standard.o k_rem_pio2.o \
 	float_printf.o $(PRINTF) \
 	float_scanf.o $(SCANF)
 
-PROPELLER = propeller.o
+# Don't build propeller.c now since the only function in it is now a macro
+#PROPELLER = propeller.o
 
 OBJS = $(STDIO) $(STDLIB) $(MISC) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
 

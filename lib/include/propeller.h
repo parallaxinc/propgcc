@@ -2,14 +2,20 @@
  * @file propeller.h
  * This is part of the propeller library. ... this is a work in progress.
  *
- * Copyright (c) 2011, Steve Denson
+ * Copyright (c) 2011 by Parallax, Inc.
  * MIT Licensed
  */
 
 #ifndef _PROPELLER_H_
 #define _PROPELLER_H_
 
+#ifdef __cplusplus
+extern "C" 
+{
+#endif
+
 #include "cog.h"
+#include <stdint.h>
 
 /* some defines for special purpose COG registers */
 #define PAR     _PAR
@@ -32,13 +38,10 @@
 /* clock frequency define */
 #define CLKFREQ _CLKFREQ
 
-/*
- * wait until system counter reaches a value
- * @param a - target value
- */
-#define waitcnt(a) __builtin_propeller_waitcnt((a),_CNT)
+/* set CLKMODE */
+#define CLKMODE(mode) (*((unsigned char*) 4) = (mode))
 
-/*
+/**
  * start a cog with a parameter
  * the fields in parameter are:
  * 31:18   = 14-bit Long address for PAR Register
@@ -47,21 +50,101 @@
  * 2:0     = Cog ID if New bit is 0
  * @param a - parameter value
  */
-#define coginit(a) __builtin_propeller_coginit((a))
+#define coginit(id, code, param) __builtin_propeller_coginit( \
+                                 (((uint32_t)(param) << 16) & 0xfffc0000) \
+                                 |(((uint32_t)(code) <<  2) & 0x0003fff0) \
+                                 |(((id)                  ) & 0x0000000f) )
 
-/*
+/**
+ * start a new propeller cog 
+ * @param code - address of PASM to load
+ * @param par  - value of par parameter usually an address
+ * @returns COG ID provided by the builtin function.
+ */
+#define cognew(code, param) coginit(0x8, (code), (param))
+
+/**
  * stop a cog
  * @param a - cog value
  */
 #define cogstop(a) __builtin_propeller_cogstop((a))
 
-/*
- * start a new propeller cog 
- * @param code - address of PASM to load
- * @param par  - value of par parameter usually an address
- * @returns COG ID provided by __builtin_coginit(...)
+/**
+ * get a new lock
+ * @returns new lockid
  */
-int cognew(void *code, void *par);
+#define locknew() __builtin_propeller_locknew()
+
+/**
+ * return lock to pool
+ * @param lockid
+ */
+#define lockret(lockid) __builtin_propeller_lockret((lockid))
+
+/**
+ * set a lock
+ * @param lockid
+ * @returns true on success
+ */
+#define lockset(lockid) __builtin_propeller_lockset((lockid))
+
+/**
+ * clear lock
+ * @param lockid
+ */
+#define lockclr(lockid) __builtin_propeller_lockclr((lockid))
+
+/*
+ * wait until system counter reaches a value
+ * @param a - target value
+ */
+#define waitcnt(a) __builtin_propeller_waitcnt((a),_CNT)
+
+/*
+ * wait until system counter reaches a value
+ * @param a - target value
+ * @param b - adjust value
+ */
+#define waitcnt2(a,b) __builtin_propeller_waitcnt((a),(b))
+
+/**
+ * wait until INA equal state & mask
+ * @param state - target value
+ * @param mask - ignore masked 0 bits in state
+ */
+#define waitpeq(state, mask) __builtin_propeller_waitpeq((state), (mask))
+
+/**
+ * wait until INA not equal state & mask
+ * @param state - target value
+ * @param mask - ignore masked 0 bits in state
+ */
+#define waitpne(state, mask) __builtin_propeller_waitpne((state), (mask))
+
+/**
+ * wait for video generator to accept pixel info
+ *
+ * @param colors - a long containing four byte-sized color values, each describing the four possible colors of the pixel patterns in Pixels.
+ * @param pixels - the next 16-pixel by 2-bit (or 32-pixel by 1-bit) pixel pattern to display.
+ */
+#define waitvid(colors, pixels) __builtin_propeller_waitvid((colors), (pixels))
+
+/**
+ * task switch
+ *
+ * Usage: thistask = __builtin_propeller_taskswitch(newtask);
+ * This does a "jmpret thistask, newtask"; that is, it saves
+ * the current PC   in "thistask" and jumps to the PC that was
+ * in "newtask". It's really only  useful in COG mode.
+ *
+ * @param newfunc
+ * @returns pointer
+ */
+#define taskswitch(newfunc) __builtin_propeller_taskswitch((newfunc))
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 // _PROPELLER_H_
