@@ -226,15 +226,15 @@ int main(int argc, char *argv[])
     }
     
     /* enter terminal mode if requested */
-    if (terminalMode)
-      {
-        if (terminalBaud != 0)
-          {
+    if (terminalMode) {
+        printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
+        fflush(stdout);
+        if (terminalBaud != 0) {
             serial_done();
             serial_init(port, terminalBaud);
-          }
+        }
         terminal_mode();
-      }
+    }
     return 0;
 }
 
