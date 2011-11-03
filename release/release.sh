@@ -74,11 +74,13 @@ then
   cp /bin/cygiconv-2.dll ./${NAME}/bin
   cp /bin/cygintl-8.dll ./${NAME}/bin
   cp /bin/cygncursesw-10.dll ./${NAME}/bin
+  cp /bin/cygpcre-0.dll ./${NAME}/bin
   cp /bin/cygreadline7.dll ./${NAME}/bin
   cp /bin/cygwin1.dll ./${NAME}/bin
   cp /bin/cygz.dll ./${NAME}/bin
   cp /bin/cut.exe ./${NAME}/bin
   cp /bin/echo.exe ./${NAME}/bin
+  cp /bin/grep.exe ./${NAME}/bin
   cp /bin/make.exe ./${NAME}/bin
   cp /bin/rm.exe ./${NAME}/bin
   cp /bin/sh.exe ./${NAME}/bin
