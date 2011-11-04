@@ -206,6 +206,7 @@ static void ShowLastError(void)
         0, NULL);
     printf("    %s\n", (char *)lpMsgBuf);
     LocalFree(lpMsgBuf);
+    exit(1); // exit on error
 }
 
 /* console i/o functions for Unix/Linux courtesy of 'jazzed' */
