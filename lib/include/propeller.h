@@ -129,19 +129,6 @@ extern "C"
  */
 #define waitvid(colors, pixels) __builtin_propeller_waitvid((colors), (pixels))
 
-/**
- * task switch
- *
- * Usage: thistask = __builtin_propeller_taskswitch(newtask);
- * This does a "jmpret thistask, newtask"; that is, it saves
- * the current PC   in "thistask" and jumps to the PC that was
- * in "newtask". It's really only  useful in COG mode.
- *
- * @param newfunc
- * @returns pointer
- */
-#define taskswitch(newfunc) __builtin_propeller_taskswitch((newfunc))
-
 #ifdef __cplusplus
 }
 #endif
