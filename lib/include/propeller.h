@@ -42,6 +42,11 @@ extern "C"
 #define CLKMODE(mode) (*((unsigned char*) 4) = (mode))
 
 /**
+ * return the id of the current cog
+ */
+#define cogid()                  __builtin_propeller_cogid()
+
+/**
  * start a cog with a parameter
  * the fields in parameter are:
  * 31:18   = 14-bit Long address for PAR Register
