@@ -53,7 +53,7 @@ endif
 ##################
 
 .PHONY:	all
-all:	propeller-load cache-drivers
+all:	propeller-load cache-drivers sd-loader
 
 #################
 # CLEAN TARGETS #
@@ -134,6 +134,10 @@ $(DRVDIR)/eeprom_cache.dat
 
 .PHONY:	cache-drivers
 cache-drivers:	$(DRVDIR) $(CACHE_DRIVERS)
+
+.PHONY:	sd-loader
+sd-loader:	$(DRVDIR)
+	$(MAKE) -C sdloader TARGET=$(realpath $(TARGET))
 
 ##################
 # SPIN TO BINARY #

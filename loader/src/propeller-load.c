@@ -118,6 +118,9 @@ int main(int argc, char *argv[])
             case 'e':
                 flags |= LFLAG_WRITE_EEPROM;
                 break;
+            case 'l':
+                flags |= LFLAG_WRITE_SDLOADER;
+                break;
             case 'r':
                 flags |= LFLAG_RUN;
                 break;
@@ -219,7 +222,23 @@ int main(int argc, char *argv[])
 
     /* load the image file */
     if (infile) {
-        if (!LoadImage(&sys, config, port, infile, flags)) {
+        if (flags & LFLAG_WRITE_SDLOADER) {
+            if (!LoadSDLoader(&sys, config, port, infile, flags)) {
+                fprintf(stderr, "error: load failed\n");
+                return 1;
+            }
+        }
+        else {
+            if (!LoadImage(&sys, config, port, infile, flags)) {
+                fprintf(stderr, "error: load failed\n");
+                return 1;
+            }
+        }
+    }
+    
+    /* check for loading the sd loader */
+    else if (flags & LFLAG_WRITE_SDLOADER) {
+        if (!LoadSDLoader(&sys, config, port, "sd_loader.elf", flags)) {
             fprintf(stderr, "error: load failed\n");
             return 1;
         }
@@ -251,6 +270,7 @@ usage: propeller-elf-load\n\
          [ -r ]            run the program after loading\n\
          [ -s ]            write a spin .binary file for use with the Propeller Tool\n\
          [ -x ]            write a .pex binary file for use with the SD loader\n\
+         [ -l ]            load the sd loader into either hub memory or EEPROM\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
@@ -258,6 +278,13 @@ usage: propeller-elf-load\n\
 \n\
 Variables that can be set with -D are:\n\
   clkfreq clkmode baudrate rxpin txpin tvpin cache-driver cache-size cache-param1 cache-param2\n\
+  sd-cache sdspi-do sdspi-clk sdspi-di sdspi-cs eeprom-first\n\
+\n\
+Value expressions for -D can include:\n\
+  rcfast rcslow xinput xtal1 xtal2 xtal3 pll1x pll2x pll4x pll8x pll16x k m mhz true false\n\
+  an integer or two operands with a binary operator + - * / %% & | or unary + or -\n\
+  all operators have the same precedence\n\
+\n\
 The -b option defaults to the value of the environment variable PROPELLER_LOAD_BOARD\n\
 The -p option defaults to the value of the environment variable PROPELLER_LOAD_PORT\n\
 ", board, port);

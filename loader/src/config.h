@@ -82,6 +82,12 @@ typedef unsigned char uint8_t;
 #define VALID_CACHESIZE     (1 << 7)
 #define VALID_CACHEPARAM1   (1 << 8)
 #define VALID_CACHEPARAM2   (1 << 9)
+#define VALID_SDDRIVER      (1 << 10)
+#define VALID_SDSPIDO       (1 << 11)
+#define VALID_SDSPICLK      (1 << 12)
+#define VALID_SDSPIDI       (1 << 13)
+#define VALID_SDSPICS       (1 << 14)
+#define VALID_EEPROMFIRST   (1 << 15)
 
 typedef struct BoardConfig BoardConfig;
 struct BoardConfig {
@@ -96,6 +102,12 @@ struct BoardConfig {
     uint32_t cacheSize;
     uint32_t cacheParam1;
     uint32_t cacheParam2;
+    char *sdDriver;
+    uint8_t sdspiDO;
+    uint8_t sdspiClk;
+    uint8_t sdspiDI;
+    uint8_t sdspiCS;
+    uint32_t eepromFirst;
     BoardConfig *next;
     char name[1];
 };

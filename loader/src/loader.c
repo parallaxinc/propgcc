@@ -30,6 +30,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "PLoadLib.h"
 #include "osint.h"
 #include "pex.h"
+#include "../sdloader/sd_loader.h"
 
 /* maximum cog image size */
 #define COG_IMAGE_MAX           (496 * 4)
@@ -106,10 +107,11 @@ extern int flash_loader_size;
 
 static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp, ElfHdr *hdr);
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp);
-static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c);
+static int LoadInternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
-static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, int *pImageSize);
-static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c);
+static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize);
+static void UpdateChecksum(uint8_t *imagebuf, int imageSize);
+static int LoadExternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c);
 static int WriteExecutableFile(char *path, ElfContext *c);
 static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode);
@@ -169,7 +171,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
         }
         
         else {
-            if (!LoadExternalImage(sys, config, port, path, flags, c)) {
+            if (!LoadExternalImage(sys, config, port, flags, c)) {
                 CloseElfFile(c);
                 return FALSE;
             }
@@ -187,7 +189,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
         }
         
         else {
-            if (!LoadInternalImage(sys, config, port, path, flags, c)) {
+            if (!LoadInternalImage(sys, config, port, flags, c)) {
                 CloseElfFile(c);
                 return FALSE;
             }
@@ -220,14 +222,15 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *pa
     return sts == 0;
 }
 
-static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c)
+static int LoadInternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c)
 {
     uint8_t *imagebuf;
+    uint32_t start;
     int imageSize;
     int mode;
     
     /* build the .binary image */
-    if (!(imagebuf = BuildInternalImage(config, c, &imageSize)))
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
         return FALSE;
     
     /* determine the download mode */
@@ -250,15 +253,98 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *port, char 
     return TRUE;
 }
 
+int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int flags)
+{
+    uint8_t driverImage[COG_IMAGE_MAX];
+    int imageSize, driverSize, mode;
+    ElfProgramHdr program;
+    SdLoaderInfo *info;
+    uint8_t *imagebuf;
+    uint32_t start;
+    ElfContext *c;
+    ElfHdr hdr;
+    FILE *fp;
+    
+    /* open the sd loader executable */
+    if (!(fp = xbOpenFileInPath(sys, path, "rb")))
+        return Error("can't open '%s'", path);
+
+    /* check for an elf file */
+    if (!ReadAndCheckElfHdr(fp, &hdr))
+        return Error("bad elf file '%s'", path);
+
+    /* open the elf file */
+    if (!(c = OpenElfFile(fp, &hdr)))
+        return Error("failed to open elf file");
+        
+    /* build the .binary image */
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
+        return FALSE;
+    
+    if (FindProgramSegment(c, ".coguser0", &program) < 0)
+        return Error("can't find info (.coguser0) segment");
+    
+    info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
+    info->cache_size = config->cacheSize;
+    info->cache_param1 = config->cacheParam1;
+    info->cache_param2 = config->cacheParam2;
+
+    if (FindProgramSegment(c, ".coguser1", &program) < 0)
+        return Error("can't find xmm_driver (.coguser1) segment");
+
+    if (!ReadCogImage(sys, config->cacheDriver, driverImage, &driverSize))
+        return Error("reading cache driver image failed: %s", config->cacheDriver);
+    memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+            
+    if (FindProgramSegment(c, ".coguser2", &program) < 0)
+        return Error("can't find sd_driver (.coguser2) segment");
+    
+    if (config->sdDriver) {
+        if (!ReadCogImage(sys, config->sdDriver, driverImage, &driverSize))
+            return Error("reading sd driver image failed: %s", config->sdDriver);
+        memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+        info->use_cache_driver_for_sd = FALSE;
+        info->sdspi_do = config->sdspiDO;
+        info->sdspi_clk = config->sdspiClk;
+        info->sdspi_di = config->sdspiDI;
+        info->sdspi_cs = config->sdspiCS;
+    }
+    else
+        info->use_cache_driver_for_sd = TRUE;
+            
+    /* update the checksum */
+    UpdateChecksum(imagebuf, imageSize);
+
+    /* determine the download mode */
+    if (flags & LFLAG_WRITE_EEPROM)
+        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+    else if (flags & LFLAG_RUN)
+        mode = DOWNLOAD_RUN_BINARY;
+    else
+        return Error("expecting -e and/or -r");
+        
+    /* load the serial helper program */
+    if (ploadbuf(imagebuf, imageSize, port, mode) != 0) {
+        free(imagebuf);
+        return Error("load failed");
+    }
+    
+    /* free the image buffer */
+    free(imagebuf);
+
+    return TRUE;
+}
+
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
 {
     char outfile[PATH_MAX];
     uint8_t *imagebuf;
+    uint32_t start;
     int imageSize;
     FILE *fp;
     
     /* build the .binary image */
-    if (!(imagebuf = BuildInternalImage(config, c, &imageSize)))
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
         return FALSE;
     
     /* write the spin .binary file */
@@ -278,13 +364,13 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
     return TRUE;
 }
 
-static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, int *pImageSize)
+static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize)
 {
-    uint8_t *imagebuf, *buf, *p;
-    uint32_t start, imageSize, cnt;
+    uint32_t start, imageSize;
+    uint8_t *imagebuf, *buf;
     ElfProgramHdr program;
-    int chksum, i;
     SpinHdr *hdr;
+    int i;
 
     /* get the total size of the program */
     if (!GetProgramSize(c, &start, &imageSize))
@@ -313,19 +399,34 @@ static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, int *pIma
     hdr->dbase = imageSize + 2 * sizeof(uint32_t); // stack markers
     hdr->dcurr = hdr->dbase + sizeof(uint32_t);
     
+    /* update the checksum */
+    UpdateChecksum(imagebuf, imageSize);
+    
+    /* return the image */
+    *pStart = start;
+    *pImageSize = imageSize;
+    return imagebuf;
+}
+
+static void UpdateChecksum(uint8_t *imagebuf, int imageSize)
+{
+    SpinHdr *hdr = (SpinHdr *)imagebuf;
+    uint32_t cnt;
+    uint8_t *p;
+    int chksum;
+    
+    /* first zero out the checksum */
+    hdr->chksum = 0;
+    
     /* compute the checksum */
     for (chksum = 0, p = imagebuf, cnt = imageSize; cnt > 0; --cnt)
         chksum += *p++;
         
     /* store the checksum in the header */
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
-    
-    /* return the image */
-    *pImageSize = imageSize;
-    return imagebuf;
 }
-    
-static int LoadExternalImage(System *sys, BoardConfig *config, char *port, char *path, int flags, ElfContext *c)
+
+static int LoadExternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c)
 {
     SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
