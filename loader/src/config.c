@@ -55,6 +55,9 @@ static ConfigSymbol configSymbols[] = {
 {   "PLL16X",       0x47        },
 {   "K",            1024        },
 {   "M",            1024*1024   },
+{   "MHZ",          1000*1000   },
+{   "TRUE",         TRUE        },
+{   "FALSE",        FALSE       },
 {   NULL,           0           }
 };
 
@@ -243,6 +246,42 @@ int SetConfigField(BoardConfig *config, char *tag, char *value)
             config->cacheParam2 = iValue;
         }
     }
+    else if (strcasecmp(tag, "sd-driver") == 0) {
+        if (config->sdDriver)
+            free(config->sdDriver);
+        config->validMask |= VALID_SDDRIVER;
+        config->sdDriver = CopyString(value);
+    }
+    else if (strcasecmp(tag, "sdspi-do") == 0) {
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_SDSPIDO;
+            config->sdspiDO = iValue;
+        }
+    }
+    else if (strcasecmp(tag, "sdspi-clk") == 0) {
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_SDSPICLK;
+            config->sdspiClk = iValue;
+        }
+    }
+    else if (strcasecmp(tag, "sdspi-di") == 0) {
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_SDSPIDI;
+            config->sdspiDI = iValue;
+        }
+    }
+    else if (strcasecmp(tag, "sdspi-cs") == 0) {
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_SDSPICS;
+            config->sdspiCS = iValue;
+        }
+    }
+    else if (strcasecmp(tag, "eeprom-first") == 0) {
+        if (ParseNumericExpr(value, &iValue)) {
+            config->validMask |= VALID_EEPROMFIRST;
+            config->eepromFirst = iValue;
+        }
+    }
     else {
         Error("unknown board configuration variable: %s", tag);
         return FALSE;
@@ -295,6 +334,32 @@ void MergeConfigs(BoardConfig *dst, BoardConfig *src)
         dst->validMask |= VALID_CACHEPARAM2;
         dst->cacheParam2 = src->cacheParam2;
     }
+    if (src->validMask & VALID_SDDRIVER) {
+        dst->validMask |= VALID_SDDRIVER;
+        if (dst->sdDriver)
+            free(dst->sdDriver);
+        dst->sdDriver = CopyString(src->sdDriver);
+    }
+    if (src->validMask & VALID_SDSPIDO) {
+        dst->validMask |= VALID_SDSPIDO;
+        dst->sdspiDO = src->sdspiDO;
+    }
+    if (src->validMask & VALID_SDSPICLK) {
+        dst->validMask |= VALID_SDSPICLK;
+        dst->sdspiClk = src->sdspiClk;
+    }
+    if (src->validMask & VALID_SDSPIDI) {
+        dst->validMask |= VALID_SDSPIDI;
+        dst->sdspiDI = src->sdspiDI;
+    }
+    if (src->validMask & VALID_SDSPICS) {
+        dst->validMask |= VALID_SDSPICS;
+        dst->sdspiCS = src->sdspiCS;
+    }
+    if (src->validMask & VALID_EEPROMFIRST) {
+        dst->validMask |= VALID_EEPROMFIRST;
+        dst->eepromFirst = src->eepromFirst;
+    }
 }
 
 static BoardConfig *SetupDefaultConfiguration(void)
@@ -311,6 +376,11 @@ static BoardConfig *SetupDefaultConfiguration(void)
     config->rxpin = DEF_RXPIN;
     config->txpin = DEF_TXPIN;
     config->tvpin = DEF_TVPIN;
+    config->sdDriver = CopyString("sd_driver.dat");
+    config->sdspiDO = 22;   // these next four match the PropBOE
+    config->sdspiClk = 23;
+    config->sdspiDI = 24;
+    config->sdspiCS = 25;
     strcpy(config->name, DEF_NAME);
     
     return config;
@@ -379,8 +449,14 @@ static int ParseNumericExpr(char *token, int *pValue)
                 break;
             case 'm':
             case 'M':
-                value *= 1024 * 1024;
-                ++p;
+                if (strcasecmp(p, "MHZ") == 0) {
+                    value *= 1000 * 1000;
+                    p += 3;
+                }
+                else {
+                    value *= 1024 * 1024;
+                    ++p;
+                }
                 break;
             default:
                 // nothing to do
