@@ -1,0 +1,105 @@
+/*
+ * simple script file for creating LMM programs
+ *
+ * here are the sections we set up:
+ * .boot:
+ *	Contains a small bit of spin code to launch the LMM kernel.
+ * .lmmkernel:
+ *	Contains the LMM kernel. Note that this has a virtual address of
+ *      0 (it runs in cog space) but a physical load address that follows
+ *      the boot section
+ * .init:
+ *      The actual LMM C code starts here. The .init section contains
+ *      code to run constructors and then call main.
+ * .text:
+ *      The main C code.
+ * .hubtext:
+ *      C code that should always be in HUB.
+ * .ctors:
+ *      Contains a list of constructors to call.
+ * .dtors:
+ *      Contains a list of destructors to call at program end.
+ * .data:
+ *      Initialized data.
+ * .bss:
+ *      Uninitialized data.
+ * .cogsys0-.cogsys9: system COG drivers
+ * .coguser0-.coguser9: user COG drivers
+ */
+
+MEMORY {
+    hub : ORIGIN = 0x00000000, LENGTH = 32K
+    rom : ORIGIN = 0x30000000, LENGTH = 1M
+    cog : ORIGIN = 0x00000000, LENGTH = 2K
+    coguser : ORIGIN = 0x00000000, LENGTH = 2K
+}
+
+SECTIONS
+{
+  .boot : { *(.boot) } >hub
+  .lmmkernel : 
+          {
+	   *(.lmmkernel) 
+	  } >cog AT>hub
+
+  .init :
+          {
+	    *(.init*)
+	  } >hub AT>hub
+  .text  :
+          {
+            *(EXCLUDE_FILE (*.cog) .text*)
+          } >hub
+  .hubtext : {
+      *(.hubtext)
+   } >hub
+  .ctors : {
+      *(.ctors)
+   } >hub
+  .dtors : {
+      *(.dtors)
+   } >hub
+  .data : { *(.data) } >hub
+  .bss  : {
+           PROVIDE(__bss_start = .); 
+           *(.bss)
+	   PROVIDE(__bss_end = .);
+	  } >hub
+
+  /* put the cog drivers after bss and just before the heap */
+  /* that way we may later be able to free the hub memory they take up */
+  OVERLAY : {
+      .cogsys0 { *(.cogsys0) }
+      .cogsys1 { *(.cogsys1) }
+      .cogsys2 { *(.cogsys2) }
+      .cogsys3 { *(.cogsys3) }
+      .cogsys4 { *(.cogsys4) }
+      .cogsys5 { *(.cogsys5) }
+      .cogsys6 { *(.cogsys6) }
+      .cogsys7 { *(.cogsys7) }
+
+      .coguser0 { *(.coguser0) *0.cog(.text*) }
+      .coguser1 { *(.coguser1) *1.cog(.text*) }
+      .coguser2 { *(.coguser2) *2.cog(.text*) }
+      .coguser3 { *(.coguser3) *3.cog(.text*) }
+      .coguser4 { *(.coguser4) *4.cog(.text*) }
+      .coguser5 { *(.coguser5) *5.cog(.text*) }
+      .coguser6 { *(.coguser6) *6.cog(.text*) }
+      .coguser7 { *(.coguser7) *7.cog(.text*) }
+
+  } >coguser AT>hub
+
+  .heap : { LONG(0) } > hub
+
+  ___heap_start = ADDR(.heap) ;
+  __load_start_kernel = LOADADDR (.lmmkernel) ;
+  ___CTOR_LIST__ = ADDR(.ctors) ;
+  ___DTOR_LIST__ = ADDR(.dtors) ;
+
+  /* provide some case-sensitive aliases */
+  PROVIDE(par = PAR) ;
+  PROVIDE(cnt = CNT) ;
+  PROVIDE(dira = DIRA) ;
+  PROVIDE(outa = OUTA) ;
+  PROVIDE(ina = INA) ;
+}
