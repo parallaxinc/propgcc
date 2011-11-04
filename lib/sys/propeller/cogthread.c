@@ -1,5 +1,6 @@
 #include <propeller.h>
 #include <sys/thread.h>
+#include <errno.h>
 
 /*
  * start C code running in another cog
@@ -14,6 +15,7 @@
 int
 _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, struct _TLS *tls)
 {
+#if defined(__PROPELLER_LMM__)
   extern unsigned int _load_start_kernel[];
   unsigned int *sp = stacktop;
 
@@ -28,4 +30,8 @@ _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, struct _TLS *
 
   /* now start the kernel */
   return cognew(_load_start_kernel, sp);
+#else
+  errno = ENOSYS;
+  return -1;
+#endif
 }
