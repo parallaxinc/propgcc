@@ -42,7 +42,7 @@ STDLIB = malloc.o calloc.o atoi.o atof.o atexit.o abort.o \
 	assert.o rand.o setjmp.o div.o abs.o getenv.o
 
 MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
-	sbrk.o write.o signal.o thread.o assert.o locale.o
+	sbrk.o write.o signal.o assert.o locale.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
@@ -53,6 +53,8 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 
 TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 	settimeofday.o gettimeofday.o
+
+THREADS = thread.o cogthread.o pthread_create.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o
@@ -83,7 +85,7 @@ MATH = 	k_standard.o k_rem_pio2.o \
 # Don't build propeller.c now since the only function in it is now a macro
 #PROPELLER = propeller.o
 
-OBJS = $(STDIO) $(STDLIB) $(MISC) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
+OBJS = $(STDIO) $(STDLIB) $(MISC) $(THREADS) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
 
 MODEL_OBJS = $(addprefix $(OBJDIR)/$(MODEL)/, $(OBJS))
 MODEL_MATH_OBJS = $(addprefix $(OBJDIR)/$(MODEL)/, $(MATH))

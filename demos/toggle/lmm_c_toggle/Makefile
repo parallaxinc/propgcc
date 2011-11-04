@@ -6,7 +6,7 @@
 # #########################################################
 
 # Propeller Demo include
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 CFLAGS = -Os -mlmm
 

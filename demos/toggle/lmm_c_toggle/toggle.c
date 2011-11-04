@@ -8,43 +8,28 @@
  * MIT Licensed (see at end of file for exact terms)
  */
 
-#include "stdio.h"  // using temporary stdio
-#include "propeller.h"
+#include <stdio.h>
+#include <propeller.h>
+#include <sys/thread.h>
 
 #define STACK_SIZE 16
 
-/*
- * function to start up a new cog running the toggle
- * code (which we've placed in the .coguser1 section)
- * "func" is the function to run, and
- * "stack_top" is the top of the stack to be used by
- * the new cog
- */
-void start_lmm(void *func, int *stack_top)
-{
-    extern unsigned int _load_start_kernel[];
+/* stack for cog 1 */
+static int cog1_stack[STACK_SIZE];
 
-    /* push the code address onto the stack */
-    --stack_top;
-    *stack_top = (int)func;
-
-    /* now start the kernel */
-    cognew(_load_start_kernel, stack_top);
-}
+/* per-thread library variables ("Thread Local Storage") */
+static struct _TLS thread_data;
 
 /* variables that we share between cogs */
 volatile unsigned int wait_time;
 volatile unsigned int pins;
-
-/* stack for cog 1 */
-static int cog1_stack[STACK_SIZE];
 
 /*
  * here's the toggle code that runs in another cog
  */
 
 void
-do_toggle(void)
+do_toggle(void *arg __attribute__((unused)) )
 {
   unsigned int nextcnt;
 
@@ -87,8 +72,8 @@ void main (int argc,  char* argv[])
     wait_time = _clkfreq;  /* start by waiting for 1 second */
 
     /* start the new cog */
-    start_lmm(do_toggle, cog1_stack + STACK_SIZE);
-    printf("toggle cog has started\n");
+    n = _start_cog_thread(cog1_stack + STACK_SIZE, do_toggle, NULL, &thread_data);
+    printf("toggle cog %d has started\n", n);
 
     /* every 2 seconds update the flashing frequency so the
        light blinks faster and faster */

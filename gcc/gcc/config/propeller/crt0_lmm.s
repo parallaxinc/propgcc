@@ -25,17 +25,17 @@ r1	mov	r0, sp
 r2	cmp	sp,r14	wz	' see if stack is at top of memory
 r3 IF_NE rdlong pc,sp		' if not, pop the pc
 r4 IF_NE add	sp,#4
-r5	jmp	#__LMM_loop
-r6	long	0
-r7	long	0
-r8	long	0
-r9	long	0
+r5 IF_NE rdlong r0,sp		' pop the argument for the function
+r6 IF_NE add	sp,#4
+r7 IF_NE rdlong __TLS,sp	' and the _TLS variable
+r8 IF_NE add	sp,#4
+r9	jmp	#__LMM_loop
 r10	long	0
 r11	long	0
 r12	long	0
 r13	long	0
 r14	long	0x00008000
-lr	long	0
+lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
 

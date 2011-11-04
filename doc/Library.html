@@ -20,6 +20,9 @@
 <A HREF="#InstallDrivers">...Installing Drivers</A><BR>
 <A HREF="#DriversProvided">...Drivers Provided in the Library</A><BR>
 <A HREF="#WritingDrivers">...Writing New Drivers</A><BR>
+<A HREF="#RunningCogPrograms">Cog C Programs</A><BR>
+<A HREF="#RunningLMM">...LMM on Another Cog</A><BR>
+<A HREF="#RunningNative">...Native Cog C</A><BR>
 
 <A NAME="intro"><H1>Introduction</H1></A>
 <P>
@@ -393,5 +396,26 @@ fields, which must be set up by the driver code:
   After the driver is written, it must also
   be <A HREF="#InstallDrivers">installed</A>.
 </P>
+
+
+<A NAME="RunningCogPrograms"><H1>Cog C Programs</H1></A>
+<P>
+Sometimes one wants to run some code on another cog. There are two
+ways to do this: to run a copy of the LMM (or XMM) interpreter on the
+other cog, or to run native cog code (compiled
+with <CODE>-mcog</CODE>) on the other cog.
+</P>
+
+<A NAME="RunningLMM"><H2>LMM on Another Cog</H2></A>
+<P>
+  Running compiled code in another thread is very straightforward
+  in <CODE>-mlmm</CODE> mode. To start 
+</P>
+
+<A NAME="RunningNative"><H2>Native Cog C</H2></A>
+<P>
+
+</P>
+
 </BODY>
 </HTML>

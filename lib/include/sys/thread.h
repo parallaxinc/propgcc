@@ -29,6 +29,7 @@ struct _TLS {
   unsigned long rand_seed;
   struct tm time_temp;
   char ctime_buf[32];
+  int  thread_id; /* thread ID for this thread */
 };
 
 /*
@@ -42,5 +43,12 @@ struct _TLS {
 #endif
 
 _TLSDECL( struct _TLS *_TLS );
+
+/*
+ * start a new cog thread running C code
+ * (as if "func(arg)" was called in that thread)
+ * tls is a pointer to the thread local storage area to use
+ */
+int _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, struct _TLS *tls);
 
 #endif
