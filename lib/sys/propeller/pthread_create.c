@@ -13,8 +13,6 @@
 
 _pthread_status_t _PTHREAD[_NUM_PTHREADS];
 
-extern unsigned int _load_start_kernel[];
-
 /* lock needed for pthreads */
 int _pthread_lock = -1;
 
@@ -41,7 +39,6 @@ _unlock_pthreads(void)
     __builtin_propeller_lockclr(_pthread_lock);
 }
 
-#if !(defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__))
 /* function to actually start a pthread running */
 static void
 pthread_run(void *ptr)
@@ -52,7 +49,6 @@ pthread_run(void *ptr)
   result = (*p->startfunc)(p->arg);
   pthread_exit(result);
 }
-#endif
 
 /* create a new pthread */
 int
@@ -61,10 +57,6 @@ pthread_create(pthread_t *threadId_ptr,
 	       void *(*startfunc)(void *),
 	       void *arg)
 {
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
-  errno = ENOSYS; /* not supported in XMM mode yet */
-  return -1;
-#else
   void *stackbase;
   size_t stksiz;
   unsigned int *stacktop;
@@ -133,7 +125,6 @@ pthread_create(pthread_t *threadId_ptr,
   thread->cogid = cogid;
   *threadId_ptr = threadId;
   return 0;
-#endif
 }
 
 /*

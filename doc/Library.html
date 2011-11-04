@@ -409,7 +409,16 @@ with <CODE>-mcog</CODE>) on the other cog.
 <A NAME="RunningLMM"><H2>LMM on Another Cog</H2></A>
 <P>
   Running compiled code in another thread is very straightforward
-  in <CODE>-mlmm</CODE> mode. To start 
+  in <CODE>-mlmm</CODE> mode. To start a new thread running function
+  <CODE>foo</CODE> with argument <CODE>arg</CODE> do:
+  <PRE>
+    int cog = _start_cog_thread(sp, foo, arg, tls_ptr);
+  </PRE>
+  Here <CODE>sp</CODE> points to the top of the new thread's stack,
+  and <CODE>tls_ptr</CODE> points to a new <CODE>struct _TLS</CODE> to
+  hold the thread local storage for this thread (that is, the library
+  variables that need to be kept per-thread rather than globally; for
+  example <CODE>errno</CODE>).
 </P>
 
 <A NAME="RunningNative"><H2>Native Cog C</H2></A>
