@@ -8,6 +8,8 @@
 	You cannot re-copyright or restrict use of the code as released by Lewin Edwards.
 
     10/28/2010 - Minor edits to correct compiler warnings by David Betz
+    11/5/2011 - Added PROPGCC_MODE flag to enable/disable code - Dave Hein
+    11/5/2011 - Added DFS_DIRECTORY to open a directory as a file - Dave Hein
 */
 
 #include <string.h>
@@ -15,9 +17,7 @@
 
 #include "dosfs.h"
 
-#define SAVE_SPACE
-
-#ifndef SAVE_SPACE
+#ifndef PROPGCC_MODE
 /*
 	Get starting sector# of specified partition on drive #unit
 	NOTE: This code ASSUMES an MBR on the disk.
@@ -203,6 +203,7 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 	offset = ldiv(offset, SECTOR_SIZE).rem;
 
 	if (volinfo->filesystem == FAT12) {
+#ifndef PROPGCC_MODS
 		// Special case for sector boundary - Store last byte of current sector.
 		// Then read in the next sector and put the first byte of that sector into
 		// the high byte of result.
@@ -227,6 +228,7 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 			result = result >> 4;
 		else
 			result = result & 0xfff;
+#endif
 	}
 	else if (volinfo->filesystem == FAT16) {
 		result = (uint32_t) scratch[offset] |
@@ -300,6 +302,7 @@ uint32_t DFS_SetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 	offset = ldiv(offset, SECTOR_SIZE).rem;
 
 	if (volinfo->filesystem == FAT12) {
+#ifndef PROPGCC_MODS
 
 		// If this is an odd cluster, pre-shift the desired new contents 4 bits to
 		// make the calculations below simpler
@@ -367,6 +370,7 @@ uint32_t DFS_SetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 			if (DFS_OK == result)
 				result = DFS_WriteSector(volinfo->unit, scratch, (*scratchcache)+volinfo->secperfat, 1);
 		}
+#endif
 	}
 	else if (volinfo->filesystem == FAT16) {
 		scratch[offset] = (new_contents & 0xff);
@@ -763,8 +767,13 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 
 	while (!DFS_GetNext(volinfo, &di, &de)) {
 		if (!memcmp(de.name, filename, 11)) {
+#ifdef PROPGCC_MODS
+			// Check if a directory and mode allows directories
+			if ((de.attr & ATTR_DIRECTORY) && !(mode & DFS_DIRECTORY))
+#else
 			// You can't use this function call to open a directory.
 			if (de.attr & ATTR_DIRECTORY)
+#endif
 				return DFS_NOTFOUND;
 
 			fileinfo->volinfo = volinfo;
@@ -819,6 +828,9 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 		de.wrttime_h = 0x08;
 		de.wrtdate_l = 0x11;
 		de.wrtdate_h = 0x34;
+#ifdef PROPGCC_MODS
+		de.attr = (mode & DFS_DIRECTORY);
+#endif
 
 		// allocate a starting cluster for the directory entry
 		cluster = DFS_GetFreeFAT(volinfo, scratch);
