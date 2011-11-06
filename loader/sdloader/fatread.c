@@ -73,7 +73,9 @@ int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo)
     int type;
        
     if (SD_ReadSector(0, buffer) != 0) {
+#ifdef DEBUG
         printf("SD_ReadSector 0 failed\n");
+#endif
         return -1;
     }
     
@@ -88,11 +90,15 @@ int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo)
         status = buffer[MBR_PARTITIONS + PART_STATUS];
         start = GetU32(buffer, MBR_PARTITIONS + PART_FIRST_SECTOR);
         size = GetU32(buffer, MBR_PARTITIONS + PART_SECTOR_COUNT);
+#ifdef DEBUG
         printf("status: %02x, start: %08x, size %08x\n", status, start, size);
+#endif
             
         // get the boot sector of the first partition
         if (SD_ReadSector(start, buffer) != 0) {
+#ifdef DEBUG
             printf("SD_ReadSector %d failed\n", start);
+#endif
             return -1;
         }
     }
@@ -138,7 +144,7 @@ int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo)
         volumeLabel = (char *)&buffer[BOOT_VOLUME_LABEL_32];
 #endif
         vinfo->rootDirectoryCluster = GetU32(buffer, BOOT_ROOT_CLUSTER_32);
-        firstRootDirectorySector = vinfo->firstDataSector + (vinfo->rootDirectoryCluster - 2) * sectorsPerCluster;
+        firstRootDirectorySector = firstDataSector + (vinfo->rootDirectoryCluster - 2) * sectorsPerCluster;
         rootDirectorySectorCount = sectorsPerCluster;
         break;
     }
@@ -206,7 +212,9 @@ int FindFile(uint8_t *buffer, VolumeInfo *vinfo, const char *name, FileInfo *fin
         
             // get the next sector in this cluster
             if (SD_ReadSector(sector + j, buffer) != 0) {
+#ifdef DEBUG
                 printf("SD_ReadSector %d failed\n", sector + j);
+#endif
                 return -1;
             }
 
@@ -266,9 +274,13 @@ int FindFile(uint8_t *buffer, VolumeInfo *vinfo, const char *name, FileInfo *fin
 int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount)
 {
     // check to see if we're at the end of the file
-    if (finfo->bytesRemaining == 0)
+    if (finfo->bytesRemaining == 0) {
+#ifdef DEBUG
+        printf("Reached EOF\n");
+#endif
         return -1;
-        
+    }
+    
     // check to see if we're at the end of the cluster
     if (finfo->sectorsRemainingInCluster == 0) {
         VolumeInfo *vinfo = finfo->vinfo;
@@ -280,7 +292,9 @@ int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount)
             
         // get the next cluster number
         if (GetFATEntry(vinfo, buffer, finfo->cluster, &next) != 0) {
+#ifdef DEBUG
             printf("GetFATEntry %d failed\n", finfo->cluster);
+#endif
             return -1;
         }
             
@@ -298,7 +312,9 @@ int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount)
         
     // get the next sector of the file
     if (SD_ReadSector(finfo->sector, buffer) != 0) {
+#ifdef DEBUG
         printf("SD_ReadSector %d failed\n", finfo->sector);
+#endif
         return 1;
     }
     
@@ -318,6 +334,7 @@ int GetFATEntry(VolumeInfo *vinfo, uint8_t *buffer, uint32_t cluster, uint32_t *
 {
     uint32_t sector, offset;
     
+    printf("getfat: %08x", cluster);
     // determine that offset based on the fat type
     switch (vinfo->type) {
     case TYPE_FAT12:
@@ -339,7 +356,9 @@ int GetFATEntry(VolumeInfo *vinfo, uint8_t *buffer, uint32_t cluster, uint32_t *
     
     // get the sector containing the fat entry
     if (SD_ReadSector(sector, buffer) != 0) {
+#ifdef DEBUG
         printf("SD_ReadSector %d failed\n", sector);
+#endif
         return -1;
     }
     
@@ -356,6 +375,7 @@ int GetFATEntry(VolumeInfo *vinfo, uint8_t *buffer, uint32_t cluster, uint32_t *
         break;
     }
     
+    printf(" %08x\n", *pEntry);
     return 0;
 }
 

@@ -377,10 +377,10 @@ static BoardConfig *SetupDefaultConfiguration(void)
     config->txpin = DEF_TXPIN;
     config->tvpin = DEF_TVPIN;
     config->sdDriver = CopyString("sd_driver.dat");
-    config->sdspiDO = 22;   // these next four match the PropBOE
-    config->sdspiClk = 23;
-    config->sdspiDI = 24;
-    config->sdspiCS = 25;
+    config->sdspiDO = DEF_SDSPIDO;
+    config->sdspiClk = DEF_SDSPICLK;
+    config->sdspiDI = DEF_SDSPIDI;
+    config->sdspiCS = DEF_SDSPICS;
     strcpy(config->name, DEF_NAME);
     
     return config;
