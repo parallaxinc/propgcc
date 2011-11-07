@@ -14,30 +14,7 @@
 _pthread_status_t _PTHREAD[_NUM_PTHREADS];
 
 /* lock needed for pthreads */
-int _pthread_lock = -1;
-
-/* function to lock pthread data structures */
-void
-_lock_pthreads(void)
-{
-  if (_pthread_lock < 0)
-    {
-      _pthread_lock = __builtin_propeller_locknew();
-    }
-  if (_pthread_lock >= 0)
-    {
-      while (__builtin_propeller_lockset(_pthread_lock) != 0)
-	;
-    }
-}
-
-/* function to unlock pthread data structures */
-void
-_unlock_pthreads(void)
-{
-  if (_pthread_lock >= 0)
-    __builtin_propeller_lockclr(_pthread_lock);
-}
+volatile int _pthreads_lock;
 
 /* function to actually start a pthread running */
 static void
