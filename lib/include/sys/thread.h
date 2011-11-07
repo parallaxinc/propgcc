@@ -51,4 +51,24 @@ _TLSDECL( struct _TLS *_TLS );
  */
 int _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, struct _TLS *tls);
 
+/*
+ * function to do a "compare and swap" operation on a memory location
+ * this is protected with the _C_LOCK lock, so it should be atomic
+ * (as long as all threads use this function to access the location)
+ * if *ptr == checkval, then set *ptr to newval; returns original
+ * value of *ptr
+ */
+#ifdef __GNUC__
+__attribute__((native))
+#endif
+int _CMPSWAPSI(int newval, int checkval, volatile int *ptr);
+
+#if (defined(__PROPELLER_LMM__) || defined(__PROPELLER_COG__))
+#define _lock(val) while (_CMPSWAPSI(1, 0, val) != 0) ;
+#else
+#define _lock(val) *val = 1
+#endif
+
+#define _unlock(val) *val = 0
+
 #endif

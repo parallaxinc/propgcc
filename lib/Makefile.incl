@@ -17,7 +17,7 @@ ifndef OBJDIR
 OBJDIR=obj
 endif
 
-VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm
+VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm:pthreads
 
 all: $(OBJDIR)/$(MODEL) $(OBJDIR)/$(MODEL)/libc.a $(OBJDIR)/$(MODEL)/libm.a
 
@@ -54,7 +54,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 	settimeofday.o gettimeofday.o
 
-THREADS = thread.o cogthread.o pthread_create.o
+THREADS = thread.o cogthread.o pthread_create.o pthread_join.o pthread_detach.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o
