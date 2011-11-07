@@ -68,6 +68,7 @@
    (UNSPEC_PUSHM        16)
    (UNSPEC_POPM         17)
    (UNSPEC_CLKSET       18)
+   (UNSPEC_CAS          19)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -2207,6 +2208,80 @@
    ""
 )
 
+
+;; -------------------------------------------------------------------------
+;; synchronization insns
+;; -------------------------------------------------------------------------
+;; We must use a pseudo-reg forced to reg 0 in the SET_DEST rather than
+;; hard register 0.  If we used hard register 0, then the next instruction
+;; would be a move from hard register 0 to a pseudo-reg, which could cause
+;; problems.
+
+;; compare and swap; this is implemented as a function, and only works
+;; on memory locations that all threads treat as special
+
+;; register usage of the function:
+;; input: r0 == new value for memory, r1 == old value for memory, r2 == pointer to memory
+;; output: r0 == original value for memory
+
+(define_insn "*sync_compare_and_swapsi"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (mem:SI (reg:SI 2)))
+   (set (mem:SI (reg:SI 2))
+        (unspec_volatile:SI
+	  [(mem:SI (reg:SI 2))
+	   (reg:SI 1)
+	   (reg:SI 0)]
+          UNSPEC_CAS))
+   (set (reg:CC_Z CC_REG)
+        (compare:CC_Z (mem:SI (reg:SI 2))(reg:SI 1)))
+  ]
+""
+{
+  propeller_need_cmpswapsi = true;
+  return "call\t#__CMPSWAPSI";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "set")
+ ]
+)
+
+;;
+;; operand 0: result, namely the original value of the memory
+;; operand 1: memory location for test and swap
+;; operand 2: old value required (compare against)
+;; operand 3: new value to set if operand 1 == operand 2
+;; we synthesize operand 4 to be the address of operand 1
+;;
+(define_expand "sync_compare_and_swapsi"
+  [(set (reg:SI 0)(match_operand:SI 3 "propeller_src_operand" ""))
+   (set (reg:SI 1)(match_operand:SI 2 "propeller_src_operand" ""))
+   (use (match_operand:SI 1 "memory_operand" ""))
+   (set (reg:SI 2)(match_dup 4))
+   (parallel[
+     (set (match_operand:SI 0 "register_operand" "z")
+          (mem:SI (reg:SI 2)))
+     (set (mem:SI (reg:SI 2))
+          (unspec_volatile:SI
+	    [(mem:SI (reg:SI 2))
+             (reg:SI 1)
+             (reg:SI 0)]
+            UNSPEC_CAS))
+     (set (reg:CC_Z CC_REG)
+          (compare:CC_Z (mem:SI (reg:SI 2))(reg:SI 1)))
+     ])
+  ]
+""
+{
+  /* make sure address of operands[1] is a register */
+  if (!REG_P (XEXP (operands[1], 0)))
+    {
+      operands[1] = shallow_copy_rtx (operands[1]);
+      XEXP (operands[1], 0) = force_reg (Pmode, XEXP (operands[1], 0));
+    }
+  operands[4] = XEXP (operands[1], 0);
+}
+)
 
 ;; -------------------------------------------------------------------------
 ;; Special insns for built in instructions
