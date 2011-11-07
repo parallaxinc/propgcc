@@ -23,7 +23,7 @@ int File_remove(const char *str);
 // Basic file I/O functions
 uint32_t dfs_read(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num);
 uint32_t dfs_write(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num);
-uint32_t dfs_mount(void);
+uint32_t dfs_mount(uint8_t *parms);
 PFILEINFO dfs_open(const char *fname, const char *mode);
 PDIRINFO dfs_opendir(char *path);
 void dfs_closedir(PDIRINFO dirinfo);

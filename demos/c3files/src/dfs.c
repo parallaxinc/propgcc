@@ -141,14 +141,6 @@ int File_remove(const char *str)
 #ifdef CHECK_MEMORY_SPACE
 #define MALLOC dfs_malloc  // Map MALLOC to local debug routine
 
-static int stack_min = 0x8000;
-
-void dfs_stack(void)
-{
-    int dummy = (int)&dummy;
-    if (dummy < stack_min) stack_min = dummy;
-}
-
 void *dfs_malloc(int size)
 {
     int space;
@@ -157,7 +149,7 @@ void *dfs_malloc(int size)
 
     if (ptr)
     {
-        space = stack_min - size - (int)ptr;
+        space = ((int)&space) - size - (int)ptr;
         if (space < prevspace)
         {
             prevspace = space;
@@ -167,6 +159,7 @@ void *dfs_malloc(int size)
     }
     else
         printf("malloc failed\n");
+
     return ptr;
 }
 #else
@@ -215,7 +208,7 @@ uint32_t dfs_write(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num)
     return successcount;
 }
 
-uint32_t dfs_mount()
+uint32_t dfs_mount(uint8_t *parms)
 {
     int retval, start;
 
@@ -226,7 +219,7 @@ uint32_t dfs_mount()
 #endif
 
     // Start up the low-level file I/O driver
-    DFS_InitFileIO();
+    DFS_InitFileIO(parms);
 
     // Find the first sector of the volume
     DFS_ReadSector(0, dfs_scratch, 0, 1);
@@ -257,6 +250,8 @@ PFILEINFO dfs_open(const char *fname1, const char *mode)
 #ifdef CURRENT_DIRECTORY
     char fname[MAX_PATH];
     ResolvePath((char *)fname1, fname);
+#else
+    char *fname = fname1;
 #endif
 
     if (!mountflag)
@@ -347,6 +342,8 @@ int dfs_rmdir(const char *path1)
 #ifdef CURRENT_DIRECTORY
     char path[MAX_PATH];
     ResolvePath((char *)path1, path);
+#else
+    char *path = path1;
 #endif
 
     dirinfo.scratch = dfs_scratch;
@@ -392,6 +389,8 @@ int dfs_mkdir(const char *path1)
 #ifdef CURRENT_DIRECTORY
     char path[MAX_PATH];
     ResolvePath((char *)path1, path);
+#else
+    char *path = path1;
 #endif
 
     if (!mountflag)
@@ -445,6 +444,8 @@ PDIRINFO dfs_opendir(char *dirname1)
 #ifdef CURRENT_DIRECTORY
     char dirname[MAX_PATH];
     ResolvePath((char *)dirname1, dirname);
+#else
+    char *dirname = dirname1;
 #endif
 
     if (!dirinfo)
@@ -488,6 +489,8 @@ int dfs_remove(char *fname1)
 #ifdef CURRENT_DIRECTORY
     char fname[MAX_PATH];
     ResolvePath(fname1, fname);
+#else
+    char *fname = fname1;
 #endif
     int attr = dfs_setattr(fname, -1);
     if (attr < 0)
@@ -539,9 +542,10 @@ int dfs_chdir(const char *path1)
     int len;
     char path[MAX_PATH];
     DIRINFO dirinfo;
+    ResolvePath(path1, path);
+
     dirinfo.scratch = dfs_scratch;
 
-    ResolvePath(path1, path);
     len = strlen(path);
     if (len > 1 && path[len-1] == '/') path[len-1] = 0;
 

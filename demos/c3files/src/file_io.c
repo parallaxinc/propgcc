@@ -23,38 +23,49 @@
 #include "dosfs.h"
 #include "dfs.h"
 
+#ifdef SPINNERET
+#define SD_DO  16
+#define SD_CLK 21
+#define SD_DI  20
+#define SD_CS  19
+#endif
+
 #define SD_INIT_CMD  0x0d
 #define SD_READ_CMD  0x11
 #define SD_WRITE_CMD 0x15
 
 extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
 
-volatile uint32_t *xmm_mbox;
-
 #ifdef __PROPELLER_LMM__
-#define CHECK_MEMORY_SPACE // Check the heap/stack space in LMM mode
-
-static int32_t XMM_MBOX[2];    // Command Mailbox
-static int32_t CACHE_ADDR[8];  // Dummy 64-byte cache area
+static volatile uint32_t xmm_mbox[2];
 
 // This routine starts the SD driver cog
-static void LoadCacheDriver(void)
+static void LoadSDDriver(uint8_t *pins)
 {
-    extern uint8_t c3_cache_array[];
-    uint32_t params[4];
-    params[0] = (int32_t)XMM_MBOX;
-    params[1] = (int32_t)CACHE_ADDR;
-    params[2] = 2;
-    params[3] = 2;
-    cognew(c3_cache_array, params);
-    xmm_mbox = (uint32_t *)XMM_MBOX;
+    int32_t pinmask[5];
+    extern uint8_t sd_driver_array[];
+
+    // Overwrite pin masks if pins are specified
+    if (pins)
+    {
+        pinmask[0] = 1 << pins[0];  // SD MISO
+        pinmask[1] = 1 << pins[1];  // SD CLK
+        pinmask[2] = 1 << pins[2];  // SD MOSI
+        pinmask[3] = 1 << pins[3];  // SD CS
+        pinmask[4] = 0;             // Zero disables C3 mode
+        memcpy(&sd_driver_array[4], pinmask, 20);
+    }
+
     xmm_mbox[0] = 1;
+    cognew(sd_driver_array, (uint32_t *)xmm_mbox);
     while (xmm_mbox[0]);
 }
 #else
+static volatile uint32_t *xmm_mbox;
+
 // This routine is used in XMM/XMMC mode where
 // the SD driver is already started
-static void LoadCacheDriver(void)
+static void LoadSDDriver(uint8_t *pins)
 {
     extern uint16_t _xmm_mbox_p;
     xmm_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
@@ -71,12 +82,13 @@ static uint32_t __attribute__((section(".hubtext"))) do_cmd(uint32_t cmd)
 }
 
 // This routine initializes the low-level driver
-int DFS_InitFileIO(void)
+int DFS_InitFileIO(uint8_t *parms)
 {
     int retries = 5;
     uint32_t result;
-    LoadCacheDriver();
-    while (retries == 0 || --retries >= 0) {
+    LoadSDDriver(parms);
+    while (retries-- > 0)
+    {
         result = do_cmd(SD_INIT_CMD);
         if (result == 0)
             return DFS_OK;
@@ -91,9 +103,6 @@ int DFS_InitFileIO(void)
 uint32_t DFS_ReadSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_t count)
 {
     uint32_t params[3], result;
-#ifdef CHECK_MEMORY_SPACE
-    dfs_stack();
-#endif
     while (count > 0) {
         if (((uint32_t)buffer) & 0xffff0000)
             params[0] = (uint32_t)dfs_scratch;
@@ -122,9 +131,6 @@ uint32_t DFS_ReadSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_t
 uint32_t DFS_WriteSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_t count)
 {
     uint32_t params[3], result;
-#ifdef CHECK_MEMORY_SPACE
-    dfs_stack();
-#endif
     while (count > 0) {
         if (((uint32_t)buffer) & 0xffff0000)
         {
