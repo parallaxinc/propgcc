@@ -48,15 +48,15 @@ pthread_create(pthread_t *threadId_ptr,
       if (!(thread->flags & _PTHREAD_ALLOCATED))
 	break;
     }
-  threadId = i;
-  if (threadId >= _NUM_PTHREADS)
+  if (i >= _NUM_PTHREADS)
     {
       _unlock_pthreads();
       errno = EAGAIN;
       return -1;
     }
+  threadId = i + 1;
   thread->flags = _PTHREAD_ALLOCATED;
-  thread->TLSdata.thread_id = threadId+1;
+  thread->TLSdata.thread_id = threadId;
   _unlock_pthreads();
 
   /* set up the stack */
@@ -114,27 +114,58 @@ pthread_self(void)
 }
 
 /*
+ * find the thread pointed to by an id
+ */
+_pthread_status_t *_pthread_ptr(pthread_t thr)
+{
+  _pthread_status_t *ptr;
+  if (thr <= 0 || thr > _NUM_PTHREADS)
+    {
+      errno = EINVAL;
+      return NULL;
+    }
+  --thr;
+  ptr = &_PTHREAD[thr];
+  if (!(ptr->flags & _PTHREAD_ALLOCATED))
+    {
+      errno = EINVAL;
+      return NULL;
+    }
+  return ptr;
+}
+
+/*
  * terminate a thread
  */
 void
 pthread_exit(void *result)
 {
-  int id;
+  int i;
   _pthread_status_t *thread;
-  id = pthread_self() - 1;
+  i = pthread_self() - 1;
 
   /* pthread_exit on the main thread is the same as exit() */
-  if (id < 0)
+  if (i < 0)
     exit(0);
 
-  thread = &_PTHREAD[id];
+  thread = &_PTHREAD[i];
   thread->arg = result;
-  thread->flags |= _PTHREAD_TERMINATED;
   if ((thread->flags & _PTHREAD_FREE_STACK) && thread->stackbase)
     {
       free(thread->stackbase);
       thread->stackbase = 0;
     }
+  _lock_pthreads();
+  if (thread->flags & _PTHREAD_DETACHED)
+    {
+      /* nobody is waiting for this thread, so free it */
+      thread->flags = 0;
+    }
+  else
+    {
+      thread->flags |= _PTHREAD_TERMINATED;
+    }
+  _unlock_pthreads();
   __builtin_propeller_cogstop(__builtin_propeller_cogid());
 }
 

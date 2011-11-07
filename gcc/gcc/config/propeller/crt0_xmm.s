@@ -35,15 +35,17 @@ r6	rdlong	cache_linemask, sp
 r7	add	sp, #4
 r8	rdlong	pc, sp
 r9	add	sp, #4
-r10	jmp	#__LMM_loop
-r11	long	0
-r12	long	0
+r10	locknew	r2 wc
+r11 IF_NC wrlong r2,__C_LOCK_PTR
+r12	jmp	#__LMM_loop
 r13	long	0
 r14	long	0
 lr	long	0
 sp	long	0
 pc	long	0
 
+
+__C_LOCK_PTR long __C_LOCK
 
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -650,3 +652,8 @@ Lmm_fcache_doit
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
 	res	128	'' reserve 128 longs = 512 bytes
+
+	''
+	'' global variables
+	''
+	.comm __C_LOCK,4,4
