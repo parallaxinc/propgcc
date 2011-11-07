@@ -385,7 +385,17 @@ int main()
     stdinfile = stdin;
     stdoutfile = stdout;
 
-    dfs_mount();
+#ifdef SPINNERET_CARD
+    // Mount file system on a Spinneret card
+    buffer[0] = 16; // SD MISO PIN
+    buffer[1] = 21; // SD CLK PIN
+    buffer[2] = 20; // SD MOSI PIN
+    buffer[3] = 19; // SD CS PIN
+    dfs_mount(buffer);
+#else
+    // Mount file system on a C3 card
+    dfs_mount(0);
+#endif
 
     printf("\n");
     Help();

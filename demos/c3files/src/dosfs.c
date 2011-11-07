@@ -517,6 +517,10 @@ uint32_t DFS_OpenDir(PVOLINFO volinfo, uint8_t *dirname, PDIRINFO dirinfo)
 		// Scan the path from left to right, finding the start cluster of each entry
 		// Observe that this code is inelegant, but obviates the need for recursion.
 		while (*ptr) {
+#ifdef PROPGCC_MODS
+			// BUG FIX: Zero result so we can check it for success
+			result = 0;
+#endif
 			DFS_CanonicalToDir(tmpfn, ptr);
 
 			de.name[0] = 0;
@@ -552,7 +556,14 @@ uint32_t DFS_OpenDir(PVOLINFO volinfo, uint8_t *dirname, PDIRINFO dirinfo)
 				ptr++;
 		}
 
+#ifdef PROPGCC_MODS
+		// BUG FIX: Check result for failure instead of
+		// dirinfo->currencluster.  dirinfo->currentcluster will be
+		// non-zero for searches in subdirectories
+		if (result)
+#else
 		if (!dirinfo->currentcluster)
+#endif
 			return DFS_NOTFOUND;
 	}
 	return DFS_OK;
