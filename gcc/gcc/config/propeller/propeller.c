@@ -502,6 +502,7 @@ bool propeller_need_mulsi = false;
 bool propeller_need_divsi = false;
 bool propeller_need_udivsi = false;
 bool propeller_need_clzsi = false;
+bool propeller_need_cmpswapsi = false;
 /*
  * start assembly language output
  */
@@ -659,6 +660,14 @@ pasm_divsi(FILE *f) {
   fprintf(f, "\tIF_NZ\tneg\tr1,r1\n");
   fprintf(f, "__DIVSI_ret\tret\n");
 }
+/*
+ * implement signed division by using udivsi
+ */
+static void
+pasm_cmpswapsi(FILE *f)
+{
+  error ("atomic operations are not yet supported in spin code");
+}
 
 static void
 propeller_asm_file_end (void)
@@ -707,6 +716,9 @@ propeller_asm_file_end (void)
   }
   if (propeller_need_divsi) {
     pasm_divsi(asm_out_file);
+  }
+  if (propeller_need_cmpswapsi) {
+    pasm_cmpswapsi(asm_out_file);
   }
 }
 
