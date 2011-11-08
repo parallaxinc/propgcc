@@ -42,7 +42,7 @@ ParseTreeNode *ParseExpr(ParseContext *c)
     if ((tkn = GetToken(c)) == T_OR) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeDisjunction);
         ExprListEntry *entry, **pLast;
-        node2->exprList.exprs = entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
+        node2->u.exprList.exprs = entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
         entry->expr = node;
         entry->next = NULL;
         pLast = &entry->next;
@@ -68,7 +68,7 @@ static ParseTreeNode *ParseExpr2(ParseContext *c)
     if ((tkn = GetToken(c)) == T_AND) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeConjunction);
         ExprListEntry *entry, **pLast;
-        node2->exprList.exprs = entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
+        node2->u.exprList.exprs = entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
         entry->expr = node;
         entry->next = NULL;
         pLast = &entry->next;
@@ -94,7 +94,7 @@ static ParseTreeNode *ParseExpr3(ParseContext *c)
     while ((tkn = GetToken(c)) == '^') {
         expr2 = ParseExpr4(c);
         if (IsIntegerLit(expr) && IsIntegerLit(expr2))
-            expr->integerLit.value = expr->integerLit.value ^ expr2->integerLit.value;
+            expr->u.integerLit.value = expr->u.integerLit.value ^ expr2->u.integerLit.value;
         else
             expr = MakeBinaryOpNode(c, OP_BXOR, expr, expr2);
     }
@@ -111,7 +111,7 @@ static ParseTreeNode *ParseExpr4(ParseContext *c)
     while ((tkn = GetToken(c)) == '|') {
         expr2 = ParseExpr5(c);
         if (IsIntegerLit(expr) && IsIntegerLit(expr2))
-            expr->integerLit.value = expr->integerLit.value | expr2->integerLit.value;
+            expr->u.integerLit.value = expr->u.integerLit.value | expr2->u.integerLit.value;
         else
             expr = MakeBinaryOpNode(c, OP_BOR, expr, expr2);
     }
@@ -128,7 +128,7 @@ static ParseTreeNode *ParseExpr5(ParseContext *c)
     while ((tkn = GetToken(c)) == '&') {
         expr2 = ParseExpr6(c);
         if (IsIntegerLit(expr) && IsIntegerLit(expr2))
-            expr->integerLit.value = expr->integerLit.value & expr2->integerLit.value;
+            expr->u.integerLit.value = expr->u.integerLit.value & expr2->u.integerLit.value;
         else
             expr = MakeBinaryOpNode(c, OP_BAND, expr, expr2);
     }
@@ -207,10 +207,10 @@ static ParseTreeNode *ParseExpr8(ParseContext *c)
         if (IsIntegerLit(expr) && IsIntegerLit(expr2)) {
             switch (tkn) {
             case T_SHL:
-                expr->integerLit.value = expr->integerLit.value << expr2->integerLit.value;
+                expr->u.integerLit.value = expr->u.integerLit.value << expr2->u.integerLit.value;
                 break;
             case T_SHR:
-                expr->integerLit.value = expr->integerLit.value >> expr2->integerLit.value;
+                expr->u.integerLit.value = expr->u.integerLit.value >> expr2->u.integerLit.value;
                 break;
             default:
                 /* not reached */
@@ -249,10 +249,10 @@ static ParseTreeNode *ParseExpr9(ParseContext *c)
         if (IsIntegerLit(expr) && IsIntegerLit(expr2)) {
             switch (tkn) {
             case '+':
-                expr->integerLit.value = expr->integerLit.value + expr2->integerLit.value;
+                expr->u.integerLit.value = expr->u.integerLit.value + expr2->u.integerLit.value;
                 break;
             case '-':
-                expr->integerLit.value = expr->integerLit.value - expr2->integerLit.value;
+                expr->u.integerLit.value = expr->u.integerLit.value - expr2->u.integerLit.value;
                 break;
             default:
                 /* not reached */
@@ -291,17 +291,17 @@ static ParseTreeNode *ParseExpr10(ParseContext *c)
         if (IsIntegerLit(node) && IsIntegerLit(node2)) {
             switch (tkn) {
             case '*':
-                node->integerLit.value = node->integerLit.value * node2->integerLit.value;
+                node->u.integerLit.value = node->u.integerLit.value * node2->u.integerLit.value;
                 break;
             case '/':
-                if (node2->integerLit.value == 0)
+                if (node2->u.integerLit.value == 0)
                     ParseError(c, "division by zero in constant expression");
-                node->integerLit.value = node->integerLit.value / node2->integerLit.value;
+                node->u.integerLit.value = node->u.integerLit.value / node2->u.integerLit.value;
                 break;
             case T_MOD:
-                if (node2->integerLit.value == 0)
+                if (node2->u.integerLit.value == 0)
                     ParseError(c, "division by zero in constant expression");
-                node->integerLit.value = node->integerLit.value % node2->integerLit.value;
+                node->u.integerLit.value = node->u.integerLit.value % node2->u.integerLit.value;
                 break;
             default:
                 /* not reached */
@@ -344,21 +344,21 @@ static ParseTreeNode *ParseExpr11(ParseContext *c)
     case '-':
         node = ParsePrimary(c);
         if (IsIntegerLit(node))
-            node->integerLit.value = -node->integerLit.value;
+            node->u.integerLit.value = -node->u.integerLit.value;
         else
             node = MakeUnaryOpNode(c, OP_NEG, node);
         break;
     case T_NOT:
         node = ParsePrimary(c);
         if (IsIntegerLit(node))
-            node->integerLit.value = !node->integerLit.value;
+            node->u.integerLit.value = !node->u.integerLit.value;
         else
             node = MakeUnaryOpNode(c, OP_NOT, node);
         break;
     case '~':
         node = ParsePrimary(c);
         if (IsIntegerLit(node))
-            node->integerLit.value = ~node->integerLit.value;
+            node->u.integerLit.value = ~node->u.integerLit.value;
         else
             node = MakeUnaryOpNode(c, OP_BNOT, node);
         break;
@@ -396,11 +396,11 @@ static ParseTreeNode *ParseArrayReference(ParseContext *c, ParseTreeNode *arrayN
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeArrayRef);
 
     /* setup the array reference */
-    node->arrayRef.array = arrayNode;
+    node->u.arrayRef.array = arrayNode;
 
     /* get the index expression */
-    node->arrayRef.index = ParseExpr(c);
-    
+    node->u.arrayRef.index = ParseExpr(c);
+
     /* check for the close bracket */
     FRequire(c, ']');
     return node;
@@ -414,9 +414,9 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
     Token tkn;
 
     /* intialize the function call node */
-    node->functionCall.fcn = functionNode;
-    pLast = &node->functionCall.args;
-    
+    node->u.functionCall.fcn = functionNode;
+    pLast = &node->u.functionCall.args;
+
     /* parse the argument list */
     if ((tkn = GetToken(c)) != ')') {
         SaveToken(c, tkn);
@@ -427,7 +427,7 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
             actual->next = NULL;
             *pLast = actual;
             pLast = &actual->next;
-            ++node->functionCall.argc;
+            ++node->u.functionCall.argc;
         } while ((tkn = GetToken(c)) == ',');
         Require(c, tkn, ')');
     }
@@ -447,11 +447,11 @@ static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
         break;
     case T_NUMBER:
         node = NewParseTreeNode(c, NodeTypeIntegerLit);
-        node->integerLit.value = c->value;
+        node->u.integerLit.value = c->value;
         break;
     case T_STRING:
         node = NewParseTreeNode(c, NodeTypeStringLit);
-        node->stringLit.string = AddString(c, c->token);
+        node->u.stringLit.string = AddString(c, c->token);
         break;
     case T_IDENTIFIER:
         node = GetSymbolRef(c, c->token);
@@ -474,32 +474,32 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
     if (c->codeType != CODE_TYPE_MAIN && (symbol = FindSymbol(&c->locals, name)) != NULL) {
         if (IsConstant(symbol)) {
             node->nodeType = NodeTypeIntegerLit;
-            node->integerLit.value = symbol->value;
+            node->u.integerLit.value = symbol->value;
         }
         else {
-            node->symbolRef.symbol = symbol;
-            node->symbolRef.fcn = code_local;
-            node->symbolRef.offset = symbol->value;
+            node->u.symbolRef.symbol = symbol;
+            node->u.symbolRef.fcn = code_local;
+            node->u.symbolRef.offset = symbol->value;
         }
     }
 
     /* handle function or subroutine arguments or the return value symbol */
     else if (c->codeType != CODE_TYPE_MAIN && (symbol = FindSymbol(&c->arguments, name)) != NULL) {
-        node->symbolRef.symbol = symbol;
-        node->symbolRef.fcn = code_local;
-        node->symbolRef.offset = symbol->value - c->arguments.count;
+        node->u.symbolRef.symbol = symbol;
+        node->u.symbolRef.fcn = code_local;
+        node->u.symbolRef.offset = symbol->value - c->arguments.count;
     }
 
     /* handle global symbols */
     else if ((symbol = FindSymbol(&c->globals, c->token)) != NULL) {
         if (IsConstant(symbol)) {
             node->nodeType = NodeTypeIntegerLit;
-            node->integerLit.value = symbol->value;
+            node->u.integerLit.value = symbol->value;
         }
         else {
-            node->symbolRef.symbol = symbol;
-            node->symbolRef.fcn = code_global;
-            node->symbolRef.offset = symbol->value;
+            node->u.symbolRef.symbol = symbol;
+            node->u.symbolRef.fcn = code_global;
+            node->u.symbolRef.offset = symbol->value;
         }
     }
 
@@ -509,17 +509,17 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
         /* if inside a function or subroutine definition, add the symbol as a local */
         if (c->codeType != CODE_TYPE_MAIN) {
             symbol = AddLocal(c, name, SC_VARIABLE, c->localOffset++ + F_SIZE + 1);
-            node->symbolRef.symbol = symbol;
-            node->symbolRef.fcn = code_local;
-            node->symbolRef.offset = symbol->value;
+            node->u.symbolRef.symbol = symbol;
+            node->u.symbolRef.fcn = code_local;
+            node->u.symbolRef.offset = symbol->value;
         }
 
         /* otherwise, add it as a global */
         else {
             symbol = AddGlobal(c, name, SC_VARIABLE, c->image->variableCount++, 0);
-            node->symbolRef.symbol = symbol;
-            node->symbolRef.fcn = code_global;
-            node->symbolRef.offset = symbol->value;
+            node->u.symbolRef.symbol = symbol;
+            node->u.symbolRef.fcn = code_global;
+            node->u.symbolRef.offset = symbol->value;
         }
     }
 
@@ -531,8 +531,8 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeUnaryOp);
-    node->unaryOp.op = op;
-    node->unaryOp.expr = expr;
+    node->u.unaryOp.op = op;
+    node->u.unaryOp.expr = expr;
     return node;
 }
 
@@ -540,9 +540,9 @@ static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *ex
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeBinaryOp);
-    node->binaryOp.op = op;
-    node->binaryOp.left = left;
-    node->binaryOp.right = right;
+    node->u.binaryOp.op = op;
+    node->u.binaryOp.left = left;
+    node->u.binaryOp.right = right;
     return node;
 }
 

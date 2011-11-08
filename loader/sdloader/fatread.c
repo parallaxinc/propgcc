@@ -274,12 +274,8 @@ int FindFile(uint8_t *buffer, VolumeInfo *vinfo, const char *name, FileInfo *fin
 int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount)
 {
     // check to see if we're at the end of the file
-    if (finfo->bytesRemaining == 0) {
-#ifdef DEBUG
-        printf("Reached EOF\n");
-#endif
+    if (finfo->bytesRemaining == 0)
         return -1;
-    }
     
     // check to see if we're at the end of the cluster
     if (finfo->sectorsRemainingInCluster == 0) {
@@ -334,7 +330,6 @@ int GetFATEntry(VolumeInfo *vinfo, uint8_t *buffer, uint32_t cluster, uint32_t *
 {
     uint32_t sector, offset;
     
-    printf("getfat: %08x", cluster);
     // determine that offset based on the fat type
     switch (vinfo->type) {
     case TYPE_FAT12:
@@ -375,7 +370,6 @@ int GetFATEntry(VolumeInfo *vinfo, uint8_t *buffer, uint32_t cluster, uint32_t *
         break;
     }
     
-    printf(" %08x\n", *pEntry);
     return 0;
 }
 

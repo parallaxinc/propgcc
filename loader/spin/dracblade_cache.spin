@@ -31,58 +31,20 @@
 
 CON
 
-  ' cache access commands
-  WRITE_CMD             = %10
-  READ_CMD              = %11
-
-  CMD_MASK              = %11
-
-  LINELEN               = 1<<7  ' FIX ME!!!
-
   ' default cache dimensions
-  DEFAULT_INDEX_WIDTH   = 6
+  DEFAULT_INDEX_WIDTH   = 5
   DEFAULT_OFFSET_WIDTH  = 7
+  DEFAULT_CACHE_SIZE    = 1<<(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH+1)
 
   ' cache line tag flags
   EMPTY_BIT             = 30
   DIRTY_BIT             = 31
 
-VAR
-   long vm_mbox
+OBJ
+  int: "cache_interface"
 
-PUB startx(mailbox, cache) | init_mbox, init_cache, init_iwidth, init_owidth
-    vm_mbox := mailbox
-    init_mbox := mailbox
-    init_cache := cache
-    init_iwidth := 6
-    init_owidth := 7
-    long[mailbox] := $ffffffff
-    cognew(@init_vm, @init_mbox)
-    repeat while long[mailbox]
-
-pub readLong(madr)
-    long[vm_mbox][0] := (madr&!3) | READ_CMD
-    repeat while long[vm_mbox][0]
-    madr &= LINELEN-1
-    return long[long[vm_mbox][1]+madr]
-
-pub writeLong(madr, val)
-    long[vm_mbox][0] := (madr&!3) | WRITE_CMD
-    repeat while long[vm_mbox][0]
-    madr &= LINELEN-1
-    long[long[vm_mbox][1]+madr] := val
-
-pub readByte(madr)
-    long[vm_mbox][0] := (madr&!3) | READ_CMD
-    repeat while long[vm_mbox][0]
-    madr &= LINELEN-1
-    return byte[long[vm_mbox][1]+madr]
-
-pub writeByte(madr, val)
-    long[vm_mbox][0] := (madr&!3) | WRITE_CMD
-    repeat while long[vm_mbox][0]
-    madr &= LINELEN-1
-    byte[long[vm_mbox][1]+madr] := val
+PUB image
+  return @init_vm
 
 DAT
         org   $0
@@ -319,21 +281,16 @@ RamAddress ' sets up the ram latches. Assumes high latch A16-A18 low so only acc
                         or outa,GateHigh                ' set it high again
 RamAddress_ret          ret
 
-delay                   long    80                                    ' waitcnt delay to reduce power (#80 = 1uS approx)
-ctr                     long    0                                     ' used to pause execution (lower power use) & byte counter
-GateHigh                long    %00000000_00000000_00000001_00000000  ' HC138 gate high, all others must be low
-Outx                    long    0                                     ' for temp use, same as n in the spin code
+GateHigh                long    %00000000_00000000_00000001_00000000  ' HC138 gate high, all others must be low - also used as ReadEnable
+outx                    long    0                                     ' for temp use, same as n in the spin code
 LatchDirection          long    %00000000_00000000_00001111_11111111 ' 138 active, gate active and 8 data lines active
 LatchDirection2         long    %00000000_00000000_00001111_00000000 ' for reads so data lines are tristate till the read
 LowAddress              long    %00000000_00000000_00000101_00000000 ' low address latch = xxxx010x and gate high xxxxxxx1
 MiddleAddress           long    %00000000_00000000_00000111_00000000 ' middle address latch = xxxx011x and gate high xxxxxxx1
 HighAddress             long    %00000000_00000000_00001001_00000000 ' high address latch = xxxx100x and gate high xxxxxxx1
-'ReadEnable long    %00000000_00000000_00000001_00000000 ' /RD = xxxx000x and gate high xxxxxxx1
-                                                        ' commented out as the same as GateHigh
 WriteEnable             long    %00000000_00000000_00000011_00000000 ' /WE = xxxx001x and gate high xxxxxxx1
 data_8                  long    %00000000_00000000_00000000_00000000 ' so code compatability with zicog driver
 address                 long    %00000000_00000000_00000000_00000000 ' address for ram chip
-ledpin                  long    %00000000_00000000_00000000_00001000 ' to turn on led
 HighLatch               long    %00000000_00000000_00000000_00000000 ' static value for the 374 latch that does the led, hA16-A19 and the other 4 outputs
 
                         fit     496

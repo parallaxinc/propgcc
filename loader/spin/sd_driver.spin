@@ -33,10 +33,11 @@
 
 CON
 
-  CS_PIN                = 25
-  CLK_PIN               = 11
-  MOSI_PIN              = 9
-  MISO_PIN              = 10
+  ' these defaults are for the PropBOE
+  MISO_PIN              = 11
+  CLK_PIN               = 12
+  MOSI_PIN              = 13
+  CS_PIN                = 14
 
   ' address of CLKFREQ in hub RAM
   CLKFREQ_ADDR          = $0000

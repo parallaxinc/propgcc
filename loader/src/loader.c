@@ -638,7 +638,7 @@ static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *p
     initTableSize = 0;
     
     /* determine the full image size including the hub/ram initializers */
-    for (i = 0, imageSize = program_header.filesz; i < c->hdr.phnum; ++i) {
+    for (i = 0, imageSize = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program))
             return NullError("can't load program table entry %d", i);
         if (i != ki) {
