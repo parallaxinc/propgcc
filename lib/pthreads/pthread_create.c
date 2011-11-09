@@ -1,194 +1,270 @@
 /*
- * @pthread.c
- * Implementation of pthread functions
+ * pthread scheduler
  *
- * Copyright (c) 2011 Parallax, Inc.
- * Written by Eric R. Smith, Total Spectrum Software Inc.
- * MIT licensed (see terms at end of file)
  */
 #include <pthread.h>
 #include <errno.h>
-#include <propeller.h>
 #include <stdlib.h>
+#include <stddef.h>
 
-_pthread_status_t _PTHREAD[_NUM_PTHREADS];
+_pthread_queue_t _ready_queue;
+_pthread_queue_t _join_queue;
 
-/* lock needed for pthreads */
 volatile int _pthreads_lock;
 
-/* function to actually start a pthread running */
+/* this should be called only if we already hold the _pthread_lock */
 static void
-pthread_run(void *ptr)
+_pthread_addqueue(_pthread_queue_t *queue, _pthread_state_t *thr)
 {
-  void *result;
-  _pthread_status_t *p = ptr;
+  _pthread_state_t *p;
 
-  result = (*p->startfunc)(p->arg);
-  pthread_exit(result);
+  thr->queue = queue;
+  for(;;) {
+    p = *queue;
+    if (!p || thr->pri > p->pri)
+      break;
+    queue = &p->queue_next;
+  }
+  thr->queue_next = *queue;
+  *queue = thr;
 }
 
-/* create a new pthread */
-int
-pthread_create(pthread_t *threadId_ptr,
-	       const pthread_attr_t *attr,
-	       void *(*startfunc)(void *),
-	       void *arg)
+/* this should be called only if we already hold the _pthread_lock */
+static _pthread_state_t *
+_pthread_getqueuehead(_pthread_queue_t *queue)
 {
-  void *stackbase;
-  size_t stksiz;
-  unsigned int *stacktop;
-  int i, threadId;
-  _pthread_status_t *thread;
-  int cogid;
-
-  _lock_pthreads();
-  for (i = 0; i < _NUM_PTHREADS; i++)
-    {
-      thread = &_PTHREAD[i];
-      if (!(thread->flags & _PTHREAD_ALLOCATED))
-	break;
-    }
-  if (i >= _NUM_PTHREADS)
-    {
-      _unlock_pthreads();
-      errno = EAGAIN;
-      return -1;
-    }
-  threadId = i + 1;
-  thread->flags = _PTHREAD_ALLOCATED;
-  thread->TLSdata.thread_id = threadId;
-  _unlock_pthreads();
-
-  /* set up the stack */
-  if (attr->stksiz)
-    stksiz = attr->stksiz;
-  else
-    stksiz = 1024;
-
-  /* stksiz must be at least 16 bytes or fail */
-  if (stksiz < 16)
-    {
-      thread->flags = 0;
-      errno = EINVAL;
-      return -1;
-    }
-  if (attr->stack != NULL) {
-    stackbase = attr->stack;
-  } else {
-    stackbase = malloc(stksiz);
-    if (!stackbase) {
-      thread->flags = 0;
-      errno = ENOMEM;
-      return -1;
-    }
-    thread->flags |= _PTHREAD_FREE_STACK;
+  _pthread_state_t *p = *queue;
+  if (p) {
+    *queue = p->queue_next;
+    p->queue_next = NULL;
+    p->queue = NULL;
   }
+  return p;
+}
 
-  thread->startfunc = startfunc;
-  thread->arg = arg;
+/*
+ * main pthreads scheduler functions
+ * call these with the pthread_lock being
+ * held
+ */
+static void
+_pthread_schedule_raw(void)
+{
+  _pthread_state_t *next;
 
-  /* push things onto the stack */
-  stacktop = (unsigned int *)stackbase;
-  stacktop += stksiz/4;
+ again:
+  if (_ready_queue) {
+    next = _pthread_getqueuehead(&_ready_queue);
+    _TLS = next;
+    longjmp(next->jmpbuf, 1);
+  } else {
+    /* nothing ready to run */
+    /* hmmm, this is a tricky one; let's hope something on another CPU
+       will eventually add something to the ready queue
+       release the pthreads lock and wait for that
+    */
+    _unlock_pthreads();
+    while (!_ready_queue) ;
+    _lock_pthreads();
+    goto again;
+  }
+}
+static void
+_pthread_schedule(void)
+{
+  _pthread_state_t *self = _pthread_self();
+  if (setjmp(self->jmpbuf) == 0) {
+    _pthread_schedule_raw();
+  }
+}
 
-  /* run the function */
-  cogid = _start_cog_thread(stacktop, pthread_run, thread, &thread->TLSdata);
-  if (cogid < 0)
+/*
+ * go to sleep on a queue
+ */
+void
+_pthread_sleep(_pthread_queue_t *queue)
+{
+  _lock_pthreads();
+  _pthread_addqueue(queue, _pthread_self());
+  _pthread_schedule();
+  _unlock_pthreads();
+}
+
+/*
+ * yield the processor to another thread
+ */
+void
+pthread_yield(void)
+{
+  _pthread_sleep(&_ready_queue);
+}
+
+/*
+ * wake the highest priority process waiting on a queue
+ * returns a count of threads woken
+ */
+int
+_pthread_wake(_pthread_queue_t *queue)
+{
+  int cnt = 0;
+  _pthread_state_t *head;
+  _lock_pthreads();
+  head = _pthread_getqueuehead(queue);
+  if (head) {
+    cnt++;
+    _pthread_addqueue(&_ready_queue, head);
+    _pthread_schedule();
+  }
+  _unlock_pthreads();
+  return cnt;
+}
+
+/*
+ * wake all threads waiting on a queue
+ * returns a count of threads woken
+ */
+int
+_pthread_wakeall(_pthread_queue_t *queue)
+{
+  int cnt = 0;
+  _pthread_state_t *head;
+  _lock_pthreads();
+  for(;;) {
+    head = _pthread_getqueuehead(queue);
+    if (!head) break;
+    _pthread_addqueue(&_ready_queue, head);
+    cnt++;
+  }
+  if (cnt > 0)
+    _pthread_schedule();
+  _unlock_pthreads();
+  return cnt;
+}
+
+void
+_pthread_free(_pthread_state_t *thr)
+{
+  thr->flags = 0;
+  free(thr);
+}
+
+/*********************************************
+ * the initial entry point for threads
+ *********************************************/
+static void
+_pthread_main(void *dummy)
+{
+  void *r;
+  _pthread_state_t *thr = _pthread_self();
+  r = (*thr->start)(thr->arg);
+  pthread_exit(r);
+}
+
+/*********************************************
+ * now the actual thread creation code
+ *********************************************/
+
+int
+pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+	       void *(startfunc)(void*), void *arg)
+{
+  _pthread_state_t *thr;
+  size_t datasize;
+  size_t stksiz;
+  unsigned char *stack;
+  int cog;
+
+  datasize = sizeof(*thr);
+  if (attr == NULL)
     {
-      thread->flags = 0;
-      errno = EAGAIN;
-      return -1;
+      /* use default values */
+      stksiz = 0;
+      stack = 0;
     }
-  thread->cogid = cogid;
-  *threadId_ptr = threadId;
+  else
+    {
+      stksiz = attr->stksiz;
+      stack = attr->stack;
+    }
+
+  if (stksiz == 0)
+    stksiz = 512;  /* default stack size */
+  else
+    {
+      stksiz = (stksiz + 3) & ~3; /* round up to nearest word */
+      if (stksiz < 16)
+	{
+	  errno = EINVAL;
+	  return -1;
+	}
+    }
+  if (stack == 0) {
+    datasize += stksiz;
+  }
+  thr = calloc(1, datasize);
+  if (!thr)
+    return -1;
+  if (!stack)
+    stack = ((unsigned char *)thr) + sizeof(*thr);
+
+  /* move to top of stack */
+  stack = stack + stksiz;
+
+  *thread = thr;
+  thr->arg = arg;
+  thr->start = startfunc;
+
+  /* now we have to actually get the thread started */
+  /* first try to start it on another cog */
+  cog = _start_cog_thread(stack, _pthread_main, 0, thr);
+
+  if (cog < 0)
+    {
+      _pthread_state_t *self = _pthread_self();
+      /* we'll have to run it on this processor */
+      /* set up the jmp_buf so that it will return to _pthread_main */
+      thr->jmpbuf[_REG_LR] = (unsigned long)_pthread_main;
+      thr->jmpbuf[_REG_SP] = (unsigned long)stack;
+
+      _lock_pthreads();
+
+      /* save the current thread's state */
+      if (setjmp(self->jmpbuf) == 0) {
+	_pthread_addqueue(&_ready_queue, self);
+	_TLS = thr;
+	_unlock_pthreads();
+	longjmp(thr->jmpbuf, 1);
+      }
+      _unlock_pthreads();
+    }
+  /* indicate everything is OK */
   return 0;
 }
 
-/*
- * find our own thread id
- */
-pthread_t
-pthread_self(void)
-{
-  return _TLS->thread_id;
-}
-
-/*
- * find the thread pointed to by an id
- */
-_pthread_status_t *_pthread_ptr(pthread_t thr)
-{
-  _pthread_status_t *ptr;
-  if (thr <= 0 || thr > _NUM_PTHREADS)
-    {
-      errno = EINVAL;
-      return NULL;
-    }
-  --thr;
-  ptr = &_PTHREAD[thr];
-  if (!(ptr->flags & _PTHREAD_ALLOCATED))
-    {
-      errno = EINVAL;
-      return NULL;
-    }
-  return ptr;
-}
-
-/*
- * terminate a thread
- */
 void
 pthread_exit(void *result)
 {
-  int i;
-  _pthread_status_t *thread;
-  i = pthread_self() - 1;
-
-  /* pthread_exit on the main thread is the same as exit() */
-  if (i < 0)
-    exit(0);
-
-  thread = &_PTHREAD[i];
-  thread->arg = result;
-  if ((thread->flags & _PTHREAD_FREE_STACK) && thread->stackbase)
-    {
-      free(thread->stackbase);
-      thread->stackbase = 0;
-    }
+  _pthread_state_t *self = _pthread_self();
+  self->arg = result;
   _lock_pthreads();
-  if (thread->flags & _PTHREAD_DETACHED)
+  if (self->flags & _PTHREAD_DETACHED)
     {
-      /* nobody is waiting for this thread, so free it */
-      thread->flags = 0;
+      /* we have to free the memory allocated to this thread, and
+	 start executing a new thread */
+      _pthread_free(self);
+      /* now go run some other thread */
+      _pthread_schedule_raw();
     }
-  else
-    {
-      thread->flags |= _PTHREAD_TERMINATED;
-    }
+  self->flags |= _PTHREAD_TERMINATED;
   _unlock_pthreads();
-  __builtin_propeller_cogstop(__builtin_propeller_cogid());
+
+  /* wake up anyone waiting for us */
+  _pthread_wakeall(&_join_queue);
+  _pthread_schedule_raw();
 }
 
-/* +--------------------------------------------------------------------
- * ¦  TERMS OF USE: MIT License
- * +--------------------------------------------------------------------
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files
- * (the "Software"), to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * +--------------------------------------------------------------------
- */
+pthread_t
+pthread_self(void)
+{
+  return _pthread_self();
+}

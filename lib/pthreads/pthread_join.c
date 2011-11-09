@@ -10,10 +10,12 @@
 #include <pthread.h>
 #include <errno.h>
 
+extern _pthread_queue_t _join_queue;
+
 int
 pthread_join(pthread_t thr, void **value_ptr)
 {
-  _pthread_status_t *thread;
+  _thread_state_t *thread;
   thread = _pthread_ptr(thr);
   if (!thread)
     {
@@ -25,10 +27,12 @@ pthread_join(pthread_t thr, void **value_ptr)
       return -1;
     }
   while (0 == (thread->flags & _PTHREAD_TERMINATED))
-    pthread_yield();
+    {
+      _pthread_sleep(&_join_queue);
+    }
   if (value_ptr)
     *value_ptr = thread->arg;
-  thread->flags = 0;
+  _pthread_free(thread);
   return 0;
 }
 
