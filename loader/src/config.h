@@ -70,6 +70,10 @@ typedef unsigned char uint8_t;
 #define DEF_RXPIN           31
 #define DEF_TXPIN           30
 #define DEF_TVPIN           12
+#define DEF_SDSPIDO         22  // these next four match the PropBOE
+#define DEF_SDSPICLK        23
+#define DEF_SDSPIDI         24
+#define DEF_SDSPICS         25
 
 /* valid mask bits */
 #define VALID_CLKFREQ       (1 << 0)

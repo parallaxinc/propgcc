@@ -45,14 +45,24 @@ int main(void)
     FileInfo finfo;
     PexeFileHdr *hdr;
     uint32_t count;
+    int sd_id, i;
     uint8_t *p;
-    int i;
     
     cache_addr = HUB_SIZE - info->cache_size;
     xmm_mbox = (volatile uint32_t *)(cache_addr - 2 * sizeof(uint32_t));
     vm_mbox = xmm_mbox - 1;
     
-    sd_mbox = xmm_mbox; // only works for C3
+    if (info->use_cache_driver_for_sd) {
+        sd_mbox = xmm_mbox;
+        sd_id = -1;
+    }
+    else {
+        sd_mbox = vm_mbox - 2;
+        sd_mbox[0] = 0xffffffff;
+        sd_id = cognew(_load_start_coguser2, sd_mbox);
+        while (sd_mbox[0])
+            ;
+    }
     
     params[0] = (uint32_t)xmm_mbox;
     params[1] = cache_addr;
@@ -60,9 +70,7 @@ int main(void)
     params[3] = info->cache_param2;
     
     xmm_mbox[0] = 0xffffffff;
-    
     cognew(_load_start_coguser1, params);
-    
     while (xmm_mbox[0])
         ;
         
@@ -131,6 +139,9 @@ int main(void)
         }
     }
     
+    if (sd_id >= 0)
+        cogstop(sd_id);
+        
     printf("starting program\n");
     coginit(cogid(), _load_start_coguser3, (uint32_t)params);
 

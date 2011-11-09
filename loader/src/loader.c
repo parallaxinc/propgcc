@@ -73,6 +73,15 @@ typedef struct {
     uint32_t cache_code_off;
 } FlashLoaderDatHdr;
 
+/* DAT header in sd_driver.spin */
+typedef struct {
+    uint32_t jmp_init;
+    uint32_t do_mask;
+    uint32_t clk_mask;
+    uint32_t di_mask;
+    uint32_t cs_mask;
+} SDDriverDatHdr;
+
 /* target checksum for a binary file */
 #define SPIN_TARGET_CHECKSUM    0x14
 
@@ -300,14 +309,15 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int f
         return Error("can't find sd_driver (.coguser2) segment");
     
     if (config->sdDriver) {
+        SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
         if (!ReadCogImage(sys, config->sdDriver, driverImage, &driverSize))
             return Error("reading sd driver image failed: %s", config->sdDriver);
+        dat->do_mask = 1 << config->sdspiDO;
+        dat->clk_mask = 1 << config->sdspiClk;
+        dat->di_mask = 1 << config->sdspiDI;
+        dat->cs_mask = 1 << config->sdspiCS;
         memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
         info->use_cache_driver_for_sd = FALSE;
-        info->sdspi_do = config->sdspiDO;
-        info->sdspi_clk = config->sdspiClk;
-        info->sdspi_di = config->sdspiDI;
-        info->sdspi_cs = config->sdspiCS;
     }
     else
         info->use_cache_driver_for_sd = TRUE;
@@ -628,7 +638,7 @@ static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *p
     initTableSize = 0;
     
     /* determine the full image size including the hub/ram initializers */
-    for (i = 0, imageSize = program_header.filesz; i < c->hdr.phnum; ++i) {
+    for (i = 0, imageSize = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program))
             return NullError("can't load program table entry %d", i);
         if (i != ki) {

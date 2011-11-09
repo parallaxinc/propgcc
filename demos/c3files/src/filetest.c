@@ -1,8 +1,8 @@
 /*
 ############################################################################
 # This program is used to test the basic functions of the SD file system.
-# It implements simple versions of the cat, rm, ls and echo commands plus
-# the <, > and >> file redirection operators.
+# It implements simple versions of the cat, rm, ls, echo, cd, pwd, mkdir and
+# rmdir commands plus the <, > and >> file redirection operators.
 # The program starts up the file driver and then prompts for a command.
 #
 # Written by Dave Hein
@@ -18,13 +18,50 @@
 #include <propeller.h>
 #include "dfs.h"
 
+char *FindChar(char *ptr, int val);
+
 FILE *stdinfile;
 FILE *stdoutfile;
 
 /* Print help information */
 void Help()
 {
-    printf("Available commands are help, cat, rm, ls and echo\n");
+    printf("Commands are help, cat, rm, ls, ll, echo, cd, pwd, mkdir and rmdir\n");
+}
+
+void Cd(int argc, char **argv)
+{
+    if (argc < 2) return;
+
+    if (dfs_chdir(argv[1]))
+        perror(argv[1]);
+}
+
+void Pwd(int argc, char **argv)
+{
+    fprintf(stdoutfile, "%s\n", dfs_getcd());
+}
+
+void Mkdir(int argc, char **argv)
+{
+    int i;
+
+    for (i = 1; i < argc; i++)
+    {
+        if (dfs_mkdir(argv[i]))
+            perror(argv[i]);
+    }
+}
+
+void Rmdir(int argc, char **argv)
+{
+    int i;
+
+    for (i = 1; i < argc; i++)
+    {
+        if (dfs_rmdir(argv[i]))
+            perror(argv[i]);
+    }
 }
 
 /* This routine implements the file cat function */
@@ -49,7 +86,7 @@ void Cat(int argc, char **argv)
             infile = fopen(argv[i], "r");
             if (infile == 0)
             {
-                printf("Could not open file %s\n", argv[i]);
+                perror(argv[i]);
                 continue;
             }
         }
@@ -76,10 +113,11 @@ void Cat(int argc, char **argv)
 void Remove(int argc, char **argv)
 {
     int i;
+
     for (i = 1; i < argc; i++)
     {
-        if (dfs_remove(argv[i]))
-            printf("Cannot delete %s\n", argv[i]);
+        if (remove(argv[i]))
+            perror(argv[i]);
     }
 }
 
@@ -109,7 +147,7 @@ void List(int argc, char **argv)
     int32_t count = 0;
     uint32_t filesize;
     uint32_t longflag = 0;
-    char *path = argv[1];
+    char *path;
     PDIRINFO dirinfo;
     char drwx[5];
     int column;
@@ -123,7 +161,7 @@ void List(int argc, char **argv)
             if (!strcmp(argv[j], "-l"))
                 longflag = 1;
             else
-                fprintf(stdoutfile, "Unknown option \"%s\"\n", argv[j]);
+                printf("Unknown option \"%s\"\n", argv[j]);
         }
         else
             count++;
@@ -135,7 +173,7 @@ void List(int argc, char **argv)
         if (count == 0)
         {
             count--;
-            path = "";
+            path = "./";
         }
         else if (argv[j][0] == '-')
             continue;
@@ -149,7 +187,7 @@ void List(int argc, char **argv)
 
         if (!dirinfo)
         {
-            fprintf(stdoutfile, "Could not open %s\n", path);
+            perror(path);
             continue;
         }
 
@@ -162,7 +200,7 @@ void List(int argc, char **argv)
             for (i = 0; i < 8; i++)
             {
                 if (dirent->name[i] == ' ') break;
-                *ptr++ = dirent->name[i];
+                *ptr++ = tolower(dirent->name[i]);
             }
             if (dirent->name[8] != ' ')
             {
@@ -170,7 +208,7 @@ void List(int argc, char **argv)
                 for (i = 8; i < 11; i++)
                 {
                     if (dirent->name[i] == ' ') break;
-                    *ptr++ = dirent->name[i];
+                    *ptr++ = tolower(dirent->name[i]);
                 }
             }
             *ptr = 0;
@@ -179,7 +217,11 @@ void List(int argc, char **argv)
             filesize = (filesize << 8) | dirent->filesize_1;
             filesize = (filesize << 8) | dirent->filesize_0;
             strcpy(drwx, "-rw-");
-            if (dirent->attr & 0x10)
+            if (dirent->attr & ATTR_READ_ONLY)
+                drwx[2] = '-';
+            if (dirent->attr & ATTR_ARCHIVE)
+                drwx[3] = 'x';
+            if (dirent->attr & ATTR_DIRECTORY)
             {
                 drwx[0] = 'd';
                 drwx[3] = 'x';
@@ -278,19 +320,17 @@ int CheckRedirection(char **tokens, int num)
             stdoutfile = fopen(tokens[i+1], "w");
             if (!stdoutfile)
             {
-                printf("Could not open %s\n", tokens[i+1]);
+                perror(tokens[i+1]);
                 stdoutfile = stdout;
                 return 0;
             }
         }
         else if (!strcmp(tokens[i], ">>"))
         {
-            // Open the file with "wa" instead of "a" to work around a
-            // problem with the "a" mode.
-            stdoutfile = fopen(tokens[i+1], "wa");
+            stdoutfile = fopen(tokens[i+1], "a");
             if (!stdoutfile)
             {
-                printf("Could not open %s\n", tokens[i+1]);
+                perror(tokens[i+1]);
                 stdoutfile = stdout;
                 return 0;
             }
@@ -300,7 +340,7 @@ int CheckRedirection(char **tokens, int num)
             stdinfile = fopen(tokens[i+1], "r");
             if (!stdinfile)
             {
-                printf("Could not open %s\n", tokens[i+1]);
+                perror(tokens[i+1]);
                 stdinfile = stdin;
                 return 0;
             }
@@ -340,7 +380,17 @@ int main()
     stdinfile = stdin;
     stdoutfile = stdout;
 
-    dfs_mount();
+#ifdef SPINNERET_CARD
+    // Mount file system on a Spinneret card
+    buffer[0] = 16; // SD MISO PIN
+    buffer[1] = 21; // SD CLK PIN
+    buffer[2] = 20; // SD MOSI PIN
+    buffer[3] = 19; // SD CS PIN
+    dfs_mount(buffer);
+#else
+    // Mount file system on a C3 card
+    dfs_mount(0);
+#endif
 
     printf("\n");
     Help();
@@ -359,10 +409,23 @@ int main()
             Cat(num, tokens);
         else if (!strcmp(tokens[0], "ls"))
             List(num, tokens);
+        else if (!strcmp(tokens[0], "ll"))
+        {
+            tokens[num++] = "-l";
+            List(num, tokens);
+        }
         else if (!strcmp(tokens[0], "rm"))
             Remove(num, tokens);
         else if (!strcmp(tokens[0], "echo"))
             Echo(num, tokens);
+        else if (!strcmp(tokens[0], "cd"))
+            Cd(num, tokens);
+        else if (!strcmp(tokens[0], "pwd"))
+            Pwd(num, tokens);
+        else if (!strcmp(tokens[0], "mkdir"))
+            Mkdir(num, tokens);
+        else if (!strcmp(tokens[0], "rmdir"))
+            Rmdir(num, tokens);
         else
         {
             printf("Invalid command\n");

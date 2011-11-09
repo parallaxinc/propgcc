@@ -337,9 +337,7 @@ pseudo_fit (int c ATTRIBUTE_UNUSED)
   /* does nothing interesting right now, but
      we do parse the expression
   */
-  int temp;
-
-  temp = get_absolute_expression ();
+  get_absolute_expression ();
   demand_empty_rest_of_line ();
 }
 
@@ -593,7 +591,6 @@ md_assemble (char *instruction_string)
   char *str;
   char *p;
   char c;
-  int integer_reloc;
 
   str = skip_whitespace (instruction_string);
   p = find_whitespace (str);
@@ -650,7 +647,6 @@ md_assemble (char *instruction_string)
 
   str = p;
   size = 4;
-  integer_reloc = 0;  /* most relocations will be addresses, so assume that */
 
   switch (op->format)
     {

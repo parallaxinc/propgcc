@@ -104,7 +104,7 @@ struct Block {
             int nxt;
             int end;
         } DoBlock;
-    };
+    } u;
 };
 
 typedef struct String String;
@@ -205,7 +205,7 @@ struct PVAL {
     union {
         String *str;
         int val;
-    };
+    } u;
 };
 
 /* parse tree node types */
@@ -261,7 +261,7 @@ struct ParseTreeNode {
         struct {
             ExprListEntry *exprs;
         } exprList;
-    };
+    } u;
 };
 
 /* expression list entry structure */
