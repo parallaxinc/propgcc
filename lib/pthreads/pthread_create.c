@@ -7,10 +7,10 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-_pthread_queue_t _ready_queue;
-_pthread_queue_t _join_queue;
+_pthread_queue_t __ready_queue;
+_pthread_queue_t __join_queue;
 
-volatile int _pthreads_lock;
+atomic_t __pthreads_lock;
 
 /* this should be called only if we already hold the _pthread_lock */
 static void
@@ -53,8 +53,8 @@ _pthread_schedule_raw(void)
   _pthread_state_t *next;
 
  again:
-  if (_ready_queue) {
-    next = _pthread_getqueuehead(&_ready_queue);
+  if (__ready_queue) {
+    next = _pthread_getqueuehead(&__ready_queue);
     _TLS = next;
     longjmp(next->jmpbuf, 1);
   } else {
@@ -63,9 +63,9 @@ _pthread_schedule_raw(void)
        will eventually add something to the ready queue
        release the pthreads lock and wait for that
     */
-    _unlock_pthreads();
-    while (!_ready_queue) ;
-    _lock_pthreads();
+    __unlock_pthreads();
+    while (!__ready_queue) ;
+    __lock_pthreads();
     goto again;
   }
 }
@@ -84,10 +84,10 @@ _pthread_schedule(void)
 void
 _pthread_sleep(_pthread_queue_t *queue)
 {
-  _lock_pthreads();
+  __lock_pthreads();
   _pthread_addqueue(queue, _pthread_self());
   _pthread_schedule();
-  _unlock_pthreads();
+  __unlock_pthreads();
 }
 
 /*
@@ -96,7 +96,7 @@ _pthread_sleep(_pthread_queue_t *queue)
 void
 pthread_yield(void)
 {
-  _pthread_sleep(&_ready_queue);
+  _pthread_sleep(&__ready_queue);
 }
 
 /*
@@ -108,14 +108,14 @@ _pthread_wake(_pthread_queue_t *queue)
 {
   int cnt = 0;
   _pthread_state_t *head;
-  _lock_pthreads();
+  __lock_pthreads();
   head = _pthread_getqueuehead(queue);
   if (head) {
     cnt++;
-    _pthread_addqueue(&_ready_queue, head);
+    _pthread_addqueue(&__ready_queue, head);
     _pthread_schedule();
   }
-  _unlock_pthreads();
+  __unlock_pthreads();
   return cnt;
 }
 
@@ -128,16 +128,16 @@ _pthread_wakeall(_pthread_queue_t *queue)
 {
   int cnt = 0;
   _pthread_state_t *head;
-  _lock_pthreads();
+  __lock_pthreads();
   for(;;) {
     head = _pthread_getqueuehead(queue);
     if (!head) break;
-    _pthread_addqueue(&_ready_queue, head);
+    _pthread_addqueue(&__ready_queue, head);
     cnt++;
   }
   if (cnt > 0)
     _pthread_schedule();
-  _unlock_pthreads();
+  __unlock_pthreads();
   return cnt;
 }
 
@@ -226,16 +226,16 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr,
       thr->jmpbuf[_REG_LR] = (unsigned long)_pthread_main;
       thr->jmpbuf[_REG_SP] = (unsigned long)stack;
 
-      _lock_pthreads();
+      __lock_pthreads();
 
       /* save the current thread's state */
       if (setjmp(self->jmpbuf) == 0) {
-	_pthread_addqueue(&_ready_queue, self);
+	_pthread_addqueue(&__ready_queue, self);
 	_TLS = thr;
-	_unlock_pthreads();
+	__unlock_pthreads();
 	longjmp(thr->jmpbuf, 1);
       }
-      _unlock_pthreads();
+      __unlock_pthreads();
     }
   /* indicate everything is OK */
   return 0;
@@ -246,7 +246,7 @@ pthread_exit(void *result)
 {
   _pthread_state_t *self = _pthread_self();
   self->arg = result;
-  _lock_pthreads();
+  __lock_pthreads();
   if (self->flags & _PTHREAD_DETACHED)
     {
       /* we have to free the memory allocated to this thread, and
@@ -256,10 +256,10 @@ pthread_exit(void *result)
       _pthread_schedule_raw();
     }
   self->flags |= _PTHREAD_TERMINATED;
-  _unlock_pthreads();
+  __unlock_pthreads();
 
   /* wake up anyone waiting for us */
-  _pthread_wakeall(&_join_queue);
+  _pthread_wakeall(&__join_queue);
   _pthread_schedule_raw();
 }
 

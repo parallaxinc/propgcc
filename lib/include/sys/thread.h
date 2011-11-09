@@ -85,14 +85,14 @@ int _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_s
 typedef volatile int atomic_t;
 
 #if (defined(__PROPELLER_LMM__) || defined(__PROPELLER_COG__))
-#define _trylock(ptr) __sync_bool_compare_and_swap(ptr, 0, 1)
-#define _addlock(ptr, inc) __sync_add_and_fetch(ptr, inc)
+#define __trylock(ptr) __sync_bool_compare_and_swap(ptr, 0, 1)
+#define __addlock(ptr, inc) __sync_add_and_fetch(ptr, inc)
 #else
-#define _trylock(val) (*val == 0 && (*val = 1) != 0)
-#define _addlock(val, inc) (*val += inc)
+#define __trylock(val) (*val == 0 && (*val = 1) != 0)
+#define __addlock(val, inc) (*val += inc)
 #endif
 
-#define _lock(val) while (!_trylock(val)) ;
-#define _unlock(val) *val = 0
+#define __lock(val) while (!__trylock(val)) ;
+#define __unlock(val) *val = 0
 
 #endif

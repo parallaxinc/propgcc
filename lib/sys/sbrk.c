@@ -14,10 +14,9 @@ char *_heap_base = __heap_start;
 char *
 _sbrk(unsigned long n)
 {
-  char *here;
-  char c;
+  //char c;
+  //char *here = &c;
   char *r = _heap_base;
-  here = &c;
 
   /* allocate and return */
   _heap_base = r + n;
