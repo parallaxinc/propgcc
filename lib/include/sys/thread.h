@@ -81,6 +81,9 @@ int _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_s
   (*ptr += inc)
 #endif
 
+/* type for a volatile lock */
+typedef volatile int atomic_t;
+
 #if (defined(__PROPELLER_LMM__) || defined(__PROPELLER_COG__))
 #define _trylock(ptr) __sync_bool_compare_and_swap(ptr, 0, 1)
 #define _addlock(ptr, inc) __sync_add_and_fetch(ptr, inc)

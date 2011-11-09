@@ -1,7 +1,8 @@
 /*
  * get memory from the OS
  * written by Eric R. Smith, placed in the public domain
- * FIXME: should do error checking based on the stack
+ * FIXME: should do error checking based on the stack; but
+ * that is tricky if threads alloc their memory from the stack
  */
 
 extern char __heap_start[];
@@ -17,10 +18,6 @@ _sbrk(unsigned long n)
   char c;
   char *r = _heap_base;
   here = &c;
-
-  /* check that there will still be stack left after */
-  if ((long)(here - (r+n)) < MIN_STACK)
-    return (char *)0;
 
   /* allocate and return */
   _heap_base = r + n;
