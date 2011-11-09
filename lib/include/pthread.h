@@ -34,7 +34,7 @@ typedef struct pthread_attr_t {
 
 /* a mutex is just an integer with an associated queue */
 typedef struct pthread_mutex_t {
-  volatile int cnt;
+  atomic_t cnt;
   _pthread_queue_t queue;
 } pthread_mutex_t;
 
@@ -44,9 +44,9 @@ typedef struct pthread_mutex_t {
 typedef int pthread_mutexattr_t;
 
 /* a lock for pthreads data structures */
-extern volatile int _pthreads_lock;
-#define _lock_pthreads() _lock(&_pthreads_lock)
-#define _unlock_pthreads() _unlock(&_pthreads_lock)
+extern atomic_t __pthreads_lock;
+#define __lock_pthreads() __lock(&__pthreads_lock)
+#define __unlock_pthreads() __unlock(&__pthreads_lock)
 
 /*
  * some internal functions

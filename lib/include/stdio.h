@@ -1,3 +1,28 @@
+/*
+ * Implementation of stdio library functions
+ * Copyright (c) 2011 Parallax, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * +--------------------------------------------------------------------
+ */
+
 #ifndef _STDIO_H
 #define _STDIO_H
 
@@ -12,6 +37,7 @@ extern "C" {
 #include <sys/va_list.h>
 #include <sys/driver.h>
 #include <sys/null.h>
+#include <sys/thread.h>
 
 #if defined(__GNUC__)
 #define _PRINTF_FUNC __attribute__((format (printf, 1, 2)))
@@ -140,6 +166,11 @@ extern "C" {
   FILE *__fopen_driver(FILE *fp, struct __driver *drv, const char *name, const char *mode);
   /* set up a FILE pointer to do I/O from a string */
   FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len);
+
+  /* lock used to let multiple threads work together nicer */
+  extern atomic_t __stdio_lock;
+#define __lock_stdio()   __lock(&__stdio_lock)
+#define __unlock_stdio() __unlock(&__stdio_lock)
 
 #if defined(__cplusplus)
 }
