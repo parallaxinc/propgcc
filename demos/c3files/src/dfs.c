@@ -28,15 +28,17 @@
 #define MAKE_REMOVE_DIRECTORY  // Include fds_mkdir and fds_rmdir
 
 #ifdef __PROPELLER_LMM__
-#define FILE_CACHE_SIZE 16     // Use a small file cache for LMM
+#define FILE_BUFFER_SIZE 16     // Use a small file cache for LMM
 #define CHECK_MEMORY_SPACE     // Check heap/malloc space for LMM
 #else
-#define FILE_CACHE_SIZE 512    // Use a 512-byte file cache for XMM/XMMC
+#define FILE_BUFFER_SIZE 512    // Use a 512-byte file cache for XMM/XMMC
 #endif
 
 static VOLINFO volinfo;
 static int mountflag = 0;
 __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
+
+static int dfs_map_errno(int errnum);
 
 #ifdef CURRENT_DIRECTORY
 static char currdir[MAX_PATH];
@@ -57,8 +59,8 @@ _Driver FileDriver =
     File_fclose,
     File_read,
     File_write,
-    File_fseek,   /* TODO: test fseek */
-    File_remove,  /* TODO: need to add remove to library */
+    File_fseek,
+    File_remove,
   };
 
 /* This is a list of all drivers we can use in the
@@ -76,17 +78,20 @@ _Driver *_driverlist[] = {
 int File_fopen(FILE *fp, const char *str, const char *mode)
 {
     PFILEINFO dfs_fp = (PFILEINFO)dfs_open(str, mode);
+    if (!dfs_fp)
+        return -1;
+
     fp->drvarg[0] = (int)dfs_fp;
-#ifdef FILE_CACHE_SIZE
+#ifdef FILE_BUFFER_SIZE
     // Set up file cache in FILE struct
     if (dfs_fp)
     {
         fp->_ptr = fp->_base = ((void *)dfs_fp) + sizeof(FILEINFO);
-        fp->_bsiz = FILE_CACHE_SIZE;
+        fp->_bsiz = FILE_BUFFER_SIZE;
         fp->_flag |= _IOFREEBUF;
     }
 #endif
-    return (int)dfs_fp;
+    return 0;
 }
 
 /* function called by fclose */
@@ -113,7 +118,6 @@ int File_read(FILE *fp, unsigned char *buf, int count)
 /* function called by fseek */
 int File_fseek(FILE *fp, long int offset, int origin)
 {
-#if 0
     // This code needs to be enabled and tested
     PFILEINFO dfs_fp = (PFILEINFO)fp->drvarg[0];
     if (origin == SEEK_CUR)
@@ -121,18 +125,27 @@ int File_fseek(FILE *fp, long int offset, int origin)
     else if (origin == SEEK_END)
         offset += dfs_fp->filelen;
     else if (origin != SEEK_SET)
+    {
+        errno = EIO;
         return -1;
-    if (offset < 0 || offset > dfs_fp->filelen)
-        return -1;
+    }
+    if (offset < 0)
+        offset = 0;
     DFS_Seek(dfs_fp, offset, dfs_scratch);
-#endif
     return 0;
 }
 
 /* function called by remove */
 int File_remove(const char *str)
 {
-    return 0;
+    int retval = dfs_remove((char *)str);
+
+    if (!retval)
+        return 0;
+
+    errno = retval;
+
+    return -1;
 }
 
 //#####################################
@@ -166,26 +179,28 @@ void *dfs_malloc(int size)
 #define MALLOC malloc
 #endif
 
-void dfs_perror(int errnum, char *str)
+static int dfs_map_errno(int errnum)
 {
-    if (str)
-        printf("%s ", str);
-    if (errnum == DFS_MALLOC_FAILED)
-        printf("malloc failed\n");
-    else if (errnum == DFS_NOT_A_DIRECTORY)
-        printf("not a directory\n");
-    else if (errnum == DFS_DOES_NOT_EXIST)
-        printf("does not exist\n");
-    else if (errnum == DFS_DIRECTORY_NOT_EMPTY)
-        printf("directory not empty\n");
-    else if (errnum == DFS_ALREADY_EXISTS)
-        printf("already exists\n");
-    else if (errnum == DFS_CREATE_FAILED)
-        printf("create failed\n");
-    else if (errnum == DFS_IS_A_DIRECTORY)
-        printf("is a directory\n");
-    else
-        printf("error %d\n", errnum);
+    switch(errnum)
+    {
+        case DFS_OK:
+            break;
+        case DFS_EOF:
+            errnum = EOK;
+            break;
+        case DFS_WRITEPROT:
+            errnum = EROFS;
+            break;
+        case DFS_NOTFOUND:
+            errnum = ENOENT;
+            break;
+        case DFS_PATHLEN:
+            errnum = ENAMETOOLONG;
+            break;
+        default:
+            errnum = EIO;
+    }
+    return errnum;
 }
 
 uint32_t dfs_read(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num)
@@ -195,6 +210,7 @@ uint32_t dfs_read(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num)
 
     retval = DFS_ReadFile(fileinfo, dfs_scratch, buffer, &successcount, num);
     if (retval != DFS_OK) successcount = 0;
+    errno = dfs_map_errno(retval);
     return successcount;
 }
 
@@ -205,6 +221,7 @@ uint32_t dfs_write(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num)
 
     retval = DFS_WriteFile(fileinfo, dfs_scratch, buffer, &successcount, num);
     if (retval != DFS_OK) successcount = 0;
+    errno = dfs_map_errno(retval);
     return successcount;
 }
 
@@ -255,25 +272,31 @@ PFILEINFO dfs_open(const char *fname1, const char *mode)
 #endif
 
     if (!mountflag)
+    {
+        errno = EIO;
         return 0;
+    }
 
-#ifdef FILE_CACHE_SIZE
-    fileinfo = MALLOC(sizeof(FILEINFO) + FILE_CACHE_SIZE);
+#ifdef FILE_BUFFER_SIZE
+    fileinfo = MALLOC(sizeof(FILEINFO) + FILE_BUFFER_SIZE);
 #else
     fileinfo = MALLOC(sizeof(FILEINFO));
 #endif
 
     if (!fileinfo)
+    {
+        errno = ENOMEM;
         return 0;
+    }
 
-    if (mode[0] == 'w' && mode[1] != 'a')
+    if (mode[0] == 'w')
     {
         retval = DFS_OpenFile(&volinfo, (char *)fname, DFS_READ, dfs_scratch, fileinfo);
         if (retval == DFS_OK)
             DFS_UnlinkFile(&volinfo, (char *)fname, dfs_scratch);
         retval = DFS_OpenFile(&volinfo, (char *)fname, DFS_WRITE | DFS_READ, dfs_scratch, fileinfo);
     }
-    else if (mode[0] == 'w' && mode[1] == 'a')
+    else if (mode[0] == 'a')
     {
         retval = DFS_OpenFile(&volinfo, (char *)fname, DFS_WRITE | DFS_READ, dfs_scratch, fileinfo);
         if (retval == DFS_OK)
@@ -286,6 +309,7 @@ PFILEINFO dfs_open(const char *fname1, const char *mode)
 
     if (retval != DFS_OK)
     {
+        errno = dfs_map_errno(retval);
         free(fileinfo);
         fileinfo = 0;
     }
@@ -353,21 +377,28 @@ int dfs_rmdir(const char *path1)
     {
         // Try opening as a file
         if (DFS_OK == DFS_OpenFile(&volinfo, (char *)path, DFS_READ, dfs_scratch, &fileinfo))
-            return DFS_NOT_A_DIRECTORY;
+            errno = ENOTDIR;
         else
-            return DFS_DOES_NOT_EXIST;
+            errno = ENOENT;
+        return -1;
     }
 
     // Check if directory is empty
     while (DFS_OK == DFS_GetNext(&volinfo, &dirinfo, &dirent))
     {
         if (dirent.name[0])
-            return DFS_DIRECTORY_NOT_EMPTY;
+        {
+            errno = ENOTEMPTY;
+            return -1;
+        }
     }
 
     // Open the directory as a file
     if (DFS_OK != DFS_OpenFile(&volinfo, (char *)path, DFS_DIRECTORY, dfs_scratch, &fileinfo))
+    {
+        errno = ENOENT;
         return -1;
+    }
 
     // Remove the directory attribute so we can delete it
     dirsector = fileinfo.dirsector;
@@ -394,17 +425,24 @@ int dfs_mkdir(const char *path1)
 #endif
 
     if (!mountflag)
+    {
+        errno = EIO;
         return -1;
+    }
 
     fileinfo = MALLOC(sizeof(FILEINFO));
 
     if (!fileinfo)
+    {
+        errno = ENOMEM;
         return -1;
+    }
 
     if (DFS_OK == DFS_OpenFile(&volinfo, (char *)path, DFS_DIRECTORY, dfs_scratch, fileinfo))
     {
         free(fileinfo);
-        return DFS_ALREADY_EXISTS;
+        errno = EEXIST;
+        return -1;
     }
 
     if (DFS_OK == DFS_OpenFile(&volinfo, (char *)path, DFS_DIRECTORY | DFS_WRITE, dfs_scratch, fileinfo))
@@ -421,7 +459,8 @@ int dfs_mkdir(const char *path1)
     else
     {
         free(fileinfo);
-        return DFS_CREATE_FAILED;
+        errno = EIO;
+        return -1;
     }
 
     free(fileinfo);
@@ -449,7 +488,10 @@ PDIRINFO dfs_opendir(char *dirname1)
 #endif
 
     if (!dirinfo)
+    {
+        errno = ENOMEM;
         return 0;
+    }
 
     dirinfo->scratch = ((void *)dirinfo) + sizeof(DIRINFO) + sizeof(DIRENT);
     retval = DFS_OpenDir(&volinfo, dirname, dirinfo);
@@ -458,6 +500,8 @@ PDIRINFO dfs_opendir(char *dirname1)
         return dirinfo;
 
     free(dirinfo);
+
+    errno = dfs_map_errno(retval);
 
     return 0;
 }
@@ -494,9 +538,9 @@ int dfs_remove(char *fname1)
 #endif
     int attr = dfs_setattr(fname, -1);
     if (attr < 0)
-        return DFS_DOES_NOT_EXIST;
+        return ENOENT;
     if (attr & ATTR_DIRECTORY)
-        return DFS_IS_A_DIRECTORY;
+        return EISDIR;
     return DFS_UnlinkFile(&volinfo, fname, dfs_scratch);
 }
 
@@ -540,6 +584,7 @@ int MountFSDebug(void)
 int dfs_chdir(const char *path1)
 {
     int len;
+    int retval;
     char path[MAX_PATH];
     DIRINFO dirinfo;
     ResolvePath(path1, path);
@@ -550,11 +595,13 @@ int dfs_chdir(const char *path1)
     if (len > 1 && path[len-1] == '/') path[len-1] = 0;
 
     // Make sure it's a valid directory
-    if (DFS_OK == DFS_OpenDir(&volinfo, path, &dirinfo))
+    if (DFS_OK == (retval = DFS_OpenDir(&volinfo, path, &dirinfo)))
     {
         strcpy(currdir, path);
         return DFS_OK;
     }
+
+    errno = dfs_map_errno(retval);
 
     return -1;
 }
