@@ -9,11 +9,11 @@
  * "func" is the function to start running
  * "arg" is the argument
  * "stacktop" is the top of the new process' stack
- * NOTE: this is a raw low-level function which does
- * not take into account niceties like
+ * NOTE: this is a raw low-level function; the
+ * pthreads functions may be more useful
  */
 int
-_start_cog_thread(void *stacktop, void (*func)(void *), void *arg, struct _TLS *tls)
+_start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_state_t *tls)
 {
 #if defined(__PROPELLER_LMM__)
   extern unsigned int _load_start_kernel[];

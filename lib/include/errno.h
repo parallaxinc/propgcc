@@ -31,6 +31,7 @@ extern "C" {
 #define ENOSEEK   19    /* Device not seekable */
 
 #define ENUMERRORS 20
+#define EBUSY EAGAIN
 
 #if defined(__cplusplus)
 }
