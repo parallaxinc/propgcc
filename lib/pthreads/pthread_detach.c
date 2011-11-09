@@ -7,11 +7,11 @@ pthread_detach(pthread_t thr)
 
   if (!thread)
     return -1;
-  _lock_pthreads();
+  __lock_pthreads();
   if (thread->flags & _PTHREAD_TERMINATED)
     _pthread_free(thread);
   else
     thread->flags |= _PTHREAD_DETACHED;
-  _unlock_pthreads();
+  __unlock_pthreads();
   return 0;
 }

@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include <sys/thread.h>
 
 size_t
 fwrite(const void *vdata, size_t size, size_t count, FILE *fp)
@@ -27,6 +28,8 @@ fwrite(const void *vdata, size_t size, size_t count, FILE *fp)
 	if(!(f & _IOWRT)			/* not opened for write? */
 	|| (f & (_IOERR | _IOEOF)))		/* error/eof conditions? */
 		return(0);
+
+	__lock(&fp->_lock);
 
 	n =  count * size;
 	space = fp->_bsiz - fp->_cnt;
@@ -59,5 +62,6 @@ fwrite(const void *vdata, size_t size, size_t count, FILE *fp)
 	    break;
 	  }
 
+	__unlock(&fp->_lock);
 	return((l > 0) ? ((size_t)l / size) : 0);
 }

@@ -142,6 +142,7 @@
 #include <limits.h>	/* For *_MAX. */
 #include <stddef.h>	/* For ptrdiff_t. */
 #include <stdint.h>	/* For intmax_t. */
+#include <sys/thread.h> /* for lock/unlock */
 
 #define HAVE_UNSIGNED_LONG_LONG_INT 1
 #define HAVE_LONG_LONG_INT          1
@@ -313,6 +314,8 @@ vfprintf(FILE *fp, const char *format, va_list args)
 	int state = PRINT_S_DEFAULT;
 	char ch = *format++;
 	size_t len = 0;
+
+	__lock(&fp->_lock);
 
 	while (ch != '\0')
 		switch (state) {
@@ -661,6 +664,8 @@ vfprintf(FILE *fp, const char *format, va_list args)
 			break;
 		}
 out:
+	__unlock(&fp->_lock);
+
 	if (overflow || len >= INT_MAX) {
 		errno = overflow ? EOVERFLOW : ERANGE;
 		return -1;
