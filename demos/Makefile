@@ -8,7 +8,6 @@
 # #########################################################
 
 all:
-	make -C libpropeller
 	make -C toggle/cog_c_toggle    # TODO build fails. fix later.
 	make -C toggle/c++_toggle
 	make -C toggle/lmm_c_toggle
@@ -25,7 +24,6 @@ all:
 	make -C xbasic
 
 clean:
-	make clean -C libpropeller
 	make clean -C toggle/cog_c_toggle
 	make clean -C toggle/c++_toggle
 	make clean -C toggle/lmm_c_toggle
