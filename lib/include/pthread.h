@@ -52,6 +52,7 @@ extern atomic_t __pthreads_lock;
  * some internal functions
  */
 void _pthread_sleep(_pthread_queue_t *queue);
+void _pthread_sleep_with_lock(_pthread_queue_t *queue);
 int _pthread_wake(_pthread_queue_t *queue);
 int _pthread_wakeall(_pthread_queue_t *queue);
 void _pthread_free(_pthread_state_t *thr);

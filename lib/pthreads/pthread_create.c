@@ -90,6 +90,13 @@ _pthread_sleep(_pthread_queue_t *queue)
   __unlock_pthreads();
 }
 
+void
+_pthread_sleep_with_lock(_pthread_queue_t *queue)
+{
+  _pthread_addqueue(queue, _pthread_self());
+  _pthread_schedule();
+}
+
 /*
  * yield the processor to another thread
  */
@@ -174,6 +181,10 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr,
   unsigned char *stack;
   int cog;
 
+  /* make sure the library yield() hook points to the right thing */
+  __yield_ptr = pthread_yield;
+
+  /* set up the new thread */
   datasize = sizeof(*thr);
   if (attr == NULL)
     {
@@ -237,6 +248,7 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr,
       }
       __unlock_pthreads();
     }
+
   /* indicate everything is OK */
   return 0;
 }

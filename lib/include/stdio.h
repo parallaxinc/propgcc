@@ -80,6 +80,9 @@ extern "C" {
     unsigned int	_flag;		/* file status flags */
     long		_bsiz;		/* buffer size */
 
+    /* lock for multi-threaded access to FILE struct */
+    _atomic_t           _lock;
+
     /* driver for this file */
     struct __driver *_drv;
 
@@ -168,7 +171,7 @@ extern "C" {
   FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len);
 
   /* lock used to let multiple threads work together nicer */
-  extern atomic_t __stdio_lock;
+  extern _atomic_t __stdio_lock;
 #define __lock_stdio()   __lock(&__stdio_lock)
 #define __unlock_stdio() __unlock(&__stdio_lock)
 

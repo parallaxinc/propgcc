@@ -33,7 +33,7 @@ pthread_mutex_trylock(pthread_mutex_t *mutex)
 int
 pthread_mutex_lock(pthread_mutex_t *mutex)
 {
-  if (_addlock(&mutex->cnt, 1) == 1)
+  if (__addlock(&mutex->cnt, 1) == 1)
     {
       return 0;
     }
@@ -55,7 +55,7 @@ pthread_mutex_lock(pthread_mutex_t *mutex)
 int
 pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
-  if (_addlock(&mutex->cnt, -1) == 0)
+  if (__addlock(&mutex->cnt, -1) == 0)
     {
       return 0;
     }

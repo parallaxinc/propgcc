@@ -10,7 +10,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-extern _pthread_queue_t _join_queue;
+extern _pthread_queue_t __join_queue;
 
 int
 pthread_join(pthread_t thr, void **value_ptr)
@@ -26,10 +26,13 @@ pthread_join(pthread_t thr, void **value_ptr)
       errno = EINVAL;
       return -1;
     }
+
+  __lock_pthreads();
   while (0 == (thread->flags & _PTHREAD_TERMINATED))
     {
-      _pthread_sleep(&_join_queue);
+      _pthread_sleep_with_lock(&__join_queue);
     }
+  __unlock_pthreads();
   if (value_ptr)
     *value_ptr = thread->arg;
   _pthread_free(thread);

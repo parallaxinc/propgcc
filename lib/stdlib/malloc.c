@@ -37,7 +37,7 @@ malloc(size_t n)
 
   numunits = (n + sizeof(MemHeader)-1)/sizeof(MemHeader) + 1;
 
-  _lock(&malloc_lock);
+  __lock(&malloc_lock);
   prevp = &freelist;
 
   for (p = (*prevp); p; prevp = &p->next, p = p->next)
@@ -65,7 +65,7 @@ malloc(size_t n)
     {
       p = _sbrk(numunits * sizeof(MemHeader));
     }
-  _unlock(&malloc_lock);
+  __unlock(&malloc_lock);
   if (!p)
     return NULL;
   p->next = MAGIC;
@@ -87,13 +87,13 @@ free(void *ptr)
     }
   thisp->next = NULL;
 
-  _lock(&malloc_lock);
+  __lock(&malloc_lock);
   /* see if we can merge this into a block on the free list */
   if (!freelist)
     {
       /* no freelist, so just release this right away */
       freelist = thisp;
-      _unlock(&malloc_lock);
+      __unlock(&malloc_lock);
       return;
     }
 
@@ -115,7 +115,7 @@ free(void *ptr)
 	      p->next = nextp->next;
 	      nextp->next = NULL;
 	    }
-	  _unlock(&malloc_lock);
+	  __unlock(&malloc_lock);
 	  return;
 	}
 
@@ -124,7 +124,7 @@ free(void *ptr)
 	  *prev = thisp;
 	  thisp->next = p->next;
 	  thisp->len += p->len;
-	  _unlock(&malloc_lock);
+	  __unlock(&malloc_lock);
 	  return;
 	}
 
@@ -139,7 +139,7 @@ free(void *ptr)
   /* just add it to the free list */
   thisp->next = *prev;
   *prev = thisp;
-  _unlock(&malloc_lock);
+  __unlock(&malloc_lock);
 }
 
 /*
