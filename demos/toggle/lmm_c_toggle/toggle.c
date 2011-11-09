@@ -18,7 +18,7 @@
 static int cog1_stack[STACK_SIZE];
 
 /* per-thread library variables ("Thread Local Storage") */
-static struct _TLS thread_data;
+static _thread_state_t thread_data;
 
 /* variables that we share between cogs */
 volatile unsigned int wait_time;
