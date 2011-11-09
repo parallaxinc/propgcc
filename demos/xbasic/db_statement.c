@@ -136,11 +136,11 @@ static void ParseDef(ParseContext *c)
     /* check for a constant definition */
     if ((tkn = GetToken(c)) == '=')
         ParseConstantDef(c, name);
-    
+
     /* otherwise, assume a function definition */
     else {
         Symbol *sym;
-	
+
 		/* save the lookahead token */
 		SaveToken(c, tkn);
 
@@ -193,7 +193,7 @@ static void ParseConstantDef(ParseContext *c, char *name)
         ParseError(c, "expecting a constant expression");
 
     /* add the symbol as a global */
-    sym = AddGlobal(c, name, SC_CONSTANT, expr->integerLit.value, 0);
+    sym = AddGlobal(c, name, SC_CONSTANT, expr->u.integerLit.value, 0);
 
     FRequire(c, T_EOL);
 }
@@ -222,7 +222,7 @@ static void ParseDim(ParseContext *c)
                 else
                     value = ParseScalarInitializer(c);
             }
-            
+
             /* no initializers */
             else {
                 ClearArrayInitializers(c, size);
@@ -231,11 +231,11 @@ static void ParseDim(ParseContext *c)
 
             /* create a vector object for arrays */
             value = isArray ? StoreVector(c, (int16_t *)c->codeBuf, size) : 0;
-            
+
             /* add the symbol to the global symbol table */
             AddGlobal(c, name, SC_VARIABLE, c->image->variableCount++, value);
         }
-        
+
         /* otherwise, add to the local symbol table */
         else {
             if (isArray)
@@ -257,7 +257,7 @@ static int ParseVariableDecl(ParseContext *c, char *name, int16_t *pSize)
     /* parse the variable name */
     FRequire(c, T_IDENTIFIER);
     strcpy(name, c->token);
-    
+
     /* handle arrays */
     if ((tkn = GetToken(c)) == '[') {
         int size;
@@ -277,9 +277,9 @@ static int ParseVariableDecl(ParseContext *c, char *name, int16_t *pSize)
             expr = ParseExpr(c);
 
             /* make sure it's a constant */
-            if (!IsIntegerLit(expr) || expr->integerLit.value <= 0)
+            if (!IsIntegerLit(expr) || expr->u.integerLit.value <= 0)
                 ParseError(c, "expecting a positive constant expression");
-            size = expr->integerLit.value;
+            size = expr->u.integerLit.value;
 
             /* only one dimension allowed for now */
             FRequire(c, ']');
@@ -304,9 +304,9 @@ static int16_t ParseScalarInitializer(ParseContext *c)
     ParseTreeNode *expr = ParseExpr(c);
     if (!IsIntegerLit(expr))
         ParseError(c, "expecting a constant expression");
-    return expr->integerLit.value;
+    return expr->u.integerLit.value;
 }
-    
+
 /* ParseArrayInitializers - parse array initializers */
 static void ParseArrayInitializers(ParseContext *c, int16_t size)
 {
@@ -340,15 +340,15 @@ static void ParseArrayInitializers(ParseContext *c, int16_t size)
             expr = ParseExpr(c);
             if (!IsIntegerLit(expr))
                 ParseError(c, "expecting a constant expression");
-    
+
             /* check for too many initializers */
             if (--size < 0)
                 ParseError(c, "too many initializers");
-    
+
             /* store the initial value */
             if (dataPtr >= dataTop)
                 ParseError(c, "insufficient object data space");
-            *dataPtr++ = expr->integerLit.value;
+            *dataPtr++ = expr->u.integerLit.value;
 
             switch (tkn = GetToken(c)) {
             case T_EOL:
@@ -423,11 +423,11 @@ static void ParseIf(ParseContext *c)
     PushBlock(c);
     c->bptr->type = BLOCK_IF;
     putcbyte(c, OP_BRF);
-    c->bptr->IfBlock.nxt = putcword(c, 0);
-    c->bptr->IfBlock.end = 0;
+    c->bptr->u.IfBlock.nxt = putcword(c, 0);
+    c->bptr->u.IfBlock.end = 0;
     if ((tkn = GetToken(c)) != T_EOL) {
         ParseStatement(c, tkn);
-        fixupbranch(c, c->bptr->IfBlock.nxt, codeaddr(c));
+        fixupbranch(c, c->bptr->u.IfBlock.nxt, codeaddr(c));
         PopBlock(c);
     }
     else
@@ -440,13 +440,13 @@ static void ParseElseIf(ParseContext *c)
     switch (CurrentBlockType(c)) {
     case BLOCK_IF:
         putcbyte(c, OP_BR);
-        c->bptr->IfBlock.end = putcword(c, c->bptr->IfBlock.end);
-        fixupbranch(c, c->bptr->IfBlock.nxt, codeaddr(c));
-        c->bptr->IfBlock.nxt = 0;
+        c->bptr->u.IfBlock.end = putcword(c, c->bptr->u.IfBlock.end);
+        fixupbranch(c, c->bptr->u.IfBlock.nxt, codeaddr(c));
+        c->bptr->u.IfBlock.nxt = 0;
         ParseRValue(c);
         FRequire(c, T_THEN);
         putcbyte(c, OP_BRF);
-        c->bptr->IfBlock.nxt = putcword(c, 0);
+        c->bptr->u.IfBlock.nxt = putcword(c, 0);
         FRequire(c, T_EOL);
         break;
     default:
@@ -462,10 +462,10 @@ static void ParseElse(ParseContext *c)
     switch (CurrentBlockType(c)) {
     case BLOCK_IF:
         putcbyte(c, OP_BR);
-        end = putcword(c, c->bptr->IfBlock.end);
-        fixupbranch(c, c->bptr->IfBlock.nxt, codeaddr(c));
+        end = putcword(c, c->bptr->u.IfBlock.end);
+        fixupbranch(c, c->bptr->u.IfBlock.nxt, codeaddr(c));
         c->bptr->type = BLOCK_ELSE;
-        c->bptr->ElseBlock.end = end;
+        c->bptr->u.ElseBlock.end = end;
         break;
     default:
         ParseError(c, "ELSE without a matching IF");
@@ -479,12 +479,12 @@ static void ParseEndIf(ParseContext *c)
 {
     switch (CurrentBlockType(c)) {
     case BLOCK_IF:
-        fixupbranch(c, c->bptr->IfBlock.nxt, codeaddr(c));
-        fixupbranch(c, c->bptr->IfBlock.end, codeaddr(c));
+        fixupbranch(c, c->bptr->u.IfBlock.nxt, codeaddr(c));
+        fixupbranch(c, c->bptr->u.IfBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     case BLOCK_ELSE:
-        fixupbranch(c, c->bptr->ElseBlock.end, codeaddr(c));
+        fixupbranch(c, c->bptr->u.ElseBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     default:
@@ -534,10 +534,10 @@ static void ParseFor(ParseContext *c)
 
     /* branch to the end if the termination test fails */
     putcbyte(c, OP_BR);
-    c->bptr->ForBlock.end = putcword(c, 0);
-    
+    c->bptr->u.ForBlock.end = putcword(c, 0);
+
     /* update the for variable after an iteration of the loop */
-    c->bptr->ForBlock.nxt = codeaddr(c);
+    c->bptr->u.ForBlock.nxt = codeaddr(c);
     (*pv.fcn)(c, PV_LOAD, &pv);
 
     /* get the STEP expression */
@@ -574,8 +574,8 @@ static void ParseNext(ParseContext *c)
         var = GetSymbolRef(c, c->token);
         /* BUG: check to make sure it matches the symbol used in the FOR */
         inst = putcbyte(c, OP_BR);
-        putcword(c, c->bptr->ForBlock.nxt - inst - 3);
-        fixupbranch(c, c->bptr->ForBlock.end, codeaddr(c));
+        putcword(c, c->bptr->u.ForBlock.nxt - inst - 3);
+        fixupbranch(c, c->bptr->u.ForBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     default:
@@ -590,8 +590,8 @@ static void ParseDo(ParseContext *c)
 {
     PushBlock(c);
     c->bptr->type = BLOCK_DO;
-    c->bptr->DoBlock.nxt = codeaddr(c);
-    c->bptr->DoBlock.end = 0;
+    c->bptr->u.DoBlock.nxt = codeaddr(c);
+    c->bptr->u.DoBlock.end = 0;
     FRequire(c, T_EOL);
 }
 
@@ -600,10 +600,10 @@ static void ParseDoWhile(ParseContext *c)
 {
     PushBlock(c);
     c->bptr->type = BLOCK_DO;
-    c->bptr->DoBlock.nxt = codeaddr(c);
+    c->bptr->u.DoBlock.nxt = codeaddr(c);
     ParseRValue(c);
     putcbyte(c, OP_BRF);
-    c->bptr->DoBlock.end = putcword(c, 0);
+    c->bptr->u.DoBlock.end = putcword(c, 0);
     FRequire(c, T_EOL);
 }
 
@@ -612,10 +612,10 @@ static void ParseDoUntil(ParseContext *c)
 {
     PushBlock(c);
     c->bptr->type = BLOCK_DO;
-    c->bptr->DoBlock.nxt = codeaddr(c);
+    c->bptr->u.DoBlock.nxt = codeaddr(c);
     ParseRValue(c);
     putcbyte(c, OP_BRT);
-    c->bptr->DoBlock.end = putcword(c, 0);
+    c->bptr->u.DoBlock.end = putcword(c, 0);
     FRequire(c, T_EOL);
 }
 
@@ -626,8 +626,8 @@ static void ParseLoop(ParseContext *c)
     switch (CurrentBlockType(c)) {
     case BLOCK_DO:
         inst = putcbyte(c, OP_BR);
-        putcword(c, c->bptr->DoBlock.nxt - inst - 3);
-        fixupbranch(c, c->bptr->DoBlock.end, codeaddr(c));
+        putcword(c, c->bptr->u.DoBlock.nxt - inst - 3);
+        fixupbranch(c, c->bptr->u.DoBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     default:
@@ -645,8 +645,8 @@ static void ParseLoopWhile(ParseContext *c)
     case BLOCK_DO:
         ParseRValue(c);
         inst = putcbyte(c, OP_BRT);
-        putcword(c, c->bptr->DoBlock.nxt - inst - 3);
-        fixupbranch(c, c->bptr->DoBlock.end, codeaddr(c));
+        putcword(c, c->bptr->u.DoBlock.nxt - inst - 3);
+        fixupbranch(c, c->bptr->u.DoBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     default:
@@ -664,8 +664,8 @@ static void ParseLoopUntil(ParseContext *c)
     case BLOCK_DO:
         ParseRValue(c);
         inst = putcbyte(c, OP_BRF);
-        putcword(c, c->bptr->DoBlock.nxt - inst - 3);
-        fixupbranch(c, c->bptr->DoBlock.end, codeaddr(c));
+        putcword(c, c->bptr->u.DoBlock.nxt - inst - 3);
+        fixupbranch(c, c->bptr->u.DoBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     default:
@@ -711,7 +711,7 @@ static void ParseReturn(ParseContext *c)
 static void DefineLabel(ParseContext *c, char *name, int offset)
 {
     Label *label;
-    
+
     /* check to see if the label is already in the table */
     for (label = c->labels; label != NULL; label = label->next)
         if (strcasecmp(name, label->name) == 0) {
@@ -738,7 +738,7 @@ static void DefineLabel(ParseContext *c, char *name, int offset)
 static int ReferenceLabel(ParseContext *c, char *name, int offset)
 {
     Label *label;
-    
+
     /* check to see if the label is already in the table */
     for (label = c->labels; label != NULL; label = label->next)
         if (strcasecmp(name, label->name) == 0) {

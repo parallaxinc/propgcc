@@ -53,7 +53,7 @@ endif
 ##################
 
 .PHONY:	all
-all:	propeller-load cache-drivers sd-loader
+all:	propeller-load drivers sd-loader
 
 #################
 # CLEAN TARGETS #
@@ -125,15 +125,22 @@ $(SPINDIR)/vm_start.spin
 # CACHE DRIVERS #
 #################
 
-CACHE_DRIVERS=\
+DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
 $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \
 $(DRVDIR)/sdram_cache.dat \
 $(DRVDIR)/eeprom_cache.dat
 
-.PHONY:	cache-drivers
-cache-drivers:	$(DRVDIR) $(CACHE_DRIVERS)
+#################
+# OTHER DRIVERS #
+#################
+
+DRIVERS+=\
+$(DRVDIR)/sd_driver.dat
+
+.PHONY:	drivers
+drivers:	$(DRVDIR) $(DRIVERS)
 
 .PHONY:	sd-loader
 sd-loader:	$(DRVDIR)

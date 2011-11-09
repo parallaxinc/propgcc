@@ -35,7 +35,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	stringio.o vfprintf.o vfscanf.o \
 	$(PRINTF) $(SCANF) \
 	simple_printf.o \
-	default_io.o init_io.o
+	default_io.o init_io.o remove.o
 
 STDLIB = malloc.o calloc.o atoi.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o \

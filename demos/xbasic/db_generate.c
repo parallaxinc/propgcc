@@ -33,33 +33,33 @@ static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
     switch (expr->nodeType) {
     case NodeTypeSymbolRef:
-        pv->fcn = expr->symbolRef.fcn;
-        pv->val = expr->symbolRef.offset;
+        pv->fcn = expr->u.symbolRef.fcn;
+        pv->u.val = expr->u.symbolRef.offset;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);
-        putcword(c, AddStringRef(expr->stringLit.string, codeaddr(c)));
+        putcword(c, AddStringRef(expr->u.stringLit.string, codeaddr(c)));
         pv->fcn = NULL;
         break;
     case NodeTypeIntegerLit:
         putcbyte(c, OP_LIT);
-        putcword(c, expr->integerLit.value);
+        putcword(c, expr->u.integerLit.value);
         pv->fcn = NULL;
         break;
     case NodeTypeFunctionLit:
         putcbyte(c, OP_LIT);
-        putcword(c, expr->functionLit.offset);
+        putcword(c, expr->u.functionLit.offset);
         pv->fcn = NULL;
         break;
     case NodeTypeUnaryOp:
-        code_rvalue(c, expr->unaryOp.expr);
-        putcbyte(c, expr->unaryOp.op);
+        code_rvalue(c, expr->u.unaryOp.expr);
+        putcbyte(c, expr->u.unaryOp.op);
         pv->fcn = NULL;
         break;
     case NodeTypeBinaryOp:
-        code_rvalue(c, expr->binaryOp.left);
-        code_rvalue(c, expr->binaryOp.right);
-        putcbyte(c, expr->binaryOp.op);
+        code_rvalue(c, expr->u.binaryOp.left);
+        code_rvalue(c, expr->u.binaryOp.right);
+        putcbyte(c, expr->u.binaryOp.op);
         pv->fcn = NULL;
         break;
     case NodeTypeArrayRef:
@@ -80,7 +80,7 @@ static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 /* code_shortcircuit - generate code for a conjunction or disjunction of boolean expressions */
 static void code_shortcircuit(ParseContext *c, int op, ParseTreeNode *expr, PVAL *pv)
 {
-    ExprListEntry *entry = expr->exprList.exprs;
+    ExprListEntry *entry = expr->u.exprList.exprs;
     int end = 0;
 
     code_rvalue(c, entry->expr);
@@ -101,11 +101,11 @@ static void code_shortcircuit(ParseContext *c, int op, ParseTreeNode *expr, PVAL
 static void code_arrayref(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
     /* code the array */
-    code_rvalue(c, expr->arrayRef.array);
-    
+    code_rvalue(c, expr->u.arrayRef.array);
+
     /* code the first index */
-    code_rvalue(c, expr->arrayRef.index);
-    
+    code_rvalue(c, expr->u.arrayRef.index);
+
     /* setup the element type */
     pv->fcn = code_index;
 }
@@ -114,17 +114,17 @@ static void code_arrayref(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 static void code_call(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
     ExprListEntry *arg;
-    
+
     /* get the value of the function */
-    code_rvalue(c, expr->functionCall.fcn);
+    code_rvalue(c, expr->u.functionCall.fcn);
 
     /* code each argument expression */
-    for (arg = expr->functionCall.args; arg != NULL; arg = arg->next)
+    for (arg = expr->u.functionCall.args; arg != NULL; arg = arg->next)
         code_rvalue(c, arg->expr);
 
     /* call the function */
     putcbyte(c, OP_CALL);
-    putcbyte(c, expr->functionCall.argc);
+    putcbyte(c, expr->u.functionCall.argc);
 
     /* we've got an rvalue now */
     pv->fcn = NULL;
@@ -152,11 +152,11 @@ void code_global(ParseContext *c, PValOp fcn, PVAL *pv)
     switch (fcn) {
     case PV_LOAD:
         putcbyte(c, OP_GREF);
-        putcword(c, pv->val);
+        putcword(c, pv->u.val);
         break;
     case PV_STORE:
         putcbyte(c, OP_GSET);
-        putcword(c, pv->val);
+        putcword(c, pv->u.val);
         break;
     }
 }
@@ -167,11 +167,11 @@ void code_local(ParseContext *c, PValOp fcn, PVAL *pv)
     switch (fcn) {
     case PV_LOAD:
         putcbyte(c, OP_LREF);
-        putcbyte(c, pv->val);
+        putcbyte(c, pv->u.val);
         break;
     case PV_STORE:
         putcbyte(c, OP_LSET);
-        putcbyte(c, pv->val);
+        putcbyte(c, pv->u.val);
         break;
     }
 }
