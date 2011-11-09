@@ -6,7 +6,7 @@
 # #########################################################
 
 # Propeller Demo include
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 CFLAGS = -Os -mlmm
 NM = propeller-elf-nm
@@ -28,7 +28,7 @@ include $(PROPLIB)/lmmdemo.mk
 
 # the raw C code for the cog
 toggle_cog.o: toggle_cog.c
-	$(CC) -Os -mcog -I$(PROPLIB)/../include -o $@ -c $<
+	$(CC) -Os -mcog -o $@ -c $<
 
 # link the cog C code together with support libraries
 # Note that calling our output file *_1.cog ensures that it
@@ -37,7 +37,7 @@ toggle_cog.o: toggle_cog.c
 # and so on
 
 toggle_1.o: toggle_cog.o
-	$(LD) -r -o $@ -T $(PROPLIB)/propeller_cog.script $(PROPLIB)/crt0_cog.o $^ $(PROPLIB)/libcog.a
+	$(CC) -mcog -Wl,-r -o $@ $^ -lcog
 
 #
 # We have to avoid conflicts between symbols in the main C program and
