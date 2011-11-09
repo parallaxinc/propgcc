@@ -12,7 +12,7 @@ OBJS = cogregs.o div.o udiv.o mask.o mult.o
 
 COGOBJS = $(addprefix $(OBJDIR)/cog/, $(OBJS))
 
-all: $(OBJDIR)/$(MODEL) $(OBJDIR)/$(MODEL)/libcog.a $(OBJDIR)/$(MODEL)/crt0_cog.o
+all: $(OBJDIR)/$(MODEL) $(OBJDIR)/$(MODEL)/libcog.a $(OBJDIR)/$(MODEL)/crt0_cog.o $(OBJDIR)/$(MODEL)/crtend_cog.o
 
 $(OBJDIR)/$(MODEL):
 	$(MKDIR) $(OBJDIR)/$(MODEL)

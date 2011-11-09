@@ -32,5 +32,5 @@ r11	long	0
 r12	long	0
 r13	long	0
 r14	long	0
-lr	long	0
+lr	long	__exit	'' return to the exit function
 sp	long	0
