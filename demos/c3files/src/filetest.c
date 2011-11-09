@@ -34,7 +34,7 @@ void Cd(int argc, char **argv)
     if (argc < 2) return;
 
     if (dfs_chdir(argv[1]))
-        printf("%s is not a valid directory\n", argv[1]);
+        perror(argv[1]);
 }
 
 void Pwd(int argc, char **argv)
@@ -45,24 +45,22 @@ void Pwd(int argc, char **argv)
 void Mkdir(int argc, char **argv)
 {
     int i;
-    int errnum;
 
     for (i = 1; i < argc; i++)
     {
-        if ((errnum = dfs_mkdir(argv[i])))
-            dfs_perror(errnum, argv[i]);
+        if (dfs_mkdir(argv[i]))
+            perror(argv[i]);
     }
 }
 
 void Rmdir(int argc, char **argv)
 {
     int i;
-    int errnum;
 
     for (i = 1; i < argc; i++)
     {
-        if ((errnum = dfs_rmdir(argv[i])))
-            dfs_perror(errnum, argv[i]);
+        if (dfs_rmdir(argv[i]))
+            perror(argv[i]);
     }
 }
 
@@ -88,7 +86,7 @@ void Cat(int argc, char **argv)
             infile = fopen(argv[i], "r");
             if (infile == 0)
             {
-                printf("Could not open file %s\n", argv[i]);
+                perror(argv[i]);
                 continue;
             }
         }
@@ -115,12 +113,11 @@ void Cat(int argc, char **argv)
 void Remove(int argc, char **argv)
 {
     int i;
-    int errnum;
 
     for (i = 1; i < argc; i++)
     {
-        if ((errnum = dfs_remove(argv[i])))
-            dfs_perror(errnum, argv[i]);
+        if (remove(argv[i]))
+            perror(argv[i]);
     }
 }
 
@@ -164,7 +161,7 @@ void List(int argc, char **argv)
             if (!strcmp(argv[j], "-l"))
                 longflag = 1;
             else
-                fprintf(stdoutfile, "Unknown option \"%s\"\n", argv[j]);
+                printf("Unknown option \"%s\"\n", argv[j]);
         }
         else
             count++;
@@ -190,7 +187,7 @@ void List(int argc, char **argv)
 
         if (!dirinfo)
         {
-            fprintf(stdoutfile, "Could not open %s\n", path);
+            perror(path);
             continue;
         }
 
@@ -323,19 +320,17 @@ int CheckRedirection(char **tokens, int num)
             stdoutfile = fopen(tokens[i+1], "w");
             if (!stdoutfile)
             {
-                printf("Could not open %s\n", tokens[i+1]);
+                perror(tokens[i+1]);
                 stdoutfile = stdout;
                 return 0;
             }
         }
         else if (!strcmp(tokens[i], ">>"))
         {
-            // Open the file with "wa" instead of "a" to work around a
-            // problem with the "a" mode.
-            stdoutfile = fopen(tokens[i+1], "wa");
+            stdoutfile = fopen(tokens[i+1], "a");
             if (!stdoutfile)
             {
-                printf("Could not open %s\n", tokens[i+1]);
+                perror(tokens[i+1]);
                 stdoutfile = stdout;
                 return 0;
             }
@@ -345,7 +340,7 @@ int CheckRedirection(char **tokens, int num)
             stdinfile = fopen(tokens[i+1], "r");
             if (!stdinfile)
             {
-                printf("Could not open %s\n", tokens[i+1]);
+                perror(tokens[i+1]);
                 stdinfile = stdin;
                 return 0;
             }

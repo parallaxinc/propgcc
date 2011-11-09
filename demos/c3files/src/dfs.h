@@ -3,15 +3,6 @@
 
 #include "dosfs.h"
 
-// 32-bit error codes
-#define DFS_MALLOC_FAILED       20
-#define DFS_NOT_A_DIRECTORY     21
-#define DFS_DOES_NOT_EXIST      22
-#define DFS_ALREADY_EXISTS      23
-#define DFS_CREATE_FAILED       24
-#define DFS_DIRECTORY_NOT_EMPTY 25
-#define DFS_IS_A_DIRECTORY      26
-
 // Device Driver Functions
 int File_fopen(FILE *fp, const char *str, const char *mode);
 int File_fclose(FILE *fp);
