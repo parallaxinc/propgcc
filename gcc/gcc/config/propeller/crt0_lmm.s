@@ -287,6 +287,7 @@ __C_LOCK_PTR
 	''         Z flag is set if (*r2) == r1, clear otherwise
 	''
 	.global __CMPSWAPSI
+	.global __CMPSWAPSI_ret
 __CMPSWAPSI
 	'' get the C_LOCK
 	rdlong	__TMP1,__C_LOCK_PTR
