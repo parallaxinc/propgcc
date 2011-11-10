@@ -14,7 +14,7 @@ _Driver *_driverlist[] = {
 
 #define LOOPCOUNT 10
 #define SLEEPTIME 3
-#define NUM_THREADS 9
+#define NUM_THREADS 11
 pthread_t thr[NUM_THREADS];
 
 void *

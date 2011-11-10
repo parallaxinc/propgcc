@@ -35,7 +35,7 @@ void start(void *parptr)
 /*
  * togglecount counts how many times the LED has been toggled
  */
-int togglecount = 0;
+volatile int togglecount = 0;
 
 /*
  * main code
@@ -47,19 +47,12 @@ int togglecount = 0;
 
 void main (int argc,  char* argv[])
 {
-    int n;
-    int result;
-    unsigned int startTime;
-    unsigned int endTime;
-    unsigned int executionTime;
-    unsigned int rawTime;
-
     printf("hello, world!\n");
 
     /* set up the parameters for the C cog */
     par.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
     /* start the new cog */
-    start(&par.m);
+        start(&par.m);
     printf("toggle cog has started\n");
 
     /* every 2 seconds update the flashing frequency so the
