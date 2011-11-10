@@ -1,22 +1,37 @@
 /*
+ * @pthread.c
+ * Implementation of pthread functions
+ *
+ * Copyright (c) 2011 Parallax, Inc.
+ * Written by Eric R. Smith, Total Spectrum Software Inc.
+ * MIT licensed (see terms at end of file)
+ */
+
+/*
  * pthread scheduler
  *
  */
+#define NDEBUG  /* turn off asserts */
 #include <pthread.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <assert.h>
 
 _pthread_queue_t __ready_queue;
 _pthread_queue_t __join_queue;
 
 atomic_t __pthreads_lock;
 
+#define ASSERT_LOCKED() assert(__pthreads_lock != 0)
+
 /* this should be called only if we already hold the _pthread_lock */
 static void
 _pthread_addqueue(_pthread_queue_t *queue, _pthread_state_t *thr)
 {
   _pthread_state_t *p;
+
+  ASSERT_LOCKED();
 
   thr->queue = queue;
   for(;;) {
@@ -34,6 +49,8 @@ static _pthread_state_t *
 _pthread_getqueuehead(_pthread_queue_t *queue)
 {
   _pthread_state_t *p = *queue;
+
+  ASSERT_LOCKED();
   if (p) {
     *queue = p->queue_next;
     p->queue_next = NULL;
@@ -53,6 +70,7 @@ _pthread_schedule_raw(void)
   _pthread_state_t *next;
 
  again:
+  ASSERT_LOCKED();
   if (__ready_queue) {
     next = _pthread_getqueuehead(&__ready_queue);
     _TLS = next;
@@ -64,7 +82,9 @@ _pthread_schedule_raw(void)
        release the pthreads lock and wait for that
     */
     __unlock_pthreads();
-    while (!__ready_queue) ;
+    while (!__ready_queue) 
+      {
+      }
     __lock_pthreads();
     goto again;
   }
@@ -73,6 +93,7 @@ static void
 _pthread_schedule(void)
 {
   _pthread_state_t *self = _pthread_self();
+  ASSERT_LOCKED();
   if (setjmp(self->jmpbuf) == 0) {
     _pthread_schedule_raw();
   }
@@ -82,19 +103,19 @@ _pthread_schedule(void)
  * go to sleep on a queue
  */
 void
-_pthread_sleep(_pthread_queue_t *queue)
+_pthread_sleep_with_lock(_pthread_queue_t *queue)
 {
-  __lock_pthreads();
+  ASSERT_LOCKED();
   _pthread_addqueue(queue, _pthread_self());
   _pthread_schedule();
-  __unlock_pthreads();
 }
 
 void
-_pthread_sleep_with_lock(_pthread_queue_t *queue)
+_pthread_sleep(_pthread_queue_t *queue)
 {
-  _pthread_addqueue(queue, _pthread_self());
-  _pthread_schedule();
+  __lock_pthreads();
+  _pthread_sleep_with_lock(queue);
+  __unlock_pthreads();
 }
 
 /*
@@ -143,7 +164,9 @@ _pthread_wakeall(_pthread_queue_t *queue)
     cnt++;
   }
   if (cnt > 0)
-    _pthread_schedule();
+    {
+      _pthread_schedule();
+    }
   __unlock_pthreads();
   return cnt;
 }
@@ -272,7 +295,10 @@ pthread_exit(void *result)
 
   /* wake up anyone waiting for us */
   _pthread_wakeall(&__join_queue);
-  _pthread_schedule_raw();
+  for(;;) {
+    __lock_pthreads();
+    _pthread_schedule_raw();
+  }
 }
 
 pthread_t
@@ -280,3 +306,26 @@ pthread_self(void)
 {
   return _pthread_self();
 }
+/* +--------------------------------------------------------------------
+ * ¦  TERMS OF USE: MIT License
+ * +--------------------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * +--------------------------------------------------------------------
+ */
