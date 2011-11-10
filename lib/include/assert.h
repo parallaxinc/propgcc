@@ -10,7 +10,7 @@ _NORETURN void abort(void);
 extern void __eprintf( const char *expr, unsigned long line, const char *filename);
 
 #if defined(NDEBUG)
-#define assert(cond) (0)
+#define assert(cond) (void)(0)
 #else
 #define assert(cond) \
   ((cond) ? 0 : (__eprintf(#cond,(long)(__LINE__), __FILE__), abort(), 0))
