@@ -35,7 +35,7 @@ CON
   MISO_PIN                = 11
   CLK_PIN                 = 12
   MOSI_PIN                = 13
-  CS_PIN                  = 14
+  CS_CLR_PIN              = 14
 
   ' SD card sector dimensions
   SECTOR_WIDTH            = 9   ' 512 byte sectors
@@ -121,7 +121,8 @@ init2   mov     t1, par             ' get the address of the initialization stru
         ' build composite masks
         mov     tclk_mosi, tmosi
         or      tclk_mosi, tclk
-        mov     spidir, tcs
+        mov     spidir, tcs_clr
+        or      spidir, tselect_mask
         or      spidir, tclk
         or      spidir, tmosi
 
@@ -142,7 +143,9 @@ params
 tmiso         long    1<<MISO_PIN
 tclk          long    1<<CLK_PIN
 tmosi         long    1<<MOSI_PIN
-tcs           long    1<<CS_PIN
+tcs_clr       long    1<<CS_CLR_PIN
+tselect_inc   long    0
+tselect_mask  long    0
 clusters      long    0[CLUSTER_MAP_SIZE]
 
         ' initialize the cache lines
@@ -294,11 +297,11 @@ get_physical_sector_ret
 
 sd_init_handler
         mov     sdError, #0             ' assume no errors
-        or      outa, tcs
+        call    #sd_release
         mov     t1, sdInitCnt
 :init   call    #spiRecvByte            ' Output a stream of 32K clocks
         djnz    t1, #:init              '  in case SD card left in some
-        andn    outa, tcs
+        call    #sd_select
         mov     sdOp, #CMD0_GO_IDLE_STATE
         mov     sdParam, #0
         call    #sdSendCmd              ' Send a reset command and deselect
@@ -308,7 +311,7 @@ sd_init_handler
         call    #sdSendCmd
         cmp     data, #1 wz             ' Wait until response not In Idle
   if_e  jmp     #:wait
-        tjz     data, #sd_finish        ' Initialization complete
+        tjz     data, #sd_finish        ' Initialization complete BUG!!!!!! - fix me!!!!
         mov     sdError, data
         jmp     #sd_finish
 
@@ -442,13 +445,32 @@ sdWaitBusy_ret
 '----------------------------------------------------------------------------------------------------
 
 sd_select
+        andn    outa, tselect_mask
+        or      outa, tselect_inc
+        andn    outa, tcs_clr
 sd_select_ret
-        andn    outa, tcs
         ret
 
 sd_release
+        or      outa, tcs_clr
+        andn    outa, tselect_mask
 sd_release_ret
-        or      outa, tcs
+        ret
+
+c3_sd_select
+        mov     t1, #5
+        andn    outa, tcs_clr
+        or      outa, tcs_clr
+:loop   or      outa, tselect_inc
+        andn    outa, tselect_inc
+        djnz    t1, #:loop
+c3_sd_select_ret
+        ret
+
+c3_sd_release
+        andn    outa, tcs_clr
+        or      outa, tcs_clr
+c3_sd_release_ret
         ret
 
 spiSendByte
@@ -490,7 +512,7 @@ sdInitCnt       long    32768 / 8      ' Initial SPI clocks produced
 sdBlkSize       long    SECTOR_SIZE    ' Number of bytes in an SD block
 
 tclk_mosi       long    (1<<CLK_PIN)|(1<<MOSI_PIN)
-spidir          long    (1<<CS_PIN)|(1<<CLK_PIN)|(1<<MOSI_PIN)
+spidir          long    (1<<CS_CLR_PIN)|(1<<CLK_PIN)|(1<<MOSI_PIN)
 
 ' temporaries used by sd_read and sd_write
 count           long    0
