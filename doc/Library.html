@@ -484,6 +484,40 @@ this. Pthreads can run on other cogs or on the same cog.
   linker tricks to make sure that some definitions in the library and
   kernel do not conflict with definitions in the main LMM code.
 </P>
+<P>
+  Typically we would put all the C code for a cog in one file, and
+  compile it with a set of commands like:
+  <PRE>
+    propeller-elf-gcc -mcog -r -o mycog_1.o -Os mycog1.c
+    propeller-elf-nm mycog_1.o | fgrep " T " | cut --bytes="12-" >local.lst
+    propeller-elf-objcopy --localize-symbols=local.lst mycog_1.o mycog_1.cog
+    rm -f local.lst
+  </PRE>
+  The first line creates the cog program; the <CODE>-r</CODE> option
+  tells gcc that we want it to be relocatable (we will be further
+  linking it with the main LMM program).
+  The second line isolates all of the global text segment symbols
+  (function definitions and such) into a file
+  called <CODE>local.lst</CODE>; the third line forces all those
+  symbols to be local to the cog program so they will not interfere
+  with similar symbols in the LMM program.
+</P>
+<P>
+  By convention COG programs are named <CODE>foo_N.cog</CODE>,
+  where <CODE>N</CODE> is an integer from 0 to 7. The linker
+  understands that files with such names are overlays intended to be
+  loaded into cogs, and puts them in overlay sections
+  called <CODE>.coguser0</CODE>, <CODE>.coguser1</CODE>, and so on.
+  Since they are overlays,
+  symbols <CODE>__load_start_coguser0</CODE>, <CODE>__load_start_coguser1</CODE>,
+  and so on are created automatically for them. We can use these
+  symbols to load the overlays into a cog. For example, to start the
+  mycog_1.cog code and pass it in a pointer to a mailbox, we would do:
+  <PRE>
+    #include &lt;propeller.h&gt;
+    cognew(__load_start_coguser1, &mailbox);
+  </PRE>
+</P>
 
 </BODY>
 </HTML>
