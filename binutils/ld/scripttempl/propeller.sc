@@ -16,8 +16,11 @@ MEMORY
 
 SECTIONS
 {
+  /* if we are not relocating (-r flag given) discard the boot section */
+  ${RELOCATING- "/DISCARD/ : \{ *(.boot) \}" }
+
   /* the initial spin boot code, if any */
-  .boot : { *(.boot) } ${RELOCATING+ >hub}
+  ${RELOCATING+ ".boot : \{ *(.boot) \} >hub" }
 
   ${KERNEL}
   ${XMM_HEADER}
