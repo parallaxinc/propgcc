@@ -20,8 +20,9 @@
 <A HREF="#InstallDrivers">...Installing Drivers</A><BR>
 <A HREF="#DriversProvided">...Drivers Provided in the Library</A><BR>
 <A HREF="#WritingDrivers">...Writing New Drivers</A><BR>
-<A HREF="#RunningCogPrograms">Cog C Programs</A><BR>
+<A HREF="#Threads">Threads and Cogs</A><BR>
 <A HREF="#RunningLMM">...LMM on Another Cog</A><BR>
+<A HREF="#Pthreads">...Pthreads</A><BR>
 <A HREF="#RunningNative">...Native Cog C</A><BR>
 
 <A NAME="intro"><H1>Introduction</H1></A>
@@ -398,12 +399,18 @@ fields, which must be set up by the driver code:
 </P>
 
 
-<A NAME="RunningCogPrograms"><H1>Cog C Programs</H1></A>
+<A NAME="Threads"><H1>Threads</H1></A>
 <P>
 Sometimes one wants to run some code on another cog. There are two
 ways to do this: to run a copy of the LMM (or XMM) interpreter on the
 other cog, or to run native cog code (compiled
-with <CODE>-mcog</CODE>) on the other cog.
+with <CODE>-mcog</CODE>) on the other cog. Both of these amount to
+running a thread on the other cog
+</P>
+<P>
+There are also times when one wants to run more threads of execution
+than there are cogs. The <B>pthreads</B> functions provide a way to do
+this. Pthreads can run on other cogs or on the same cog.
 </P>
 
 <A NAME="RunningLMM"><H2>LMM on Another Cog</H2></A>
@@ -415,15 +422,67 @@ with <CODE>-mcog</CODE>) on the other cog.
     int cog = _start_cog_thread(sp, foo, arg, tls_ptr);
   </PRE>
   Here <CODE>sp</CODE> points to the top of the new thread's stack,
-  and <CODE>tls_ptr</CODE> points to a new <CODE>struct _TLS</CODE> to
+  and <CODE>tls_ptr</CODE> points to a new <CODE>_thread_state_t</CODE> to
   hold the thread local storage for this thread (that is, the library
   variables that need to be kept per-thread rather than globally; for
-  example <CODE>errno</CODE>).
+  example <CODE>errno</CODE>). The new cog id is returned
+  in <CODE>cog</CODE>. If no cogs are available, -1 is returned.
+</P>
+<P>
+  Note that <CODE>_start_cog_thread</CODE> only works in LMM mode; in
+  XMM or XMMC mode it will always return an error.
+</P>
+<P>
+  There are several synchronization methods available for LMM code
+  running on different cogs. The most basic is
+  the <CODE>__lock/__unlock</CODE> mechanism provided
+  in <CODE>sys/thread.h</CODE>. These locks are spin locks; a cog that
+  is waiting on the lock loops until it becomes available. More
+  sophisticated (blocking) lock mechanisms are available in
+  the <A HREF="#Pthreads">pthreads</A> library.
+</P>
+<P>
+  To use a spin lock, simply declare a variable as:
+  <PRE>
+    #include &lt;sys/thread.h&gt;
+    _atomic_t mylock;
+  </PRE>
+  and then lock and unlock it like:
+  <PRE>
+    __lock(&amp;mylock);
+    // .. do some things
+    __unlock(&amp;mylock);
+  </PRE>
+  It is important to hold locks only for as long as required, and to
+  unlock them immediately afterwards. Also, the locks are not
+  recursive. If a thread attempts to lock a variable which it has
+  already locked, it will hang.
 </P>
 
+<A NAME="Pthreads"><H2>Pthreads</H2></A>
+<P>
+  It is also possible to use the standard POSIX pthreads functions in
+  <CODE>pthreads.h</CODE> to start and stop threads. pthreads will run
+  on other cogs if available; if none are available then the threads
+  will have to share cogs. The number of pthreads that can run
+  simultaneously is limited only by memory.
+</P>
+<P>
+  When a new pthread is started, the library attempts to start it on a
+  new cog. If no new cog can be allocated, the library runs it on an
+  existing cog. However, multiple threads on the same cog must
+  cooperate; that is, a thread will keep running until it calls some
+  blocking function (such as <CODE>sleep</CODE>) or
+  calls <CODE>pthread_yield</CODE>. 
+</P>
+<P>
+  Unlike
 <A NAME="RunningNative"><H2>Native Cog C</H2></A>
 <P>
-
+  To run some C code directly in a cog (not in LMM mode) we have to
+  compile it with the <CODE>-mcog</CODE> flag. We also have to do some
+  linker tricks to make sure that some definitions in the library and
+  kernel do not conflict with definitions in the main LMM code.
 </P>
 
 </BODY>
