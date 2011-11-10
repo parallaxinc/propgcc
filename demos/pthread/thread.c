@@ -12,7 +12,9 @@ _Driver *_driverlist[] = {
   NULL
 };
 
-#define NUM_THREADS 16
+#define LOOPCOUNT 10
+#define SLEEPTIME 3
+#define NUM_THREADS 9
 pthread_t thr[NUM_THREADS];
 
 void *
@@ -22,9 +24,13 @@ threadfunc(void *arg)
   int i;
 
   printf("in thread %d\n", n);
-  for (i = 0; i < 10; i++) {
-    printf("hello %d from thread %d\n", i, n);
-    sleep(5);
+  for (i = 0; i < LOOPCOUNT; i++) {
+    printf("hello %d from thread %d (on cog %d)\n", i, n, __builtin_propeller_cogid());
+#if SLEEPTIME > 0
+    sleep(SLEEPTIME);
+#else
+    pthread_yield();
+#endif
   }
   return (void *)(n*n);
 }
