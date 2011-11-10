@@ -126,6 +126,14 @@ init2   mov     t1, par             ' get the address of the initialization stru
         or      spidir, tclk
         or      spidir, tmosi
 
+        ' setup for c3 chip select if necessary
+        tjz     tselect_inc, #:not_c3
+        tjnz    tselect_mask, #:not_c3
+        mov     sd_select, c3_sd_select_jmp
+        mov     sd_release, c3_sd_release_jmp
+        or      spidir, tselect_inc
+  :not_c3
+
         ' disable the chip select
         call    #sd_release
 
@@ -457,6 +465,9 @@ sd_release
 sd_release_ret
         ret
 
+c3_sd_select_jmp
+        jmp     #c3_sd_select
+
 c3_sd_select
         mov     t1, #5
         andn    outa, tcs_clr
@@ -464,14 +475,15 @@ c3_sd_select
 :loop   or      outa, tselect_inc
         andn    outa, tselect_inc
         djnz    t1, #:loop
-c3_sd_select_ret
-        ret
+        jmp     sd_select_ret
+
+c3_sd_release_jmp
+        jmp     #c3_sd_release
 
 c3_sd_release
         andn    outa, tcs_clr
         or      outa, tcs_clr
-c3_sd_release_ret
-        ret
+        jmp     sd_release_ret
 
 spiSendByte
         shl     data, #24
