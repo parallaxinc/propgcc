@@ -26,18 +26,14 @@ include $(PROPLIB)/lmmdemo.mk
 # do a partial link of all driver code
 #
 
-# the raw C code for the cog
-toggle_cog.o: toggle_cog.c
-	$(CC) -Os -mcog -o $@ -c $<
-
-# link the cog C code together with support libraries
-# Note that calling our output file *_1.cog ensures that it
+# # Note that calling our output file *_1.cog ensures that it
 # is placed in the .coguser1 section by the main program's
 # linker script; similarly *_2.cog would be placed in .coguser2,
 # and so on
 
-toggle_1.o: toggle_cog.o
-	$(CC) -mcog -Wl,-r -o $@ $^ -lcog
+toggle_1.o: toggle_cog.c
+	$(CC) -r -Os -mcog -o $@ $<
+
 
 #
 # We have to avoid conflicts between symbols in the main C program and

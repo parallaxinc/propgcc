@@ -2286,9 +2286,12 @@
 ;; -------------------------------------------------------------------------
 ;; Special insns for built in instructions
 ;; -------------------------------------------------------------------------
+
+;; cogid is an unspec_volatile because threads may switch between
+;; processors
 (define_insn "cogid"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-       (unspec:SI [(const_int 0)] UNSPEC_COGID))
+       (unspec_volatile:SI [(const_int 0)] UNSPEC_COGID))
   ]
   ""
   "cogid\t%0"
