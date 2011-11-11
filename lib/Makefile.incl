@@ -37,7 +37,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	simple_printf.o \
 	default_io.o init_io.o remove.o
 
-STDLIB = malloc.o calloc.o atoi.o atof.o atexit.o abort.o \
+STDLIB = malloc.o calloc.o realloc.o atoi.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o \
 	assert.o rand.o setjmp.o div.o abs.o getenv.o
 
