@@ -5,7 +5,7 @@ LDFLAGS=-m$(MODEL)
 OBJDIR=./
 SRCDIR=../src
 ECHO=echo
-OBJS = filetest.o dfs.o dosfs.o file_io.o
+OBJS = filetest.o dfs.o
 HDRS = $(SRCDIR)/dfs.h $(SRCDIR)/dosfs.h
 
 c3files.elf:	$(OBJS)
