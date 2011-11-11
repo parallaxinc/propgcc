@@ -13,17 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/thread.h>
-
-typedef struct MemHeader {
-  struct MemHeader *next;  /* pointer to next member, if on free list */
-  size_t len;
-} MemHeader;
-
-/* magic number to indicate allocated memory */
-#define MAGIC ((MemHeader *)0xa110c)
-
-/* function to request memory from the OS */
-extern void *_sbrk(unsigned bytes);
+#include "malloc.h"
 
 static MemHeader *freelist;
 static atomic_t malloc_lock;
@@ -142,59 +132,6 @@ free(void *ptr)
   __unlock(&malloc_lock);
 }
 
-/*
- * realloc: expand or shrink a block
- * ideally when expanding we would look for a free block just after this one and
- * expand it on request, but for now we just punt
- * the shrinking we really do correctly though
- */
-void *
-realloc(void *ptr, size_t n)
-{
-  MemHeader *thisp, *newp;
-  void *newptr;
-  size_t numunits;
-
-  if (ptr == NULL)
-    return malloc(n);
-  if (n == 0)
-    {
-      free(ptr);
-      return NULL;
-    }
-
-  thisp = (MemHeader *)ptr;
-  --thisp;
-  if (thisp->next != MAGIC)
-    {
-      return NULL; /* cannot do anything */
-    }
-
-  numunits = (n + sizeof(MemHeader)-1)/sizeof(MemHeader) + 1;
-  if (thisp->len == numunits)
-    {
-      /* nothing to do, just return it unchanged */
-      return ptr;
-    }
-  if (thisp->len > numunits)
-    {
-      /* shrink the block */
-      newp = thisp + numunits;
-      newp->next = MAGIC;
-      newp->len = thisp->len - numunits;
-      thisp->len -= numunits;
-      free(newp+1);
-      return ptr;
-    }
-
-  /* OK, the tricky case: allocate a new block and copy the memory into it */
-  newptr = malloc(n);
-  if (!newptr)
-    return NULL;
-  memcpy(newptr, ptr, (thisp->len-1)*sizeof(MemHeader));
-  free(ptr);
-  return newptr;
-}
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------
