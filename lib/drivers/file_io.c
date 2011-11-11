@@ -21,56 +21,13 @@
 #include <errno.h>
 #include <propeller.h>
 #include "dosfs.h"
-#include "dfs.h"
-
-#ifdef SPINNERET
-#define SD_DO  16
-#define SD_CLK 21
-#define SD_DI  20
-#define SD_CS  19
-#endif
 
 #define SD_INIT_CMD  0x0d
 #define SD_READ_CMD  0x11
 #define SD_WRITE_CMD 0x15
 
-extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
-
-#ifdef __PROPELLER_LMM__
-static volatile uint32_t xmm_mbox[2];
-
-// This routine starts the SD driver cog
-static void LoadSDDriver(uint8_t *pins)
-{
-    int32_t pinmask[5];
-    extern uint8_t sd_driver_array[];
-
-    // Overwrite pin masks if pins are specified
-    if (pins)
-    {
-        pinmask[0] = 1 << pins[0];  // SD MISO
-        pinmask[1] = 1 << pins[1];  // SD CLK
-        pinmask[2] = 1 << pins[2];  // SD MOSI
-        pinmask[3] = 1 << pins[3];  // SD CS
-        pinmask[4] = 0;             // Zero disables C3 mode
-        memcpy(&sd_driver_array[4], pinmask, 20);
-    }
-
-    xmm_mbox[0] = 1;
-    cognew(sd_driver_array, (uint32_t *)xmm_mbox);
-    while (xmm_mbox[0]);
-}
-#else
 static volatile uint32_t *xmm_mbox;
-
-// This routine is used in XMM/XMMC mode where
-// the SD driver is already started
-static void LoadSDDriver(uint8_t *pins)
-{
-    extern uint16_t _xmm_mbox_p;
-    xmm_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
-}
-#endif
+extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
 
 // This routine sends a command to the driver cog and returns the result
 // It must be loaded in HUB RAM so we don't generate a cache miss
@@ -82,17 +39,18 @@ static uint32_t __attribute__((section(".hubtext"))) do_cmd(uint32_t cmd)
 }
 
 // This routine initializes the low-level driver
-int DFS_InitFileIO(uint8_t *parms)
+int DFS_InitFileIO(void)
 {
     int retries = 5;
-    uint32_t result;
-    LoadSDDriver(parms);
+    int32_t result;
+    extern uint16_t _xmm_mbox_p;
+
+    xmm_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
     while (retries-- > 0)
     {
         result = do_cmd(SD_INIT_CMD);
         if (result == 0)
             return DFS_OK;
-        printf("Retrying SD init: %d\n", result);
     }
     return -1;
 }
@@ -112,7 +70,6 @@ uint32_t DFS_ReadSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_t
         params[2] = sector;
         result = do_cmd(SD_READ_CMD | ((uint32_t)params << 8));
         if (result != 0) {
-            printf("SD_READ_CMD failed: %d\n", result);
             return -1;
         }
         if (((uint32_t)buffer) & 0xffff0000)
@@ -143,7 +100,6 @@ uint32_t DFS_WriteSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_
         params[2] = sector;
         result = do_cmd(SD_WRITE_CMD | ((uint32_t)params << 8));
         if (result != 0) {
-            printf("SD_WRITE_CMD failed: %d\n", result);
             return -1;
         }
         buffer += SECTOR_SIZE;

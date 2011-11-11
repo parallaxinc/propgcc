@@ -5,9 +5,8 @@ LDFLAGS=-m$(MODEL)
 OBJDIR=./
 SRCDIR=../src
 ECHO=echo
-SD_DRIVER=sd_driver
 
-OBJS = filetest.o dfs.o dosfs.o file_io.o $(SD_DRIVER).o printf.o
+OBJS = filetest.o dfs.o printf.o load_sd_driver.o sd_driver.o
 HDRS = $(SRCDIR)/dfs.h $(SRCDIR)/dosfs.h
 
 c3files.elf:	$(OBJS)

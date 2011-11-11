@@ -20,48 +20,18 @@
 #include <compiler.h>
 #include <errno.h>
 #include <propeller.h>
-#include "dosfs.h"
 #include "dfs.h"
 
-#undef  FS_DEBUG               // Print debug volume information
-#define CURRENT_DIRECTORY      // Include support for the current directory
-#define MAKE_REMOVE_DIRECTORY  // Include fds_mkdir and fds_rmdir
+VOLINFO dfs_volinfo;
+int dfs_mountflag;
+extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
+char dfs_currdir[MAX_PATH];
 
-#ifdef __PROPELLER_LMM__
-#define FILE_BUFFER_SIZE 16     // Use a small file cache for LMM
-#define CHECK_MEMORY_SPACE     // Check heap/malloc space for LMM
-#else
-#define FILE_BUFFER_SIZE 512    // Use a 512-byte file cache for XMM/XMMC
-#endif
+int dfs_stdio_errno(int errnum);
+void dfs_resolve_path(const char *fname, char *path);
 
-static VOLINFO volinfo;
-static int mountflag = 0;
-__attribute__((section(".hub"))) uint8_t dfs_scratch[512];
-
-static int dfs_map_errno(int errnum);
-
-#ifdef CURRENT_DIRECTORY
-static char currdir[MAX_PATH];
-static void ResolvePath(const char *fname, char *path);
-#endif
-
-//#####################################
-// Device driver
-//#####################################
 extern _Driver _SimpleSerialDriver;
-
-const char FilePrefix[] = "";
-
-_Driver FileDriver =
-  {
-    FilePrefix,
-    File_fopen,
-    File_fclose,
-    File_read,
-    File_write,
-    File_fseek,
-    File_remove,
-  };
+extern _Driver _FileDriver;
 
 /* This is a list of all drivers we can use in the
  * program. The default _InitIO function opens stdin,
@@ -70,292 +40,10 @@ _Driver FileDriver =
  */
 _Driver *_driverlist[] = {
   &_SimpleSerialDriver,
-  &FileDriver,
+  &_FileDriver,
   NULL
 };
 
-/* function called by fopen */
-int File_fopen(FILE *fp, const char *str, const char *mode)
-{
-    PFILEINFO dfs_fp = (PFILEINFO)dfs_open(str, mode);
-    if (!dfs_fp)
-        return -1;
-
-    fp->drvarg[0] = (int)dfs_fp;
-#ifdef FILE_BUFFER_SIZE
-    // Set up file cache in FILE struct
-    if (dfs_fp)
-    {
-        fp->_ptr = fp->_base = ((void *)dfs_fp) + sizeof(FILEINFO);
-        fp->_bsiz = FILE_BUFFER_SIZE;
-        fp->_flag |= _IOFREEBUF;
-    }
-#endif
-    return 0;
-}
-
-/* function called by fclose */
-int File_fclose(FILE *fp)
-{
-    PFILEINFO dfs_fp = (PFILEINFO)fp->drvarg[0];
-    return dfs_close(dfs_fp);
-}
-
-/* function called by fwrite */
-int File_write(FILE *fp, unsigned char *buf, int count)
-{
-    PFILEINFO dfs_fp = (PFILEINFO)fp->drvarg[0];
-    return dfs_write(dfs_fp, buf, count);
-}
-
-/* function called by fread */
-int File_read(FILE *fp, unsigned char *buf, int count)
-{
-    PFILEINFO dfs_fp = (PFILEINFO)fp->drvarg[0];
-    return dfs_read(dfs_fp, buf, count);
-}
-
-/* function called by fseek */
-int File_fseek(FILE *fp, long int offset, int origin)
-{
-    // This code needs to be enabled and tested
-    PFILEINFO dfs_fp = (PFILEINFO)fp->drvarg[0];
-    if (origin == SEEK_CUR)
-        offset += dfs_fp->pointer;
-    else if (origin == SEEK_END)
-        offset += dfs_fp->filelen;
-    else if (origin != SEEK_SET)
-    {
-        errno = EIO;
-        return -1;
-    }
-    if (offset < 0)
-        offset = 0;
-    DFS_Seek(dfs_fp, offset, dfs_scratch);
-    return 0;
-}
-
-/* function called by remove */
-int File_remove(const char *str)
-{
-    int retval = dfs_remove((char *)str);
-
-    if (!retval)
-        return 0;
-
-    errno = retval;
-
-    return -1;
-}
-
-//#####################################
-// DOSFS interface routines
-//#####################################
-#ifdef CHECK_MEMORY_SPACE
-#define MALLOC dfs_malloc  // Map MALLOC to local debug routine
-
-void *dfs_malloc(int size)
-{
-    int space;
-    void *ptr = malloc(size);
-    static int prevspace = 100000;
-
-    if (ptr)
-    {
-        space = ((int)&space) - size - (int)ptr;
-        if (space < prevspace)
-        {
-            prevspace = space;
-            if (space < 700)
-                printf("WARNING: Heap/Stack space = %d\n", space);
-        }
-    }
-    else
-        printf("malloc failed\n");
-
-    return ptr;
-}
-#else
-#define MALLOC malloc
-#endif
-
-static int dfs_map_errno(int errnum)
-{
-    switch(errnum)
-    {
-        case DFS_OK:
-            break;
-        case DFS_EOF:
-            errnum = EOK;
-            break;
-        case DFS_WRITEPROT:
-            errnum = EROFS;
-            break;
-        case DFS_NOTFOUND:
-            errnum = ENOENT;
-            break;
-        case DFS_PATHLEN:
-            errnum = ENAMETOOLONG;
-            break;
-        default:
-            errnum = EIO;
-    }
-    return errnum;
-}
-
-uint32_t dfs_read(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num)
-{
-    int retval;
-    uint32_t successcount;
-
-    retval = DFS_ReadFile(fileinfo, dfs_scratch, buffer, &successcount, num);
-    if (retval != DFS_OK) successcount = 0;
-    errno = dfs_map_errno(retval);
-    return successcount;
-}
-
-uint32_t dfs_write(PFILEINFO fileinfo, uint8_t *buffer, uint32_t num)
-{
-    int retval;
-    uint32_t successcount;
-
-    retval = DFS_WriteFile(fileinfo, dfs_scratch, buffer, &successcount, num);
-    if (retval != DFS_OK) successcount = 0;
-    errno = dfs_map_errno(retval);
-    return successcount;
-}
-
-uint32_t dfs_mount(uint8_t *parms)
-{
-    int retval, start;
-
-    if (mountflag) return 0;
-
-#ifdef CURRENT_DIRECTORY
-    strcpy(currdir, "/");
-#endif
-
-    // Start up the low-level file I/O driver
-    DFS_InitFileIO(parms);
-
-    // Find the first sector of the volume
-    DFS_ReadSector(0, dfs_scratch, 0, 1);
-    if (!strncmp(dfs_scratch+0x36, "FAT16", 5) ||
-        !strncmp(dfs_scratch+0x52, "FAT32", 5))
-        start = 0;
-    else
-        start = dfs_scratch[0x1c6] | (dfs_scratch[0x1c7] << 8) |
-                (dfs_scratch[0x1c8] << 16) | (dfs_scratch[0x1c9] << 24);
-
-    // Get the volume information
-    retval = DFS_GetVolInfo(0, dfs_scratch, start, &volinfo);
-    mountflag = (retval == DFS_OK); 
-
-#ifdef FS_DEBUG
-    // Print volume information
-    MountFSDebug();
-#endif
-
-    return retval;
-}
-
-PFILEINFO dfs_open(const char *fname1, const char *mode)
-{
-    int retval;
-    int modeflag;
-    PFILEINFO fileinfo;
-#ifdef CURRENT_DIRECTORY
-    char fname[MAX_PATH];
-    ResolvePath((char *)fname1, fname);
-#else
-    char *fname = fname1;
-#endif
-
-    if (!mountflag)
-    {
-        errno = EIO;
-        return 0;
-    }
-
-#ifdef FILE_BUFFER_SIZE
-    fileinfo = MALLOC(sizeof(FILEINFO) + FILE_BUFFER_SIZE);
-#else
-    fileinfo = MALLOC(sizeof(FILEINFO));
-#endif
-
-    if (!fileinfo)
-    {
-        errno = ENOMEM;
-        return 0;
-    }
-
-    if (mode[0] == 'w')
-    {
-        retval = DFS_OpenFile(&volinfo, (char *)fname, DFS_READ, dfs_scratch, fileinfo);
-        if (retval == DFS_OK)
-            DFS_UnlinkFile(&volinfo, (char *)fname, dfs_scratch);
-        retval = DFS_OpenFile(&volinfo, (char *)fname, DFS_WRITE | DFS_READ, dfs_scratch, fileinfo);
-    }
-    else if (mode[0] == 'a')
-    {
-        retval = DFS_OpenFile(&volinfo, (char *)fname, DFS_WRITE | DFS_READ, dfs_scratch, fileinfo);
-        if (retval == DFS_OK)
-            DFS_Seek(fileinfo, 0xffffffff, dfs_scratch);
-    }
-    else
-    {
-        retval = DFS_OpenFile(&volinfo, (char *)fname, DFS_READ, dfs_scratch, fileinfo);
-    }
-
-    if (retval != DFS_OK)
-    {
-        errno = dfs_map_errno(retval);
-        free(fileinfo);
-        fileinfo = 0;
-    }
-
-    return fileinfo;
-}
-
-static int dfs_setattr(const char *path, int attr)
-{
-    uint8_t *ptr;
-    PFILEINFO fileinfo;
-    int dirsector, diroffset;
-
-    if (!mountflag)
-        return -3;
-
-    fileinfo = MALLOC(sizeof(FILEINFO));
-
-    if (!fileinfo)
-        return -2;
-
-    if (DFS_OK != DFS_OpenFile(&volinfo, (char *)path, DFS_DIRECTORY, dfs_scratch, fileinfo))
-    {
-        free(fileinfo);
-        return -1;
-    }
-
-    dirsector = fileinfo->dirsector;
-    diroffset = fileinfo->diroffset;
-    ptr = &dfs_scratch[diroffset*32];
-
-    DFS_ReadSector(0, dfs_scratch, dirsector, 1);
-    if (attr >= 0)
-    {
-        ptr[11] = attr;
-        DFS_WriteSector(0, dfs_scratch, dirsector, 1);
-    }
-    else
-        attr = ptr[11];
-
-    free(fileinfo);
-
-    return attr;
-}
-
-#ifdef MAKE_REMOVE_DIRECTORY
 int dfs_rmdir(const char *path1)
 {
     uint8_t *ptr;
@@ -363,20 +51,23 @@ int dfs_rmdir(const char *path1)
     DIRINFO dirinfo;
     FILEINFO fileinfo;
     int dirsector, diroffset;
-#ifdef CURRENT_DIRECTORY
     char path[MAX_PATH];
-    ResolvePath((char *)path1, path);
-#else
-    char *path = path1;
-#endif
+
+    if (!dfs_mountflag)
+    {
+        errno = EIO;
+        return -1;
+    }
+
+    dfs_resolve_path((char *)path1, path);
 
     dirinfo.scratch = dfs_scratch;
 
     // Open the directory
-    if (DFS_OK != DFS_OpenDir(&volinfo, path, &dirinfo))
+    if (DFS_OK != DFS_OpenDir(&dfs_volinfo, path, &dirinfo))
     {
         // Try opening as a file
-        if (DFS_OK == DFS_OpenFile(&volinfo, (char *)path, DFS_READ, dfs_scratch, &fileinfo))
+        if (DFS_OK == DFS_OpenFile(&dfs_volinfo, (char *)path, DFS_READ, dfs_scratch, &fileinfo))
             errno = ENOTDIR;
         else
             errno = ENOENT;
@@ -384,7 +75,7 @@ int dfs_rmdir(const char *path1)
     }
 
     // Check if directory is empty
-    while (DFS_OK == DFS_GetNext(&volinfo, &dirinfo, &dirent))
+    while (DFS_OK == DFS_GetNext(&dfs_volinfo, &dirinfo, &dirent))
     {
         if (dirent.name[0])
         {
@@ -394,7 +85,7 @@ int dfs_rmdir(const char *path1)
     }
 
     // Open the directory as a file
-    if (DFS_OK != DFS_OpenFile(&volinfo, (char *)path, DFS_DIRECTORY, dfs_scratch, &fileinfo))
+    if (DFS_OK != DFS_OpenFile(&dfs_volinfo, (char *)path, DFS_DIRECTORY, dfs_scratch, &fileinfo))
     {
         errno = ENOENT;
         return -1;
@@ -409,7 +100,7 @@ int dfs_rmdir(const char *path1)
     DFS_WriteSector(0, dfs_scratch, dirsector, 1);
 
     // Delete the directory
-    DFS_UnlinkFile(&volinfo, (char *)path, dfs_scratch);
+    DFS_UnlinkFile(&dfs_volinfo, (char *)path, dfs_scratch);
 
     return DFS_OK;
 }
@@ -417,20 +108,17 @@ int dfs_rmdir(const char *path1)
 int dfs_mkdir(const char *path1)
 {
     PFILEINFO fileinfo;
-#ifdef CURRENT_DIRECTORY
     char path[MAX_PATH];
-    ResolvePath((char *)path1, path);
-#else
-    char *path = path1;
-#endif
 
-    if (!mountflag)
+    if (!dfs_mountflag)
     {
         errno = EIO;
         return -1;
     }
 
-    fileinfo = MALLOC(sizeof(FILEINFO));
+    dfs_resolve_path((char *)path1, path);
+
+    fileinfo = malloc(sizeof(FILEINFO));
 
     if (!fileinfo)
     {
@@ -438,19 +126,19 @@ int dfs_mkdir(const char *path1)
         return -1;
     }
 
-    if (DFS_OK == DFS_OpenFile(&volinfo, (char *)path, DFS_DIRECTORY, dfs_scratch, fileinfo))
+    if (DFS_OK == DFS_OpenFile(&dfs_volinfo, (char *)path, DFS_DIRECTORY, dfs_scratch, fileinfo))
     {
         free(fileinfo);
         errno = EEXIST;
         return -1;
     }
 
-    if (DFS_OK == DFS_OpenFile(&volinfo, (char *)path, DFS_DIRECTORY | DFS_WRITE, dfs_scratch, fileinfo))
+    if (DFS_OK == DFS_OpenFile(&dfs_volinfo, (char *)path, DFS_DIRECTORY | DFS_WRITE, dfs_scratch, fileinfo))
     {
         int i;
-        int secperclus = volinfo.secperclus;
+        int secperclus = dfs_volinfo.secperclus;
         int firstcluster = fileinfo->firstcluster;
-        int firstsector = volinfo.dataarea + ((firstcluster - 2) * secperclus);
+        int firstsector = dfs_volinfo.dataarea + ((firstcluster - 2) * secperclus);
 
         for (i = 0; i < 512; i += 32) dfs_scratch[i] = 0;
         for (i = 0; i < secperclus; i++)
@@ -467,25 +155,21 @@ int dfs_mkdir(const char *path1)
 
     return DFS_OK;
 }
-#endif
-
-int dfs_close(PFILEINFO fileinfo)
-{
-    free(fileinfo);
-    return DFS_OK;
-}
 
 PDIRINFO dfs_opendir(char *dirname1)
 {
     int i;
     int retval;
-    PDIRINFO dirinfo = MALLOC(sizeof(DIRINFO) + sizeof(DIRENT) + SECTOR_SIZE);
-#ifdef CURRENT_DIRECTORY
+    PDIRINFO dirinfo;
     char dirname[MAX_PATH];
-    ResolvePath((char *)dirname1, dirname);
-#else
-    char *dirname = dirname1;
-#endif
+
+    if (!dfs_mountflag)
+    {
+        errno = EIO;
+        return 0;
+    }
+
+    dirinfo = malloc(sizeof(DIRINFO) + sizeof(DIRENT) + SECTOR_SIZE);
 
     if (!dirinfo)
     {
@@ -493,15 +177,16 @@ PDIRINFO dfs_opendir(char *dirname1)
         return 0;
     }
 
+    dfs_resolve_path((char *)dirname1, dirname);
     dirinfo->scratch = ((void *)dirinfo) + sizeof(DIRINFO) + sizeof(DIRENT);
-    retval = DFS_OpenDir(&volinfo, dirname, dirinfo);
+    retval = DFS_OpenDir(&dfs_volinfo, dirname, dirinfo);
 
     if (retval == DFS_OK)
         return dirinfo;
 
     free(dirinfo);
 
-    errno = dfs_map_errno(retval);
+    errno = dfs_stdio_errno(retval);
 
     return 0;
 }
@@ -520,7 +205,7 @@ PDIRENT dfs_readdir(PDIRINFO dirinfo)
 
     while (1)
     {
-        retval = DFS_GetNext(&volinfo, dirinfo, dirent);
+        retval = DFS_GetNext(&dfs_volinfo, dirinfo, dirent);
         if (retval != DFS_OK) return 0;
         if (dirent->name[0]) break;
     }
@@ -528,66 +213,20 @@ PDIRENT dfs_readdir(PDIRINFO dirinfo)
     return dirent;
 }
 
-int dfs_remove(char *fname1)
-{
-#ifdef CURRENT_DIRECTORY
-    char fname[MAX_PATH];
-    ResolvePath(fname1, fname);
-#else
-    char *fname = fname1;
-#endif
-    int attr = dfs_setattr(fname, -1);
-    if (attr < 0)
-        return ENOENT;
-    if (attr & ATTR_DIRECTORY)
-        return EISDIR;
-    return DFS_UnlinkFile(&volinfo, fname, dfs_scratch);
-}
-
-#ifdef FS_DEBUG
-int MountFSDebug(void)
-{
-    printf("GetVolInfo:\r\n");
-
-    printf("Volume label '%-11.11s'\r\n", volinfo.label);
-    printf("%d sector/s per cluster, %d reserved sector/s, volume total %ld sectors.\r\n",
-                volinfo.secperclus,
-                volinfo.reservedsecs,
-                volinfo.numsecs);
-    printf("%ld sectors per FAT, first FAT at sector #%ld, root dir at #%ld.\r\n",
-                volinfo.secperfat,
-                volinfo.fat1,
-                volinfo.rootdir);
-    printf("(For FAT32, the root dir is a CLUSTER number, FAT12/16 it is a SECTOR number)\r\n");
-    printf("%d root dir entries, data area commences at sector #%ld.\r\n",
-                volinfo.rootentries,
-                volinfo.dataarea);
-    printf("%ld clusters (%ld bytes) in data area, filesystem IDd as ",
-                volinfo.numclusters,
-                volinfo.numclusters * volinfo.secperclus * SECTOR_SIZE);
-    if (volinfo.filesystem == FAT12)
-        printf("FAT12.\r\n");
-    else if (volinfo.filesystem == FAT16)
-        printf("FAT16.\r\n");
-    else if (volinfo.filesystem == FAT32)
-        printf("FAT32.\r\n");
-    else {
-        printf("[unknown]\r\n");
-        return FALSE;
-    }
-
-    return TRUE;
-}
-#endif
-
-#ifdef CURRENT_DIRECTORY
 int dfs_chdir(const char *path1)
 {
     int len;
     int retval;
     char path[MAX_PATH];
     DIRINFO dirinfo;
-    ResolvePath(path1, path);
+
+    if (!dfs_mountflag)
+    {
+        errno = EIO;
+        return -1;
+    }
+
+    dfs_resolve_path(path1, path);
 
     dirinfo.scratch = dfs_scratch;
 
@@ -595,83 +234,21 @@ int dfs_chdir(const char *path1)
     if (len > 1 && path[len-1] == '/') path[len-1] = 0;
 
     // Make sure it's a valid directory
-    if (DFS_OK == (retval = DFS_OpenDir(&volinfo, path, &dirinfo)))
+    if (DFS_OK == (retval = DFS_OpenDir(&dfs_volinfo, path, &dirinfo)))
     {
-        strcpy(currdir, path);
+        strcpy(dfs_currdir, path);
         return DFS_OK;
     }
 
-    errno = dfs_map_errno(retval);
+    errno = dfs_stdio_errno(retval);
 
     return -1;
 }
 
 char *dfs_getcd(void)
 {
-    return currdir;
+    return dfs_currdir;
 }
-
-static void movestr(char *ptr1, char *ptr2)
-{
-    while (*ptr2) *ptr1++ = *ptr2++;
-    *ptr1 = 0;
-}
-
-static void ResolvePath(const char *fname, char *path)
-{
-    char *ptr;
-    char *ptr1;
-
-    if (!strcmp(fname, ".")) fname++;
-    else if (!strncmp(fname, "./",2)) fname += 2;
-
-    if (fname[0] == '/')
-        strcpy(path, fname);
-    else if (fname[0] == 0)
-        strcpy(path, currdir);
-    else
-    {
-        strcpy(path, currdir);
-        if (path[strlen(path)-1] != '/') strcat(path, "/");
-        strcat(path, fname);
-    }
-
-    // Process ..
-    ptr = path;
-    while (*ptr)
-    {
-        if (!strncmp(ptr, "/..", 3) && (ptr[3] == 0 || ptr[3] == '/'))
-        {
-            if (ptr == path)
-            {
-               movestr(ptr, ptr+3);
-            }
-            else
-            {
-                ptr1 = ptr - 1;
-                while (ptr1 != path)
-                {
-                    if (*ptr1 == '/') break;
-                    ptr1--;
-                }
-                movestr(ptr1, ptr+3);
-                ptr = ptr1;
-            }
-        }
-        else
-        {
-            ptr++;
-            while (*ptr)
-            {
-               if (*ptr == '/') break;
-               ptr++;
-            }
-        }
-    }
-
-    if (path[0] == 0) strcpy(path, "/");
-}
-#endif
 
 /*
 +--------------------------------------------------------------------

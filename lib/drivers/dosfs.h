@@ -1,12 +1,15 @@
 /*
 	DOSFS Embedded FAT-Compatible Filesystem
 	(C) 2005 Lewin A.R.W. Edwards (sysadm@zws.com)
+	11/5/2011 Added PROPGCC_MODS and DFS_DIRECTORY - Dave Hein
 */
 
 #ifndef _DOSFS_H
 #define _DOSFS_H
 
 #include <stdint.h>
+
+#define PROPGCC_MODS /* This flag is used to enable changes for PropGCC */
 
 //===================================================================
 // User-supplied functions
@@ -37,6 +40,9 @@ uint32_t DFS_WriteSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_
 // File access modes
 #define DFS_READ		1			// read-only
 #define DFS_WRITE		2			// write-only
+#ifdef PROPGCC_MODS
+#define DFS_DIRECTORY           0x10                    // directory-mode
+#endif
 
 //===================================================================
 // Miscellaneous constants
