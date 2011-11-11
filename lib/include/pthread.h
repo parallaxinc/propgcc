@@ -14,10 +14,16 @@
 #include <sys/size_t.h>
 #include <setjmp.h>
 
+/* minimum stack size */
+#define _PTHREAD_MIN_STKSIZE 64
+#define _PTHREAD_DEFAULT_STKSIZE 512
+
 /* flags for the pthread "flags" field */
 #define _PTHREAD_DETACHED   0x0001
 #define _PTHREAD_TERMINATED 0x8000
 
+#define PTHREAD_CREATE_JOINABLE 0
+#define PTHREAD_CREATE_DETACHED 1
 
 /* a pthread_t is just a pointer to the thread state structure */
 typedef _thread_state_t _pthread_state_t;
@@ -71,6 +77,8 @@ int pthread_attr_destroy(pthread_attr_t *attr);
 int pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate);
 int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize);
 int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
+int pthread_attr_setstackaddr(pthread_attr_t *attr, void *stackaddr);
+
 /*
  * pthread functions
  */

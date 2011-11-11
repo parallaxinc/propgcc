@@ -56,7 +56,7 @@ TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 
 THREADS = thread.o cogthread.o \
 	pthread_create.o pthread_join.o	pthread_detach.o \
-	pthread_mutex.o
+	pthread_mutex.o pthread_attr.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \
