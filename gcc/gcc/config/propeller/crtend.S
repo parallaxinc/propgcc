@@ -23,9 +23,10 @@ __exit
 	jmp	#__LMM_CALL
 	long	__ExitHook
 	
-	'' and now terminate
-	cogid	r1
-	cogstop	r1
+	'' terminate by putting cog to sleep so QuickStart serial port stays quiet
+	'' waitpeq . , #0 ' this might work in pure ASM, but i get a linker error here.
+	mov     r0, #511
+	waitpeq r0, #0
 
 	'' this is a weak reference so the user can override it
 	.weak __ExitHook
