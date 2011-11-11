@@ -54,7 +54,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 	settimeofday.o gettimeofday.o
 
-THREADS = thread.o cogthread.o \
+THREADS = thread.o cogthread.o nap.o \
 	pthread_create.o pthread_join.o	pthread_detach.o \
 	pthread_mutex.o pthread_attr.o
 

@@ -21,3 +21,9 @@ dummy(void)
 }
 
 void (*__yield_ptr)(void) = dummy;
+
+/*
+ * function for sleeping until a specific cycle is reached or passed
+ */
+void (*__napuntil_ptr)(unsigned int untilcycle) = 0;
+

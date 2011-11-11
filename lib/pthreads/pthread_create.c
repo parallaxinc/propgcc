@@ -9,18 +9,31 @@
 
 /*
  * pthread scheduler
- *
  */
+
 #define NDEBUG  /* turn off asserts */
 #include <pthread.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <assert.h>
+#include <cog.h>
 
+/* define REAL_SLEEP to add a timer queue that processes can sleep on
+ * if that isn't defined, sleeps will just be busy waits
+ */
+#define REAL_SLEEP
+
+/* the ready queue are threads that are ready to run but have no cog assigned
+ * for them yet
+ * the join queue are threads that are waiting on some other thread to terminate
+ */
 _pthread_queue_t __ready_queue;
 _pthread_queue_t __join_queue;
 
+#ifdef REAL_SLEEP
+_pthread_queue_t __timer_queue;
+#endif
 atomic_t __pthreads_lock;
 
 #define ASSERT_LOCKED() assert(__pthreads_lock != 0)
@@ -71,6 +84,24 @@ _pthread_schedule_raw(void)
 
  again:
   ASSERT_LOCKED();
+#if defined(REAL_SLEEP)
+  if (__timer_queue) {
+    /* wake up everything on the timer queue whose
+       timer limit has elapsed
+     */
+    unsigned int now = _CNT;
+    next = __timer_queue;
+    while (next && (int)(next->timer - now) <= 0)
+      {
+	assert(next != next->queue_next);
+	__timer_queue = next->queue_next;
+	next->queue_next = NULL;
+	next->queue = NULL;
+	_pthread_addqueue(&__ready_queue, next);
+	next = __timer_queue;
+      }
+  }
+#endif
   if (__ready_queue) {
     next = _pthread_getqueuehead(&__ready_queue);
     _TLS = next;
@@ -82,9 +113,15 @@ _pthread_schedule_raw(void)
        release the pthreads lock and wait for that
     */
     __unlock_pthreads();
+#if defined(REAL_SLEEP)
+    while (!__ready_queue && !__timer_queue) 
+      {
+      }
+#else
     while (!__ready_queue) 
       {
       }
+#endif
     __lock_pthreads();
     goto again;
   }
@@ -118,13 +155,64 @@ _pthread_sleep(_pthread_queue_t *queue)
   __unlock_pthreads();
 }
 
+#if defined(REAL_SLEEP)
+/*
+ * put a thread to sleep until the system clock reaches or
+ * passes "newclock"
+ */
+/* if the sleep is for less than this many cycles, just return immediately */
+#define SLEEP_THRESHOLD 128
+
+static void
+_pthread_napuntil(unsigned int newclock)
+{
+  _pthread_state_t *thr = _pthread_self();
+  _pthread_state_t *p;
+  _pthread_queue_t *queue = &__timer_queue;
+  unsigned int now;
+  int delta;
+
+  __lock_pthreads();
+  /* add the current thread to the "timer" queue
+     that queue is kept sorted by time to wake up
+  */
+  now = _CNT;
+  thr->timer = newclock;
+  delta = (int)(thr->timer - now);
+  if (delta > SLEEP_THRESHOLD)
+    {
+      thr->queue = queue;
+      for(;;) {
+	p = *queue;
+	if (!p || ((int)(p->timer-now) < delta))
+	    break;
+	queue = &p->queue_next;
+      }
+      assert(*queue != thr);
+      assert(thr->queue_next == 0);
+      thr->queue_next = p;
+      *queue = thr;
+      _pthread_schedule();
+    }
+  else
+    {
+      /* our time has passed... just yield and then resume
+	 running */
+      if (__ready_queue)
+	_pthread_sleep_with_lock(&__ready_queue);
+    }
+  __unlock_pthreads();
+}
+#endif
+
 /*
  * yield the processor to another thread
  */
 void
 pthread_yield(void)
 {
-  _pthread_sleep(&__ready_queue);
+  if (__ready_queue)
+    _pthread_sleep(&__ready_queue);
 }
 
 /*
@@ -206,6 +294,9 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 
   /* make sure the library yield() hook points to the right thing */
   __yield_ptr = pthread_yield;
+#if defined(REAL_SLEEP)
+  __napuntil_ptr = _pthread_napuntil;
+#endif
 
   /* set up the new thread */
   datasize = sizeof(*thr);

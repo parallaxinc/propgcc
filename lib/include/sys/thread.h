@@ -71,6 +71,7 @@ struct _thread {
   short pri;             /* thread priority */
   unsigned short flags;  /* flags for this thread */
 
+  unsigned int timer;    /* used for sleeping */
   /* re-use arg for the thread return value */
   void *arg;             /* thread argument */
   void *(*start)(void *);/* start function */
@@ -126,6 +127,10 @@ typedef _atomic_t atomic_t;
 
 /* hook for giving up CPU time while waiting */
 extern void (*__yield_ptr)(void);
+
+/* hook for sleeping until the clock() reaches a specific count */
+extern void (*__napuntil_ptr)(unsigned int newclock);
+extern void __napuntil(unsigned int newclock);
 
 #if defined(__cplusplus)
 }
