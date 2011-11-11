@@ -57,6 +57,7 @@ _serial_putbyte(int c, FILE *fp)
 	_OUTA &= ~txmask;
       value >>= 1;
     }
+  _DIRA &= ~txmask;
   return c;
 }
 
