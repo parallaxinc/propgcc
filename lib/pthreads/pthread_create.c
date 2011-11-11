@@ -222,11 +222,11 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     }
 
   if (stksiz == 0)
-    stksiz = 512;  /* default stack size */
+    stksiz = _PTHREAD_DEFAULT_STKSIZE;  /* default stack size */
   else
     {
       stksiz = (stksiz + 3) & ~3; /* round up to nearest word */
-      if (stksiz < 16)
+      if (stksiz < _PTHREAD_MIN_STKSIZE)
 	{
 	  errno = EINVAL;
 	  return -1;

@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <propeller.h>
 #include <stdlib.h>
+#include <string.h>
 
 int
 pthread_attr_init(pthread_attr_t *attr)
@@ -33,7 +34,29 @@ int pthread_attr_destroy(pthread_attr_t *attr)
 int
 pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)
 {
-  attr->stksize = stacksize;
+  attr->stksiz = stacksize;
+  return 0;
+}
+int
+pthread_attr_getstacksize(pthread_attr_t *attr, size_t *stacksize)
+{
+  if (attr->stksiz == 0)
+    *stacksize = _PTHREAD_DEFAULT_STKSIZE;
+  else
+    *stacksize = attr->stksiz;
+  return 0;
+}
+
+int
+pthread_attr_getstackaddr(pthread_attr_t *attr, void **addr)
+{
+  *addr = attr->stack;
+  return 0;
+}
+int
+pthread_attr_setstackaddr(pthread_attr_t *attr, void *addr)
+{
+  attr->stack = addr;
   return 0;
 }
 
@@ -41,6 +64,7 @@ int
 pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate)
 {
   *detachstate = (attr->flags & _PTHREAD_DETACHED) != 0;
+  return 0;
 }
 
 int
@@ -50,6 +74,7 @@ pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate)
     attr->flags |= _PTHREAD_DETACHED;
   else
     attr->flags &= ~_PTHREAD_DETACHED;
+  return 0;
 }
 
 /* +--------------------------------------------------------------------
