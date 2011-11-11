@@ -41,7 +41,7 @@ int
 pthread_attr_getstacksize(pthread_attr_t *attr, size_t *stacksize)
 {
   if (attr->stksiz == 0)
-    *stacksize = _PTHREAD_DEFAULT_STKSIZE;
+    *stacksize = _PTHREAD_STACK_DEFAULT;
   else
     *stacksize = attr->stksiz;
   return 0;

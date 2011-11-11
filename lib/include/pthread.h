@@ -15,8 +15,8 @@
 #include <setjmp.h>
 
 /* minimum stack size */
-#define _PTHREAD_MIN_STKSIZE 64
-#define _PTHREAD_DEFAULT_STKSIZE 512
+#define PTHREAD_STACK_MIN 64
+#define _PTHREAD_STACK_DEFAULT 512
 
 /* flags for the pthread "flags" field */
 #define _PTHREAD_DETACHED   0x0001
