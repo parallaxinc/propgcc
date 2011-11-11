@@ -37,6 +37,21 @@ pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)
   return 0;
 }
 
+int
+pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate)
+{
+  *detachstate = (attr->flags & _PTHREAD_DETACHED) != 0;
+}
+
+int
+pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate)
+{
+  if (detachstate)
+    attr->flags |= _PTHREAD_DETACHED;
+  else
+    attr->flags &= ~_PTHREAD_DETACHED;
+}
+
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------

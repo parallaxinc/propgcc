@@ -15,10 +15,8 @@
 #include <setjmp.h>
 
 /* flags for the pthread "flags" field */
-#define _PTHREAD_FREE_STACK 0x0001
-#define _PTHREAD_TERMINATED 0x0002
-#define _PTHREAD_DETACHED   0x0004
-#define _PTHREAD_MAIN_THREAD 0x0008
+#define _PTHREAD_DETACHED   0x0001
+#define _PTHREAD_TERMINATED 0x8000
 
 
 /* a pthread_t is just a pointer to the thread state structure */
@@ -30,6 +28,7 @@ typedef _pthread_state_t *pthread_t;
 typedef struct pthread_attr_t {
   size_t stksiz;       /* stack size */
   void *stack;        /* pointer to base of stack, NULL to allocate one */
+  unsigned int flags; /* flags to start with */
 } pthread_attr_t;
 
 /* a mutex is just an integer with an associated queue */
@@ -69,8 +68,9 @@ _pthread_state_t *_pthread_self()
  */
 int pthread_attr_init(pthread_attr_t *attr);
 int pthread_attr_destroy(pthread_attr_t *attr);
+int pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate);
 int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize);
-
+int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
 /*
  * pthread functions
  */
