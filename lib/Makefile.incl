@@ -4,22 +4,34 @@
 # Invoke it like "make -f Makefile.incl MODEL=lmm
 #
 
-PREFIX = /usr/local/propeller
-WARN = -Wall -Werror
-#WARN =
-CFLAGS = $(WARN) -Os -nostdinc -I./include
-#CFLAGS = $(WARN) -Os -mfcache -nostdinc -I./include
-AR = propeller-elf-ar
-CC = propeller-elf-gcc
-MKDIR = mkdir -p
-
 ifndef OBJDIR
 OBJDIR=obj
 endif
 
-VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm:pthreads
+ifeq ($(SHORTDOUBLES),1)
+MODELDIR=$(OBJDIR)/$(MODEL)/short-doubles
+FLOATMODEL=-m32bit-doubles
+FLOATDEF=-D__SHORT_DOUBLES_IMPL
+else
+MODELDIR=$(OBJDIR)/$(MODEL)
+FLOATMODEL=-m64bit-doubles
+FLOATDEF=
+endif
+MATHDIR=$(MODELDIR)/libm_obj
 
-all: $(OBJDIR)/$(MODEL) $(OBJDIR)/$(MODEL)/libc.a $(OBJDIR)/$(MODEL)/libm.a
+PREFIX = /usr/local/propeller
+WARN = -Wall -Werror
+#WARN =
+CFLAGS = $(WARN) -m$(MODEL) $(FLOATMODEL) -Os -nostdinc -I./include
+MATHCFLAGS = $(WARN) -m$(MODEL) $(FLOATDEF) -Os -mfcache -nostdinc -I./include
+AR = propeller-elf-ar
+CC = propeller-elf-gcc
+MKDIR = mkdir -p
+
+
+VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:math:pthreads
+
+all: $(MODELDIR) $(MATHDIR) $(MODELDIR)/libc.a $(MODELDIR)/libm.a
 
 # $(PRINTF) are the functions which depend on vfprintf;
 # we include floating point versions of these in the math library
@@ -62,51 +74,64 @@ DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \
 	FileDriver.o dosfs.o file_io.o
 
-MATH = 	k_standard.o k_rem_pio2.o \
-	k_cos.o k_sin.o k_tan.o \
+LIBM = 	k_rem_pio2.o k_cos.o k_sin.o k_tan.o \
+	k_rem_pio2f.o k_cosf.o k_sinf.o k_tanf.o \
 	e_acos.o e_acosh.o e_asin.o e_atan2.o \
+	e_acosf.o e_acoshf.o e_asinf.o e_atan2f.o \
 	e_atanh.o e_cosh.o e_exp.o e_fmod.o \
-	e_gamma.o e_gamma_r.o e_hypot.o e_j0.o \
-	e_j1.o e_jn.o e_lgamma.o e_lgamma_r.o \
+	e_atanhf.o e_coshf.o e_expf.o e_fmodf.o \
+	e_hypot.o e_j0.o e_j1.o e_jn.o e_lgamma_r.o \
+	e_hypotf.o e_j0f.o e_j1f.o e_jnf.o e_lgammaf_r.o \
 	e_log.o e_log10.o e_pow.o e_rem_pio2.o e_remainder.o  \
-	e_scalb.o e_sinh.o e_sqrt.o \
-	w_acos.o w_acosh.o w_asin.o w_atan2.o \
-	w_atanh.o w_cosh.o w_exp.o w_fmod.o \
-	w_gamma.o w_gamma_r.o w_hypot.o w_j0.o \
-	w_j1.o w_jn.o w_lgamma.o w_lgamma_r.o \
-	w_log.o w_log10.o w_pow.o w_remainder.o \
-	w_scalb.o w_sinh.o w_sqrt.o \
+	e_logf.o e_log10f.o e_powf.o e_rem_pio2f.o e_remainderf.o  \
+	e_scalb.o e_scalbf.o e_sinh.o e_sinhf.o e_sqrt.o e_sqrtf.o \
 	s_asinh.o s_atan.o s_cbrt.o s_ceil.o s_copysign.o \
-	s_cos.o s_erf.o s_expm1.o s_fabs.o s_finite.o s_floor.o \
-	s_frexp.o s_ilogb.o s_isnan.o s_ldexp.o s_lib_version.o \
-	s_log1p.o s_logb.o s_matherr.o s_modf.o s_nextafter.o \
+	s_asinhf.o s_atanf.o s_cbrtf.o s_ceilf.o s_copysignf.o \
+	s_cos.o s_erf.o s_expm1.o s_fabs.o s_fmax.o s_fmin.o s_floor.o \
+	s_cosf.o s_erff.o s_expm1f.o s_fabsf.o s_fmaxf.o s_fminf.o s_floorf.o \
+	s_frexp.o s_ilogb.o \
+	s_frexpf.o s_ilogbf.o \
+	s_log1p.o s_logb.o s_modf.o s_nextafter.o \
+	s_log1pf.o s_logbf.o s_modff.o s_nextafterf.o \
 	s_rint.o s_scalbn.o s_signgam.o s_significand.o s_sin.o \
+	s_rintf.o s_scalbnf.o s_significandf.o s_sinf.o \
 	s_tan.o s_tanh.o \
-	float_printf.o $(PRINTF) \
-	float_scanf.o $(SCANF)
+	s_tanf.o s_tanhf.o
+
+LIBM_EXTRA =	float_printf.o $(PRINTF) \
+	   	float_scanf.o $(SCANF)
 
 # Don't build propeller.c now since the only function in it is now a macro
 #PROPELLER = propeller.o
 
 OBJS = $(STDIO) $(STDLIB) $(MISC) $(THREADS) $(STRING) $(TIME) $(DRIVERS) $(PROPELLER)
 
-MODEL_OBJS = $(addprefix $(OBJDIR)/$(MODEL)/, $(OBJS))
-MODEL_MATH_OBJS = $(addprefix $(OBJDIR)/$(MODEL)/, $(MATH))
+MODEL_OBJS = $(addprefix $(MODELDIR)/, $(OBJS))
+MODEL_LIBM_OBJS = $(addprefix $(MATHDIR)/, $(LIBM))
+MODEL_LIBM_EXTRA_OBJS = $(addprefix $(MODELDIR)/, $(LIBM_EXTRA))
 
-$(OBJDIR)/$(MODEL)/libc.a: $(MODEL_OBJS)
+MODEL_MATH_OBJS = $(MODEL_LIBM_OBJS) $(MODEL_LIBM_EXTRA_OBJS)
+
+$(MODELDIR)/libc.a: $(MODEL_OBJS)
 	$(AR) rs $@ $^
 
-$(OBJDIR)/$(MODEL)/libm.a: $(MODEL_MATH_OBJS)
+$(MODELDIR)/libm.a: $(MODEL_MATH_OBJS)
 	$(AR) rs $@ $^
 
-$(OBJDIR)/$(MODEL)/%.o: %.c
-	$(CC) $(CFLAGS) -m$(MODEL) -o $@ -c $<
+$(MODELDIR)/%.o: %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
 
-$(OBJDIR)/$(MODEL)/%.o: %.s
-	$(CC) $(CFLAGS) -m$(MODEL) -o $@ -c $<
+$(MODELDIR)/%.o: %.s
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(MATHDIR)/%.o: %.c
+	$(CC) $(MATHCFLAGS) -o $@ -c $<
 
 clean:
 	rm -rf $(OBJDIR) *.a
 
-$(OBJDIR)/$(MODEL):
+$(MODELDIR):
+	$(MKDIR) $@
+
+$(MATHDIR):
 	$(MKDIR) $@
