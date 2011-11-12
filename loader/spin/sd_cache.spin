@@ -332,8 +332,10 @@ sd_init_handler
         call    #sdSendCmd
         cmp     data, #1 wz             ' Wait until response not In Idle
   if_e  jmp     #:wait
-        tjz     data, #sd_finish        ' Initialization complete BUG!!!!!! - fix me!!!!
+        tjz     data, #:done            ' Initialization complete
         mov     sdError, data
+:done
+        call    #sd_release
         jmp     #sd_finish
 
 sd_write_handler
