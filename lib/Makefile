@@ -30,8 +30,8 @@ hello.elf: hello.c
 
 install: all
 	mkdir -p $(DEST)/lib/short-doubles/
-	mkdir -p $(DEST)/lib/xmm/
-	mkdir -p $(DEST)/lib/xmmc/
+	mkdir -p $(DEST)/lib/xmm/short-doubles/
+	mkdir -p $(DEST)/lib/xmmc/short-doubles/
 	cp -r include $(DEST)
 	cp $(OBJDIR)/lmm/libc.a $(OBJDIR)/lmm/libm.a $(DEST)/lib
 	cp $(OBJDIR)/lmm/short-doubles/libc.a $(OBJDIR)/lmm/short-doubles/libm.a $(DEST)/lib/short-doubles/
