@@ -5,14 +5,14 @@
  */
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include <sys/thread.h>
 
 extern _Driver _memory_driver;
 
 FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len)
 {
-  fp->_drv = 0;
-  fp->_flag = 0;
+  memset(fp, 0, sizeof(fp));
   fp = __fopen_driver(fp, &_memory_driver, str, mode);
   if (fp)
     fp->drvarg[1] = (unsigned long)len;
