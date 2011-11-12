@@ -32,40 +32,36 @@
 CON
 
   ' these defaults are for the PropBOE
-  MISO_PIN                = 11
-  CLK_PIN                 = 12
-  MOSI_PIN                = 13
-  CS_CLR_PIN              = 14
+  MISO_PIN                  = 11
+  CLK_PIN                   = 12
+  MOSI_PIN                  = 13
+  CS_CLR_PIN                = 14
 
   ' SD card sector dimensions
-  SECTOR_WIDTH            = 9   ' 512 byte sectors
-  SECTOR_SIZE             = 1<<SECTOR_WIDTH
+  SECTOR_WIDTH              = 9   ' 512 byte sectors
+  SECTOR_SIZE               = 1<<SECTOR_WIDTH
 
   ' default cache dimensions
-  DEFAULT_INDEX_WIDTH     = 4
-  DEFAULT_OFFSET_WIDTH    = SECTOR_WIDTH
+  DEFAULT_INDEX_WIDTH       = 4
+  DEFAULT_OFFSET_WIDTH      = SECTOR_WIDTH
 
   ' FAT cluster dimensions
-  DEFAULT_CLUSTER_WIDTH   = 5   ' 32 sector clusters
+  DEFAULT_CLUSTER_WIDTH     = 5   ' 32 sector clusters
+  DEFAULT_CLUSTER_MAP_WIDTH = 5
 
   ' cache line tag flags
-  EMPTY_BIT               = 30
-  DIRTY_BIT               = 31
+  EMPTY_BIT                 = 30
+  DIRTY_BIT                 = 31
   
-  ' cluster map dimensions
-  CLUSTER_MAP_WIDTH       = 5
-  CLUSTER_MAP_SIZE        = 1<<CLUSTER_MAP_WIDTH
-  CLUSTER_MAP_MASK        = CLUSTER_MAP_SIZE - 1
-
   ' address of CLKFREQ in hub RAM
-  CLKFREQ_ADDR            = $0000
+  CLKFREQ_ADDR              = $0000
 
   ' SD commands
-  CMD0_GO_IDLE_STATE      = $40|0
-  CMD55_APP_CMD           = $40|55
-  CMD17_READ_SINGLE_BLOCK = $40|17
-  CMD24_WRITE_BLOCK       = $40|24
-  ACMD41_SD_APP_OP_COND   = $40|41
+  CMD0_GO_IDLE_STATE        = $40|0
+  CMD55_APP_CMD             = $40|55
+  CMD17_READ_SINGLE_BLOCK   = $40|17
+  CMD24_WRITE_BLOCK         = $40|24
+  ACMD41_SD_APP_OP_COND     = $40|41
 
 OBJ
   int: "cache_interface"
@@ -78,9 +74,9 @@ DAT
 
 ' initialization structure offsets
 ' $0: pointer to a two word mailbox
-' $4: pointer to where to store the cache lines in hub ram
-' $8: (<# bits in the cache line index><<8) | <# bits in the cache line offset> if non-zero (default is (DEFAULT_INDEX_WIDTH<<8)|DEFAULT_OFFSET_WIDTH)
-' $a: number of bits in the cluster mask if non-zero (default is DEFAULT_CLUSTER_WIDTH)
+' $4: hub address of cache lines
+' $8: (cmw<<24)|(cw<<16)|(ow<<8)|iw - defaults are cw=DEFAULT_CLUSTER_WIDTH, iw=DEFAULT_INDEX_WIDTH, ow=DEFAULT_OFFSET_WIDTH
+' $a: hub address of cluster map
 ' note that $4 must be at least 2^(index_width+offset_width) bytes in size
 ' the cache line mask is returned in $0
 
@@ -94,14 +90,24 @@ init2   mov     t1, par             ' get the address of the initialization stru
         add     t1, #4
         rdlong  cacheptr, t1        ' cacheptr is the base address in hub ram of the cache
         add     t1, #4
-        rdlong  t2, t1 wz
-  if_nz mov     index_width, t2     ' override the index_width default value
-  if_nz and     index_width, #$ff
-  if_nz shr     t2, #8
-  if_nz mov     offset_width, t2    ' override the offset_width default value
+        rdlong  t2, t1
+        mov     line, t2
+        and     line, #$ff wz
+  if_nz mov     index_width, line   ' override the index_width default value
+        shr     t2, #8
+        mov     line, t2
+        and     line, #$ff wz
+  if_nz mov     offset_width, line  ' override the offset_width default value
+        shr     t2, #8
+        mov     line, t2
+        and     line, #$ff wz
+  if_nz mov     cluster_width, line ' override the cluster_width default value
+        shr     t2, #8
+        mov     line, t2
+        and     line, #$ff wz
+  if_nz mov     cluster_map_width, line ' override the cluster_map_width default value
         add     t1, #4
-        rdlong  t2, t1 wz
-  if_nz mov     cluster_width, t2   ' override the cluster_width default value
+        rdlong  cluster_map, t1
 
         mov     index_count, #1
         shl     index_count, index_width
@@ -117,6 +123,11 @@ init2   mov     t1, par             ' get the address of the initialization stru
         mov     cluster_mask, #1
         shl     cluster_mask, cluster_width
         sub     cluster_mask, #1
+
+        mov     cluster_map_mask, #1
+        shl     cluster_map_mask, cluster_map_width
+        sub     cluster_map_mask, #1
+        shl     cluster_map_mask, #2 ' byte offset into a table of longs
 
         ' build composite masks
         mov     tclk_mosi, tmosi
@@ -154,7 +165,7 @@ tmosi         long    1<<MOSI_PIN
 tcs_clr       long    1<<CS_CLR_PIN
 tselect_inc   long    0
 tselect_mask  long    0
-clusters      long    0[CLUSTER_MAP_SIZE]
+cluster_map   long    0
 
         ' initialize the cache lines
 vmflush movd    :flush, #0
@@ -282,8 +293,10 @@ wr_cache_line
 wr_cache_line_ret
         ret
 
-cluster_width   long    DEFAULT_CLUSTER_WIDTH
-cluster_mask    long    0
+cluster_width     long  DEFAULT_CLUSTER_WIDTH
+cluster_mask      long  0
+cluster_map_width long  DEFAULT_CLUSTER_MAP_WIDTH
+cluster_map_mask  long  0
 
 ' on entry:
 '   vmaddr - external memory address
@@ -293,12 +306,12 @@ cluster_mask    long    0
 get_physical_sector
         shr     vmaddr, #SECTOR_WIDTH
         mov     t1, vmaddr
-        shr     vmaddr, cluster_width
-        and     vmaddr, #CLUSTER_MAP_MASK
-        add     vmaddr, #clusters
-        movs    vmaddr, :rd
         and     t1, cluster_mask
-:rd     mov     vmaddr, 0-0
+        shl     vmaddr, #2              ' byte offset to a long
+        shr     vmaddr, cluster_width
+        and     vmaddr, cluster_map_mask
+        add     vmaddr, cluster_map
+        rdlong  vmaddr, vmaddr
         add     vmaddr, t1
 get_physical_sector_ret
         ret
