@@ -46,6 +46,7 @@ int DFS_InitFileIO(void)
     extern uint16_t _xmm_mbox_p;
 
     xmm_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
+    do_cmd(SD_INIT_CMD); // Seems to need an extra init command on power up
     while (retries-- > 0)
     {
         result = do_cmd(SD_INIT_CMD);

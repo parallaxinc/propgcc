@@ -6,7 +6,7 @@ OBJDIR=./
 SRCDIR=../src
 ECHO=echo
 
-OBJS = filetest.o dfs.o printf.o load_sd_driver.o sd_driver.o
+OBJS = filetest.o dfs.o printf.o load_sd_driver.o
 HDRS = $(SRCDIR)/dfs.h $(SRCDIR)/dosfs.h
 
 c3files.elf:	$(OBJS)
