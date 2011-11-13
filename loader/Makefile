@@ -41,6 +41,13 @@ EXT=.exe
 OSINT=osint_cygwin
 endif
 
+ifeq ($(OS),msys)
+CFLAGS += -DMINGW
+BSTC=bstc
+EXT=.exe
+OSINT=osint_mingw
+endif
+
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
 BSTC=bstc.osx
@@ -224,7 +231,7 @@ $(DIRS):
 ##################
 
 .PHONY:	install
-install:	$(INSTALLBINDIR) $(INSTALLLIBDIR)
+install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
 	$(CP) -f $(TARGET)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
 	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
 	$(CP) -f include/* $(INSTALLLIBDIR)

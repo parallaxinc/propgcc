@@ -29,6 +29,11 @@ then
   OS=cygwin
   PORT=COM16
   BOARD=c3
+elif test x$UNAME = xMsys
+then
+  OS=msys
+  PORT=COM16
+  BOARD=c3
 elif test x$UNAME = xLinux
 then
   OS=linux

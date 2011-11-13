@@ -114,7 +114,7 @@ int xbAddProgramPath(char *argv[])
     static char fullpath[1024];
     char *p;
 
-#if defined(Q_OS_WIN32)
+#if defined(Q_OS_WIN32) || defined(MINGW)
     /* get the full path to the executable */
     if (!GetModuleFileNameA(NULL, fullpath, sizeof(fullpath)))
         return FALSE;
@@ -138,6 +138,9 @@ int xbAddProgramPath(char *argv[])
                 *p = '\0';
         }
     }
+
+    /* add propeller-load for propeller-gcc */
+    strcat(fullpath,"\\propeller-load");
 
     /* add the executable directory */
     xbAddPath(fullpath);

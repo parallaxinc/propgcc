@@ -20,7 +20,7 @@ all:
 	make -C fibo/cog
 	make -C fibo/lmm
 	make -C fibo/xmm
-	make -C pthreads
+	make -C pthread
 	make -C TV/TvText_demo
 	make -C xbasic
 
@@ -37,7 +37,7 @@ clean:
 	make clean -C fibo/cog
 	make clean -C fibo/lmm
 	make clean -C fibo/xmm
-	make clean -C pthreads
+	make clean -C pthread
 	make clean -C TV/TvText_demo
 	make clean -C xbasic
 
