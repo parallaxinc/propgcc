@@ -1,12 +1,8 @@
 /*
 # #########################################################
-# This file contains the SD driver code for the C3
-# Propeller board.  It contains the low-level three file
-# system routines, which are DFS_InitFileIO, DFS_ReadSector
-# and DFS_WriteSector.
+# This file loads the SD driver cog code.
 #   
-# Written by Dave Hein with contributions from other GCC
-# development team members.
+# Written by Dave Hein
 # Copyright (c) 2011 Parallax, Inc.
 # MIT Licensed
 # #########################################################
@@ -19,8 +15,11 @@
 #include <sys/driver.h>
 #include <compiler.h>
 #include <errno.h>
-#include <propeller.h>
-#include "dosfs.h"
+//#include <propeller.h>
+//#include "dosfs.h"
+#include <cog.h>
+#include <sys/driver.h>
+#include "propdev.h"
 
 uint16_t _xmm_mbox_p;
 
@@ -29,8 +28,11 @@ static volatile uint32_t xmm_mbox[2];
 // This routine starts the SD driver cog
 void LoadSDDriver(uint8_t *pins)
 {
+    extern void *sd_driver_array;
     int32_t pinmask[5];
-    extern uint8_t *sd_driver_array;
+    int cognum;
+
+    use_cog_driver(cogsys1);
 
     _xmm_mbox_p = (uint16_t)(uint32_t)xmm_mbox;
 
@@ -42,12 +44,17 @@ void LoadSDDriver(uint8_t *pins)
         pinmask[2] = 1 << pins[2];  // SD MOSI
         pinmask[3] = 1 << pins[3];  // SD CS
         pinmask[4] = 0;             // Zero disables C3 mode
-        memcpy(&sd_driver_array[4], pinmask, 20);
+        memcpy(sd_driver_array+4, pinmask, 20);
     }
 
     xmm_mbox[0] = 1;
-    cognew(sd_driver_array, (uint32_t *)xmm_mbox);
+    printf("Loading SD driver %8.8x %8.8x\n",
+        (uint32_t)sd_driver_array, *(uint32_t*)sd_driver_array);
+    cognum = load_cog_driver(sd_driver_array, cogsys1, sd_driver_array);
+    printf("SD driver loaded in cog %d\n", cognum);
+    //cognew(sd_driver_array, (uint32_t *)xmm_mbox));
     while (xmm_mbox[0]);
+    printf("SD driver ready\n");
 }
 
 /*
