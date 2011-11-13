@@ -124,6 +124,9 @@ $(MODELDIR)/%.o: %.c
 $(MODELDIR)/%.o: %.s
 	$(CC) $(CFLAGS) -o $@ -c $<
 
+$(MODELDIR)/%.o: %.sx
+	$(CC) $(CFLAGS) -o $@ -c $<
+
 $(MATHDIR)/%.o: %.c
 	$(CC) $(MATHCFLAGS) -o $@ -c $<
 
