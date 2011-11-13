@@ -1017,6 +1017,7 @@ objcopy [@option{-F} @var{bfdname}|@option{--target=}@var{bfdname}]
         [@option{--strip-unneeded-symbol=}@var{symbolname}]
         [@option{-G} @var{symbolname}|@option{--keep-global-symbol=}@var{symbolname}]
         [@option{--localize-hidden}]
+        [@option{--localize-text}]
         [@option{-L} @var{symbolname}|@option{--localize-symbol=}@var{symbolname}]
         [@option{--globalize-symbol=}@var{symbolname}]
         [@option{-W} @var{symbolname}|@option{--weaken-symbol=}@var{symbolname}]
@@ -1205,6 +1206,13 @@ be given more than once.
 @item --localize-hidden
 In an ELF object, mark all symbols that have hidden or internal visibility
 as local.  This option applies on top of symbol-specific localization options
+such as @option{-L}.
+
+@item --localize-text
+In an ELF object, mark all symbols in text sections
+as local.  This can be useful to avoid symbol conflicts in overlays
+which statically link the same libraries.
+This option applies on top of symbol-specific localization options
 such as @option{-L}.
 
 @item -L @var{symbolname}

@@ -152,6 +152,7 @@ objcopy [\fB\-F\fR \fIbfdname\fR|\fB\-\-target=\fR\fIbfdname\fR]
         [\fB\-\-strip\-unneeded\-symbol=\fR\fIsymbolname\fR]
         [\fB\-G\fR \fIsymbolname\fR|\fB\-\-keep\-global\-symbol=\fR\fIsymbolname\fR]
         [\fB\-\-localize\-hidden\fR]
+        [\fB\-\-localize\-text\fR]
         [\fB\-L\fR \fIsymbolname\fR|\fB\-\-localize\-symbol=\fR\fIsymbolname\fR]
         [\fB\-\-globalize\-symbol=\fR\fIsymbolname\fR]
         [\fB\-W\fR \fIsymbolname\fR|\fB\-\-weaken\-symbol=\fR\fIsymbolname\fR]
@@ -370,6 +371,13 @@ be given more than once.
 .IX Item "--localize-hidden"
 In an \s-1ELF\s0 object, mark all symbols that have hidden or internal visibility
 as local.  This option applies on top of symbol-specific localization options
+such as \fB\-L\fR.
+.IP "\fB\-\-localize\-text\fR" 4
+.IX Item "--localize-text"
+In an \s-1ELF\s0 object, mark all symbols that are in a text section
+as local.  This can be useful for avoiding symbol conflicts in
+overlays where different overlays may link the same library.
+This option applies on top of symbol-specific localization options
 such as \fB\-L\fR.
 .IP "\fB\-L\fR \fIsymbolname\fR" 4
 .IX Item "-L symbolname"
