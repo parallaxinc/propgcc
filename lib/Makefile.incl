@@ -72,7 +72,7 @@ THREADS = thread.o cogthread.o nap.o \
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \
-	FileDriver.o dosfs.o file_io.o
+	FileDriver.o dosfs.o file_io.o load_sd_driver.o sd_driver.o
 
 LIBM = 	k_rem_pio2.o k_cos.o k_sin.o k_tan.o \
 	k_rem_pio2f.o k_cosf.o k_sinf.o k_tanf.o \

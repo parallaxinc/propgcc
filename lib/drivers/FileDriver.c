@@ -90,6 +90,7 @@ static int File_fopen(FILE *fp, const char *fname1, const char *mode)
 
     fp->drvarg[0] = (int)fileinfo;
 
+#if 1
     // Set up file buffer in the FILE struct
     if (fileinfo)
     {
@@ -97,6 +98,7 @@ static int File_fopen(FILE *fp, const char *fname1, const char *mode)
         fp->_bsiz = FILE_BUFFER_SIZE;
         fp->_flag |= _IOFREEBUF;
     }
+#endif
 
     return 0;
 }
