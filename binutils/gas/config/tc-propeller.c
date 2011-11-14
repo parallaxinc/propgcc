@@ -592,6 +592,11 @@ md_assemble (char *instruction_string)
   char *p;
   char c;
 
+  /* remove carriage returns (convert them to spaces) in case we are
+     in dos mode */
+  for (p = instruction_string; *p; p++)
+    if (*p == '\r') *p = ' ';
+
   str = skip_whitespace (instruction_string);
   p = find_whitespace (str);
   if (p - str == 0)
@@ -768,7 +773,7 @@ md_assemble (char *instruction_string)
 
     case PROPELLER_OPERAND_CALL:
       {
-	char *str2;
+	char *str2, *p2;
         str = skip_whitespace (str);
         if (*str == '#')
 	  {
@@ -801,6 +806,9 @@ md_assemble (char *instruction_string)
 	    op2.reloc.pc_rel = 0;
 	    break;
 	  }
+
+	p2 = find_whitespace_or_separator (str2);
+	*p2 = 0;
 	strcat (str2, "_ret");
 	parse_expression (str2, &op1);
 	free (str2);
