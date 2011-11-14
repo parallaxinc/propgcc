@@ -115,7 +115,7 @@ tselect_inc   long    0
 tselect_mask  long    0
 
 cache_init_handler
-	    mov     t1, vmaddr
+        mov     t1, vmaddr
         movd    :loop, #cache_params
         mov     count, #cache_params_end - cache_params
 :loop   rdlong  0-0, t1
@@ -146,9 +146,11 @@ vmflush movd    :flush, #0
         djnz    t1, #:flush
 
         ' start the command loop
-waitcmd wrlong  zero, pvmcmd
+waitcmd mov     dira, #0                ' release the pins for other SPI clients
+        wrlong  zero, pvmcmd
 :wait   rdlong  vmline, pvmcmd wz
   if_z  jmp     #:wait
+        mov     dira, spidir            ' set the pins back so we can use them
 
         test    vmline, #int#EXTEND_MASK wz ' test for an extended command
   if_z  jmp     #extend
