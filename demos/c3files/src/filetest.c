@@ -72,7 +72,6 @@ void Cat(int argc, char **argv)
     void *infile;
     uint8_t buffer[40];
 
-    fflush(stdoutfile);
     for (i = 0; i < argc; i++)
     {
         if (i == 0)
@@ -101,13 +100,8 @@ void Cat(int argc, char **argv)
         }
         else
         {
-            // WORKAROUND - Limit reads to 7 bytes because fwrites
-            // of more than 7 bytes to stdout fails
-            while ((num = fread(buffer, 1, 7, infile)))
-            {
+            while ((num = fread(buffer, 1, 40, infile)))
                 fwrite(buffer, 1, num, stdoutfile);
-                fflush(stdoutfile);
-            }
         }
         if (i)
             fclose(infile);

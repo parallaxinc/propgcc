@@ -21,7 +21,10 @@
 #include <sys/driver.h>
 #include "propdev.h"
 
-uint16_t _xmm_mbox_p;
+// Need _alignment_dummy to ensure that a mulitple of 4 bytes of
+// space is used.  This prevents _load_start_cogsys1[] from starting
+// at an address that is only a multiple of 2 bytes.
+uint16_t _xmm_mbox_p, _alignment_dummy;
 
 static volatile uint32_t xmm_mbox[2];
 
@@ -30,7 +33,6 @@ void LoadSDDriver(uint8_t *pins)
 {
     extern void *sd_driver_array;
     int32_t pinmask[5];
-    int cognum;
 
     use_cog_driver(cogsys1);
 
@@ -48,13 +50,8 @@ void LoadSDDriver(uint8_t *pins)
     }
 
     xmm_mbox[0] = 1;
-    printf("Loading SD driver %8.8x %8.8x\n",
-        (uint32_t)sd_driver_array, *(uint32_t*)sd_driver_array);
-    cognum = load_cog_driver(sd_driver_array, cogsys1, sd_driver_array);
-    printf("SD driver loaded in cog %d\n", cognum);
-    //cognew(sd_driver_array, (uint32_t *)xmm_mbox));
+    load_cog_driver(sd_driver_array, cogsys1, (uint32_t *)xmm_mbox);
     while (xmm_mbox[0]);
-    printf("SD driver ready\n");
 }
 
 /*
