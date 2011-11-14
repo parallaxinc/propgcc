@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
 static void Usage(char *board, char *port)
 {
     fprintf(stderr, "\
-usage: propeller-elf-load\n\
+usage: propeller-load\n\
          [ -b <type> ]     select target board (default is '%s')\n\
          [ -p <port> ]     serial port (default is '%s')\n\
          [ -I <path> ]     add a directory to the include path\n\
