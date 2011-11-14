@@ -122,7 +122,11 @@ typedef _atomic_t atomic_t;
 #define __addlock(val, inc) (*val += inc)
 #endif
 
+#if defined(__GNUC__)
+#define __lock(val) while (__builtin_expect(!__trylock(val), 0)) ;
+#else
 #define __lock(val) while (!__trylock(val)) ;
+#endif
 #define __unlock(val) *val = 0
 
 /* hook for giving up CPU time while waiting */
