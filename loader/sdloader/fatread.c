@@ -56,7 +56,6 @@
 #define ATTR_LONG_NAME_MASK         0x3f
 
 #define NAME_SIZE                   11
-#define SECTOR_SIZE                 512
 
 static uint16_t GetU16(uint8_t *buffer, int offset);
 static uint32_t GetU32(uint8_t *buffer, int offset);
@@ -67,6 +66,7 @@ int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo)
     uint16_t bytesPerSector, reservedSectorCount, rootEntryCount;
     uint32_t firstFATSector, firstRootDirectorySector, rootDirectorySectorCount;
     uint32_t firstDataSector, dataSectorCount, clusterCount, totalSectorCount, FATSize;
+    uint32_t endOfClusterChain;
 #ifdef DEBUG
     char *volumeLabel;
 #endif
@@ -124,12 +124,18 @@ int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo)
     clusterCount = dataSectorCount / sectorsPerCluster;
     
     // these magic numbers come from a Microsoft paper on the FAT32 File System
-    if (clusterCount < 4085)
+    if (clusterCount < 4085) {
         type = TYPE_FAT12;
-    else if (clusterCount < 65525)
+        endOfClusterChain = 0x00000ff8;
+    }
+    else if (clusterCount < 65525) {
         type = TYPE_FAT16;
-    else
+        endOfClusterChain = 0x0000fff8;
+    }
+    else {
         type = TYPE_FAT32;
+        endOfClusterChain = 0xfffffff8;
+    }
         
     switch (type) {
     case TYPE_FAT12:
@@ -158,6 +164,7 @@ int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo)
     vinfo->firstFATSector = firstFATSector;
     vinfo->firstDataSector = firstDataSector;
     vinfo->clusterCount = clusterCount;
+    vinfo->endOfClusterChain = endOfClusterChain;
     
 #ifdef DEBUG
     printf("label:                    %-11.11s\n", volumeLabel);
@@ -295,7 +302,7 @@ int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount)
         }
             
         // check for the end of the cluster chain
-        if (next < 2) {
+        if (next >= vinfo->endOfClusterChain) {
             finfo->cluster = 0;
             return -1;
         }
