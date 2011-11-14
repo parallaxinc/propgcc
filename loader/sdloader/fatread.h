@@ -14,6 +14,7 @@ typedef struct {
     uint32_t firstFATSector;
     uint32_t firstDataSector;
     uint32_t clusterCount;
+    uint32_t endOfClusterChain;
 } VolumeInfo;
 
 typedef struct {
@@ -24,7 +25,8 @@ typedef struct {
     uint32_t bytesRemaining;
 } FileInfo;
 
-#define SECTOR_SIZE     512
+#define SECTOR_WIDTH	9
+#define SECTOR_SIZE     (1 << SECTOR_WIDTH)
 
 int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo);
 int FindFile(uint8_t *buffer, VolumeInfo *vinfo, const char *name, FileInfo *finfo);

@@ -44,9 +44,10 @@ CON
   ERASE_CHIP_CMD        = %000_01  ' only for flash
   ERASE_BLOCK_CMD       = %001_01  ' only for flash
   WRITE_DATA_CMD        = %010_01  ' only for flash
-  SD_INIT_CMD           = %011_01  ' only for C3 because of shared SPI pins
-  SD_READ_CMD           = %100_01  ' only for C3 because of shared SPI pins
-  SD_WRITE_CMD          = %101_01  ' only for C3 because of shared SPI pins
+  SD_INIT_CMD           = %011_01  ' only for C3 and SD cache drivers
+  SD_READ_CMD           = %100_01  ' only for C3 and SD cache drivers
+  SD_WRITE_CMD          = %101_01  ' only for C3 and SD cache drivers
+  REINIT_CACHE_CMD      = %110_01  ' only for SD cache driver to reinitialize the cache
 
   CMD_MASK              = %11
   EXTEND_MASK           = %10   ' this bit must be zero for an extended command
