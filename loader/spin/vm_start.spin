@@ -60,6 +60,7 @@ initialize_data     mov     t1, image_base
                     add     t1, #INIT_SIZE
                     call    #read_long
                     mov     count, t1
+                    add     count, #3
                     shr     count, #2 wz
         if_z        jmp     #:done_data
 
