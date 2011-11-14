@@ -41,6 +41,7 @@ loop_entry          mov     t1, init_entry
                     add     t1, #INIT_SIZE
                     call    #read_long
                     mov     count, t1
+                    add     count, #3
                     shr     count, #2 wz
         if_z        jmp     #done_data
 
