@@ -32,10 +32,10 @@
 CON
 
   ' these defaults are for the PropBOE
-  MISO_PIN                  = 11
-  CLK_PIN                   = 12
-  MOSI_PIN                  = 13
-  CS_CLR_PIN                = 14
+  MISO_PIN                  = 22
+  CLK_PIN                   = 23
+  MOSI_PIN                  = 24
+  CS_CLR_PIN                = 25
 
   ' SD card sector dimensions
   SECTOR_WIDTH              = 9   ' 512 byte sectors
