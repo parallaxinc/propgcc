@@ -41,14 +41,6 @@ CON
   SECTOR_WIDTH              = 9   ' 512 byte sectors
   SECTOR_SIZE               = 1<<SECTOR_WIDTH
 
-  ' default cache dimensions
-  DEFAULT_INDEX_WIDTH       = 4
-  DEFAULT_OFFSET_WIDTH      = SECTOR_WIDTH
-
-  ' FAT cluster dimensions
-  DEFAULT_CLUSTER_WIDTH     = 5   ' 32 sector clusters
-  DEFAULT_CLUSTER_MAP_WIDTH = 5
-
   ' cache line tag flags
   EMPTY_BIT                 = 30
   DIRTY_BIT                 = 31
@@ -70,64 +62,15 @@ PUB image
   return @init
 
 DAT
-        org   $0
+        org     $0
 
-' initialization structure offsets
-' $0: pointer to a two word mailbox
-' $4: hub address of cache lines
-' $8: (cmw<<24)|(cw<<16)|(ow<<8)|iw - defaults are cw=DEFAULT_CLUSTER_WIDTH, iw=DEFAULT_INDEX_WIDTH, ow=DEFAULT_OFFSET_WIDTH
-' $a: hub address of cluster map
-' note that $4 must be at least 2^(index_width+offset_width) bytes in size
-' the cache line mask is returned in $0
-
+' mailbox address is passed in par
 init    jmp     #init2
         long    @params - @init
 
-init2   mov     t1, par             ' get the address of the initialization structure
-        rdlong  pvmcmd, t1          ' pvmcmd is a pointer to the virtual address and read/write bit
+init2   mov     pvmcmd, par         ' pvmcmd is a pointer to the virtual address and read/write bit
         mov     pvmaddr, pvmcmd     ' pvmaddr is a pointer into the cache line on return
         add     pvmaddr, #4
-        add     t1, #4
-        rdlong  cacheptr, t1        ' cacheptr is the base address in hub ram of the cache
-        add     t1, #4
-        rdlong  t2, t1
-        mov     line, t2
-        and     line, #$ff wz
-  if_nz mov     index_width, line   ' override the index_width default value
-        shr     t2, #8
-        mov     line, t2
-        and     line, #$ff wz
-  if_nz mov     offset_width, line  ' override the offset_width default value
-        shr     t2, #8
-        mov     line, t2
-        and     line, #$ff wz
-  if_nz mov     cluster_width, line ' override the cluster_width default value
-        shr     t2, #8
-        mov     line, t2
-        and     line, #$ff wz
-  if_nz mov     cluster_map_width, line ' override the cluster_map_width default value
-        add     t1, #4
-        rdlong  cluster_map, t1
-
-        mov     index_count, #1
-        shl     index_count, index_width
-        mov     index_mask, index_count
-        sub     index_mask, #1
-
-        mov     line_size, #1
-        shl     line_size, offset_width
-        mov     t1, line_size
-        sub     t1, #1
-        wrlong  t1, par
-
-        mov     cluster_mask, #1
-        shl     cluster_mask, cluster_width
-        sub     cluster_mask, #1
-
-        mov     cluster_map_mask, #1
-        shl     cluster_map_mask, cluster_map_width
-        sub     cluster_map_mask, #1
-        shl     cluster_map_mask, #2 ' byte offset into a table of longs
 
         ' build composite masks
         mov     tclk_mosi, tmosi
@@ -136,6 +79,7 @@ init2   mov     t1, par             ' get the address of the initialization stru
         or      spidir, tselect_mask
         or      spidir, tclk
         or      spidir, tmosi
+        mov     spiout, tcs_clr
 
         ' setup for c3 chip select if necessary
         tjz     tselect_inc, #:not_c3
@@ -145,13 +89,17 @@ init2   mov     t1, par             ' get the address of the initialization stru
         or      spidir, tselect_inc
   :not_c3
 
+        ' set the pin directions
+        mov     outa, spiout
+        mov     dira, spidir
+
         ' disable the chip select
         call    #sd_release
 
         ' get the clock frequency
         rdlong  sdFreq, #CLKFREQ_ADDR
 
-        jmp     #vmflush
+        jmp     #waitcmd
 
 fillme  long    0[128-fillme]           ' first 128 cog locations are used for a direct mapped cache table
 
@@ -165,7 +113,30 @@ tmosi         long    1<<MOSI_PIN
 tcs_clr       long    1<<CS_CLR_PIN
 tselect_inc   long    0
 tselect_mask  long    0
-cluster_map   long    0
+
+cache_init_handler
+	    mov     t1, vmaddr
+        movd    :loop, #cache_params
+        mov     count, #cache_params_end - cache_params
+:loop   rdlong  0-0, t1
+        add     t1, #4
+        add     :loop, dstinc
+        djnz    count, #:loop
+
+        mov     index_count, #1
+        shl     index_count, index_width
+        mov     index_mask, index_count
+        sub     index_mask, #1
+
+        mov     line_size, #1
+        shl     line_size, offset_width
+        mov     t1, line_size
+        sub     t1, #1
+        wrlong  t1, vmaddr
+
+        mov     cluster_mask, #1
+        shl     cluster_mask, cluster_width
+        sub     cluster_mask, #1
 
         ' initialize the cache lines
 vmflush movd    :flush, #0
@@ -179,7 +150,7 @@ waitcmd wrlong  zero, pvmcmd
 :wait   rdlong  vmline, pvmcmd wz
   if_z  jmp     #:wait
 
-        test    vmpage, #int#EXTEND_MASK wz ' test for an extended command
+        test    vmline, #int#EXTEND_MASK wz ' test for an extended command
   if_z  jmp     #extend
 
         shr     vmline, offset_width wc ' carry is now one for read and zero for write
@@ -217,12 +188,12 @@ miss    movd    :test, line
 :st     mov     0-0, vmline
 miss_ret ret
 
-extend  mov     vmaddr, vmpage
+extend  mov     vmaddr, vmline
         shr     vmaddr, #8
-        shr     vmpage, #2
-        and     vmpage, #7
-        add     vmpage, #dispatch
-        jmp     vmpage
+        shr     vmline, #2
+        and     vmline, #7
+        add     vmline, #dispatch
+        jmp     vmline
 
 dispatch
         jmp     #waitcmd
@@ -231,36 +202,45 @@ dispatch
         jmp     #sd_init_handler
         jmp     #sd_read_handler
         jmp     #sd_write_handler
-        jmp     #waitcmd
+        jmp     #cache_init_handler
         jmp     #waitcmd
 
 ' pointers to mailbox entries
-pvmcmd          long    0       ' on call this is the virtual address and read/write bit
-pvmaddr         long    0       ' on return this is the address of the cache line containing the virtual address
+pvmcmd            long  0       ' on call this is the virtual address and read/write bit
+pvmaddr           long  0       ' on return this is the address of the cache line containing the virtual address
 
-cacheptr        long    0       ' address in hub ram where cache lines are stored
-vmline          long    0       ' cache line containing the virtual address
-vmcurrent       long    0       ' current selected cache line (same as vmline on a cache hit)
-line            long    0       ' current cache line index
-set_dirty_bit   long    0       ' DIRTY_BIT set on writes, clear on reads
+' parameters
+cache_params
+cacheptr          long  0       ' address in hub ram where cache lines are stored
+index_width       long  0
+offset_width      long  0
+cluster_width     long  0
+cluster_map       long  0       ' address in hub ram where the cluster map is stored
+cache_params_end
 
-zero            long    0       ' zero constant
-dstinc          long    1<<9    ' increment for the destination field of an instruction
-t1              long    0       ' temporary variable
-t2              long    0       ' temporary variable
-tag_mask        long    !(1<<DIRTY_BIT) ' includes EMPTY_BIT
-index_width     long    DEFAULT_INDEX_WIDTH
-index_mask      long    0
-index_count     long    0
-offset_width    long    DEFAULT_OFFSET_WIDTH
-line_size       long    0                       ' line size in bytes
-empty_mask      long    (1<<EMPTY_BIT)
-dirty_mask      long    (1<<DIRTY_BIT)
+' computed values that could be passed as parameters
+cluster_mask      long  0
+cluster_map_mask  long  0
+index_mask        long  0
+index_count       long  0
+line_size         long  0       ' line size in bytes
+
+vmline            long  0       ' cache line containing the virtual address
+vmcurrent         long  0       ' current selected cache line (same as vmline on a cache hit)
+line              long  0       ' current cache line index
+set_dirty_bit     long  0       ' DIRTY_BIT set on writes, clear on reads
+
+zero              long  0       ' zero constant
+dstinc            long  1<<9    ' increment for the destination field of an instruction
+t1                long  0       ' temporary variable
+t2                long  0       ' temporary variable
+tag_mask          long  !(1<<DIRTY_BIT) ' includes EMPTY_BIT
+empty_mask        long  (1<<EMPTY_BIT)
+dirty_mask        long  (1<<DIRTY_BIT)
 
 ' input parameters to rd_cache_line and wr_cache_line
-vmaddr          long    0       ' external address
-vmpage          long    0       ' page containing the external address
-hubaddr         long    0       ' hub memory address
+vmaddr            long  0       ' external address
+hubaddr           long  0       ' hub memory address
 
 '----------------------------------------------------------------------------------------------------
 '
@@ -273,10 +253,10 @@ hubaddr         long    0       ' hub memory address
 '----------------------------------------------------------------------------------------------------
 
 rd_cache_line
-rd_cache_line_ret
         call    #get_physical_sector
         mov     count, line_size
         call    #sd_read
+rd_cache_line_ret
         ret
 
 '----------------------------------------------------------------------------------------------------
@@ -293,10 +273,7 @@ wr_cache_line
 wr_cache_line_ret
         ret
 
-cluster_width     long  DEFAULT_CLUSTER_WIDTH
-cluster_mask      long  0
-cluster_map_width long  DEFAULT_CLUSTER_MAP_WIDTH
-cluster_map_mask  long  0
+addrmask long $0fffffff
 
 ' on entry:
 '   vmaddr - external memory address
@@ -304,12 +281,14 @@ cluster_map_mask  long  0
 '   vmaddr - physical sector number containing the address
 '   t1 - clobbered
 get_physical_sector
+        and     vmaddr, addrmask
         shr     vmaddr, #SECTOR_WIDTH
+        add     vmaddr, #4				' size of the pex header
         mov     t1, vmaddr
         and     t1, cluster_mask
+        andn    vmaddr, cluster_mask
         shl     vmaddr, #2              ' byte offset to a long
         shr     vmaddr, cluster_width
-        and     vmaddr, cluster_map_mask
         add     vmaddr, cluster_map
         rdlong  vmaddr, vmaddr
         add     vmaddr, t1
@@ -538,8 +517,9 @@ sdBlkCnt        long    0
 sdInitCnt       long    32768 / 8      ' Initial SPI clocks produced
 sdBlkSize       long    SECTOR_SIZE    ' Number of bytes in an SD block
 
-tclk_mosi       long    (1<<CLK_PIN)|(1<<MOSI_PIN)
-spidir          long    (1<<CS_CLR_PIN)|(1<<CLK_PIN)|(1<<MOSI_PIN)
+tclk_mosi       long    0
+spidir          long    0
+spiout          long    0
 
 ' temporaries used by sd_read and sd_write
 count           long    0

@@ -17,7 +17,7 @@ volatile uint32_t *vm_mbox;
 uint32_t cache_line_mask;
 
 /* this section contains the info structure */
-SdLoaderInfo __attribute__((section(".coguser0"))) info_data = { 1,2,3 };
+SdLoaderInfo __attribute__((section(".coguser0"))) info_data;
 extern unsigned int _load_start_coguser0[];
 
 /* this section contains the xmm_driver code */
@@ -69,11 +69,11 @@ int main(void)
     params[2] = info->cache_param1;
     params[3] = info->cache_param2;
     
+    // load the cache driver
     xmm_mbox[0] = 0xffffffff;
     cognew(_load_start_coguser1, params);
     while (xmm_mbox[0])
         ;
-        
     cache_line_mask = params[0];
         
     if (SD_Init(sd_mbox, 5) != 0) {
@@ -86,6 +86,7 @@ int main(void)
         return 1;
     }
     
+    // open the .pex file
     if (FindFile(buffer, &vinfo, FILENAME, &finfo) != 0) {
         printf("FindFile '%s' failed\n", FILENAME);
         return 1;
@@ -104,10 +105,12 @@ int main(void)
         p += SECTOR_SIZE;
     }
     
+    // start the xmm kernel
     hdr = (PexeFileHdr *)buffer;
     vm_mbox[0] = 0;
     cognew(hdr->kernel, vm_mbox);
     
+    // setup the parameters for vm_start.S
     params[0] = hdr->loadAddress;
     params[1] = (uint32_t)xmm_mbox;
     params[2] = cache_line_mask;
@@ -139,12 +142,15 @@ int main(void)
         }
     }
     
+    // stop the sd driver
     if (sd_id >= 0)
         cogstop(sd_id);
         
+    // replace this loader with vm_start.S
     printf("starting program\n");
     coginit(cogid(), _load_start_coguser3, (uint32_t)params);
 
+    // should never reach this
     return 0;
 }
 
