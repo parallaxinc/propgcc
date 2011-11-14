@@ -39,12 +39,10 @@ extern unsigned int _load_start_coguser1[];
 /* this section contains the vm_start.S code */
 extern unsigned int _load_start_coguser3[];
 
-static uint32_t read_long(uint32_t addr);
-
 int main(void)
 {
     uint8_t *buffer = (uint8_t *)xmm_driver_data;
-    SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
+//    SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
     uint32_t cache_addr, vm_params[5], cluster_count, count, cluster, tmp, *cluster_map;
     CacheParams cache_params;
     VolumeInfo vinfo;
@@ -53,7 +51,7 @@ int main(void)
     uint8_t *p;
     int i;
     
-    cache_addr = HUB_SIZE - info->cache_size;
+    cache_addr = HUB_SIZE - 8*1024; // info->cache_size;
     xmm_mbox = (volatile uint32_t *)(cache_addr - 2 * sizeof(uint32_t));
     vm_mbox = xmm_mbox - 1;
     
@@ -154,13 +152,3 @@ int main(void)
     // should never reach this
     return 0;
 }
-
-static uint32_t read_long(uint32_t addr)
-{
-    xmm_mbox[0] = (addr & ~CMD_MASK) | READ_CMD;
-    while (xmm_mbox[0])
-        ;
-    return *(uint32_t *)(xmm_mbox[1] | (addr & cache_line_mask));
-}
-
-
