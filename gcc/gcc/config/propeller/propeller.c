@@ -664,7 +664,7 @@ pasm_divsi(FILE *f) {
  * implement signed division by using udivsi
  */
 static void
-pasm_cmpswapsi(FILE *f)
+pasm_cmpswapsi(FILE *f ATTRIBUTE_UNUSED)
 {
   error ("atomic operations are not yet supported in spin code");
 }
@@ -2501,6 +2501,25 @@ fcache_label_refs_in_block (rtx lab, rtx first, rtx last)
 }
 
 /*
+ * true if a branch is known to be unlikely (due to programmer
+ * annotation or some other analysis
+ * we don't want to fcache loops which only execute once
+ */
+static bool
+propeller_unlikely_branch_p (rtx jump)
+{
+  rtx note = find_reg_note (jump, REG_BR_PROB, 0);
+  if (note)
+    {
+      HOST_WIDE_INT prob = INTVAL (XEXP (note, 0));
+      if (prob < (REG_BR_PROB_BASE * 4 / 10))
+	return true;
+    }
+  /* branch is not known to be unlikely */
+  return false;
+}
+
+/*
  * see if we can load this block into internal memory (fcache)
  * the requirements for this to work are:
  * (1) the block must fit (be < MAX_FCACHE_SIZE bytes long)
@@ -2595,7 +2614,9 @@ fcache_block_ok (rtx first, rtx last, bool func_p)
 	      /* if it's a function, we want to see at least one loop */
 	      if (func_p)
 		{
-		  if (!propeller_forward_branch_p (insn))
+		  if (!propeller_forward_branch_p (insn)
+		      && !propeller_unlikely_branch_p (insn)
+		      )
 		    {
 		      loop_count++;
 		    }
@@ -3066,7 +3087,9 @@ fcache_convert_loops (void)
 	  dest = get_jump_dest (last);
 	  if ( dest_ok_for_fcache (dest, false)
 	       && GET_CODE (dest) == LABEL_REF
-	       && !propeller_forward_branch_p (last) )
+	       && !propeller_forward_branch_p (last) 
+	       && !propeller_unlikely_branch_p (last)
+	     )
 	    {
 	      first = JUMP_LABEL (last);
 	      gotit = try_convert_loop (&first, &last);
