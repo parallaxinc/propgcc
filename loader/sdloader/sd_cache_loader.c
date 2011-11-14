@@ -39,11 +39,14 @@ extern unsigned int _load_start_coguser1[];
 /* this section contains the vm_start.S code */
 extern unsigned int _load_start_coguser3[];
 
+int ReadSector(FileInfo *finfo, uint8_t *buf);
+
 int main(void)
 {
     uint8_t *buffer = (uint8_t *)xmm_driver_data;
 //    SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
-    uint32_t cache_addr, vm_params[5], cluster_count, count, cluster, tmp, *cluster_map;
+    uint32_t cache_addr, vm_params[5], cluster_count, cluster, tmp;
+    uint32_t load_address, *cluster_map;
     CacheParams cache_params;
     VolumeInfo vinfo;
     FileInfo finfo;
@@ -88,25 +91,28 @@ int main(void)
     cluster_count = (cluster_count + vinfo.sectorsPerCluster - 1) >> cache_params.cluster_width;
 	cluster_map = (uint32_t *)vm_mbox - cluster_count;
     
+	// read the file header
+	if (ReadSector(&finfo, buffer) != 0)
+		return 1;
+    hdr = (PexeFileHdr *)buffer;
+	load_address = hdr->loadAddress;
+	
+	// move past the header
+	memmove(buffer, buffer + PEXE_HDR_SIZE, SECTOR_SIZE - PEXE_HDR_SIZE);
+	p = buffer + SECTOR_SIZE - PEXE_HDR_SIZE;
+	
     // read the .kernel cog image
-    for (i = 0, p = buffer; i < 4; ++i) {
-        if (GetNextFileSector(&finfo, p, &count) != 0) {
-            printf("GetNextFileSector %d failed\n", i);
-            return 1;
-        }
-        if (count != SECTOR_SIZE) {
-            printf("Incomplete file header\n");
-            return 1;
-        }
+    for (i = 1; i < 4; ++i) {
+    	if (ReadSector(&finfo, p) != 0)
+    		return 1;
         p += SECTOR_SIZE;
     }
     
     // start the xmm kernel
     printf("loading kernel\n");
-    hdr = (PexeFileHdr *)buffer;
     vm_mbox[0] = 0;
-    cognew(hdr->kernel, vm_mbox);
-    vm_params[0] = hdr->loadAddress;
+    cognew(buffer, vm_mbox);
+    vm_params[0] = load_address;
     
 	// setup the cache parameters
     cache_params.cacheptr_linemask = cache_addr;
@@ -152,3 +158,18 @@ int main(void)
     // should never reach this
     return 0;
 }
+
+int ReadSector(FileInfo *finfo, uint8_t *buf)
+{
+	uint32_t count;
+	if (GetNextFileSector(finfo, buf, &count) != 0) {
+		printf("GetNextFileSector failed\n");
+		return 1;
+	}
+	if (count != SECTOR_SIZE) {
+		printf("Incomplete file header\n");
+		return 1;
+	}
+	return 0;
+}
+
