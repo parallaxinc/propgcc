@@ -93,8 +93,7 @@ c3_mode mov     tclk_mosi, tmosi
         or      spidir, tmosi
         
         ' disable the chip select
-	'call	#deselect
-	jmpret	deselect_ret, #deselect
+	call	#deselect
 
         ' get the clock frequency
         rdlong  sdFreq, #CLKFREQ_ADDR
@@ -133,24 +132,18 @@ dispatch
 
 sd_init_handler
         mov     sdError, #0             ' assume no errors
-	'call	#deselect
-	jmpret	deselect_ret, #deselect
+	call	#deselect
         mov     t1, sdInitCnt
-_init   'call    #spiRecvByte            ' Output a stream of 32K clocks
-	jmpret	spiRecvByte_ret, #spiRecvByte
+_init   call    #spiRecvByte            ' Output a stream of 32K clocks
         djnz    t1, #_init              '  in case SD card left in some
-	'call	#select
-	jmpret	select_ret, #select
+	call	#select
         mov     sdOp, #CMD0_GO_IDLE_STATE
         mov     sdParam, #0
-        'call    #sdSendCmd              ' Send a reset command and deselect
-	jmpret	sdSendCmd_ret, #sdSendCmd
+        call    #sdSendCmd              ' Send a reset command and deselect
 _wait2  mov     sdOp, #CMD55_APP_CMD
-        'call    #sdSendCmd
-	jmpret	sdSendCmd_ret, #sdSendCmd
+        call    #sdSendCmd
         mov     sdOp, #ACMD41_SD_APP_OP_COND
-        'call    #sdSendCmd
-	jmpret	sdSendCmd_ret, #sdSendCmd
+        call    #sdSendCmd
         cmp     data, #1 wz             ' Wait until response not In Idle
   if_e  jmp     #_wait2
         tjz     data, #sd_finish        ' Initialization complete
@@ -165,29 +158,23 @@ sd_read_handler
   if_z  jmp     #sd_finish
         add     vmaddr, #4
         rdlong  vmaddr, vmaddr          ' get the sector address
-	'call	#select                 ' Read from specified block
-	jmpret	select_ret, #select
+	call	#select                 ' Read from specified block
         mov     sdOp, #CMD17_READ_SINGLE_BLOCK
 _readRepeat
         mov     sdParam, vmaddr
-        'call    #sdSendCmd              ' Read from specified block
-	jmpret	sdSendCmd_ret, #sdSendCmd
-        'call    #sdResponse
-	jmpret	sdResponse_ret, #sdResponse
+        call    #sdSendCmd              ' Read from specified block
+        call    #sdResponse
         mov     sdBlkCnt, sdBlkSize     ' Transfer a block at a time
 _getRead
-        'call    #spiRecvByte
-	jmpret	spiRecvByte_ret, #spiRecvByte
+        call    #spiRecvByte
         tjz     count, #_skipStore      ' Check for count exhausted
         wrbyte  data, ptr
         add     ptr, #1
         sub     count, #1
 _skipStore
         djnz    sdBlkCnt, #_getRead     ' Are we done with the block?
-        'call    #spiRecvByte
-	jmpret	spiRecvByte_ret, #spiRecvByte
-        'call    #spiRecvByte            ' Yes, finish with 16 clocks
-	jmpret	spiRecvByte_ret, #spiRecvByte
+        call    #spiRecvByte
+        call    #spiRecvByte            ' Yes, finish with 16 clocks
         add     vmaddr, #1
         tjnz    count, #_readRepeat     '  and check for more blocks to do
         jmp     #sd_finish
@@ -200,16 +187,13 @@ sd_write_handler
   if_z  jmp     #sd_finish
         add     vmaddr, #4
         rdlong  vmaddr, vmaddr         ' get the sector address
-	'call	#select                ' Write to specified block
-	jmpret	select_ret, #select
+	call	#select                ' Write to specified block
         mov     sdOp, #CMD24_WRITE_BLOCK
 _writeRepeat
         mov     sdParam, vmaddr
-        'call    #sdSendCmd              ' Write to specified block
-	jmpret	sdSendCmd_ret, #sdSendCmd
+        call    #sdSendCmd              ' Write to specified block
         mov     data, #$fe              ' Ask to start data transfer
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
         mov     sdBlkCnt, sdBlkSize     ' Transfer a block at a time
 _putWrite
         mov     data, #0                '  padding with zeroes if needed
@@ -218,61 +202,47 @@ _putWrite
         add     ptr, #1
         sub     count, #1
 _padWrite
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
         djnz    sdBlkCnt, #_putWrite    ' Are we done with the block?
-        'call    #spiRecvByte
-	jmpret	spiRecvByte_ret, #spiRecvByte
-        'call    #spiRecvByte            ' Yes, finish with 16 clocks
-	jmpret	spiRecvByte_ret, #spiRecvByte
-        'call    #sdResponse
-	jmpret	sdResponse_ret, #sdResponse
+        call    #spiRecvByte
+        call    #spiRecvByte            ' Yes, finish with 16 clocks
+        call    #sdResponse
         and     data, #$1f              ' Check the response status
         cmp     data, #5 wz
   if_ne mov     sdError, #1             ' Must be Data Accepted
   if_ne jmp     #sd_finish
         movs    sdWaitData, #0          ' Wait until not busy
-        'call    #sdWaitBusy
-	jmpret	sdWaitBusy_ret, #sdWaitBusy
+        call    #sdWaitBusy
         add     vmaddr, #1
         tjnz    count, #_writeRepeat    '  to next if more data remains
 sd_finish
-	'call	#deselect
-	jmpret	deselect_ret, #deselect
+	call	#deselect
         wrlong  sdError, pvmaddr        ' return error status
         jmp     #waitcmd
 
 sdSendCmd
-        'call    #spiRecvByte         ' ?? selecting card and clocking
-	jmpret	spiRecvByte_ret, #spiRecvByte
+        call    #spiRecvByte         ' ?? selecting card and clocking
         mov     data, sdOp
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
         mov     data, sdParam
         shr     data, #15            ' Supplied address is sector number
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
         mov     data, sdParam        ' Send to SD card as byte address,
         shr     data, #7             '  in multiples of 512 bytes
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
         mov     data, sdParam        ' Total length of this address is
         shl     data, #1             '  four bytes
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
         mov     data, #0
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
         mov     data, #$95           ' CRC code (for 1st command only)
-        'call    #spiSendByte
-	jmpret	spiSendByte_ret, #spiSendByte
+        call    #spiSendByte
 sdResponse
         movs    sdWaitData, #$ff     ' Wait for response from card
 sdWaitBusy
         mov     sdTime, cnt          ' Set up a 1 second timeout
 sdWaitLoop
-        'call    #spiRecvByte
-	jmpret	spiRecvByte_ret, #spiRecvByte
+        call    #spiRecvByte
         mov     t1, cnt
         sub     t1, sdTime           ' Check for expired timeout (1 sec)
         cmp     t1, sdFreq wc
