@@ -182,111 +182,54 @@ void ParseConfigurationFile(System *sys, const char *path)
     fclose(fp);
 }
 
-int SetConfigField(BoardConfig *config, char *tag, char *value)
+static int chktag(char *tag, char *chktag)
+{
+    return strcasecmp(tag, chktag) == 0;
+}
+
+static void SetNumericField(BoardConfig *config, char *value, uint32_t *pValue, int flag)
 {
     int iValue;
+    if (ParseNumericExpr(value, &iValue)) {
+        *pValue = (uint32_t)iValue;
+        config->validMask |= flag;
+    }
+}
 
-    if (strcasecmp(tag, "clkfreq") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_CLKFREQ;
-            config->clkfreq = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "clkmode") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_CLKMODE;
-            config->clkmode = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "baudrate") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_BAUDRATE;
-            config->baudrate = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "rxpin") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_RXPIN;
-            config->rxpin = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "txpin") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_TXPIN;
-            config->txpin = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "tvpin") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_TVPIN;
-            config->tvpin = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "cache-driver") == 0) {
-        if (config->cacheDriver)
-            free(config->cacheDriver);
-        config->validMask |= VALID_CACHEDRIVER;
-        config->cacheDriver = CopyString(value);
-    }
-    else if (strcasecmp(tag, "cache-size") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_CACHESIZE;
-            config->cacheSize = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "cache-param1") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_CACHEPARAM1;
-            config->cacheParam1 = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "cache-param2") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_CACHEPARAM2;
-            config->cacheParam2 = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "sd-driver") == 0) {
-        if (config->sdDriver)
-            free(config->sdDriver);
-        config->validMask |= VALID_SDDRIVER;
-        config->sdDriver = CopyString(value);
-    }
-    else if (strcasecmp(tag, "sdspi-do") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_SDSPIDO;
-            config->sdspiDO = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "sdspi-clk") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_SDSPICLK;
-            config->sdspiClk = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "sdspi-di") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_SDSPIDI;
-            config->sdspiDI = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "sdspi-cs") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_SDSPICS;
-            config->sdspiCS = iValue;
-        }
-    }
-    else if (strcasecmp(tag, "eeprom-first") == 0) {
-        if (ParseNumericExpr(value, &iValue)) {
-            config->validMask |= VALID_EEPROMFIRST;
-            config->eepromFirst = iValue;
-        }
-    }
+static void SetStringField(BoardConfig *config, char *value, char **pValue, int flag)
+{
+    if (*pValue)
+        free(*pValue);
+    *pValue = CopyString(value);
+    config->validMask |= flag;
+}
+
+int SetConfigField(BoardConfig *config, char *tag, char *value)
+{
+         if (chktag(tag, "clkfreq"))       SetNumericField(config, value, &config->clkfreq,     VALID_CLKFREQ);
+    else if (chktag(tag, "clkmode"))       SetNumericField(config, value, &config->clkmode,     VALID_CLKMODE);
+    else if (chktag(tag, "baudrate"))      SetNumericField(config, value, &config->baudrate,    VALID_BAUDRATE);
+    else if (chktag(tag, "rxpin"))         SetNumericField(config, value, &config->rxpin,       VALID_RXPIN);
+    else if (chktag(tag, "txpin"))         SetNumericField(config, value, &config->txpin,       VALID_TXPIN);
+    else if (chktag(tag, "tvpin"))         SetNumericField(config, value, &config->tvpin,       VALID_TVPIN);
+    else if (chktag(tag, "cache-driver"))  SetStringField (config, value, &config->cacheDriver, VALID_CACHEDRIVER);
+    else if (chktag(tag, "cache-size"))    SetNumericField(config, value, &config->cacheSize,   VALID_CACHESIZE);
+    else if (chktag(tag, "cache-param1"))  SetNumericField(config, value, &config->cacheParam1, VALID_CACHEPARAM1);
+    else if (chktag(tag, "cache-param2"))  SetNumericField(config, value, &config->cacheParam2, VALID_CACHEPARAM2);
+    else if (chktag(tag, "sd-driver"))     SetStringField (config, value, &config->sdDriver,    VALID_SDDRIVER);
+    else if (chktag(tag, "sdspi-do"))      SetNumericField(config, value, &config->sdspiDO,     VALID_SDSPIDO);
+    else if (chktag(tag, "sdspi-clk"))     SetNumericField(config, value, &config->sdspiClk,    VALID_SDSPICLK);
+    else if (chktag(tag, "sdspi-di"))      SetNumericField(config, value, &config->sdspiDI,     VALID_SDSPIDI);
+    else if (chktag(tag, "sdspi-cs"))      SetNumericField(config, value, &config->sdspiCS,     VALID_SDSPICS);
+    else if (chktag(tag, "sdspi-clr"))     SetNumericField(config, value, &config->sdspiClr,    VALID_SDSPICLR);
+    else if (chktag(tag, "sdspi-inc"))     SetNumericField(config, value, &config->sdspiInc,    VALID_SDSPIINC);
+    else if (chktag(tag, "sdspi-sel"))     SetNumericField(config, value, &config->sdspiSel,    VALID_SDSPISEL);
+    else if (chktag(tag, "sdspi-msk"))     SetNumericField(config, value, &config->sdspiMsk,    VALID_SDSPIMSK);
+    else if (chktag(tag, "eeprom-first"))  SetNumericField(config, value, &config->eepromFirst, VALID_EEPROMFIRST);
     else {
         Error("unknown board configuration variable: %s", tag);
         return FALSE;
     }
-        
     return TRUE;
 }
 
@@ -353,8 +296,29 @@ void MergeConfigs(BoardConfig *dst, BoardConfig *src)
         dst->sdspiDI = src->sdspiDI;
     }
     if (src->validMask & VALID_SDSPICS) {
+        dst->validMask &= ~(VALID_SDSPICLR | VALID_SDSPIINC);
         dst->validMask |= VALID_SDSPICS;
         dst->sdspiCS = src->sdspiCS;
+    }
+    if (src->validMask & VALID_SDSPICLR) {
+        dst->validMask &= ~VALID_SDSPICS;
+        dst->validMask |= VALID_SDSPICLR;
+        dst->sdspiClr = src->sdspiClr;
+    }
+    if (src->validMask & VALID_SDSPIINC) {
+        dst->validMask &= ~(VALID_SDSPISEL | VALID_SDSPIMSK);
+        dst->validMask |= VALID_SDSPIINC;
+        dst->sdspiInc = src->sdspiInc;
+    }
+    if (src->validMask & VALID_SDSPISEL) {
+        dst->validMask &= ~(VALID_SDSPICLR | VALID_SDSPIINC);
+        dst->validMask |= VALID_SDSPISEL;
+        dst->sdspiSel = src->sdspiSel;
+    }
+    if (src->validMask & VALID_SDSPIMSK) {
+        dst->validMask &= ~(VALID_SDSPICLR | VALID_SDSPIINC);
+        dst->validMask |= VALID_SDSPIMSK;
+        dst->sdspiMsk = src->sdspiMsk;
     }
     if (src->validMask & VALID_EEPROMFIRST) {
         dst->validMask |= VALID_EEPROMFIRST;
@@ -370,6 +334,8 @@ static BoardConfig *SetupDefaultConfiguration(void)
         Fatal("insufficient memory");
         
     memset(config, 0, sizeof(BoardConfig));
+    config->validMask = VALID_CLKFREQ | VALID_CLKMODE | VALID_BAUDRATE | VALID_RXPIN | VALID_TXPIN | VALID_TVPIN
+                      | VALID_SDDRIVER | VALID_SDSPIDO | VALID_SDSPICLK | VALID_SDSPIDI | VALID_SDSPICS;
     config->clkfreq = DEF_CLKFREQ;
     config->clkmode = DEF_CLKMODE;
     config->baudrate = DEF_BAUDRATE;

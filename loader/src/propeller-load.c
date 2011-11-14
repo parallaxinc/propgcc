@@ -121,6 +121,9 @@ int main(int argc, char *argv[])
             case 'l':
                 flags |= LFLAG_WRITE_SDLOADER;
                 break;
+            case 'z':
+                flags |= LFLAG_WRITE_SDCACHELOADER;
+                break;
             case 'r':
                 flags |= LFLAG_RUN;
                 break;
@@ -228,6 +231,12 @@ int main(int argc, char *argv[])
                 return 1;
             }
         }
+        else if (flags & LFLAG_WRITE_SDCACHELOADER) {
+            if (!LoadSDCacheLoader(&sys, config, port, infile, flags)) {
+                fprintf(stderr, "error: load failed\n");
+                return 1;
+            }
+        }
         else {
             if (!LoadImage(&sys, config, port, infile, flags)) {
                 fprintf(stderr, "error: load failed\n");
@@ -239,6 +248,14 @@ int main(int argc, char *argv[])
     /* check for loading the sd loader */
     else if (flags & LFLAG_WRITE_SDLOADER) {
         if (!LoadSDLoader(&sys, config, port, "sd_loader.elf", flags)) {
+            fprintf(stderr, "error: load failed\n");
+            return 1;
+        }
+    }
+    
+    /* check for loading the sd cache loader */
+    else if (flags & LFLAG_WRITE_SDCACHELOADER) {
+        if (!LoadSDCacheLoader(&sys, config, port, "sd_cache_loader.elf", flags)) {
             fprintf(stderr, "error: load failed\n");
             return 1;
         }

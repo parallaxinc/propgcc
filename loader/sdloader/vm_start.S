@@ -13,6 +13,8 @@ boot                mov     t1, PAR
                     rdlong  cache_linemask, t1
                     add     t1, #4
                     rdlong  vm_mbox, t1
+                    add     t1, #4
+                    rdlong  stacktop, t1
                     rdlong  boot_clkfreq, #0
                     rdbyte  boot_clkmode, #4
                     
@@ -65,7 +67,7 @@ done_data           add     init_entry, #INIT_ENTRY_SIZE
                     djnz    entry_count, #loop_entry
 done_init
 
-initialize_stack    mov     dst, vm_mbox
+initialize_stack    mov     dst, stacktop
                     mov     t1, image_base
                     add     t1, #HDR_ENTRY
                     call    #read_long
@@ -92,6 +94,7 @@ cache_mboxcmd       long    0
 cache_mboxdat       long    0
 cache_linemask      long    0
 vm_mbox             long    0
+stacktop            long    0
 
 external_start      long    $20000000
 boot_clkfreq        long    0

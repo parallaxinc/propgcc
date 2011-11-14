@@ -82,6 +82,22 @@ typedef struct {
     uint32_t cs_mask;
 } SDDriverDatHdr;
 
+/* DAT header in sd_cache.spin */
+typedef struct {
+    uint32_t jmp_init;
+    uint32_t params_off;
+} SDCacheDatHdr;
+
+/* parameter structure in sd_cache.spin */
+typedef struct {
+    uint32_t do_mask;
+    uint32_t clk_mask;
+    uint32_t di_mask;
+    uint32_t cs_clr_mask;
+    uint32_t select_inc_mask;
+    uint32_t select_mask;
+} SDCacheParams;
+
 /* target checksum for a binary file */
 #define SPIN_TARGET_CHECKSUM    0x14
 
@@ -301,10 +317,14 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int f
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find xmm_driver (.coguser1) segment");
 
-    if (!ReadCogImage(sys, config->cacheDriver, driverImage, &driverSize))
-        return Error("reading cache driver image failed: %s", config->cacheDriver);
-    memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
-            
+    if (config->cacheDriver) {
+        if (!ReadCogImage(sys, config->cacheDriver, driverImage, &driverSize))
+            return Error("reading cache driver image failed: %s", config->cacheDriver);
+        memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+    }
+    else
+        return Error("no cache driver");
+        
     if (FindProgramSegment(c, ".coguser2", &program) < 0)
         return Error("can't find sd_driver (.coguser2) segment");
     
@@ -321,6 +341,91 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int f
     }
     else
         info->use_cache_driver_for_sd = TRUE;
+            
+    /* update the checksum */
+    UpdateChecksum(imagebuf, imageSize);
+
+    /* determine the download mode */
+    if (flags & LFLAG_WRITE_EEPROM)
+        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+    else if (flags & LFLAG_RUN)
+        mode = DOWNLOAD_RUN_BINARY;
+    else
+        return Error("expecting -e and/or -r");
+        
+    /* load the serial helper program */
+    if (ploadbuf(imagebuf, imageSize, port, mode) != 0) {
+        free(imagebuf);
+        return Error("load failed");
+    }
+    
+    /* free the image buffer */
+    free(imagebuf);
+
+    return TRUE;
+}
+
+int LoadSDCacheLoader(System *sys, BoardConfig *config, char *port, char *path, int flags)
+{
+    uint8_t driverImage[COG_IMAGE_MAX];
+    int imageSize, driverSize, mode;
+    ElfProgramHdr program;
+    SdLoaderInfo *info;
+    SDCacheDatHdr *dat;
+    SDCacheParams *params;
+    uint8_t *imagebuf;
+    uint32_t start;
+    ElfContext *c;
+    ElfHdr hdr;
+    FILE *fp;
+    
+    /* open the sd loader executable */
+    if (!(fp = xbOpenFileInPath(sys, path, "rb")))
+        return Error("can't open '%s'", path);
+
+    /* check for an elf file */
+    if (!ReadAndCheckElfHdr(fp, &hdr))
+        return Error("bad elf file '%s'", path);
+
+    /* open the elf file */
+    if (!(c = OpenElfFile(fp, &hdr)))
+        return Error("failed to open elf file");
+        
+    /* build the .binary image */
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
+        return FALSE;
+    
+    if (FindProgramSegment(c, ".coguser0", &program) < 0)
+        return Error("can't find info (.coguser0) segment");
+    
+    info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
+    info->cache_size = config->cacheSize;
+    info->cache_param1 = config->cacheParam1;
+    info->cache_param2 = config->cacheParam2;
+
+    if (FindProgramSegment(c, ".coguser1", &program) < 0)
+        return Error("can't find xmm_driver (.coguser1) segment");
+
+    if (!ReadCogImage(sys, "sd_cache.dat", driverImage, &driverSize))
+        return Error("reading cache driver image failed: %s", config->cacheDriver);
+        
+    dat = (SDCacheDatHdr *)driverImage;
+    params = (SDCacheParams *)(driverImage + dat->params_off);
+    memset(params, 0, sizeof(SDCacheParams));
+    params->do_mask = 1 << config->sdspiDO;
+    params->clk_mask = 1 << config->sdspiClk;
+    params->di_mask = 1 << config->sdspiDI;
+    if (config->validMask & VALID_SDSPICS)
+        params->cs_clr_mask = 1 << config->sdspiCS;
+    else if (config->validMask & VALID_SDSPICLR)
+        params->cs_clr_mask = 1 << config->sdspiClr;
+    if (config->validMask & VALID_SDSPISEL)
+        params->select_inc_mask = config->sdspiSel;
+    else if (config->validMask & VALID_SDSPIINC)
+        params->select_inc_mask = 1 << config->sdspiInc;
+    params->select_mask = config->sdspiMsk;
+    memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+    info->use_cache_driver_for_sd = TRUE;
             
     /* update the checksum */
     UpdateChecksum(imagebuf, imageSize);
@@ -753,7 +858,7 @@ static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize)
 {
     void *file;
     if (!(file = xbOpenFileInPath(sys, name, "rb")))
-        return Error("can't open cache driver: %s", name);
+        return Error("can't open driver: %s", name);
     *pSize = (int)xbReadFile(file, buf, COG_IMAGE_MAX);
     xbCloseFile(file);
     return *pSize > 0;
