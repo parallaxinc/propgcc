@@ -138,6 +138,10 @@ md_begin (void)
   for (i = 0; i < propeller_num_effects; i++)
     hash_insert (eff_hash, propeller_effects[i].name,
 		 (void *) (propeller_effects + i));
+
+  /* make sure data and bss are longword aligned */
+  record_alignment(data_section, 2);
+  record_alignment(bss_section, 2);
 }
 
 long
@@ -592,6 +596,9 @@ md_assemble (char *instruction_string)
   char *p;
   char c;
 
+  /* force 4 byte alignment for this section */
+  record_alignment(now_seg, 2);
+
   /* remove carriage returns (convert them to spaces) in case we are
      in dos mode */
   for (p = instruction_string; *p; p++)
@@ -997,10 +1004,16 @@ md_undefined_symbol (char *name ATTRIBUTE_UNUSED)
   return 0;
 }
 
+/*
+ * round up a section's size to the appropriate boundary
+ */
 valueT
-md_section_align (segT segment ATTRIBUTE_UNUSED, valueT size)
+md_section_align (segT segment, valueT size)
 {
-  return (size + 3) & ~3;
+  int align = bfd_get_section_alignment (stdoutput, segment);
+  valueT mask = ((valueT) 1 << align) - 1;
+
+  return (size + mask) & ~mask;
 }
 
 long
