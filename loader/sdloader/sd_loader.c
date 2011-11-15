@@ -37,7 +37,7 @@ static uint32_t write_flash_page(uint32_t addr, uint8_t *buffer, uint32_t count)
 
 int main(void)
 {
-    uint8_t *buffer = (uint8_t *)xmm_driver_data;
+    uint8_t *buffer = (uint8_t *)_load_start_coguser1;
     SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
     uint32_t cache_addr;
     uint32_t params[4];
@@ -78,7 +78,7 @@ int main(void)
         
     if (SD_Init(sd_mbox, 5) != 0) {
         printf("SD card initialization failed\n");
-        return -1;
+        return 1;
     }
         
     if (MountFS(buffer, 5, &vinfo) != 0) {
