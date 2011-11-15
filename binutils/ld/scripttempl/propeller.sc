@@ -44,12 +44,6 @@ SECTIONS
     *(.fini*)
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
-  .data	${RELOCATING-0} :
-  {
-    ${DATA_DATA}
-    ${RELOCATING+. = ALIGN(4);}
-  } ${RELOCATING+ ${DATA_MEMORY}}
-
   .hub ${RELOCATING-0} :
   {
     *(.hubstart)
@@ -57,6 +51,12 @@ SECTIONS
     ${HUB_DATA}
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
   ${TEXT_DYNAMIC+${DYNAMIC}}
+
+  .data	${RELOCATING-0} :
+  {
+    ${DATA_DATA}
+    ${RELOCATING+. = ALIGN(4);}
+  } ${RELOCATING+ ${DATA_MEMORY}}
 
   .ctors ${RELOCATING-0} :
   {
