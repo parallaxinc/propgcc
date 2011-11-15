@@ -38,6 +38,12 @@ SECTIONS
   {
     *(.fini*)
   }  >REGION_TEXT
+  .hub   :
+  {
+    *(.hubstart)
+    *(.hubtext*)
+  }  >hub AT>REGION_TEXT
+  /* this needs to be after .hub in case data is in hub memory */
   .data	  :
   {
     *(.data)
@@ -47,11 +53,6 @@ SECTIONS
     *(.gnu.linkonce.d*)
     . = ALIGN(4);
   }  >REGION_DATA AT>REGION_TEXT
-  .hub   :
-  {
-    *(.hubstart)
-    *(.hubtext*)
-  }  >hub AT>REGION_TEXT
   .ctors   :
   {
     *(.ctors*)
@@ -67,7 +68,7 @@ SECTIONS
     *(.bss*)
     *(COMMON)
      PROVIDE (__bss_end = .) ;
-  }  >REGION_DATA AT>REGION_TEXT
+  }  >REGION_DATA
   /* put the cog drivers after bss and just before the heap */
   /* that way we may later be able to free the hub memory they take up */
   OVERLAY : {

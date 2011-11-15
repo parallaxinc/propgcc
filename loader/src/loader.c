@@ -735,28 +735,26 @@ static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *p
     if ((hi = FindProgramSegment(c, ".header", &program_header)) < 0)
         return NullError("can't find .header segment");
     
-    /* find the .hubstart segment */
+    /* find the .hub segment */
     if ((si = FindProgramSegment(c, ".hub", &program_hub)) < 0)
         return NullError("can't find .hub segment");
     
-    /* prepare to determine the init table size */
-    initTableSize = 0;
-    
     /* determine the full image size including the hub/ram initializers */
-    for (i = 0, imageSize = 0; i < c->hdr.phnum; ++i) {
+    for (i = imageSize = initTableSize = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program))
             return NullError("can't load program table entry %d", i);
-        if (i != ki) {
+        if (i != ki && program.offset != 0) {
             //printf("S: vaddr %08x, paddr %08x, size %08x\n", program.vaddr, program.paddr, program.filesz);
-            imageSize += program.filesz;
+            imageSize += program.memsz;
         }
-        if (i != ki && i != hi) {
+        if (i != ki && i != hi && program.offset != 0) {
             if (i == si || program.filesz == 0 || (program.vaddr != program.paddr && program.vaddr > 0)) {
                 //printf("I: vaddr %08x, paddr %08x, size %08x\n", program.vaddr, program.paddr, program.filesz);
                 ++initTableSize;
             }
         }
     }
+    //printf("size %08x, init entries %d\n", imageSize, initTableSize);
     
     /* allocate a buffer big enough for the entire image */
     if (!(imagebuf = (uint8_t *)malloc(imageSize + initTableSize * sizeof(InitSection))))
@@ -768,7 +766,7 @@ static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *p
             free(imagebuf);
             return NullError("can't load program table entry %d", i);
         }
-        if (i != ki && (i == hi || program.paddr >= program_header.paddr)) {
+        if (i != ki && (i == hi || program.paddr >= program_header.paddr) && program.offset != 0) {
             if (program.filesz > 0) {
                 if (!(buf = LoadProgramSegment(c, &program))) {
                     free(imagebuf);

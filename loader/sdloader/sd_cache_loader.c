@@ -43,8 +43,8 @@ int ReadSector(FileInfo *finfo, uint8_t *buf);
 
 int main(void)
 {
-    uint8_t *buffer = (uint8_t *)xmm_driver_data;
-//    SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
+    uint8_t *buffer = (uint8_t *)_load_start_coguser1;
+    //SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
     uint32_t cache_addr, vm_params[5], cluster_count, cluster, tmp;
     uint32_t load_address, *cluster_map;
     CacheParams cache_params;
