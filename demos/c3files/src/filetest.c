@@ -16,7 +16,23 @@
 #include <string.h>
 #include <cog.h>
 #include <propeller.h>
-#include "dfs.h"
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
+extern _Driver _SimpleSerialDriver;
+extern _Driver _FileDriver;
+
+/* This is a list of all drivers we can use in the
+ * program. The default _InitIO function opens stdin,
+ * stdout, and stderr based on the first driver in
+ * the list (the serial driver, for us)
+ */
+_Driver *_driverlist[] = {
+  &_SimpleSerialDriver,
+  &_FileDriver,
+  NULL
+};
 
 char *FindChar(char *ptr, int val);
 
@@ -33,13 +49,18 @@ void Cd(int argc, char **argv)
 {
     if (argc < 2) return;
 
-    if (dfs_chdir(argv[1]))
+    if (chdir(argv[1]))
         perror(argv[1]);
 }
 
 void Pwd(int argc, char **argv)
 {
-    fprintf(stdoutfile, "%s\n", dfs_getcd());
+    uint8_t buffer[64];
+    char *ptr = getcwd(buffer, 64);
+    if (!ptr)
+        perror(0);
+    else
+        fprintf(stdoutfile, "%s\n", ptr);
 }
 
 void Mkdir(int argc, char **argv)
@@ -48,7 +69,7 @@ void Mkdir(int argc, char **argv)
 
     for (i = 1; i < argc; i++)
     {
-        if (dfs_mkdir(argv[i]))
+        if (mkdir(argv[i], 0))
             perror(argv[i]);
     }
 }
@@ -59,7 +80,7 @@ void Rmdir(int argc, char **argv)
 
     for (i = 1; i < argc; i++)
     {
-        if (dfs_rmdir(argv[i]))
+        if (rmdir(argv[i]))
             perror(argv[i]);
     }
 }
@@ -143,15 +164,15 @@ void List(int argc, char **argv)
     int i, j;
     char *ptr;
     char fname[13];
-    PDIRENT dirent;
     int32_t count = 0;
     uint32_t filesize;
     uint32_t longflag = 0;
     char *path;
-    PDIRINFO dirinfo;
     char drwx[5];
     int column;
     int prevlen;
+    DIR *dirp;
+    struct dirent *entry;
 
     // Check flags
     for (j = 1; j < argc; j++)
@@ -183,9 +204,9 @@ void List(int argc, char **argv)
         if (count >= 2)
             fprintf(stdoutfile, "\n%s:\n", path);
 
-        dirinfo = dfs_opendir(path);
+        dirp = opendir(path);
 
-        if (!dirinfo)
+        if (!dirp)
         {
             perror(path);
             continue;
@@ -193,35 +214,35 @@ void List(int argc, char **argv)
 
         column = 0;
         prevlen = 14;
-        while (dirent = dfs_readdir(dirinfo))
+        while (entry = readdir(dirp))
         {
-            if (dirent->name[0] == '.') continue;
+            if (entry->name[0] == '.') continue;
             ptr = fname;
             for (i = 0; i < 8; i++)
             {
-                if (dirent->name[i] == ' ') break;
-                *ptr++ = tolower(dirent->name[i]);
+                if (entry->name[i] == ' ') break;
+                *ptr++ = tolower(entry->name[i]);
             }
-            if (dirent->name[8] != ' ')
+            if (entry->name[8] != ' ')
             {
                 *ptr++ = '.';
                 for (i = 8; i < 11; i++)
                 {
-                    if (dirent->name[i] == ' ') break;
-                    *ptr++ = tolower(dirent->name[i]);
+                    if (entry->name[i] == ' ') break;
+                    *ptr++ = tolower(entry->name[i]);
                 }
             }
             *ptr = 0;
-            filesize = dirent->filesize_3;
-            filesize = (filesize << 8) | dirent->filesize_2;
-            filesize = (filesize << 8) | dirent->filesize_1;
-            filesize = (filesize << 8) | dirent->filesize_0;
+            filesize = entry->filesize_3;
+            filesize = (filesize << 8) | entry->filesize_2;
+            filesize = (filesize << 8) | entry->filesize_1;
+            filesize = (filesize << 8) | entry->filesize_0;
             strcpy(drwx, "-rw-");
-            if (dirent->attr & ATTR_READ_ONLY)
+            if (entry->attr & ATTR_READ_ONLY)
                 drwx[2] = '-';
-            if (dirent->attr & ATTR_ARCHIVE)
+            if (entry->attr & ATTR_ARCHIVE)
                 drwx[3] = 'x';
-            if (dirent->attr & ATTR_DIRECTORY)
+            if (entry->attr & ATTR_DIRECTORY)
             {
                 drwx[0] = 'd';
                 drwx[3] = 'x';
@@ -242,7 +263,7 @@ void List(int argc, char **argv)
                 fprintf(stdoutfile, "%s", fname);
             }
         }
-        dfs_closedir(dirinfo);
+        closedir(dirp);
         if (!longflag && column)
             fprintf(stdoutfile, "\n");
     }

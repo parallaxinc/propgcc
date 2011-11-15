@@ -15,7 +15,8 @@ typing a control-D followed immediately by a carriage return.
 
 The ls command will list out the file names in the root directory or any
 subdirectories that are included in the command line.  A long directory
-listing is obtained by using the -l option, such as "ls -l".
+listing is obtained by using the -l option, such as "ls -l".  The ll
+command can be used insted of ls -l.
 
 The following shows examples of how the commands can be used.
 
@@ -33,3 +34,8 @@ pwd
 cd testdir
 cd ..
 rmdir testdir
+
+Note, other SD cards can be used in the LMM mode by specifying the pins
+for data out, clock, data in and chip select.  The pin assignments for
+the Spinneret card are defined in filetest.c.  This can be modified to
+handle other pin assignments.

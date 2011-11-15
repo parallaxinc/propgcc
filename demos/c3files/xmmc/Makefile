@@ -5,8 +5,8 @@ LDFLAGS=-m$(MODEL)
 OBJDIR=./
 SRCDIR=../src
 ECHO=echo
-OBJS = filetest.o dfs.o
-HDRS = $(SRCDIR)/dfs.h $(SRCDIR)/dosfs.h
+OBJS = filetest.o
+HDRS =
 
 c3files.elf:	$(OBJS)
 	@$(CC) $(LDFLAGS) $(OBJS) -o $@
