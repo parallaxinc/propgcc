@@ -65,22 +65,27 @@ int main(void)
     while (xmm_mbox[0])
         ;
         
+    printf("initializing sd card\n");
     if (SD_Init(xmm_mbox, 5) != 0) {
         printf("SD card initialization failed\n");
         return -1;
     }
         
-    if (MountFS(buffer, 5, &vinfo) != 0) {
+    printf("mounting sd filesystem\n");
+    if (MountFS(buffer, &vinfo) != 0) {
         printf("MountFS failed\n");
         return 1;
     }
     
     // compute the cluster width
     cache_params.cluster_width = 0;
-    for (tmp = vinfo.sectorsPerCluster; (tmp & 1) == 0; tmp >>= 1)
-    	++cache_params.cluster_width;
+    if ((tmp = vinfo.sectorsPerCluster) != 0) {
+    	for (; (tmp & 1) == 0; tmp >>= 1)
+    		++cache_params.cluster_width;
+    }
     	
     // open the .pex file
+    printf("opening AUTORUN.PEX\n");
     if (FindFile(buffer, &vinfo, FILENAME, &finfo) != 0) {
         printf("FindFile '%s' failed\n", FILENAME);
         return 1;
