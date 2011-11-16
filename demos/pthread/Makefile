@@ -1,7 +1,12 @@
+ifndef MODEL
+MODEL = lmm
+endif
+
 CC = propeller-elf-gcc
+CFLAGS = -Os -m$(MODEL)
 
 thread.elf: thread.c
-	$(CC) -o $@ -Os $^	
+	$(CC) -o $@ $(CFLAGS) $^
 
 clean:
 	rm -rf *.elf *.o
