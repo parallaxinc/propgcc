@@ -114,6 +114,8 @@ int _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_s
 typedef volatile int _atomic_t;
 typedef _atomic_t atomic_t;
 
+#if !defined(__cplusplus)
+  /* the GNU C++ library already has locks in it, so don't conflict */
 #if (defined(__PROPELLER_LMM__) || defined(__PROPELLER_COG__))
 #define __trylock(ptr) __sync_bool_compare_and_swap(ptr, 0, 1)
 #define __addlock(ptr, inc) __sync_add_and_fetch(ptr, inc)
@@ -128,6 +130,8 @@ typedef _atomic_t atomic_t;
 #define __lock(val) while (!__trylock(val)) ;
 #endif
 #define __unlock(val) *val = 0
+
+#endif /* !defined(__cplusplus) */
 
 /* hook for giving up CPU time while waiting */
 extern void (*__yield_ptr)(void);

@@ -1,6 +1,10 @@
 #ifndef _TIME_H
 #define _TIME_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 typedef unsigned int clock_t;
 extern clock_t _clkfreq;
 /* the actual frequency the machine is running at may vary */
@@ -31,17 +35,26 @@ struct tm {
 };
 #endif
 
-clock_t clock(void);
-time_t  time(time_t *);
-double  difftime(time_t time2, time_t time1);
+  clock_t clock(void);
+  time_t  time(time_t *);
+  double  difftime(time_t time2, time_t time1);
 
-time_t mktime(struct tm *stm);
+  time_t mktime(struct tm *stm);
 
-struct tm *_gmtime_r(const time_t *t, struct tm *stm);
-struct tm *gmtime(const time_t *, struct tm *);
-struct tm *_localtime_r(const time_t *, struct tm *);
-struct tm *localtime(const time_t *);
+  struct tm *_gmtime_r(const time_t *t, struct tm *stm);
+  struct tm *gmtime(const time_t *, struct tm *);
+  struct tm *_localtime_r(const time_t *, struct tm *);
+  struct tm *localtime(const time_t *);
 
-__SIZE_TYPE__ strftime(char *s, __SIZE_TYPE__ max, const char *format, const struct tm *tm);
+  __SIZE_TYPE__ strftime(char *s, __SIZE_TYPE__ max, const char *format, const struct tm *tm);
+
+  char *asctime(const struct tm *stm);
+  char *asctime_r(const struct tm *stm, char *buf);
+  char *ctime(const time_t *timep);
+  char *ctime_r(const time_t *timep, char *buf);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

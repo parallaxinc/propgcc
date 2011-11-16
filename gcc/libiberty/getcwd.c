@@ -31,7 +31,9 @@ directory's path doesn't fit in @var{len} characters, the result is
 #endif
 
 extern char *getwd ();
+#ifndef errno
 extern int errno;
+#endif
 
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 1024
