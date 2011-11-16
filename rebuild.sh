@@ -107,32 +107,32 @@ then
    cd ../../propgcc
    exit 1
 fi
-make all-gcc
-if test $? != 0
-then
-   echo "gcc make all-gcc failed."
-   cd ../../propgcc
-   exit 1
-fi
-make install-gcc
-if test $? != 0
-then
-   echo "binutils make install-gcc failed."
-   cd ../../propgcc
-   exit 1
-fi
+#make all-gcc
+#if test $? != 0
+#then
+#   echo "gcc make all-gcc failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
+#make install-gcc
+#if test $? != 0
+#then
+#   echo "gcc make install-gcc failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
 
-make all-target-libgcc
+make all
 if test $? != 0
 then
-   echo "libgcc make all-target-libgcc failed."
+   echo "gcc make all failed"
    cd ../../propgcc
    exit 1
 fi
-make install-target-libgcc
+make install
 if test $? != 0
 then
-   echo "libgcc make install-target-libgcc failed."
+   echo "gcc make install failed."
    cd ../../propgcc
    exit 1
 fi
