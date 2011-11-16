@@ -5,6 +5,10 @@
 #include <sys/null.h>
 #include <compiler.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 double atof(const char *);
 int    atoi(const char *);
 long   atol(const char *);
@@ -57,5 +61,12 @@ void *bsearch(const void *key, const void *base, size_t nmemb, size_t size,
 	      int (*compare)(const void *, const void *));
 
 char *getenv(const char *name);
+
+/* not implemented */
+int system(const char *command);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif
