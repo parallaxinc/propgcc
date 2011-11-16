@@ -47,7 +47,7 @@ LOADER = propeller-load
 CXXFLAGS += $(CFLAGS)
 
 # BSTC program
-BSTC=bstc -ls
+BSTC=bstc.osx -ls
 SPINDIR=.
 ECHO=echo
 

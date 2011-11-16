@@ -288,6 +288,7 @@ usage: propeller-load\n\
          [ -s ]            write a spin .binary file for use with the Propeller Tool\n\
          [ -x ]            write a .pex binary file for use with the SD loader\n\
          [ -l ]            load the sd loader into either hub memory or EEPROM\n\
+         [ -z ]            load the sd cache loader into either hub memory or EEPROM\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
@@ -304,6 +305,12 @@ Value expressions for -D can include:\n\
 \n\
 The -b option defaults to the value of the environment variable PROPELLER_LOAD_BOARD\n\
 The -p option defaults to the value of the environment variable PROPELLER_LOAD_PORT\n\
+\n\
+The "sd loader" loads AUTORUN.PEX from an SD card into external memory.\n\
+It requires a board with either external RAM or ROM.\n\
+\n\
+The "sd cache loader" arranges to run AUTORUN.PEX directly from the SD card.\n\
+It can be used on any board with an SD card slot.
 ", board, port);
     exit(1);
 }
