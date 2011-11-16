@@ -48,6 +48,8 @@ SECTIONS
   {
     *(.hubstart)
     *(.hubtext*)
+    *(.hubdata*)
+    *(.hub)
     ${HUB_DATA}
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
   ${TEXT_DYNAMIC+${DYNAMIC}}

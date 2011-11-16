@@ -42,6 +42,8 @@ SECTIONS
   {
     *(.hubstart)
     *(.hubtext*)
+    *(.hub)
+    *(.hubdata*)
   }  >hub AT>REGION_TEXT
   /* this needs to be after .hub in case data is in hub memory */
   .data	  :
