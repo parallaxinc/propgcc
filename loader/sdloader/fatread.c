@@ -60,7 +60,7 @@
 static uint16_t GetU16(uint8_t *buffer, int offset);
 static uint32_t GetU32(uint8_t *buffer, int offset);
 
-int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo)
+int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
 {
     uint8_t start, sectorsPerCluster, numberOfFATs;
     uint16_t bytesPerSector, reservedSectorCount, rootEntryCount;

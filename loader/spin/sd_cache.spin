@@ -80,6 +80,7 @@ init2   mov     pvmcmd, par         ' pvmcmd is a pointer to the virtual address
         or      spidir, tclk
         or      spidir, tmosi
         mov     spiout, tcs_clr
+        or      spiout, tmosi
 
         ' setup for c3 chip select if necessary
         tjz     tselect_inc, #:not_c3
