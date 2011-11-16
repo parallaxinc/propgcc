@@ -99,11 +99,14 @@ extern "C" {
 #define stdin (&__files[0])
 #define stdout (&__files[1])
 #define stderr (&__files[2])
+#define fileno(x) (x - __files)
 
   FILE *fopen(const char *name, const char *mode);
   FILE *freopen(const char *name, const char *mode, FILE *fp);
   int fclose(FILE *fp);
   int fflush(FILE *fp);
+  /* fdopen will always fail right now */
+  FILE *fdopen(int fd, const char *mode);
 
   void setbuf(FILE *fp, char *buf);
   int  setvbuf(FILE *fp, char *buf, int mode, size_t size);
@@ -115,11 +118,15 @@ extern "C" {
   int fputc(int c, FILE *fp);
   int fputs(const char *s, FILE *fp);
   int puts(const char *s);
+  int putc(int c, FILE *fp);
+  int putchar(int c);
 
   int fgetc(FILE *fp);
   char *fgets(char *s, int size, FILE *fp);
   char *gets(char *buf);
   int ungetc(int c, FILE *fp);
+  int getc(FILE *fp);
+  int getchar(void);
 
   size_t fread(void *ptr, size_t size, size_t nmeb, FILE *fp);
   size_t fwrite(const void *ptr, size_t size, size_t nmeb, FILE *fp);
@@ -158,6 +165,9 @@ extern "C" {
 
   int fgetpos(FILE *fp, fpos_t *pos);
   int fsetpos(FILE *fp, fpos_t *pos);
+
+  FILE *tmpfile(void);
+  char *tmpnam(char *s);
 
 #define putc(x, stream)    fputc(x, stream)
 #define putchar(x)         fputc(x, stdout)
