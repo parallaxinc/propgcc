@@ -306,11 +306,11 @@ Value expressions for -D can include:\n\
 The -b option defaults to the value of the environment variable PROPELLER_LOAD_BOARD\n\
 The -p option defaults to the value of the environment variable PROPELLER_LOAD_PORT\n\
 \n\
-The "sd loader" loads AUTORUN.PEX from an SD card into external memory.\n\
+The \"sd loader\" loads AUTORUN.PEX from an SD card into external memory.\n\
 It requires a board with either external RAM or ROM.\n\
 \n\
-The "sd cache loader" arranges to run AUTORUN.PEX directly from the SD card.\n\
-It can be used on any board with an SD card slot.
+The \"sd cache loader\" arranges to run AUTORUN.PEX directly from the SD card.\n\
+It can be used on any board with an SD card slot.\n\
 ", board, port);
     exit(1);
 }
