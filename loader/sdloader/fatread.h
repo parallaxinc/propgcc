@@ -28,7 +28,7 @@ typedef struct {
 #define SECTOR_WIDTH	9
 #define SECTOR_SIZE     (1 << SECTOR_WIDTH)
 
-int MountFS(uint8_t *buffer, int retries, VolumeInfo *vinfo);
+int MountFS(uint8_t *buffer, VolumeInfo *vinfo);
 int FindFile(uint8_t *buffer, VolumeInfo *vinfo, const char *name, FileInfo *finfo);
 int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount);
 int GetFATEntry(VolumeInfo *vinfo, uint8_t *buffer, uint32_t cluster, uint32_t *pEntry);

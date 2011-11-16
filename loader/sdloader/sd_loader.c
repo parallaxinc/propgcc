@@ -81,7 +81,7 @@ int main(void)
         return 1;
     }
         
-    if (MountFS(buffer, 5, &vinfo) != 0) {
+    if (MountFS(buffer, &vinfo) != 0) {
         printf("MountFS failed\n");
         return 1;
     }
