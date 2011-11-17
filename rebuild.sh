@@ -107,32 +107,17 @@ then
    cd ../../propgcc
    exit 1
 fi
-#make all-gcc
-#if test $? != 0
-#then
-#   echo "gcc make all-gcc failed."
-#   cd ../../propgcc
-#   exit 1
-#fi
-#make install-gcc
-#if test $? != 0
-#then
-#   echo "gcc make install-gcc failed."
-#   cd ../../propgcc
-#   exit 1
-#fi
-
-make all
+make all-gcc
 if test $? != 0
 then
-   echo "gcc make all failed"
+   echo "gcc make all-gcc failed."
    cd ../../propgcc
    exit 1
 fi
-make install
+make install-gcc
 if test $? != 0
 then
-   echo "gcc make install failed."
+   echo "gcc make install-gcc failed."
    cd ../../propgcc
    exit 1
 fi
@@ -193,12 +178,6 @@ fi
 cd ..
 
 #
-# build propeller-load
-#
-make -C loader TARGET=../../build/loader
-make -C loader TARGET=../../build/loader install
-
-#
 # copy the linker scripts
 #
 cp -f ldscripts/* $PREFIX/propeller-elf/lib
@@ -207,6 +186,34 @@ then
   echo "ldscripts install failed"
   exit 1
 fi
+
+#
+# build gcc libstdc++
+# this must be done after the library build, since it depends on
+# library header files
+#
+cd ../build/gcc
+make all
+if test $? != 0
+then
+   echo "gcc make all failed"
+   cd ../../propgcc
+   exit 1
+fi
+make install
+if test $? != 0
+then
+   echo "gcc make install failed."
+   cd ../../propgcc
+   exit 1
+fi
+cd ../../propgcc
+
+#
+# build propeller-load
+#
+make -C loader TARGET=../../build/loader
+make -C loader TARGET=../../build/loader install
 
 echo "Build complete."
 exit 0
