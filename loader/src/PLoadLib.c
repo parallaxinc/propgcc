@@ -119,7 +119,7 @@ static int hwfind(void)
     int  n, ii, jj, rc, to;
     uint8_t mybuf[300];
 
-    msleep(200); // pause after reset - 100ms is too long
+    msleep(50); // pause after reset - 100ms is too long
     mybuf[0] = 0xF9;
     LFSR = 'P';  // P is for Propeller :)
 
