@@ -50,8 +50,9 @@ scalbnf(float x, int n)
         return x*twom25;
 }
 
-float
-ldexpf(float x, int n)
-{
-	return scalbnf(x, n);
-}
+__strong_alias(ldexpf, scalbnf);
+
+#if defined(__SHORT_DOUBLES_IMPL)
+__strong_alias(ldexp, ldexpf);
+#endif
+
