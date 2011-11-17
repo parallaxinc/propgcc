@@ -35,11 +35,22 @@ extern "C"
 #define VCFG    _VCFG
 #define VSCL    _VSCL
 
-/* clock frequency define */
+/* return clock frequency */
 #define CLKFREQ _CLKFREQ
 
-/* set CLKMODE */
-#define CLKMODE(mode) (*((unsigned char*) 4) = (mode))
+/* return clock mode */
+#define CLKMODE *((volatile uint8_t*) 4)
+
+/**
+ * Set clock mode and frequency.
+ * This macro will not return a value.
+ */
+#define clkset(mode, frequency) \
+do { \
+  *((volatile uint32_t*) 0) = (frequency); \
+  *((volatile uint8_t* ) 4) = (mode); \
+  __builtin_propeller_clkset(mode); \
+} while(0)
 
 /**
  * return the id of the current cog
