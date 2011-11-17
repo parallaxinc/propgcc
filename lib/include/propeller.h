@@ -47,8 +47,8 @@ extern "C"
  */
 #define clkset(mode, frequency) \
 do { \
-  CLKFREQ = (frequency); \
-  CLKMODE = (mode); \
+  _CLKFREQ = (frequency); \
+  _CLKMODE = (mode); \
   __builtin_propeller_clkset(mode); \
 } while(0)
 
