@@ -34,6 +34,8 @@ extern _COGMEM volatile unsigned int _VSCL __asm__("VSCL");
 /* boot parameters */
 extern unsigned int _clkfreq; /* in the spin boot code */
 #define _CLKFREQ _clkfreq
+extern unsigned char _clkmode; /* in the spin boot code */
+#define _CLKMODE _clkmode
 
 
 #endif
