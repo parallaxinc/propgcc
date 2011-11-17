@@ -26,16 +26,21 @@
 #define SD_READ_CMD  0x11
 #define SD_WRITE_CMD 0x15
 
-static volatile uint32_t *xmm_mbox;
+static volatile uint32_t __attribute__((section(".hub"))) *sd_mbox;
 extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
+
+#ifndef __PROPELLER_LMM__
+uint16_t _xmm_mbox_p;
+#endif
+uint32_t *_sd_mbox_p = 0;
 
 // This routine sends a command to the driver cog and returns the result
 // It must be loaded in HUB RAM so we don't generate a cache miss
 static uint32_t __attribute__((section(".hubtext"))) do_cmd(uint32_t cmd)
 {
-    xmm_mbox[0] = cmd;
-    while (xmm_mbox[0]);
-    return xmm_mbox[1];
+    sd_mbox[0] = cmd;
+    while (sd_mbox[0]);
+    return sd_mbox[1];
 }
 
 // This routine initializes the low-level driver
@@ -43,9 +48,18 @@ int DFS_InitFileIO(void)
 {
     int retries = 5;
     int32_t result;
-    extern uint16_t _xmm_mbox_p;
 
-    xmm_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
+#ifdef __PROPELLER_LMM__
+    sd_mbox = _sd_mbox_p;
+    if (!_sd_mbox_p)
+        return -1;
+#else
+    if (_sd_mbox_p)
+        sd_mbox = _sd_mbox_p;
+    else
+        sd_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
+#endif
+
     do_cmd(SD_INIT_CMD); // Seems to need an extra init command on power up
     while (retries-- > 0)
     {

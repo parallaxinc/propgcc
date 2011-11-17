@@ -15,18 +15,12 @@
 #include <sys/driver.h>
 #include <compiler.h>
 #include <errno.h>
-//#include <propeller.h>
-//#include "dosfs.h"
 #include <cog.h>
 #include <sys/driver.h>
 #include "propdev.h"
 
-// Need _alignment_dummy to ensure that a mulitple of 4 bytes of
-// space is used.  This prevents _load_start_cogsys1[] from starting
-// at an address that is only a multiple of 2 bytes.
-uint16_t _xmm_mbox_p, _alignment_dummy;
-
-static volatile uint32_t xmm_mbox[2];
+extern uint32_t *_sd_mbox_p;
+static volatile uint32_t __attribute__((section(".hub"))) sd_mbox[2];
 
 // This routine starts the SD driver cog
 void LoadSDDriver(uint8_t *pins)
@@ -36,7 +30,7 @@ void LoadSDDriver(uint8_t *pins)
 
     use_cog_driver(cogsys1);
 
-    _xmm_mbox_p = (uint16_t)(uint32_t)xmm_mbox;
+    _sd_mbox_p = (uint32_t *)sd_mbox;
 
     // Overwrite pin masks if pins are specified
     if (pins)
@@ -49,9 +43,9 @@ void LoadSDDriver(uint8_t *pins)
         memcpy(sd_driver_array+4, pinmask, 20);
     }
 
-    xmm_mbox[0] = 1;
-    load_cog_driver(sd_driver_array, cogsys1, (uint32_t *)xmm_mbox);
-    while (xmm_mbox[0]);
+    sd_mbox[0] = 1;
+    load_cog_driver(sd_driver_array, cogsys1, (uint32_t *)sd_mbox);
+    while (sd_mbox[0]);
 }
 
 /*
