@@ -39,7 +39,7 @@ extern "C"
 #define CLKFREQ _CLKFREQ
 
 /* return clock mode */
-#define CLKMODE *((volatile uint8_t*) 4)
+#define CLKMODE _CLKMODE
 
 /**
  * Set clock mode and frequency.
