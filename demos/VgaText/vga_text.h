@@ -55,12 +55,12 @@
 /**
  * VGA_Text column count
  */
-#define  VGA_TEXT_COLS 32
+#define  VGA_TEXT_COLS 30
 
 /**
  * VGA_Text row count
  */
-#define  VGA_TEXT_ROWS 15
+#define  VGA_TEXT_ROWS 14
 
 /**
  * VGA_Text screensize count

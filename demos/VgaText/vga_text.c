@@ -98,8 +98,8 @@ int     vgaText_start(int basepin)
     gVgaText.vt = VGA_TEXT_ROWS;
     gVgaText.hx = 1;
     gVgaText.vx = 1;
-    gVgaText.ho = 0;
-    gVgaText.vo = 0;
+    gVgaText.ho = 1;
+    gVgaText.vo = 1;
     gVgaText.hd = 512;
     gVgaText.hf = 10;
     gVgaText.hs = 75;
