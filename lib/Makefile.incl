@@ -51,9 +51,11 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 
 STDLIB = malloc.o calloc.o realloc.o atoi.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o \
+	strtoll.o strtoull.o \
 	assert.o rand.o setjmp.o div.o abs.o getenv.o
 
 MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
+        isblank.o isxdigit.o isupper.o islower.o isgraph.o ispunct.o \
 	sbrk.o write.o signal.o assert.o locale.o \
 	chdir.o rmdir.o mkdir.o opendir.o
 

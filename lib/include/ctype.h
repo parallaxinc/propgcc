@@ -16,6 +16,7 @@ extern unsigned char __ctype[];
 
   extern int isalnum(int c);
   extern int isalpha(int c);
+  extern int isblank(int c);
   extern int iscntrl(int c);
   extern int isdigit(int c);
   extern int isgraph(int c);
@@ -31,6 +32,7 @@ extern unsigned char __ctype[];
 
 #define isalnum(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl|_CTd))
 #define isalpha(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl))
+#define isblank(c)      (__ctype[(unsigned char)(c)]&(_CTs) && ((c) == ' ') || (c == '\t'))
 #define iscntrl(c)      (__ctype[(unsigned char)(c)]&_CTc)
 #define isdigit(c)      (__ctype[(unsigned char)(c)]&_CTd)
 #define isgraph(c)      (!(__ctype[(unsigned char)(c)]&(_CTc|_CTs)) && (__ctype[(unsigned char)(c)]))
