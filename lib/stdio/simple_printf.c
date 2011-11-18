@@ -104,9 +104,6 @@ static int
 PUTFLOAT(char c, double d, int width, int prec, int fill_char)
 {
     int outbytes = 0;
-    int digits;
-    double power_of_ten;
-    int exp;
     int sign = 0;
     ULONG integer_part, frac_part;
     const ULONG max_integer = 4000000000000000000ULL;
