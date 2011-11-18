@@ -48,6 +48,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 cacosf(float complex z)
@@ -58,3 +59,8 @@ cacosf(float complex z)
 	w = ((float)M_PI_2 - crealf (w)) - cimagf (w) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef cacos
+__strong_alias(cacos, cacosf);
+#endif

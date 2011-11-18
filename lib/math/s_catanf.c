@@ -61,6 +61,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 #define MAXNUMF 1.0e38F
 
@@ -122,3 +123,8 @@ ovrf:
 	w = MAXNUMF + MAXNUMF * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef catan
+__strong_alias(catan, catanf);
+#endif

@@ -21,6 +21,7 @@
 #include <complex.h>
 #include <float.h>
 #include <math.h>
+#include "math_private.h"
 
 double
 cabs(double complex z)

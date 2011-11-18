@@ -55,6 +55,7 @@
 #include <complex.h>
 #include <float.h>
 #include <math.h>
+#include "math_private.h"
 
 double complex
 casin(double complex z)

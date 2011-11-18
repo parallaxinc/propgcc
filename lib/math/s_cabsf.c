@@ -17,9 +17,15 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float
 cabsf(float complex z)
 {
 	return hypotf(__real__ z, __imag__ z);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef cabs
+__strong_alias(cabs, cabsf);
+#endif

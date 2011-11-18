@@ -44,6 +44,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 cacoshf(float complex z)
@@ -53,3 +54,8 @@ cacoshf(float complex z)
 	w = I * cacosf (z);
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef cacosh
+__strong_alias(cacosh, cacoshf);
+#endif

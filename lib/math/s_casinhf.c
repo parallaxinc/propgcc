@@ -44,6 +44,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 casinhf(float complex z)
@@ -53,3 +54,8 @@ casinhf(float complex z)
 	w = -1.0f * I * casinf (z * I);
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef casinh
+__strong_alias(casinh, casinhf);
+#endif

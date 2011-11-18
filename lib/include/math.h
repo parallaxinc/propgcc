@@ -49,10 +49,12 @@ extern char __infinity[];
  * if we allow 32 bit doubles at run time, the library has to be
  * compiled with 64 bit doubles and the sinl names
  */
+#ifndef __ldouble_t
 #if defined(__SHORT_DOUBLES_IMPL)
 #define __ldouble_t double
 #else
 #define __ldouble_t long double
+#endif
 #endif
 
 /*
