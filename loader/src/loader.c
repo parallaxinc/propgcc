@@ -745,7 +745,7 @@ static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *p
             return NullError("can't load program table entry %d", i);
         if (i != ki && program.offset != 0) {
             //printf("S: vaddr %08x, paddr %08x, size %08x\n", program.vaddr, program.paddr, program.filesz);
-            imageSize += program.memsz;
+            imageSize += program.filesz;
         }
         if (i != ki && i != hi && program.offset != 0) {
             if (i == si || program.filesz == 0 || (program.vaddr != program.paddr && program.vaddr > 0)) {
