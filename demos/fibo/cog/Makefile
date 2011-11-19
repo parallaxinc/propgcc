@@ -13,11 +13,11 @@ LOAD = propeller-load -I../../libpropeller -p1 -b c3
 #
 
 NAME = fibo
-OBJS = fibo.o miniprintf.o clock.o
+OBJS = fibo.o
 
 
-$(NAME).elf: propeller_cog.script crt0.o csupport.o $(OBJS) div.o mult.o cogregs.o
-	$(LD) -o $@ -T propeller_cog.script $^
+$(NAME).elf: $(OBJS)
+	$(CC) -mcog -o $@ $^
 
 %.o: %.c
 	$(CC) -mcog -Os -o $@ -c $<
