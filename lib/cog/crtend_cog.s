@@ -5,6 +5,7 @@
 	.text
 	.global __Exit
 	.global __exit
+__Exit
 __exit
 	cogid	r1
 	cogstop r1

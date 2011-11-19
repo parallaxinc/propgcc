@@ -19,7 +19,7 @@
 
 r0	mov	sp, PAR
 r1	mov	r0, sp
-r2	jmp	#_main
+r2	jmp	#_start
 r3	long	0
 r4	long	0
 r5	long	0
@@ -32,5 +32,9 @@ r11	long	0
 r12	long	0
 r13	long	0
 r14	long	0
-lr	long	__exit	'' return to the exit function
+lr	long	0
 sp	long	0
+
+_start
+	jmpret	lr,#_main
+	jmp	#__exit
