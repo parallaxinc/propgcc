@@ -169,10 +169,12 @@ extern "C" {
   FILE *tmpfile(void);
   char *tmpnam(char *s);
 
+#ifndef __PROPELLER_COG__
 #define putc(x, stream)    fputc(x, stream)
 #define putchar(x)         fputc(x, stdout)
 #define getc(stream)       fgetc(stream)
 #define getchar()          fgetc(stdin)
+#endif
 
   /* internal functions */
   /* set up the FILE pointer in fp to point to a particular driver */
