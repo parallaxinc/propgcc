@@ -18,7 +18,7 @@ void Term_clearScreen(TERM *term)
  * Term setcolors function sets the palette to that defined by pointer.
  * See header file for more details.
  */
-void Term_setColorPalette(TERM *term, char* ptr)
+void Term_setColorPalette(TERM *term, const char* ptr)
 {
     int  ii = 0;
     uint8_t  fg = 0;
@@ -110,10 +110,10 @@ void Term_setTileColor(TERM *term, int x, int y, int color)
  * Term str function prints a string at current position
  * See header file for more details.
  */
-void Term_str(TERM *term, char* sptr)
+void Term_str(TERM *term, const char* sptr)
 {
     while(*sptr) {
-        Term_out(term, *(sptr++));
+        (*term->ops->putch)(term, *(sptr++));
     }
 }
 
@@ -129,19 +129,19 @@ void Term_dec(TERM *term, int value)
 
     if(value < 0) {
         value = ~value;
-        printc(term, '-');
+        (*term->ops->putch)(term, '-');
     }
 
     n = 1000000000;
 
     while(--len > -1) {
         if(value >= n) {
-            printc(term, value / n + '0');
+            (*term->ops->putch)(term, value / n + '0');
             value %= n;
             result++;
         }
         else if(result || n == 1) {
-            printc(term, '0');
+            (*term->ops->putch)(term, '0');
         }
         n /= 10;
     }
@@ -161,7 +161,7 @@ void Term_hex(TERM *term, int value, int digits)
     };
     while(digits-- > 0) {
         ndx = (value >> (digits<<2)) & 0xf;
-        printc(term, hexlookup[ndx]);
+        (*term->ops->putch)(term, hexlookup[ndx]);
     }   
 }
 
@@ -175,7 +175,7 @@ void Term_bin(TERM *term, int value, int digits)
     int bit = 0;
     while(digits-- > 0) {
         bit = (value >> digits) & 1;
-        printc(term, bit + '0');
+        (*term->ops->putch)(term, bit + '0');
     }   
 }
 
@@ -184,7 +184,7 @@ void Term_bin(TERM *term, int value, int digits)
  * a screen function.
  * See header file for more details.
  */
-void Term_out(TERM *term, int c)
+int Term_out(TERM *term, int c)
 {
 if(term->flag == 0)
     {
@@ -212,7 +212,7 @@ if(term->flag == 0)
             case 0xB:   // fall though
             case 0xC:   // fall though
                 term->flag = c;
-                return;
+                return c;
             case 0xD:
                 newline(term);
                 break;
@@ -234,13 +234,14 @@ if(term->flag == 0)
         term->color = c & 0xf;
     }
     term->flag = 0;
+    return c;
 }
 
 /*
  * Term Term_print null terminated char* to screen with normal stdio definitions
  * See header file for more details.
  */
-void Term_print(TERM *term, char* s)
+void Term_print(TERM *term, const char* s)
 {
     while(*s) {
         Term_putchar(term, *(s++));
@@ -251,7 +252,7 @@ void Term_print(TERM *term, char* s)
  * Term Term_putchar print char to screen with normal stdio definitions
  * See header file for more details.
  */
-int Term_putchar(TERM *term, char c)
+int Term_putchar(TERM *term, int c)
 {
     switch(c)
     {

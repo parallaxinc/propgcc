@@ -10,13 +10,17 @@
 #include <stdlib.h>
 #include <propeller.h>
 
-#define TV
+//#define TV
+//#define VGA
+
 #define C3
 
-#ifdef TV
+#if defined(TV)
 #include "term_tv.h"
-#else
+#elif defined (VGA)
 #include "term_vga.h"
+#else
+#include "term_serial.h"
 #endif
 
 #ifdef C3
@@ -29,19 +33,23 @@
 
 int main(void)
 {
-#ifdef TV
+#if defined(TV)
 	TERM_TV tvTerm;
-#else
+#elif defined(VGA)
 	TERM_VGA vgaTerm;
+#else
+	TERM_SERIAL serialTerm;
 #endif
 	TERM *term;
     int ii = 85;
     int jj = 0;
     
-#ifdef TV
+#if defined(TV)
 	term = tvTerm_start(&tvTerm, TVPIN); 
-#else
+#elif defined(VGA)
 	term = vgaTerm_start(&vgaTerm, VGAPIN); 
+#else
+	term = serialTerm_start(&serialTerm, stdout);
 #endif
 
 #if defined(C3) && !defined(TV)
@@ -49,7 +57,10 @@ int main(void)
     OUTA &= ~(1<<15);
 #endif
     
-    Term_print(term, "\nzoot ");
+#if !defined(TV) && !defined(VGA)
+	Term_str(term, "Hello, world!\n");
+#else
+	Term_print(term, "\nzoot ");
     Term_print(term, "color");
     Term_setXY(term, 0,0);
     Term_print(term, "Hi\n");
@@ -70,6 +81,7 @@ int main(void)
         Term_str(term, "0x");
         Term_hex(term, ii++, 4);
     }
+#endif
 
     while(1);
 }
