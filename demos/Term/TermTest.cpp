@@ -17,7 +17,6 @@ int main(void)
 	tv.str("Hello, world! (tv)\n");
 	vga.str("Hello, world! (vga)\n");
 	serial.str("Hello, world! (serial)\n");
-	fflush(stdout);
 
 	for (;;)
 		;
