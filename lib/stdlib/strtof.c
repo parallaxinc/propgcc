@@ -1,5 +1,5 @@
 /*
- * @strtod.c
+ * @strtof.c
  * Convert string to double.
  *
  * Copyright (c) 2011 Parallax, Inc.
@@ -21,11 +21,11 @@
  *
  * calc = 10.0 * 10^4 * 10^8
  */
-static double
-__mul_pow_ten(long double v, int n)
+static float
+__mul_pow_ten(float v, int n)
 {
-  long double powten = 10.0;
-  long double calc = 1.0;
+  float powten = 10.0f;
+  float calc = 1.0f;
   int minus = 0;
 
   if (n < 0)
@@ -49,10 +49,10 @@ __mul_pow_ten(long double v, int n)
   return v;
 }
 
-long double
-strtold(const char *str, char **endptr)
+float
+strtof(const char *str, char **endptr)
 {
-  long double v = 0.0;
+  float v = 0.0f;
   int minus = 0;
   int minuse = 0;
   int c;
@@ -73,7 +73,7 @@ strtold(const char *str, char **endptr)
     if (toupper(str[0]) == 'N' && toupper(str[1]) == 'F')
       {
 	str += 2;
-	v = HUGE_VALL;
+	v = HUGE_VALF;
 	if (minus) v = -v;
 	goto done;
       }
@@ -89,23 +89,23 @@ strtold(const char *str, char **endptr)
 	      c = *str++;
 	    } while (c != ')');
 	  }
-	v = _NANL;
+	v = _NANF;
 	if (minus) v = -v;
 	goto done;
       }
   }
 
   while (isdigit(c)) {
-    v = 10.0 * v + (c - '0');
+    v = 10.0f * v + (c - '0');
     c = *str++;
   }
   if (c == '.') {
-    long double frac = 0.1;
+    float frac = 0.1f;
     c = *str++;
     while (isdigit(c))
       {
 	v = v + frac*(c-'0');
-	frac = frac * 0.1;
+	frac = frac * 0.1f;
 	c = *str++;
       }
   }
@@ -130,7 +130,7 @@ strtold(const char *str, char **endptr)
       v = __mul_pow_ten(v, exp);
     }
 
-  if (v == HUGE_VALL)
+  if (v == HUGE_VALF)
     errno = ERANGE;
 
  done:
@@ -141,8 +141,8 @@ strtold(const char *str, char **endptr)
   return v;
 }
 
-#if defined(__PROPELLER_64BIT_DOUBLES__)
-double strtod(const char *str, char **endptr) __attribute__((alias("strtold")));
+#if defined(__PROPELLER_32BIT_DOUBLES__)
+double strtod(const char *str, char **endptr) __attribute__((alias("strtof")));
 #endif
 
 /* +--------------------------------------------------------------------
