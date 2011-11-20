@@ -1,4 +1,4 @@
-NAME = TermTest
+NAME = TermTest++
 
 OBJS = \
 TermTest.o \

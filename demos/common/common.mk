@@ -57,6 +57,9 @@ $(NAME).elf: $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
 
+%.o: %.cpp
+	$(CC) $(CFLAGS) -o $@ -c $<
+
 %.o: %.s
 	$(CC) -o $@ -c $<
 

@@ -1,4 +1,4 @@
-NAME = vgatest
+NAME = termtest
 
 OBJS = \
 termtest.o \
