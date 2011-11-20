@@ -8,7 +8,7 @@ class CTerm {
     TERM *m_term;
   public:
   	CTerm(TERM *term) : m_term(term) {};
-  	~CTerm() {}
+  	~CTerm() {};
     void str(const char *str)
     {
     	Term_str(m_term, str);
@@ -30,7 +30,7 @@ class CTerm {
 class CDisplayTerm : public CTerm {
   public:
   	CDisplayTerm(TERM *term) : CTerm(term) {}
-  	~CDisplayTerm() {}
+  	~CDisplayTerm() {};
     void clearScreen()
     {
     	Term_clearScreen(m_term);
