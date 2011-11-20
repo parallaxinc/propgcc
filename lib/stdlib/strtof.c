@@ -1,5 +1,5 @@
 /*
- * @strtof.c
+ * @strtod.c
  * Convert string to double.
  *
  * Copyright (c) 2011 Parallax, Inc.
@@ -15,16 +15,16 @@
 #include <errno.h>
 
 /*
- * calculate v * 10^n
+ * calculate v * base^n
  *
  * e.g. for v * 10^13 (where 13 = 0xD == 0b01101) 
  *
  * calc = 10.0 * 10^4 * 10^8
  */
 static float
-__mul_pow_ten(float v, int n)
+__mul_pow(float v, int n, float base)
 {
-  float powten = 10.0f;
+  float powten = base;
   float calc = 1.0f;
   int minus = 0;
 
@@ -53,6 +53,9 @@ float
 strtof(const char *str, char **endptr)
 {
   float v = 0.0f;
+  float base = 10.0f;
+  float invbase = 0.1f;
+  int hex = 0;
   int minus = 0;
   int minuse = 0;
   int c;
@@ -73,7 +76,7 @@ strtof(const char *str, char **endptr)
     if (toupper(str[0]) == 'N' && toupper(str[1]) == 'F')
       {
 	str += 2;
-	v = HUGE_VALF;
+	v = HUGE_VALL;
 	if (minus) v = -v;
 	goto done;
       }
@@ -89,27 +92,35 @@ strtof(const char *str, char **endptr)
 	      c = *str++;
 	    } while (c != ')');
 	  }
-	v = _NANF;
+	v = _NANL;
 	if (minus) v = -v;
 	goto done;
       }
   }
 
-  while (isdigit(c)) {
-    v = 10.0f * v + (c - '0');
-    c = *str++;
+  if (c == '0' && toupper(*str) == 'X') {
+    hex = 1;
+    base = 16.0;
+    invbase = (1.0/16.0);
+    str++;
+    c = toupper(*str++);
+  }
+
+  while (isdigit(c) || (hex && isxdigit(c) && (c -= ('A' - '0')))) {
+    v = base * v + (c - '0');
+    c = toupper(*str++);
   }
   if (c == '.') {
-    float frac = 0.1f;
-    c = *str++;
-    while (isdigit(c))
+    float frac = invbase;
+    c = toupper(*str++);
+    while (isdigit(c) || (hex && isxdigit(c) && (c -= ('A' - '0'))))
       {
 	v = v + frac*(c-'0');
-	frac = frac * 0.1f;
+	frac = frac * invbase;
 	c = *str++;
       }
   }
-  if (c == 'e' || c == 'E') 
+  if (c == 'E' || c == 'P') 
     {
       c = *str++;
       if (c == '-') {
@@ -127,10 +138,10 @@ strtof(const char *str, char **endptr)
 	{
 	  exp = -exp;
 	}
-      v = __mul_pow_ten(v, exp);
+      v = __mul_pow(v, exp, hex ? 2.0 : 10.0);
     }
 
-  if (v == HUGE_VALF)
+  if (v == HUGE_VALL)
     errno = ERANGE;
 
  done:
