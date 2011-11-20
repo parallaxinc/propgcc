@@ -4,20 +4,23 @@ OUTPUT_ARCH(${ARCH})
 
 MEMORY
 {
-  hub    : ORIGIN = 0, LENGTH = 32K
-  cog	 : ORIGIN = 0, LENGTH = 2K
+  hub     : ORIGIN = 0, LENGTH = 32K
+  cog	  : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
   /* coguser is just an alias for cog, but for overlays */
-  coguser : ORIGIN = 0, LENGTH = 2K
-  ram    : ORIGIN = 0x20000000, LENGTH = 256M
-  rom    : ORIGIN = 0x30000000, LENGTH = 256M
+  coguser : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
+  ram     : ORIGIN = 0x20000000, LENGTH = 256M
+  rom     : ORIGIN = 0x30000000, LENGTH = 256M
   /* some sections (like the .xmm kernel) are handled specially by the loader */
-  dummy  : ORIGIN = 0xe0000000, LENGTH = 1M
+  dummy   : ORIGIN = 0xe0000000, LENGTH = 1M
 }
 
 SECTIONS
 {
+  /* if we are not relocating (-r flag given) discard the boot section */
+  ${RELOCATING- "/DISCARD/ : \{ *(.boot) \}" }
+
   /* the initial spin boot code, if any */
-  .boot : { *(.boot) } ${RELOCATING+ >hub}
+  ${RELOCATING+ ".boot : \{ *(.boot) \} >hub" }
 
   ${KERNEL}
   ${XMM_HEADER}
@@ -41,19 +44,21 @@ SECTIONS
     *(.fini*)
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
+  .hub ${RELOCATING-0} :
+  {
+    *(.hubstart)
+    *(.hubtext*)
+    *(.hubdata*)
+    *(.hub)
+    ${HUB_DATA}
+  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
+  ${TEXT_DYNAMIC+${DYNAMIC}}
+
   .data	${RELOCATING-0} :
   {
     ${DATA_DATA}
     ${RELOCATING+. = ALIGN(4);}
   } ${RELOCATING+ ${DATA_MEMORY}}
-
-  .hub ${RELOCATING-0} :
-  {
-    *(.hubstart)
-    *(.hubtext*)
-    ${HUB_DATA}
-  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
-  ${TEXT_DYNAMIC+${DYNAMIC}}
 
   .ctors ${RELOCATING-0} :
   {
@@ -94,7 +99,7 @@ SECTIONS
       .coguser6 { *(.coguser6) *6.cog(.text*) }
       .coguser7 { *(.coguser7) *7.cog(.text*) }
 
-  } ${RELOCATING+ >coguser AT>hub}
+  } ${RELOCATING+ ${DRIVER_MEMORY}}
 
   ${RELOCATING+ ".heap : \{ LONG(0) \} >hub AT>hub"}
   ${RELOCATING+ ___heap_start = ADDR(.heap) ;}

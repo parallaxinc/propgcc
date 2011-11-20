@@ -1,8 +1,18 @@
+#include <time.h>
+#include <sys/thread.h>
 #include "cog.h"
 
 void
 sleep(unsigned int n)
 {
-  unsigned waitcycles = _CNT + n*_clkfreq;
-  __builtin_propeller_waitcnt(waitcycles, 0);
+  unsigned waitcycles;
+  unsigned second = _clkfreq;
+
+  waitcycles = _CNT;
+  while (n > 0) 
+    {
+      waitcycles += second;
+      __napuntil(waitcycles);
+      --n;
+    }
 }

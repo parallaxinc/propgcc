@@ -29,6 +29,88 @@
 
 /* Forward declarations.  */
 
+/* Utility to actually perform an R_M32R_10_PCREL reloc.  */
+
+static bfd_reloc_status_type
+propeller_elf_do_pcrel10_reloc (bfd *abfd,
+			    reloc_howto_type *howto,
+			    asection *input_section,
+			    bfd_byte *data,
+			    bfd_vma offset,
+			    asection *symbol_section ATTRIBUTE_UNUSED,
+			    bfd_vma symbol_value,
+			    bfd_vma addend)
+{
+  bfd_signed_vma relocation;
+  unsigned long x;
+  bfd_reloc_status_type status;
+
+  /* Sanity check the address (offset in section).  */
+  if (offset > bfd_get_section_limit (abfd, input_section))
+    return bfd_reloc_outofrange;
+
+  relocation = symbol_value + addend;
+  /* Make it pc relative.  */
+  relocation -=	(input_section->output_section->vma
+		 + input_section->output_offset);
+
+  /* Has to be relative to the next instruction, actually */
+  relocation += 4;
+
+  if (relocation < -0x1ff || relocation > 0x1ff)
+    status = bfd_reloc_overflow;
+  else
+    status = bfd_reloc_ok;
+
+  x = bfd_get_32 (abfd, data + offset);
+  if (relocation < 0)
+    {
+      /* toggle add/sub bit */
+      x |= 0x04000000;
+      relocation = -relocation;
+    }
+  relocation >>= howto->rightshift;
+  relocation <<= howto->bitpos;
+  x = (x & ~howto->dst_mask) | (((x & howto->src_mask) + relocation) & howto->dst_mask);
+  bfd_put_32 (abfd, (bfd_vma) x, data + offset);
+
+  return status;
+}
+
+/* handle the 10 bit signed relocation */
+static bfd_reloc_status_type
+propeller_pcrel10_reloc (bfd *abfd,
+			 arelent *reloc_entry,
+			 asymbol * symbol,
+			 void *data,
+			 asection * input_section,
+			 bfd *output_bfd,
+			 char **error_message ATTRIBUTE_UNUSED)
+{
+  /* This part is from bfd_elf_generic_reloc.  */
+  if (output_bfd != NULL
+      && (symbol->flags & BSF_SECTION_SYM) == 0
+      && (! reloc_entry->howto->partial_inplace
+	  || reloc_entry->addend == 0))
+    {
+      reloc_entry->address += input_section->output_offset;
+      return bfd_reloc_ok;
+    }
+
+  if (output_bfd != NULL)
+    /* FIXME: See bfd_perform_relocation.  Is this right?  */
+    return bfd_reloc_continue;
+
+  return propeller_elf_do_pcrel10_reloc (abfd, reloc_entry->howto,
+					 input_section,
+					 data, reloc_entry->address,
+					 symbol->section,
+					 (symbol->value
+					  + symbol->section->output_section->vma
+					  + symbol->section->output_offset),
+					 reloc_entry->addend);
+}
+
 static reloc_howto_type propeller_elf_howto_table[] = {
   /* This reloc does nothing. */
   HOWTO (R_PROPELLER_NONE,	/* type */
@@ -153,6 +235,22 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0x0003FE00,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
+  /* a pc-relative offset between -511 and +511; the sign bit actually
+     has to toggle between the "add" and "sub" instructions */
+  /* A 9 bit relocation of the DST field of an instruction */
+  HOWTO (R_PROPELLER_PCREL10,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 10,			/* bitsize */
+	 TRUE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 propeller_pcrel10_reloc,	/* special_function */
+	 "R_PROPELLER_PCREL10",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x000001FF,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
 };
 
 /* Map BFD reloc types to Propeller ELF reloc types. */
@@ -166,12 +264,13 @@ struct propeller_reloc_map
 static const struct propeller_reloc_map propeller_reloc_map[] = {
   {BFD_RELOC_NONE, R_PROPELLER_NONE},
   {BFD_RELOC_32, R_PROPELLER_32},
-  {BFD_RELOC_PROPELLER_23, R_PROPELLER_23},
   {BFD_RELOC_16, R_PROPELLER_16},
   {BFD_RELOC_8, R_PROPELLER_8},
   {BFD_RELOC_PROPELLER_SRC_IMM, R_PROPELLER_SRC_IMM},
   {BFD_RELOC_PROPELLER_SRC, R_PROPELLER_SRC},
   {BFD_RELOC_PROPELLER_DST, R_PROPELLER_DST},
+  {BFD_RELOC_PROPELLER_23, R_PROPELLER_23},
+  {BFD_RELOC_PROPELLER_PCREL10, R_PROPELLER_PCREL10}
 };
 
 static reloc_howto_type *
@@ -454,6 +553,19 @@ propeller_elf_check_relocs (bfd * abfd,
   return TRUE;
 }
 
+/* Propeller ELF local labels start with either '.' or 'L_'.  */
+
+static bfd_boolean
+propeller_elf_is_local_label_name (bfd *abfd, const char *name)
+{
+#if 0
+  if (name[0] == 'L' && name[1] == '_')
+    return TRUE;
+#endif
+  /* accept the generic ELF local label syntax as well.  */
+  return _bfd_elf_is_local_label_name (abfd, name);
+}
+
 #define ELF_ARCH		bfd_arch_propeller
 #define ELF_MACHINE_CODE	EM_PROPELLER
 #define ELF_MAXPAGESIZE		0x1
@@ -473,4 +585,6 @@ propeller_elf_check_relocs (bfd * abfd,
 #define bfd_elf32_bfd_reloc_type_lookup		propeller_reloc_type_lookup
 #define bfd_elf32_bfd_reloc_name_lookup		propeller_reloc_name_lookup
 
+#define bfd_elf32_bfd_is_local_label_name \
+					propeller_elf_is_local_label_name
 #include "elf32-target.h"

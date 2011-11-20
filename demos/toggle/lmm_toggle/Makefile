@@ -6,7 +6,7 @@
 # #########################################################
 
 # Path to shared demo library
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 #
 # objects for this program

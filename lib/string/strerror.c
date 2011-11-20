@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <string.h>
 
-char *_sys_errlist[ENUMERRORS] = {
+char *_sys_errlist[] = {
   "Unknown error",
   "Numerical argument out of domain",
   "Result not representable",
@@ -24,6 +24,8 @@ char *_sys_errlist[ENUMERRORS] = {
   "Name too long",
   "Device not seekable",
 };
+
+#define ENUMERRORS (sizeof(_sys_errlist)/sizeof(_sys_errlist[0]))
 
 char *strerror(int errnum)
 {

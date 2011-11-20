@@ -26,21 +26,22 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; :spinboot.o%s} _crt0.o%s _crtbegin.o%s"
+#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; :spinboot.o%s} %{mcog:crt0_cog.o%s; :_crt0.o%s _crtbegin.o%s}"
 
 #undef  ENDFILE_SPEC
-#define ENDFILE_SPEC "_crtend.o%s"
+#define ENDFILE_SPEC "%{mcog: crtend_cog.o%s; :_crtend.o%s}"
 
 #undef ASM_SPEC
 #define ASM_SPEC "\
 %{!mpasm: \
-    %{mrelax:-relax}} \
+  %{!mcog:-lmm} \
+  %{mrelax:-relax}} \
 "
 #undef LIB_SPEC
 #define LIB_SPEC "				\
---start-group					\
-  -lc -lgcc					\
---end-group					\
+%{mcog: -lcog;					\
+  :  --start-group -lc -lgcc --end-group	\
+  }						\
 "
 
 #undef LINK_SPEC
@@ -165,7 +166,7 @@ do {                                                    \
 /* Trampolines.  */
 /*---------------*/
 
-#define TRAMPOLINE_SIZE		0
+#define TRAMPOLINE_SIZE		16
 
 /*----------------------------------------*/
 /* Layout of source language data types.  */
@@ -228,9 +229,12 @@ do {                                                    \
   "r4", "r5", "r6", "r7",   \
   "r8", "r9", "r10", "r11",   \
   "r12", "r13", "r14", "lr",   \
-  "sp", "pc", "?cc", "?sap", "?sfp" }
+  "sp", "pc", "cc", "?sap", "?sfp" }
 
 /* some utility defines; the _REG definitions come from propeller.md */
+/* r14 the frame register, and r15 the
+ * link register
+ */
 #define PROP_R0        0
 #define PROP_R1        1
 #define PROP_FP_REGNUM (FRAME_REG)
@@ -322,6 +326,9 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 /* The register number of the arg pointer register, which is used to
    access the function's argument list.  */
 #define ARG_POINTER_REGNUM PROP_FAKEAP_REGNUM
+
+/* register in which the static chain is passed to a function */
+#define STATIC_CHAIN_REGNUM 7
 
 /* Definitions for register eliminations.
 
@@ -539,10 +546,15 @@ extern const char *propeller_bss_asm_op;
 #define DATA_SECTION_ASM_OP  propeller_data_asm_op
 #define BSS_SECTION_ASM_OP   propeller_bss_asm_op
 
+/* call TARGET_ASM_SELECT_SECTION for functions as well as variables */
+#define USE_SELECT_SECTION_FOR_FUNCTIONS 1
+
 #define INIT_SECTION_ASM_OP \
   (TARGET_PASM ? "\t'init section\t" : "\tsection\t\".init\",\"ax\"")
 #define GLOBAL_ASM_OP \
   (TARGET_PASM ? "\t'global variable\t" : "\t.global\t")
+#define SET_ASM_OP \
+  (TARGET_PASM ? "\t'set\t" : "\t.set\t")
 
 /* For now put read-only data into the data section; that works
    on all current targets. If someday we get ROMable code we
@@ -605,17 +617,39 @@ extern const char *propeller_bss_asm_op;
 #define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
   do								\
     {								\
-      sprintf (LABEL, "*L_%s%u", \
-	       PREFIX, (unsigned) (NUM));			\
+      if (TARGET_PASM)						\
+	sprintf (LABEL, "*L_%s%u",				\
+		 PREFIX, (unsigned) (NUM));			\
+      else							\
+	sprintf (LABEL, "*.%s%u", PREFIX, (unsigned) (NUM));	\
     }								\
   while (0)
 
+#define ASM_WEAKEN_LABEL(FILE,NAME) propeller_weaken_label(FILE,NAME)
+
+#ifndef ASM_OUTPUT_EXTERNAL
+#define ASM_OUTPUT_EXTERNAL(FILE, DECL, NAME) \
+  default_elf_asm_output_external (FILE, DECL, NAME)
+#endif
+
 /* Debugging information */
-#define DWARF2_DEBUGGING_INFO
+#define PREFERRED_DEBUGGING_TYPE DWARF2_DEBUG
+#define DWARF2_DEBUGGING_INFO 1
+#define DWARF2_ASM_LINE_DEBUG_INFO 1
+
+#define TYPE_ASM_OP  "\t.type\t"
+#define SIZE_ASM_OP  "\t.size\t"
+#define TYPE_OPERAND_FMT "@%s"
 
 /* propeller specific defines */
 #define SYMBOL_FLAG_PROPELLER_COGMEM (SYMBOL_FLAG_MACH_DEP << 0)
 
 #define CONSTANT_POOL_BEFORE_FUNCTION (0)
+
+#define SWITCHABLE_TARGET 1
+
+#ifndef USED_FOR_TARGET
+extern GTY(()) struct target_globals *propeller_cog_globals;
+#endif
 
 #endif /* GCC_PROPELLER_H */

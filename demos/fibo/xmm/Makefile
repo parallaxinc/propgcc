@@ -6,7 +6,7 @@
 # #########################################################
 
 # Path to shared demo library
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 #
 # name and objects for this program
@@ -16,7 +16,7 @@ NAME = fibo
 OBJS = fibo.o
 
 # memory model
-MODEL = lmm
+MODEL = xmm
 
 # flags to build with
 CFLAGS = -Os -mfcache
@@ -27,4 +27,4 @@ all: $(NAME).elf
 #
 # include the fragment that defines most of everything
 #
-include $(PROPLIB)/demo.mk
+include $(PROPLIB)/common.mk

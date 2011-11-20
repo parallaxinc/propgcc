@@ -147,7 +147,8 @@ con
     DIRTYSHFT   = 31                ' shift by N to get dirty bit   test tag,DIRTYMASK wc
     DIRTYMASK   = 1 << DIRTYSHFT    ' dirty bit mask                muxc tag,DIRTYSHFT
 
-pub unused
+pub image
+    return @pasm
 
 {{
 =====================================================================

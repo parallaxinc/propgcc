@@ -1,12 +1,16 @@
 # #########################################################
 # This makefile builds the fft_bench program
+#
+# To build with LMM model, enter $ make clean; make
+# To build with XMM model, enter $ make clean; make MODEL=xmm
+# To build with XMMC model, enter $ make clean; make MODEL=xmmc
 #   
 # Copyright (c) 2011 Steve Denson
 # All rights MIT licensed
 # #########################################################
 
-# Path to shared demo library
-PROPLIB = ../libpropeller
+# Common make
+COMMON = ../common
 
 #
 # name and objects for this program
@@ -26,4 +30,4 @@ all: $(NAME).elf
 #
 # include the fragment that defines most of everything
 #
-include $(PROPLIB)/lmmdemo.mk
+include $(COMMON)/common.mk

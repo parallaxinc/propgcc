@@ -47,11 +47,15 @@ static SystemOps myOps = {
     MyError
 };
 
+/* flag to terminal_mode to check for a certain sequence to indicate
+   program exit */
+int check_for_exit = 0;
+
 int main(int argc, char *argv[])
 {
-    char *infile = NULL, *p;
+    char *infile = NULL, *p, *p2;
     int terminalMode = FALSE;
-    BoardConfig *config;
+    BoardConfig *config, *configSettings;
     char *port, *board;
     System sys;
     int baud = 0;
@@ -64,6 +68,9 @@ int main(int argc, char *argv[])
         port = DEF_PORT;
     if (!(board = getenv("PROPELLER_LOAD_BOARD")))
         board = DEF_BOARD;
+        
+    /* setup a configuration to collect command line -D settings */
+    configSettings = NewBoardConfig("");
 
     /* get the arguments */
     for(i = 1; i < argc; ++i) {
@@ -111,16 +118,41 @@ int main(int argc, char *argv[])
             case 'e':
                 flags |= LFLAG_WRITE_EEPROM;
                 break;
+            case 'l':
+                flags |= LFLAG_WRITE_SDLOADER;
+                break;
+            case 'z':
+                flags |= LFLAG_WRITE_SDCACHELOADER;
+                break;
             case 'r':
                 flags |= LFLAG_RUN;
                 break;
             case 's':
                 flags |= LFLAG_WRITE_BINARY;
                 break;
+            case 'x':
+                flags |= LFLAG_WRITE_PEX;
+                break;
             case 't':
                 terminalMode = TRUE;
-		if (argv[i][2])
-		  terminalBaud = atoi(&argv[i][2]);
+                if (argv[i][2])
+                  terminalBaud = atoi(&argv[i][2]);
+                break;
+            case 'q':
+                check_for_exit = 1;
+                break;
+            case 'D':
+                if(argv[i][2])
+                    p = &argv[i][2];
+                else if(++i < argc)
+                    p = argv[i];
+                else
+                    Usage(board, port);
+                if ((p2 = strchr(p, '=')) == NULL)
+                    Usage(board, port);
+                *p2++ = '\0';
+                if (!SetConfigField(configSettings, p, p2))
+                    return 1;
                 break;
             case 'I':
                 if(argv[i][2])
@@ -176,6 +208,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "error: can't find board configuration '%s'\n", board);
         return 1;
     }
+    
+    /* override with any command line settings */
+    MergeConfigs(config, configSettings);
         
     /* use the baud rate from the configuration */
     baud = config->baudrate;
@@ -190,22 +225,52 @@ int main(int argc, char *argv[])
 
     /* load the image file */
     if (infile) {
-        if (!LoadImage(&sys, config, port, infile, flags)) {
+        if (flags & LFLAG_WRITE_SDLOADER) {
+            if (!LoadSDLoader(&sys, config, port, infile, flags)) {
+                fprintf(stderr, "error: load failed\n");
+                return 1;
+            }
+        }
+        else if (flags & LFLAG_WRITE_SDCACHELOADER) {
+            if (!LoadSDCacheLoader(&sys, config, port, infile, flags)) {
+                fprintf(stderr, "error: load failed\n");
+                return 1;
+            }
+        }
+        else {
+            if (!LoadImage(&sys, config, port, infile, flags)) {
+                fprintf(stderr, "error: load failed\n");
+                return 1;
+            }
+        }
+    }
+    
+    /* check for loading the sd loader */
+    else if (flags & LFLAG_WRITE_SDLOADER) {
+        if (!LoadSDLoader(&sys, config, port, "sd_loader.elf", flags)) {
+            fprintf(stderr, "error: load failed\n");
+            return 1;
+        }
+    }
+    
+    /* check for loading the sd cache loader */
+    else if (flags & LFLAG_WRITE_SDCACHELOADER) {
+        if (!LoadSDCacheLoader(&sys, config, port, "sd_cache_loader.elf", flags)) {
             fprintf(stderr, "error: load failed\n");
             return 1;
         }
     }
     
     /* enter terminal mode if requested */
-    if (terminalMode)
-      {
-	if (terminalBaud != 0)
-	  {
-	    serial_done();
-	    serial_init(port, terminalBaud);
-	  }
+    if (terminalMode) {
+        printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
+        fflush(stdout);
+        if (terminalBaud != 0) {
+            serial_done();
+            serial_init(port, terminalBaud);
+        }
         terminal_mode();
-      }
+    }
     return 0;
 }
 
@@ -213,15 +278,39 @@ int main(int argc, char *argv[])
 static void Usage(char *board, char *port)
 {
     fprintf(stderr, "\
-usage: propeller-elf-load\n\
-         [ -b <type> ]   select target board (default is %s)\n\
-         [ -p <port> ]   serial port (default is %s)\n\
-         [ -e ]          write the program into EEPROM\n\
-         [ -r ]          run the program after loading\n\
-         [ -s ]          write a spin binary file for use with the Propeller Tool\n\
-         [ -t ]          enter terminal mode after running the program\n\
-         [ -t<baud> ]       enter terminal mode with a different baud rate\n\
-         <name>          file to compile\n\
+usage: propeller-load\n\
+         [ -b <type> ]     select target board (default is '%s')\n\
+         [ -p <port> ]     serial port (default is '%s')\n\
+         [ -I <path> ]     add a directory to the include path\n\
+         [ -D var=value ]  define a board configuration variable\n\
+         [ -e ]            write the program into EEPROM\n\
+         [ -r ]            run the program after loading\n\
+         [ -s ]            write a spin .binary file for use with the Propeller Tool\n\
+         [ -x ]            write a .pex binary file for use with the SD loader\n\
+         [ -l ]            load the sd loader into either hub memory or EEPROM\n\
+         [ -z ]            load the sd cache loader into either hub memory or EEPROM\n\
+         [ -t ]            enter terminal mode after running the program\n\
+         [ -t<baud> ]      enter terminal mode with a different baud rate\n\
+         [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
+         <name>            elf or spin binary file to load\n\
+\n\
+Variables that can be set with -D are:\n\
+  clkfreq clkmode baudrate rxpin txpin tvpin cache-driver cache-size cache-param1 cache-param2\n\
+  sd-cache sdspi-do sdspi-clk sdspi-di sdspi-cs eeprom-first\n\
+\n\
+Value expressions for -D can include:\n\
+  rcfast rcslow xinput xtal1 xtal2 xtal3 pll1x pll2x pll4x pll8x pll16x k m mhz true false\n\
+  an integer or two operands with a binary operator + - * / %% & | or unary + or -\n\
+  all operators have the same precedence\n\
+\n\
+The -b option defaults to the value of the environment variable PROPELLER_LOAD_BOARD\n\
+The -p option defaults to the value of the environment variable PROPELLER_LOAD_PORT\n\
+\n\
+The \"sd loader\" loads AUTORUN.PEX from an SD card into external memory.\n\
+It requires a board with either external RAM or ROM.\n\
+\n\
+The \"sd cache loader\" arranges to run AUTORUN.PEX directly from the SD card.\n\
+It can be used on any board with an SD card slot.\n\
 ", board, port);
     exit(1);
 }

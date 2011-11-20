@@ -13,18 +13,31 @@
  * _CONST:    indicates that the function does not change or examine memory
  */
 
-#if defined(__propeller__) && defined(__GNUC__)
-#define _LONG_SIZE 4
-#define _LONG_SIZE 4
+#if defined(__GNUC__)
+#define _INT_SIZE  __SIZEOF_INT__
+#define _LONG_SIZE __SIZEOF_LONG__
+#define _WCHAR_SIZE __SIZEOF_WCHAR_T__
+#ifdef __CHAR_UNSIGNED__
 #define _CHAR_IS_UNSIGNED 1
-#define _WCHAR_SIZE 4
+#else
+#define _CHAR_IS_UNSIGNED 0
+#endif
 #define _NORETURN __attribute__((noreturn))
 #define _CONST    __attribute__((const))
+#define _WEAK     __attribute__((weak))
 
 #define _CONSTRUCTOR __attribute__((constructor))
 #define _DESTRUCTOR __attribute__((destructor))
+
+#define _NAN __builtin_nan("1")
+#define _NANL __builtin_nanl("1")
+#define _NANF __builtin_nanf("1")
+
 #else
+
 #error "compiler not yet supported"
+
 #endif
+
 
 #endif

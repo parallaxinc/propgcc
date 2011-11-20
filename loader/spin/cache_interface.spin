@@ -44,9 +44,10 @@ CON
   ERASE_CHIP_CMD        = %000_01  ' only for flash
   ERASE_BLOCK_CMD       = %001_01  ' only for flash
   WRITE_DATA_CMD        = %010_01  ' only for flash
-  SD_INIT_CMD           = %011_01  ' only for C3 because of shared SPI pins
-  SD_READ_CMD           = %100_01  ' only for C3 because of shared SPI pins
-  SD_WRITE_CMD          = %101_01  ' only for C3 because of shared SPI pins
+  SD_INIT_CMD           = %011_01  ' only for C3 and SD cache drivers
+  SD_READ_CMD           = %100_01  ' only for C3 and SD cache drivers
+  SD_WRITE_CMD          = %101_01  ' only for C3 and SD cache drivers
+  REINIT_CACHE_CMD      = %110_01  ' only for SD cache driver to reinitialize the cache
 
   CMD_MASK              = %11
   EXTEND_MASK           = %10   ' this bit must be zero for an extended command
@@ -55,6 +56,8 @@ VAR
    long vm_mbox
    long vm_linemask
 
+'OBJ d : "BMAUtility"
+
 PUB start(code, mbox, cache, config1, config2) | params[_INIT_SIZE]
     vm_mbox := mbox
     params[INIT_MBOX] := mbox
@@ -62,6 +65,7 @@ PUB start(code, mbox, cache, config1, config2) | params[_INIT_SIZE]
     params[INIT_CONFIG_1] := config1
     params[INIT_CONFIG_2] := config2
     long[vm_mbox] := $ffffffff
+    'd.debug(code,@params)
     cognew(code, @params)
     repeat while long[vm_mbox]
     vm_linemask := params[0]

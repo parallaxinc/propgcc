@@ -1,5 +1,4 @@
 /* from Henry Spencer's stringlib */
-/* check for NULL string added by ERS */
 
 #include <string.h>
 #undef strcpy
@@ -8,9 +7,7 @@
  * strcpy - copy string src to dst
  */
 char *				/* dst */
-strcpy(dst, src)
-char *dst;
-const char *src;
+strcpy(char * __restrict dst, const char * __restrict src)
 {
 	register char *dscan = dst;
 	register const char *sscan = src;

@@ -28,6 +28,7 @@ static FdSerial_t *coglist;
 int _FdSerial_start(FdSerial_t *data, int rxpin, int txpin, int mode, int baudrate)
 {
     extern void *_FullDuplexCogCode;
+    use_cog_driver(cogsys0);
 
     memset(data, 0, sizeof(FdSerial_t));
     data->rx_pin  = rxpin;                  // receive pin
@@ -35,7 +36,7 @@ int _FdSerial_start(FdSerial_t *data, int rxpin, int txpin, int mode, int baudra
     data->mode    = mode;                   // interface mode
     data->ticks   = _clkfreq / baudrate;    // baud
     data->buffptr = (int)&data->rxbuff[0];
-    data->cogId = cognew(_FullDuplexCogCode, data) + 1;
+    data->cogId = load_cog_driver(_FullDuplexCogCode, cogsys0, data) + 1;
     data->users = 1;
 
     //waitcnt(_clkfreq + _CNT);
@@ -80,21 +81,22 @@ int _FdSerial_rxcheck(FdSerial_t *data)
  * Wait for a byte from the receive queue. blocks until something is ready.
  * @returns received byte 
  */
-int _FdSerial_rx(FdSerial_t *data)
+int _FdSerial_getbyte(FILE *fp)
 {
-    int rc = _FdSerial_rxcheck(data);
-    while(rc < 0)
-        rc = _FdSerial_rxcheck(data);
-    return rc;
+  FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
+  int rc = _FdSerial_rxcheck(data);
+  while(rc < 0)
+    rc = _FdSerial_rxcheck(data);
+  return rc;
 }
 
 /**
- * tx sends a byte on the transmit queue.
+ * putbyte sends a byte on the transmit queue.
  * @param txbyte is byte to send. 
  */
-int _FdSerial_tx(FdSerial_t *data, int txbyte)
+int _FdSerial_putbyte(int txbyte, FILE *fp)
 {
-    int rc = -1;
+    FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
     char* txbuff = data->txbuff;
 
     while(data->tx_tail == ((data->tx_head+1) & FDSERIAL_BUFF_MASK)) // wait for space in queue
@@ -104,9 +106,9 @@ int _FdSerial_tx(FdSerial_t *data, int txbyte)
     txbuff[data->tx_head] = txbyte;
     data->tx_head = (data->tx_head+1) & FDSERIAL_BUFF_MASK;
     if(data->mode & FDSERIAL_MODE_IGNORE_TX_ECHO)
-        rc = _FdSerial_rx(data); // why not rxcheck or timeout ... this blocks for char
+        _FdSerial_getbyte(fp); // why not rxcheck or timeout ... this blocks for char
     //wait(5000);
-    return rc;
+    return txbyte;
 }
 
 /**
@@ -217,32 +219,6 @@ fdserial_fclose(FILE *fp)
   return 0;
 }
 
-static int
-fdserial_read(FILE *fp, unsigned char *buf, int size)
-{
-  int count = 0;
-  int c;
-  FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
-  while (count < size) {
-    buf[count] = c = _FdSerial_rx(data);
-    ++count;
-    if (c == '\n') break;
-  }
-  return count;
-}
-
-static int
-fdserial_write(FILE *fp, unsigned char *buf, int size)
-{
-  int count = 0;
-  FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
-  while (count < size) {
-    _FdSerial_tx(data, buf[count]);
-    ++count;
-  }
-  return count;
-}
-
 const char _FullSerialName[] = "FDS:";
 
 _Driver _FullDuplexSerialDriver =
@@ -250,10 +226,12 @@ _Driver _FullDuplexSerialDriver =
     _FullSerialName,
     fdserial_fopen,
     fdserial_fclose,
-    fdserial_read,
-    fdserial_write,
+    _term_read,
+    _term_write,
     NULL,       /* seek, not needed */
     NULL,       /* remove */
+    _FdSerial_getbyte,
+    _FdSerial_putbyte,
   };
 
 /*

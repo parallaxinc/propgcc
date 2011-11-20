@@ -10,6 +10,7 @@
  */
 #include <stdio.h>
 #include <errno.h>
+#include <sys/thread.h>
 
 static int
 _fflush(FILE *fp)
@@ -22,6 +23,8 @@ _fflush(FILE *fp)
   f = fp->_flag;
   if (!(f & (_IORW | _IOREAD | _IOWRT)))  /* file not open */
     return(EOF);
+
+  __lock(&fp->_lock);
   if(fp->_cnt > 0)	 		/* data in the buffer */
     {
       if(f & _IOWRT)				/* writing */
@@ -51,6 +54,7 @@ _fflush(FILE *fp)
     fp->_flag &= ~(_IOREAD | _IOWRT);
   fp->_ptr = fp->_base;
   fp->_cnt = 0;
+  __unlock(&fp->_lock);
   return(rv);
 }
 

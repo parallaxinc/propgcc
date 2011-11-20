@@ -25,6 +25,7 @@ extern void propeller_output_label (FILE *file, const char * name);
 extern void propeller_print_operand (FILE *file, rtx op, int letter);
 extern void propeller_print_operand_address (FILE *file, rtx addr);
 extern bool propeller_print_operand_punct_valid_p (unsigned char code);
+extern void propeller_weaken_label (FILE *file, const char *name);
 extern void propeller_expand_prologue (void);
 extern void propeller_expand_epilogue (bool is_sibcall);
 extern int propeller_can_use_return (void);
@@ -70,6 +71,7 @@ extern bool propeller_need_mulsi;
 extern bool propeller_need_udivsi;
 extern bool propeller_need_divsi;
 extern bool propeller_need_clzsi;
+extern bool propeller_need_cmpswapsi;
 extern bool propeller_need_mask0000ffff;
 extern bool propeller_need_maskffffffff;
 

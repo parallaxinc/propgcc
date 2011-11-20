@@ -1,32 +1,45 @@
 #ifndef _STRING_H
 #define _STRING_H
 
-#include <stddef.h>
+#include <sys/size_t.h>
+#include <sys/null.h>
 
-size_t strlen(const char *s);
-char * strcat(char *dest, const char *src);
-char * strncat(char *dest, const char *src, size_t n);
-char * strcpy(char *dest, const char *src);
-char * strncpy(char *dest, const char *src, size_t n);
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
+void * memcpy(void *dest, const void *src, size_t n);
+void * memmove(void *dest, const void *src, size_t n);
+
+char * strcpy(char * __restrict dest, const char * __restrict src);
+char * strncpy(char * __restrict dest, const char * __restrict src, size_t n);
+char * strcat(char * __restrict dest, const char * __restrict src);
+char * strncat(char * __restrict dest, const char * __restrict src, size_t n);
+
+int    memcmp(const void *s1, const void *s2, size_t n);
 int    strcmp(const char *s1, const char *s2);
-int    strncmp(const char *s1, const char *s2, size_t n);
-
-char *strchr(const char *, int);
-char *strrchr(const char *, int);
-
-char *strtok(char *str, const char *delim);
-size_t strspn(const char *, const char *);
-size_t strcspn(const char *, const char *);
-
-void *memcpy(void *dest, const void *src, size_t n);
-void *memset(void *dest, int c, size_t n);
-void *memchr(const void *s, int c, size_t n);
-int   memcmp(const void *s1, const void *s2, size_t n);
-
-size_t strxfrm(char *dest, const char *src, size_t n);
 int    strcoll(const char *s1, const char *s2);
+int    strncmp(const char *s1, const char *s2, size_t n);
+size_t strxfrm(char *dest, const char *src, size_t n);
 
-char *strerror(int err);
+
+void * memchr(const void *s, int c, size_t n);
+char * strchr(const char *, int);
+size_t strcspn(const char *s1, const char *s2);
+char * strpbrk(const char *str, const char *accept);
+char * strrchr(const char *, int);
+size_t strspn(const char *, const char *);
+char * strstr(const char *src, const char *pattern);
+char * strtok(char * __restrict str, const char * __restrict delim);
+
+
+void * memset(void *dest, int c, size_t n);
+char * strerror(int err);
+size_t strlen(const char *s);
+
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

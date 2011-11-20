@@ -167,6 +167,13 @@ void    tvText_bin(int value, int digits);
 void    tvText_out(int c);
 
 /**
+ * TV_Text outchar prints a character at the current position
+ * does the traditional C processing with \n == newline, \r == return,
+ * \b == backspace
+ */
+int tvText_outchar(char c);
+
+/**
  * TV_Text setcolors function sets the palette to that defined by pointer.
  *
  * Override default color palette

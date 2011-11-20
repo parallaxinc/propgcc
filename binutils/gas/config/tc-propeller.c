@@ -138,6 +138,10 @@ md_begin (void)
   for (i = 0; i < propeller_num_effects; i++)
     hash_insert (eff_hash, propeller_effects[i].name,
 		 (void *) (propeller_effects + i));
+
+  /* make sure data and bss are longword aligned */
+  record_alignment(data_section, 2);
+  record_alignment(bss_section, 2);
 }
 
 long
@@ -181,6 +185,21 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   size = fixP->fx_size;
   code = md_chars_to_number ((unsigned char *) buf, size);
 
+  /* On a 64-bit host, silently truncate 'value' to 32 bits for
+     consistency with the behaviour on 32-bit hosts.  Remember value
+     for emit_reloc.  */
+  val &= 0xffffffff;
+  val ^= 0x80000000;
+  val -= 0x80000000;
+
+  *valP = val;
+  fixP->fx_addnumber = val;
+
+  /* Same treatment for fixP->fx_offset.  */
+  fixP->fx_offset &= 0xffffffff;
+  fixP->fx_offset ^= 0x80000000;
+  fixP->fx_offset -= 0x80000000;
+
   switch (fixP->fx_r_type)
     {
     case BFD_RELOC_PROPELLER_SRC_IMM:
@@ -218,18 +237,35 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 0;
       rshift = 0;
       break;
+    case BFD_RELOC_PROPELLER_PCREL10:
+      mask = 0x000001ff;
+      shift = 0;
+      rshift = 0;
+      if ((val & 0x80000000)) {
+	/* negative */
+	//fprintf(stderr, "negative val=(%08lx)\n", val);
+	val = (-val) & 0xffffffff;
+	val |=  0x04000000;  /* toggle add to sub */
+	mask |= 0x04000000;
+      }
+      break;
     default:
       BAD_CASE (fixP->fx_r_type);
     }
 
-  if(((val>>rshift) << shift) & ~mask){
-    as_bad_where (fixP->fx_file, fixP->fx_line,
-		  _("Relocation overflows"));
-  }
-
   if (fixP->fx_addsy != NULL){
     val += symbol_get_bfdsym (fixP->fx_addsy)->section->vma;
+  } else if (fixP->fx_subsy != NULL) {
+    val -= symbol_get_bfdsym (fixP->fx_subsy)->section->vma;
   }
+
+  if( (((val>>rshift) << shift) & 0xffffffff) & ~mask){
+    as_bad_where (fixP->fx_file, fixP->fx_line,
+		  _("Relocation overflows"));
+    //fprintf(stderr, "val=(%08lx), mask=%08lx, shift=%d, rshift=%d\n",
+    //	    (unsigned long)val, (unsigned long)mask, shift, rshift);
+  }
+
   {
     code &= ~mask;
     code |= ((val>>rshift) << shift) & mask;
@@ -266,6 +302,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_PROPELLER_SRC_IMM:
     case BFD_RELOC_PROPELLER_DST:
     case BFD_RELOC_PROPELLER_23:
+    case BFD_RELOC_PROPELLER_PCREL10:
       code = fixp->fx_r_type;
       break;
 
@@ -304,9 +341,7 @@ pseudo_fit (int c ATTRIBUTE_UNUSED)
   /* does nothing interesting right now, but
      we do parse the expression
   */
-  int temp;
-
-  temp = get_absolute_expression ();
+  get_absolute_expression ();
   demand_empty_rest_of_line ();
 }
 
@@ -400,6 +435,7 @@ lc (char *str)
 static char *
 parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
   int integer_reloc = 0;
+  int pcrel_reloc = 0;
 
   str = skip_whitespace (str);
   if (*str == '#')
@@ -411,6 +447,9 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
 	  integer_reloc = 1;
 	}
     }
+
+  if (format == PROPELLER_OPERAND_BRS)
+    pcrel_reloc = 1;
 
   str = parse_expression (str, operand);
   if (operand->error)
@@ -429,8 +468,16 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     case O_symbol:
     case O_add:
     case O_subtract:
-      operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
-      operand->reloc.pc_rel = 0;
+      if (pcrel_reloc)
+	{
+	  operand->reloc.type = BFD_RELOC_PROPELLER_PCREL10;
+	  operand->reloc.pc_rel = 1;
+	}
+      else
+	{
+	  operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+	  operand->reloc.pc_rel = 0;
+	}
       break;
     case O_illegal:
       operand->error = _("Illegal operand in source");
@@ -438,6 +485,8 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     default:
       if (cog_ram)
 	operand->error = _("Source operand too complicated for .cog_ram");
+      else if (pcrel_reloc)
+	operand->error = _("Source operand too complicated for brs instruction");
       else
 	{
 	  operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
@@ -546,7 +595,14 @@ md_assemble (char *instruction_string)
   char *str;
   char *p;
   char c;
-  int integer_reloc;
+
+  /* force 4 byte alignment for this section */
+  record_alignment(now_seg, 2);
+
+  /* remove carriage returns (convert them to spaces) in case we are
+     in dos mode */
+  for (p = instruction_string; *p; p++)
+    if (*p == '\r') *p = ' ';
 
   str = skip_whitespace (instruction_string);
   p = find_whitespace (str);
@@ -603,7 +659,6 @@ md_assemble (char *instruction_string)
 
   str = p;
   size = 4;
-  integer_reloc = 0;  /* most relocations will be addresses, so assume that */
 
   switch (op->format)
     {
@@ -666,7 +721,29 @@ md_assemble (char *instruction_string)
       }
       break;
 
-    case PROPELLER_OPERAND_BR:
+    case PROPELLER_OPERAND_BRS:
+      {
+	char *arg;
+	char *arg2;
+	int len;
+	len = strlen(str);
+	arg = malloc(len+16);
+	if (arg == NULL)
+	  as_fatal (_("Virtual memory exhausted"));
+	sprintf(arg, "pc,#%s", str);
+	str += len;
+	arg2 = parse_dest (arg, &op1, &insn);
+	arg2 = parse_separator (arg2, &error);
+        if (error)
+	  {
+	   op2.error = _("Missing ','");
+	   break;
+	  }
+        arg2 = parse_src (arg2, &op2, &insn, op->format);
+	free (arg);
+      }
+      break;
+    case PROPELLER_OPERAND_BRL:
       {
         char *arg;
 	char *arg2;
@@ -703,7 +780,7 @@ md_assemble (char *instruction_string)
 
     case PROPELLER_OPERAND_CALL:
       {
-	char *str2;
+	char *str2, *p2;
         str = skip_whitespace (str);
         if (*str == '#')
 	  {
@@ -736,6 +813,9 @@ md_assemble (char *instruction_string)
 	    op2.reloc.pc_rel = 0;
 	    break;
 	  }
+
+	p2 = find_whitespace_or_separator (str2);
+	*p2 = 0;
 	strcat (str2, "_ret");
 	parse_expression (str2, &op1);
 	free (str2);
@@ -845,13 +925,14 @@ md_convert_frag (bfd * headers ATTRIBUTE_UNUSED,
 void
 propeller_frob_label (symbolS * sym)
 {
-  sym->sy_tc = cog_ram;
+  symbol_set_tc (sym, &cog_ram);
 }
 
 void
 propeller_frob_symbol (symbolS * sym, int punt ATTRIBUTE_UNUSED)
 {
-  if (sym->sy_tc)
+  int *sy_tc = symbol_get_tc (sym);
+  if (*sy_tc)
     {
       S_SET_OTHER (sym, PROPELLER_OTHER_COG_RAM
 		   | (S_GET_OTHER (sym) & ~PROPELLER_OTHER_FLAGS));
@@ -862,7 +943,8 @@ valueT
 propeller_s_get_value (symbolS *s)
 {
   valueT val = S_GET_VALUE(s);
-  if(s->sy_tc){
+  int *sy_tc = symbol_get_tc (s);
+  if(*sy_tc){
     val /= 4;
   }
   return val;
@@ -922,10 +1004,16 @@ md_undefined_symbol (char *name ATTRIBUTE_UNUSED)
   return 0;
 }
 
+/*
+ * round up a section's size to the appropriate boundary
+ */
 valueT
-md_section_align (segT segment ATTRIBUTE_UNUSED, valueT size)
+md_section_align (segT segment, valueT size)
 {
-  return (size + 3) & ~3;
+  int align = bfd_get_section_alignment (stdoutput, segment);
+  valueT mask = ((valueT) 1 << align) - 1;
+
+  return (size + mask) & ~mask;
 }
 
 long

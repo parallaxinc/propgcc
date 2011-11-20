@@ -3,6 +3,26 @@
 	'' this code runs in LMM space
 	'' so use LMM conventions
 	''
+#if defined(__PROPELLER_XMM__)
+	.macro STORE reg,mem
+	mov	__TMP0,\mem
+	mov	__TMP1,\ret
+	call	#__LMM_WRLONG
+	.endm
+	.macro LOAD reg,mem
+	mov	__TMP0,\mem
+	call	#__LMM_RDLONG
+	mov	\reg,__TMP1
+	.endm
+#else
+	.macro STORE reg,mem
+	wrlong	\reg,\mem
+	.endm
+	.macro LOAD reg,mem
+	rdlong	\reg,\mem
+	.endm
+#endif
+
 	.section .init
 	.global entry
 	.global _exit
@@ -10,9 +30,21 @@
 entry
 	jmp	#__LMM_CALL
 	.long	___init
-	mov	r0,#0	' set argc
 	jmp	#__LMM_MVI_r1
-	.long	argv	' set argv
+	.long	__argv	' set argv
+	'' calculate argc by counting non-zero elements of argv
+	mov	r3,r1
+	mov	r0,#0
+argc_cnt
+	LOAD	r2,r3
+	add	r3,#4
+	cmp	r2,#0 wz
+  IF_NZ add	r0,#1
+  IF_NZ sub	pc,#(.+4)-argc_cnt
+	
+	jmp	#__LMM_MVI_r2
+	.long	__environ	' set environment pointer
+
 	jmp	#__LMM_CALL
 	.long	_main	' call main
 
@@ -34,7 +66,18 @@ ___init
 	sub	sp,#4
 	wrlong	r14,sp
 	mov	r14,sp
-	
+
+	'' zero out bss
+	jmp	#__LMM_MVI_r0
+	.long	__bss_start
+	jmp	#__LMM_MVI_r2
+	.long	__bss_end
+	sub	r2,r0
+	mov	r1,#0
+	jmp	#__LMM_CALL
+	.long	_memset
+
+	'' call the constructors
 	jmp	#__LMM_MVI_r8
 	.long	___CTOR_LIST__
 L_loop
@@ -46,14 +89,10 @@ L_loop
 L_loopend
 	'' note -- the return is in crtend.s ; that is so
 	'' per-function initializers can be added here
-	
-	.data
-argv
-	long	0
-
 
 	.section .fini
 _exit
+	mov	r12,r0		' save exit status
 	jmp	#__LMM_MVI_r8
 	.long	___DTOR_LIST__
 L_loopn

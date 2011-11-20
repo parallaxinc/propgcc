@@ -1,12 +1,16 @@
-###################
-# XBASIC Makefile #
-###################
+###########################
+# propeller-load Makefile #
+###########################
+
+ifndef TARGET
+TARGET=.
+endif
 
 SRCDIR=src
 SPINDIR=spin
-OBJDIR=obj/$(OS)
-BINDIR=bin/$(OS)
-DRVDIR=include
+OBJDIR=$(TARGET)/obj/$(OS)
+BINDIR=$(TARGET)/bin/$(OS)
+DRVDIR=$(TARGET)/include
 INSTALLDIR=/usr/local/propeller
 INSTALLBINDIR=$(INSTALLDIR)/bin
 INSTALLLIBDIR=$(INSTALLDIR)/propeller-load
@@ -37,6 +41,13 @@ EXT=.exe
 OSINT=osint_cygwin
 endif
 
+ifeq ($(OS),msys)
+CFLAGS += -DMINGW
+BSTC=bstc
+EXT=.exe
+OSINT=osint_mingw
+endif
+
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
 BSTC=bstc.osx
@@ -49,7 +60,7 @@ endif
 ##################
 
 .PHONY:	all
-all:	propeller-load cache-drivers
+all:	propeller-load drivers sd-loader
 
 #################
 # CLEAN TARGETS #
@@ -64,8 +75,8 @@ clean:
 	
 .PHONY:
 clean-all:	clean
-	@$(RM) -f -r obj
-	@$(RM) -f -r bin
+	@$(RM) -f -r $(TARGET)/obj
+	@$(RM) -f -r $(TARGET)/bin
 	@$(RM) -f $(DRVDIR)/*.dat
 	@$(RM) -f *.binary
 	
@@ -113,20 +124,36 @@ $(SPINDIR)/cache_interface.spin \
 $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
 $(SPINDIR)/c3_cache.spin \
-$(SPINDIR)/ssf_cache.spin
+$(SPINDIR)/ssf_cache.spin \
+$(SPINDIR)/eeprom_cache.spin \
+$(SPINDIR)/sd_cache.spin \
+$(SPINDIR)/vm_start.spin
 
 #################
 # CACHE DRIVERS #
 #################
 
-CACHE_DRIVERS=\
+DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
 $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \
-$(DRVDIR)/sdram_cache.dat
+$(DRVDIR)/sdram_cache.dat \
+$(DRVDIR)/eeprom_cache.dat \
+$(DRVDIR)/sd_cache.dat
 
-.PHONY:	cache-drivers
-cache-drivers:	$(DRVDIR) $(CACHE_DRIVERS)
+#################
+# OTHER DRIVERS #
+#################
+
+DRIVERS+=\
+$(DRVDIR)/sd_driver.dat
+
+.PHONY:	drivers
+drivers:	$(DRVDIR) $(DRIVERS)
+
+.PHONY:	sd-loader
+sd-loader:	$(DRVDIR)
+	$(MAKE) -C sdloader TARGET=$(realpath $(TARGET))
 
 ##################
 # SPIN TO BINARY #
@@ -206,8 +233,9 @@ $(DIRS):
 ##################
 
 .PHONY:	install
-install:	$(INSTALLBINDIR) $(INSTALLLIBDIR)
-	$(CP) -f bin/$(OS)/propeller-load $(INSTALLBINDIR)
+install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
+	$(CP) -f $(TARGET)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
+	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
 	$(CP) -f include/* $(INSTALLLIBDIR)
 
 ##################

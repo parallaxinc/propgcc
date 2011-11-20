@@ -23,19 +23,21 @@ __LMM_entry
 r0	mov	sp, PAR
 r1	mov	r0, sp
 r2	cmp	sp,r14	wz	' see if stack is at top of memory
-r3 IF_NE rdlong pc,sp		' if not, pop the pc
-r4 IF_NE add	sp,#4
-r5	jmp	#__LMM_loop
-r6	long	0
-r7	long	0
-r8	long	0
-r9	long	0
-r10	long	0
-r11	long	0
-r12	long	0
-r13	long	0
+r3 IF_NE jmp    #r7		' if not, skip some stuff
+	'' initialization for first time run
+r4      locknew	__TMP0 wc	' allocate a lock
+r5 IF_NC wrlong __TMP0, __C_LOCK_PTR	' save it to ram if successful
+r6      jmp    #__LMM_loop
+	'' initialization for non-primary cogs
+r7      rdlong pc,sp		' if user stack, pop the pc
+r8      add	sp,#4
+r9      rdlong r0,sp		' pop the argument for the function
+r10     add	sp,#4
+r11     rdlong __TLS,sp	' and the _TLS variable
+r12     add	sp,#4
+r13	jmp	#__LMM_loop
 r14	long	0x00008000
-lr	long	0
+lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
 
@@ -211,11 +213,15 @@ __DIVR	long	0
 __TMP1
 __DIVCNT
 	long	0
+	''
+	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
+	''
 __UDIVSI
 	mov	__DIVR, r0
 	call	#__CLZSI
 	neg	__DIVCNT, r0
-	mov	r0, r1
+	mov	r0, r1 wz
+ IF_Z   jmp	#__UDIV_BY_ZERO
 	call	#__CLZSI
 	add	__DIVCNT, r0
 	mov	r0, #0
@@ -234,14 +240,23 @@ __UDIVSI_ret	ret
 __DIVSGN	long	0
 __DIVSI	mov	__DIVSGN, r0
 	xor	__DIVSGN, r1
-	abs	r0, r0
+	abs	r0, r0 wc
+	muxc	__DIVSGN, #1	' save original sign of r0
 	abs	r1, r1
 	call	#__UDIVSI
 	cmps	__DIVSGN, #0	wz, wc
  IF_B	neg	r0, r0
- IF_B	neg	r1, r1
+	test	__DIVSGN, #1 wz	' check original sign of r0
+ IF_NZ	neg	r1, r1		' make the modulus result match
 __DIVSI_ret	ret
 
+	'' come here on divide by zero
+	'' we probably should raise a signal
+__UDIV_BY_ZERO
+	neg	r0,#1
+	mov	r1,#0
+	jmp	#__UDIVSI_ret
+	
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
@@ -257,6 +272,39 @@ __MULSI_loop
  IF_NZ	jmp	#__MULSI_loop
 __MULSI_ret	ret
 
+	''
+	'' code for atomic compare and swap
+	''
+__C_LOCK_PTR
+	long	__C_LOCK
+
+	''
+	'' compare and swap a variable
+	'' r0 == new value to set if (*r2) == r1
+	'' r1 == value to compare with
+	'' r2 == pointer to memory
+	'' output: r0 == original value of (*r2)
+	''         Z flag is set if (*r2) == r1, clear otherwise
+	''
+	.global __CMPSWAPSI
+	.global __CMPSWAPSI_ret
+__CMPSWAPSI
+	'' get the C_LOCK
+	rdlong	__TMP1,__C_LOCK_PTR
+	mov	__TMP0,r0	'' save value to set
+.swaplp
+	lockset	__TMP1 wc
+   IF_C jmp	#.swaplp
+
+	rdlong	r0,r2		'' fetch original value
+	cmp	r0,r1 wz	'' compare with desired original value
+   IF_Z wrlong  __TMP0,r2	'' if match, save new value
+	
+	'' now release the C lock
+	lockclr __TMP1
+__CMPSWAPSI_ret
+	ret
+	
 	''
 	'' FCACHE region
 	'' The FCACHE is an area where we can
@@ -324,3 +372,8 @@ Lmm_fcache_doit
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
 	res	256	'' reserve 256 longs = 1K
+
+	''
+	'' global variables
+	''
+	.comm __C_LOCK,4,4

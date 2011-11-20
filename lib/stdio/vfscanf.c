@@ -30,6 +30,7 @@
 #include <limits.h>
 #include <ctype.h>
 #include <math.h>
+#include <compiler.h>
 
 /*
  * define FLOAT_SUPPORT to get floating point support
@@ -213,7 +214,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 			  { int e;
 			    NEXT(e);
 			    if(VAL(toupper(e)=='N'))
-			      { v=__builtin_nan("1");
+			      { v=_NAN;
 				break; }
 			    PREV(e);
 			  }

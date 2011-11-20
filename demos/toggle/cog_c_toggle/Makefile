@@ -6,16 +6,19 @@
 # #########################################################
 
 # Propeller Demo include
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 CFLAGS = -Os -mlmm
+NM = propeller-elf-nm
 
 #
 # objects for this program
 #
 
 NAME = toggle
-OBJS = toggle.o toggle_1.cog $(PROPLIB)/libpropeller.a
+OBJS = toggle.o toggle_1.cog
+
+all: $(NAME).elf
 
 include $(PROPLIB)/lmmdemo.mk
 
@@ -23,12 +26,22 @@ include $(PROPLIB)/lmmdemo.mk
 # do a partial link of all driver code
 #
 
-# the raw C code for the cog
-toggle_cog.o: toggle_cog.c
-	$(CC) -Os -mcog -I$(PROPLIB)/../include -o $@ -c $<
+# # Note that calling our output file *_1.cog ensures that it
+# is placed in the .coguser1 section by the main program's
+# linker script; similarly *_2.cog would be placed in .coguser2,
+# and so on
 
-# link the cog C code together with support libraries
-toggle_1.cog: toggle_cog.o
-	$(LD) -s -o $@ -T $(PROPLIB)/propeller_cog.script $(PROPLIB)/crt0_cog.o $^ $(PROPLIB)/libcog.a
+toggle_1.o: toggle_cog.c
+	$(CC) -r -Os -mcog -o $@ $<
 
+
+#
+# We have to avoid conflicts between symbols in the main C program and
+# symbols in the local cog C programs. We do this by using objcopy to
+# turn all the global symbols in the cog .text segment into local symbols
+# (that's what --localize-text does).
+#
+
+%.cog: %.o
+	$(OBJCOPY) --localize-text $^ $@
 

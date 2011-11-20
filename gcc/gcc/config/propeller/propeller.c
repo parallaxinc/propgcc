@@ -29,41 +29,55 @@
 #include "hard-reg-set.h"
 #include "insn-config.h"
 #include "conditions.h"
-#include "insn-flags.h"
-#include "output.h"
 #include "insn-attr.h"
-#include "flags.h"
 #include "recog.h"
-#include "reload.h"
-#include "obstack.h"
+#include "output.h"
 #include "tree.h"
-#include "c-tree.h"
+#include "function.h"
 #include "expr.h"
 #include "optabs.h"
-#include "except.h"
-#include "function.h"
+#include "libfuncs.h"
+#include "flags.h"
+#include "reload.h"
+#include "tm_p.h"
 #include "ggc.h"
+#include "gstab.h"
+#include "hashtab.h"
+#include "debug.h"
 #include "target.h"
 #include "target-def.h"
-#include "tm_p.h"
+#include "integrate.h"
 #include "langhooks.h"
-#include "df.h"
-#include "diagnostic-core.h"
-#include "tree-pass.h"
+#include "cfglayout.h"
+#include "sched-int.h"
+#include "gimple.h"
+#include "bitmap.h"
+#include "c-tree.h"
+#include "diagnostic.h"
+#include "target-globals.h"
+
+
 
 /*
  * define USE_HUBCOG_DIRECTIVES to 1 to get .hub_ram and .cog_ram put into
  * the output sections in Cog mode
  */
-
 #define USE_HUBCOG_DIRECTIVES 0
 
-
+/*
+ * define FCACHE_DEFAULT_OPTLEVEL to N to make -mfcache the default in optimization
+ * modes N and higher
+ * do not define it at all to disable it
+ */
+#define FCACHE_DEFAULT_OPTLEVEL 2
 
+/* special sections */
+static section * kernel_section;
+
 /*
  * frame setup
  */
-struct propeller_frame_info
+struct GTY(()) propeller_frame_info
 {
   HOST_WIDE_INT total_size;	/* number of bytes of entire frame.  */
   HOST_WIDE_INT callee_size;	/* number of bytes to save callee saves.  */
@@ -73,9 +87,15 @@ struct propeller_frame_info
   unsigned int reg_save_mask;	/* mask of saved registers.  */
 };
 
-/* Current frame information calculated by compute_frame_size.  */
-static struct propeller_frame_info current_frame_info;
-static HOST_WIDE_INT propeller_compute_frame_size (int size);
+/*
+ * machine specific info about the current function
+ */
+struct GTY(()) machine_function {
+  /* the current frame information, calculated by propeller_compute_frame_info */
+  struct propeller_frame_info frame;
+};
+
+static HOST_WIDE_INT propeller_compute_frame_info (void);
 static rtx propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
                                    const_tree type, bool named);
 static void propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
@@ -95,6 +115,22 @@ enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
     SPECIAL_REGS
 };
 
+/*
+ * flag for turning on/off the fcache processing
+ */
+static int do_fcache;
+
+/*
+ * variables that save/restore cog processing state
+ */
+struct target_globals *propeller_cog_globals;
+
+/* target flags to use in non-LMM mode */
+static int propeller_base_target_flags;
+
+/* true if -mcog is the default mode */
+bool propeller_base_cog;
+
 
 /*
  * options handling
@@ -113,9 +149,44 @@ static const char *hex_prefix;
 static const struct default_options propeller_option_optimization_table[] =
   {
     /* turn this on to disable frame pointer by default */
-    { OPT_LEVELS_1_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
+    { OPT_LEVELS_2_PLUS, OPT_fomit_frame_pointer, NULL, 1 },
     { OPT_LEVELS_NONE, 0, NULL, 0 }
   };
+
+/*
+ * select machine specific optimizations here
+ */
+static void
+propeller_optimization_options (int level, int size ATTRIBUTE_UNUSED)
+{
+  do_fcache = 0;
+
+#ifdef FCACHE_DEFAULT_OPTLEVEL
+  /* this code turns on fcache with -O2 and higher */
+  if (level >= FCACHE_DEFAULT_OPTLEVEL)
+    {
+      if (propeller_fcache_enable != 0)
+	do_fcache = 1;
+    }
+  else
+    {
+      if (propeller_fcache_enable == 1)
+	do_fcache = 1;
+    }
+#else
+  /* this code turns on fcache only when explicitly requested */
+  if (propeller_fcache_enable == 1)
+    do_fcache = 1;
+#endif
+}
+
+/* Allocate a chunk of memory for per-function machine-dependent data.  */
+
+static struct machine_function *
+propeller_init_machine_status (void)
+{
+  return ggc_alloc_cleared_machine_function ();
+}
 
 /* Validate and override various options, and do machine dependent
  * initialization
@@ -169,7 +240,28 @@ propeller_option_override (void)
 	propeller_data_asm_op = "\t.data\n\t.hub_ram";
 	propeller_bss_asm_op = "\t.section\t.bss\n\t.hub_ram";
       }
+
+    propeller_optimization_options (optimize, optimize_size);
+
+    /* in LMM mode if we see "native" function declarations those will
+       have to be compiled in -mcog mode, so be prepared to switch
+    */
+    init_machine_status = &propeller_init_machine_status;
+
+    propeller_base_cog = !TARGET_LMM;
+    propeller_base_target_flags = target_flags;
 }
+
+
+/* The last argument passed to propeller_set_cog_mode, or negative if the
+   function hasn't been called yet.
+
+   There are two copies of this information.  One is saved and restored
+   by the PCH process while the other is specific to this compiler
+   invocation.  The information calculated by propeller_set_cog_mode
+   is invalid unless the two variables are the same.  */
+static int was_cog_p = -1;
+static GTY(()) int was_cog_pch_p = -1;
 
 
 /*
@@ -268,8 +360,67 @@ static const struct attribute_spec propeller_attribute_table[] =
   { NULL,  0, 0, false, false, false, NULL }
 };
 
-#undef TARGET_ATTRIBUTE_TABLE
-#define TARGET_ATTRIBUTE_TABLE propeller_attribute_table
+/*
+ * function to temporarily switch to COG mode when compiling an LMM program
+ * used for native function declarations
+ */
+
+static void
+propeller_set_cog_mode (int cog_p)
+{
+  if (cog_p == was_cog_p
+      && cog_p == was_cog_pch_p)
+    return;
+
+  /* restore base settings of various flags */
+  target_flags = propeller_base_target_flags;
+
+  if (cog_p)
+    {
+      /* switch to COG mode */
+      target_flags &= ~(MASK_LMM|MASK_XMM|MASK_XMM_CODE);
+      if (!propeller_cog_globals)
+	propeller_cog_globals = save_target_globals ();
+      else
+	restore_target_globals (propeller_cog_globals);
+    }
+  else
+    {
+      /* normal (LMM) mode */
+      restore_target_globals (&default_target_globals);
+    }
+}
+
+/* Return true if function DECL is a COG function.  Return the ambient
+   setting if DECL is null.  */
+
+static bool
+propeller_use_cog_mode_p (tree decl)
+{
+  if (decl)
+    {
+      /* Nested functions must use the same frame pointer as their
+	 parent and must therefore use the same ISA mode.  */
+      tree parent = decl_function_context (decl);
+      if (parent)
+	decl = parent;
+      if (is_native_function (decl))
+	return true;
+    }
+  return propeller_base_cog;
+}
+
+/*
+ * Implement TARGET_SET_CURRENT_FUNCTION; decides whther the current function
+ * should use the native instruction set or LMM one
+ */
+static void
+propeller_set_current_function (tree fndecl)
+{
+  propeller_set_cog_mode (propeller_use_cog_mode_p (fndecl));
+}
+
+
 
 static void
 propeller_encode_section_info (tree decl, rtx r, int first)
@@ -292,16 +443,22 @@ propeller_encode_section_info (tree decl, rtx r, int first)
 bool
 propeller_cogaddr_p (rtx x)
 {
-    if (GET_CODE (x) != SYMBOL_REF) {
-        return false;
-    }
-    if (0 != (SYMBOL_REF_FLAGS (x) & SYMBOL_FLAG_PROPELLER_COGMEM)) {
-        return true;
-    }
-    if (CONSTANT_POOL_ADDRESS_P (x) && !TARGET_LMM) {
-        return true;
-    }
+  if (GET_CODE (x) == LABEL_REF && !TARGET_LMM) {
+    return true;
+  }
+  if (GET_CODE (x) != SYMBOL_REF) {
     return false;
+  }
+  if (0 != (SYMBOL_REF_FLAGS (x) & SYMBOL_FLAG_PROPELLER_COGMEM)) {
+    return true;
+  }
+  if (CONSTANT_POOL_ADDRESS_P (x) && !TARGET_LMM) {
+    return true;
+  }
+  if (SYMBOL_REF_FUNCTION_P (x) && !TARGET_LMM) {
+    return true;
+  }
+  return false;
 }
 
 /*
@@ -345,6 +502,7 @@ bool propeller_need_mulsi = false;
 bool propeller_need_divsi = false;
 bool propeller_need_udivsi = false;
 bool propeller_need_clzsi = false;
+bool propeller_need_cmpswapsi = false;
 /*
  * start assembly language output
  */
@@ -353,7 +511,7 @@ propeller_asm_file_start (void)
 {
     if (!TARGET_OUTPUT_SPINCODE) {
         default_file_start ();
-	if (TARGET_LMM)
+	if (TARGET_LMM && USE_HUBCOG_DIRECTIVES)
 	  fprintf (asm_out_file, "\t.hub_ram\n");
         return;
     }
@@ -492,13 +650,23 @@ pasm_divsi(FILE *f) {
   fprintf(f, "__DIVSGN\tlong\t0\n");
   fprintf(f, "__DIVSI\tmov\t__DIVSGN,r0\n");
   fprintf(f, "\txor\t__DIVSGN,r1\n");
-  fprintf(f, "\tabs\tr0,r0\n");
+  fprintf(f, "\tabs\tr0,r0 wc\n");
+  fprintf(f, "\tmuxc\t__DIVSGN,#1 wc\n");
   fprintf(f, "\tabs\tr1,r1\n");
   fprintf(f, "\tcall\t#__UDIVSI\n");
   fprintf(f, "\tcmps\t__DIVSGN,#0 wz,wc\n");
   fprintf(f, "\tIF_B\tneg\tr0,r0\n");
-  fprintf(f, "\tIF_B\tneg\tr1,r1\n");
+  fprintf(f, "\ttest\t__DIVSGN,#1 wz\n");
+  fprintf(f, "\tIF_NZ\tneg\tr1,r1\n");
   fprintf(f, "__DIVSI_ret\tret\n");
+}
+/*
+ * implement signed division by using udivsi
+ */
+static void
+pasm_cmpswapsi(FILE *f ATTRIBUTE_UNUSED)
+{
+  error ("atomic operations are not yet supported in spin code");
 }
 
 static void
@@ -549,6 +717,9 @@ propeller_asm_file_end (void)
   if (propeller_need_divsi) {
     pasm_divsi(asm_out_file);
   }
+  if (propeller_need_cmpswapsi) {
+    pasm_cmpswapsi(asm_out_file);
+  }
 }
 
 /*
@@ -561,6 +732,16 @@ propeller_output_label(FILE *file, const char * label)
   fputs("\n", file);
 }
 
+/*
+ * output a directive indicating a weak definition
+ */
+void
+propeller_weaken_label (FILE *file, const char *name)
+{
+  fprintf (file, "\t.weak ");
+  assemble_name (file, name);
+  fputs ("\n", file);
+}
 /* The purpose of this function is to override the default behavior of
    BSS objects.  Normally, they go into .bss or .sbss via ".common"
    directives, but we need to override that if they are for cog memory
@@ -636,7 +817,10 @@ propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
  *   P   Select the inverse predicate for a conditional execution
  *   M   Print the complement of a constant integer
  *   m   Print a mask (1<<n)-1 where n is a constant
- *   B   Print a mask (1<<n) where n is a constant
+ *   S   Print a mask (1<<n) where n is a constant
+ *   B   Print a cog memory reference; note that the hardware wants
+ *       these to be treated as long addresses, so they have to be divided by 4
+ *         
  */
 
 #define PREDLETTER(YES, REV)  (letter == 'p') ? (YES) : (REV)
@@ -692,12 +876,22 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op))-1);
       return;
   }
-  if (letter == 'B') {
+  if (letter == 'S') {
       if (code != CONST_INT) {
           gcc_unreachable ();
       }
       fprintf (file, "#%s%lx", hex_prefix, (1L<<INTVAL (op)));
       return;
+  }
+  if (letter == 'B') {
+    if (code != SYMBOL_REF && code != LABEL_REF)
+      {
+	gcc_unreachable();
+      }
+    fprintf (file, "(");
+    output_addr_const (file, op);
+    fprintf (file, "/4)");
+    return;
   }
   if (code == SIGN_EXTEND)
     op = XEXP (op, 0), code = GET_CODE (op);
@@ -765,7 +959,7 @@ propeller_print_operand_address (FILE * file, rtx addr)
       break;
 
     case SYMBOL_REF:
-	  output_addr_const (file, addr);
+      output_addr_const (file, addr);
       break;
 
     default:
@@ -905,6 +1099,9 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
 
     case MEM:
         total = propeller_address_cost (XEXP (x, 0), speed);
+	total += COSTS_N_INSNS(4);
+	if (TARGET_XMM)
+	  total += COSTS_N_INSNS(20); /* memory is hideously expensive in XMM mode */
         done = true;
         break;
 
@@ -996,6 +1193,39 @@ propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 			   const_tree type, bool named ATTRIBUTE_UNUSED)
 {
   *cum += PROP_NUM_REGS (mode, type);
+}
+
+
+/* trampoline support */
+
+/* our basic trampoline is a simple move immediate to set the chain
+ * register and then a far jump to the function address
+ */
+static void
+propeller_asm_trampoline_template (FILE *f)
+{
+  if (!TARGET_LMM)
+    {
+      error ("nested functions not supported in cog mode\n");
+    }
+  fprintf (f, "\tjmp\t#__LMM_MVI_r%d\n", STATIC_CHAIN_REGNUM);
+  fprintf (f, "\tlong\t0xdeadbeef\n"); /* static chain value goes here */
+  fprintf (f, "\tjmp\t#__LMM_JMP\n");
+  fprintf (f, "\tlong\t0xdeadbeef\n"); /* function address goes here */
+}
+
+static void
+propeller_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
+{
+  rtx mem, fnaddr;
+
+  fnaddr = XEXP (DECL_RTL (fndecl), 0);
+  emit_block_move (m_tramp, assemble_trampoline_template (), GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
+
+  mem = adjust_address (m_tramp, SImode, 4);
+  emit_move_insn (mem, chain_value);
+  mem = adjust_address (m_tramp, SImode, 12);
+  emit_move_insn (mem, fnaddr);
 }
 
 
@@ -1215,7 +1445,8 @@ propeller_initial_elimination_offset (int from, int to)
   /* the -UNITS_PER_WORD in stack pointer offsets is
      because we predecrement the stack pointer before using it,
    */
-  base = propeller_compute_frame_size (get_frame_size ()) - UNITS_PER_WORD;
+  propeller_compute_frame_info ();
+  base = cfun->machine->frame.total_size - UNITS_PER_WORD;
 
 
   if (from == ARG_POINTER_REGNUM)
@@ -1223,16 +1454,16 @@ propeller_initial_elimination_offset (int from, int to)
       if (to == STACK_POINTER_REGNUM)
 	offset = base;
       else if (to == HARD_FRAME_POINTER_REGNUM)
-	offset = current_frame_info.callee_size - UNITS_PER_WORD;
+	offset = cfun->machine->frame.callee_size - UNITS_PER_WORD;
       else
 	gcc_unreachable ();
     }
   else if (from == FRAME_POINTER_REGNUM)
     {
       if (to == STACK_POINTER_REGNUM)
-	offset = base - (current_frame_info.callee_size + current_frame_info.locals_size);
+	offset = base - (cfun->machine->frame.callee_size + cfun->machine->frame.locals_size);
       else if (to == HARD_FRAME_POINTER_REGNUM)
-	offset = -(current_frame_info.locals_size+UNITS_PER_WORD);
+	offset = -(cfun->machine->frame.locals_size+UNITS_PER_WORD);
       else
 	gcc_unreachable ();
     }
@@ -1423,13 +1654,13 @@ propeller_use_frame_pointer(void)
 }
 
 static HOST_WIDE_INT
-propeller_compute_frame_size (int size)
+propeller_compute_frame_info (void)
 {
   int regno;
   HOST_WIDE_INT total_size, locals_size, args_size, pretend_size, callee_size;
   unsigned int reg_save_mask;
 
-  locals_size = size;
+  locals_size = get_frame_size ();
   args_size = crtl->outgoing_args_size;
   pretend_size = crtl->args.pretend_args_size;
   callee_size = 0;
@@ -1463,12 +1694,12 @@ propeller_compute_frame_size (int size)
   total_size = (total_size + 3) & ~3;
 
   /* Save computed information.  */
-  current_frame_info.total_size = total_size;
-  current_frame_info.callee_size = callee_size;
-  current_frame_info.pretend_size = pretend_size;
-  current_frame_info.locals_size = locals_size;
-  current_frame_info.args_size = args_size;
-  current_frame_info.reg_save_mask = reg_save_mask;
+  cfun->machine->frame.total_size = total_size;
+  cfun->machine->frame.callee_size = callee_size;
+  cfun->machine->frame.pretend_size = pretend_size;
+  cfun->machine->frame.locals_size = locals_size;
+  cfun->machine->frame.args_size = args_size;
+  cfun->machine->frame.reg_save_mask = reg_save_mask;
 
   return total_size;
 }
@@ -1490,13 +1721,13 @@ propeller_expand_prologue (void)
   if (is_naked_function (current_function_decl))
     return;
 
-  propeller_compute_frame_size (get_frame_size ());
+  propeller_compute_frame_info ();
 
-  if (current_frame_info.total_size > 0)
+  if (cfun->machine->frame.total_size > 0)
     {
       /* Save callee save registers.  */
-      if (current_frame_info.reg_save_mask != 0)
-          pushed = expand_save_registers (&current_frame_info);
+      if (cfun->machine->frame.reg_save_mask != 0)
+          pushed = expand_save_registers (&cfun->machine->frame);
 
       /* Setup frame pointer if it's needed.  */
       if (propeller_use_frame_pointer())
@@ -1508,7 +1739,7 @@ propeller_expand_prologue (void)
       }
 
       /* Add space on stack new frame.  */
-      stack_adjust (-(current_frame_info.total_size - pushed));
+      stack_adjust (-(cfun->machine->frame.total_size - pushed));
 
 
 #ifdef PROLOGUE_BLOCKAGE
@@ -1534,9 +1765,9 @@ propeller_expand_epilogue (bool is_sibcall)
       return;
 
   }
-  propeller_compute_frame_size (get_frame_size ());
+  propeller_compute_frame_info ();
 
-  if (current_frame_info.total_size > 0)
+  if (cfun->machine->frame.total_size > 0)
     {
 #ifdef PROLOGUE_BLOCKAGE
       /* Prevent stack code from being reordered.  */
@@ -1554,11 +1785,11 @@ propeller_expand_epilogue (bool is_sibcall)
       }
       else
       {
-          stack_adjust (current_frame_info.total_size - current_frame_info.callee_size);
+          stack_adjust (cfun->machine->frame.total_size - cfun->machine->frame.callee_size);
       }
       /* Restore callee save registers.  */
-      if (current_frame_info.reg_save_mask != 0)
-          expand_restore_registers (&current_frame_info);
+      if (cfun->machine->frame.reg_save_mask != 0)
+          expand_restore_registers (&cfun->machine->frame);
 
       }
 
@@ -1590,7 +1821,7 @@ propeller_can_use_return (void)
   if (df_regs_ever_live_p (PROP_LR_REGNUM) || crtl->profile)
     return 0;
 
-  if (propeller_compute_frame_size (get_frame_size ()) != 0)
+  if (propeller_compute_frame_info () != 0)
     return 0;
 
   return 1;
@@ -1623,7 +1854,14 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
             }
             emit_call_insn (pat);
             return true;
-        }
+        } else if (is_native_function (current_function_decl) && !propeller_base_cog) {
+	  /* native function cannot call non-native in LMM mode */
+	  /* this is because the non-native function has to be interpreted
+	     from hub (or external) memory, the native is internal to
+	     cog memory
+	  */
+	  error("native function can call non-native only in -mcog mode");
+	}
     }
     return false;
 }
@@ -1631,22 +1869,23 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
 bool
 propeller_legitimate_constant_p (rtx x)
 {
-    switch (GET_CODE (x))
+  switch (GET_CODE (x))
     {
     case LABEL_REF:
-        return true;
+      return true;
     case CONST_DOUBLE:
-        if (GET_MODE (x) == VOIDmode)
-            return true;
-        return false;
-    case CONST:
+      if (GET_MODE (x) == VOIDmode)
+	return true;
+      return false;
     case SYMBOL_REF:
+      return TARGET_LMM || SYMBOL_REF_FUNCTION_P (x);
+    case CONST:
     case CONST_VECTOR:
-        return TARGET_LMM;
+      return TARGET_LMM;
     case CONST_INT:
-        return TARGET_LMM || (INTVAL (x) >= -511 && INTVAL (x) <= 511);
+      return TARGET_LMM || (INTVAL (x) >= -511 && INTVAL (x) <= 511);
     default:
-        return true;
+      return true;
     }
 }
 bool
@@ -1666,6 +1905,14 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
 /*
  * code for selecting which section a constant or declaration should go in
  */
+
+static void
+propeller_asm_init_sections (void)
+{
+  kernel_section = get_unnamed_section(SECTION_WRITE|SECTION_CODE,
+				       output_section_asm_op,
+				       "\t.section .kernel,\"aw\",@progbits");
+}
 
 /* where should we put a constant?
  * in Cog mode, integer constants should go in text,
@@ -1687,9 +1934,32 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
   return default_elf_select_rtx_section (mode, x, align);
 }
 
+/*
+ * in LMM mode, anything declared as "cogmem" should go into the .kernel
+ * section
+ */
 static section *
 propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
+  if (!propeller_base_cog)
+    {
+      switch (TREE_CODE (decl))
+	{
+	case VAR_DECL:
+	  if (lookup_attribute ("cogmem", DECL_ATTRIBUTES (decl)))
+	    return kernel_section;
+	  break;
+	case FUNCTION_DECL:
+	  if (is_native_function (decl))
+	    return kernel_section;
+	default:
+	  break;
+	}
+    }
+
+  if (TREE_CODE (decl) == FUNCTION_DECL)
+    return text_section;
+
   return default_elf_select_section (decl, reloc, align);
 }
 
@@ -1698,11 +1968,13 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  * builtin functions
  * here are the builtins we support:
  *
- * unsigned __builtin_propeller_cogid(void)
+ * void __builtin_propeller_clkset(unsigned mode)
+ *     set the system clock mode
+ * int __builtin_propeller_cogid(void)
  *     get the current cog id
- * unsigned __builtin_propeller_coginit(unsigned mode)
+ * int __builtin_propeller_coginit(unsigned mode)
  *     start or restart a cog
- * void __builtin_propeller_cogstop(unsigned id)
+ * void __builtin_propeller_cogstop(int id)
  *     stop a cog
  *
  * unsigned __builtin_propeller_rev(unsigned x, unsigned n)
@@ -1725,30 +1997,25 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
  *     set a hardware lock and return its previous state (-1 if set, 0 if clear)
  * void __builtin_propeller_lockclr(int x)
  *     clear a hardware lock
- *
- * void * __builtin_propeller_taskswitch(void *newfunc)
- *     switch to a new function
- *
  */
 
 enum propeller_builtins
 {
-    PROPELLER_BUILTIN_COGID,
-    PROPELLER_BUILTIN_COGINIT,
-    PROPELLER_BUILTIN_COGSTOP,
-    PROPELLER_BUILTIN_REVERSE,
+  PROPELLER_BUILTIN_CLKSET,
+  PROPELLER_BUILTIN_COGID,
+  PROPELLER_BUILTIN_COGINIT,
+  PROPELLER_BUILTIN_COGSTOP,
+  PROPELLER_BUILTIN_REVERSE,
 
-    PROPELLER_BUILTIN_WAITCNT,
-    PROPELLER_BUILTIN_WAITPEQ,
-    PROPELLER_BUILTIN_WAITPNE,
-    PROPELLER_BUILTIN_WAITVID,
+  PROPELLER_BUILTIN_WAITCNT,
+  PROPELLER_BUILTIN_WAITPEQ,
+  PROPELLER_BUILTIN_WAITPNE,
+  PROPELLER_BUILTIN_WAITVID,
 
-    PROPELLER_BUILTIN_LOCKNEW,
-    PROPELLER_BUILTIN_LOCKRET,
-    PROPELLER_BUILTIN_LOCKSET,
-    PROPELLER_BUILTIN_LOCKCLR,
-
-    PROPELLER_BUILTIN_TASKSWITCH
+  PROPELLER_BUILTIN_LOCKNEW,
+  PROPELLER_BUILTIN_LOCKRET,
+  PROPELLER_BUILTIN_LOCKSET,
+  PROPELLER_BUILTIN_LOCKCLR
 };
 
 /* Initialise the builtin functions.  Start by initialising
@@ -1773,6 +2040,7 @@ propeller_init_builtins (void)
   tree int_ftype_void;
   tree int_ftype_int;
   tree void_ftype_int;
+  tree int_ftype_uns;
 
   /* void func (void) */
   void_ftype_void = build_function_type (void_type_node, endlink);
@@ -1786,8 +2054,10 @@ propeller_init_builtins (void)
 
   /* unsigned func(unsigned) */
   /* unsigned func(unsigned,unsigned) */
+  /* int func(unsigned) */
   uns_ftype_uns = build_function_type (unsigned_type_node, uns_endlink);
   uns_ftype_uns_uns = build_function_type (unsigned_type_node, uns_uns_endlink);
+  int_ftype_uns = build_function_type (integer_type_node, uns_endlink);
 
   /* int func (void) */
   int_ftype_void = build_function_type (integer_type_node, endlink);
@@ -1799,13 +2069,16 @@ propeller_init_builtins (void)
   /* void (*)(void) func(void (*f)(void)) */
   vfunc_ftype_vfunc = build_function_type(ptr_type_node, ptr_endlink);
 
-  add_builtin_function("__builtin_propeller_cogid", uns_ftype_void,
+  add_builtin_function("__builtin_propeller_clkset", void_ftype_uns,
+                       PROPELLER_BUILTIN_CLKSET,
+                       BUILT_IN_MD, NULL, NULL_TREE);
+  add_builtin_function("__builtin_propeller_cogid", int_ftype_void,
                        PROPELLER_BUILTIN_COGID,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_propeller_coginit", uns_ftype_uns,
+  add_builtin_function("__builtin_propeller_coginit", int_ftype_uns,
                        PROPELLER_BUILTIN_COGINIT,
                        BUILT_IN_MD, NULL, NULL_TREE);
-  add_builtin_function("__builtin_propeller_cogstop", void_ftype_uns,
+  add_builtin_function("__builtin_propeller_cogstop", void_ftype_int,
                        PROPELLER_BUILTIN_COGSTOP,
                        BUILT_IN_MD, NULL, NULL_TREE);
   add_builtin_function("__builtin_propeller_rev", uns_ftype_uns_uns,
@@ -1836,11 +2109,6 @@ propeller_init_builtins (void)
   add_builtin_function("__builtin_propeller_lockclr", void_ftype_int,
                        PROPELLER_BUILTIN_LOCKCLR,
                        BUILT_IN_MD, NULL, NULL_TREE);
-
-  add_builtin_function("__builtin_propeller_taskswitch", vfunc_ftype_vfunc,
-                       PROPELLER_BUILTIN_TASKSWITCH,
-                       BUILT_IN_MD, NULL, NULL_TREE);
-
 }
 
 /* Given a builtin function taking 2 operands (i.e., target + source),
@@ -2024,6 +2292,9 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
 
   switch (fcode)
     {
+    case PROPELLER_BUILTIN_CLKSET:
+        return propeller_expand_builtin_1opvoid (CODE_FOR_clkset, exp);
+
     case PROPELLER_BUILTIN_COGID:
         return propeller_expand_builtin_1op (CODE_FOR_cogid, target);
     case PROPELLER_BUILTIN_COGINIT:
@@ -2048,8 +2319,6 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
     case PROPELLER_BUILTIN_LOCKCLR:
         return propeller_expand_builtin_1opvoid (CODE_FOR_lockclr, exp);
 
-    case PROPELLER_BUILTIN_TASKSWITCH:
-        return propeller_expand_builtin_2op (CODE_FOR_taskswitch, exp, target);
     default:
         gcc_unreachable ();
     }
@@ -2155,14 +2424,17 @@ get_jump_dest(rtx branch)
 /*
  * dest_ok_for_fcache: returns true if a jump destination is OK
  * for fcache mode
+ * "func_p" is true if the entire function is being fcached (in which
+ * case returns are OK; we've put some special glue at the start of
+ * the function to handle this)
  */
 static bool
-dest_ok_for_fcache (rtx dest)
+dest_ok_for_fcache (rtx dest, bool func_p)
 {
   if (!dest)
     return false;
   if (GET_CODE (dest) == RETURN)
-    return true;
+    return func_p;
   if (GET_CODE (dest) != LABEL_REF)
     return false;
 
@@ -2226,6 +2498,25 @@ fcache_label_refs_in_block (rtx lab, rtx first, rtx last)
     }
   
   return count;
+}
+
+/*
+ * true if a branch is known to be unlikely (due to programmer
+ * annotation or some other analysis
+ * we don't want to fcache loops which only execute once
+ */
+static bool
+propeller_unlikely_branch_p (rtx jump)
+{
+  rtx note = find_reg_note (jump, REG_BR_PROB, 0);
+  if (note)
+    {
+      HOST_WIDE_INT prob = INTVAL (XEXP (note, 0));
+      if (prob < (REG_BR_PROB_BASE * 4 / 10))
+	return true;
+    }
+  /* branch is not known to be unlikely */
+  return false;
 }
 
 /*
@@ -2307,8 +2598,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p)
 	{
 	  dest = get_jump_dest (insn);
 	  /* we probably already checked all jumps earlier, but
-	     better safe than sorry */
-	  if (!dest_ok_for_fcache (dest))
+	     at the time we did not know whether the whole function
+	     was being cached or not (func_p); check again
+	  */
+	  if (!dest_ok_for_fcache (dest, func_p))
 	    {
 	      if (dump_file)
 		{
@@ -2321,7 +2614,9 @@ fcache_block_ok (rtx first, rtx last, bool func_p)
 	      /* if it's a function, we want to see at least one loop */
 	      if (func_p)
 		{
-		  if (!propeller_forward_branch_p (insn))
+		  if (!propeller_forward_branch_p (insn)
+		      && !propeller_unlikely_branch_p (insn)
+		      )
 		    {
 		      loop_count++;
 		    }
@@ -2662,7 +2957,8 @@ current_func_has_indirect_jumps (void)
       if (GET_CODE (insn) == JUMP_INSN)
 	{
 	  dest = get_jump_dest (insn);
-	  if (!dest_ok_for_fcache (dest))
+	  /* initially assume that return instructions are OK */
+	  if (!dest_ok_for_fcache (dest, true))
 	    {
 	      if (dump_file)
 		{
@@ -2670,27 +2966,6 @@ current_func_has_indirect_jumps (void)
 		  print_rtl_single (dump_file, insn);
 		}
 	      return true;
-	    }
-	}
-      else if (GET_CODE (insn) == INSN)
-	{
-	  rtx pattern;
-
-	  pattern = PATTERN (insn);
-	  /* check for __builtin_propeller_taskswitch */
-	  if (GET_CODE (pattern) == SET)
-	    {
-	      pattern = SET_SRC (pattern);
-	      if (GET_CODE (pattern) == UNSPEC_VOLATILE
-		  && XINT (pattern, 1) == UNSPEC_TASKSWITCH)
-		{
-		  if (dump_file)
-		    {
-		      fprintf (dump_file, " cannot determine destination address for:\n");
-		      print_rtl_single (dump_file, insn);
-		    }
-		  return true;
-		}
 	    }
 	}
     }
@@ -2810,9 +3085,11 @@ fcache_convert_loops (void)
       if (GET_CODE (last) == JUMP_INSN)
 	{
 	  dest = get_jump_dest (last);
-	  if ( dest_ok_for_fcache (dest)
+	  if ( dest_ok_for_fcache (dest, false)
 	       && GET_CODE (dest) == LABEL_REF
-	       && !propeller_forward_branch_p (last) )
+	       && !propeller_forward_branch_p (last) 
+	       && !propeller_unlikely_branch_p (last)
+	     )
 	    {
 	      first = JUMP_LABEL (last);
 	      gotit = try_convert_loop (&first, &last);
@@ -2840,7 +3117,7 @@ propeller_reorg(void)
 {
   bool done;
   
-  if (TARGET_LMM && TARGET_FCACHE)
+  if (TARGET_LMM && do_fcache)
     {
       if (dump_file)
 	fprintf (dump_file, " *** Checking fcache for jumps\n");
@@ -2870,6 +3147,12 @@ propeller_reorg(void)
 }
 
 
+#undef TARGET_ATTRIBUTE_TABLE
+#define TARGET_ATTRIBUTE_TABLE propeller_attribute_table
+
+#undef TARGET_SET_CURRENT_FUNCTION
+#define TARGET_SET_CURRENT_FUNCTION propeller_set_current_function
+
 #undef TARGET_DEFAULT_TARGET_FLAGS
 #define TARGET_DEFAULT_TARGET_FLAGS (TARGET_DEFAULT)
 #undef TARGET_OPTION_OVERRIDE
@@ -2905,6 +3188,11 @@ propeller_reorg(void)
 #undef  TARGET_ENCODE_SECTION_INFO
 #define TARGET_ENCODE_SECTION_INFO propeller_encode_section_info
 
+#undef TARGET_ASM_TRAMPOLINE_TEMPLATE
+#define TARGET_ASM_TRAMPOLINE_TEMPLATE propeller_asm_trampoline_template
+#undef TARGET_TRAMPOLINE_INIT
+#define TARGET_TRAMPOLINE_INIT propeller_trampoline_init
+
 #undef TARGET_EXCEPT_UNWIND_INFO
 #define TARGET_EXCEPT_UNWIND_INFO sjlj_except_unwind_info
 
@@ -2916,6 +3204,8 @@ propeller_reorg(void)
 #undef TARGET_MACHINE_DEPENDENT_REORG
 #define TARGET_MACHINE_DEPENDENT_REORG propeller_reorg
 
+#undef TARGET_ASM_INIT_SECTIONS
+#define TARGET_ASM_INIT_SECTIONS propeller_asm_init_sections
 #undef TARGET_ASM_SELECT_SECTION
 #define TARGET_ASM_SELECT_SECTION propeller_select_section
 #undef TARGET_ASM_SELECT_RTX_SECTION
@@ -2933,3 +3223,5 @@ propeller_reorg(void)
 #define TARGET_ASM_UNALIGNED_SI_OP "\tlong\t"
 
 struct gcc_target targetm = TARGET_INITIALIZER;
+
+#include "gt-propeller.h"

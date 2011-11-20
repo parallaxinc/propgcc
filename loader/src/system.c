@@ -96,7 +96,7 @@ int xbAddFilePath(const char *name)
     int len;
     if (!(end = strrchr(name, DIR_SEP)))
         return FALSE;
-    len = end - name;
+    len = (int)(end - name);
     if (!(entry  = malloc(sizeof(PathEntry) + len)))
         return FALSE;
     strncpy(entry->path, name, len);
@@ -114,7 +114,7 @@ int xbAddProgramPath(char *argv[])
     static char fullpath[1024];
     char *p;
 
-#if defined(Q_OS_WIN32)
+#if defined(Q_OS_WIN32) || defined(MINGW)
     /* get the full path to the executable */
     if (!GetModuleFileNameA(NULL, fullpath, sizeof(fullpath)))
         return FALSE;
@@ -138,6 +138,9 @@ int xbAddProgramPath(char *argv[])
                 *p = '\0';
         }
     }
+
+    /* add propeller-load for propeller-gcc */
+    strcat(fullpath,"\\propeller-load");
 
     /* add the executable directory */
     xbAddPath(fullpath);
@@ -172,7 +175,7 @@ static const char *MakePath(PathEntry *entry, const char *name)
 {
     static char fullpath[PATH_MAX];
     sprintf(fullpath, "%s%c%s", entry->path, DIR_SEP, name);
-	return fullpath;
+    return fullpath;
 }
 
 /* functions below depend on stdio */
@@ -197,7 +200,7 @@ int xbCloseFile(void *file)
     return fclose((FILE *)file) == 0;
 }
 
-char *xbGetLine(void *file, char *buf, size_t size)
+char *xbGetLine(void *file, char *buf, int size)
 {
     return fgets(buf, size, (FILE *)file);
 }

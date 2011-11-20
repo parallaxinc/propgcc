@@ -2994,6 +2994,29 @@ A memory reference that is encoded within the opcode.
 
 @end table
 
+@item Propeller---@file{config/propeller/constraints.md}
+@table @code
+@item C
+A variable which has been placed in cog memory. This may usually be
+used anywhere one of the predefined registers (the @samp{r}
+constraint) may be used.
+
+@item I
+An unsigned integer that fits in 9 bits
+
+@item M
+A constant whose complement fits in 9 bits, that is a value in the
+range @minus{}512 to @minus{}1
+
+@item N
+A constant whose negative fits in 9 bits, that is a value in the range
+@minus{}511 to 0
+
+@item W
+A wide integer, one whose representation does not fit in 9 bits
+
+@end table
+
 @item RX---@file{config/rx/constraints.md}
 @table @code
 @item Q

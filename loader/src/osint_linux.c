@@ -45,7 +45,7 @@ typedef int HANDLE;
 static HANDLE hSerial;
 static struct termios old_sparm;
 
-void chk(char *fun, int sts)
+static void chk(char *fun, int sts)
 {
     if (sts != 0)
         printf("%s failed\n", fun);
@@ -136,7 +136,7 @@ int rx(uint8_t* buff, int n)
         printf("Error reading port: %d\n", (int)bytes);
         return 0;
     }
-    return bytes;
+    return (int)bytes;
 }
 
 /**
@@ -160,28 +160,7 @@ int tx(uint8_t* buff, int n)
         printf("Error writing port\n");
         return 0;
     }
-    return bytes;
-}
-
-/**
- * transmit a buffer and wait waitu microseconds
- * @param buff - char pointer to buffer
- * @param n - number of bytes in buffer to send
- * @returns zero on failure
- */
-int txwu(uint8_t* buff, int n, int waitu)
-{
-    struct timeval tv;
-    ssize_t bytes;
-    bytes = write(hSerial, buff, n);
-    if(bytes != n) {
-        printf("Error writing port\n");
-        return 0;
-    }
-    tv.tv_sec  = 0;
-    tv.tv_usec = waitu;
-    select(0,0,0,0,&tv);
-    return bytes;
+    return (int)bytes;
 }
 
 /**
@@ -250,25 +229,37 @@ void msleep(int ms)
 /**
  * simple terminal emulator
  */
+extern int check_for_exit;
+
 void terminal_mode(void)
 {
     struct termios oldt, newt;
     char buf[128];
     ssize_t cnt;
     fd_set set;
-    int sawescape = 0;
-    int sawbreak = 0;
+    int exit_char = 0xdead; /* not a valid character */
+    int sawexit_char = 0;
+    int sawexit_valid = 0; 
+    int exitcode = 0;
+    int continue_terminal = 1;
 
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
     newt.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
+    if (check_for_exit)
+      {
+	exit_char = 0xff;
+      }
+
+#if 0
     /* make it possible to detect breaks */
     tcgetattr(hSerial, &newt);
     newt.c_iflag &= ~IGNBRK;
     newt.c_iflag |= PARMRK;
     tcsetattr(hSerial, TCSANOW, &newt);
+#endif
 
     do {
         FD_ZERO(&set);
@@ -281,18 +272,23 @@ void terminal_mode(void)
 		    // check for breaks
 		    ssize_t realbytes = 0;
 		    for (i = 0; i < cnt; i++) {
-		      if (sawescape) {
-			if (buf[i] == '\377') {
-			  buf[realbytes++] = '\377';
-			  sawescape = 0;
-			} else {
-			  sawbreak = 1;
+		      if (sawexit_valid)
+			{
+			  exitcode = buf[i];
+			  continue_terminal = 0;
 			}
-		      } else if (buf[i] == '\377') {
-			sawescape = 1;
+		      else if (sawexit_char) {
+			if (buf[i] == 0) {
+			  sawexit_valid = 1;
+			} else {
+			  buf[realbytes++] = exit_char;
+			  buf[realbytes++] = buf[i];
+			  sawexit_char = 0;
+			}
+		      } else if (((int)buf[i] & 0xff) == exit_char) {
+			sawexit_char = 1;
 		      } else {
 			buf[realbytes++] = buf[i];
-			sawescape = 0;
 		      }
 		    }
 		    write(fileno(stdout), buf, realbytes);
@@ -308,9 +304,15 @@ void terminal_mode(void)
                 }
             }
         }
-    } while (!sawbreak);
+    } while (continue_terminal);
+
 done:
-    
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
+    if (sawexit_valid)
+      {
+	exit(exitcode);
+      }
+    
 }
 
