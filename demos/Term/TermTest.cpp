@@ -1,12 +1,25 @@
+#include <propeller.h>
 #include "CTerm.h"
 
-int __gxx_personality_sj0;
+#define C3
 
 int main(void)
 {
 	CTvTerm tv(12);
+	CVgaTerm vga(16);
+	CSerialTerm serial(stdout);
 
-	tv.str("Hello, world!");
+#ifdef C3
+    DIRA |= 1<<15;
+    OUTA &= ~(1<<15);
+#endif
+
+	tv.str("Hello, world! (tv)");
+	vga.str("Hello, world! (vga)");
+	serial.str("Hello, world! (serial)");
+
+	for (;;)
+		;
 
     return 0;
 }

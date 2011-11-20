@@ -11,6 +11,7 @@ extern "C"
 typedef struct TERM TERM;
 
 typedef struct {
+	int (*putch)(TERM *term, int ch);
 	int (*vblank)(TERM *term);
 } TERM_OPS;
 
@@ -42,7 +43,7 @@ void Term_clearScreen(TERM *term);
  * Term str function prints a string at current position
  * @param sptr is string to print
  */
-void Term_str(TERM *term, char* sptr);
+void Term_str(TERM *term, const char* sptr);
 
 /**
  * Term dec function prints a decimal number at current position
@@ -81,7 +82,7 @@ void Term_bin(TERM *term, int value, int digits);
  * @param value is number to print
  * @param digits is number of digits in value to print
  */
-void Term_out(TERM *term, int c);
+int Term_out(TERM *term, int c);
 
 /**
  * Term setcolors function sets the palette to that defined by pointer.
@@ -99,7 +100,7 @@ void Term_out(TERM *term, int c);
  *
  * @param palette is a char array[16].
  */
-void Term_setColorPalette(TERM *term, char* palette);
+void Term_setColorPalette(TERM *term, const char* palette);
 
 /**
  * Term setTileColor sets tile data color at x,y position
@@ -189,13 +190,13 @@ int Term_getRows(TERM *term);
  * Term print null terminated char* to screen with normal stdio definitions
  * @param s is null terminated string to print using putchar
  */
-void Term_print(TERM *term, char* s);
+void Term_print(TERM *term, const char* s);
 
 /**
  * Term putchar print char to screen with normal stdio definitions
  * @param c is character to print
  */
-int Term_putchar(TERM *term, char c);
+int Term_putchar(TERM *term, int c);
 
 #ifdef __cplusplus
 }

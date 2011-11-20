@@ -1054,8 +1054,10 @@ void DFS_Seek(PFILEINFO fileinfo, uint32_t offset, uint8_t *scratch)
 
 		// seek by clusters
 		// larwe 9/30/06 bugfix changed .rem to .quot in both div calls
+		// Replaced "fileinfo->pointer + offset" with "offset".  The
+		// while loop would never terminate.  Dave Hein, 11/20/11
 		while (div(fileinfo->pointer, fileinfo->volinfo->secperclus * SECTOR_SIZE).quot !=
-		  div(fileinfo->pointer + offset, fileinfo->volinfo->secperclus * SECTOR_SIZE).quot) {
+		  div(offset, fileinfo->volinfo->secperclus * SECTOR_SIZE).quot) {
 
 			fileinfo->cluster = DFS_GetFAT(fileinfo->volinfo, scratch, &tempint, fileinfo->cluster);
 			// Abort if there was an error
