@@ -75,6 +75,12 @@ struct _thread {
   /* re-use arg for the thread return value */
   void *arg;             /* thread argument */
   void *(*start)(void *);/* start function */
+
+  /* cog affinity mask: note that this is actually the inverse of
+     the affinity mask, so if it's 0 (the default) we can run on any
+     cog
+  */
+  unsigned short affinity; /* processor affinity mask inverted */
 };
 
 /*
@@ -139,6 +145,9 @@ extern void (*__yield_ptr)(void);
 /* hook for sleeping until the clock() reaches a specific count */
 extern void (*__napuntil_ptr)(unsigned int newclock);
 extern void __napuntil(unsigned int newclock);
+
+/* macro for finding our own CPU id in a bit mask */
+#define __this_cpu_mask() (1<<__builtin_propeller_cogid())
 
 #if defined(__cplusplus)
 }

@@ -58,12 +58,21 @@ _pthread_addqueue(_pthread_queue_t *queue, _pthread_state_t *thr)
 }
 
 /* this should be called only if we already hold the _pthread_lock */
+/* get the first thing in the queue that is allowed on this cog
+   (has proper affinity)
+*/
 static _pthread_state_t *
 _pthread_getqueuehead(_pthread_queue_t *queue)
 {
   _pthread_state_t *p = *queue;
-
+  unsigned short cpumask = __this_cpu_mask();
   ASSERT_LOCKED();
+  while (p && (p->affinity & cpumask) != 0)
+    {
+      queue = &p->queue_next;
+      p = *queue;
+    }
+
   if (p) {
     *queue = p->queue_next;
     p->queue_next = NULL;
@@ -104,27 +113,28 @@ _pthread_schedule_raw(void)
 #endif
   if (__ready_queue) {
     next = _pthread_getqueuehead(&__ready_queue);
-    _TLS = next;
-    longjmp(next->jmpbuf, 1);
-  } else {
-    /* nothing ready to run */
-    /* hmmm, this is a tricky one; let's hope something on another CPU
-       will eventually add something to the ready queue
-       release the pthreads lock and wait for that
-    */
-    __unlock_pthreads();
-#if defined(REAL_SLEEP)
-    while (!__ready_queue && !__timer_queue) 
-      {
-      }
-#else
-    while (!__ready_queue) 
-      {
-      }
-#endif
-    __lock_pthreads();
-    goto again;
+    if (next) {
+      _TLS = next;
+      longjmp(next->jmpbuf, 1);
+    }
   }
+  /* nothing ready to run */
+  /* hmmm, this is a tricky one; let's hope something on another CPU
+     will eventually add something to the ready queue
+     release the pthreads lock and wait for that
+  */
+  __unlock_pthreads();
+#if defined(REAL_SLEEP)
+  while (!__ready_queue && !__timer_queue) 
+    {
+    }
+#else
+  while (!__ready_queue) 
+    {
+    }
+#endif
+  __lock_pthreads();
+  goto again;
 }
 static void
 _pthread_schedule(void)

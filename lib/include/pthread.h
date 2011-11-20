@@ -97,4 +97,19 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex);
 void pthread_yield(void);
 pthread_t pthread_self(void);
 
+/*
+ * set processor affinity
+ */
+
+/* set a mask of which cogs this thread can run on */
+void pthread_set_cog_affinity_np(pthread_t *thread, unsigned short cogmask);
+
+/* set the current thread to run on the current cog */
+void pthread_set_affinity_thiscog_np(void);
+
+#define pthread_set_cog_affinity_np(thread, mask) \
+  do { thread->affinity = ~(mask); } while (0)
+
+#define pthread_set_affinity_thiscog_np() pthread_set_cog_affinity_np(_TLS, __this_cpu_mask())
+
 #endif
