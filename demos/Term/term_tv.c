@@ -33,7 +33,6 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
     TvText_t *tvText = &tvTerm->control;
     extern uint32_t binary_TV_dat_start[];
 
-#if 0
 	term->ops = &ops;
     term->screen = tvTerm->screen;
     term->colors = tvTerm->colors;
@@ -69,7 +68,6 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
 
     // blank the screen
     Term_clearScreen(term);
-#endif
 
     return term;
 }
