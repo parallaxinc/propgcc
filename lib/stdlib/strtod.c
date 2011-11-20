@@ -15,16 +15,16 @@
 #include <errno.h>
 
 /*
- * calculate v * 10^n
+ * calculate v * base^n
  *
  * e.g. for v * 10^13 (where 13 = 0xD == 0b01101) 
  *
  * calc = 10.0 * 10^4 * 10^8
  */
-static double
-__mul_pow_ten(long double v, int n)
+static long double
+__mul_pow(long double v, int n, long double base)
 {
-  long double powten = 10.0;
+  long double powten = base;
   long double calc = 1.0;
   int minus = 0;
 
@@ -138,7 +138,7 @@ strtold(const char *str, char **endptr)
 	{
 	  exp = -exp;
 	}
-      v = __mul_pow_ten(v, exp);
+      v = __mul_pow(v, exp, hex ? 2.0 : 10.0);
     }
 
   if (v == HUGE_VALL)
