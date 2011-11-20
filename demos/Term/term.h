@@ -1,6 +1,11 @@
 #ifndef __TERM_H__
 #define __TERM_H__
 
+#ifdef __cplusplus
+extern "C" 
+{
+#endif
+
 #include <stdint.h>
 
 typedef struct TERM TERM;
@@ -191,5 +196,9 @@ void Term_print(TERM *term, char* s);
  * @param c is character to print
  */
 int Term_putchar(TERM *term, char c);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

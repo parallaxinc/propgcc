@@ -1,6 +1,11 @@
 #ifndef __TERM_TV_H__
 #define __TERM_TV_H__
 
+#ifdef __cplusplus
+extern "C" 
+{
+#endif
+
 #include "term.h"
 
 /**
@@ -58,5 +63,9 @@ typedef struct {
 
 TERM *tvTerm_start(TERM_TV *tvTerm, int basepin);
 void tvTerm_stop(TERM *term);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
