@@ -70,26 +70,65 @@ typedef unsigned char uint8_t;
 #define DEF_RXPIN           31
 #define DEF_TXPIN           30
 #define DEF_TVPIN           12
+#define DEF_SDSPIDO         22  // these next four match the PropBOE
+#define DEF_SDSPICLK        23
+#define DEF_SDSPIDI         24
+#define DEF_SDSPICS         25
+
+/* valid mask bits */
+#define VALID_CLKFREQ           (1 << 0)
+#define VALID_CLKMODE           (1 << 1)
+#define VALID_BAUDRATE          (1 << 2)
+#define VALID_RXPIN             (1 << 3)
+#define VALID_TXPIN             (1 << 4)
+#define VALID_TVPIN             (1 << 5)
+#define VALID_CACHEDRIVER       (1 << 6)
+#define VALID_CACHESIZE         (1 << 7)
+#define VALID_CACHEPARAM1       (1 << 8)
+#define VALID_CACHEPARAM2       (1 << 9)
+#define VALID_SDDRIVER          (1 << 10)
+#define VALID_SDSPIDO           (1 << 11)
+#define VALID_SDSPICLK          (1 << 12)
+#define VALID_SDSPIDI           (1 << 13)
+#define VALID_SDSPICS           (1 << 14)
+#define VALID_SDSPICLR          (1 << 15)
+#define VALID_SDSPISEL          (1 << 16)
+#define VALID_SDSPIINC          (1 << 17)
+#define VALID_SDSPIMSK          (1 << 18)
+#define VALID_EEPROMFIRST       (1 << 19)
 
 typedef struct BoardConfig BoardConfig;
 struct BoardConfig {
+    uint32_t validMask;
     uint32_t clkfreq;
-    uint8_t clkmode;
+    uint32_t clkmode;
     uint32_t baudrate;
-    uint8_t rxpin;
-    uint8_t txpin;
-    uint8_t tvpin;
+    uint32_t rxpin;
+    uint32_t txpin;
+    uint32_t tvpin;
     char *cacheDriver;
     uint32_t cacheSize;
     uint32_t cacheParam1;
     uint32_t cacheParam2;
+    char *sdDriver;
+    uint32_t sdspiDO;
+    uint32_t sdspiClk;
+    uint32_t sdspiDI;
+    uint32_t sdspiCS;
+    uint32_t sdspiClr;
+    uint32_t sdspiInc;
+    uint32_t sdspiSel;
+    uint32_t sdspiMsk;
+    uint32_t eepromFirst;
     BoardConfig *next;
     char name[1];
 };
 
+BoardConfig *NewBoardConfig(const char *name);
 void ParseConfigurationFile(System *sys, const char *path);
-void SetConfigField(BoardConfig *config, char *tag, char *value);
+int SetConfigField(BoardConfig *config, char *tag, char *value);
 BoardConfig *GetBoardConfig(const char *name);
+void MergeConfigs(BoardConfig *dst, BoardConfig *src);
 #ifdef NEED_STRCASECMP
 int strcasecmp(const char *s1, const char *s2);
 #endif

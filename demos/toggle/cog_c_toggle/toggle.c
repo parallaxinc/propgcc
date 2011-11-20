@@ -7,8 +7,8 @@
  * MIT Licensed (see at end of file for exact terms)
  */
 
-#include "stdio.h"  // using temporary stdio
-#include "propeller.h"
+#include <stdio.h>  // using temporary stdio
+#include <propeller.h>
 #include "toggle.h"
 
 /*
@@ -33,6 +33,11 @@ void start(void *parptr)
 }
 
 /*
+ * togglecount counts how many times the LED has been toggled
+ */
+volatile int togglecount = 0;
+
+/*
  * main code
  * This is the code running in the LMM cog (cog 0).
  * It launches another cog to actually run the 
@@ -42,19 +47,12 @@ void start(void *parptr)
 
 void main (int argc,  char* argv[])
 {
-    int n;
-    int result;
-    unsigned int startTime;
-    unsigned int endTime;
-    unsigned int executionTime;
-    unsigned int rawTime;
-
     printf("hello, world!\n");
 
     /* set up the parameters for the C cog */
     par.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
     /* start the new cog */
-    start(&par.m);
+        start(&par.m);
     printf("toggle cog has started\n");
 
     /* every 2 seconds update the flashing frequency so the
@@ -64,6 +62,7 @@ void main (int argc,  char* argv[])
       par.m.wait_time =  par.m.wait_time >> 1;
       if (par.m.wait_time < MIN_GAP)
 	par.m.wait_time = _clkfreq;
+      printf("toggle count = %d\n", togglecount);
     }
 }
 

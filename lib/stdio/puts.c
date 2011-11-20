@@ -7,6 +7,7 @@
  * MIT licensed (see terms at end of file)
  */
 #include <stdio.h>
+#include <sys/thread.h>
 
 int
 puts(const char *str)
@@ -18,9 +19,12 @@ puts(const char *str)
 
   if (bytes >= 0) {
     c = fputc('\n', stdout);
-    if (c < 0) return EOF;
+    if (c < 0) {
+      return EOF;
+    }
     bytes++;
   }
+
   return bytes;
 }
 

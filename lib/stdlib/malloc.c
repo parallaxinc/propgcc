@@ -12,23 +12,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct MemHeader {
-  struct MemHeader *next;  /* pointer to next member, if on free list */
-  size_t len;
-} MemHeader;
-
-/* magic number to indicate allocated memory */
-#define MAGIC ((MemHeader *)0xa110c)
-
-/* function to request memory from the OS */
-extern void *_sbrk(unsigned bytes);
-
-/*
- * FIXME: this needs to be made thread safe
- */
+#include <sys/thread.h>
+#include "malloc.h"
 
 static MemHeader *freelist;
+static atomic_t malloc_lock;
 
 void *
 malloc(size_t n)
@@ -39,6 +27,7 @@ malloc(size_t n)
 
   numunits = (n + sizeof(MemHeader)-1)/sizeof(MemHeader) + 1;
 
+  __lock(&malloc_lock);
   prevp = &freelist;
 
   for (p = (*prevp); p; prevp = &p->next, p = p->next)
@@ -66,6 +55,7 @@ malloc(size_t n)
     {
       p = _sbrk(numunits * sizeof(MemHeader));
     }
+  __unlock(&malloc_lock);
   if (!p)
     return NULL;
   p->next = MAGIC;
@@ -87,11 +77,13 @@ free(void *ptr)
     }
   thisp->next = NULL;
 
+  __lock(&malloc_lock);
   /* see if we can merge this into a block on the free list */
   if (!freelist)
     {
       /* no freelist, so just release this right away */
       freelist = thisp;
+      __unlock(&malloc_lock);
       return;
     }
 
@@ -113,6 +105,7 @@ free(void *ptr)
 	      p->next = nextp->next;
 	      nextp->next = NULL;
 	    }
+	  __unlock(&malloc_lock);
 	  return;
 	}
 
@@ -121,6 +114,7 @@ free(void *ptr)
 	  *prev = thisp;
 	  thisp->next = p->next;
 	  thisp->len += p->len;
+	  __unlock(&malloc_lock);
 	  return;
 	}
 
@@ -135,61 +129,9 @@ free(void *ptr)
   /* just add it to the free list */
   thisp->next = *prev;
   *prev = thisp;
+  __unlock(&malloc_lock);
 }
 
-/*
- * realloc: expand or shrink a block
- * ideally when expanding we would look for a free block just after this one and
- * expand it on request, but for now we just punt
- * the shrinking we really do correctly though
- */
-void *
-realloc(void *ptr, size_t n)
-{
-  MemHeader *thisp, *newp;
-  void *newptr;
-  size_t numunits;
-
-  if (ptr == NULL)
-    return malloc(n);
-  if (n == 0)
-    {
-      free(ptr);
-      return NULL;
-    }
-
-  thisp = (MemHeader *)ptr;
-  --thisp;
-  if (thisp->next != MAGIC)
-    {
-      return NULL; /* cannot do anything */
-    }
-
-  numunits = (n + sizeof(MemHeader)-1)/sizeof(MemHeader) + 1;
-  if (thisp->len == numunits)
-    {
-      /* nothing to do, just return it unchanged */
-      return ptr;
-    }
-  if (thisp->len > numunits)
-    {
-      /* shrink the block */
-      newp = thisp + numunits;
-      newp->next = MAGIC;
-      newp->len = thisp->len - numunits;
-      thisp->len -= numunits;
-      free(newp+1);
-      return ptr;
-    }
-
-  /* OK, the tricky case: allocate a new block and copy the memory into it */
-  newptr = malloc(n);
-  if (!newptr)
-    return NULL;
-  memcpy(newptr, ptr, (thisp->len-1)*sizeof(MemHeader));
-  free(ptr);
-  return newptr;
-}
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------

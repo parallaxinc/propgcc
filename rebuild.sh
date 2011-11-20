@@ -29,6 +29,11 @@ then
   OS=cygwin
   PORT=COM16
   BOARD=c3
+elif test x$UNAME = xMsys
+then
+  OS=msys
+  PORT=COM16
+  BOARD=c3
 elif test x$UNAME = xLinux
 then
   OS=linux
@@ -61,6 +66,11 @@ fi
 # build binutils
 #
 mkdir -p ../build/binutils
+
+# do this incase we texi needs it
+mkdir -p ../build/binutils/etc
+cp gnu-oids.texi ../build/binutils/etc
+
 cd ../build/binutils
 ../../propgcc/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls
 if test $? != 0
@@ -90,7 +100,7 @@ cd ../../propgcc
 #
 mkdir -p ../build/gcc
 cd ../build/gcc
-../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp
+../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto
 if test $? != 0
 then
    echo "gcc configure failed."
@@ -107,22 +117,7 @@ fi
 make install-gcc
 if test $? != 0
 then
-   echo "binutils make install-gcc failed."
-   cd ../../propgcc
-   exit 1
-fi
-
-make all-target-libgcc
-if test $? != 0
-then
-   echo "libgcc make all-target-libgcc failed."
-   cd ../../propgcc
-   exit 1
-fi
-make install-target-libgcc
-if test $? != 0
-then
-   echo "libgcc make install-target-libgcc failed."
+   echo "gcc make install-gcc failed."
    cd ../../propgcc
    exit 1
 fi
@@ -159,10 +154,17 @@ cd ../../propgcc
 # build library
 #
 cd lib
+make clean
+if test $? != 0
+then
+  echo "library build failed - make clean"
+  cd ..
+  exit 1
+fi
 make
 if test $? != 0
 then
-  echo "library build failed"
+  echo "library build failed - make"
   cd ..
   exit 1
 fi
@@ -176,9 +178,42 @@ fi
 cd ..
 
 #
+# copy the linker scripts
+#
+cp -f ldscripts/* $PREFIX/propeller-elf/lib
+if test $? != 0
+then
+  echo "ldscripts install failed"
+  exit 1
+fi
+
+#
+# build gcc libstdc++
+# this must be done after the library build, since it depends on
+# library header files
+#
+cd ../build/gcc
+make all
+if test $? != 0
+then
+   echo "gcc make all failed"
+   cd ../../propgcc
+   exit 1
+fi
+make install
+if test $? != 0
+then
+   echo "gcc make install failed."
+   cd ../../propgcc
+   exit 1
+fi
+cd ../../propgcc
+
+#
 # build propeller-load
 #
-make -C loader
-make -C loader install
+make -C loader TARGET=../../build/loader
+make -C loader TARGET=../../build/loader install
+
 echo "Build complete."
 exit 0

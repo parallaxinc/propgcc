@@ -2,52 +2,83 @@
 #define _STDLIB_H
 
 #include <sys/size_t.h>
+#include <sys/wchar_t.h>
 #include <sys/null.h>
 #include <compiler.h>
 
-double atof(const char *);
-int    atoi(const char *);
-long   atol(const char *);
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
-long double strtold(const char *nptr, char **endptr);
-double strtod(const char *nptr, char **endptr);
-float  strtof(const char *nptr, char **endptr);
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
 
-long strtol(const char *nptr, char **endptr, int base);
-unsigned long strtoul(const char *nptr, char **endptr, int base);
-long long strtoll(const char *nptr, char **endptr, int base);
-unsigned long long strtoull(const char *nptr, char **endptr, int base);
+  double atof(const char *);
+  int    atoi(const char *);
+  long   atol(const char *);
+  long long atoll(const char *);
 
-int rand(void);
-void srand(unsigned int seed);
+  long double strtold(const char *nptr, char **endptr);
+  double strtod(const char *nptr, char **endptr);
+  float  strtof(const char *nptr, char **endptr);
 
-void *malloc(size_t n);
-void *calloc(size_t, size_t);
-void *realloc(void *, size_t);
-void free(void *);
+  long strtol(const char *nptr, char **endptr, int base);
+  unsigned long strtoul(const char *nptr, char **endptr, int base);
+  long long strtoll(const char *nptr, char **endptr, int base);
+  unsigned long long strtoull(const char *nptr, char **endptr, int base);
 
-int atexit(void (*func)(void));
-_NORETURN void exit(int status);
-_NORETURN void abort(void);
+#define RAND_MAX    0x7fff
+  int rand(void);
+  void srand(unsigned int seed);
 
-_CONST int abs(int i);
-_CONST long labs(long l);
-_CONST long long llabs(long long ll);
+  void *malloc(size_t n);
+  void *calloc(size_t, size_t);
+  void *realloc(void *, size_t);
+  void free(void *);
 
-typedef struct {
-  int quot, rem;
-} div_t;
+  int atexit(void (*func)(void));
+  _NORETURN void exit(int status);
+  _NORETURN void abort(void);
+  _NORETURN void _Exit(int status);
 
-typedef struct {
-  long int quot, rem;
-} ldiv_t;
+  _CONST int abs(int i);
+  _CONST long labs(long l);
+  _CONST long long llabs(long long ll);
 
-typedef struct {
-  long long quot, rem;
-} lldiv_t;
+  typedef struct {
+    int quot, rem;
+  } div_t;
 
-div_t div(int num, int denom);
-ldiv_t ldiv(long num, long denom);
-lldiv_t lldiv(long long num, long long denom);
+  typedef struct {
+    long int quot, rem;
+  } ldiv_t;
+
+  typedef struct {
+    long long quot, rem;
+  } lldiv_t;
+
+  div_t div(int num, int denom);
+  ldiv_t ldiv(long num, long denom);
+  lldiv_t lldiv(long long num, long long denom);
+
+  void qsort(void *base, size_t nmemb, size_t size, int (*compare)(const void *, const void *));
+  void *bsearch(const void *key, const void *base, size_t nmemb, size_t size,
+		int (*compare)(const void *, const void *));
+
+  char *getenv(const char *name);
+
+  /* multibyte character functions */
+#define MB_CUR_MAX 1  /* in the C locale we do no multibyte characters */
+#define MB_LEN_MAX 6  /* in Unicode up to 6 UTF-8 bytes per unicode wchar_t */
+
+  int mblen(const char *s, size_t n);
+  int mbtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n);
+
+  /* not implemented */
+  int system(const char *command);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

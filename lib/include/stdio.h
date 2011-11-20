@@ -1,3 +1,28 @@
+/*
+ * Implementation of stdio library functions
+ * Copyright (c) 2011 Parallax, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * +--------------------------------------------------------------------
+ */
+
 #ifndef _STDIO_H
 #define _STDIO_H
 
@@ -12,6 +37,7 @@ extern "C" {
 #include <sys/va_list.h>
 #include <sys/driver.h>
 #include <sys/null.h>
+#include <sys/thread.h>
 
 #if defined(__GNUC__)
 #define _PRINTF_FUNC __attribute__((format (printf, 1, 2)))
@@ -38,6 +64,7 @@ extern "C" {
 #define	_IOWRT		0x0002		/* file may be written to */
 #define	_IOBIN		0x0004		/* file is in "binary" mode */
 #define	_IODEV		0x0008		/* file is a character device */
+#define _IOCOOKED       0x0010          /* do terminal input processing */
 #define	_IORW		0x0080		/* file is open for update (r+w) */
 #define	_IOFBF		0x0100		/* i/o is fully buffered */
 #define	_IOLBF		0x0200		/* i/o is line buffered */
@@ -52,6 +79,9 @@ extern "C" {
     unsigned char	*_base;		/* base of file buffer */
     unsigned int	_flag;		/* file status flags */
     long		_bsiz;		/* buffer size */
+
+    /* lock for multi-threaded access to FILE struct */
+    _atomic_t           _lock;
 
     /* driver for this file */
     struct __driver *_drv;
@@ -69,11 +99,14 @@ extern "C" {
 #define stdin (&__files[0])
 #define stdout (&__files[1])
 #define stderr (&__files[2])
+#define fileno(x) (x - __files)
 
   FILE *fopen(const char *name, const char *mode);
   FILE *freopen(const char *name, const char *mode, FILE *fp);
   int fclose(FILE *fp);
   int fflush(FILE *fp);
+  /* fdopen will always fail right now */
+  FILE *fdopen(int fd, const char *mode);
 
   void setbuf(FILE *fp, char *buf);
   int  setvbuf(FILE *fp, char *buf, int mode, size_t size);
@@ -85,11 +118,15 @@ extern "C" {
   int fputc(int c, FILE *fp);
   int fputs(const char *s, FILE *fp);
   int puts(const char *s);
+  int putc(int c, FILE *fp);
+  int putchar(int c);
 
   int fgetc(FILE *fp);
   char *fgets(char *s, int size, FILE *fp);
   char *gets(char *buf);
   int ungetc(int c, FILE *fp);
+  int getc(FILE *fp);
+  int getchar(void);
 
   size_t fread(void *ptr, size_t size, size_t nmeb, FILE *fp);
   size_t fwrite(const void *ptr, size_t size, size_t nmeb, FILE *fp);
@@ -129,16 +166,26 @@ extern "C" {
   int fgetpos(FILE *fp, fpos_t *pos);
   int fsetpos(FILE *fp, fpos_t *pos);
 
+  FILE *tmpfile(void);
+  char *tmpnam(char *s);
+
+#ifndef __PROPELLER_COG__
 #define putc(x, stream)    fputc(x, stream)
 #define putchar(x)         fputc(x, stdout)
-#define getc(x, stream)    fgetc(x, stream)
-#define getchar()          fgetc(x, stdout)
+#define getc(stream)       fgetc(stream)
+#define getchar()          fgetc(stdin)
+#endif
 
   /* internal functions */
   /* set up the FILE pointer in fp to point to a particular driver */
   FILE *__fopen_driver(FILE *fp, struct __driver *drv, const char *name, const char *mode);
   /* set up a FILE pointer to do I/O from a string */
   FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len);
+
+  /* lock used to let multiple threads work together nicer */
+  extern _atomic_t __stdio_lock;
+#define __lock_stdio()   __lock(&__stdio_lock)
+#define __unlock_stdio() __unlock(&__stdio_lock)
 
 #if defined(__cplusplus)
 }

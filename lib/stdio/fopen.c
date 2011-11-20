@@ -22,6 +22,7 @@ fopen(const char *name, const char *mode)
   int i;
   FILE *fp;
 
+  __lock_stdio();
   /*
    * find an open slot
    */
@@ -33,6 +34,7 @@ fopen(const char *name, const char *mode)
   if (i == FOPEN_MAX)
     {
       errno = EMFILE;
+      __unlock_stdio();
       return NULL;
     }
 
@@ -56,8 +58,11 @@ fopen(const char *name, const char *mode)
     {
       /* driver not found */
       errno = ENOENT;
+      __unlock_stdio();
       return NULL;
     }
+  fp->_drv = d;  /* mark it used */
+  __unlock_stdio();
 
   return __fopen_driver(fp, d, name+plen, mode);
 }

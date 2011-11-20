@@ -25,25 +25,24 @@ LIB2FUNCS_EXTRA =
 # compiled; these are pretty big anyway, and not often used
 # also, we do have a few assembly things as well
 
-FAKEASMFUNCS = _mulsc3 _muldc3 _multc3 _divsc3 _divdc3 _divtc3
-LIB1ASMFUNCS = _udivmoddi4 $(FAKEASMFUNCS)
+FAKEASMFUNCS = _multc3 _divtc3
+LIB1ASMFUNCS = $(FAKEASMFUNCS)
 LIB1ASMSRC = propeller/libgccExtras/fake_libgcc.asm
 
 LIBGCC2_CFLAGS += -Os
 TARGET_LIBGCC2_CFLAGS = -Os -fomit-frame-pointer
 
 # floating point emulation libraries
-
-FPBIT = fp-bit.c
-DPBIT = dp-bit.c
-
-fp-bit.c: $(srcdir)/config/fp-bit.c
-	echo '#define FLOAT'				> fp-bit.c
-	cat $(srcdir)/config/fp-bit.c			>> fp-bit.c
-
-dp-bit.c: $(srcdir)/config/fp-bit.c
-	cat $(srcdir)/config/fp-bit.c > dp-bit.c
-
+# uncomment the following if necessary
+#FPBIT = fp-bit.c
+#DPBIT = dp-bit.c
+#
+#fp-bit.c: $(srcdir)/config/fp-bit.c
+#	echo '#define FLOAT'				> fp-bit.c
+#	cat $(srcdir)/config/fp-bit.c			>> fp-bit.c
+#
+#dp-bit.c: $(srcdir)/config/fp-bit.c
+#	cat $(srcdir)/config/fp-bit.c > dp-bit.c
 
 # Build all combinations of library for various compiler switches
 # for now we'll just build with the default switches (for LMM based systems)

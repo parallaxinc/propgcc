@@ -40,7 +40,7 @@
 
 uint8_t LFSR = 80; // 'P'
 
-int iterate(void)
+static int iterate(void)
 {
     int bit = LFSR & 1;
     LFSR = (uint8_t)((LFSR << 1) | (((LFSR >> 7) ^ (LFSR >> 5) ^ (LFSR >> 4) ^ (LFSR >> 1)) & 1));
@@ -53,7 +53,7 @@ int iterate(void)
  * @param status - pointer to transaction status 0 on error
  * @returns bit state 1 or 0
  */
-int getBit(int* status, int timeout)
+static int getBit(int* status, int timeout)
 {
     uint8_t mybuf[2];
     int rc = rx_timeout(mybuf, 1, timeout);
@@ -68,7 +68,7 @@ int getBit(int* status, int timeout)
  * @param status - pointer to transaction status 0 on error
  * @returns bit state 1 or 0
  */
-int getAck(int* status, int timeout)
+static int getAck(int* status, int timeout)
 {
     uint8_t mybuf[2];
     int rc = rx_timeout(mybuf, 1, timeout);
@@ -83,7 +83,7 @@ int getAck(int* status, int timeout)
  * @param buff - uint8_t buffer
  * @returns nada
  */
-void makelong(uint32_t data, uint8_t* buff)
+static void makelong(uint32_t data, uint8_t* buff)
 {
     int n = 0;
     //printf("\n0x%08x: ", data);
@@ -102,7 +102,7 @@ void makelong(uint32_t data, uint8_t* buff)
  * @param data - value to send
  * @returns number of bytes sent
  */
-int sendlong(uint32_t data)
+static int sendlong(uint32_t data)
 {
     uint8_t mybuf[12];
     makelong(data, mybuf);
@@ -114,7 +114,7 @@ int sendlong(uint32_t data)
  * @param hSerial - file handle to serial port
  * @returns zero on failure
  */
-int hwfind(void)
+static int hwfind(void)
 {
     int  n, ii, jj, rc, to;
     uint8_t mybuf[300];
@@ -174,7 +174,7 @@ int hwfind(void)
  * @param port - pointer to com port name
  * @returns non-zero on error
  */
-int findprop(char* port)
+static int findprop(char* port)
 {
     int version = 0;
     hwreset();
@@ -194,7 +194,7 @@ int findprop(char* port)
  * @param type - type of upload
  * @returns non-zero on error
  */
-int upload(uint8_t* dlbuf, int count, int type)
+static int upload(uint8_t* dlbuf, int count, int type)
 {
     int  n  = 0;
     int  rc = 0;
@@ -264,7 +264,7 @@ int pload(char* file, char* port, int type)
         return 4;
     }
     else {
-        count = fread(dlbuf, 1, 0x8000, fp);
+        count = (int)fread(dlbuf, 1, 0x8000, fp);
         printf("Downloading %d bytes of '%s'\n", count, file);
         fclose(fp);
     }
@@ -295,9 +295,8 @@ int ploadfp(char* file, FILE *fp, char* port, int type)
 
     // read program if file parameter is available
     //
-    count = fread(dlbuf, 1, 0x8000, fp);
+    count = (int)fread(dlbuf, 1, 0x8000, fp);
     printf("Downloading %d bytes of '%s'\n", count, file);
-    fclose(fp);
 
     //
     // find propeller

@@ -35,15 +35,17 @@ r6	rdlong	cache_linemask, sp
 r7	add	sp, #4
 r8	rdlong	pc, sp
 r9	add	sp, #4
-r10	jmp	#__LMM_loop
-r11	long	0
-r12	long	0
+r10	locknew	r2 wc
+r11 IF_NC wrlong r2,__C_LOCK_PTR
+r12	jmp	#__LMM_loop
 r13	long	0
 r14	long	0
 lr	long	0
 sp	long	0
 pc	long	0
 
+
+__C_LOCK_PTR long __C_LOCK
 
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -127,7 +129,7 @@ __LMM_JMP
     '' On call:
     ''   __TMP0 contains the address from which to read
     '' On return:
-    ''   __TMP0 contains the value at that address
+    ''   __TMP1 contains the value at that address
     ''
 
 	.global __LMM_RDBYTE
@@ -156,7 +158,7 @@ rd_common
     muxnz   save_z_c, #2                    'save the z flag
     call    #cache_read                     'also restores the z flag
 rd_common_read
-    rdlong  __TMP0, memp
+    rdlong  __TMP1, memp
     shr     save_z_c, #1 wc                 'restore the c flag
 __LMM_RDBYTE_ret
 __LMM_RDWORD_ret
@@ -483,7 +485,8 @@ __UDIVSI
 	mov	__DIVR, r0
 	call	#__CLZSI
 	neg	__DIVCNT, r0
-	mov	r0, r1
+	mov	r0, r1 wz
+ IF_Z	jmp	#__UDIV_BY_ZERO
 	call	#__CLZSI
 	add	__DIVCNT, r0
 	mov	r0, #0
@@ -502,13 +505,22 @@ __UDIVSI_ret	ret
 __DIVSGN	long	0
 __DIVSI	mov	__DIVSGN, r0
 	xor	__DIVSGN, r1
-	abs	r0, r0
+	abs	r0, r0 wc
+	muxc	__DIVSGN, #1	' save original sign of r0
 	abs	r1, r1
 	call	#__UDIVSI
 	cmps	__DIVSGN, #0	wz, wc
  IF_B	neg	r0, r0
- IF_B	neg	r1, r1
+	test	__DIVSGN, #1 wz	' check original sign of r0
+ IF_NZ  neg	r1, r1		' make the modulus result match
 __DIVSI_ret	ret
+
+	'' come here on divide by zero
+	'' we probably should raise a signal
+__UDIV_BY_ZERO
+	neg	r0,#1
+	mov	r1,#0
+	jmp	#__UDIVSI_ret
 
 	.global __MULSI
 	.global __MULSI_ret
@@ -633,6 +645,45 @@ Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
 	jmp	#__LMM_loop
 
+	''
+	'' compare and swap a variable
+	'' r0 == new value to set if (*r2) == r1
+	'' r1 == value to compare with
+	'' r2 == pointer to memory
+	'' output: r0 == original value of (*r2)
+	''         Z flag is set if (*r2) == r1, clear otherwise
+	''
+	.global __CMPSWAPSI
+	.global __CMPSWAPSI_ret
+__CMPSWAPSI
+	rdlong	__TMP1,__C_LOCK_PTR
+	mov	__TMP0,r0	'' save value to set
+.swaplp
+	lockset	__TMP1 wc
+   IF_C jmp	#.swaplp
+
+	cmp	r2,external_start wc	'' check for hub or external memory
+IF_B	jmp	#.cmpswaphub
+	mov	t1,r2		'' save address
+	call	cache_read
+	rdlong	r0, memp	'' fetch original value
+	cmp	r0,r1 wz	'' compare with desired original value
+   IF_NZ jmp	#.cmpswapdone
+	mov	t1,r2
+	call	cache_write
+	wrlong	__TMP0,memp	'' if match, save new value
+	jmp	#.cmpswapdone
+	
+.cmpswaphub
+	rdlong	r0,r2		'' fetch original value
+	cmp	r0,r1 wz	'' compare with desired original value
+   IF_Z wrlong  __TMP0,r2	'' if match, save new value
+
+.cmpswapdone
+	'' now release the C lock
+	lockclr __TMP1
+__CMPSWAPSI_ret
+	ret
 
 	''
 	'' the fcache area should come last in the file
@@ -640,3 +691,11 @@ Lmm_fcache_doit
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
 	res	128	'' reserve 128 longs = 512 bytes
+
+	''
+	'' global variables
+	''
+	.section .hub
+__C_LOCK
+	long	0
+

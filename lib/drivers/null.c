@@ -41,6 +41,8 @@ _Driver _NullDriver =
     _null_read,
     _null_write,
     NULL,
+    NULL,
+    NULL,
     NULL
   };
 

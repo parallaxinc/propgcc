@@ -27,73 +27,71 @@ extern unsigned int _baud;
  */
 
 /*
- * We need _serial_tx to always be in HUB memory for speed.
+ * We need _serial_putbyte to always be in HUB memory for speed.
  * Time critical functions like this can't live in external memory.
  */
-
-/* here is the write function */
-static int __attribute__((section(".hubtext"))) _serial_write(FILE *fp, unsigned char *buf, int size)
+__attribute__((section(".hubtext")))
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+__attribute__((optimize("O3")))
+#endif
+static int
+_serial_putbyte(int c, FILE *fp)
 {
-    int i;
-    unsigned int txpin = fp->drvarg[1];
-    unsigned int bitcycles = fp->drvarg[3];
-    unsigned int waitcycles;
-    int value;
-    int count = 0;
+  unsigned int txmask = fp->drvarg[1];
+  unsigned int bitcycles = fp->drvarg[3];
+  unsigned int waitcycles;
+  int i, value;
 
-    /* set output */
-    _OUTA = (1<<txpin);
-    _DIRA = (1<<txpin);
+  /* set input */
+  _DIRA |= txmask;
+  _OUTA |= txmask;
 
-    while (count < size)
-      {
-	value = (*buf++ | 256) << 1;
-	waitcycles = _CNT + bitcycles;
-	for (i = 0; i < 10; i++)
-	  {
-	    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-	    _OUTA = (value & 1) << txpin;
-	    value >>= 1;
-	  }
-	count++;
-      }
-    return count;
+  value = (c | 256) << 1;
+  waitcycles = _CNT + bitcycles;
+  for (i = 0; i < 10; i++)
+    {
+      waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
+      if (value & 1)
+	_OUTA |= txmask;
+      else
+	_OUTA &= ~txmask;
+      value >>= 1;
+    }
+  _DIRA &= ~txmask;
+  return c;
 }
 
-/* and here is read */
-static int __attribute__((section(".hubtext"))) _serial_read(FILE *fp, unsigned char *buf, int size)
+/* and here is getbyte */
+/* we need to optimize with -O3 to get it to work in XMM mode */
+__attribute__((section(".hubtext")))
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+__attribute__((optimize("O3")))
+#endif
+static int
+_serial_getbyte(FILE *fp)
 {
-  unsigned int rxpin = fp->drvarg[0];
+  unsigned int rxmask = fp->drvarg[0];
   unsigned int bitcycles = fp->drvarg[3];
   unsigned int waitcycles;
   int value;
   int i;
-  int count = 0;
-
-  int mask = 1<<rxpin;
 
   /* set input */
-  _DIRA &= ~mask;
+  _DIRA &= ~rxmask;
 
-  while (count < size)
-    {
-      /* wait for a start bit */
-      __builtin_propeller_waitpeq(0, mask);
+  /* wait for a start bit */
+  __builtin_propeller_waitpeq(0, rxmask);
 
-      /* sync for one half bit */
-      waitcycles = _CNT + (bitcycles>>1) + bitcycles;
-      value = 0;
-      for (i = 0; i < 8; i++) {
-	waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-	value = ( (0 != (_INA & mask)) << 7) | (value >> 1);
-      }
-      __builtin_propeller_waitcnt(waitcycles, bitcycles);
-      buf[count++] = value;
-      /* end of line stops the read */
-      if (value == '\n') break;
-    }
-  return count;
+  /* sync for one half bit */
+  waitcycles = _CNT + (bitcycles>>1) + bitcycles;
+  value = 0;
+  for (i = 0; i < 8; i++) {
+    waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
+    value = ( (0 != (_INA & rxmask)) << 7) | (value >> 1);
+  }
+  return value;
 }
+
 
 /*
  * fopen function
@@ -118,14 +116,17 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
       rxpin = atoi(name);
       while (*name && *name != ',') name++;
       if (*name)
-	txpin = atoi(name);
+	{
+	  name++;
+	  txpin = atoi(name);
+	}
     }
   }
   bitcycles = _clkfreq / baud;
 
   /* set up the array */
-  fp->drvarg[0] = rxpin;
-  fp->drvarg[1] = txpin;
+  fp->drvarg[0] = (1U<<rxpin);
+  fp->drvarg[1] = (1U<<txpin);
   fp->drvarg[2] = baud;
   fp->drvarg[3] = bitcycles;
 
@@ -144,10 +145,13 @@ _Driver _SimpleSerialDriver =
     _SimpleSerialPrefix,
     _serial_fopen,
     NULL,       /* fclose hook, not needed */
-    _serial_read,
-    _serial_write,
+    _term_read,
+    _term_write,
     NULL,       /* seek, not needed */
-    NULL,       /* remove */
+    NULL,       /* remove, not needed */
+
+    _serial_getbyte,
+    _serial_putbyte
   };
 
 /*

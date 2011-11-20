@@ -2244,7 +2244,7 @@ powerpcle-*-eabi*)
 propeller-*)
 	tm_file="${tm_file} newlib-stdint.h"
 	use_gcc_stdint=wrap
-	tmake_file="propeller/t-propeller"
+	tmake_file="propeller/t-propeller propeller/t-propeller-softfp soft-fp/t-softfp"
         ;;
 
 rs6000-ibm-aix4.[3456789]* | powerpc-ibm-aix4.[3456789]*)

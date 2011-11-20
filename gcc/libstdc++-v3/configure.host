@@ -113,6 +113,9 @@ case "${host_cpu}" in
   powerpc* | rs6000)
     try_cpu=powerpc
     ;;
+  propeller*)
+    try_cpu=generic
+    ;;
   sparc* | ultrasparc)
     try_cpu=sparc
     ;;

@@ -6,7 +6,7 @@
 # #########################################################
 
 # Propeller Demo include
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 CFLAGS = -Os -mlmm
 
@@ -15,7 +15,7 @@ CFLAGS = -Os -mlmm
 #
 
 NAME = toggle
-OBJS = toggle.o $(PROPLIB)/libpropeller.a
+OBJS = toggle.o
 
 include $(PROPLIB)/lmmdemo.mk
 

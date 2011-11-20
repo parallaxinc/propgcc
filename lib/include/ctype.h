@@ -14,8 +14,25 @@ extern unsigned char __ctype[];
 #define _CTp    0x20            /* punctuation */
 #define _CTx    0x40            /* hexadecimal */
 
+  extern int isalnum(int c);
+  extern int isalpha(int c);
+  extern int isblank(int c);
+  extern int iscntrl(int c);
+  extern int isdigit(int c);
+  extern int isgraph(int c);
+  extern int islower(int c);
+  extern int isprint(int c);
+  extern int ispunct(int c);
+  extern int isspace(int c);
+  extern int isupper(int c);
+  extern int isxdigit(int c);
+
+  extern int tolower(int c);
+  extern int toupper(int c);
+
 #define isalnum(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl|_CTd))
 #define isalpha(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl))
+#define isblank(c)      (__ctype[(unsigned char)(c)]&(_CTs) && ((c) == ' ') || (c == '\t'))
 #define iscntrl(c)      (__ctype[(unsigned char)(c)]&_CTc)
 #define isdigit(c)      (__ctype[(unsigned char)(c)]&_CTd)
 #define isgraph(c)      (!(__ctype[(unsigned char)(c)]&(_CTc|_CTs)) && (__ctype[(unsigned char)(c)]))
@@ -26,8 +43,6 @@ extern unsigned char __ctype[];
 #define isupper(c)      (__ctype[(unsigned char)(c)]&_CTu)
 #define isxdigit(c)     (__ctype[(unsigned char)(c)]&_CTx)
 
-  extern int tolower(int c);
-  extern int toupper(int c);
 
 #if defined(__cplusplus)
 }

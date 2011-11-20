@@ -2,7 +2,7 @@
 # objects for this program
 #
 
-PROPLIB = ../../libpropeller
+PROPLIB = ../../common
 
 NAME = fibo
 OBJS = fibo.o
@@ -17,4 +17,4 @@ CFLAGS = -Os -mfcache
 
 all: $(NAME).elf
 
-include $(PROPLIB)/demo.mk
+include $(PROPLIB)/common.mk

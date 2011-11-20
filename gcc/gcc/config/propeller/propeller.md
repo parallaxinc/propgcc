@@ -52,7 +52,7 @@
    (UNSPEC_COGID	 0)
    (UNSPEC_COGINIT	 1)
    (UNSPEC_COGSTOP	 2)
-   (UNSPEC_TASKSWITCH    3)
+   (UNSPEC_COGSTATE      3)
    (UNSPEC_REVERSE       4)
    (UNSPEC_WAITCNT       5)
    (UNSPEC_WAITPEQ       6)
@@ -67,6 +67,8 @@
    (UNSPEC_LOCKSET      15)
    (UNSPEC_PUSHM        16)
    (UNSPEC_POPM         17)
+   (UNSPEC_CLKSET       18)
+   (UNSPEC_CAS          19)
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -663,7 +665,7 @@
   ""
   "@
    test\t%0,%1 wz
-   testn\t%0,%1 wz"
+   andn\t%0,%M1 wz,nr"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -684,7 +686,7 @@
   ""
   "@
    test\t%0,%1 wc
-   testn\t%0,%1 wc"
+   andn\t%0,%M1 wc,nr"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -735,7 +737,7 @@
           (const_int 0)))
    ]
   ""
-  "test\t%0,%B1 wz"
+  "test\t%0,%S1 wz"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -753,7 +755,7 @@
    ]
   ""
 {
-   return "and\t%0,%B2 wz";
+   return "and\t%0,%S2 wz";
 }
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
@@ -955,7 +957,7 @@
    neg\t%0, #%n1
    rdlong\t%0, %1
    wrlong\t%1, %0
-   mov\t__TMP0,%1\n\tcall #__LMM_RDLONG\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDLONG\n\tmov\t%0,__TMP1
    mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRLONG"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
     (set_attr "length" "4,4,4,4,12,12")
@@ -964,15 +966,16 @@
 )
 
 (define_insn "*movsi"
-  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
-	(match_operand:SI 1 "general_operand"               "rCI,N,Q,rC"))]
-  ""
+  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,rC,Q")
+	(match_operand:SI 1 "general_operand"               "rCI,B,N,Q,rC"))]
+  "!TARGET_XMM"
   "@
    mov\t%0, %1
+   mova\t%0, #%1
    neg\t%0, #%n1
    rdlong\t%0, %1
    wrlong\t%1, %0"
-   [(set_attr "type" "core,core,hub,hub")
+   [(set_attr "type" "core,core,core,hub,hub")
     (set_attr "predicable" "yes")]
 )
 
@@ -1059,13 +1062,13 @@
 (define_insn "*movhi_xmm"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
 	(match_operand:HI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
-  "TARGET_XMM"
+  "TARGET_XMM && (propeller_dst_operand(operands[0], HImode)||propeller_dst_operand(operands[1], HImode))"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
    rdword\t%0, %1
    wrword\t%1, %0
-   mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP1
    mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRWORD"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
     (set_attr "length" "4,4,4,4,12,12")
@@ -1076,8 +1079,8 @@
 (define_insn "*movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
-  "propeller_dst_operand (operands[0], HImode)
-   || propeller_dst_operand (operands[1], HImode)"
+  "!TARGET_XMM && (propeller_dst_operand (operands[0], HImode)
+                   || propeller_dst_operand (operands[1], HImode))"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -1102,13 +1105,16 @@
 (define_insn "*movqi_xmm"
   [(set (match_operand:QI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
 	(match_operand:QI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
-  "TARGET_XMM"
+  "TARGET_XMM &&
+   (propeller_dst_operand (operands[0], QImode)
+    || propeller_dst_operand (operands[1], QImode))
+  "
   "@
    mov\t%0, %1
    neg\t%0, #%n1
    rdbyte\t%0, %1
    wrbyte\t%1, %0
-   mov\t__TMP0,%1\n\tcall #__LMM_RDBYTE\n\tmov\t%0,__TMP0
+   mov\t__TMP0,%1\n\tcall #__LMM_RDBYTE\n\tmov\t%0,__TMP1
    mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRBYTE"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
     (set_attr "length" "4,4,4,4,12,12")
@@ -1119,8 +1125,9 @@
 (define_insn "*movqi"
   [(set (match_operand:QI 0 "nonimmediate_operand"   "=rC,rC,rC,Q")
 	(match_operand:QI 1 "general_operand"         "rCI,N,Q,rC"))]
-  "propeller_dst_operand (operands[0], QImode)
-   || propeller_dst_operand (operands[1], QImode)"
+  "!TARGET_XMM &&
+   (propeller_dst_operand (operands[0], QImode)
+     || propeller_dst_operand (operands[1], QImode))"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -1148,7 +1155,7 @@
       propeller_need_mask0000ffff = true;
       return "and\\t%0,__MASK_0000FFFF";
     case 1:
-      return "mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP0";
+      return "mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP1";
     default:
       gcc_unreachable ();
   }
@@ -1192,7 +1199,7 @@
     case 0:
       return "and\\t%0,#255";
     case 1:
-      return "mov\t__TMP0,%1\n\tcall\t#__LMM_RDBYTE\n\tmov\t%0,__TMP0";
+      return "mov\t__TMP0,%1\n\tcall\t#__LMM_RDBYTE\n\tmov\t%0,__TMP1";
     default:
       gcc_unreachable ();
   }
@@ -1358,6 +1365,23 @@
 ""
 "")
 
+;;
+;; we have a library udivmoddi4 routine, so try to force generation of
+;; a call to it
+;; we do this by having a simple expander that will catch divide by 2
+;;
+(define_expand "udivmoddi4"
+  [(set (match_operand:DI 0 "propeller_dst_operand")
+        (div:DI (match_operand:DI 2 "propeller_dst_operand" "")
+	        (match_operand:DI 3 "propeller_src_operand" "")))
+   (set (match_operand:DI 1 "propeller_dst_operand")
+        (mod:DI (match_dup 2)(match_dup 3)))
+  ]
+""
+{
+  FAIL;
+}
+)
 ;; -------------------------------------------------------------------------
 ;; min/max instructions
 ;; NOTE!! The Propeller instruction names are the reverse of what one
@@ -1677,9 +1701,7 @@
   "TARGET_LMM"
 {
   return (get_attr_length (insn) == 4) ?
-               (propeller_forward_branch_p (insn) ?
-	            "%p1\tadd\tpc,#(%l0-(.+4))" :
-		    "%p1\tsub\tpc,#((.+4)-%l0)") :
+               "%p1\tbrs\t%l0" :
 	       "%P1\tadd\tpc,#8\n\tjmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")
@@ -1701,9 +1723,7 @@
   "TARGET_LMM"
 {
   return (get_attr_length (insn) == 4) ?
-               (propeller_forward_branch_p (insn) ?
-	            "%P1\tadd\tpc,#(%l0-(.+4))" :
-		    "%P1\tsub\tpc,#((.+4)-%l0)") :
+               "%P1\tbrs\t%l0" :
 	       "%p1\tadd\tpc,#8\n\tjmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")
@@ -1904,9 +1924,7 @@
   "TARGET_LMM"
 {
   return (get_attr_length (insn) == 4) ?
-               (propeller_forward_branch_p (insn) ?
-	            "add\tpc,#(%l0-(.+4))" :
-		    "sub\tpc,#((.+4)-%l0)") :
+               "brs\t%l0" :
 	       "jmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [ (set (attr "length")
@@ -2010,7 +2028,7 @@
    (use (reg:SI LINK_REG))
   ]
   ""
-  "\n%0_ret\tret"
+  "'native return\n%0_ret\n\tret"
 )
 
 (define_expand "return"
@@ -2182,7 +2200,7 @@
 	      (match_operand:SI 1 "propeller_dst_operand" "rC")
 	      (const_int -1)))))
    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (if_then_else (ltu (reg:CC_C CC_REG)(const_int 0))
+        (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
 	              (const_int 1)
 		      (const_int 0)))
    ]
@@ -2192,11 +2210,88 @@
 
 
 ;; -------------------------------------------------------------------------
+;; synchronization insns
+;; -------------------------------------------------------------------------
+;; We must use a pseudo-reg forced to reg 0 in the SET_DEST rather than
+;; hard register 0.  If we used hard register 0, then the next instruction
+;; would be a move from hard register 0 to a pseudo-reg, which could cause
+;; problems.
+
+;; compare and swap; this is implemented as a function, and only works
+;; on memory locations that all threads treat as special
+
+;; register usage of the function:
+;; input: r0 == new value for memory, r1 == old value for memory, r2 == pointer to memory
+;; output: r0 == original value for memory
+
+(define_insn "*sync_compare_and_swapsi"
+  [(set (match_operand:SI 0 "register_operand" "=z")
+        (mem:SI (reg:SI 2)))
+   (set (mem:SI (reg:SI 2))
+        (unspec_volatile:SI
+	  [(mem:SI (reg:SI 2))
+	   (reg:SI 1)
+	   (reg:SI 0)]
+          UNSPEC_CAS))
+   (set (reg:CC_Z CC_REG)
+        (compare:CC_Z (mem:SI (reg:SI 2))(reg:SI 1)))
+  ]
+""
+{
+  propeller_need_cmpswapsi = true;
+  return "call\t#__CMPSWAPSI";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "set")
+ ]
+)
+
+;;
+;; operand 0: result, namely the original value of the memory
+;; operand 1: memory location for test and swap
+;; operand 2: old value required (compare against)
+;; operand 3: new value to set if operand 1 == operand 2
+;; we synthesize operand 4 to be the address of operand 1
+;;
+(define_expand "sync_compare_and_swapsi"
+  [(set (reg:SI 0)(match_operand:SI 3 "propeller_src_operand" ""))
+   (set (reg:SI 1)(match_operand:SI 2 "propeller_src_operand" ""))
+   (use (match_operand:SI 1 "memory_operand" ""))
+   (set (reg:SI 2)(match_dup 4))
+   (parallel[
+     (set (match_operand:SI 0 "register_operand" "z")
+          (mem:SI (reg:SI 2)))
+     (set (mem:SI (reg:SI 2))
+          (unspec_volatile:SI
+	    [(mem:SI (reg:SI 2))
+             (reg:SI 1)
+             (reg:SI 0)]
+            UNSPEC_CAS))
+     (set (reg:CC_Z CC_REG)
+          (compare:CC_Z (mem:SI (reg:SI 2))(reg:SI 1)))
+     ])
+  ]
+""
+{
+  /* make sure address of operands[1] is a register */
+  if (!REG_P (XEXP (operands[1], 0)))
+    {
+      operands[1] = shallow_copy_rtx (operands[1]);
+      XEXP (operands[1], 0) = force_reg (Pmode, XEXP (operands[1], 0));
+    }
+  operands[4] = XEXP (operands[1], 0);
+}
+)
+
+;; -------------------------------------------------------------------------
 ;; Special insns for built in instructions
 ;; -------------------------------------------------------------------------
+
+;; cogid is an unspec_volatile because threads may switch between
+;; processors
 (define_insn "cogid"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-       (unspec:SI [(const_int 0)] UNSPEC_COGID))
+       (unspec_volatile:SI [(const_int 0)] UNSPEC_COGID))
   ]
   ""
   "cogid\t%0"
@@ -2204,15 +2299,54 @@
    (set_attr "predicable" "yes")]
 )
 
-(define_insn "coginit"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+;;
+;; we split coginit up into 2 insns, one to set the lock and the
+;; second to update its state from the carry flag
+;; the coginit raw sets the carry flag to mean that the locknew failed,
+;; which menas that the register is to be set to -1 (i.e. < 0)
+;;
+(define_insn "*coginit_raw"
+  [
+    (set (reg:CC_C CC_REG)
+         (compare:CC_C
+	   (const_int 0)
+	   (unspec [(match_operand:SI 1 "propeller_dst_operand" "0")]
+	           UNSPEC_COGSTATE)))
+    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
        (unspec_volatile:SI
-         [(match_operand:SI 1 "propeller_dst_operand" "0")] UNSPEC_COGINIT))
+         [(match_dup 1)] UNSPEC_COGINIT))
   ]
   ""
-  "coginit\t%0 wr"
+  "coginit\t%0 wc,wr"
   [(set_attr "type" "hub")
    (set_attr "predicable" "yes")]
+)
+
+(define_insn_and_split "coginit"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=&rC")
+        (unspec:SI [(match_operand:SI 1 "propeller_dst_operand" "0")]
+	        UNSPEC_COGSTATE))
+   (unspec_volatile [(match_dup 1)] UNSPEC_COGINIT)]
+  ""
+  "#"
+  "reload_completed"
+  [(parallel
+     [(set (reg:CC_C CC_REG)
+           (compare:CC_C
+               (const_int 0)
+	       (unspec [(match_dup 1)] UNSPEC_COGSTATE)))
+      (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+       (unspec_volatile:SI
+         [(match_dup 1)] UNSPEC_COGINIT))
+      ])
+   (set (match_dup 0)
+         (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
+                       (const_int -1)
+                       (match_dup 0)))
+   ]
+   ""
+   [(set_attr "conds" "set")
+    (set_attr "length" "8")]
 )
 
 (define_insn "cogstop"
@@ -2224,17 +2358,12 @@
    (set_attr "predicable" "yes")]
 )
 
-(define_insn "taskswitch"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
-        (unspec_volatile:SI
-	  [(match_operand:SI 1 "general_operand" "rC,A")]
-            UNSPEC_TASKSWITCH))
-  ]
+(define_insn "clkset"
+  [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
+      UNSPEC_CLKSET)]
   ""
-  "@
-   jmpret\t%0,%1
-   jmpret\t%0,#%1"
-  [(set_attr "type" "call")
+  "clkset\t%0"
+  [(set_attr "type" "hub")
    (set_attr "predicable" "yes")]
 )
 
@@ -2249,15 +2378,41 @@
 )
 
 ;; allocate and return locks
-(define_insn "locknew"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (unspec_volatile:SI [(const_int 0)]
-                    UNSPEC_LOCKNEW))]
+(define_insn "*locknew_internal"
+  [(set (reg:CC_C CC_REG)
+        (compare:CC_C
+	  (const_int 0)
+	  (unspec [(const_int UNSPEC_LOCKNEW)] UNSPEC_LOCKSTATE)))
+   (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (unspec_volatile:SI [(const_int 0)] UNSPEC_LOCKNEW))]
   ""
-  "locknew\t%0"
+  "locknew\t%0 wc"
   [(set_attr "predicable" "yes")
    (set_attr "type" "hub")]
 )
+(define_insn_and_split "locknew"
+   [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+         (unspec_volatile:SI [(const_int UNSPEC_LOCKNEW)] UNSPEC_LOCKSTATE))]
+  ""
+  "#"
+  "reload_completed"
+  [(parallel
+     [(set (reg:CC_C CC_REG)
+           (compare:CC_C
+               (const_int 0)
+	       (unspec [(const_int UNSPEC_LOCKNEW)] UNSPEC_LOCKSTATE)))
+      (set (match_dup 0)(unspec_volatile:SI [(const_int 0)] UNSPEC_LOCKNEW))
+      ])
+    (set (match_dup 0)
+         (if_then_else:SI (ltu (reg:CC_C CC_REG)(const_int 0))
+                       (const_int -1)
+                       (match_dup 0)))
+   ]
+   ""
+   [(set_attr "conds" "set")
+    (set_attr "length" "8")]
+)
+
 (define_insn "lockret"
   [(unspec_volatile [(match_operand:SI 0 "propeller_dst_operand" "rC")]
                     UNSPEC_LOCKRET)]
@@ -2279,8 +2434,8 @@
 ;; set lock
 ;; this needs to be split into 2 insns, one to set the lock and the
 ;; second to update its state from the carry flag
-;; the lockset raw sets the carry flag to mean that the flag was set,
-;; which will mean that the register is set to -1 (i.e. < 0)
+;; the lockset raw sets the carry flag to mean that the locknew failed,
+;; which will mean that the register is to be set to -1 (i.e. < 0)
 
 (define_insn "*lockset_raw"
   [ (set (reg:CC_C CC_REG)
