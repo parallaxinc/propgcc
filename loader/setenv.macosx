@@ -1,0 +1,3 @@
+export OS=macosx
+export PORT=/dev/cu.usbserial-A8004ILf
+export BOARD=hub
