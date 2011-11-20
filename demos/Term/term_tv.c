@@ -19,6 +19,7 @@ static char default_palette[TERM_COLORTABLE_SIZE] =
 static int vblank(TERM *term);
 
 static TERM_OPS ops = {
+	Term_out,
 	vblank
 };
 
@@ -32,7 +33,8 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
     TvText_t *tvText = &tvTerm->control;
     extern uint32_t binary_TV_dat_start[];
 
-    term->ops = &ops;
+#if 0
+	term->ops = &ops;
     term->screen = tvTerm->screen;
     term->colors = tvTerm->colors;
     term->screensize = TV_TEXT_SCREENSIZE;
@@ -59,14 +61,15 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
     tvText->broadcast = 0;
     tvText->auralcog  = 0;
 
+    // start new cog from external memory using pasm and tvText
+    tvTerm->cogid = cognew((uint32_t)binary_TV_dat_start, (uint32_t)tvText) + 1;
+
     // set main fg/bg color
     Term_setColorPalette(term, default_palette);
 
     // blank the screen
     Term_clearScreen(term);
-
-    // start new cog from external memory using pasm and tvText
-    tvTerm->cogid = cognew((uint32_t)binary_TV_dat_start, (uint32_t)tvText) + 1;
+#endif
 
     return term;
 }

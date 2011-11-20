@@ -34,7 +34,7 @@ BOARD=$(PROPELLER_LOAD_BOARD)
 endif
 
 CFLAGS += -m$(MODEL)
-LDFLAGS = -m$(MODEL)
+LDFLAGS = -m$(MODEL) -lsupc++
 
 # basic gnu tools
 CC = propeller-elf-gcc

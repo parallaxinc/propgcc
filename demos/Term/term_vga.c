@@ -16,6 +16,7 @@ static char default_palette[TERM_COLORTABLE_SIZE] =
 static int vblank(TERM *term);
 
 static TERM_OPS ops = {
+	Term_out,
 	vblank
 };
 
