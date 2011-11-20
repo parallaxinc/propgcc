@@ -14,5 +14,6 @@ MODEL = lmm
 endif
 
 CFLAGS = -Wall -Os -DPROPELLER_GCC
+CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
 
 include ../common/common.mk

@@ -34,7 +34,7 @@ BOARD=$(PROPELLER_LOAD_BOARD)
 endif
 
 CFLAGS += -m$(MODEL)
-LDFLAGS = -m$(MODEL)
+LDFLAGS = -m$(MODEL) -fno-exceptions -fno-rtti
 LIBS = -lsupc++
 
 # basic gnu tools
@@ -59,7 +59,7 @@ $(NAME).elf: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CXXFLAGS) -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<
