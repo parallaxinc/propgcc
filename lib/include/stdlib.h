@@ -2,6 +2,7 @@
 #define _STDLIB_H
 
 #include <sys/size_t.h>
+#include <sys/wchar_t.h>
 #include <sys/null.h>
 #include <compiler.h>
 
@@ -11,7 +12,6 @@ extern "C" {
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
-#define MB_CUR_MAX 1
 
   double atof(const char *);
   int    atoi(const char *);
@@ -66,6 +66,13 @@ extern "C" {
 		int (*compare)(const void *, const void *));
 
   char *getenv(const char *name);
+
+  /* multibyte character functions */
+#define MB_CUR_MAX 1  /* in the C locale we do no multibyte characters */
+#define MB_LEN_MAX 6  /* in Unicode up to 6 UTF-8 bytes per unicode wchar_t */
+
+  int mblen(const char *s, size_t n);
+  int mbtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n);
 
   /* not implemented */
   int system(const char *command);
