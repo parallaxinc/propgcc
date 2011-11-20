@@ -74,7 +74,7 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
 /**
  * stop stops the cog running the native assembly driver 
  */
-void tvText_stop(TERM *term)
+void tvTerm_stop(TERM *term)
 {
 	TERM_TV *tvTerm = (TERM_TV *)term;
     if(tvTerm->cogid) {
