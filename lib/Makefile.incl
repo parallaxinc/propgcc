@@ -52,7 +52,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 STDLIB = malloc.o calloc.o realloc.o atoi.o atoll.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o strtof.o \
 	strtoll.o strtoull.o \
-	assert.o rand.o setjmp.o div.o abs.o getenv.o
+	assert.o rand.o setjmp.o div.o lldiv.o abs.o llabs.o getenv.o
 
 MISC = 	ctype.o toupper.o tolower.o \
 	isalpha.o isalnum.o iscntrl.o isprint.o isspace.o isdigit.o \
