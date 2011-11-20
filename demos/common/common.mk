@@ -34,7 +34,8 @@ BOARD=$(PROPELLER_LOAD_BOARD)
 endif
 
 CFLAGS += -m$(MODEL)
-LDFLAGS = -m$(MODEL) -lsupc++
+LDFLAGS = -m$(MODEL)
+LIBS = -lsupc++
 
 # basic gnu tools
 CC = propeller-elf-gcc
@@ -52,7 +53,7 @@ SPINDIR=.
 ECHO=echo
 
 $(NAME).elf: $(OBJS)
-	$(CC) $(LDFLAGS) $(LDSCRIPT) -o $@ $(OBJS)
+	$(CC) $(LDFLAGS) $(LDSCRIPT) -o $@ $(OBJS) $(LIBS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
