@@ -13,13 +13,17 @@
 
 struct _atexit_handler {
   struct _atexit_handler *next;
-  void (*func)(void);
+  void (*func)(void *);
+  void *arg;
 };
 
 struct _atexit_handler *__atexitlist = 0;
 
+/* the C++ runtime needs slightly more sophisticated atexit handling,
+ * which is provided by __cxa_atexit instead of atexit
+ */
 int
-atexit(void (*function)(void))
+__cxa_atexit(void (*function)(void *), void *arg, void *dso)
 {
   struct _atexit_handler *ah;
 
@@ -30,8 +34,15 @@ atexit(void (*function)(void))
     }
   ah->next = __atexitlist;
   ah->func = function;
+  ah->arg = arg;
   __atexitlist = ah;
   return 0;
+}
+
+int
+atexit(void (*func)(void))
+{
+  return __cxa_atexit((void (*)(void *))func, NULL, NULL);
 }
 
 /*
@@ -47,9 +58,12 @@ _run_atexit(void)
   /* run the atexit functions */
   for (ah = __atexitlist; ah; ah = ah->next)
     {
-      (*ah->func)();
+      (*ah->func)(ah->arg);
     }
 }
+
+__attribute__((weak)) char __dso_handle;
+
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------
