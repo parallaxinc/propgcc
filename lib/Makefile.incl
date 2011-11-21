@@ -31,7 +31,7 @@ MKDIR = mkdir -p
 
 VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:math:pthreads
 
-all: $(MODELDIR) $(MATHDIR) $(MODELDIR)/libc.a $(MODELDIR)/libm.a
+all: $(MODELDIR) $(MATHDIR) $(MODELDIR)/libc.a $(MODELDIR)/libm.a $(MODELDIR)/libpthread.a
 
 # $(PRINTF) are the functions which depend on vfprintf;
 # we include floating point versions of these in the math library
@@ -72,9 +72,10 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 	settimeofday.o gettimeofday.o
 
-THREADS = thread.o cogthread.o nap.o \
-	pthread_create.o pthread_join.o	pthread_detach.o \
-	pthread_mutex.o pthread_attr.o
+THREADS = thread.o cogthread.o nap.o
+
+PTHREADS = pthread_create.o pthread_join.o pthread_detach.o \
+	pthread_mutex.o pthread_attr.o pthread_io.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \
@@ -121,6 +122,7 @@ OBJS = $(STDIO) $(STDLIB) $(MISC) $(THREADS) $(STRING) $(TIME) $(DRIVERS) $(PROP
 MODEL_OBJS = $(addprefix $(MODELDIR)/, $(OBJS))
 MODEL_LIBM_OBJS = $(addprefix $(MATHDIR)/, $(LIBM))
 MODEL_LIBM_EXTRA_OBJS = $(addprefix $(MODELDIR)/, $(LIBM_EXTRA))
+MODEL_PTHREAD_OBJS = $(addprefix $(MODELDIR)/, $(PTHREADS))
 
 MODEL_MATH_OBJS = $(MODEL_LIBM_OBJS) $(MODEL_LIBM_EXTRA_OBJS)
 
@@ -128,6 +130,9 @@ $(MODELDIR)/libc.a: $(MODEL_OBJS)
 	$(AR) rs $@ $^
 
 $(MODELDIR)/libm.a: $(MODEL_MATH_OBJS)
+	$(AR) rs $@ $^
+
+$(MODELDIR)/libpthread.a: $(MODEL_PTHREAD_OBJS)
 	$(AR) rs $@ $^
 
 $(MODELDIR)/float_simple_printf.o: simple_printf.c

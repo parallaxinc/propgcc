@@ -35,7 +35,7 @@ endif
 
 CFLAGS += -m$(MODEL)
 LDFLAGS = -m$(MODEL) -fno-exceptions -fno-rtti
-LIBS = -lsupc++
+LIBS += -lsupc++
 
 # basic gnu tools
 CC = propeller-elf-gcc

@@ -6,7 +6,7 @@ CC = propeller-elf-gcc
 CFLAGS = -Os -m$(MODEL)
 
 thread.elf: thread.c
-	$(CC) -o $@ $(CFLAGS) $^
+	$(CC) -o $@ $(CFLAGS) $^ -lpthread
 
 clean:
 	rm -rf *.elf *.o

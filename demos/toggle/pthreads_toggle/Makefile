@@ -9,6 +9,7 @@
 PROPLIB = ../../common
 
 CFLAGS = -Os -mlmm
+LIBS = -lpthread
 
 #
 # objects for this program

@@ -2,18 +2,6 @@
 #include <stdio.h>
 #include <sys/driver.h>
 
-#ifdef FULL_DUPLEX
-/*
- * use the full duplex serial driver
- */
-extern _Driver _FullDuplexSerialDriver;
-
-_Driver *_driverlist[] = {
-  &_FullDuplexSerialDriver,
-  NULL
-};
-#endif
-
 #define LOOPCOUNT 10
 #define SLEEPTIME 3
 #define NUM_THREADS 11
