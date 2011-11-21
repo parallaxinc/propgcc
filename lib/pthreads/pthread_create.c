@@ -407,6 +407,9 @@ pthread_self(void)
 {
   return _pthread_self();
 }
+
+__asm__ (" .global __pthreadDriverList\n .set __pthreadDriverList, __driverlist\n");
+
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------

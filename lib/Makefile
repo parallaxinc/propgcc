@@ -28,17 +28,19 @@ all:	$(OBJDIR)
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
 
+SRCLIBS = libc.a libm.a libpthread.a
+
 install: all
 	mkdir -p $(DEST)/lib/short-doubles/
 	mkdir -p $(DEST)/lib/xmm/short-doubles/
 	mkdir -p $(DEST)/lib/xmmc/short-doubles/
 	cp -r include $(DEST)
-	cp $(OBJDIR)/lmm/libc.a $(OBJDIR)/lmm/libm.a $(DEST)/lib
-	cp $(OBJDIR)/lmm/short-doubles/libc.a $(OBJDIR)/lmm/short-doubles/libm.a $(DEST)/lib/short-doubles/
-	cp $(OBJDIR)/xmmc/libc.a $(OBJDIR)/xmmc/libm.a $(DEST)/lib/xmmc/
-	cp $(OBJDIR)/xmmc/short-doubles/libc.a $(OBJDIR)/xmmc/libm.a $(DEST)/lib/xmmc/short-doubles/
-	cp $(OBJDIR)/xmm/libc.a $(OBJDIR)/xmm/libm.a $(DEST)/lib/xmm/
-	cp $(OBJDIR)/xmm/short-doubles/libc.a $(OBJDIR)/xmm/libm.a $(DEST)/lib/xmm/short-doubles/
+	cp $(addprefix $(OBJDIR)/lmm/, $(SRCLIBS)) $(DEST)/lib/
+	cp $(addprefix $(OBJDIR)/lmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/short-doubles/
+	cp $(addprefix $(OBJDIR)/xmmc/, $(SRCLIBS)) $(DEST)/lib/xmmc/
+	cp $(addprefix $(OBJDIR)/xmmc/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmmc/short-doubles/
+	cp $(addprefix $(OBJDIR)/xmm/, $(SRCLIBS)) $(DEST)/lib/xmm/
+	cp $(addprefix $(OBJDIR)/xmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmm/short-doubles/
 	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
 	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
 
