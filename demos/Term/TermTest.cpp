@@ -14,9 +14,9 @@ int main(void)
     OUTA &= ~(1<<15);
 #endif
 
-	tv.str("Hello, world! (tv)");
-	vga.str("Hello, world! (vga)");
-	serial.str("Hello, world! (serial)");
+	tv.str("Hello, world! (tv)\n");
+	vga.str("Hello, world! (vga)\n");
+	serial.str("Hello, world! (serial)\n");
 
 	for (;;)
 		;

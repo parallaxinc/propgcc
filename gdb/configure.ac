@@ -886,6 +886,10 @@ case "${target}" in
   powerpc-*-eabi* | powerpcle-*-eabi* | powerpc-*-rtems* )
     libgloss_dir=rs6000
     ;;
+  propeller-*-*)
+    noconfigdirs="$noconfigdirs target-libffi target-boehm-gc libgloss"
+    unsupported_languages="$unsupported_languages fortran"
+    ;;
   rs6000-*-lynxos*)
     noconfigdirs="$noconfigdirs target-newlib gprof ${libgcj}"
     ;;
