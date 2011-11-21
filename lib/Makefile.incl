@@ -105,7 +105,9 @@ LIBM = 	k_rem_pio2.o k_cos.o k_sin.o k_tan.o \
 	s_tanf.o s_tanhf.o \
 	s_cacos.o s_cacosf.o s_casin.o s_casinf.o s_catan.o s_catanf.o \
 	s_cacosh.o s_cacoshf.o s_casinh.o s_casinhf.o s_catanh.o s_catanhf.o \
-	s_cabs.o s_cabsf.o
+	s_ccos.o s_ccosf.o s_csin.o s_csinf.o s_ctan.o s_ctanf.o \
+	s_ccosh.o s_ccoshf.o s_csinh.o s_csinhf.o s_ctanh.o s_ctanhf.o \
+	s_csqrt.o s_csqrtf.o s_cabs.o s_cabsf.o
 
 
 LIBM_EXTRA =	float_printf.o float_simple_printf.o $(PRINTF) \

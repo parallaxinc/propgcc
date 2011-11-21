@@ -44,6 +44,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 ctanhf(float complex z)
@@ -57,3 +58,8 @@ ctanhf(float complex z)
 	w = sinhf (2.0f * x) / d  +  (sinf (2.0f * y) / d) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef ctanh
+__strong_alias(ctanh, ctanhf);
+#endif

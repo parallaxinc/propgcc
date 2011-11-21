@@ -60,6 +60,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 csqrtf(float complex z)
@@ -129,3 +130,8 @@ csqrtf(float complex z)
 		w = t + r * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef csqrt
+__strong_alias(csqrt, csqrtf);
+#endif

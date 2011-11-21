@@ -51,6 +51,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 /* calculate cosh and sinh */
 
@@ -83,3 +84,8 @@ csinf(float complex z)
 	w = sinf(crealf(z)) * ch  + (cosf(crealf(z)) * sh) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef csin
+__strong_alias(csin, csinf);
+#endif

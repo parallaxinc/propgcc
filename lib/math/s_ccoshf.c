@@ -44,6 +44,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 ccoshf(float complex z)
@@ -56,3 +57,8 @@ ccoshf(float complex z)
 	w = coshf (x) * cosf (y)  +  (sinhf (x) * sinf (y)) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef ccosh
+__strong_alias(ccosh, ccoshf);
+#endif

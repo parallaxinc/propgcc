@@ -43,6 +43,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 csinhf(float complex z)
@@ -55,3 +56,8 @@ csinhf(float complex z)
 	w = sinhf (x) * cosf (y)  +  (coshf (x) * sinf (y)) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef csinh
+__strong_alias(csinh, csinhf);
+#endif

@@ -57,6 +57,7 @@
 #include <complex.h>
 #include <float.h>
 #include <math.h>
+#include "math_private.h"
 
 /* calculate cosh and sinh */
 

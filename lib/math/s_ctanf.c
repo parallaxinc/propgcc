@@ -55,6 +55,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 #define MACHEPF 3.0e-8
 #define MAXNUMF 1.0e38f
@@ -146,3 +147,8 @@ ctanf(float complex z)
 	w = sinf (2.0f * crealf(z)) / d + (sinhf (2.0f * cimagf(z)) / d) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef ctan
+__strong_alias(ctan, ctanf);
+#endif
