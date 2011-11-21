@@ -13,7 +13,6 @@ ifndef MODEL
 MODEL = lmm
 endif
 
-CFLAGS = -Wall -Os -DPROPELLER_GCC
-CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
+CFLAGS = -Wall -Os -DPROPELLER_GCC -fno-exceptions
 
 include ../common/common.mk
