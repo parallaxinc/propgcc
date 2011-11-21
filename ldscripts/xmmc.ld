@@ -1,0 +1,10 @@
+MEMORY {
+  hub     : ORIGIN = 0x00000000, LENGTH = 32K
+  rom     : ORIGIN = 0x30000000, LENGTH = 256M
+}
+
+REGION_ALIAS("REGION_TEXT", rom);
+REGION_ALIAS("REGION_DATA", hub);
+REGION_ALIAS("REGION_HEAP", hub);
+
+INCLUDE propeller_xmm.ld
