@@ -57,7 +57,12 @@ _serial_putbyte(int c, FILE *fp)
 	_OUTA &= ~txmask;
       value >>= 1;
     }
-  _DIRA &= ~txmask;
+  // if we turn off DIRA, then some boards (like QuickStart) are left with
+  // floating pins and garbage output; if we leave it on, we're left with
+  // a high pin and other cogs cannot produce output on it
+  // the solution is to use FullDuplexSerialDriver instead on applications
+  // with multiple cogs
+  //_DIRA &= ~txmask;
   return c;
 }
 
