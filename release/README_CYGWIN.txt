@@ -1,19 +1,12 @@
-To install:
+To install and use this package for use with Cygwin, please move or copy the
+propeller directory to /usr/local.
 
-1. Copy the propgcc directory to the root directory of the C drive.
+$ mv propeller /usr/local/.
+$ PATH=/usr/local/propeller/bin:$PATH
 
-2. Open a command prompt window and go into the propgcc directory.
+Add the PATH setting to your .bashrc file for future use.
 
-   C:\>cd propgcc
-   C:\propgcc>
-
-3. Run the batch file "setpath" to add the bin directories to the PATH.
-   This must be done every time a new command window is started.
-
-   C:\propgcc>setpath
-
-
-There are some demo programs located in the demos directory.  You can build
+There are a few demo programs located in the demos directory.  You can build
 all the demo programs by going into the demos directory and typing make.  If
 you want to build a specific program you can run make from the directory for
 that program.
@@ -23,7 +16,7 @@ that executes LMM code from hub memory.  You can go into this directory and
 run make to build it.  After the program is built it can be downloaded to a
 Propeller board and executed as follows:
 
-  propeller-load -p com# fibo.elf -r -t
+  $ propeller-load -p com# fibo.elf -r -t
 
   propeller-load is the propgcc loader program.
   -p com# is the name of the serial port, such as com7.
@@ -36,7 +29,7 @@ The fibo program also has XMM and XMMC versions.  These programs will run on
 boards that contain external memory.  A board type must be specified when
 loading these programs as follows:
 
-  propeller-load -p com# -b board fibo.elf -r -t
+  $ propeller-load -p com# -b board fibo.elf -r -t
 
   If you don't use -t, you will not get the terminal.
   Press ESC to exit the terminal.
@@ -53,13 +46,13 @@ int main()
     return 0;
 }
 
-C:\propgcc>propeller-elf-gcc -o hello hello.c
+$ propeller-elf-gcc -o hello hello.c
 
 One can use propeller-load to load the program and start the terminal.
 For example use: propeller-load -p com25 hello -r -t
 Of course, replace com25 with your port number.
 
-C:\propgcc>propeller-load -p com24 hello -r -t
+$ propeller-load -p com24 hello -r -t
 Propeller Version 1 on com24
 Writing 13536 bytes to Propeller RAM.
 Verifying ... Upload OK!
@@ -82,8 +75,8 @@ int main()
     return 0;
 }
 
-C:\propgcc>propeller-elf-gcc -o blink blink.c
-C:\propgcc>propeller-load -p com25 blink -r
+$ propeller-elf-gcc -o blink blink.c
+$ propeller-load -p com25 blink -r
 
   Replace com25 with your port number.
 
@@ -99,13 +92,13 @@ sdram     - 80 MHz GadgetGangster 32MB SDRAM module
 
 Any board type clock frequency can be changed using a -Dclkfreq flag.
 
-  propeller-load -p com# -b board fibo.elf -r -t -Dclkfreq=96000000
-  propeller-load -p com# -b board fibo.elf -r -t -Dclkfreq=100000000
+  $ propeller-load -p com# -b board fibo.elf -r -t -Dclkfreq=96000000
+  $ propeller-load -p com# -b board fibo.elf -r -t -Dclkfreq=100000000
 
 
 Any board type clock mode can be changed using a -Dclkmode flag.
 
-  propeller-load -p com# -b board fibo.elf -r -t -Dclkmode=XTAL1+PLL8X
-  propeller-load -p com# -b board fibo.elf -r -t -Dclkfreq=96000000 -Dclkmode=XTAL1+PLL8X
+  $ propeller-load -p com# -b board fibo.elf -r -t -Dclkmode=XTAL1+PLL8X
+  $ propeller-load -p com# -b board fibo.elf -r -t -Dclkfreq=96000000 -Dclkmode=XTAL1+PLL8X
 
 

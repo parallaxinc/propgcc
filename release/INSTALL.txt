@@ -16,9 +16,6 @@ $ mv usr/local/propeller /usr/local/propeller
 $ PATH=/usr/local/propeller/bin:$PATH
 $ mv demo ~/.
 
-If you plan to create loader cache.dat files from spin files,
-you will need to have bstc.linux in your path.
-
 
 2. Propeller GCC Windows install:
 
@@ -26,7 +23,13 @@ The install procedure for Windows with an installer will be in a different packa
 Please follow instructions in README_WINDOWS.txt to install.
 
 
-3. Propeller GCC MAC OSX install:
+3. Propeller GCC Cygwin install:
+
+The install procedure for Windows/Cygwin with an installer is in a different package.
+Please follow instructions in README_CYGWIN.txt to install.
+
+
+4. Propeller GCC MAC OSX install:
 
 A MAC OSX distribution is not available yet.
 
