@@ -43,8 +43,8 @@ _serial_putbyte(int c, FILE *fp)
   int i, value;
 
   /* set input */
-  _DIRA |= txmask;
   _OUTA |= txmask;
+  _DIRA |= txmask;
 
   value = (c | 256) << 1;
   waitcycles = _CNT + bitcycles;
@@ -132,6 +132,17 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
 
   /* all OK */
   return 0;
+}
+
+/*
+ * work around a bug in the QuickStart hardware; we need to leave
+ * pin 31 high on exit or we get garbage output
+ */
+_DESTRUCTOR
+static void SimpleSerialExit(void)
+{
+  _DIRA |= (1<<_txpin);
+  _OUTA |= (1<<_txpin);
 }
 
 /*
