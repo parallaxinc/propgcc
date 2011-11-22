@@ -59,32 +59,7 @@ mkdir ${PACKAGE}
 make -C ../demos clean
 cp -r ../demos ${PACKAGE}/.
 cp ../gcc/COPYING* ${PACKAGE}/.
-cp LICENSE.txt ${PACKAGE}/.
-cp -r /usr/local/propeller/* ${PACKAGE}/.
-
-# To make a C only release use: ./release.sh C
-if test ARG$1 == ARGC
-then
-  echo "Removing C++ libraries from C Package"
-  rm -rv ${PACKAGE}/bin/propeller-elf-c++*
-  rm -rv ${PACKAGE}/bin/propeller-elf-g++*
-  rm -rv ${PACKAGE}/libexec/gcc/propeller-elf/4.6.1/cc1plus.exe
-  rm -rv ${PACKAGE}/propeller-elf/bin/c++*
-  rm -rv ${PACKAGE}/propeller-elf/bin/g++*
-  rm -rv ${PACKAGE}/propeller-elf/include/c++
-  rm -rv ${PACKAGE}/propeller-elf/lib/libstdc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/libsupc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/short-doubles/libstdc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/short-doubles/libsupc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmm/libstdc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmm/libsupc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmm/short-doubles/libstdc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmm/short-doubles/libsupc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmmc/libstdc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmmc/libsupc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmmc/short-doubles/libstdc++*
-  rm -rv ${PACKAGE}/propeller-elf/lib/xmmc/short-doubles/libsupc++*
-fi
+cp ../LICENSE.txt ${PACKAGE}/.
 
 if test x$UNAME = xDarwin
 then
@@ -92,7 +67,7 @@ then
 
   mkdir ${PACKAGE}/usr
   mkdir ${PACKAGE}/usr/local
-  mv ${PACKAGE}/propeller ${PACKAGE}/usr/local/.
+  cp -r /usr/local/propeller ${PACKAGE}/usr/local
 
   cp bstc.osx ${PACKAGE}/${PREFIX}/bin
   cp bstc.osx ${PACKAGE}/${PREFIX}/bin/bstc
@@ -102,7 +77,10 @@ then
 elif test x$UNAME = xCygwin
 then
   ARCHIVE=cygwin-${PACKAGE}.zip
-  mv ${PACKAGE}/propeller ${PACKAGE}/usr/local/.
+
+  mkdir ${PACKAGE}/usr
+  mkdir ${PACKAGE}/usr/local
+  cp -r /usr/local/propeller ${PACKAGE}/usr/local
 
   cp bstc.exe ${PACKAGE}/bin
   cp INSTALL.txt ./${PACKAGE}
@@ -113,7 +91,7 @@ then
 elif test x$UNAME = xMsys
 then
   ARCHIVE=windows-${PACKAGE}.zip
-  # propeller directory already copied to package
+  cp -r /usr/local/propeller/* ${PACKAGE}/.
 
   cp bstc.exe ./${PACKAGE}/bin
   cp PropGCC.bat ./${PACKAGE}
@@ -128,9 +106,10 @@ elif test x$UNAME = xLinux
 then
   ARCHIVE=linux-${PACKAGE}.tar
 
+
   mkdir ${PACKAGE}/usr
   mkdir ${PACKAGE}/usr/local
-  mv ${PACKAGE}/propeller ${PACKAGE}/usr/local/.
+  cp -r /usr/local/propeller ${PACKAGE}/usr/local
 
   cp bstc.linux ${PACKAGE}/${PREFIX}/bin
   cp bstc.linux ${PACKAGE}/${PREFIX}/bin/bstc
