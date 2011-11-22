@@ -65,8 +65,8 @@ static void printSpectrum();
 
 //----------------------------------------------------------------------------------------------------------------------
 //#include <sys/time.h>
-// Return a timestamp in microsecond resolution.
-int time_ms()
+// Return a timestamp in millisecond resolution.
+unsigned int time_ms()
 {
 #if defined(__propeller__)
     //printf("CLKFREQ: %lu\n", CLKFREQ);
@@ -78,8 +78,7 @@ int time_ms()
 
     if (gettimeofday(&timeval, 0) == 0)
     {
-        return ((timeval.tv_sec * 1000000) + timeval.tv_usec);
-    
+      return ((timeval.tv_sec * 1000) + (timeval.tv_usec / 1000));
     }
     else
     {
@@ -92,7 +91,7 @@ int time_ms()
 //----------------------------------------------------------------------------------------------------------------------
 void fft_bench()
 {
-    int startTime, endTime;
+    unsigned int startTime, endTime;
 
     printf ("fft_bench v1.0\n");
 
@@ -114,7 +113,7 @@ void fft_bench()
     // Print resulting spectrum
     printSpectrum();
 
-    printf ("1024 point bit-reversal and butterfly run time = %d ms\n", (endTime - startTime));
+    printf ("1024 point bit-reversal and butterfly run time = %u ms\n", (endTime - startTime));
 }
 //----------------------------------------------------------------------------------------------------------------------
 
