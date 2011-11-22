@@ -11,12 +11,28 @@
 /* Common */
 /**********/
 
-#define VMTRUE		1
-#define VMFALSE   	0
+#define VMTRUE      1
+#define VMFALSE     0
 
-//#define RAMSIZE             (12 * 1024)
-#define RAMSIZE             (6 * 1024)
-#define MAX_OBJECTS         32
+/* compiler heap size */
+#ifndef HEAPSIZE
+#define HEAPSIZE                (6 * 1024)
+#endif
+
+/* maximum number of runtime objects */
+#ifndef MAXOBJECTS
+#define MAXOBJECTS          32
+#endif
+
+/* compiler scratch buffer size */
+#ifndef SCRATCHBUFSIZE
+#define SCRATCHBUFSIZE      2048
+#endif
+
+/* edit buffer size */
+#ifndef EDITBUFSIZE
+#define EDITBUFSIZE         2048
+#endif
 
 /*********/
 /* WIN32 */
@@ -29,7 +45,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define ALIGN_MASK				3
+#define ALIGN_MASK              3
 
 #define FLASH_SPACE
 
@@ -48,7 +64,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define ALIGN_MASK				3
+#define ALIGN_MASK              3
 
 #define FLASH_SPACE
 
@@ -99,7 +115,7 @@
 #include <p33fxxxx.h>
 #endif
 
-#define ALIGN_MASK				3
+#define ALIGN_MASK              3
 
 #define FLASH_SPACE             const
 
@@ -118,7 +134,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-#define ALIGN_MASK				3
+#define ALIGN_MASK              3
 
 #define FLASH_SPACE             const
 
@@ -180,11 +196,11 @@
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 
-#define ALIGN_MASK				1
+#define ALIGN_MASK              1
 
 #define FLASH_SPACE             PROGMEM
 
-#define VMCODEBYTE(p)	        pgm_read_byte(p)
+#define VMCODEBYTE(p)           pgm_read_byte(p)
 #define VMINTRINSIC(i)          ((IntrinsicFcn *)pgm_read_word(&Intrinsics[i]))
 
 #endif  // AVR
@@ -204,7 +220,7 @@
 
 int strcasecmp(const char *s1, const char *s2);
 
-#define ALIGN_MASK				3
+#define ALIGN_MASK              3
 
 #define FLASH_SPACE
 
@@ -226,7 +242,7 @@ int strcasecmp(const char *s1, const char *s2);
 
 int strcasecmp(const char *s1, const char *s2);
 
-#define ALIGN_MASK				3
+#define ALIGN_MASK              3
 
 #define FLASH_SPACE
 
@@ -248,7 +264,7 @@ int strcasecmp(const char *s1, const char *s2);
 
 int strcasecmp(const char *s1, const char *s2);
 
-#define ALIGN_MASK				3
+#define ALIGN_MASK              3
 
 #define FLASH_SPACE
 

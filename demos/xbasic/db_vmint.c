@@ -29,8 +29,8 @@ int Execute(Interpreter *i, ImageHdr *image)
     int16_t tmp, tmp2, ind;
     int8_t tmpb;
 
-	/* setup the new image */
-	i->image = image;
+    /* setup the new image */
+    i->image = image;
 
     /* initialize */
     CheckObjNumber(i, i->image->mainCode);
