@@ -141,15 +141,15 @@ static void ParseDef(ParseContext *c)
     else {
         Symbol *sym;
 
-		/* save the lookahead token */
-		SaveToken(c, tkn);
+        /* save the lookahead token */
+        SaveToken(c, tkn);
 
         /* enter the function name in the global symbol table */
         sym = AddGlobal(c, name, SC_CONSTANT, 0, 0);
 
         /* start the code under construction */
         StartCode(c, sym->name, CODE_TYPE_FUNCTION);
-		sym->value = c->code;
+        sym->value = c->code;
 
         /* get the argument list */
         if ((tkn = GetToken(c)) == '(') {
