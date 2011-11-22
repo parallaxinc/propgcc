@@ -2,7 +2,7 @@
  * @file osint_linux.c
  *
  * Serial I/O functions used by PLoadLib.c
-  *
+ *
  * Copyright (c) 2009 by John Steven Denson
  * Modified in 2011 by David Michael Betz
  *
