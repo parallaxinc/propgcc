@@ -6,7 +6,6 @@
 
 #include "db_compiler.h"
 #include "db_vmdebug.h"
-#include "buffer.h"
 
 /* StoreVector - store a vector object */
 int16_t StoreVector(ParseContext *c, const int16_t *buf, int size)
