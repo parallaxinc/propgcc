@@ -194,7 +194,7 @@ _pthread_napuntil(unsigned int newclock)
       thr->queue = queue;
       for(;;) {
 	p = *queue;
-	if (!p || ((int)(p->timer-now) < delta))
+	if (!p || ((int)(p->timer-now) > delta))
 	    break;
 	queue = &p->queue_next;
       }
