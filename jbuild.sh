@@ -4,12 +4,25 @@
 #
 
 #
+# ADJUST THE FOLLOWING VARIABLES IF NECESSARY
+#
+PREFIX=/usr/local/propeller
+export PREFIX
+
+
+#
 # we want to specify the number of jobs to use for multi-core cpus
 #
 if test ARG$1 = ARG
 then
    echo "Usage: <number of jobs> [rm]"
    echo "Building without rm or multiple jobs."
+#
+# if only one job requested, don't use J
+#
+elif test ARG$1 = ARG1
+then
+   JOBS=""
 else
    JOBS="-j ${1}"
    echo "Building with: ${JOBS}"
@@ -24,12 +37,7 @@ then
    rm -rf ../build
 fi
 
-#
-# ADJUST THE FOLLOWING VARIABLES IF NECESSARY
-#
-PREFIX=/usr/local/propeller
-export PREFIX
-export PREFIX
+export JOBS
 
 #
 # attempt to auto-detect the OS
@@ -74,6 +82,15 @@ fi
 export OS
 export PORT
 export BOARD
+
+#
+# if we have an argument don't remove build
+#
+if test NOARG$1 = NOARG
+then
+   echo "Removing old build."
+   rm -rf ../build
+fi
 
 #
 # build binutils
@@ -130,22 +147,7 @@ fi
 make install-gcc
 if test $? != 0
 then
-   echo "binutils make install-gcc failed."
-   cd ../../propgcc
-   exit 1
-fi
-
-make ${JOBS} all-target-libgcc
-if test $? != 0
-then
-   echo "libgcc make all-target-libgcc failed."
-   cd ../../propgcc
-   exit 1
-fi
-make install-target-libgcc
-if test $? != 0
-then
-   echo "libgcc make install-target-libgcc failed."
+   echo "gcc make install-gcc failed."
    cd ../../propgcc
    exit 1
 fi
@@ -154,7 +156,29 @@ cd ../../propgcc
 #
 # build newlibs
 #
-# newlib is no longer used with propeller-gcc but is kept for reference.
+#mkdir -p ../build/newlib
+#cd ../build/newlib
+#../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller --enable-target-optspace
+#if test $? != 0
+#then
+#   echo "newlib configure failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
+#make all
+#if test $? != 0
+#then
+#   echo "newlib make all failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
+#make install
+#if test $? != 0
+#then
+#   echo "newlib make install failed."
+#   cd ../../propgcc
+#   exit 1
+#fi
 
 #
 # build library
@@ -184,12 +208,6 @@ fi
 cd ..
 
 #
-# build propeller-load
-#
-make -C loader TARGET=../../build/loader
-make -C loader TARGET=../../build/loader install
-
-#
 # copy the linker scripts
 #
 cp -f ldscripts/* $PREFIX/propeller-elf/lib
@@ -198,6 +216,34 @@ then
   echo "ldscripts install failed"
   exit 1
 fi
+
+#
+# build gcc libstdc++
+# this must be done after the library build, since it depends on
+# library header files
+#
+cd ../build/gcc
+make ${JOBS} all
+if test $? != 0
+then
+   echo "gcc make all failed"
+   cd ../../propgcc
+   exit 1
+fi
+make install
+if test $? != 0
+then
+   echo "gcc make install failed."
+   cd ../../propgcc
+   exit 1
+fi
+cd ../../propgcc
+
+#
+# build propeller-load
+#
+make -C loader TARGET=../../build/loader
+make -C loader TARGET=../../build/loader install
 
 echo "Build complete."
 exit 0
