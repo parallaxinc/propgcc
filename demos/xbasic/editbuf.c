@@ -1,9 +1,5 @@
 #include <string.h>
-#include "buffer.h"
-#include "db_vm.h"
-
-#define BUFSIZE 2048
-#define DATSIZE 2048
+#include "db_edit.h"
 
 typedef struct {
     uint16_t lineNumber;
@@ -11,13 +7,10 @@ typedef struct {
     char text[1];
 } Line;
 
-static uint8_t buffer[BUFSIZE];
+static uint8_t buffer[EDITBUFSIZE];
 static uint8_t *bufferMax = buffer + sizeof(buffer);
 static uint8_t *bufferTop = buffer;
 static Line *current = (Line *)buffer;
-
-static int16_t data[DATSIZE];
-static int16_t *dataTop = (int16_t *)((char *)data + sizeof(data));
 
 static int FindLineN(int16_t lineNumber, Line **pLine);
 
@@ -137,20 +130,3 @@ static int FindLineN(int16_t lineNumber, Line **pLine)
     *pLine = (Line *)p;
     return VMFALSE;
 }
-
-int BufWriteWords(int offset, const int16_t *buf, int size)
-{
-    if (data + offset + size > dataTop)
-        return VMFALSE;
-    memcpy(data + offset, buf, size * sizeof(int16_t));
-    return VMTRUE;
-}
-
-int BufReadWords(int offset, int16_t *buf, int size)
-{
-    if (data + offset + size > dataTop)
-        return VMFALSE;
-    memcpy(buf, data + offset, size * sizeof(int16_t));
-    return VMTRUE;
-}
-

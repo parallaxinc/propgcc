@@ -40,7 +40,7 @@ typedef struct {
 #define PROTO_BVECTOR   0x7ffd
 
 /* get the size of an object in words */
-#define GetObjSizeInWords(s)	(((s) + sizeof(int16_t) - 1) / sizeof(int16_t))
+#define GetObjSizeInWords(s)    (((s) + sizeof(int16_t) - 1) / sizeof(int16_t))
 
 /* object header structure */
 typedef struct {
