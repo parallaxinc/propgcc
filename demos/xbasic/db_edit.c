@@ -4,7 +4,6 @@
 #include <ctype.h>
 #include "db_edit.h"
 #include "db_vm.h"
-#include "buffer.h"
 
 #ifdef WIN32
 #define strcasecmp  _stricmp
@@ -44,9 +43,9 @@ void EditWorkspace(ParseContext *c)
     c->getLine = EditGetLine;
     c->getLineCookie = c;
     
-	VM_printf("xBasic 0.001\n");
+    VM_printf("xBasic 0.001\n");
 
-	for (;; ) {
+    for (;; ) {
         
         VM_getline(c->lineBuf, sizeof(c->lineBuf));
 
@@ -92,24 +91,24 @@ static void DoList(ParseContext *c)
 }
 
 char *prog[] = {
-//	"for x=1 to 10\n",
-//	"printf(\"%d %d\n\", x, x*x)\n",
-//	"next x\n",
-	"for\n",
-	0
+//  "for x=1 to 10\n",
+//  "printf(\"%d %d\n\", x, x*x)\n",
+//  "next x\n",
+    "for\n",
+    0
 };
 int prog_i;
 
 static int EditGetLine(void *cookie, char *buf, int len, int16_t *pLineNumber)
 {
 #if 0
-	if (!prog[prog_i])
-		return VMFALSE;
-	strcpy(buf, prog[prog_i++]);
-	*pLineNumber = prog_i;
-	return VMTRUE;
+    if (!prog[prog_i])
+        return VMFALSE;
+    strcpy(buf, prog[prog_i++]);
+    *pLineNumber = prog_i;
+    return VMTRUE;
 #else
-	return BufGetLine(pLineNumber, buf);
+    return BufGetLine(pLineNumber, buf);
 #endif
 }
 
@@ -117,15 +116,15 @@ static void DoRun(ParseContext *c)
 {
     BufSeekN(0);
 prog_i = 0;
-	if (Compile(c, MAX_OBJECTS)) {
+    if (Compile(c, MAXOBJECTS)) {
         Interpreter *i = (Interpreter *)c->freeNext;
         size_t stackSize = (c->freeTop - c->freeNext - sizeof(Interpreter)) / sizeof(int16_t);
         if (stackSize <= 0)
-			VM_printf("insufficient memory\n");
-		else {
-			InitInterpreter(i, stackSize);
-			Execute(i, c->image);
-		}
+            VM_printf("insufficient memory\n");
+        else {
+            InitInterpreter(i, stackSize);
+            Execute(i, c->image);
+        }
     }
 }
 

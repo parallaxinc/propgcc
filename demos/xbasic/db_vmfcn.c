@@ -16,7 +16,7 @@ uint8_t *GetArgBVector(Interpreter *i, int16_t object, int16_t *pSize);
 /* this table must be in the same order as the FN_xxx macros */
 IntrinsicFcn * FLASH_SPACE Intrinsics[] = {
     fcn_abs,
-	fcn_rnd,
+    fcn_rnd,
     fcn_printf
 };
 
@@ -46,7 +46,7 @@ static void fcn_printf(Interpreter *i)
     int16_t size;
     int j;
 
-	CheckArgCountGe(i, 1);
+    CheckArgCountGe(i, 1);
     fmt = GetArgBVector(i, argv[1], &size);
     j = 2;
 

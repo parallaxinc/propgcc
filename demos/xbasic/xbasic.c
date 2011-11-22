@@ -4,9 +4,9 @@
 #include "db_edit.h"
 
 #ifdef CHAMELEONPIC
-uint8_t __attribute__((far)) space[RAMSIZE];
+uint8_t __attribute__((far)) space[HEAPSIZE];
 #else
-uint8_t space[RAMSIZE];
+uint8_t space[HEAPSIZE];
 #endif
 
 #ifdef PROPELLER_GCC

@@ -2,7 +2,7 @@
  * @file osint_linux.c
  *
  * Serial I/O functions used by PLoadLib.c
-  *
+ *
  * Copyright (c) 2009 by John Steven Denson
  * Modified in 2011 by David Michael Betz
  *
@@ -62,7 +62,7 @@ int serial_init(const char* port, unsigned long baud)
     int tbaud = 0;
 
     /* open the port */
-    hSerial = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK | O_EXCL);
+    hSerial = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(hSerial == -1) {
         printf("Invalid file handle for serial port '%s'\n",port);
         printf("Error '%s'\n",strerror(errno));

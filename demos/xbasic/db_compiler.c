@@ -13,7 +13,6 @@
 #include "db_compiler.h"
 #include "db_vmdebug.h"
 #include "db_vm.h"
-#include "buffer.h"
 
 /* local function prototypes */
 static void PlaceStrings(ParseContext *c);
@@ -32,7 +31,7 @@ int Compile(ParseContext *c, int maxObjects)
 {
     Symbol *sym;
     
-	/* setup an error target */
+    /* setup an error target */
     if (setjmp(c->errorTarget) != 0)
         return VMFALSE;
 
@@ -166,17 +165,17 @@ void StoreCode(ParseContext *c)
     int codeSize;
 
     /* check for unterminated blocks */
-	switch (CurrentBlockType(c)) {
+    switch (CurrentBlockType(c)) {
     case BLOCK_IF:
     case BLOCK_ELSE:
-		ParseError(c, "expecting END IF");
+        ParseError(c, "expecting END IF");
     case BLOCK_FOR:
-		ParseError(c, "expecting NEXT");
-	case BLOCK_DO:
-		ParseError(c, "expecting LOOP");
-	case BLOCK_NONE:
-		break;
-	}
+        ParseError(c, "expecting NEXT");
+    case BLOCK_DO:
+        ParseError(c, "expecting LOOP");
+    case BLOCK_NONE:
+        break;
+    }
 
     /* fixup the RESERVE instruction at the start of the code */
     if (c->codeType != CODE_TYPE_MAIN) {
@@ -234,7 +233,7 @@ static uint8_t *AllocateFreeSpace(ParseContext *c, size_t size)
 {
     uint8_t *p = c->freeNext;
     size = (size + ALIGN_MASK) & ~ALIGN_MASK;
-	if (p + size > c->freeTop)
+    if (p + size > c->freeTop)
         return NULL;
     c->freeNext += size;
     return p;

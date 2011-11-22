@@ -177,7 +177,7 @@ typedef struct {
     String *strings;                /* parse - string constants */
     Label *labels;                  /* parse - local labels */
     CodeType codeType;              /* parse - type of code under construction */
-    char *codeName;        			/* parse - name of code under construction */
+    char *codeName;                 /* parse - name of code under construction */
     SymbolTable arguments;          /* parse - arguments of current function definition */
     SymbolTable locals;             /* parse - local variables of current function definition */
     int localOffset;                /* parse - offset to next available local variable */
@@ -270,11 +270,6 @@ struct ExprListEntry {
     ExprListEntry *next;
 };
 
-/* db_heap.c (currently in ibasic.c) */
-void HeapInit(uint8_t *heap, size_t heapSize);
-void HeapReset(void);
-uint8_t *HeapAlloc(size_t size);
-
 /* db_compiler.c */
 void InitCompiler(ParseContext *c, uint8_t *freeSpace, size_t freeSize);
 int Compile(ParseContext *c, int maxObjects);
@@ -339,6 +334,10 @@ int16_t StoreBVector(ParseContext *c, const uint8_t *buf, int size);
 void StoreBVectorData(ParseContext *c, int16_t object, int16_t proto, const uint8_t *buf, int size);
 int16_t StoreVector(ParseContext *c, const int16_t *buf, int size);
 int16_t NewObject(ParseContext *c);
+
+/* scratch buffer interface */
+int BufWriteWords(int offset, const int16_t *buf, int size);
+int BufReadWords(int offset, int16_t *buf, int size);
 
 #endif
 
