@@ -20,6 +20,7 @@
 <A HREF="#InstallDrivers">...Installing Drivers</A><BR>
 <A HREF="#DriversProvided">...Drivers Provided in the Library</A><BR>
 <A HREF="#WritingDrivers">...Writing New Drivers</A><BR>
+<A HREF="#CogModeDrivers">...Cog Mode Drivers</A><BR>
 <A HREF="#Threads">Threads and Cogs</A><BR>
 <A HREF="#RunningLMM">...LMM on Another Cog</A><BR>
 <A HREF="#Pthreads">...Pthreads</A><BR>
@@ -175,6 +176,14 @@ interpretation of special characters.
       final build step.
     </LI>
   </UL>
+</P>
+
+<A NAME="cogprintf"><H3>Printf in -mcog mode</H3></A>
+<P>
+  The stdio functions in -mcog mode are even simpler. Only the
+  equivalent of <CODE>_simple_printf</CODE> is available in -mcog mode
+  (there isn't enough room for more). Only the standard output is
+  available in -mcog.
 </P>
 
 <A NAME="time"><H1>Time Related Functions</H1></A>
@@ -397,7 +406,20 @@ fields, which must be set up by the driver code:
   After the driver is written, it must also
   be <A HREF="#InstallDrivers">installed</A>.
 </P>
-
+<A NAME="CogModeDrivers"><H2>Cog mode drivers</H2></A>
+<P>
+  In <CODE>-mcog</CODE> mode the stdio driver facility is not
+  available (it is too large to fit in the 2K of internal space in a
+  cog). Instead, the stdio library for <CODE>-mcog</CODE> uses just
+  two functions, <CODE>putchar</CODE> and <CODE>getchar</CODE>. The
+  default <CODE>putchar</CODE> implementation writes characters to the
+  serial port (using code very much like the simple serial driver).
+</P>
+<P>
+  Note that <CODE>fopen</CODE> and similar functions are not supported
+  in <CODE>-mcog</CODE> mode. Only <CODE>stdin</CODE>
+  and <CODE>stdout</CODE> are supported.
+</P>
 
 <A NAME="Threads"><H1>Threads</H1></A>
 <P>
@@ -476,7 +498,12 @@ this. Pthreads can run on other cogs or on the same cog.
   calls <CODE>pthread_yield</CODE>. 
 </P>
 <P>
-  Unlike
+  To compile a program to use pthreads, link
+  with <CODE>-lpthread</CODE>. The pthread functions themselves, and
+  some slight modifications to standard functions to support pthreads,
+  are in that library.
+</P>
+
 <A NAME="RunningNative"><H2>Native Cog C</H2></A>
 <P>
   To run some C code directly in a cog (not in LMM mode) we have to
