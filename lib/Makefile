@@ -43,6 +43,8 @@ install: all
 	cp $(addprefix $(OBJDIR)/xmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmm/short-doubles/
 	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
 	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
+	cp LICENSE.txt $(DEST)/lib/
+	cp ../gcc/COPYING3 ../gcc/COPYING.RUNTIME $(DEST)/lib/
 
 clean:
 	rm -rf $(OBJDIR) *.a
