@@ -17,9 +17,15 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 conjf(float complex z)
 {
 	return ~z;
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef conj
+__strong_alias(conj, conjf);
+#endif

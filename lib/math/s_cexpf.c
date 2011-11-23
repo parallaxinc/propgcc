@@ -54,6 +54,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 cexpf(float complex z)
@@ -65,3 +66,8 @@ cexpf(float complex z)
 	w = r * cosf( cimagf(z) ) +  r * sinf( cimagf(z) ) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef cexp
+__strong_alias(cexp, cexpf);
+#endif

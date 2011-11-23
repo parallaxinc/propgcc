@@ -17,9 +17,15 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float
 crealf(float complex z)
 {
 	return __real__ z;
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef creal
+__strong_alias(creal, crealf);
+#endif

@@ -17,6 +17,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 cprojf(float complex z)
@@ -32,3 +33,8 @@ cprojf(float complex z)
 
 	return res;
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef cproj
+__strong_alias(cproj, cprojf);
+#endif

@@ -46,6 +46,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 cpowf(float complex a, float complex z)
@@ -69,3 +70,8 @@ cpowf(float complex a, float complex z)
 	w = r * cosf (theta) + (r * sinf (theta)) * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef cpow
+__strong_alias(cpow, cpowf);
+#endif

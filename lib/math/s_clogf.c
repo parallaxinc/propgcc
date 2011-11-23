@@ -55,6 +55,7 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float complex
 clogf(float complex z)
@@ -70,3 +71,8 @@ clogf(float complex z)
 	w = p + rr * I;
 	return (w);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef clog
+__strong_alias(clog, clogf);
+#endif

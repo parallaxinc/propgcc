@@ -17,9 +17,15 @@
 
 #include <complex.h>
 #include <math.h>
+#include "math_private.h"
 
 float
 cargf(float complex z)
 {
 	return atan2f (__imag__ z, __real__ z);
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+#undef carg
+__strong_alias(carg, cargf);
+#endif

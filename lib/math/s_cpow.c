@@ -50,6 +50,7 @@
 #include <complex.h>
 #include <float.h>
 #include <math.h>
+#include "math_private.h"
 
 double complex
 cpow(double complex a, double complex z)
