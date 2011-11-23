@@ -70,6 +70,16 @@ typedef uint64_t       uintmax_t;
 #define INT64_MAX (9223372036854775807LL)
 #define UINT64_MAX (18446744073709551615ULL)
 
+#define INT_LEAST8_MIN INT8_MIN
+#define INT_LEAST8_MAX INT8_MAX
+#define UINT_LEAST8_MAX UINT8_MAX
+#define INT_LEAST16_MIN INT16_MIN
+#define INT_LEAST16_MAX INT16_MAX
+#define UINT_LEAST16_MAX UINT16_MAX
+#define INT_LEAST32_MIN INT32_MIN
+#define INT_LEAST32_MAX INT32_MAX
+#define UINT_LEAST32_MAX UINT32_MAX
+
 #if _INT_SIZE == 2
 #define INT_FAST8_MIN  INT16_MIN
 #define INT_FAST8_MAX  INT16_MAX
@@ -108,9 +118,34 @@ typedef uint64_t       uintmax_t;
 #define INTMAX_MAX  INT64_MAX
 #define UINTMAX_MIN UINT64_MIN
 
+/* C++ only gets these definitions if __STDC_LIMIT_MACROS is defined */
+#if !defined(__cplusplus) || defined(__STDC_LIMIT_MACROS)
+
 #define PTRDIFF_MIN INTPTR_MIN
 #define PTRDIFF_MAX INTPTR_MAX
 
 #define SIZE_MAX    UINTPTR_MAX
+
+#if _INT_SIZE == 2
+#define SIG_ATOMIC_MIN INT16_MIN
+#define SIG_ATOMIC_MAX INT16_MAX
+#else
+#define SIG_ATOMIC_MIN INT32_MIN
+#define SIG_ATOMIC_MAX INT32_MAX
+#endif
+
+#if _WCHAR_SIZE == 2
+#define WCHAR_MIN 0
+#define WCHAR_MAX UINT16_MAX
+#define WINT_MIN  INT16_MIN
+#define WINT_MAX  INT16_MAX
+#else
+#define WCHAR_MIN 0
+#define WCHAR_MAX UINT32_MAX
+#define WINT_MIN  INT32_MIN
+#define WINT_MAX  INT32_MAX
+#endif
+
+#endif
 
 #endif

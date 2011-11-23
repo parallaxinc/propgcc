@@ -4,7 +4,7 @@
 /*
  * this file defines various features of the compiler being used
  * such as:
- * _INT_SIZE   4 for 32 bit, 8 for 64 bit
+ * _INT_SIZE   2 for 16 bit, 4 for 32 bit
  * _LONG_SIZE  4 for 32 bit, 8 for 64 bit
  * _WCHAR_SIZE sizeof(wchar_t)
  * _CHAR_IS_UNSIGNED 1 or 0, depending
