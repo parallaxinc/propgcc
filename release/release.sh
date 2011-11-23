@@ -98,6 +98,8 @@ then
   cp INSTALL.txt ./${PACKAGE}
   cp README_WINDOWS.txt ./${PACKAGE}
   cp ../tools/make-3.81/make.exe ./${PACKAGE}/bin
+  cp libiconv-2.dll ./${PACKAGE}/bin
+  cp libintl-8.dll ./${PACKAGE}/bin
   cp ../tools/remove.exe ./${PACKAGE}/bin/rm.exe
   mv ${PACKAGE} propgcc
   zip ${ARCHIVE} -r propgcc
