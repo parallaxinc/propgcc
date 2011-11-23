@@ -70,12 +70,20 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		width=width*10+(*ptr++-'0');
 	    }
 
-	  while(*ptr=='h'||*ptr=='l'||*ptr=='L'||*ptr=='*')
-	    { if(*ptr=='*')
-		ignore=1;
-	      else
-		subtype=*ptr;
+	  if (*ptr=='*')
+	    {
 	      ptr++;
+	      ignore=1;
+	    }
+
+	  if(*ptr=='h'||*ptr=='l'||*ptr=='L'||*ptr=='j'||*ptr=='t'||*ptr=='z')
+	    {
+	      subtype = *ptr++;
+	      if (*ptr == subtype)
+		{
+		  subtype=toupper(subtype);
+		  ptr++;
+		}
 	    }
 
 	  type=*ptr++;
@@ -183,7 +191,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 	    case 'e':
 	    case 'f':
 	    case 'g':
-	      { double v;
+	      { long double v;
 		int ex=0;
 		int min=0,mine=0; /* This is a workaround for gcc 2.3.3: should be char */
 		
@@ -228,7 +236,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		      }
 
 		    if(VAL(c=='.'))
-		      { double dp=0.1;
+		      { long double dp=0.1;
 			NEXT(c);
 			while(VAL(isdigit(c)))
 			  { v=v+dp*(c-'0');
@@ -282,11 +290,14 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		if(!ignore&&size)
 		  { switch(subtype)
 		      {
-		      case 'l':
 		      case 'L':
+			*va_arg(args,long double*)=v;
+			break;
+		      case 'l':
 			*va_arg(args,double *)=v;
 		      break;
 		      case 'i':
+		      default:
 			*va_arg(args,float *)=v;
 			break;
 		      }
@@ -307,7 +318,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 	      blocks++;
 	      break;
 	    default:
-	      { unsigned long v=0;
+	      { unsigned long long v=0;
 		int base;
 		int min=0;
 
@@ -372,8 +383,13 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		if(type=='u')
 		  switch(subtype)
 		    {
-		    case 'l':
 		    case 'L':
+		      *va_arg(args,unsigned long long *)=v;
+		      break;
+		    case 'l':
+		    case 'z':
+		    case 'j':
+		    case 't':
 		      *va_arg(args,unsigned long *)=v;
 		      break;
 		    case 'i':
@@ -382,17 +398,25 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		    case 'h':
 		      *va_arg(args,unsigned short *)=v;
 		      break;
+		    case 'H':
+		      *va_arg(args,unsigned char *)=v;
+		      break;
 		    }
 		else
-		  { signed long v2;
+		  { signed long long v2;
 		    if(min=='-')
 		      v2=-v;
 		    else
 		      v2=v;
 		    switch(subtype)
 		      {
-		      case 'l':
 		      case 'L':
+			*va_arg(args,signed long long *)=v2;
+		        break;
+		      case 'l':
+		      case 'z':
+		      case 'j':
+		      case 't':
 			*va_arg(args,signed long *)=v2;
 		        break;
 		      case 'i':

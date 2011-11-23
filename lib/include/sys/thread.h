@@ -26,6 +26,7 @@
 #define _SYS_THREAD_H
 
 #include <sys/jmpbuf.h>
+#include <sys/fenv.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -81,6 +82,10 @@ struct _thread {
      cog
   */
   unsigned short affinity; /* processor affinity mask inverted */
+
+  /* floating point environment; not used currently */
+  /* _fenv_t fenv; */
+
 };
 
 /*
@@ -117,6 +122,9 @@ int _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_s
 #endif
 
 /* type for a volatile lock */
+/* if we change this type, change the definitions of SIG_ATOMIC_{MIN,MAX}
+ * in stdint.h too
+ */
 typedef volatile int _atomic_t;
 typedef _atomic_t atomic_t;
 

@@ -23,6 +23,6 @@ int
 main(int argc, char **argv, char **environ)
 {
   printf("hello, world\n");
-  fprintf(stderr, "hello, stderr\n");
+  fprintf(stderr, "%ls\n", L"hello, stderr");
   return 99;
 }

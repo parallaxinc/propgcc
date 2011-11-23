@@ -276,7 +276,7 @@
 #endif	/* defined(OUTCHAR) */
 #define OUTCHAR(fp, len, ch) do { if (fputc(ch, fp) >= 0) (len)++; } while (0)
 
-static size_t fmtstr(FILE *, const char *, int, int, int);
+static size_t fmtstr(FILE *, const char *, int, int, int, int);
 static size_t fmtint(FILE *, INTMAX_T, int, int, int, int);
 static size_t fmtflt(FILE *, LDOUBLE, int, int, int, int *);
 static size_t printsep(FILE *);
@@ -581,13 +581,17 @@ vfprintf(FILE *fp, const char *format, va_list args)
 					goto out;
 				break;
 			case 'c':
+			  /* this works for lc too, as long as
+			     sizeof(int) == sizeof(wint_t)
+			     and we do not support multibyte characters
+			  */
 				cvalue = va_arg(args, int);
 				OUTCHAR(fp, len, cvalue);
 				break;
 			case 's':
 				strvalue = va_arg(args, char *);
 				len += fmtstr(fp, strvalue, width,
-				    precision, flags);
+					      precision, flags, cflags);
 				break;
 			case 'p':
 				/*
@@ -675,19 +679,29 @@ out:
 
 static size_t
 fmtstr(FILE *fp, const char *value, int width,
-       int precision, int flags)
+       int precision, int flags, int cflags)
 {
 	int padlen, strln;	/* Amount to pad. */
 	int noprecision = (precision == -1);
+	const wchar_t *wvalue = (wchar_t *)value;
 	size_t len = 0;
 
 	if (value == NULL)	/* We're forgiving. */
-		value = "(null)";
+	  {
+	    value = "(null)";
+	    cflags = 0;
+	  }
 
 	/* If a precision was specified, don't read the string past it. */
-	for (strln = 0; value[strln] != '\0' &&
-	    (noprecision || strln < precision); strln++)
-		continue;
+	if (cflags == PRINT_C_LONG) {
+	  for (strln = 0; wvalue[strln] != L'\0' &&
+		 (noprecision || strln < precision); strln++)
+	    continue;
+	} else {
+	  for (strln = 0; value[strln] != '\0' &&
+		 (noprecision || strln < precision); strln++)
+	    continue;
+	}
 
 	if ((padlen = width - strln) < 0)
 		padlen = 0;
@@ -698,10 +712,21 @@ fmtstr(FILE *fp, const char *value, int width,
  	        OUTCHAR(fp, len, ' ');
 		padlen--;
 	}
-	while (*value != '\0' && (noprecision || precision-- > 0)) {
-	        OUTCHAR(fp, len, *value);
-		value++;
-	}
+	if (cflags == PRINT_C_LONG)
+	  {
+	    while (*wvalue != '\0' && (noprecision || precision-- > 0)) {
+	      OUTCHAR(fp, len, (unsigned char)*wvalue);
+	      wvalue++;
+	    }
+	  }
+	else
+	  {
+	    while (*value != '\0' && (noprecision || precision-- > 0)) {
+	      OUTCHAR(fp, len, *value);
+	      value++;
+	    }
+	  }
+
 	while (padlen < 0) {	/* Trailing spaces. */
 	        OUTCHAR(fp, len, ' ');
 		padlen++;
@@ -817,7 +842,7 @@ fmtflt(FILE *fp, LDOUBLE fvalue, int width,
        int precision, int flags, int *overflow)
 {
 #if !defined(FLOAT_SUPPORT)
-	return fmtstr(fp, "no float in printf: link with -lm", width, precision, flags);
+	return fmtstr(fp, "no float in printf: link with -lm", width, precision, flags, 0);
 #else
 	LDOUBLE ufvalue;
 	UINTMAX_T intpart;
@@ -870,7 +895,7 @@ fmtflt(FILE *fp, LDOUBLE fvalue, int width,
 			iconvert[ipos++] = sign;
 		while (*infnan != '\0')
 			iconvert[ipos++] = *infnan++;
-		len += fmtstr(fp, iconvert, width, ipos, flags);
+		len += fmtstr(fp, iconvert, width, ipos, flags, 0);
 		return len;
 	}
 
