@@ -9,6 +9,8 @@ term_tv.o \
 TV_firmware.o \
 term_serial.o
 
+LIBS = -lsupc++
+
 ifndef MODEL
 MODEL = lmm
 endif
