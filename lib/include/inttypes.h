@@ -43,10 +43,14 @@ extern "C" {
 #define PRIdLEAST64 PRId64
 #define PRIiLEAST64 PRIi64
 
-#define PRIdFAST8 "%d"
+#define PRIdFAST8  "%d"
 #define PRIdFAST16 "%d"
 #define PRIdFAST32 "%d"
 #define PRIdFAST64 "%lld"
+#define PRIiFAST8  "%i"
+#define PRIiFAST16 "%i"
+#define PRIiFAST32 "%i"
+#define PRIiFAST64 "%lli"
 
   /* unsigned modifiers */
 #define PRIo8 "%hho"
@@ -127,6 +131,93 @@ extern "C" {
 #define PRIXPTR "%tX"
 
   /* scan flags */
+
+  /* signed */
+#define SCNd8  PRId8
+#define SCNi8  PRIi8
+#define SCNd16 PRId16
+#define SCNi16 PRIi16
+#define SCNd32 PRId32
+#define SCNi32 PRIi32
+#define SCNd64 PRId64
+#define SCNi64 PRIi64
+
+#define SCNdLEAST8  PRIdLEAST8
+#define SCNiLEAST8  PRIiLEAST8
+#define SCNdLEAST16 PRIdLEAST16
+#define SCNiLEAST16 PRIiLEAST16
+#define SCNdLEAST32 PRIdLEAST32
+#define SCNiLEAST32 PRIiLEAST32
+#define SCNdLEAST64 PRIdLEAST64
+#define SCNiLEAST64 PRIiLEAST64
+
+#define SCNdFAST8  PRIdFAST8
+#define SCNiFAST8  PRIiFAST8
+#define SCNdFAST16 PRIdFAST16
+#define SCNiFAST16 PRIiFAST16
+#define SCNdFAST32 PRIdFAST32
+#define SCNiFAST32 PRIiFAST32
+#define SCNdFAST64 PRIdFAST64
+#define SCNiFAST64 PRIiFAST64
+
+#define SCNdPTR PRIdPTR
+#define SCNiPTR PRIdPTR
+#define SCNdMAX PRIdMAX
+#define SCNiMAX PRIdMAX
+
+  /* unsigned */
+#define SCNo8 PRIo8
+#define SCNu8 PRIu8
+#define SCNx8 PRIx8
+#define SCNo16 PRIo16
+#define SCNu16 PRIu16
+#define SCNx16 PRIx16
+#define SCNo32 PRIo32
+#define SCNu32 PRIu32
+#define SCNx32 PRIx32
+#define SCNo64 PRIo64
+#define SCNu64 PRIu64
+#define SCNx64 PRIx64
+
+#define SCNo8LEAST PRIo8LEAST
+#define SCNu8LEAST PRIu8LEAST
+#define SCNx8LEAST PRIx8LEAST
+#define SCNo16LEAST PRIo16LEAST
+#define SCNu16LEAST PRIu16LEAST
+#define SCNx16LEAST PRIx16LEAST
+#define SCNo32LEAST PRIo32LEAST
+#define SCNu32LEAST PRIu32LEAST
+#define SCNx32LEAST PRIx32LEAST
+#define SCNo64LEAST PRIo64LEAST
+#define SCNu64LEAST PRIu64LEAST
+#define SCNx64LEAST PRIx64LEAST
+
+#define SCNo8FAST PRIo8FAST
+#define SCNu8FAST PRIu8FAST
+#define SCNx8FAST PRIx8FAST
+#define SCNo16FAST PRIo16FAST
+#define SCNu16FAST PRIu16FAST
+#define SCNx16FAST PRIx16FAST
+#define SCNo32FAST PRIo32FAST
+#define SCNu32FAST PRIu32FAST
+#define SCNx32FAST PRIx32FAST
+#define SCNo64FAST PRIo64FAST
+#define SCNu64FAST PRIu64FAST
+#define SCNx64FAST PRIx64FAST
+
+#define SCNoMAX PRIoMAX
+#define SCNuMAX PRIuMAX
+#define SCNxMAX PRIxMAX
+
+#define SCNoPTR PRIoPTR
+#define SCNuPTR PRIuPTR
+#define SCNxPTR PRIxPTR
+
+  /* function defintions */
+  intmax_t imaxabs(intmax_t);
+  imaxdiv_t imaxdiv(intmax_t, intmax_t);
+  intmax_t strtoimax(const char *__restrict, char **__restrict, int);
+  uintmax_t strtouimax(const char *__restrict, char **__restrict, int);
 
 #ifdef __cplusplus
 }

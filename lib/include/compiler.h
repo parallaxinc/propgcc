@@ -32,6 +32,14 @@
 #define _NAN __builtin_nan("1")
 #define _NANL __builtin_nanl("1")
 #define _NANF __builtin_nanf("1")
+#ifndef __weak_alias
+#define __weak_alias(sym, oldfunc) \
+  __asm__( " .weak " #sym "\n  .equ " #sym "," #oldfunc "\n" )
+#endif
+#ifndef __strong_alias
+#define __strong_alias(sym, oldfunc) \
+  __asm__( " .global " #sym "\n  .equ " #sym "," #oldfunc "\n" )
+#endif
 
 #else
 

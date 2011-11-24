@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <compiler.h>
 
 unsigned long long strtoull(const char *nptr,char **endptr,int base)
 { const char *p=nptr,*q;
@@ -58,3 +59,5 @@ unsigned long long strtoull(const char *nptr,char **endptr,int base)
     *endptr=(char *)q;
   return r;
 }
+
+__weak_alias(strtoumax, strtoull);
