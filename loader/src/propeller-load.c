@@ -28,7 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 /* defaults */
 #if defined(CYGWIN) || defined(WIN32) || defined(MINGW)
-#define PORT_PATH_PREFIX    NULL
+#define PORT_PREFIX NULL
 #endif
 #ifdef LINUX
 #define PORT_PREFIX "ttyUSB"
