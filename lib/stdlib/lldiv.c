@@ -10,3 +10,4 @@ lldiv_t lldiv(long long n, long long d)
   return r;
 }
 
+__weak_alias(imaxdiv, lldiv);

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <compiler.h>
 
 signed long long strtoll(const char *nptr,char **endptr,int base)
 { const char *p=nptr;
@@ -36,3 +37,5 @@ signed long long strtoll(const char *nptr,char **endptr,int base)
       return r;
   }
 }
+
+__weak_alias(strtoimax, strtoll);
