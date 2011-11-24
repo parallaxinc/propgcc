@@ -38,14 +38,14 @@ ifeq ($(OS),cygwin)
 CFLAGS += -DCYGWIN
 BSTC=bstc
 EXT=.exe
-OSINT=osint_cygwin
+OSINT=osint_cygwin enumcom
 endif
 
 ifeq ($(OS),msys)
 CFLAGS += -DMINGW
 BSTC=bstc
 EXT=.exe
-OSINT=osint_mingw
+OSINT=osint_mingw enumcom
 endif
 
 ifeq ($(OS),macosx)
@@ -94,7 +94,7 @@ $(OBJDIR)/config.o \
 $(OBJDIR)/system.o \
 $(OBJDIR)/serial_helper.o \
 $(OBJDIR)/flash_loader.o \
-$(OBJDIR)/$(OSINT).o
+$(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
 
 HDRS=\
 $(SRCDIR)/PLoadLib.h \

@@ -174,7 +174,7 @@ static int hwfind(void)
  * @param port - pointer to com port name
  * @returns non-zero on error
  */
-static int findprop(char* port)
+static int findprop(const char* port)
 {
     int version = 0;
     hwreset();
@@ -194,7 +194,7 @@ static int findprop(char* port)
  * @param type - type of upload
  * @returns non-zero on error
  */
-static int upload(uint8_t* dlbuf, int count, int type)
+static int upload(const uint8_t* dlbuf, int count, int type)
 {
     int  n  = 0;
     int  rc = 0;
@@ -246,13 +246,32 @@ static int upload(uint8_t* dlbuf, int count, int type)
     return 0;
 }
 
+int popenport(const char* port, int baud)
+{
+    //
+    // open the port
+    //
+    if (serial_init(port, baud) == 0)
+        return -1;
+        
+    //
+    // find propeller
+    //
+    if (findprop(port) != 0) {
+        serial_done();
+        return -1;
+    }
+
+    return 0;
+}
+
 /**
  * find and load propeller with file - assumes port is already open
  * @returns non-zero on error.
  */
-int pload(char* file, char* port, int type)
+int pload(const char* file, int type)
 {
-    int rc = 0;
+    int rc = 1;
     int count;
     uint8_t dlbuf[0x8000]; // 32K limit
 
@@ -269,14 +288,9 @@ int pload(char* file, char* port, int type)
         fclose(fp);
     }
 
-    //
-    // find propeller
-    //
-    rc = findprop(port);
-
     // if found and file, upload file
     //
-    if(!rc && file) {
+    if(file) {
         rc = upload(dlbuf, count, type);
     }
 
@@ -287,9 +301,9 @@ int pload(char* file, char* port, int type)
  * find and load propeller with file - assumes port is already open
  * @returns non-zero on error.
  */
-int ploadfp(char* file, FILE *fp, char* port, int type)
+int ploadfp(const char* file, FILE *fp, int type)
 {
-    int rc = 0;
+    int rc = 1;
     int count;
     uint8_t dlbuf[0x8000]; // 32K limit
 
@@ -298,14 +312,9 @@ int ploadfp(char* file, FILE *fp, char* port, int type)
     count = (int)fread(dlbuf, 1, 0x8000, fp);
     printf("Downloading %d bytes of '%s'\n", count, file);
 
-    //
-    // find propeller
-    //
-    rc = findprop(port);
-
     // if found and file, upload file
     //
-    if(!rc && file) {
+    if(file) {
         rc = upload(dlbuf, count, type);
     }
 
@@ -316,20 +325,7 @@ int ploadfp(char* file, FILE *fp, char* port, int type)
  * find and load propeller with buffer - assumes port is already open
  * @returns non-zero on error.
  */
-int ploadbuf(uint8_t* dlbuf, int count, char* port, int type)
+int ploadbuf(const uint8_t* dlbuf, int count, int type)
 {
-    int rc = 0;
-
-    //
-    // find propeller
-    //
-    rc = findprop(port);
-
-    // if found, upload file
-    //
-    if(!rc) {
-        rc = upload(dlbuf, count, type);
-    }
-
-    return rc;
+    return upload(dlbuf, count, type);
 }
