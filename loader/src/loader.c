@@ -146,20 +146,34 @@ static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 static int Error(char *fmt, ...);
 static void *NullError(char *fmt, ...);
 
+typedef struct {
+    int baud;
+    char *actualport;
+} CheckPortInfo;
+
 static int CheckPort(const char* port, void* data)
 {
-    int baud = *(int*)data;
-    return popenport(port, baud);
+    CheckPortInfo* info = (CheckPortInfo*)data;
+    int rc;
+    if ((rc = popenport(port, info->baud)) != 0)
+        return rc;
+    strncpy(info->actualport, port, PATH_MAX - 1);
+    info->actualport[PATH_MAX - 1] = '\0';
+    return 0;
 }
 
-int InitPort(char *prefix, char *port, int baud)
+int InitPort(char *prefix, char *port, int baud, char *actualport)
 {
     int rc;
     
     if (port)
         rc = popenport(port, baud);
-    else
-        rc = serial_find(prefix, CheckPort, &baud);
+    else {
+        CheckPortInfo info;
+        info.baud = baud;
+        info.actualport = actualport;
+        rc = serial_find(prefix, CheckPort, &info);
+    }
         
     return rc == 0;
 }

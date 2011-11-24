@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 #include "loader.h"
 #include "osint.h"
 
@@ -53,6 +54,7 @@ int check_for_exit = 0;
 
 int main(int argc, char *argv[])
 {
+    char actualport[PATH_MAX];
     char *infile = NULL, *p, *p2;
     int terminalMode = FALSE;
     BoardConfig *config, *configSettings;
@@ -217,7 +219,7 @@ int main(int argc, char *argv[])
 
     /* initialize the serial port */
     if ((flags & (LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
-        if (InitPort(PORT_PREFIX, port, baud) == 0) {
+        if (InitPort(PORT_PREFIX, port, baud, actualport) == 0) {
             fprintf(stderr, "error: opening serial port\n");
             return 1;
         }
@@ -267,7 +269,7 @@ int main(int argc, char *argv[])
         fflush(stdout);
         if (terminalBaud && terminalBaud != baud) {
             serial_done();
-            serial_init(port, terminalBaud);
+            serial_init(actualport, terminalBaud);
         }
         terminal_mode();
     }
