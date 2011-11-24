@@ -32,6 +32,7 @@ CFLAGS += -DLINUX
 BSTC=bstc.linux
 EXT=
 OSINT=osint_linux
+LIBS=
 endif
 
 ifeq ($(OS),cygwin)
@@ -39,6 +40,7 @@ CFLAGS += -DCYGWIN
 BSTC=bstc
 EXT=.exe
 OSINT=osint_cygwin enumcom
+LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),msys)
@@ -46,6 +48,7 @@ CFLAGS += -DMINGW
 BSTC=bstc
 EXT=.exe
 OSINT=osint_mingw enumcom
+LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),macosx)
@@ -53,6 +56,7 @@ CFLAGS += -DMACOSX
 BSTC=bstc.osx
 EXT=
 OSINT=osint_linux
+LIBS=
 endif
 
 ##################
@@ -195,7 +199,7 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.dat
 propeller-load:		$(BINDIR)/propeller-load$(EXT)
 
 $(BINDIR)/propeller-load$(EXT):	$(BINDIR) $(OBJDIR) bin2c $(OBJS)
-	@$(CC) $(LDFLAGS) $(OBJS) -o $@
+	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	@$(ECHO) $@
 
 #########
