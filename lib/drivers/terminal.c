@@ -47,6 +47,8 @@ _term_read(FILE *fp, unsigned char *buf, int size)
   while (count < size)
     {
       value = (*getbyte)(fp);
+      /* convert cr to lf */
+      if (cooked && value == '\r') value = '\n';
       buf[count++] = value;
       /* do cooked mode processing */
       /* for now this echos the input */
