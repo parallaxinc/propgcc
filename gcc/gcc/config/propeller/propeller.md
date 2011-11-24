@@ -797,7 +797,7 @@
         (orop:SI (match_dup 1)(match_dup 2)))
   ]
   ""
-  "<opcode>\t%0, %1 wz"
+  "<opcode>\t%0, %2 wz"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
