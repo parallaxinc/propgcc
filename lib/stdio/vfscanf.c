@@ -32,6 +32,8 @@
 #include <math.h>
 #include <compiler.h>
 
+#define WCHAR_SUBTYPE 'l'
+
 /*
  * define FLOAT_SUPPORT to get floating point support
  */
@@ -97,20 +99,29 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 
 	  switch(type)
 	    { case 'c':
-		{ unsigned char *bp;
-		
+		{ unsigned char *bp = NULL;
+		wchar_t *wp = NULL;
+
 		if(width==ULONG_MAX) /* Default */
 		  width=1;
 		
 		if(!ignore)
-		  bp=va_arg(args,unsigned char *);
-		else
-		  bp=NULL; /* Just to get the compiler happy */
+		  {
+		    if (subtype == WCHAR_SUBTYPE)
+		      wp = va_arg(args, wchar_t *);
+		    else
+		      bp = va_arg(args, unsigned char *);
+		  }
 
 		NEXT(c); /* 'c' did not skip whitespace */
 		while(VAL(c!=EOF))
 		  { if(!ignore)
-		      *bp++=c;
+		      {
+			if (subtype == WCHAR_SUBTYPE)
+			  *wp++=c;
+			else
+			  *bp++=c;
+		      }
 		    NEXT(c);
 		  }
 		PREV(c);
@@ -168,23 +179,37 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		break;
 	      }
 	    case 's':
-	      { unsigned char *bp;
+	      { unsigned char *bp=NULL;
+		wchar_t *wp=NULL;
 
 		if(!ignore)
-		  bp=va_arg(args,unsigned char *);
-		else
-		  bp=NULL; /* Just to get the compiler happy */
+		  {
+		    if (subtype==WCHAR_SUBTYPE)
+		      wp=va_arg(args,wchar_t *);
+		    else
+		      bp=va_arg(args,unsigned char *);
+		  }
 
 		while(VAL(c!=EOF&&!isspace(c)))
 		  { if(!ignore)
-		      *bp++=c;
+		      {
+			if (subtype==WCHAR_SUBTYPE)
+			  *wp++=c;
+			else
+			  *bp++=c;
+		      }
 		    NEXT(c);
 		  }
 		PREV(c);
 
 		if(!ignore&&size)
-		  { *bp++='\0';
-		    blocks++; }
+		  { 
+		    if (subtype==WCHAR_SUBTYPE)
+		      *wp++=L'\0';
+		    else
+		      *bp++='\0';
+		    blocks++;
+		  }
 		break;
 	      }
 #ifdef FLOAT_SUPPORT
