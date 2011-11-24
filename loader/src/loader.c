@@ -130,28 +130,41 @@ extern int serial_helper_size;
 extern uint8_t flash_loader_array[];
 extern int flash_loader_size;
 
-static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp, ElfHdr *hdr);
-static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp);
-static int LoadInternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c);
+static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp, ElfHdr *hdr);
+static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp);
+static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize);
 static void UpdateChecksum(uint8_t *imagebuf, int imageSize);
-static int LoadExternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c);
+static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteExecutableFile(char *path, ElfContext *c);
 static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
-static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode);
+static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 static int Error(char *fmt, ...);
 static void *NullError(char *fmt, ...);
 
-int InitPort(char *port, int baud)
+static int CheckPort(const char* port, void* data)
 {
-    return serial_init(port, baud);
+    int baud = *(int*)data;
+    return popenport(port, baud);
 }
 
-int LoadImage(System *sys, BoardConfig *config, char *port, char *path, int flags)
+int InitPort(char *prefix, char *port, int baud)
+{
+    int rc;
+    
+    if (port)
+        rc = popenport(port, baud);
+    else
+        rc = serial_find(prefix, CheckPort, &baud);
+        
+    return rc == 0;
+}
+
+int LoadImage(System *sys, BoardConfig *config, char *path, int flags)
 {    
     ElfHdr hdr;
     FILE *fp;
@@ -163,18 +176,18 @@ int LoadImage(System *sys, BoardConfig *config, char *port, char *path, int flag
     
     /* check for an elf file */
     if (ReadAndCheckElfHdr(fp, &hdr))
-        sts = LoadElfFile(sys, config, port, path, flags, fp, &hdr);
+        sts = LoadElfFile(sys, config, path, flags, fp, &hdr);
     else {
         char *end = strrchr(path, '.');
         if (end && strcasecmp(end, ".elf") == 0)
             return Error("bad elf file '%s'", path);
-        sts = LoadBinaryFile(sys, config, port, path, flags, fp);
+        sts = LoadBinaryFile(sys, config, path, flags, fp);
     }
     
     return sts;
 }
 
-static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp, ElfHdr *hdr)
+static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp, ElfHdr *hdr)
 {
     ElfSectionHdr section;
     ElfContext *c;
@@ -196,7 +209,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
         }
         
         else {
-            if (!LoadExternalImage(sys, config, port, flags, c)) {
+            if (!LoadExternalImage(sys, config, flags, c)) {
                 CloseElfFile(c);
                 return FALSE;
             }
@@ -214,7 +227,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
         }
         
         else {
-            if (!LoadInternalImage(sys, config, port, flags, c)) {
+            if (!LoadInternalImage(sys, config, flags, c)) {
                 CloseElfFile(c);
                 return FALSE;
             }
@@ -228,7 +241,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *port, char *path,
     return TRUE;
 }
 
-static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *path, int flags, FILE *fp)
+static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp)
 {
     int mode, sts;
     
@@ -241,13 +254,13 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *port, char *pa
         mode = SHUTDOWN_CMD;
     
     fseek(fp, 0, SEEK_SET);
-    sts = ploadfp(path, fp, port, mode);
+    sts = ploadfp(path, fp, mode);
     fclose(fp);
     
     return sts == 0;
 }
 
-static int LoadInternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c)
+static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
 {
     uint8_t *imagebuf;
     uint32_t start;
@@ -267,7 +280,7 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *port, int f
         mode = SHUTDOWN_CMD;
     
     /* load the serial helper program */
-    if (mode != SHUTDOWN_CMD && ploadbuf(imagebuf, imageSize, port, mode) != 0) {
+    if (mode != SHUTDOWN_CMD && ploadbuf(imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
     }
@@ -278,7 +291,7 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *port, int f
     return TRUE;
 }
 
-int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int flags)
+int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
     uint8_t driverImage[COG_IMAGE_MAX];
     int imageSize, driverSize, mode;
@@ -354,7 +367,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int f
         return Error("expecting -e and/or -r");
         
     /* load the serial helper program */
-    if (ploadbuf(imagebuf, imageSize, port, mode) != 0) {
+    if (ploadbuf(imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
     }
@@ -365,7 +378,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int f
     return TRUE;
 }
 
-int LoadSDCacheLoader(System *sys, BoardConfig *config, char *port, char *path, int flags)
+int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
     uint8_t driverImage[COG_IMAGE_MAX];
     int imageSize, driverSize, mode;
@@ -439,7 +452,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *port, char *path, 
         return Error("expecting -e and/or -r");
         
     /* load the serial helper program */
-    if (ploadbuf(imagebuf, imageSize, port, mode) != 0) {
+    if (ploadbuf(imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
     }
@@ -541,7 +554,7 @@ static void UpdateChecksum(uint8_t *imagebuf, int imageSize)
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
 }
 
-static int LoadExternalImage(System *sys, BoardConfig *config, char *port, int flags, ElfContext *c)
+static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
 {
     SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
@@ -570,7 +583,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, int f
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
     
     /* load the serial helper program */
-    if (ploadbuf(serial_helper_array, serial_helper_size, port, DOWNLOAD_RUN_BINARY) != 0)
+    if (ploadbuf(serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0)
         return Error("helper load failed");
 
     /* wait for the serial helper to complete initialization */
@@ -617,7 +630,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, char *port, int f
     if (flags & LFLAG_WRITE_EEPROM) {
         int mode = (flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM);
         if (target == TYPE_FLASH_WRITE) {
-            if (!WriteFlashLoader(sys, config, port, buf, program_kernel.filesz, mode)) {
+            if (!WriteFlashLoader(sys, config, buf, program_kernel.filesz, mode)) {
                 free(buf);
                 return Error("can't load '.xmmkernel' section into eeprom");
             }
@@ -812,7 +825,7 @@ static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *p
     return imagebuf;
 }
 
-static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_t *vm_array, int vm_size, int mode)
+static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
 {
     SpinHdr *hdr = (SpinHdr *)flash_loader_array;
     SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->pbase);
@@ -845,7 +858,7 @@ static int WriteFlashLoader(System *sys, BoardConfig *config, char *port, uint8_
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
     
     /* load the lflash oader program */
-    if (ploadbuf(flash_loader_array, flash_loader_size, port, mode) != 0)
+    if (ploadbuf(flash_loader_array, flash_loader_size, mode) != 0)
         return Error("loader load failed");
     
     /* return successfully */

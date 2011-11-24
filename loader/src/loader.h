@@ -32,9 +32,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define LFLAG_WRITE_SDLOADER        (1 << 4)
 #define LFLAG_WRITE_SDCACHELOADER   (1 << 5)
 
-int InitPort(char *port, int baud);
-int LoadImage(System *sys, BoardConfig *config, char *port, char *path, int flags);
-int LoadSDLoader(System *sys, BoardConfig *config, char *port, char *path, int flags);
-int LoadSDCacheLoader(System *sys, BoardConfig *config, char *port, char *path, int flags);
+int InitPort(char *prefix, char *port, int baud);
+int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
+int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
+int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
 
 #endif

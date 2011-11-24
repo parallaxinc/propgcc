@@ -27,14 +27,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "osint.h"
 
 /* defaults */
-#if defined(CYGWIN) || defined(WIN32)
-#define DEF_PORT    "COM1"
+#if defined(CYGWIN) || defined(WIN32) || defined(MINGW)
+#define PORT_PATH_PREFIX    NULL
 #endif
 #ifdef LINUX
-#define DEF_PORT    "/dev/ttyUSB0"
+#define PORT_PREFIX "ttyUSB"
 #endif
 #ifdef MACOSX
-#define DEF_PORT    "/dev/cu.usbserial-A8004ILf"
+#define PORT_PREFIX "cu.usbserial"
 #endif
 #define DEF_BOARD   "default"
 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
     /* get the environment settings */
     if (!(port = getenv("PROPELLER_LOAD_PORT")))
-        port = DEF_PORT;
+        port = NULL;
     if (!(board = getenv("PROPELLER_LOAD_BOARD")))
         board = DEF_BOARD;
         
@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
 
     /* initialize the serial port */
     if ((flags & (LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
-        if (!InitPort(port, baud)) {
+        if (InitPort(PORT_PREFIX, port, baud) == 0) {
             fprintf(stderr, "error: opening serial port\n");
             return 1;
         }
@@ -226,19 +226,19 @@ int main(int argc, char *argv[])
     /* load the image file */
     if (infile) {
         if (flags & LFLAG_WRITE_SDLOADER) {
-            if (!LoadSDLoader(&sys, config, port, infile, flags)) {
+            if (!LoadSDLoader(&sys, config, infile, flags)) {
                 fprintf(stderr, "error: load failed\n");
                 return 1;
             }
         }
         else if (flags & LFLAG_WRITE_SDCACHELOADER) {
-            if (!LoadSDCacheLoader(&sys, config, port, infile, flags)) {
+            if (!LoadSDCacheLoader(&sys, config, infile, flags)) {
                 fprintf(stderr, "error: load failed\n");
                 return 1;
             }
         }
         else {
-            if (!LoadImage(&sys, config, port, infile, flags)) {
+            if (!LoadImage(&sys, config, infile, flags)) {
                 fprintf(stderr, "error: load failed\n");
                 return 1;
             }
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
     
     /* check for loading the sd loader */
     else if (flags & LFLAG_WRITE_SDLOADER) {
-        if (!LoadSDLoader(&sys, config, port, "sd_loader.elf", flags)) {
+        if (!LoadSDLoader(&sys, config, "sd_loader.elf", flags)) {
             fprintf(stderr, "error: load failed\n");
             return 1;
         }
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
     
     /* check for loading the sd cache loader */
     else if (flags & LFLAG_WRITE_SDCACHELOADER) {
-        if (!LoadSDCacheLoader(&sys, config, port, "sd_cache_loader.elf", flags)) {
+        if (!LoadSDCacheLoader(&sys, config, "sd_cache_loader.elf", flags)) {
             fprintf(stderr, "error: load failed\n");
             return 1;
         }
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
     if (terminalMode) {
         printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
         fflush(stdout);
-        if (terminalBaud != 0) {
+        if (terminalBaud && terminalBaud != baud) {
             serial_done();
             serial_init(port, terminalBaud);
         }
