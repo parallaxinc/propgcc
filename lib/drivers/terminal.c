@@ -22,6 +22,8 @@ _term_write(FILE *fp, unsigned char *buf, int size)
   while (count < size)
     {
       c = *buf++;
+      if (c == '\n')
+	putbyte('\r', fp);
       putbyte(c, fp);
       count++;
     }
