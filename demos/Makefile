@@ -22,7 +22,6 @@ all:
 	make -C fibo/xmm
 	make -C pthread
 	make -C TV/TvText_demo
-	make -C xbasic
 
 clean:
 	make clean -C toggle/cog_c_toggle
@@ -39,5 +38,4 @@ clean:
 	make clean -C fibo/xmm
 	make clean -C pthread
 	make clean -C TV/TvText_demo
-	make clean -C xbasic
 
