@@ -39,8 +39,9 @@
 #define DOWNLOAD_EEPROM         2
 #define DOWNLOAD_RUN_EEPROM     3
 
-int pload(char* file, char* port, int type);
-int ploadfp(char* file, FILE *fp, char* port, int type);
-int ploadbuf(uint8_t* dlbuf, int count, char* port, int type);
+int popenport(const char* port, int baud);
+int pload(const char* file, int type);
+int ploadfp(const char* file, FILE *fp, int type);
+int ploadbuf(const uint8_t* dlbuf, int count, int type);
 
 #endif

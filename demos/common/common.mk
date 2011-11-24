@@ -25,10 +25,6 @@ ifndef MODEL
 MODEL=lmm
 endif
 
-ifndef PORT
-PORT=$(PROPELLER_LOAD_PORT)
-endif
-
 ifndef BOARD
 BOARD=$(PROPELLER_LOAD_BOARD)
 endif
@@ -82,4 +78,4 @@ clean:
 # how to run
 #
 run: $(NAME).elf
-	$(LOADER) -p$(PORT) -b$(BOARD) $(NAME).elf -r -t
+	$(LOADER) -b$(BOARD) $(NAME).elf -r -t

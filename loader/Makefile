@@ -32,20 +32,23 @@ CFLAGS += -DLINUX
 BSTC=bstc.linux
 EXT=
 OSINT=osint_linux
+LIBS=
 endif
 
 ifeq ($(OS),cygwin)
 CFLAGS += -DCYGWIN
 BSTC=bstc
 EXT=.exe
-OSINT=osint_cygwin
+OSINT=osint_cygwin enumcom
+LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),msys)
 CFLAGS += -DMINGW
 BSTC=bstc
 EXT=.exe
-OSINT=osint_mingw
+OSINT=osint_mingw enumcom
+LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),macosx)
@@ -53,6 +56,7 @@ CFLAGS += -DMACOSX
 BSTC=bstc.osx
 EXT=
 OSINT=osint_linux
+LIBS=
 endif
 
 ##################
@@ -94,7 +98,7 @@ $(OBJDIR)/config.o \
 $(OBJDIR)/system.o \
 $(OBJDIR)/serial_helper.o \
 $(OBJDIR)/flash_loader.o \
-$(OBJDIR)/$(OSINT).o
+$(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
 
 HDRS=\
 $(SRCDIR)/PLoadLib.h \
@@ -195,7 +199,7 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.dat
 propeller-load:		$(BINDIR)/propeller-load$(EXT)
 
 $(BINDIR)/propeller-load$(EXT):	$(BINDIR) $(OBJDIR) bin2c $(OBJS)
-	@$(CC) $(LDFLAGS) $(OBJS) -o $@
+	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	@$(ECHO) $@
 
 #########

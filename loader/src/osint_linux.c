@@ -38,6 +38,9 @@
 #include <sys/ioctl.h>
 #include <sys/timeb.h>
 #include <sys/select.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <limits.h>
 
 #include "osint.h"
 
@@ -49,6 +52,30 @@ static void chk(char *fun, int sts)
 {
     if (sts != 0)
         printf("%s failed\n", fun);
+}
+
+int serial_find(const char* prefix, int (*check)(const char* port, void* data), void* data)
+{
+    char path[PATH_MAX];
+    int prefixlen = strlen(prefix);
+    struct dirent *entry;
+    DIR *dirp;
+    
+    if (!(dirp = opendir("/dev")))
+        return -1;
+    
+    while ((entry = readdir(dirp)) != NULL) {
+        if (strncmp(entry->d_name, prefix, prefixlen) == 0) {
+            sprintf(path, "/dev/%s", entry->d_name);
+            if ((*check)(path, data) == 0) {
+                closedir(dirp);
+                return 0;
+            }
+        }
+    }
+    
+    closedir(dirp);
+    return -1;
 }
 
 /**
@@ -64,8 +91,8 @@ int serial_init(const char* port, unsigned long baud)
     /* open the port */
     hSerial = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(hSerial == -1) {
-        printf("Invalid file handle for serial port '%s'\n",port);
-        printf("Error '%s'\n",strerror(errno));
+        //printf("Invalid file handle for serial port '%s'\n",port);
+        //printf("Error '%s'\n",strerror(errno));
         return 0;
     }
 
