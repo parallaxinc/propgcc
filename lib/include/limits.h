@@ -39,7 +39,9 @@
 #endif
 
 /* maximum length of a multibyte character
- * this library only supports UTF-8
+ * at present we do not support multibyte
+ * characters, but some day we may support
+ * UTF-8
  */
 #define MB_LEN_MAX 6
 
@@ -82,5 +84,11 @@
 #define LLONG_MIN _INT64_MIN
 #define LLONG_MAX _INT64_MAX
 #define ULLONG_MAX _UINT64_MAX
+
+
+#if !defined(__STRICT_ANSI__)
+/* posix extensions to C99 */
+#include <sys/syslimits.h>
+#endif
 
 #endif

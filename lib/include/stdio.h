@@ -50,6 +50,7 @@ extern "C" {
 #define EOF       (-1)
 #define BUFSIZ     512
 #define FOPEN_MAX    8
+#define FILENAME_MAX 256
 
 #define SEEK_SET 0
 #define SEEK_CUR 1

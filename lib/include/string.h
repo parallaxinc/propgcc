@@ -37,6 +37,13 @@ void * memset(void *dest, int c, size_t n);
 char * strerror(int err);
 size_t strlen(const char *s);
 
+  extern int    _strcasecmp(const char *s1, const char *s2);
+  extern int    _strncasecmp(const char *s1, const char *s2, size_t n);
+
+#if !defined(__STRICT_ANSI__)
+  int    strcasecmp(const char *s1, const char *s2);
+  int    strncasecmp(const char *s1, const char *s2, size_t n);
+#endif
 
 #if defined(__cplusplus)
 }

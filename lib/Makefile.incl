@@ -67,7 +67,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strchr.o strrchr.o strspn.o strcspn.o strtok.o \
 	strcoll.o strxfrm.o \
 	strstr.o strpbrk.o \
-	strerror.o
+	strerror.o strcasecmp.o strncasecmp.o
 
 TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 	settimeofday.o gettimeofday.o
