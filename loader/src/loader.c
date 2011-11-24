@@ -166,8 +166,11 @@ int InitPort(char *prefix, char *port, int baud, char *actualport)
 {
     int rc;
     
-    if (port)
+    if (port) {
+        strncpy(actualport, port, PATH_MAX - 1);
+        actualport[PATH_MAX - 1] = '\0';
         rc = popenport(port, baud);
+    }
     else {
         CheckPortInfo info;
         info.baud = baud;
