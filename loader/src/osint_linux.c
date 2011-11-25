@@ -279,6 +279,7 @@ void terminal_mode(void)
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
     newt.c_lflag &= ~(ICANON | ECHO);
+    newt.c_iflag &= ~(ICRNL | INLCR);
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
     if (check_for_exit)
@@ -330,9 +331,10 @@ void terminal_mode(void)
             if (FD_ISSET(STDIN_FILENO, &set)) {
                 if ((cnt = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
                     int i;
-                    for (i = 0; i < cnt; ++i)
+                    for (i = 0; i < cnt; ++i) {
                         if (buf[i] == ESC)
                             goto done;
+                    }
                     write(hSerial, buf, cnt);
                 }
             }
