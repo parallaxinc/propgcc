@@ -91,8 +91,14 @@ int serial_init(const char* port, unsigned long baud)
     /* open the port */
     hSerial = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(hSerial == -1) {
-        //printf("Invalid file handle for serial port '%s'\n",port);
-        //printf("Error '%s'\n",strerror(errno));
+        fprintf(stderr, "error: opening '%s' -- %s\n", port, strerror(errno));
+        return 0;
+    }
+    
+    /* set the terminal to exclusive mode */
+    if (ioctl(hSerial, TIOCEXCL) != 0) {
+        fprintf(stderr, "error: can't open terminal for exclusive access\n");
+        close(hSerial);
         return 0;
     }
 
@@ -110,7 +116,7 @@ int serial_init(const char* port, unsigned long baud)
             tbaud = B38400;
             break;
         default:
-            printf("Unsupported baudrate. Use /dev/tty*:115200, /dev/tty*:57600, or /dev/tty*:38400\n");
+            printf("Unsupported baudrate. Use 115200, 57600, or 38400\n");
             serial_done();
             exit(2);
             break;

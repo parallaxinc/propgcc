@@ -39,7 +39,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #endif
 #define DEF_BOARD   "default"
 
-static void Usage(char *board, char *port);
+static void Usage(void);
 
 static void MyInfo(System *sys, const char *fmt, va_list ap);
 static void MyError(System *sys, const char *fmt, va_list ap);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
                 else if (++i < argc)
                     board = argv[i];
                 else
-                    Usage(board, port);
+                    Usage();
                 break;
             case 'p':
                 if(argv[i][2])
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
                 else if(++i < argc)
                     port = argv[i];
                 else
-                    Usage(board, port);
+                    Usage();
 #if defined(CYGWIN) || defined(WIN32) || defined(LINUX)
                 if (isdigit((int)port[0])) {
 #if defined(CYGWIN) || defined(WIN32)
@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
                 else if(++i < argc)
                     p = argv[i];
                 else
-                    Usage(board, port);
+                    Usage();
                 if ((p2 = strchr(p, '=')) == NULL)
-                    Usage(board, port);
+                    Usage();
                 *p2++ = '\0';
                 if (!SetConfigField(configSettings, p, p2))
                     return 1;
@@ -162,11 +162,11 @@ int main(int argc, char *argv[])
                 else if(++i < argc)
                     p = argv[i];
                 else
-                    Usage(board, port);
+                    Usage();
                 xbAddPath(p);
                 break;
             default:
-                Usage(board, port);
+                Usage();
                 break;
             }
         }
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
         /* handle the input filename */
         else {
             if (infile)
-                Usage(board, port);
+                Usage();
             infile = argv[i];
         }
     }
@@ -277,12 +277,12 @@ int main(int argc, char *argv[])
 }
 
 /* Usage - display a usage message and exit */
-static void Usage(char *board, char *port)
+static void Usage(void)
 {
     fprintf(stderr, "\
 usage: propeller-load\n\
-         [ -b <type> ]     select target board (default is '%s')\n\
-         [ -p <port> ]     serial port (default is '%s')\n\
+         [ -b <type> ]     select target board (default is 'default')\n\
+         [ -p <port> ]     serial port (default is to auto-detect the port)\n\
          [ -I <path> ]     add a directory to the include path\n\
          [ -D var=value ]  define a board configuration variable\n\
          [ -e ]            write the program into EEPROM\n\
@@ -305,15 +305,16 @@ Value expressions for -D can include:\n\
   an integer or two operands with a binary operator + - * / %% & | or unary + or -\n\
   all operators have the same precedence\n\
 \n\
-The -b option defaults to the value of the environment variable PROPELLER_LOAD_BOARD\n\
+The -b option defaults to the value of the environment variable PROPELLER_LOAD_BOARD.\n\
 The -p option defaults to the value of the environment variable PROPELLER_LOAD_PORT\n\
+if it is set. If not the port will be auto-detected.\n\
 \n\
 The \"sd loader\" loads AUTORUN.PEX from an SD card into external memory.\n\
 It requires a board with either external RAM or ROM.\n\
 \n\
 The \"sd cache loader\" arranges to run AUTORUN.PEX directly from the SD card.\n\
 It can be used on any board with an SD card slot.\n\
-", board, port);
+");
     exit(1);
 }
 
