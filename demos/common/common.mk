@@ -32,6 +32,10 @@ endif
 CFLAGS += -m$(MODEL)
 LDFLAGS = -m$(MODEL) -fno-exceptions -fno-rtti
 
+ifneq ($(LDSCRIPT),)
+LDFLAGS += -T $(LDSCRIPT)
+endif
+
 # basic gnu tools
 CC = propeller-elf-gcc
 CXX = propeller-elf-g++
@@ -48,7 +52,7 @@ SPINDIR=.
 ECHO=echo
 
 $(NAME).elf: $(OBJS)
-	$(CC) $(LDFLAGS) $(LDSCRIPT) -o $@ $(OBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
