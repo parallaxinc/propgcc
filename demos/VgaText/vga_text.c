@@ -19,17 +19,25 @@
 /**
  * This is the main global vga text control/status structure.
  */
-volatile vgaText_t gVgaText;
+HUBDATA volatile vgaText_t gVgaText;
 
 /**
  * This is the VGA text screen area.
  */
-static short gscreen[VGA_TEXT_SCREENSIZE];
+HUBDATA static short gscreen[VGA_TEXT_SCREENSIZE];
 
 /**
  * This is the VGA color palette area.
  */
-static int gcolors[VGA_TEXT_COLORTABLE_SIZE];
+HUBDATA static int gcolors[VGA_TEXT_COLORTABLE_SIZE];
+
+/*
+ * In the case of __PROPELLER_XMM__ we must copy the PASM to
+ * a temporary HUB buffer for cog start. Define buffer here.
+ */
+#if defined(__PROPELLER_XMM__)
+HUBDATA static uint32_t pasm[496];
+#endif
 
 /**
  * These are variables to keep up with display;
@@ -110,7 +118,13 @@ int     vgaText_start(int basepin)
     gVgaText.vb = 31;
     gVgaText.rate = 80000000 >> 2;
       
+#if defined(__PROPELLER_XMM__)
+    /* in the case of XMM we need all PASM pointers to be in HUB memory */
+    wordmove((uint16_t*)pasm,(uint16_t*)binary_VGA_dat_start,496<<1);
+    id = cognew((void*)pasm, (void*)&gVgaText);
+#else
     id = cognew((void*)binary_VGA_dat_start, (void*)&gVgaText);
+#endif
     
     // set main fg/bg color here
     vgaText_setColorPalette(&gpalette[VGA_TEXT_PAL_WHITE_BLUE]);

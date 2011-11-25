@@ -17,6 +17,24 @@ extern "C"
 #include "cog.h"
 #include <stdint.h>
 
+/*
+ * Use these defines to tell compiler linker to put
+ * data and code (.text) into HUB RAM.
+ * This is mostly useful in XMM and XMMC modes
+ * where data must be shared in hub or
+ * where code must execute as fast as possible
+ */
+#define HUBDATA __attribute__((section(".hub")))
+
+/* This is a GCC super-power. Put code in HUB RAM.
+ * Sometimes code in XMM programs is time sensitive.
+ * Use HUBTEXT before a function declaration to make
+ * sure code is run from HUB instead of external memory.
+ * Performance of code run from external memory is
+ * unpredictable across platforms.
+ */
+#define HUBTEXT __attribute__((section(".hubtext")))
+
 /* some defines for special purpose COG registers */
 #define PAR     _PAR
 #define CNT     _CNT

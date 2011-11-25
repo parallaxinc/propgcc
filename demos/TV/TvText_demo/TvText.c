@@ -6,12 +6,11 @@
  * See end of file for terms of use.
  */
 // Some headers are not available in the tool chain yet
-//#include <ctype.h>
-#include "stdio.h"
-//#include <stdlib.h>
-//#include <string.h>
-#include "propeller.h"
-#include "cog.h"
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> // for memcpy
+#include <propeller.h>
 
 #include "TvText.h"
 
@@ -21,15 +20,25 @@
 
 #define TV_TEXT_OUT
 
-static TvText_t tvText;
-static uint32_t colorTable[TV_TEXT_COLORTABLE_SIZE];
-static uint16_t screen[TV_TEXT_SCREENSIZE];
-
+/**
+ * tvText mailbox and any data shared with PASM must be in hub memory.
+ */
+HUBDATA static TvText_t tvText;
+HUBDATA static uint32_t colorTable[TV_TEXT_COLORTABLE_SIZE];
+HUBDATA static uint16_t screen[TV_TEXT_SCREENSIZE];
 
 /**
  * This is the main global tv text control/status structure.
  */
-volatile TvText_t *tvPtr;
+HUBDATA volatile TvText_t *tvPtr;
+
+/*
+ * In the case of __PROPELLER_XMM__ we must copy the PASM to
+ * a temporary HUB buffer for cog start. Define buffer here.
+ */
+#if defined(__PROPELLER_XMM__)
+HUBDATA static uint32_t pasm[496];
+#endif
 
 /**
  * These are variables to keep up with display;
@@ -92,6 +101,18 @@ int tvText_start(int basepin)
     int size = binary_TV_dat_end - binary_TV_dat_start;
     int n;
 
+#if defined(__PROPELLER_XMM__)
+    dprintf("__PROPELLER_XMM__\n");
+    wordmove((uint16_t*)pasm,(uint16_t*)binary_TV_dat_start,496<<1);
+    //memmove((void*)pasm,(void*)binary_TV_dat_start,496<<0);
+    dprintf("pasm size %d\r\n", size);
+    for(n = 1; n <= size; n++) {
+        dprintf("%08x ", pasm[n-1]);
+        if((n & 7) == 0)
+            dprintf("\r\n");
+    }
+    dprintf("\r\npasm %08x\r\n", pasm);
+#else
     dprintf("binary_TV_dat size %d\r\n", size);
     for(n = 1; n <= size; n++) {
         dprintf("%08x ", binary_TV_dat_start[n-1]);
@@ -99,6 +120,7 @@ int tvText_start(int basepin)
             dprintf("\r\n");
     }
     dprintf("\r\nbinary_TV_dat_start %08x\r\n", binary_TV_dat_start);
+#endif
 
     col = 0;
     row = 0;
@@ -116,7 +138,7 @@ int tvText_start(int basepin)
     tvPtr->hx = 4;
     tvPtr->vx = 1;
     tvPtr->ho = 0;
-    tvPtr->vo = -5;
+    tvPtr->vo = 0; 
     tvPtr->broadcast = 0;
     tvPtr->auralcog  = 0;
 
@@ -149,8 +171,12 @@ int tvText_start(int basepin)
     }
 
     // start new cog from external memory using pasm and tvPtr
+#if defined(__PROPELLER_XMM__)
+    gTvTextCog = cognew(pasm, (uint32_t)tvPtr) + 1;
+#else
     gTvTextCog = cognew((uint32_t)binary_TV_dat_start, (uint32_t)tvPtr) + 1;
-    waitcnt(CLKFREQ+CNT);
+#endif
+    waitcnt(CLKFREQ+CNT); // 100us is all we need really
 
     // clear screen
     tvText_out(0);
@@ -586,7 +612,7 @@ int tvText_getRows(void)
 
 /*
 +--------------------------------------------------------------------
-¦  TERMS OF USE: MIT License
+|  TERMS OF USE: MIT License
 +--------------------------------------------------------------------
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files
