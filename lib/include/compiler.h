@@ -34,11 +34,11 @@
 #define _NANF __builtin_nanf("1")
 #ifndef __weak_alias
 #define __weak_alias(sym, oldfunc) \
-  __asm__( " .weak " #sym "\n  .equ " #sym "," #oldfunc "\n" )
+  __asm__( " .weak _" #sym "\n  .equ _" #sym ",_" #oldfunc "\n" )
 #endif
 #ifndef __strong_alias
 #define __strong_alias(sym, oldfunc) \
-  __asm__( " .global " #sym "\n  .equ " #sym "," #oldfunc "\n" )
+  __asm__( " .global _" #sym "\n  .equ _" #sym ",_" #oldfunc "\n" )
 #endif
 
 #else
