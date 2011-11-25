@@ -59,7 +59,7 @@ MISC = 	ctype.o toupper.o tolower.o \
 	isalpha.o isalnum.o iscntrl.o isprint.o isspace.o isdigit.o \
         isblank.o isxdigit.o isupper.o islower.o isgraph.o ispunct.o \
 	sbrk.o write.o signal.o assert.o locale.o \
-	chdir.o rmdir.o mkdir.o opendir.o
+	chdir.o rmdir.o mkdir.o opendir.o rdwr.o lseek.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \
