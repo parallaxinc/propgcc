@@ -280,6 +280,7 @@ void terminal_mode(void)
     newt = oldt;
     newt.c_lflag &= ~(ICANON | ECHO);
     newt.c_iflag &= ~(ICRNL | INLCR);
+    newt.c_oflag &= ~OPOST;
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
     if (check_for_exit)
@@ -332,6 +333,7 @@ void terminal_mode(void)
                 if ((cnt = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
                     int i;
                     for (i = 0; i < cnt; ++i) {
+                        //printf("%02x\n", buf[i]);
                         if (buf[i] == ESC)
                             goto done;
                     }
