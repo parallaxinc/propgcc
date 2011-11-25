@@ -273,10 +273,13 @@ void terminal_mode(void)
             if ((buf[0] = getch()) == ESC)
                 break;
             tx(buf, 1);
+/* this should be handled by the library */
+#if 0
             if(buf[0] == '\r') {
                 buf[0] = '\n';
                 tx(buf, 1);
             }
+#endif
         }
     }
 
