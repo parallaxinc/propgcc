@@ -9,6 +9,11 @@
 PREFIX=/usr/local/propeller
 export PREFIX
 
+#
+# ADD /usr/local/propeller/bin to PATH
+#
+export PATH=$PREFIX/bin:$PATH
+
 
 #
 # we want to specify the number of jobs to use for multi-core cpus
