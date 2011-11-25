@@ -50,7 +50,10 @@ _term_read(FILE *fp, unsigned char *buf, int size)
     {
       value = (*getbyte)(fp);
       /* convert cr to lf */
-      if (cooked && value == '\r') value = '\n';
+      if (cooked && value == '\r') {
+	putbyte(value, fp); /* echo CR+LF */
+	value = '\n';
+      }
       buf[count++] = value;
       /* do cooked mode processing */
       /* for now this echos the input */
