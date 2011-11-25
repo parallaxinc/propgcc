@@ -4,7 +4,7 @@
 typedef long off_t;
 
 int write(int fd, const void *buf, int count);
-int read(int fd, const void *buf, int count);
+int read(int fd, void *buf, int count);
 off_t lseek(int fd, off_t offset, int whence);
 unsigned int sleep(unsigned int seconds);
 
