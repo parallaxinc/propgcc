@@ -101,13 +101,13 @@ then
   cp libiconv-2.dll ./${PACKAGE}/bin
   cp libintl-8.dll ./${PACKAGE}/bin
   cp ../tools/remove.exe ./${PACKAGE}/bin/rm.exe
+  rm -r ${PACKAGE}/share
   mv ${PACKAGE} propgcc
   zip ${ARCHIVE} -r propgcc
 
 elif test x$UNAME = xLinux
 then
   ARCHIVE=linux-${PACKAGE}.tar
-
 
   mkdir ${PACKAGE}/usr
   mkdir ${PACKAGE}/usr/local
