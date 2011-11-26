@@ -17,8 +17,7 @@
  * Sometimes a mole will pop up as brighly lit LED and you must
  * wack the mole pad to knock it out.
  *
- * When the moles are gone, your QuickStart yard will be serene.
- * That is: no more LED flickering. A rather boring place, no?
+ * When the moles are gone, your QuickStart yard will be celebrate!
  *
  */
 #include <stdlib.h>             // for rand() and seed()
