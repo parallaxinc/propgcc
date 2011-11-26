@@ -17,7 +17,7 @@
  * Sometimes a mole will pop up as brighly lit LED and you must
  * wack the mole pad to knock it out.
  *
- * When the moles are gone, your QuickStart yard will be celebrate!
+ * When the moles are gone, your QuickStart yard will celebrate!
  *
  */
 #include <stdlib.h>             // for rand() and seed()
