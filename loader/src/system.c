@@ -30,6 +30,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <psapi.h>
 #endif
 
+#if defined(MACOSX)
+#include <mach-o/dyld.h>
+#endif
+
 typedef struct PathEntry PathEntry;
 struct PathEntry {
     PathEntry *next;
@@ -110,9 +114,9 @@ int xbAddFilePath(const char *name)
 /* xbAddProgramPath - add the path relative the application directory */
 int xbAddProgramPath(char *argv[])
 {
-#if defined(WIN32)
     static char fullpath[1024];
     char *p;
+#if defined(WIN32)
 
 #if defined(Q_OS_WIN32) || defined(MINGW)
     /* get the full path to the executable */
@@ -122,32 +126,47 @@ int xbAddProgramPath(char *argv[])
     /* get the full path to the executable */
     if (!GetModuleFileNameEx(GetCurrentProcess(), NULL, fullpath, sizeof(fullpath)))
         return FALSE;
+#endif  /* Q_OS_WIN32 */
+
+#elif defined(LINUX)
+    int r;
+    r = readlink("/proc/self/exe", fullpath, sizeof(fullpath)-1);
+    if (r >= 0)
+      fullpath[r] = 0;
+    else
+      return FALSE;
+#elif defined(MACOSX)
+    int bufsize = sizeof(fullpath)-1;
+    int r = _NSGetExecutablePath(fullpath, &bufsize);
+    if (r < 0)
+      return FALSE;
+#else
+    /* fall back on argv[0]... probably not the best bet, since
+       shells might not put the full path in, but it's the most portable
+    */
+    strcpy(fullpath, argv[0]);
 #endif
 
     /* remove the executable filename */
-    if ((p = strrchr(fullpath, '\\')) != NULL)
+    if ((p = strrchr(fullpath, DIR_SEP)) != NULL)
         *p = '\0';
 
     /* remove the immediate directory containing the executable (usually 'bin') */
-    if ((p = strrchr(fullpath, '\\')) != NULL) {
+    if ((p = strrchr(fullpath, DIR_SEP)) != NULL) {
         *p = '\0';
         
         /* check for the 'Release' or 'Debug' build directories used by Visual C++ */
         if (strcmp(&p[1], "Release") == 0 || strcmp(&p[1], "Debug") == 0) {
-            if ((p = strrchr(fullpath, '\\')) != NULL)
+            if ((p = strrchr(fullpath, DIR_SEP)) != NULL)
                 *p = '\0';
         }
     }
 
     /* add propeller-load for propeller-gcc */
-    strcat(fullpath,"\\propeller-load");
+    strcat(fullpath, DIR_SEP_STR "propeller-load");
 
     /* add the executable directory */
     xbAddPath(fullpath);
-    
-#else
-    xbAddFilePath(argv[0]);
-#endif
 
     return TRUE;
 }

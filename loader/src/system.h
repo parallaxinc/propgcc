@@ -32,9 +32,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #if defined(WIN32)
 #define PATH_SEP    ';'
 #define DIR_SEP     '\\'
+#define DIR_SEP_STR "\\"
 #else
 #define PATH_SEP    ':'
 #define DIR_SEP     '/'
+#define DIR_SEP_STR "/"
 #endif
 
 /* forward typedefs */
