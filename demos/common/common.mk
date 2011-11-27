@@ -29,8 +29,12 @@ ifndef BOARD
 BOARD=$(PROPELLER_LOAD_BOARD)
 endif
 
+ifneq ($(BOARD),)
+BOARD=-b$(BOARD)
+endif
+
 CFLAGS += -m$(MODEL)
-LDFLAGS = -m$(MODEL) -fno-exceptions -fno-rtti
+LDFLAGS += -m$(MODEL) -fno-exceptions -fno-rtti
 
 ifneq ($(LDSCRIPT),)
 LDFLAGS += -T $(LDSCRIPT)
@@ -41,6 +45,7 @@ CC = propeller-elf-gcc
 CXX = propeller-elf-g++
 LD = propeller-elf-ld
 AS = propeller-elf-as
+AR = propeller-elf-ar
 OBJCOPY = propeller-elf-objcopy
 LOADER = propeller-load
 
@@ -51,8 +56,15 @@ BSTC=bstc
 SPINDIR=.
 ECHO=echo
 
+ifneq ($(NAME),)
 $(NAME).elf: $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+endif
+
+ifneq ($(LIBNAME),)
+lib$(LIBNAME).a: $(OBJS)
+	$(AR) rs $@ $(OBJS)
+endif
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
@@ -76,10 +88,10 @@ $(NAME).elf: $(OBJS)
 	$(ECHO) $@
 
 clean:
-	rm -f *.o *.elf *.cog *.binary
+	rm -f *.o *.elf *.a *.cog *.binary
 
 #
 # how to run
 #
 run: $(NAME).elf
-	$(LOADER) -b$(BOARD) $(NAME).elf -r -t
+	$(LOADER) $(BOARD) $(NAME).elf -r -t

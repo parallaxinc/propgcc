@@ -110,7 +110,7 @@ int serial_find(const char* prefix, int (*check)(const char* port, void* data), 
 					    comx = fname;
 					if ((p = strchr(comx, ')')) != NULL)
 					    *p = '\0';
-				    if ((*check)(comx, data) == 0) {
+                                    if ((*check)(comx, data) == 0) {
 				        rc = 0;
 				        goto done;
 				    }

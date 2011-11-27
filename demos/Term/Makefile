@@ -1,20 +1,9 @@
-NAME = termtest
+all:
+	make -C lib
+	make -C ctest
+	make -C cpptest
 
-OBJS = \
-termtest.o \
-term.o \
-term_vga.o \
-VGA_firmware.o \
-term_tv.o \
-TV_firmware.o \
-term_serial.o
-
-LIBS = -lsupc++
-
-ifndef MODEL
-MODEL = lmm
-endif
-
-CFLAGS = -Wall -Os -DPROPELLER_GCC
-
-include ../common/common.mk
+clean:
+	make -C lib clean
+	make -C ctest clean
+	make -C cpptest clean
