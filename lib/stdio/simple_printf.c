@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <compiler.h>
 
 /*
  * very simple printf -- just understands a few format features
@@ -123,11 +124,11 @@ PUTFLOAT(char c, double d, int width, int prec, int fill_char)
     if (prec > MAX_PRECISION) prec = MAX_PRECISION;
     d *= precmult[prec];
     d += 0.5;
-    frac_part = (ULONG)d;
-    if (frac_part >= max_integer) {
-        integer_part++;
-        frac_part -= max_integer;
+    if (d >= precmult[prec]) {
+      d -= precmult[prec];
+      integer_part++;
     }
+    frac_part = (ULONG)d;
     width -= (prec+1); 
     if (sign) {
         outbytes += PUTC(sign,1); width--;
@@ -245,11 +246,7 @@ _doprnt( const char *fmt, va_list args )
    return outbytes;
 }
 
-#ifdef FLOAT_SUPPORT
-int __simple_float_printf(const char *fmt, ...)
-#else
 int __simple_printf(const char *fmt, ...)
-#endif
 {
     va_list args;
     int r;
@@ -258,6 +255,10 @@ int __simple_printf(const char *fmt, ...)
     va_end(args);
     return r;
 }
+
+#ifdef FLOAT_SUPPORT
+__weak_alias(__simple_float_printf, __simple_printf);
+#endif
 
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
