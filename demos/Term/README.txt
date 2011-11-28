@@ -2,8 +2,8 @@ Directory structure:
 
 	Term/include contains the library include files
 	Term/lib contains the library code
-	Term/termctest contains the C test program
-	Term/termcpptest contains the C++ test program
+	Term/ctest contains the C test program
+	Term/cpptest contains the C++ test program
 
 To build in lmm mode:
 
