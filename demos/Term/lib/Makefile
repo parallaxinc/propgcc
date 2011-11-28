@@ -6,7 +6,8 @@ term_vga.o \
 VGA_firmware.o \
 term_tv.o \
 TV_firmware.o \
-term_serial.o
+term_serial.o \
+launch.o
 
 ifndef MODEL
 MODEL = lmm

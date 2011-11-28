@@ -1,3 +1,7 @@
+ifndef MODEL
+MODE = lmm
+endif
+
 all:
 	make -C lib
 	make -C ctest

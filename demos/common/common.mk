@@ -30,7 +30,7 @@ BOARD=$(PROPELLER_LOAD_BOARD)
 endif
 
 ifneq ($(BOARD),)
-BOARD=-b$(BOARD)
+BOARDFLAG=-b$(BOARD)
 endif
 
 CFLAGS += -m$(MODEL)
@@ -94,4 +94,4 @@ clean:
 # how to run
 #
 run: $(NAME).elf
-	$(LOADER) $(BOARD) $(NAME).elf -r -t
+	$(LOADER) $(BOARDFLAG) $(NAME).elf -r -t

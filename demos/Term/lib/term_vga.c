@@ -1,5 +1,6 @@
 #include <propeller.h>
 #include "term_vga.h"
+#include "launch.h"
 
 static char default_palette[TERM_COLORTABLE_SIZE] =     
 {                           // fgRGB  bgRGB    '
@@ -28,7 +29,7 @@ TERM *vgaTerm_start(TERM_VGA *vgaTerm, int basepin)
 {
     TERM *term = &vgaTerm->term;
     vgaText_t *vgaText = &vgaTerm->control;
-    extern uint32_t binary_VGA_dat_start[];
+    USEDRIVER(VGA)
     
     term->ops = &ops;
     term->screen = vgaTerm->screen;
@@ -64,7 +65,7 @@ TERM *vgaTerm_start(TERM_VGA *vgaTerm, int basepin)
     vgaText->vb = 31;
     vgaText->rate = 80000000 >> 2;
       
-    vgaTerm->cogid = cognew((void*)binary_VGA_dat_start, (void*)vgaText);
+    vgaTerm->cogid = LAUNCHCOG(VGA, (void*)vgaText);
     
     // set main fg/bg color here
     Term_setColorPalette(term, default_palette);

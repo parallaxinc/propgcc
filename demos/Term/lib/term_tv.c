@@ -1,5 +1,6 @@
 #include <propeller.h>
 #include "term_tv.h"
+#include "launch.h"
 
 /**
  * This is the TV palette.
@@ -31,7 +32,7 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
 {
     TERM *term = &tvTerm->term;
     TvText_t *tvText = &tvTerm->control;
-    extern uint32_t binary_TV_dat_start[];
+    USEDRIVER(TV)
 
 	term->ops = &ops;
     term->screen = tvTerm->screen;
@@ -61,7 +62,7 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
     tvText->auralcog  = 0;
 
     // start new cog from external memory using pasm and tvText
-    tvTerm->cogid = cognew((uint32_t)binary_TV_dat_start, (uint32_t)tvText) + 1;
+    tvTerm->cogid = LAUNCHCOG(TV, (void *)tvText) + 1;
 
     // set main fg/bg color
     Term_setColorPalette(term, default_palette);

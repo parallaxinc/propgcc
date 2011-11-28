@@ -10,9 +10,6 @@
 #include <stdlib.h>
 #include <propeller.h>
 
-//#define TV
-//#define VGA
-
 #define C3
 
 #include "term_tv.h"
