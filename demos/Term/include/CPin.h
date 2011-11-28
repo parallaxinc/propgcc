@@ -8,12 +8,12 @@ class CPin {
   	~CPin() {};
     void high()
     {
-    	OUTA &= ~m_mask;
+    	OUTA |= m_mask;
     	DIRA |= m_mask;
     };
     void low()
     {
-    	OUTA |= m_mask;
+    	OUTA &= ~m_mask;
     	DIRA |= m_mask;
     };
     int in()

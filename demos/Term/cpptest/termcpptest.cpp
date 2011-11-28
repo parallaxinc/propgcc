@@ -11,7 +11,7 @@ int main(void)
 	CSerialTerm serial(stdout);
 #ifdef C3
 	CPin vgaEnable(15);
-	vgaEnable.high();
+	vgaEnable.low();
 #endif
 
 	tv.str("Hello, world! (tv)\n");
