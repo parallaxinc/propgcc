@@ -2,16 +2,17 @@
 #include "term_vga.h"
 #include "launch.h"
 
+// these colors are preshifted left by 2
 static char default_palette[TERM_COLORTABLE_SIZE] =     
 {                           // fgRGB  bgRGB    '
-    0b111111, 0b000001,     // %%333, %%001    '0    white / dark blue
-    0b111100, 0b010100,     // %%330, %%110    '1   yellow / brown
-    0b100010, 0b000000,     // %%202, %%000    '2  magenta / black
-    0b010101, 0b111111,     // %%111, %%333    '3     grey / white
-    0b001111, 0b000101,     // %%033, %%011    '4     cyan / dark cyan
-    0b001000, 0b101110,     // %%020, %%232    '5    green / gray-green
-    0b010000, 0b110101,     // %%100, %%311    '6      red / pink
-    0b001111, 0b000001      // %%033, %%003    '7     cyan / blue
+    0b11111100, 0b00000100,     // %%333, %%001    '0    white / dark blue
+    0b11110000, 0b01010000,     // %%330, %%110    '1   yellow / brown
+    0b10001000, 0b00000000,     // %%202, %%000    '2  magenta / black
+    0b01010100, 0b11111100,     // %%111, %%333    '3     grey / white
+    0b00111100, 0b00010100,     // %%033, %%011    '4     cyan / dark cyan
+    0b00100000, 0b10111000,     // %%020, %%232    '5    green / gray-green
+    0b01000000, 0b11010100,     // %%100, %%311    '6      red / pink
+    0b00111100, 0b00000100      // %%033, %%003    '7     cyan / blue
 };
 
 static int vblank(TERM *term);
