@@ -136,7 +136,7 @@ int xbAddProgramPath(char *argv[])
     else
       return FALSE;
 #elif defined(MACOSX)
-    int bufsize = sizeof(fullpath)-1;
+    uint32_t bufsize = sizeof(fullpath)-1;
     int r = _NSGetExecutablePath(fullpath, &bufsize);
     if (r < 0)
       return FALSE;

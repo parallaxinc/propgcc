@@ -874,8 +874,8 @@ static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array,
         chksum += flash_loader_array[i];
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
     
-    /* load the lflash oader program */
-    if (ploadbuf(flash_loader_array, flash_loader_size, mode) != 0)
+    /* load the flash loader program */
+    if (preset() != 0 || ploadbuf(flash_loader_array, flash_loader_size, mode) != 0)
         return Error("loader load failed");
     
     /* return successfully */
