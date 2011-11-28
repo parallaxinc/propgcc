@@ -16,6 +16,11 @@ class CPin {
     	OUTA &= ~m_mask;
     	DIRA |= m_mask;
     };
+    void toggle()
+    {
+    	OUTA ^= m_mask;
+    	DIRA |= m_mask;
+    };
     int in()
     {
     	DIRA &= ~m_mask;
