@@ -163,6 +163,79 @@ do { \
  */
 #define waitvid(colors, pixels) __builtin_propeller_waitvid((colors), (pixels))
 
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+
+/**
+ * copy longs from external memory to hub memory
+ * @param dst - destination address in hub memory
+ * @param src - source address in external memory
+ * @param count - number of longs to copy
+ */
+static __inline__ void copy_from_xmm(uint32_t *dst, uint32_t *src, int count)
+{
+    uint32_t _dx, _sx, _cx;
+    __asm__ volatile (
+        "mov __TMP0, %[_src]\n\t"
+        "call #__LMM_RDLONG\n\t"
+        "wrlong __TMP1, %[_dst]\n\t"
+        "add __TMP0, #4\n\t"
+        "add %[_dst], #4\n\t"
+        "sub %[_count], #1 wz\n\t"
+        "if_nz sub pc, #6*4"
+    : /* outputs */
+      [_dst] "=&r" (_dx),
+      [_src] "=&r" (_sx),
+      [_count] "=&r" (_cx)
+    : /* inputs */
+      "[_dst]" (dst),
+      "[_src]" (src),
+      "[_count]" (count)
+    : /* clobbered registers */
+      "cc" );
+}
+
+/**
+ * read a long from external memory
+ * @param addr - address in external memory to read
+ * @returns the long at that address
+ */
+static __inline__ uint32_t rdlong_xmm(uint32_t *addr)
+{
+    uint32_t value;
+    __asm__ volatile (
+        "mov __TMP0, %[_addr]\n\t"
+        "call #__LMM_RDLONG\n\t"
+        "mov %[_value], __TMP1"
+    : /* outputs */
+        [_value] "=r" (value)
+    : /* inputs */
+        [_addr] "r" (addr)
+    : /* no clobbered registers */
+    );
+    return value;
+}
+
+/**
+ * write a long to external memory
+ * @param addr - address in external memory to write
+ * @param value - the value to write
+ */
+static __inline__ void wrlong_xmm(uint32_t *addr, uint32_t value)
+{
+    __asm__ volatile (
+        "mov __TMP0, %[_addr]\n\t"
+        "mov __TMP1, %[_value]\n\t"
+        "call #__LMM_WRLONG"
+    : /* no outputs */
+    : /* inputs */
+        [_addr] "r" (addr),
+        [_value] "r" (value)
+    : /* no clobbered registers */
+    );
+}
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif
