@@ -203,9 +203,20 @@ SECTIONS
   /* provide some case-sensitive aliases */
   PROVIDE(par = PAR) ;
   PROVIDE(cnt = CNT) ;
-  PROVIDE(dira = DIRA) ;
-  PROVIDE(outa = OUTA) ;
   PROVIDE(ina = INA) ;
+  PROVIDE(inb = INB) ;
+  PROVIDE(outa = OUTA) ;
+  PROVIDE(outb = OUTB) ;
+  PROVIDE(dira = DIRA) ;
+  PROVIDE(dirb = DIRB) ;
+  PROVIDE(ctra = CTRA) ;
+  PROVIDE(ctrb = CTRB) ;
+  PROVIDE(frqa = FRQA) ;
+  PROVIDE(frqb = FRQB) ;
+  PROVIDE(phsa = PHSA) ;
+  PROVIDE(phsb = PHSB) ;
+  PROVIDE(vcfg = VCFG) ;
+  PROVIDE(vscl = VSCL) ;
 
 }
 EOF
