@@ -37,7 +37,8 @@ HUBDATA volatile TvText_t *tvPtr;
  * a temporary HUB buffer for cog start. Define buffer here.
  */
 #if defined(__PROPELLER_XMM__)
-HUBDATA static uint32_t pasm[496];
+#define PASMLEN 496
+HUBDATA static uint32_t pasm[PASMLEN];
 #endif
 
 /**
@@ -73,7 +74,7 @@ static int color = 0;
  */
 static int gTvTextCog = 0;
 
-static void wordfill(uint16_t *dst, uint16_t val, int len)
+HUBTEXT static void wordfill(uint16_t *dst, uint16_t val, int len)
 {
     while(--len > -1) {
         *dst = val;
@@ -81,7 +82,7 @@ static void wordfill(uint16_t *dst, uint16_t val, int len)
     }
 }
 
-static void wordmove(uint16_t *dst, uint16_t *src, int len)
+HUBTEXT static void wordmove(uint16_t *dst, uint16_t *src, int len)
 {
     while(--len > -1) {
         *dst = *src;
@@ -103,8 +104,7 @@ int tvText_start(int basepin)
 
 #if defined(__PROPELLER_XMM__)
     dprintf("__PROPELLER_XMM__\n");
-    wordmove((uint16_t*)pasm,(uint16_t*)binary_TV_dat_start,496<<1);
-    //memmove((void*)pasm,(void*)binary_TV_dat_start,496<<0);
+    copy_from_xmm((uint32_t*)pasm,(uint32_t*)binary_TV_dat_start,PASMLEN);
     dprintf("pasm size %d\r\n", size);
     for(n = 1; n <= size; n++) {
         dprintf("%08x ", pasm[n-1]);
@@ -138,7 +138,7 @@ int tvText_start(int basepin)
     tvPtr->hx = 4;
     tvPtr->vx = 1;
     tvPtr->ho = 0;
-    tvPtr->vo = 0; 
+    tvPtr->vo = -2; 
     tvPtr->broadcast = 0;
     tvPtr->auralcog  = 0;
 
