@@ -28,14 +28,13 @@ ifndef MODEL
 MODEL=lmm
 endif
 
-ifndef PORT
-PORT=1
-endif
-
 ifndef BOARD
-BOARD=hub
+BOARD=$(PROPELLER_LOAD_BOARD)
 endif
 
+ifneq ($(BOARD),)
+BOARDFLAG=-b$(BOARD)
+endif
 
 CFLAGS += -m$(MODEL)
 LDFLAGS = -m$(MODEL)
@@ -84,6 +83,6 @@ clean:
 # how to run
 #
 run: $(NAME).elf
-	$(LOADER) -p$(PORT) -b$(BOARD) $(NAME).elf -r -t
+	$(LOADER) $(BOARDFLAG) $(NAME).elf -r -t
 
 .FORCE:
