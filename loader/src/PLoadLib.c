@@ -179,7 +179,7 @@ static int findprop(const char* port)
     int version = 0;
     hwreset();
     version = hwfind();
-    if(version) {
+    if(version && port) {
         printf("Propeller Version %d on %s\n", version, port);
     }
     return version != 0 ? 0 : 1;
@@ -263,6 +263,11 @@ int popenport(const char* port, int baud)
     }
 
     return 0;
+}
+
+int preset(void)
+{
+    return findprop(NULL);
 }
 
 /**
