@@ -13,7 +13,6 @@ CFLAGS = -Os -mlmm
 # BSTC program
 BSTC=bstc
 SPINDIR=.
-ECHO=echo
 
 #
 # objects for this program
@@ -26,10 +25,7 @@ include $(PROPLIB)/lmmdemo.mk
 
 %.dat: $(SPINDIR)/%.spin
 	$(BSTC) -Ox -c -o $(basename $@) $<
-	$(ECHO) $@
 
 %_firmware.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
-	rm -rf $<
-	$(ECHO) $@
 

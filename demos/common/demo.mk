@@ -50,13 +50,12 @@ LOADER = propeller-load
 CXXFLAGS += $(CFLAGS)
 
 # BSTC program
-BSTC=bstc -ls
+BSTC=bstc
 SPINDIR=.
-ECHO=echo
 
 
 $(NAME).elf: $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS) -s
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
@@ -69,12 +68,9 @@ $(NAME).elf: $(OBJS)
 
 %.dat: $(SPINDIR)/%.spin
 	$(BSTC) -Ox -c -o $(basename $@) $<
-	$(ECHO) $@
 
 %_firmware.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
-	rm -rf $<
-	$(ECHO) $@
 
 clean:
 	rm -f *.o *.elf *.cog *.binary

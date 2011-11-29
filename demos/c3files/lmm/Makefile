@@ -4,14 +4,12 @@ CFLAGS=-Os -m$(MODEL)
 LDFLAGS=-m$(MODEL)
 OBJDIR=./
 SRCDIR=../src
-ECHO=echo
 
 OBJS = filetest.o printf.o
 HDRS =
 
 c3files.elf:	$(OBJS)
-	@$(CC) $(LDFLAGS) $(OBJS) -o $@
-	@$(ECHO) $@
+	@$(CC) $(LDFLAGS) $(OBJS) -o $@ -s
 run:
 	propeller-load -b c3 c3files.elf -r -t
 
@@ -20,4 +18,3 @@ clean:
 
 $(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS)
 	@$(CC) $(CFLAGS) -c $< -o $@
-	@$(ECHO) $@

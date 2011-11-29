@@ -54,11 +54,10 @@ CXXFLAGS += $(CFLAGS)
 # BSTC program
 BSTC=bstc
 SPINDIR=.
-ECHO=echo
 
 ifneq ($(NAME),)
 $(NAME).elf: $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS) -s
 endif
 
 ifneq ($(LIBNAME),)
@@ -80,12 +79,9 @@ endif
 
 %.dat: $(SPINDIR)/%.spin
 	$(BSTC) -Ox -c -o $(basename $@) $<
-	$(ECHO) $@
 
 %_firmware.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
-	rm -rf $<
-	$(ECHO) $@
 
 clean:
 	rm -f *.o *.elf *.a *.cog *.binary
