@@ -1,7 +1,8 @@
 @file propgcc/demos/README.txt
 
-This directory contains early demos designed for testing simple programs.
+This directory contains early demos and other programs contributed by users.
 
+Early Demos:
 ./common                : contains common make files
 ./dhrystone             : dhrystone 2.2 test
 ./fft                   : heater's fft_bench program
@@ -10,6 +11,7 @@ This directory contains early demos designed for testing simple programs.
 ./fibo/lmm              : LMM fibo test
 ./fibo/xmm              : XMM fibo test
 ./fibo/xmmc             : XMMC fibo test
+./forumists/*           : Parallax forum user contributions.
 ./include               : include files for libpropeller
 ./libpropeller          : the small propeller library
 ./toggle                : top level toggle program directory
