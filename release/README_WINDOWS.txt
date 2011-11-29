@@ -1,17 +1,37 @@
-To install:
+I. To install:
 
-1. Copy the propgcc directory to the root directory of the C drive.
+  Copy the propgcc directory to the root directory of the C drive.
 
-2. Open a command prompt window and go into the propgcc directory.
+II. To use Propeller-GCC from the windows command window use one of these methods:
 
-   C:\>cd propgcc
-   C:\propgcc>
+  A. From the new c:\propgcc folder in windows exporer:
 
-3. Run the batch file "setpath" to add the bin directories to the PATH.
-   This must be done every time a new command window is started.
+    1. Double click C:\propgcc\PropGCC.bat to start a new window.
+    2. Use commands mentioned below.
 
-   C:\propgcc>setpath
+  -- OR --
 
+  B. Use PropGCC.bat
+
+    1. C:\>cd propgcc
+    2. C:\propgcc>
+    3. C:\propgcc>PropGCC
+    4. Use commands mentioned below in the new window.
+
+  -- OR --
+
+  C. Use addpath.bat
+
+    1. C:\>cd propgcc
+    2. C:\propgcc>
+    3. C:\propgcc>addpath
+    4. Use commands mentioned below in the existing window.
+
+    This would be done every time a new command window is started.
+    Option A or B above automates these steps.
+
+
+III. Using Propeller-GCC
 
 There are some demo programs located in the demos directory.  You can build
 all the demo programs by going into the demos directory and typing make.  If
@@ -27,6 +47,7 @@ Propeller board and executed as follows:
 
   propeller-load is the propgcc loader program.
   -p com# is the name of the serial port, such as com7.
+     if you omit -p the loader will use the first serial port in the system.
   fibo.elf is the program image file to load.
   -r says load to ram and run the program.
   -e would mean load to eeprom and run the program.
