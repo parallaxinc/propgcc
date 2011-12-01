@@ -94,6 +94,7 @@ then
   cp -r /usr/local/propeller/* ${PACKAGE}/.
 
   cp bstc.exe ./${PACKAGE}/bin
+  cp addpath.bat ./${PACKAGE}
   cp PropGCC.bat ./${PACKAGE}
   cp INSTALL.txt ./${PACKAGE}
   cp README_WINDOWS.txt ./${PACKAGE}
