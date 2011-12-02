@@ -1040,27 +1040,15 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
 }
 
 static reg_class_t
-propeller_secondary_reload (bool in_p, rtx x, reg_class_t rclass_i,
-			    enum machine_mode mode, secondary_reload_info *sri)
+propeller_secondary_reload (bool in_p ATTRIBUTE_UNUSED, rtx x,
+			    reg_class_t reload_class,
+			    enum machine_mode reload_mode ATTRIBUTE_UNUSED,
+			    secondary_reload_info *sri ATTRIBUTE_UNUSED)
 {
-  enum reg_class rclass = (enum reg_class) rclass_i;
-  enum reg_class xclass = NO_REGS;
-  unsigned xregno = INVALID_REGNUM;
+  enum reg_class rclass = (enum reg_class) reload_class;
 
-  if (REG_P (x))
-    {
-      xregno = REGNO (x);
-      if (xregno >= FIRST_PSEUDO_REGISTER)
-	xregno = true_regnum (x);
-      if (xregno != INVALID_REGNUM)
-	xclass = REGNO_REG_CLASS (xregno);
-    }
-  if (TARGET_XMM)
-    {
-      /* sp can only be moved from another register */
-      if (rclass == SP_REGS && xclass != GENERAL_REGS)
-	return GENERAL_REGS;
-    }
+  if (rclass == SP_REGS)
+    return GENERAL_REGS;
 
   return NO_REGS;
 }
