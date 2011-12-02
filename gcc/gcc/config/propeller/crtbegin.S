@@ -4,9 +4,12 @@
 	'' so use LMM conventions
 	''
 #if defined(__PROPELLER_XMM__)
+
+# if 0
+	'' original XMM CODE
 	.macro STORE reg,mem
 	mov	__TMP0,\mem
-	mov	__TMP1,\ret
+	mov	__TMP1,\reg
 	call	#__LMM_WRLONG
 	.endm
 	.macro LOAD reg,mem
@@ -14,6 +17,19 @@
 	call	#__LMM_RDLONG
 	mov	\reg,__TMP1
 	.endm
+# else
+	'' new XMM CODE using INTERMEDIATE mode loads
+	'' __TMP0 == ddddssss where dddd is the data reg,
+	''                          ssss holds the address
+	.macro STORE reg,mem
+	xmmio	wrlong,\reg,\mem
+	.endm
+	'' __TMP0 == ddddssss where dddd is the output reg,
+	''                          ssss holds the address
+	.macro LOAD reg,mem
+	xmmio	rdlong,\reg,\mem
+	.endm
+# endif
 #else
 	.macro STORE reg,mem
 	wrlong	\reg,\mem

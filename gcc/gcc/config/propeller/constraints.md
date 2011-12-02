@@ -38,12 +38,17 @@
 
 ;;
 ;; note that a cog memory reference is not actually a "memory_constraint"
-;; as gcc uses the term, because we can't access it via a base register
+;; as gcc uses the term, because we can't necessarily
+;; access it via a base register
+;; also note that any register (including non-general registers)
+;; is a cog memory reference
 ;;
 (define_constraint "C"
   "A cog memory reference"
-  (and (match_code "mem")
-       (match_test "propeller_cogmem_p (op)")))
+  (ior (and (match_code "mem")
+            (match_test "propeller_cogmem_p (op)"))
+       (and (match_code "reg")
+            (match_test "REGNO (op) <= PROP_SP_REGNUM"))))
 
 (define_memory_constraint "Q"
   "A register or cog memory indirect memory operand."

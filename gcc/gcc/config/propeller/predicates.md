@@ -47,6 +47,17 @@
        (and (match_operand 0 "memory_operand")
             (match_test "propeller_cogmem_p (op)"))))
 
+;; True if OP is suitable as a register propeller destination operand
+;; in TARGET_XMM the stack pointer and other cog memory locations
+;; are not a suitable destination for
+;; loads, otherwise this is the same as propeller_dst_operand
+
+(define_predicate "propeller_reg_operand"
+  (ior (and (match_operand 0 "register_operand")
+            (match_test "!TARGET_XMM || REGNO (op) != PROP_SP_REGNUM"))
+       (and (match_operand 0 "memory_operand")
+            (match_test "!TARGET_XMM && propeller_cogmem_p (op)"))))
+
 
 ;; Nonzero if OP is suitable as a general propeller source operand
 

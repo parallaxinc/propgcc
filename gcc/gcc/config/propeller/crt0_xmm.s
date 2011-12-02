@@ -19,8 +19,8 @@
 	.global sp
 	.global pc
 
-    .set SIMPLE_XMM_RDWR, 1
-    .set INTERMEDIATE_XMM_RDWR, 0
+    .set SIMPLE_XMM_RDWR, 0
+    .set INTERMEDIATE_XMM_RDWR, 1
     .set COMPLEX_XMM_RDWR, 0
 
 	.global __LMM_entry
@@ -40,6 +40,7 @@ r11 IF_NC wrlong r2,__C_LOCK_PTR
 r12	jmp	#__LMM_loop
 r13	long	0
 r14	long	0
+r15	'' alias for lr
 lr	long	0
 sp	long	0
 pc	long	0
@@ -220,18 +221,21 @@ __LMM_WRLONG_ret
     '' i=0 for no increment, i=1 to increment by the size of the data
 
 	.global __LMM_RDBYTEI
+	.global __LMM_RDBYTEI_ret
 __LMM_RDBYTEI
     movi    rdi_common_store, #RDBYTE_OPCODE
     movs    rdi_common_inc, #1
     jmp     #rdi_common
 
 	.global __LMM_RDWORDI
+	.global __LMM_RDWORDI_ret
 __LMM_RDWORDI
     movi    rdi_common_store, #RDWORD_OPCODE
     movs    rdi_common_inc, #2
     jmp     #rdi_common
 
 	.global __LMM_RDLONGI
+	.global __LMM_RDLONGI_ret
 __LMM_RDLONGI
     movi    rdi_common_store, #RDLONG_OPCODE
     movs    rdi_common_inc, #4
@@ -252,7 +256,10 @@ rdi_common_fetch_addr
     call    #cache_read
 rdi_common_store
     rdlong  0-0, memp
-    jmp     #__LMM_loop
+__LMM_RDLONGI_ret
+__LMM_RDWORDI_ret
+__LMM_RDBYTEI_ret
+    ret
     
     ''
     '' intermediate memory write instructions
@@ -264,18 +271,21 @@ rdi_common_store
     '' i=0 for no increment, i=1 to increment by the size of the data
 
 	.global __LMM_WRBYTEI
+	.global __LMM_WRBYTEI_ret
 __LMM_WRBYTEI
     movi    wri_common_fetch_data, #WRBYTE_OPCODE
     movs    wri_common_inc, #1
     jmp     #wri_common
 
 	.global __LMM_WRWORDI
+	.global __LMM_WRWORDI_ret
 __LMM_WRWORDI
     movi    wri_common_fetch_data, #WRWORD_OPCODE
     movs    wri_common_inc, #2
     jmp     #wri_common
 
 	.global __LMM_WRLONGI
+	.global __LMM_WRLONGI_ret
 __LMM_WRLONGI
     movi    wri_common_fetch_data, #WRLONG_OPCODE
     movs    wri_common_inc, #4
@@ -296,7 +306,10 @@ wri_common_fetch_addr
     call    #cache_write
 wri_common_fetch_data
     wrlong  0-0, memp
-    jmp     #__LMM_loop
+__LMM_WRBYTEI_ret
+__LMM_WRWORDI_ret
+__LMM_WRLONGI_ret
+    ret
     
     .endif 'INTERMEDIATE_XMM_RDWR
 

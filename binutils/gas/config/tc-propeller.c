@@ -185,6 +185,7 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   size = fixP->fx_size;
   code = md_chars_to_number ((unsigned char *) buf, size);
 
+
   /* On a 64-bit host, silently truncate 'value' to 32 bits for
      consistency with the behaviour on 32-bit hosts.  Remember value
      for emit_reloc.  */
@@ -270,6 +271,7 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
     code &= ~mask;
     code |= ((val>>rshift) << shift) & mask;
   }
+
   md_number_to_chars (buf, code, size);
 
   if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
@@ -432,6 +434,42 @@ lc (char *str)
     }
 }
 
+/*
+ * parse a register specification like r0 or lr
+ */
+static char *
+parse_regspec (char *str, int *regnum, struct propeller_code *operand)
+{
+  int reg;
+  str = skip_whitespace (str);
+  /* special case the link register (r15 or lr) */
+  if ( (*str == 'l' && str[1] == 'r')
+       || (*str == 'L' && str[1] == 'R'))
+    {
+      *regnum = 15;
+      str += 2;
+      return str;
+    }
+  if ( (*str != 'r' && *str != 'R') || !ISDIGIT(str[1]) )
+    {
+      operand->error = _("expected register number");
+      return str;
+    }
+  str++;
+  reg = 0;
+  while (ISDIGIT(*str))
+    {
+      reg = 10*reg + ((*str) - '0');
+      str++;
+    }
+  if (reg > 15 || reg < 0)
+    {
+      operand->error = _("illegal register number");
+    }
+  *regnum = reg;
+  return str;
+}
+
 static char *
 parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
   int integer_reloc = 0;
@@ -588,13 +626,19 @@ md_assemble (char *instruction_string)
   const struct propeller_opcode *op;
   const struct propeller_condition *cond;
   const struct propeller_effect *eff;
-  struct propeller_code insn, op1, op2, op3;
+  struct propeller_code insn, op1, op2, insn2, op3, op4;
   int error;
   int size;
   char *err = NULL;
   char *str;
   char *p;
   char c;
+
+  if (ignore_input())
+    {
+      //fprintf(stderr, "ignore input in md_assemble!\n");
+      return;
+    }
 
   /* force 4 byte alignment for this section */
   record_alignment(now_seg, 2);
@@ -650,12 +694,17 @@ md_assemble (char *instruction_string)
   insn.error = NULL;
   insn.code |= op->opcode;
   insn.reloc.type = BFD_RELOC_NONE;
+  insn2.error = NULL;
+  insn2.code = 0;
+  insn2.reloc.type = BFD_RELOC_NONE;
   op1.error = NULL;
   op1.reloc.type = BFD_RELOC_NONE;
   op2.error = NULL;
   op2.reloc.type = BFD_RELOC_NONE;
   op3.error = NULL;
   op3.reloc.type = BFD_RELOC_NONE;
+  op4.error = NULL;
+  op4.reloc.type = BFD_RELOC_NONE;
 
   str = p;
   size = 4;
@@ -767,9 +816,72 @@ md_assemble (char *instruction_string)
 	   op3.error = _("Missing ','");
 	   break;
 	  }
-	arg2 = parse_src_n(arg2, &op3, 23);
+	arg2 = parse_src_n(arg2, &insn2, 23);
 	size = 8;
 	free(arg);
+      }
+      break;
+
+    case PROPELLER_OPERAND_XMMIO:
+      {
+	/* this looks like:
+	      xmmio rdbyte,r0,r2
+	   and gets translated into two instructions:
+	      mov     __TMP0,#(0<<16)+2
+	      jmpret  __LMM_RDLONGI_ret, #__LMM_RDLONGI
+	*/
+        char *arg;
+	char *rdwrop;
+        int len;
+	int regnum;
+	char temp0reg[16];
+
+	size = 8;  /* this will be a long instruction */
+	str = skip_whitespace (str);
+	len = strlen(str);
+	arg = malloc(len + 16);
+	if (arg == NULL)
+	  as_fatal (_("Virtual memory exhausted"));
+	rdwrop = arg;
+	strcpy(arg, "#__LMM_");
+	arg += 7;
+	while (*str && ISALPHA(*str)) {
+	  *arg++ = TOUPPER(*str);
+	  str++;
+	}
+	*arg++ = 'I';
+	*arg = 0;
+
+	/* op1 will be __TMP0; op2 will be an immediate constant built
+	   out of the strings we see
+	*/
+	strcpy(temp0reg, "__TMP0");
+	parse_dest (temp0reg, &op1, &insn);
+        str = parse_separator (str, &error);
+        if (error)
+	  {
+	   op2.error = _("Missing ','");
+	   break;
+	  }
+	regnum = 0;
+	str = parse_regspec (str, &regnum, &op2);
+	insn.code |= (1<<22);  // make it an immediate instruction
+	insn.code |= (regnum<<4);
+	str = parse_separator (str, &error);
+	if (error && !op2.error)
+	  {
+	    op2.error = _("Missing ','");
+	    break;
+	  }
+	str = parse_regspec (str, &regnum, &op2);
+	insn.code |= (regnum);
+
+	// now set up the CALL instruction
+	insn2.code = 0x5c800000 | (0xf << 18); 
+	parse_src(rdwrop, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
+	strcat(rdwrop, "_ret");
+	parse_dest(rdwrop+1, &op3, &insn2);
+	free(rdwrop);
       }
       break;
 
@@ -864,8 +976,12 @@ md_assemble (char *instruction_string)
     err = op1.error;
   else if (op2.error)
     err = op2.error;
+  else if (insn2.error)
+    err = insn2.error;
   else if (op3.error)
     err = op3.error;
+  else if (op4.error)
+    err = op4.error;
   else
     {
       str = skip_whitespace (str);
@@ -880,8 +996,9 @@ md_assemble (char *instruction_string)
     }
   {
     char *to = NULL;
+    char *xd;
 
-    to = frag_more (size);
+    xd = to = frag_more (size);
 
     md_number_to_chars (to, insn.code, 4);
     if (insn.reloc.type != BFD_RELOC_NONE)
@@ -895,15 +1012,21 @@ md_assemble (char *instruction_string)
 		   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
     to += 4;
 
-    /* op3 is never used for real instructions, but is useful */
+    /* insn2 is never used for real instructions, but is useful */
     /* for some pseudoinstruction for LMM and such. */
-    if (op3.reloc.type != BFD_RELOC_NONE || op3.code)
+    if (insn2.reloc.type != BFD_RELOC_NONE || insn2.code)
       {
-	md_number_to_chars (to, op3.code, 4);
-	if(op3.reloc.type != BFD_RELOC_NONE){
+	md_number_to_chars (to, insn2.code, 4);
+	if(insn2.reloc.type != BFD_RELOC_NONE){
+	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+		       &insn2.reloc.exp, insn2.reloc.pc_rel, insn2.reloc.type);
+	}
+	if (op3.reloc.type != BFD_RELOC_NONE)
 	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
 		       &op3.reloc.exp, op3.reloc.pc_rel, op3.reloc.type);
-	}
+	if (op4.reloc.type != BFD_RELOC_NONE)
+	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+		       &op4.reloc.exp, op4.reloc.pc_rel, op4.reloc.type);
 	to += 4;
       }
   }

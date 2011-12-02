@@ -253,6 +253,8 @@ enum reg_class
   R0_REGS,
   R1_REGS,
   GENERAL_REGS,
+  SP_REGS,
+  BASE_REGS,
   SPECIAL_REGS,
   CC_REGS,
   ALL_REGS,
@@ -263,7 +265,9 @@ enum reg_class
 { { 0x00000000 }, /* Empty */			   \
   { 0x00000001 }, /* r0 */                 \
   { 0x00000002 }, /* r1 */                 \
-  { 0x0001FFFF }, /* r0-r15, sp, */        \
+  { 0x0000FFFF }, /* general registers */  \
+  { 0x00010000 }, /* sp */        \
+  { 0x0001FFFF }, /* base registers */        \
   { 0x00020000 }, /* pc */	                   \
   { 0x00040000 }, /* cc */                        \
   { 0x0007FFFF }  /* All registers */              \
@@ -276,6 +280,8 @@ enum reg_class
     "R0_REGS", \
     "R1_REGS", \
     "GENERAL_REGS", \
+    "SP_REGS", \
+    "BASE_REGS", \
     "SPECIAL_REGS", \
     "CC_REGS", \
     "ALL_REGS" }
@@ -364,7 +370,7 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 /* A macro whose definition is the name of the class to which a valid
    base register must belong.  A base register is one used in an
    address which is the register value plus a displacement.  */
-#define BASE_REG_CLASS GENERAL_REGS
+#define BASE_REG_CLASS BASE_REGS
 
 #define INDEX_REG_CLASS NO_REGS
 

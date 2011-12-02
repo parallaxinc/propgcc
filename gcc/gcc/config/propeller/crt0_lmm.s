@@ -37,6 +37,7 @@ r11     rdlong __TLS,sp	' and the _TLS variable
 r12     add	sp,#4
 r13	jmp	#__LMM_loop
 r14	long	0x00008000
+r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc

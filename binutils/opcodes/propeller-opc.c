@@ -204,6 +204,13 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* brl is also made of rdlong and a constant.  We may shrink it later. */
 /* brl       000010 zc1i cccc ddddddddd sssssssss */
   {"brl", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRL, R, PROP_1_LMM},
+
+/* xmmio is made up of a mov immediate followed by a call; the first part
+   is mov, so that's what we give here
+*/
+/* xmmio      101000 zcri cccc ddddddddd sssssssss */
+  {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, R, PROP_1_LMM},
+
 };
 
 const int propeller_num_opcodes =

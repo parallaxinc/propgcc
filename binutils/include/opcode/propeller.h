@@ -37,6 +37,7 @@
 #define PROPELLER_OPERAND_LDI         9
 #define PROPELLER_OPERAND_BRL         10
 #define PROPELLER_OPERAND_BRS         11
+#define PROPELLER_OPERAND_XMMIO       12
 
 struct propeller_opcode
 {

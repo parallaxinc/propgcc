@@ -786,7 +786,7 @@
    (set_attr "predicable" "yes")]
 )
 
-(define_insn "*<orop:code>si3_compare0_only"
+(define_insn "*<orop:code>si3_compare0"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
 	  (orop:SI
@@ -920,8 +920,8 @@
  	(match_operand:SI 1 "general_operand" ""))]
    ""
 {
-  if (!propeller_dst_operand (operands[0], SImode)
-      && !propeller_dst_operand (operands[1], SImode))
+  if (!propeller_reg_operand (operands[0], SImode)
+      && !propeller_reg_operand (operands[1], SImode))
     {
       operands[1] = force_reg (SImode, operands[1]);
     }
@@ -949,16 +949,16 @@
 
 
 (define_insn "*movsi_xmm"
-  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
-	(match_operand:SI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
-  "TARGET_XMM"
+  [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,r,S,r,Q")
+	(match_operand:SI 1 "general_operand"               "rCI,N,S,r,Q,r"))]
+  "TARGET_XMM && (propeller_reg_operand(operands[0], SImode)||propeller_reg_operand(operands[1], SImode))"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
    rdlong\t%0, %1
    wrlong\t%1, %0
-   mov\t__TMP0,%1\n\tcall #__LMM_RDLONG\n\tmov\t%0,__TMP1
-   mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRLONG"
+   xmmio\trdlong,%0,%1
+   xmmio\twrlong,%1,%0"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
     (set_attr "length" "4,4,4,4,12,12")
     (set_attr "predicable" "no")
@@ -968,7 +968,7 @@
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,rC,Q")
 	(match_operand:SI 1 "general_operand"               "rCI,B,N,Q,rC"))]
-  "!TARGET_XMM"
+  "!TARGET_XMM && (propeller_reg_operand(operands[0], SImode)||propeller_reg_operand(operands[1], SImode))"
   "@
    mov\t%0, %1
    mova\t%0, #%1
@@ -1045,8 +1045,8 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (!propeller_dst_operand (operands[0], HImode)
-      && !propeller_dst_operand (operands[1], HImode))
+  if (!propeller_reg_operand (operands[0], HImode)
+      && !propeller_reg_operand (operands[1], HImode))
     operands[1] = force_reg (HImode, operands[1]);
 }")
 
@@ -1060,16 +1060,16 @@
 )
 
 (define_insn "*movhi_xmm"
-  [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
-	(match_operand:HI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
-  "TARGET_XMM && (propeller_dst_operand(operands[0], HImode)||propeller_dst_operand(operands[1], HImode))"
+  [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,S,r,Q")
+	(match_operand:HI 1 "general_operand"               "rCI,N,S,rC,Q,r"))]
+  "TARGET_XMM && (propeller_reg_operand(operands[0], HImode)||propeller_reg_operand(operands[1], HImode))"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
    rdword\t%0, %1
    wrword\t%1, %0
-   mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP1
-   mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRWORD"
+   xmmio\trdword,%0,%1
+   xmmio\twrword,%1,%0"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
     (set_attr "length" "4,4,4,4,12,12")
     (set_attr "predicable" "no")
@@ -1079,8 +1079,8 @@
 (define_insn "*movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
-  "!TARGET_XMM && (propeller_dst_operand (operands[0], HImode)
-                   || propeller_dst_operand (operands[1], HImode))"
+  "!TARGET_XMM && (propeller_reg_operand (operands[0], HImode)
+                   || propeller_reg_operand (operands[1], HImode))"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -1097,25 +1097,25 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (!propeller_dst_operand (operands[0], QImode)
-      && !propeller_dst_operand (operands[1], QImode))
+  if (!propeller_reg_operand (operands[0], QImode)
+      && !propeller_reg_operand (operands[1], QImode))
     operands[1] = force_reg (QImode, operands[1]);
 }")
 
 (define_insn "*movqi_xmm"
-  [(set (match_operand:QI 0 "nonimmediate_operand"          "=rC,rC,rC,S,rC,Q")
-	(match_operand:QI 1 "general_operand"               "rCI,N,S,rC,Q,rC"))]
+  [(set (match_operand:QI 0 "nonimmediate_operand"          "=rC,rC,rC,S,r,Q")
+	(match_operand:QI 1 "general_operand"               "rCI,N,S,rC,Q,r"))]
   "TARGET_XMM &&
-   (propeller_dst_operand (operands[0], QImode)
-    || propeller_dst_operand (operands[1], QImode))
+   (propeller_reg_operand (operands[0], QImode)
+    || propeller_reg_operand (operands[1], QImode))
   "
   "@
    mov\t%0, %1
    neg\t%0, #%n1
    rdbyte\t%0, %1
    wrbyte\t%1, %0
-   mov\t__TMP0,%1\n\tcall #__LMM_RDBYTE\n\tmov\t%0,__TMP1
-   mov\t__TMP0,%0\n\tmov\t__TMP1,%1\n\tcall #__LMM_WRBYTE"
+   xmmio\trdbyte,%0,%1
+   xmmio\twrbyte,%1,%0"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
     (set_attr "length" "4,4,4,4,12,12")
     (set_attr "predicable" "no")
@@ -1126,8 +1126,8 @@
   [(set (match_operand:QI 0 "nonimmediate_operand"   "=rC,rC,rC,Q")
 	(match_operand:QI 1 "general_operand"         "rCI,N,Q,rC"))]
   "!TARGET_XMM &&
-   (propeller_dst_operand (operands[0], QImode)
-     || propeller_dst_operand (operands[1], QImode))"
+   (propeller_reg_operand (operands[0], QImode)
+     || propeller_reg_operand (operands[1], QImode))"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -1146,7 +1146,7 @@
 
 ;; the h constraint says that alternative cannot be in cog memory
 (define_insn "*zero_extendhisi2_xmm"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,r")
 	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
   "TARGET_XMM"
 {
@@ -1155,7 +1155,7 @@
       propeller_need_mask0000ffff = true;
       return "and\\t%0,__MASK_0000FFFF";
     case 1:
-      return "mov\t__TMP0,%1\n\tcall #__LMM_RDWORD\n\tmov\t%0,__TMP1";
+      return "xmmio\\trdword,%0,%1";
     default:
       gcc_unreachable ();
   }
@@ -1191,7 +1191,7 @@
 )
 
 (define_insn "*zero_extendqisi2_xmm"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,rC")
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,r")
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
   "TARGET_XMM"
 {
@@ -1199,7 +1199,7 @@
     case 0:
       return "and\\t%0,#255";
     case 1:
-      return "mov\t__TMP0,%1\n\tcall\t#__LMM_RDBYTE\n\tmov\t%0,__TMP1";
+      return "xmmio\\trdbyte,%0,%1";
     default:
       gcc_unreachable ();
   }

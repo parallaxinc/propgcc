@@ -36,36 +36,11 @@ extern "C"
     
 int load_cog_driver_xmm(uint32_t *code, uint32_t codelen, uint32_t *params);
 
-static __inline__ void copy_from_xmm(uint32_t *dst, uint32_t *src, int count)
-{
-    uint32_t _dx, _sx, _cx;
-    __asm__ volatile (
-        "mov __TMP0, %[_src]\n\t"
-        "call #__LMM_RDLONG\n\t"
-        "wrlong __TMP1, %[_dst]\n\t"
-        "add __TMP0, #4\n\t"
-        "add %[_dst], #4\n\t"
-        "sub %[_count], #1 wz\n\t"
-        "if_nz sub pc, #6*4"
-    : /* outputs */
-      [_dst] "=&r" (_dx),
-      [_src] "=&r" (_sx),
-      [_count] "=&r" (_cx)
-    : /* inputs */
-      "[_dst]" (dst),
-      "[_src]" (src),
-      "[_count]" (count)
-    : /* clobbered registers */
-      "cc" );
-}
-
 static __inline__ uint32_t rdlong_xmm(uint32_t *addr)
 {
     uint32_t value;
     __asm__ volatile (
-        "mov __TMP0, %[_addr]\n\t"
-        "call #__LMM_RDLONG\n\t"
-        "mov %[_value], __TMP1"
+        "xmmio rdlong, %[_value], %[_addr]"
     : /* outputs */
         [_value] "=r" (value)
     : /* inputs */
@@ -78,15 +53,22 @@ static __inline__ uint32_t rdlong_xmm(uint32_t *addr)
 static __inline__ void wrlong_xmm(uint32_t *addr, uint32_t value)
 {
     __asm__ volatile (
-        "mov __TMP0, %[_addr]\n\t"
-        "mov __TMP1, %[_value]\n\t"
-        "call #__LMM_WRLONG"
+        "xmmio wrlong, %[_value], %[_addr]"
     : /* no outputs */
     : /* inputs */
         [_addr] "r" (addr),
         [_value] "r" (value)
     : /* no clobbered registers */
     );
+}
+
+static __inline__ void copy_from_xmm(uint32_t *dst, uint32_t *src, int count)
+{
+  uint32_t value;
+  while (count-- > 0) {
+    value = rdlong_xmm(src); src++;
+    wrlong_xmm(dst, value); dst++;
+  }
 }
 
 #else

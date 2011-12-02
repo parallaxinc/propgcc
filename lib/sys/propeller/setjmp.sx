@@ -4,14 +4,10 @@
 
 #if defined(__PROPELLER_XMM__)
 	.macro STORE reg,mem
-	mov	__TMP0,\mem
-	mov	__TMP1,\reg
-	call	#__LMM_WRLONG
+	xmmio  wrlong,\reg,\mem
 	.endm
 	.macro LOAD reg,mem
-	mov	__TMP0,\mem
-	call	#__LMM_RDLONG
-	mov	\reg,__TMP1
+	xmmio  rdlong,\reg,\mem
 	.endm
 #else
 	.macro STORE reg,mem
@@ -53,7 +49,8 @@ _setjmp:
 	add	r0,#4
 	STORE	lr,r0
 	add	r0,#4
-	STORE	sp,r0
+	mov	r2,sp
+	STORE	r2,r0
 	mov	r0,#0
 	RETURN
 
@@ -81,7 +78,8 @@ _longjmp:
 	add	r0,#4
 	LOAD	lr,r0
 	add	r0,#4
-	LOAD	sp,r0
+	LOAD	r2,r0
+	mov	sp,r2
 	
 	mov	r0,r1
 	RETURN

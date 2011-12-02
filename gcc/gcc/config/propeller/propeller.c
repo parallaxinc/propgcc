@@ -111,7 +111,7 @@ enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
     GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
     GENERAL_REGS, GENERAL_REGS, GENERAL_REGS, GENERAL_REGS,
 
-    GENERAL_REGS, SPECIAL_REGS, CC_REGS, SPECIAL_REGS,
+    SP_REGS, SPECIAL_REGS, CC_REGS, SPECIAL_REGS,
     SPECIAL_REGS
 };
 
@@ -486,10 +486,11 @@ propeller_stack_operand_p (rtx op)
   if (GET_CODE (op) != MEM)
     return false;
   op = XEXP (op, 0);
-  if (op == stack_pointer_rtx)
+  if (op == frame_pointer_rtx || op == arg_pointer_rtx || op == stack_pointer_rtx)
     return true;
-  if (op == frame_pointer_rtx || op == arg_pointer_rtx)
+  if (GET_CODE (op) == REG && REGNO (op) == STACK_POINTER_REGNUM)
     return true;
+
   return false;
 }
 
@@ -1025,8 +1026,8 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
         return false;
     }
 
-    /* allow cog memory references */
-    if (propeller_cogaddr_p (addr))
+    /* allow cog memory references in non-XMM mode */
+    if (!TARGET_XMM && propeller_cogaddr_p (addr))
         return true;
     if (GET_CODE (addr) == LABEL_REF)
         return true;
@@ -1036,6 +1037,32 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
         return true;
 
     return false;
+}
+
+static reg_class_t
+propeller_secondary_reload (bool in_p, rtx x, reg_class_t rclass_i,
+			    enum machine_mode mode, secondary_reload_info *sri)
+{
+  enum reg_class rclass = (enum reg_class) rclass_i;
+  enum reg_class xclass = NO_REGS;
+  unsigned xregno = INVALID_REGNUM;
+
+  if (REG_P (x))
+    {
+      xregno = REGNO (x);
+      if (xregno >= FIRST_PSEUDO_REGISTER)
+	xregno = true_regnum (x);
+      if (xregno != INVALID_REGNUM)
+	xclass = REGNO_REG_CLASS (xregno);
+    }
+  if (TARGET_XMM)
+    {
+      /* sp can only be moved from another register */
+      if (rclass == SP_REGS && xclass != GENERAL_REGS)
+	return GENERAL_REGS;
+    }
+
+  return NO_REGS;
 }
 
 
@@ -3181,6 +3208,8 @@ propeller_reorg(void)
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_false
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P propeller_legitimate_address_p
+#undef TARGET_SECONDARY_RELOAD
+#define TARGET_SECONDARY_RELOAD propeller_secondary_reload
 #undef  TARGET_RTX_COSTS
 #define TARGET_RTX_COSTS propeller_rtx_costs
 #undef  TARGET_ADDRESS_COST
