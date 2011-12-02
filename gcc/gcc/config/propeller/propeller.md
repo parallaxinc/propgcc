@@ -1071,7 +1071,7 @@
    xmmio\trdword,%0,%1
    xmmio\twrword,%1,%0"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
-    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "length" "4,4,4,4,8,8")
     (set_attr "predicable" "no")
    ]
 )
@@ -1117,7 +1117,7 @@
    xmmio\trdbyte,%0,%1
    xmmio\twrbyte,%1,%0"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
-    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "length" "4,4,4,4,8,8")
     (set_attr "predicable" "no")
    ]
 )
@@ -1146,8 +1146,8 @@
 
 ;; the h constraint says that alternative cannot be in cog memory
 (define_insn "*zero_extendhisi2_xmm"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,r")
-	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,h")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,r,r")
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,S,h")))]
   "TARGET_XMM"
 {
   switch(which_alternative) {
@@ -1155,13 +1155,15 @@
       propeller_need_mask0000ffff = true;
       return "and\\t%0,__MASK_0000FFFF";
     case 1:
+      return "rdword\\t%0,%1";
+    case 2:
       return "xmmio\\trdword,%0,%1";
     default:
       gcc_unreachable ();
   }
 }
-  [(set_attr "type" "core,multi")
-   (set_attr "length" "4,12")
+  [(set_attr "type" "core,hub,multi")
+   (set_attr "length" "4,4,8")
   ]
 )
 
@@ -1191,21 +1193,23 @@
 )
 
 (define_insn "*zero_extendqisi2_xmm"
-  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,r")
-	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,h")))]
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC,r,r")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,S,h")))]
   "TARGET_XMM"
 {
   switch(which_alternative) {
     case 0:
       return "and\\t%0,#255";
     case 1:
+      return "rdbyte\\t%0,%1";
+    case 2:
       return "xmmio\\trdbyte,%0,%1";
     default:
       gcc_unreachable ();
   }
 }
-  [(set_attr "type" "core,multi")
-   (set_attr "length" "4,12")
+  [(set_attr "type" "core,hub,multi")
+   (set_attr "length" "4,4,8")
   ]
 )
 
