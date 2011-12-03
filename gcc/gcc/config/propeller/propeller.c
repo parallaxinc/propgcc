@@ -1026,8 +1026,8 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
         return false;
     }
 
-    /* allow cog memory references in non-XMM mode */
-    if (!TARGET_XMM && propeller_cogaddr_p (addr))
+    /* allow cog memory references */
+    if (propeller_cogaddr_p (addr))
         return true;
     if (GET_CODE (addr) == LABEL_REF)
         return true;
