@@ -210,7 +210,7 @@ __LMM_WRLONG_ret
     .endif 'SIMPLE_XMM_RDWR
     
     .if INTERMEDIATE_XMM_RDWR
-    
+
     ''
     '' intermediate memory read instructions
     ''
@@ -219,43 +219,44 @@ __LMM_WRLONG_ret
     '' ssss is the register containing the address from which to read
     '' dddd is the register in which to return the value at that address
     '' i=0 for no increment, i=1 to increment by the size of the data
-
+    '' (not implemented)
+    ''
+	'' mask to indicate an external memory address
+extern_mem_mask
+	long	0xfff00000
+	
 	.global __LMM_RDBYTEI
 	.global __LMM_RDBYTEI_ret
 __LMM_RDBYTEI
     movi    rdi_common_store, #RDBYTE_OPCODE
-    movs    rdi_common_inc, #1
     jmp     #rdi_common
 
 	.global __LMM_RDWORDI
 	.global __LMM_RDWORDI_ret
 __LMM_RDWORDI
     movi    rdi_common_store, #RDWORD_OPCODE
-    movs    rdi_common_inc, #2
     jmp     #rdi_common
 
 	.global __LMM_RDLONGI
 	.global __LMM_RDLONGI_ret
 __LMM_RDLONGI
     movi    rdi_common_store, #RDLONG_OPCODE
-    movs    rdi_common_inc, #4
-
+	
 rdi_common
     muxnz   save_z_c, #2    'save the z flag
     movs    rdi_common_fetch_addr, __TMP0
     andn    rdi_common_fetch_addr, #0x1f0
     shr	    __TMP0, #4
-    test    __TMP0, #0x10 wz
     and     __TMP0, #0xf    
-    movd    rdi_common_inc, __TMP0
     movd    rdi_common_store, __TMP0
-rdi_common_inc
- IF_NZ  add 0-0, #4
 rdi_common_fetch_addr
     mov     t1, 0-0
-    call    #cache_read
+    test    t1, extern_mem_mask
+  IF_Z mov memp,t1
+  IF_NZ call    #cache_read
 rdi_common_store
     rdlong  0-0, memp
+	
 __LMM_RDLONGI_ret
 __LMM_RDWORDI_ret
 __LMM_RDBYTEI_ret
@@ -274,38 +275,34 @@ __LMM_RDBYTEI_ret
 	.global __LMM_WRBYTEI_ret
 __LMM_WRBYTEI
     movi    wri_common_fetch_data, #WRBYTE_OPCODE
-    movs    wri_common_inc, #1
     jmp     #wri_common
 
 	.global __LMM_WRWORDI
 	.global __LMM_WRWORDI_ret
 __LMM_WRWORDI
     movi    wri_common_fetch_data, #WRWORD_OPCODE
-    movs    wri_common_inc, #2
     jmp     #wri_common
 
 	.global __LMM_WRLONGI
 	.global __LMM_WRLONGI_ret
 __LMM_WRLONGI
     movi    wri_common_fetch_data, #WRLONG_OPCODE
-    movs    wri_common_inc, #4
-
+	
 wri_common
     muxnz   save_z_c, #2    'save the z flag
     movs    wri_common_fetch_addr, __TMP0
     andn    wri_common_fetch_addr, #0x1f0
     shr	    __TMP0, #4
-    test    __TMP0, #0x10  wz
-    and     __TMP0, #0xf    
-    movd    wri_common_inc, __TMP0
+    and     __TMP0, #0xf
     movd    wri_common_fetch_data, __TMP0
-wri_common_inc
- IF_NZ  add 0-0, #4
 wri_common_fetch_addr
     mov     t1, 0-0
-    call    #cache_write
+    test    t1, extern_mem_mask
+  IF_Z mov memp,t1
+  IF_NZ call    #cache_write
 wri_common_fetch_data
     wrlong  0-0, memp
+	
 __LMM_WRBYTEI_ret
 __LMM_WRWORDI_ret
 __LMM_WRLONGI_ret
