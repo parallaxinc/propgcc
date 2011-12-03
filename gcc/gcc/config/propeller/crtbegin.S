@@ -46,6 +46,7 @@
 entry
 	jmp	#__LMM_CALL
 	.long	___init
+
 	jmp	#__LMM_MVI_r1
 	.long	__argv	' set argv
 	'' calculate argc by counting non-zero elements of argv
@@ -97,8 +98,10 @@ ___init
 	jmp	#__LMM_MVI_r8
 	.long	___CTOR_LIST__
 L_loop
-	rdlong	__TMP0,r8 wz
+	LOAD	r0, r8
+	cmp	r0, #0 wz
 	IF_Z add pc,#(L_loopend - (.+4))
+	mov	__TMP0, r0
 	jmp	#__LMM_CALL_INDIRECT
 	add	r8,#4
 	sub	pc,#((.+4) - L_loop)
@@ -112,8 +115,10 @@ _exit
 	jmp	#__LMM_MVI_r8
 	.long	___DTOR_LIST__
 L_loopn
-	rdlong	__TMP0,r8 wz
+	LOAD	r0,r8
+	cmp	r0, #0 wz
 	IF_Z add pc,#(L_loopnend - (.+4))
+	mov	__TMP0,r0
 	jmp	#__LMM_CALL_INDIRECT
 	add	r8,#4
 	sub	pc,#((.+4) - L_loopn)
