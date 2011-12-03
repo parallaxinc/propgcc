@@ -9,6 +9,7 @@
 #include <string.h>
 
 #define ALIGNED(a) ( 0 == ( ((unsigned)(a)) & (sizeof(long)-1) ) )
+#define HUBMEM(a)  ( 0 == ( ((unsigned)(a)) & 0xFFF00000 ) )
 
 #define MINBLOCKSIZE (2*(sizeof(long)))
 
@@ -16,6 +17,12 @@ void *
 memcpy(void *dest_p, const void *src_p, size_t n)
 {
   void *orig_dest = dest_p;
+
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+  extern void *_copy_from_xmm(void *dest, const void *src, size_t n);
+  if (HUBMEM(dest_p) && !HUBMEM(src_p))
+    return _copy_from_xmm(dest_p, src_p, n);
+#endif
 
   /* do a quick copy if src and dest are aligned */
   if ( ALIGNED(dest_p) && ALIGNED(src_p) && n > MINBLOCKSIZE) {
