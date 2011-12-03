@@ -168,9 +168,6 @@ do {                                                    \
 
 #define TRAMPOLINE_SIZE		16
 
-#define DONT_USE_BUILTIN_SETJMP 1
-#define JMP_BUF_SIZE 9
-
 /*----------------------------------------*/
 /* Layout of source language data types.  */
 /*----------------------------------------*/

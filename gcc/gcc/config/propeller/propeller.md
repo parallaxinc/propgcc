@@ -951,7 +951,7 @@
 (define_insn "*movsi_xmm"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,r,S,r,Q")
 	(match_operand:SI 1 "general_operand"               "rCI,N,S,r,Q,r"))]
-  "TARGET_XMM && (propeller_reg_operand(operands[0], SImode)||propeller_reg_operand(operands[1], SImode))"
+  "TARGET_XMM"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -960,7 +960,7 @@
    xmmio\trdlong,%0,%1
    xmmio\twrlong,%1,%0"
    [(set_attr "type" "core,core,hub,hub,multi,multi")
-    (set_attr "length" "4,4,4,4,12,12")
+    (set_attr "length" "4,4,4,4,8,8")
     (set_attr "predicable" "no")
    ]
 )
@@ -968,7 +968,7 @@
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand"          "=rC,rC,rC,rC,Q")
 	(match_operand:SI 1 "general_operand"               "rCI,B,N,Q,rC"))]
-  "!TARGET_XMM && (propeller_reg_operand(operands[0], SImode)||propeller_reg_operand(operands[1], SImode))"
+  "!TARGET_XMM"
   "@
    mov\t%0, %1
    mova\t%0, #%1
@@ -1062,7 +1062,7 @@
 (define_insn "*movhi_xmm"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,S,r,Q")
 	(match_operand:HI 1 "general_operand"               "rCI,N,S,rC,Q,r"))]
-  "TARGET_XMM && (propeller_reg_operand(operands[0], HImode)||propeller_reg_operand(operands[1], HImode))"
+  "TARGET_XMM"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -1079,8 +1079,7 @@
 (define_insn "*movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand"          "=rC,rC,rC,Q")
 	(match_operand:HI 1 "general_operand" "rCI,N,Q,rC"))]
-  "!TARGET_XMM && (propeller_reg_operand (operands[0], HImode)
-                   || propeller_reg_operand (operands[1], HImode))"
+  "!TARGET_XMM"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -1105,10 +1104,7 @@
 (define_insn "*movqi_xmm"
   [(set (match_operand:QI 0 "nonimmediate_operand"          "=rC,rC,rC,S,r,Q")
 	(match_operand:QI 1 "general_operand"               "rCI,N,S,rC,Q,r"))]
-  "TARGET_XMM &&
-   (propeller_reg_operand (operands[0], QImode)
-    || propeller_reg_operand (operands[1], QImode))
-  "
+  "TARGET_XMM"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
@@ -1125,9 +1121,7 @@
 (define_insn "*movqi"
   [(set (match_operand:QI 0 "nonimmediate_operand"   "=rC,rC,rC,Q")
 	(match_operand:QI 1 "general_operand"         "rCI,N,Q,rC"))]
-  "!TARGET_XMM &&
-   (propeller_reg_operand (operands[0], QImode)
-     || propeller_reg_operand (operands[1], QImode))"
+  "!TARGET_XMM"
   "@
    mov\t%0, %1
    neg\t%0, #%n1
