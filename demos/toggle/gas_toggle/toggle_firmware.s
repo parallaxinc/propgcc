@@ -47,8 +47,9 @@
 
                 rdlong  waitdelay, wait_addr ' read from hub to get
                 rdlong  pins, pins_addr      ' the user's clkfreq delay and pins
-
                 mov     dira, pins          ' set pins to output
+		mov	outa, pins
+	
                 mov     nextcnt, waitdelay
                 add     nextcnt, cnt        ' best to add cnt last
 .loop
