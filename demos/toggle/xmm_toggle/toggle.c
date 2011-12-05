@@ -31,14 +31,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "propeller.h"
 
+
 int main(int argc, char* argv[])
 {
-    int mask = 0x3fffffff;
-    int freq = CLKFREQ>>1;
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC)
+    int mask = 0x00008000;  /* only toggle the C3 board LED */
+#else
+    int mask = 0x3fffffff;  /* toggle all pins except the serial */
+#endif
+    int freq;
+
+    freq = CLKFREQ;
+
     DIRA = mask;
+    OUTA = mask;
     for(;;) {
-        OUTA ^= DIRA;
+        OUTA ^= mask;
         waitcnt(freq+CNT);
     }    
 }
-
