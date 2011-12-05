@@ -128,6 +128,7 @@ $(SPINDIR)/cache_interface.spin \
 $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
 $(SPINDIR)/c3_cache.spin \
+$(SPINDIR)/c3f_cache.spin \
 $(SPINDIR)/ssf_cache.spin \
 $(SPINDIR)/eeprom_cache.spin \
 $(SPINDIR)/sd_cache.spin \
@@ -139,6 +140,7 @@ $(SPINDIR)/vm_start.spin
 
 DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
+$(DRVDIR)/c3f_cache.dat \
 $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \
 $(DRVDIR)/sdram_cache.dat \
