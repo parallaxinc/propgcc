@@ -8,7 +8,7 @@
 # Propeller Demo include
 PROPLIB = ../../common
 
-CFLAGS = -Os -mlmm
+CFLAGS = -Os
 
 #
 # objects for this program
