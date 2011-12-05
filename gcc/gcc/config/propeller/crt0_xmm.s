@@ -251,9 +251,10 @@ rdi_common
     movd    rdi_common_store, __TMP0
 rdi_common_fetch_addr
     mov     t1, 0-0
-    test    t1, extern_mem_mask
+    test    t1, extern_mem_mask wz
   IF_Z mov memp,t1
   IF_NZ call    #cache_read
+    test    save_z_c, #2 wz             'restore the z flag
 rdi_common_store
     rdlong  0-0, memp
 	
@@ -297,9 +298,10 @@ wri_common
     movd    wri_common_fetch_data, __TMP0
 wri_common_fetch_addr
     mov     t1, 0-0
-    test    t1, extern_mem_mask
+    test    t1, extern_mem_mask wz
   IF_Z mov memp,t1
   IF_NZ call    #cache_write
+    test    save_z_c, #2 wz             'restore the z flag
 wri_common_fetch_data
     wrlong  0-0, memp
 	
