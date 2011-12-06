@@ -148,6 +148,7 @@ static void *NullError(char *fmt, ...);
 
 typedef struct {
     int baud;
+    int flags;
     char *actualport;
 } CheckPortInfo;
 
@@ -155,6 +156,8 @@ static int CheckPort(const char* port, void* data)
 {
     CheckPortInfo* info = (CheckPortInfo*)data;
     int rc;
+    if (info->flags & IFLAG_VERBOSE)
+        printf("Trying %s                    \r", port); fflush(stdout);
     if ((rc = popenport(port, info->baud)) != 0)
         return rc;
     strncpy(info->actualport, port, PATH_MAX - 1);
@@ -162,7 +165,7 @@ static int CheckPort(const char* port, void* data)
     return 0;
 }
 
-int InitPort(char *prefix, char *port, int baud, char *actualport)
+int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
 {
     int rc;
     
@@ -174,6 +177,7 @@ int InitPort(char *prefix, char *port, int baud, char *actualport)
     else {
         CheckPortInfo info;
         info.baud = baud;
+        info.flags = flags;
         info.actualport = actualport;
         rc = serial_find(prefix, CheckPort, &info);
     }
