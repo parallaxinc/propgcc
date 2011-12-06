@@ -25,6 +25,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "config.h"
 #include "system.h"
 
+/* InitPort flags */
+#define IFLAG_VERBOSE               (1 << 0)
+
+/* LoadXXX flags */
 #define LFLAG_WRITE_EEPROM          (1 << 0)
 #define LFLAG_RUN                   (1 << 1)
 #define LFLAG_WRITE_BINARY          (1 << 2)
@@ -32,7 +36,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define LFLAG_WRITE_SDLOADER        (1 << 4)
 #define LFLAG_WRITE_SDCACHELOADER   (1 << 5)
 
-int InitPort(char *prefix, char *port, int baud, char *actualport);
+int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);

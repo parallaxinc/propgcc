@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
     System sys;
     int baud = 0;
     int flags = 0;
+    int verbose = FALSE;
     int i;
     int terminalBaud = 0;
 
@@ -165,6 +166,9 @@ int main(int argc, char *argv[])
                     Usage();
                 xbAddPath(p);
                 break;
+            case 'v':
+                verbose = TRUE;
+                break;
             default:
                 Usage();
                 break;
@@ -219,7 +223,7 @@ int main(int argc, char *argv[])
 
     /* initialize the serial port */
     if ((flags & (LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
-        if (InitPort(PORT_PREFIX, port, baud, actualport) == 0) {
+        if (InitPort(PORT_PREFIX, port, baud, verbose ? IFLAG_VERBOSE : 0, actualport) == 0) {
             fprintf(stderr, "error: opening serial port\n");
             return 1;
         }
@@ -294,6 +298,7 @@ usage: propeller-load\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
+         [ -v ]            verbose output\n\
          <name>            elf or spin binary file to load\n\
 \n\
 Variables that can be set with -D are:\n\
