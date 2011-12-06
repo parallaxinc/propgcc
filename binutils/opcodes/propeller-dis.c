@@ -175,7 +175,14 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 	  }
     }
 done:
-  FPRINTF (F, " %s", flags[set + OP.result * 8]);
+  if (i < propeller_num_opcodes)
+    {
+      FPRINTF (F, " %s", flags[set + OP.result * 8]);
+    }
+  else
+    {
+      FPRINTF (F, "<unrecognized instruction>");
+    }
 
 #undef OP
   return memaddr - start_memaddr;
