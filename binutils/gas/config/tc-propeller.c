@@ -996,9 +996,8 @@ md_assemble (char *instruction_string)
     }
   {
     char *to = NULL;
-    char *xd;
 
-    xd = to = frag_more (size);
+    to = frag_more (size);
 
     md_number_to_chars (to, insn.code, 4);
     if (insn.reloc.type != BFD_RELOC_NONE)
