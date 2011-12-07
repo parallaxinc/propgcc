@@ -2324,6 +2324,8 @@ propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpeq, exp);
     case PROPELLER_BUILTIN_WAITPNE:
         return propeller_expand_builtin_2opvoid (CODE_FOR_waitpne, exp);
+    case PROPELLER_BUILTIN_WAITVID:
+        return propeller_expand_builtin_2opvoid (CODE_FOR_waitvid, exp);
 
     case PROPELLER_BUILTIN_LOCKNEW:
         return propeller_expand_builtin_1op (CODE_FOR_locknew, target);
