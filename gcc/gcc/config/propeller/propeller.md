@@ -1050,6 +1050,18 @@
     operands[1] = force_reg (HImode, operands[1]);
 }")
 
+(define_insn "*movhi_imm_fcache"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+        (unspec:HI [(label_ref (match_operand 1 "" ""))
+	            (label_ref (match_operand 2 "" ""))]
+         UNSPEC_FCACHE_LABEL_REF))
+  ]
+  "TARGET_LMM"
+  "mov\t%0,__LMM_FCACHE_START+(%l1-%l2)"
+  [(set_attr "length" "4")
+  ]
+)
+
 (define_insn "*movhi_lmm"
   [(set (match_operand:HI 0 "register_operand" "=r")
         (match_operand:HI 1 "propeller_big_const" "i"))]
