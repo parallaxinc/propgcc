@@ -2932,6 +2932,7 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
 	      rtx const_insn;
 	      rtx next;
 	      rtx mov_insn = insn;
+	      int mode;
 
 	      const_label = gen_label_rtx ();
 	      LABEL_NUSES (const_label)++;
@@ -2940,7 +2941,7 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
 	      last = emit_label_after (const_label, last);
 	      INSN_ADDRESSES_NEW (last, -1);
 	      const_label = gen_rtx_LABEL_REF (SImode, const_label);
-
+	      mode = GET_MODE (SET_DEST (pattern));
 	      /* now the actual word */
 	      const_insn = gen_fcache_const_word (SET_SRC (pattern));
 	      last = emit_insn_after (const_insn, last);
@@ -2950,7 +2951,7 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
 	      /* delete it */
 	      next = delete_insn (mov_insn);
 	      /* update the pattern */
-	      SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, const_label, start_label), UNSPEC_FCACHE_LABEL_REF);
+	      SET_SRC (pattern) = gen_rtx_UNSPEC (mode, gen_rtvec (2, const_label, start_label), UNSPEC_FCACHE_LABEL_REF);
 	      emit_jump_insn_before (pattern, next);
 	    }
 	}
