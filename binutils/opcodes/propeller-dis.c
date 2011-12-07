@@ -168,6 +168,26 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 		(*info->print_address_func) (info->target, info);
 	      }
 	    goto done;
+	  case PROPELLER_OPERAND_BRS:
+	    if (!immediate)
+	      continue;
+	    if (dst != 17) /* not the PC */
+	      continue;
+	    if (memaddr < 2048)
+	      continue; /* could be in COG memory */
+	    FPRINTF (F, OP.name);
+	    FPRINTF (F, AFTER_INSTRUCTION);
+	    if ((unsigned)OP.opcode == 0x80000000U)
+	      info->target = memaddr + src;
+	    else
+	      info->target = memaddr - src;
+	    (*info->print_address_func) (info->target, info);
+	    goto done;
+	  case PROPELLER_OPERAND_XMMIO:
+	  case PROPELLER_OPERAND_LDI:
+	  case PROPELLER_OPERAND_BRL:
+	    /* disassembly not implemented yet */
+	    continue;
 	  default:
 	    /* TODO: is this a proper way of signalling an error? */
 	    FPRINTF (F, "<internal error: unrecognized instruction type>");

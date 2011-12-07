@@ -33,6 +33,30 @@ const struct propeller_opcode propeller_opcodes[] = {
    mnemonic  insn  zcri cond    dst       src */
 /* nop      ------ ---- cccc --------- --------- */
   {"nop", 0x00000000, 0x003c0000, PROPELLER_OPERAND_IGNORE, NR, PROP_1},
+
+  /* we put the pseudo-instructions here so the disassembler gets a first
+     crack at them
+  */
+  /* brs is a fake instruction that expands to either add or sub of a pc relative offset */
+/* brs      100000 zcri cccc ddddddddd sssssssss */
+  {"brs", 0x80000000, 0xfc000000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM},
+  /* dummy entry for the disassembler only */
+  {"brs ", 0x84800000, 0xfc800000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM},
+
+/* ldi is a fake instruction built from a rdlong and a constant that decodes as NOP */
+/* ldi      000010 zc1i cccc ddddddddd sssssssss */
+  {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, R, PROP_1_LMM},
+
+/* brl is also made of rdlong and a constant.  We may shrink it later. */
+/* brl       000010 zc1i cccc ddddddddd sssssssss */
+  {"brl", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRL, R, PROP_1_LMM},
+
+/* xmmio is made up of a mov immediate followed by a call; the first part
+   is mov, so that's what we give here
+*/
+/* xmmio      101000 zcri cccc ddddddddd sssssssss */
+  {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, R, PROP_1_LMM},
+
 /* wrbyte   000000 zc0i cccc ddddddddd sssssssss */
   {"wrbyte", 0x00000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
 /* rdbyte   000000 zc1i cccc ddddddddd sssssssss */
@@ -192,24 +216,6 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"waitcnt", 0xf8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1},
 /* waitvid  111111 zcRi cccc ddddddddd sssssssss */
   {"waitvid", 0xfc000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1},
-
-  /* brs is a fake instruction that expands to either add or sub of a pc relative offset */
-/* brs      100000 zcri cccc ddddddddd sssssssss */
-  {"brs", 0x80000000, 0xfc000000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM},
-
-/* ldi is a fake instruction built from a rdlong and a constant that decodes as NOP */
-/* ldi      000010 zc1i cccc ddddddddd sssssssss */
-  {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, R, PROP_1_LMM},
-
-/* brl is also made of rdlong and a constant.  We may shrink it later. */
-/* brl       000010 zc1i cccc ddddddddd sssssssss */
-  {"brl", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRL, R, PROP_1_LMM},
-
-/* xmmio is made up of a mov immediate followed by a call; the first part
-   is mov, so that's what we give here
-*/
-/* xmmio      101000 zcri cccc ddddddddd sssssssss */
-  {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, R, PROP_1_LMM},
 
 };
 
