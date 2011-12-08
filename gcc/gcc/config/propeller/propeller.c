@@ -1017,9 +1017,6 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
             if (!strict) return true;
             regno = reg_renumber[regno];
         }
-        if (regno == ARG_POINTER_REGNUM || regno == FRAME_POINTER_REGNUM)
-            return true;
-
         if (HARD_REGNO_OK_FOR_BASE_P(regno))
             return true;
 
@@ -1956,20 +1953,17 @@ propeller_select_rtx_section (enum machine_mode mode, rtx x,
 static section *
 propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
 {
-  if (!propeller_base_cog)
+  switch (TREE_CODE (decl))
     {
-      switch (TREE_CODE (decl))
-	{
-	case VAR_DECL:
-	  if (lookup_attribute ("cogmem", DECL_ATTRIBUTES (decl)))
-	    return kernel_section;
+    case VAR_DECL:
+      if (lookup_attribute ("cogmem", DECL_ATTRIBUTES (decl)))
+	return propeller_base_cog ? text_section : kernel_section;
 	  break;
-	case FUNCTION_DECL:
-	  if (is_native_function (decl))
-	    return kernel_section;
-	default:
-	  break;
-	}
+    case FUNCTION_DECL:
+      if (is_native_function (decl) && !propeller_base_cog)
+	return kernel_section;
+    default:
+      break;
     }
 
   if (TREE_CODE (decl) == FUNCTION_DECL)
