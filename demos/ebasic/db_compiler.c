@@ -79,7 +79,7 @@ int Compile(ParseContext *c, int maxObjects)
     /* add the intrinsic functions */
     AddIntrinsic(c, "ABS",             FN_ABS);
     AddIntrinsic(c, "RND",             FN_RND);
-    AddIntrinsic(c, "PRINTF",          FN_PRINTF);
+    AddIntrinsic(c, "printStr",        FN_printStr);
     AddIntrinsic(c, "printInt",        FN_printInt);
     AddIntrinsic(c, "printTab",        FN_printTab);
     AddIntrinsic(c, "printNL",         FN_printNL);

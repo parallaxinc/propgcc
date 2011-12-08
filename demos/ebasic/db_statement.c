@@ -732,7 +732,14 @@ static void ParsePrint(ParseContext *c)
             needNewline = VMTRUE;
             SaveToken(c, tkn);
             expr = ParseExpr(c);
-            CallHandler(c, "printInt", expr);
+            switch (expr->nodeType) {
+            case NodeTypeStringLit:
+                CallHandler(c, "printStr", expr);
+                break;
+            default:
+                CallHandler(c, "printInt", expr);
+                break;
+            }
             break;
         }
     }
@@ -745,6 +752,8 @@ static void ParsePrint(ParseContext *c)
 static void CallHandler(ParseContext *c, char *name, ParseTreeNode *expr)
 {
     Symbol *sym;
+    
+    /* find the built-in function */
     if (!(sym = FindSymbol(&c->globals, name)))
         ParseError(c, "undefined print function: %s", name);
         
