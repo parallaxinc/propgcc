@@ -265,8 +265,9 @@ write_data_handler
 
         add     vmaddr, #4
         rdlong  addr,   vmaddr          ' get the flash address (zero based)
-        andn    addr,   MSBYTE          ' kill upper nibble
-        add     addr,   eebase          ' add $8000 to get upper EEPROM address
+        test    addr,   MSNIBBLE wz     ' check the upper nibble
+if_nz   andn    addr,   MSNIBBLE        ' kill upper nibble
+if_nz   add     addr,   eebase          ' add the eeprom image base address
 
         mov     _delayCount, #WDELAY    ' use write delay
         mov     devs,   #EEID
@@ -541,7 +542,7 @@ ueack           long 0   ' user early ack
 ack             long 0   ' ack bit
 val             long 0   ' accumulated value
 eebase          long $1300 ' eebase sb > eeprom loader size
-MSBYTE          long $F0000000
+MSNIBBLE        long $F0000000
 
 eof             long $55555555           
         fit     496
