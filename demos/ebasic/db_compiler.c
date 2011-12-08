@@ -80,6 +80,9 @@ int Compile(ParseContext *c, int maxObjects)
     AddIntrinsic(c, "ABS",             FN_ABS);
     AddIntrinsic(c, "RND",             FN_RND);
     AddIntrinsic(c, "PRINTF",          FN_PRINTF);
+    AddIntrinsic(c, "printInt",        FN_printInt);
+    AddIntrinsic(c, "printTab",        FN_printTab);
+    AddIntrinsic(c, "printNL",         FN_printNL);
 
     /* initialize scanner */
     c->inComment = VMFALSE;

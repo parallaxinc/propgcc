@@ -101,7 +101,10 @@ typedef struct {
 enum {
     FN_ABS              = 0x00,
     FN_RND,
-    FN_PRINTF
+    FN_PRINTF,
+    FN_printInt,
+    FN_printTab,
+    FN_printNL
 };
 
 /* opcodes */

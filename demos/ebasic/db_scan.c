@@ -43,6 +43,7 @@ static struct {
 {   "NOT",      T_NOT       },
 {   "STOP",     T_STOP      },
 {   "RETURN",   T_RETURN    },
+{   "PRINT",    T_PRINT     },
 {   NULL,       0           }
 };
 
@@ -143,6 +144,7 @@ char *TokenName(Token token)
     case T_NOT:
     case T_STOP:
     case T_RETURN:
+    case T_PRINT:
         name = ktab[token - T_REM].keyword;
         break;
     case T_END_DEF:

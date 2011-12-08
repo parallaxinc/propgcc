@@ -13,7 +13,6 @@
 static void DoNew(ParseContext *e);
 static void DoList(ParseContext *e);
 static void DoRun(ParseContext *e);
-static void DoQuit(ParseContext *e);
 
 /* command table */
 static struct {
@@ -23,7 +22,6 @@ static struct {
     {   "NEW",   DoNew   },
     {   "LIST",  DoList  },
     {   "RUN",   DoRun   },
-    {   "QUIT",  DoQuit  },
     {   NULL,    NULL    }
 };
 
@@ -126,11 +124,6 @@ prog_i = 0;
             Execute(i, c->image);
         }
     }
-}
-
-static void DoQuit(ParseContext *c)
-{
-    exit(0);
 }
 
 static char *NextToken(ParseContext *c)

@@ -35,8 +35,10 @@ static void ParseLoopUntil(ParseContext *c);
 static void ParseStop(ParseContext *c);
 static void ParseGoto(ParseContext *c);
 static void ParseReturn(ParseContext *c);
+static void ParsePrint(ParseContext *c);
 
 /* prototypes */
+static void CallHandler(ParseContext *c, char *name, ParseTreeNode *expr);
 static void DefineLabel(ParseContext *c, char *name, int offset);
 static int ReferenceLabel(ParseContext *c, char *name, int offset);
 static void PushBlock(ParseContext *c);
@@ -109,6 +111,9 @@ void ParseStatement(ParseContext *c, Token tkn)
         break;
     case T_RETURN:
         ParseReturn(c);
+        break;
+    case T_PRINT:
+        ParsePrint(c);
         break;
     case T_IDENTIFIER:
         if (SkipSpaces(c) == ':') {
@@ -705,6 +710,56 @@ static void ParseReturn(ParseContext *c)
         FRequire(c, T_EOL);
     }
     putcbyte(c, OP_RETURN);
+}
+
+/* ParsePrint - handle the 'PRINT' statement */
+static void ParsePrint(ParseContext *c)
+{
+    int needNewline = VMTRUE;
+    ParseTreeNode *expr;
+    Token tkn;
+
+    while ((tkn = GetToken(c)) != T_EOL) {
+        switch (tkn) {
+        case ',':
+            needNewline = VMFALSE;
+            CallHandler(c, "printTab", NULL);
+            break;
+        case ';':
+            needNewline = VMFALSE;
+            break;
+        default:
+            needNewline = VMTRUE;
+            SaveToken(c, tkn);
+            expr = ParseExpr(c);
+            CallHandler(c, "printInt", expr);
+            break;
+        }
+    }
+
+    if (needNewline)
+        CallHandler(c, "printNL", NULL);
+}
+
+/* CallHandler - compile a call to a runtime print function */
+static void CallHandler(ParseContext *c, char *name, ParseTreeNode *expr)
+{
+    Symbol *sym;
+    if (!(sym = FindSymbol(&c->globals, name)))
+        ParseError(c, "undefined print function: %s", name);
+        
+    /* compile the function symbol reference */
+    putcbyte(c, OP_LIT);
+    putcword(c, sym->value);
+
+    /* compile the argument */
+    if (expr)
+        code_rvalue(c, expr);
+    
+    /* call the function */
+    putcbyte(c, OP_CALL);
+    putcbyte(c, (expr ? 1 : 0));
+    putcbyte(c, OP_DROP);
 }
 
 /* DefineLabel - define a local label */

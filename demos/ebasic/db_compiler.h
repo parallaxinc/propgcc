@@ -58,6 +58,7 @@ typedef enum {
     T_NOT,
     T_STOP,
     T_RETURN,
+    T_PRINT,
     T_ELSE_IF,  /* compound keywords */
     T_END_DEF,
     T_END_IF,

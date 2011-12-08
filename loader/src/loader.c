@@ -140,6 +140,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
 static int WriteExecutableFile(char *path, ElfContext *c);
 static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
+static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
@@ -848,6 +849,20 @@ static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *p
 
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
 {
+    /* build the flash loader image */
+    if (!BuildFlashLoaderImage(sys, config, vm_array, vm_size))
+        return Error("reading cache driver image failed: %s", config->cacheDriver);
+        
+    /* load the flash loader program */
+    if (preset() != 0 || ploadbuf(flash_loader_array, flash_loader_size, mode) != 0)
+        return Error("loader load failed");
+    
+    /* return successfully */
+    return TRUE;
+}
+
+static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size)
+{
     SpinHdr *hdr = (SpinHdr *)flash_loader_array;
     SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->pbase);
     FlashLoaderDatHdr *dat = (FlashLoaderDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
@@ -877,10 +892,6 @@ static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array,
     for (chksum = i = 0; i < flash_loader_size; ++i)
         chksum += flash_loader_array[i];
     hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
-    
-    /* load the flash loader program */
-    if (preset() != 0 || ploadbuf(flash_loader_array, flash_loader_size, mode) != 0)
-        return Error("loader load failed");
     
     /* return successfully */
     return TRUE;

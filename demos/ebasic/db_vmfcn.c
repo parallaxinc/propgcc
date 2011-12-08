@@ -11,13 +11,19 @@
 static void fcn_abs(Interpreter *i);
 static void fcn_rnd(Interpreter *i);
 static void fcn_printf(Interpreter *i);
+static void fcn_printInt(Interpreter *i);
+static void fcn_printTab(Interpreter *i);
+static void fcn_printNL(Interpreter *i);
 uint8_t *GetArgBVector(Interpreter *i, int16_t object, int16_t *pSize);
 
 /* this table must be in the same order as the FN_xxx macros */
 IntrinsicFcn * FLASH_SPACE Intrinsics[] = {
     fcn_abs,
     fcn_rnd,
-    fcn_printf
+    fcn_printf,
+    fcn_printInt,
+    fcn_printTab,
+    fcn_printNL
 };
 
 int IntrinsicCount = sizeof(Intrinsics) / sizeof(IntrinsicFcn *);
@@ -68,6 +74,25 @@ static void fcn_printf(Interpreter *i)
     }
 
     Drop(i, i->argc);
+}
+
+/* fcn_printInt - printInt(n): print an integer */
+static void fcn_printInt(Interpreter *i)
+{
+    VM_printf("%d", i->sp[0]);
+    Drop(i, 1);
+}
+
+/* fcn_printTab - printTab(): print a tab */
+static void fcn_printTab(Interpreter *i)
+{
+    VM_putchar('\t');
+}
+
+/* fcn_printNL - printNL(): print a newline */
+static void fcn_printNL(Interpreter *i)
+{
+    VM_putchar('\n');
 }
 
 /* GetArgBVector - get a byte vector argument */
