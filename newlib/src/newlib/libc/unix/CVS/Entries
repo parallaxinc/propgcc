@@ -1,0 +1,16 @@
+/Makefile.am/1.9/Mon Feb 23 23:42:02 2009/-ko/
+/Makefile.in/1.27/Thu Dec 16 21:59:15 2010/-ko/
+/basename.c/1.2/Tue Nov 18 21:47:44 2008//
+/dirname.c/1.2/Tue Nov 18 21:47:44 2008//
+/getcwd.c/1.4/Tue Nov 18 21:47:44 2008/-ko/
+/getlogin.c/1.4/Tue Nov 18 21:47:44 2008/-ko/
+/getpass.c/1.6/Tue Nov 18 22:40:40 2008/-ko/
+/getpwent.c/1.4/Tue Nov 18 21:47:44 2008/-ko/
+/getut.c/1.5/Tue Nov 18 21:47:44 2008/-ko/
+/pread.c/1.3/Tue Nov 18 21:47:44 2008//
+/pwrite.c/1.3/Tue Nov 18 21:47:44 2008//
+/sigset.c/1.4/Tue Nov 18 21:47:44 2008/-ko/
+/ttyname.c/1.7/Mon Feb 23 23:42:02 2009/-ko/
+/ttyname.h/1.1/Mon Feb 23 23:42:03 2009//
+/ttyname_r.c/1.1/Mon Feb 23 23:42:03 2009//
+D
