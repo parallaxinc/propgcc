@@ -15,6 +15,7 @@ all:
 	make -C toggle/gas_toggle
 	make -C toggle/pasm_toggle
 	make -C toggle/xmm_toggle
+	make -C toggle/pthreads_toggle
 	make -C dhrystone
 	make -C fft
 	make -C fibo/cog
@@ -31,6 +32,7 @@ clean:
 	make clean -C toggle/gas_toggle
 	make clean -C toggle/pasm_toggle
 	make clean -C toggle/xmm_toggle
+	make clean -C toggle/pthreads_toggle
 	make clean -C dhrystone
 	make clean -C fft
 	make clean -C fibo/cog
