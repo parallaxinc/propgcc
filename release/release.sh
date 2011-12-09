@@ -127,7 +127,8 @@ then
   cp bstc.linux ${PACKROOT}/bin
   cp bstc.linux ${PACKROOT}/bin/bstc
   cp INSTALL.txt ${PACKROOT}
-  tar -c ${PACKROOT} -f ${ARCHIVE}
+  mv ${PACKROOT} propeller
+  tar -c ./propeller -f ${ARCHIVE}
   gzip ${ARCHIVE}
 
 else
