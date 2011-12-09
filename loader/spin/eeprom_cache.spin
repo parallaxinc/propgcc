@@ -265,9 +265,9 @@ write_data_handler
 
         add     vmaddr, #4
         rdlong  addr,   vmaddr          ' get the flash address (zero based)
-        test    addr,   MSNIBBLE wz     ' check the upper nibble
-if_nz   andn    addr,   MSNIBBLE        ' kill upper nibble
-if_nz   add     addr,   eebase          ' add the eeprom image base address
+
+        ' removing MSNIBBLE detect code for now
+        add     addr,   eebase          ' add the eeprom image base address
 
         mov     _delayCount, #WDELAY    ' use write delay
         mov     devs,   #EEID
