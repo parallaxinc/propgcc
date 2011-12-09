@@ -51,26 +51,47 @@ tail ${VERFILE}
 ARCHIVE=${VERSION}_${BUILDNUM}
 MACH=`uname -m`
 PACKAGE=${MACH}-${ARCHIVE}
+PACKROOT=./propgcc
 echo "Building ${PACKAGE}"
 
-rm -rf propgcc
-mkdir ${PACKAGE}
+rm -rf ${PACKROOT}
+mkdir -p ${PACKROOT}
 
 make -C ../demos clean
-cp -r ../demos ${PACKAGE}/.
-cp ../gcc/COPYING* ${PACKAGE}/.
-cp ../LICENSE.txt ${PACKAGE}/.
+cp -r ../demos ${PACKROOT}/
+cp ../gcc/COPYING* ${PACKROOT}/.
+cp ../LICENSE.txt ${PACKROOT}/.
 
+#
+# copy in the basic build tree
+#
+cp -r ${PREFIX}/* ${PACKROOT}/
+
+#
+# move docs
+#
+mkdir -p ${PACKROOT}/doc
+cp -r ../doc/* ${PACKROOT}/doc
+if [ -d ${PACKROOT}/share/doc/gcc ]
+then
+  mv ${PACKROOT}/share/doc/gcc ${PACKROOT}/doc
+fi
+
+#
+# remove cruft
+#
+
+rm -r ${PACKROOT}/share
+
+#
+# now make the packages
+#
 if test x$UNAME = xDarwin
 then
   ARCHIVE=macosx-${PACKAGE}.tar
 
-  mkdir ${PACKAGE}/usr
-  mkdir ${PACKAGE}/usr/local
-  cp -r /usr/local/propeller ${PACKAGE}/usr/local
-
-  cp bstc.osx ${PACKAGE}/${PREFIX}/bin
-  cp bstc.osx ${PACKAGE}/${PREFIX}/bin/bstc
+  cp bstc.osx ${PACKROOT}/bin
+  cp bstc.osx ${PACKROOT}/bin/bstc
   tar -c ${PACKAGE} -f ${ARCHIVE}
   gzip ${ARCHIVE}
 
@@ -78,46 +99,35 @@ elif test x$UNAME = xCygwin
 then
   ARCHIVE=cygwin-${PACKAGE}.zip
 
-  mkdir ${PACKAGE}/usr
-  mkdir ${PACKAGE}/usr/local
-  cp -r /usr/local/propeller ${PACKAGE}/usr/local
-
-  cp bstc.exe ${PACKAGE}/bin
-  cp INSTALL.txt ./${PACKAGE}
-  cp README_CYGWIN.txt ./${PACKAGE}
-  mv ${PACKAGE} propgcc
-  zip ${ARCHIVE} -r propgcc
+  cp bstc.exe ${PACKROOT}/bin
+  cp INSTALL.txt ${PACKROOT}/
+  cp README_CYGWIN.txt ${PACKROOT}/
+  mv ${PACKAGE} ${PACKROOT}
+  zip ${ARCHIVE} -r ${PACKROOT}
 
 elif test x$UNAME = xMsys
 then
   ARCHIVE=windows-${PACKAGE}.zip
-  cp -r /usr/local/propeller/* ${PACKAGE}/.
 
-  cp bstc.exe ./${PACKAGE}/bin
-  cp addpath.bat ./${PACKAGE}
-  cp PropGCC.bat ./${PACKAGE}
-  cp INSTALL.txt ./${PACKAGE}
-  cp README_WINDOWS.txt ./${PACKAGE}
-  cp ../tools/make-3.81/make.exe ./${PACKAGE}/bin
-  cp libiconv-2.dll ./${PACKAGE}/bin
-  cp libintl-8.dll ./${PACKAGE}/bin
-  cp ../tools/remove.exe ./${PACKAGE}/bin/rm.exe
-  rm -r ${PACKAGE}/share
-  mv ${PACKAGE} propgcc
-  zip ${ARCHIVE} -r propgcc
+  cp bstc.exe ${PACKROOT}/bin
+  cp addpath.bat ${PACKROOT}
+  cp PropGCC.bat ${PACKROOT}
+  cp INSTALL.txt ${PACKROOT}
+  cp README_WINDOWS.txt ${PACKROOT}
+  cp ../tools/make-3.81/make.exe ${PACKROOT}/bin
+  cp libiconv-2.dll ${PACKROOT}/bin
+  cp libintl-8.dll ${PACKROOT}/bin
+  cp ../tools/remove.exe ${PACKROOT}/bin/rm.exe
+  zip ${ARCHIVE} -r ${PACKROOT}
 
 elif test x$UNAME = xLinux
 then
   ARCHIVE=linux-${PACKAGE}.tar
 
-  mkdir ${PACKAGE}/usr
-  mkdir ${PACKAGE}/usr/local
-  cp -r /usr/local/propeller ${PACKAGE}/usr/local
-
-  cp bstc.linux ${PACKAGE}/${PREFIX}/bin
-  cp bstc.linux ${PACKAGE}/${PREFIX}/bin/bstc
-  cp INSTALL.txt ${PACKAGE}
-  tar -c ${PACKAGE} -f ${ARCHIVE}
+  cp bstc.linux ${PACKROOT}/bin
+  cp bstc.linux ${PACKROOT}/bin/bstc
+  cp INSTALL.txt ${PACKROOT}
+  tar -c ${PACKROOT} -f ${ARCHIVE}
   gzip ${ARCHIVE}
 
 else
