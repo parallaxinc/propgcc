@@ -784,9 +784,12 @@ propeller_asm_output_aligned_common (FILE *stream,
       int i = size;
       assemble_name (stream, name);
       fprintf (stream, "\n");
-      while (i > 4) {
+      if (i > 4) {
+	fprintf (stream, "\tlong\t0[%d]\n", i / 4);
+	i = i % 4;
+      } else if (i == 4) {
 	fprintf (stream, "\tlong\t0\n");
-	i -= 4;
+	i = 0;
       }
       while (i > 0) {
 	fprintf (stream, "\tbyte\t0\n");
