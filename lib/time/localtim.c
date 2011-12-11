@@ -181,6 +181,11 @@ struct tm *localtime(const time_t *t)
 	return _localtime_r(t, &_TLS->time_temp);
 }
 
+struct tm *gmtime(const time_t *t)
+{
+	return _gmtime_r(t, &_TLS->time_temp);
+}
+
 /*
  * there appears to be a conflict between Posix and ANSI; the former
  * mandates a "tzset()" function that gets called whenever time()
