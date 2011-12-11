@@ -111,7 +111,8 @@ LIBM = 	k_rem_pio2.o k_cos.o k_sin.o k_tan.o \
 	s_cexp.o s_cexpf.o s_clog.o s_clogf.o s_cpow.o s_cpowf.o \
 	s_carg.o s_cargf.o s_cimag.o s_cimagf.o s_creal.o s_crealf.o \
 	s_conj.o s_conjf.o s_cproj.o s_cprojf.o \
-	s_csqrt.o s_csqrtf.o s_cabs.o s_cabsf.o
+	s_csqrt.o s_csqrtf.o s_cabs.o s_cabsf.o \
+	isnan.o
 
 
 LIBM_EXTRA =	float_printf.o float_simple_printf.o $(PRINTF) \
