@@ -64,11 +64,8 @@ static __inline__ void wrlong_xmm(uint32_t *addr, uint32_t value)
 
 static __inline__ void copy_from_xmm(uint32_t *dst, uint32_t *src, int count)
 {
-  uint32_t value;
-  while (count-- > 0) {
-    value = rdlong_xmm(src); src++;
-    wrlong_xmm(dst, value); dst++;
-  }
+  /* use memcpy to copy from external memory to internal */
+  memcpy(dst, src, count*4);
 }
 
 #else
