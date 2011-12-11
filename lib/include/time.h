@@ -42,7 +42,7 @@ struct tm {
   time_t mktime(struct tm *stm);
 
   struct tm *_gmtime_r(const time_t *t, struct tm *stm);
-  struct tm *gmtime(const time_t *, struct tm *);
+  struct tm *gmtime(const time_t *);
   struct tm *_localtime_r(const time_t *, struct tm *);
   struct tm *localtime(const time_t *);
 
