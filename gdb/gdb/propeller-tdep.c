@@ -26,6 +26,7 @@
 #include "frame.h"
 #include "frame-unwind.h"
 #include "frame-base.h"
+#include "block.h"
 #include "dwarf2-frame.h"
 #include "trad-frame.h"
 #include "symtab.h"
@@ -99,6 +100,7 @@ struct propeller_frame_cache
 };
 
 /* Allocate and initialize a frame cache.  */
+#if 0
 
 static struct propeller_frame_cache *
 propeller_alloc_frame_cache (void)
@@ -123,6 +125,7 @@ propeller_alloc_frame_cache (void)
 
   return cache;
 }
+#endif
 
 #define SUB4_P(op) ((op & 0xfffc01ff) == 0x84fc0004)
 #define WRLONG_P(op) ((op & 0xfffc0000) == 0x083c0000)
@@ -175,7 +178,7 @@ propeller_analyze_prologue (struct gdbarch *gdbarch, CORE_ADDR pc,
       pc += 8;
     }
 
-  pc = propeller_analyze_frame_setup (gdbarch, pc, current_pc, cache, base);
+  //  pc = propeller_analyze_frame_setup (gdbarch, pc, current_pc, cache, base);
   if (pc >= current_pc)
     return current_pc;
   return pc;
@@ -198,6 +201,7 @@ propeller_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
 }
 
 static const gdb_byte *propeller_breakpoint_from_pc(struct gdbarch *arch, CORE_ADDR *addr, int *x){
+  return 0;
 }
 
 static struct gdbarch *
