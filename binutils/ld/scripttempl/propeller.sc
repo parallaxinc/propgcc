@@ -78,29 +78,6 @@ SECTIONS
     ${RELOCATING+ PROVIDE (__bss_end = .) ; }
   } ${RELOCATING+ ${DATA_MEMORY}}
 
-  /* put the cog drivers after bss and just before the heap */
-  /* that way we may later be able to free the hub memory they take up */
-  OVERLAY : {
-      .cogsys0 { *(.cogsys0) }
-      .cogsys1 { *(.cogsys1) }
-      .cogsys2 { *(.cogsys2) }
-      .cogsys3 { *(.cogsys3) }
-      .cogsys4 { *(.cogsys4) }
-      .cogsys5 { *(.cogsys5) }
-      .cogsys6 { *(.cogsys6) }
-      .cogsys7 { *(.cogsys7) }
-
-      .coguser0 { *(.coguser0) *0.cog(.text*) }
-      .coguser1 { *(.coguser1) *1.cog(.text*) }
-      .coguser2 { *(.coguser2) *2.cog(.text*) }
-      .coguser3 { *(.coguser3) *3.cog(.text*) }
-      .coguser4 { *(.coguser4) *4.cog(.text*) }
-      .coguser5 { *(.coguser5) *5.cog(.text*) }
-      .coguser6 { *(.coguser6) *6.cog(.text*) }
-      .coguser7 { *(.coguser7) *7.cog(.text*) }
-
-  } ${RELOCATING+ ${DRIVER_MEMORY}}
-
   ${RELOCATING+ ".heap : \{ LONG(0) \} >hub AT>hub"}
   ${RELOCATING+ ___heap_start = ADDR(.heap) ;}
 

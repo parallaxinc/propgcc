@@ -40,6 +40,89 @@ propeller_elf_create_output_section_statements (void)
 #endif
 }
 
+/*
+ * orphan sections whose names start with .cog are actually overlays
+ * handle them specially
+ */
+
+static lang_output_section_statement_type *
+propeller_place_orphan (asection *s, const char *secname, int constraint)
+{
+  if (!link_info.relocatable && 0 != (s->flags & SEC_ALLOC) )
+    {
+      /* for now we only put stuff after .text, but we may want to
+	 add data overlays some day */
+      static struct orphan_save hold[] = 
+	{
+	  { ".text",
+	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_CODE,
+	    0, 0, 0, 0 },
+	  { ".rodata",
+	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_DATA,
+	    0, 0, 0, 0 },
+	  { ".data",
+	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_DATA,
+	    0, 0, 0, 0 },
+	};
+      int last4;
+      struct orphan_save *place = NULL;
+      lang_output_section_statement_type *after = NULL;
+
+      // if either the first or last 4 characters are .cog, it's a cog
+      // overlay
+      last4 = strlen (secname) - 4;
+      if (!strncmp (secname, ".cog", 4) && last4 >= 0 && !strcmp (secname + last4, ".cog"))
+	{
+	  char *clean, *s2;
+	  const char *s1;
+	  char *buf;
+	  lang_output_section_statement_type *os;
+	  lang_memory_region_type *cog_region;
+
+	  //fprintf (stderr, "orphaned section [%s]\n", secname);
+	  place = &hold[0];
+	  if (place->os == NULL)
+	    place->os = lang_output_section_find (place->name);
+	  after = place->os;
+	  os = lang_insert_orphan (s, secname, constraint, after, place, NULL, NULL);
+	  cog_region = lang_memory_region_lookup ("coguser", FALSE);
+	  if (cog_region)
+	    {
+	      os->region = cog_region;
+	      os->addr_tree = exp_intop (cog_region->origin);
+	      os->lma_region = after->lma_region;
+	      os->load_base = NULL;
+	    }
+	  os->sectype = overlay_section;
+
+	  /* now add the necessary overlay symbols */
+	  clean = (char *) xmalloc (strlen (secname) + 1);
+	  s2 = clean;
+	  for (s1 = secname; *s1 != '\0'; s1++)
+	    if (ISALNUM (*s1) || *s1 == '_')
+	      *s2++ = *s1;
+	  *s2 = '\0';
+
+	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_start_");
+	  sprintf (buf, "__load_start_%s", clean);
+	  lang_add_assignment (exp_provide (buf,
+					    exp_nameop (LOADADDR, secname),
+					    FALSE));
+
+	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_stop_");
+	  sprintf (buf, "__load_stop_%s", clean);
+	  lang_add_assignment (exp_provide (buf,
+					    exp_binop ('+',
+						       exp_nameop (LOADADDR, secname),
+						       exp_nameop (SIZEOF, secname)),
+					    FALSE));
+
+	  free (clean);
+	  return os;
+	}
+    }
+  return gld${EMULATION_NAME}_place_orphan (s, secname, constraint);
+}
 EOF
 
 # Define some shell vars to insert bits of code into the standard elf
@@ -65,3 +148,4 @@ PARSE_AND_LIST_ARGS_CASES='
 '
 
 LDEMUL_CREATE_OUTPUT_SECTION_STATEMENTS=propeller_elf_create_output_section_statements
+LDEMUL_PLACE_ORPHAN=propeller_place_orphan
