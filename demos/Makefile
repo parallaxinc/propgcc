@@ -8,7 +8,7 @@
 # #########################################################
 
 all:
-	make -C toggle/cog_c_toggle    # TODO build fails. fix later.
+	make -C toggle/cog_c_toggle
 	make -C toggle/c++_toggle
 	make -C toggle/lmm_c_toggle
 	make -C toggle/lmm_toggle
