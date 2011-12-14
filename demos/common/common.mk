@@ -74,6 +74,15 @@ endif
 %.o: %.s
 	$(CC) -o $@ -c $<
 
+#
+# a .cog program is an object file that contains code intended to
+# run in a COG separate from the main program; i.e., it's a COG
+# driver
+#
+%.cog: %.c
+	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
+ 
 %.binary: %.elf
 	$(LOADER) -s $<
 
