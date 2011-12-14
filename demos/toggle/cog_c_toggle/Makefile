@@ -16,7 +16,7 @@ NM = propeller-elf-nm
 #
 
 NAME = toggle
-OBJS = toggle.o toggle_1.cog
+OBJS = toggle.o toggle_fw.cog
 
 all: $(NAME).elf
 
@@ -25,13 +25,11 @@ include $(PROPLIB)/lmmdemo.mk
 #
 # do a partial link of all driver code
 #
+# Note that any sections called .cog* (or *.cog) are automatically
+# set up as overlays in cog memory space by the linker.
+# So to load a COG C program from an LMM program, we
 
-# # Note that calling our output file *_1.cog ensures that it
-# is placed in the .coguser1 section by the main program's
-# linker script; similarly *_2.cog would be placed in .coguser2,
-# and so on
-
-toggle_1.o: toggle_cog.c
+toggle_fw.o: toggle_fw.c
 	$(CC) -r -Os -mcog -o $@ $<
 
 
@@ -39,9 +37,11 @@ toggle_1.o: toggle_cog.c
 # We have to avoid conflicts between symbols in the main C program and
 # symbols in the local cog C programs. We do this by using objcopy to
 # turn all the global symbols in the cog .text segment into local symbols
-# (that's what --localize-text does).
+# (that's what --localize-text does). At the same time we rename
+# the .text section to something ending in .cog (the filename works!) so
+# that the linker knows to treat it as an overlay.
 #
 
 %.cog: %.o
-	$(OBJCOPY) --localize-text $^ $@
+	$(OBJCOPY) --rename-section .text=$@ --localize-text $^ $@
 

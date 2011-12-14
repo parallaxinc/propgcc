@@ -71,7 +71,7 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
       // if either the first or last 4 characters are .cog, it's a cog
       // overlay
       last4 = strlen (secname) - 4;
-      if (!strncmp (secname, ".cog", 4) && last4 >= 0 && !strcmp (secname + last4, ".cog"))
+      if (!strncmp (secname, ".cog", 4) || (last4 >= 0 && !strcmp (secname + last4, ".cog")))
 	{
 	  char *clean, *s2;
 	  const char *s1;

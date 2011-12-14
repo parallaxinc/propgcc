@@ -24,12 +24,12 @@ struct {
 
 /*
  * function to start up a new cog running the toggle
- * code (which we've placed in the .coguser1 section)
+ * code (which we've placed in the toggle_fw.cog section)
  */
 void start(void *parptr)
 {
-    extern unsigned int _load_start_coguser1[];
-    cognew(_load_start_coguser1, parptr);
+    extern unsigned int _load_start_toggle_fwcog[];
+    cognew(_load_start_toggle_fwcog, parptr);
 }
 
 /*
