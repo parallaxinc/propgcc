@@ -3,10 +3,13 @@
  */
 #include <compiler.h>
 
-_NORETURN void abort(void);
-
 #undef assert
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+_NORETURN void abort(void);
 extern void __eprintf( const char *expr, unsigned long line, const char *filename);
 
 #if defined(NDEBUG)
@@ -14,4 +17,8 @@ extern void __eprintf( const char *expr, unsigned long line, const char *filenam
 #else
 #define assert(cond) \
   ((cond) ? 0 : (__eprintf(#cond,(long)(__LINE__), __FILE__), abort(), 0))
+#endif
+
+#if defined(__cplusplus)
+}
 #endif
