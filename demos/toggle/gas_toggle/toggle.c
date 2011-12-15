@@ -15,11 +15,11 @@
 
 /*
  * function to start up a new cog running the toggle
- * code (which we've placed in the .coguser0 section)
+ * code (which we've placed in the .cogtoggle section)
  */
 void start_cog(void)
 {
-    extern unsigned int _load_start_coguser0[];
+    extern unsigned int _load_start_cogtoggle[];
 
     /* now start the kernel */
 #if defined(__PROPELLER_XMMC__) || defined(__PROPELLER_XMM__)
@@ -27,10 +27,10 @@ void start_cog(void)
 
     // allocate a buffer in hub memory for the cog to start from
     buffer = __builtin_alloca(2048);
-    memcpy(buffer, _load_start_coguser0, 2048);
+    memcpy(buffer, _load_start_cogtoggle, 2048);
     cognew(buffer, 0);
 #else
-    cognew(_load_start_coguser0, 0);
+    cognew(_load_start_cogtoggle, 0);
 #endif
 }
 
