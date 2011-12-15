@@ -1,4 +1,7 @@
 {
+  Added ENABLE_RAM flag to support a flash-only mode for XMMC mode
+  Dave Hein, December 5, 2011
+
   SPI SRAM and flash JCACHE driver for the Parallax C3
   by David Betz
 
@@ -43,9 +46,15 @@ CON
   MISO_PIN              = 10
 
   ' default cache dimensions
+#ifdef ENABLE_RAM
   DEFAULT_INDEX_WIDTH   = 5
   DEFAULT_OFFSET_WIDTH  = 7
   DEFAULT_CACHE_SIZE    = 1<<(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH+1)
+#else
+  DEFAULT_INDEX_WIDTH   = 7
+  DEFAULT_OFFSET_WIDTH  = 6
+  DEFAULT_CACHE_SIZE    = 1<<(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH)
+#endif
 
   ' cache line tag flags
   EMPTY_BIT             = 30
@@ -106,6 +115,22 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         mov     outa, spiout
         mov     dira, spidir
 
+        ' get the clock frequency
+        rdlong  sdFreq, #CLKFREQ_ADDR
+
+        call    #sd_card
+        mov     t1, sdInitCnt
+:init   call    #spiRecvByte            ' Output a stream of 32K clocks
+        djnz    t1, #:init              '  in case SD card left in some
+        call    #deselect
+        call    #sd_card
+        mov     sdOp, #CMD0_GO_IDLE_STATE
+        mov     sdParam, #0
+        call    #sdSendCmd              ' Send a reset command and deselect
+initErrorTarget
+        mov     sdErrorTarget, #sd_finish
+
+#ifdef ENABLE_RAM
         ' select sequential access mode for the first SRAM chip
         call    #sram_chip1
         mov     data, ramseq
@@ -117,6 +142,7 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         mov     data, ramseq
         mov     bits, #16
         call    #send
+#endif
 
         call    #deselect
 
@@ -128,9 +154,6 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         call    #send
         call    #deselect
 
-        ' get the clock frequency
-        rdlong  sdFreq, #CLKFREQ_ADDR
-
         jmp     #vmflush
 
 fillme  long    0[128-fillme]           ' first 128 cog locations are used for a direct mapped page table
@@ -140,7 +163,9 @@ fillme  long    0[128-fillme]           ' first 128 cog locations are used for a
         ' initialize the cache lines
 vmflush movd    :flush, #0
         mov     t1, index_count
+#ifdef ENABLE_RAM
         shl     t1, #1                  ' clear both the flash and SRAM tags
+#endif
 :flush  mov     0-0, empty_mask
         add     :flush, dstinc
         djnz    t1, #:flush
@@ -155,13 +180,17 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
         test    vmpage, #int#EXTEND_MASK wz ' test for an extended command
   if_z  jmp     #extend
 
+#ifdef ENABLE_RAM
         test    vmpage, flashbit wz     ' check for flash or SRAM access
+#endif
         shr     vmpage, offset_width wc ' carry is now one for read and zero for write
         mov     set_dirty_bit, #0       ' make mask to set dirty bit on writes
         muxnc   set_dirty_bit, dirty_mask
         mov     line, vmpage            ' get the cache line index
         and     line, index_mask
+#ifdef ENABLE_RAM
   if_nz add     line, index_count       ' use upper entries for flash addresses
+#endif
         mov     hubaddr, line
         shl     hubaddr, offset_width
         add     hubaddr, cacheptr       ' get the address of the cache line
@@ -266,6 +295,8 @@ write_data_handler
 
 sd_init_handler
         mov     sdError, #0             ' assume no errors
+' this part of the initialization was done earlier to set the SD card to SPI mode
+{
         call    #deselect
         mov     t1, sdInitCnt
 :init   call    #spiRecvByte            ' Output a stream of 32K clocks
@@ -274,6 +305,8 @@ sd_init_handler
         mov     sdOp, #CMD0_GO_IDLE_STATE
         mov     sdParam, #0
         call    #sdSendCmd              ' Send a reset command and deselect
+}
+        call    #sd_card
 :wait   mov     sdOp, #CMD55_APP_CMD
         call    #sdSendCmd
         mov     sdOp, #ACMD41_SD_APP_OP_COND
@@ -362,6 +395,7 @@ sdError       long    0
 sdBlkCnt      long    0
 sdInitCnt     long    32768 / 8      ' Initial SPI clocks produced
 sdBlkSize     long    512            ' Number of bytes in an SD block
+sdErrorTarget long    initErrorTarget
 
 sdSendCmd
         call    #spiRecvByte         ' ?? selecting card and clocking
@@ -390,7 +424,7 @@ sdWaitLoop
         sub     t1, sdTime           ' Check for expired timeout (1 sec)
         cmp     t1, sdFreq wc
   if_nc mov     sdError, #1
-  if_nc jmp     #sd_finish
+  if_nc jmp     sdErrorTarget
 sdWaitData
         cmp     data, #0-0 wz        ' Wait for some other response
   if_e  jmp     #sdWaitLoop          '  than that specified
@@ -423,6 +457,7 @@ line_size       long    0                       ' line size in bytes
 empty_mask      long    (1<<EMPTY_BIT)
 dirty_mask      long    (1<<DIRTY_BIT)
 
+#ifdef ENABLE_RAM
 '----------------------------------------------------------------------------------------------------
 '
 ' BSTART
@@ -455,7 +490,7 @@ BSTART
         mov     count, line_size
 BSTART_RET
         ret
-
+#endif
 
 '----------------------------------------------------------------------------------------------------
 '
@@ -471,11 +506,15 @@ BSTART_RET
 '----------------------------------------------------------------------------------------------------
 
 BREAD
+#ifdef ENABLE_RAM
         test    vmaddr, flashbit wz
   if_nz jmp     #FLASH_READ
 
         mov     fn, read
         call    #BSTART
+#else
+        jmp     #FLASH_READ
+#endif
 
 BREAD_DATA
 #ifdef BYTE_TRANSFERS
@@ -523,11 +562,15 @@ FLASH_READ
 '----------------------------------------------------------------------------------------------------
 
 BWRITE
+#ifdef ENABLE_RAM
         test    vmaddr, flashbit wz
   if_nz jmp     BWRITE_RET
 
         mov     fn, write
         call    #BSTART
+#else
+        jmp     BWRITE_RET
+#endif
 
 #ifdef BYTE_TRANSFERS
 pw      rdbyte  data, ptr
@@ -559,6 +602,8 @@ spiSendByte
         jmp     #send
 
 send0   andn    outa, TCLK
+
+' CLK should be low coming into this function
 send    rol     data, #1 wc
         muxc    outa, TMOSI
         or      outa, TCLK
@@ -572,12 +617,13 @@ send_ret
 spiRecvByte
         mov     data, #0
         mov     bits, #8
-receive
-gloop   or      outa, TCLK
+        
+' CLK was set H-L and data should be ready before this function starts
+receive or      outa, TCLK
         test    TMISO, ina wc
         rcl     data, #1
         andn    outa, TCLK
-        djnz    bits, #gloop
+        djnz    bits, #receive
 spiRecvByte_ret
 receive_ret
         ret
@@ -650,7 +696,7 @@ wait_until_done_ret
         ret
 
 spidir      long    (1<<CLR_PIN)|(1<<INC_PIN)|(1<<CLK_PIN)|(1<<MOSI_PIN)
-spiout      long    (1<<CLR_PIN)|(0<<INC_PIN)|(0<<CLK_PIN)|(0<<MOSI_PIN)
+spiout      long    (1<<CLR_PIN)|(0<<INC_PIN)|(0<<CLK_PIN)|(1<<MOSI_PIN)
 
 tclr        long    1<<CLR_PIN
 tinc        long    1<<INC_PIN
@@ -686,7 +732,9 @@ frdstatus   long    $05000000       ' flash read status
 fwrstatus   long    $01000000       ' flash write status
 
 bit16       long    $00008000       ' mask to select the SRAM chip
+#ifdef ENABLE_RAM
 flashbit    long    FLASH_MASK      ' mask to select flash vs. SRAM
+#endif
 flashmask   long    FLASH_OFFSET_MASK ' mask to isolate the flash offset bits
 
             FIT     496             ' out of 496

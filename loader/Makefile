@@ -140,7 +140,7 @@ $(SPINDIR)/vm_start.spin
 
 DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
-$(DRVDIR)/c3f_cache.dat \
+$(DRVDIR)/c3_cache_flash.dat \
 $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \
 $(DRVDIR)/sdram_cache.dat \
@@ -182,6 +182,10 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 ###############
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+	@$(BSTC) $(SPINFLAGS) -c -DENABLE_RAM -o $(basename $@) $<
+	@$(ECHO) $@
+
+$(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
 	@$(ECHO) $@
 

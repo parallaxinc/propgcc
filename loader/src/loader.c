@@ -615,7 +615,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     /* load the cache driver */
     if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
         return Error("reading cache driver image failed: %s", config->cacheDriver);
-    printf("Loading cache driver\n");
+    printf("Loading cache driver '%s'\n", config->cacheDriver);
     params[0] = config->cacheSize;
     params[1] = config->cacheParam1;
     params[2] = config->cacheParam2;
