@@ -51,7 +51,7 @@
 #define PROPELLER_NUM_REGS 16
 
 struct gdbarch_tdep {
-  int foo;
+  int elf_flags;
 };
 
 static const char *propeller_register_names[] = {
@@ -128,6 +128,9 @@ propeller_alloc_frame_cache (void)
 #endif
 
 #define SUB4_P(op) ((op & 0xfffc01ff) == 0x84fc0004)
+#define SUB_P(op) ((op & 0xfffc0000) == 0x84fc0000)
+#define CALL_P(op) ((op & 0xfffc0000) == 0x5cfc0000)
+#define MOVE_P(op) ((op & 0xfffc0000) == 0xa0fc0000)
 #define WRLONG_P(op) ((op & 0xfffc0000) == 0x083c0000)
 #define GET_DST(op) ((op >> 9) & 0x1ff)
 #define GET_SRC(op) (op & 0x1ff)
@@ -162,23 +165,46 @@ propeller_analyze_prologue (struct gdbarch *gdbarch, CORE_ADDR pc,
 	  reg = GET_DST(op);
 	  cache->saved_regs[reg - base] = 0;
 	  cache->sp_offset += 4;
+	  pc += 4;
 	}
       else
 	{
-	  break;
+	  // May be the mov at the end of the prologue that
+	  // sets up the frame pointer, or it
+	  // may be an LMM prologue
+	  if(MOVE_P(op)){
+	    op = read_memory_unsigned_integer (pc+4, 4, byte_order);
+	    if(CALL_P(op)){
+	      // It's an LMM prologue
+	      pc += 8;
+	      break;
+	    } else {
+	      // It's the end of a standard prologue
+	      pc += 4;
+	      break;
+	    }
+	  }
 	}
-      op = read_memory_unsigned_integer (pc+4, 4, byte_order);
+      op = read_memory_unsigned_integer (pc, 4, byte_order);
       if(WRLONG_P(op))
 	{
+	  // FIXME track where the value went
+	  pc += 4;
 	}
       else
 	{
+	  // The SUB wasn't part of the prologue.
+	  pc -= 4;
 	  break;
 	}
-      pc += 8;
     }
 
-  //  pc = propeller_analyze_frame_setup (gdbarch, pc, current_pc, cache, base);
+  // This should be the adjustment for the stack frame, possibly absent
+  op = read_memory_unsigned_integer (pc, 4, byte_order);
+  if(SUB_P(op)){
+    pc += 4;
+  }
+
   if (pc >= current_pc)
     return current_pc;
   return pc;
@@ -212,8 +238,6 @@ propeller_gdbarch_init (struct gdbarch_info info,
   struct gdbarch_tdep *tdep;
   int elf_flags;
 
-  //  soft_reg_initialized = 0;
-
   /* Extract the elf_flags if available.  */
   if (info.abfd != NULL
       && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour)
@@ -226,8 +250,8 @@ propeller_gdbarch_init (struct gdbarch_info info,
        arches != NULL;
        arches = gdbarch_list_lookup_by_info (arches->next, &info))
     {
-      //      if (gdbarch_tdep (arches->gdbarch)->elf_flags != elf_flags)
-      //	continue;
+      if (gdbarch_tdep (arches->gdbarch)->elf_flags != elf_flags)
+	continue;
 
       return arches->gdbarch;
     }
@@ -235,9 +259,8 @@ propeller_gdbarch_init (struct gdbarch_info info,
   /* Need a new architecture.  Fill in a target specific vector.  */
   tdep = (struct gdbarch_tdep *) xmalloc (sizeof (struct gdbarch_tdep));
   gdbarch = gdbarch_alloc (&info, tdep);
-  //  tdep->elf_flags = elf_flags;
+  tdep->elf_flags = elf_flags;
   //  tdep->stack_correction = 1;
-  //  tdep->use_page_register = 0;
   //  tdep->prologue = propeller_prologue;
   set_gdbarch_addr_bit (gdbarch, 32);
   //  set_gdbarch_num_pseudo_regs (gdbarch, PROPELLER_NUM_PSEUDO_REGS);
@@ -306,9 +329,6 @@ propeller_gdbarch_init (struct gdbarch_info info,
 
   return gdbarch;
 }
-
-/* -Wmissing-prototypes */
-extern initialize_file_ftype _initialize_m68hc11_tdep;
 
 void
 _initialize_propeller_tdep (void)
