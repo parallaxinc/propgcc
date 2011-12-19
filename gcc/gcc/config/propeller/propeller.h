@@ -631,6 +631,23 @@ extern const char *propeller_bss_asm_op;
     }								\
   while (0)
 
+/* Store in OUTPUT a string (made with alloca) containing an
+   assembler-name for a local static variable named NAME.  LABELNO is
+   an integer which is different for each call.  PASM can't
+   use periods to generate the name, so we use a ___ separator
+   instead. */
+
+#define ASM_FORMAT_PRIVATE_NAME(OUTPUT, NAME, LABELNO)  \
+  do {									\
+    (OUTPUT) = (char *) alloca (strlen ((NAME)) + 15);			\
+    sprintf ((OUTPUT), "%s.%lu", (NAME), (unsigned long)(LABELNO));	\
+    if (TARGET_PASM) {							\
+      char *periodx;							\
+      for (periodx = (OUTPUT); *periodx; periodx++)			\
+	if (*periodx == '.') *periodx = '_';				\
+    }									\
+  } while (0)
+
 #define ASM_WEAKEN_LABEL(FILE,NAME) propeller_weaken_label(FILE,NAME)
 
 #ifndef ASM_OUTPUT_EXTERNAL

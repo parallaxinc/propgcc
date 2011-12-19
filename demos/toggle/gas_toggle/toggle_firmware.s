@@ -28,14 +28,18 @@
 # +--------------------------------------------------------------------
 
 		''
-		'' .coguser0 - .coguser7 are special sections for the default
-		'' linker script: it knows that these need to be relocated to
-		'' COG memory but loaded into hub.
+		'' Any section starting or ending in ".cog" is special to
+		'' the linker: it knows that these need to be relocated to
+		'' COG memory but loaded into hub. It also creates
+		'' special names like _load_start_cogtoggle to tell where
+		'' the code is in memory (so the main code knows how to
+		'' load it into the cog).
+		''
 		'' The "ax" flag says the section will contain executable
 		'' code. The assembler should figure this out on its own,
 		'' but it never hurts to be explicit!
 		''
-		.section .coguser0, "ax"
+		.section .cogtoggle, "ax"
 		.cog_ram
 	
 		'' load the pins and wait delay from the C
