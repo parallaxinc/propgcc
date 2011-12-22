@@ -57,8 +57,10 @@ echo "Building ${PACKAGE}"
 rm -rf ${PACKROOT}
 mkdir -p ${PACKROOT}
 
-make -C ../demos clean
-cp -r ../demos ${PACKROOT}/
+# demos are now in a separate package
+#make -C ../demos clean
+#cp -r ../demos ${PACKROOT}/
+
 cp ../gcc/COPYING* ${PACKROOT}/.
 cp ../LICENSE.txt ${PACKROOT}/.
 
