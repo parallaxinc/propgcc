@@ -1,10 +1,10 @@
 #!/bin/sh
 
 #
-# This script creates a demos zip/tarball
+# This script creates a library source code zip
 #
 # Copyright (c) 2011 by Parallax, Inc.
-# Code by Steve Denson
+# Code by Steve Denson & Eric Smith
 # MIT Licensed
 #
 
@@ -21,21 +21,23 @@ then
 fi
 echo "OS '$UNAME' detected."
 
-NAME=propgcc-demos
+NAME=propgcc-libsrc
 ARCHIVE=${NAME}_${DATECMD}
-PACKAGE=../demos
+PACKAGE=../lib
 echo "Building ${PACKAGE}"
 
 find ${PACKAGE} -name *.dat | xargs rm -vf
 find ${PACKAGE} -name *.elf | xargs rm -vf
 find ${PACKAGE} -name *.list | xargs rm -vf
 find ${PACKAGE} -name *.o | xargs rm -vf
+find ${PACKAGE} -name *.a | xargs rm -vf
 find ${PACKAGE} -name *.out | xargs rm -vf
 find ${PACKAGE} -name foo* | xargs rm -vf
 
 rm -f ${ARCHIVE}.zip
 cp -r ${PACKAGE} .
-zip ${ARCHIVE} -r demos
-rm -rf demos
+zip ${ARCHIVE} -r lib
+rm -rf lib
 
 exit 0
+
