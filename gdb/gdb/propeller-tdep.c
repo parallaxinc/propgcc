@@ -48,7 +48,9 @@
 #include "elf/propeller.h"
 #include "elf-bfd.h"
 
-#define PROPELLER_NUM_REGS 16
+
+#define PROPELLER_NUM_REGS 18
+#define HARD_PC_REGNUM 17
 
 struct gdbarch_tdep {
   int elf_flags;
@@ -72,6 +74,25 @@ static const char *propeller_register_names[] = {
   "r14",
   "r15"
 };
+
+/* Return the GDB type object for the "standard" data type of data in
+   register N.  This should be int for all registers except
+   PC, which should be a void pointer.
+   
+   Note, for registers which contain addresses return pointer to
+   void, not pointer to char, because we don't want to attempt to
+   print the string after printing the address.  */
+
+static struct type *
+propeller_register_type (struct gdbarch *gdbarch, int regnum)
+{
+  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+
+  if (regnum == gdbarch_pc_regnum (gdbarch))
+    return builtin_type (gdbarch)->builtin_func_ptr;
+
+  return builtin_type (gdbarch)->builtin_int32;
+}
 
 static const char *
 propeller_register_name (struct gdbarch *gdbarch, int regnum)
@@ -264,7 +285,7 @@ propeller_gdbarch_init (struct gdbarch_info info,
   //  tdep->prologue = propeller_prologue;
   set_gdbarch_addr_bit (gdbarch, 32);
   //  set_gdbarch_num_pseudo_regs (gdbarch, PROPELLER_NUM_PSEUDO_REGS);
-  //  set_gdbarch_pc_regnum (gdbarch, HARD_PC_REGNUM);
+  set_gdbarch_pc_regnum (gdbarch, HARD_PC_REGNUM);
   set_gdbarch_num_regs (gdbarch, PROPELLER_NUM_REGS);
 
   /* Initially set everything according to the ABI.
@@ -291,7 +312,7 @@ propeller_gdbarch_init (struct gdbarch_info info,
 
   //  set_gdbarch_sp_regnum (gdbarch, HARD_SP_REGNUM);
   set_gdbarch_register_name (gdbarch, propeller_register_name);
-  //  set_gdbarch_register_type (gdbarch, propeller_register_type);
+  set_gdbarch_register_type (gdbarch, propeller_register_type);
   //  set_gdbarch_pseudo_register_read (gdbarch, propeller_pseudo_register_read);
   //  set_gdbarch_pseudo_register_write (gdbarch, propeller_pseudo_register_write);
 
