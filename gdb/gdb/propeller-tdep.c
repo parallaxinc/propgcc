@@ -50,7 +50,9 @@
 
 
 #define PROPELLER_NUM_REGS 18
-#define HARD_PC_REGNUM 17
+#define PROPELLER_PC_REGNUM 17
+#define PROPELLER_SP_REGNUM 16
+#define PROPELLER_FP_REGNUM 14
 
 struct gdbarch_tdep {
   int elf_flags;
@@ -72,7 +74,9 @@ static const char *propeller_register_names[] = {
   "r12",
   "r13",
   "r14",
-  "r15"
+  "r15",
+  "sp",
+  "pc"
 };
 
 /* Return the GDB type object for the "standard" data type of data in
@@ -121,8 +125,6 @@ struct propeller_frame_cache
 };
 
 /* Allocate and initialize a frame cache.  */
-#if 0
-
 static struct propeller_frame_cache *
 propeller_alloc_frame_cache (void)
 {
@@ -146,7 +148,6 @@ propeller_alloc_frame_cache (void)
 
   return cache;
 }
-#endif
 
 #define SUB4_P(op) ((op & 0xfffc01ff) == 0x84fc0004)
 #define SUB_P(op) ((op & 0xfffc0000) == 0x84fc0000)
@@ -247,6 +248,139 @@ propeller_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
   return pc;
 }
 
+static CORE_ADDR
+propeller_unwind_pc (struct gdbarch *gdbarch, struct frame_info *next_frame)
+{
+  gdb_byte buf[8];
+
+  frame_unwind_register (next_frame, gdbarch_pc_regnum (gdbarch), buf);
+  return extract_typed_address (buf, builtin_type (gdbarch)->builtin_func_ptr);
+}
+/* Normal frames.  */
+
+static struct propeller_frame_cache *
+propeller_frame_cache (struct frame_info *this_frame, void **this_cache)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+  struct propeller_frame_cache *cache;
+  gdb_byte buf[4];
+  int i;
+
+  if (*this_cache)
+    return *this_cache;
+
+  cache = propeller_alloc_frame_cache ();
+  *this_cache = cache;
+
+  /* In principle, for normal frames, %fp holds the frame pointer,
+     which holds the base address for the current stack frame.
+     However, for functions that don't need it, the frame pointer is
+     optional.  For these "frameless" functions the frame pointer is
+     actually the frame pointer of the calling frame.  Signal
+     trampolines are just a special case of a "frameless" function.
+     They (usually) share their frame pointer with the frame that was
+     in progress when the signal occurred.  */
+
+  get_frame_register (this_frame, PROPELLER_FP_REGNUM, buf);
+  cache->base = extract_unsigned_integer (buf, 4, byte_order);
+  if (cache->base == 0)
+    return cache;
+
+  /* For normal frames, %pc is stored at 4(%fp).  */
+  cache->saved_regs[PROPELLER_PC_REGNUM] = 4;
+
+  cache->pc = get_frame_func (this_frame);
+  if (cache->pc != 0)
+    propeller_analyze_prologue (get_frame_arch (this_frame), cache->pc,
+			   get_frame_pc (this_frame), cache);
+
+  if (cache->locals < 0)
+    {
+      /* We didn't find a valid frame, which means that CACHE->base
+	 currently holds the frame pointer for our calling frame.  If
+	 we're at the start of a function, or somewhere half-way its
+	 prologue, the function's frame probably hasn't been fully
+	 setup yet.  Try to reconstruct the base address for the stack
+	 frame by looking at the stack pointer.  For truly "frameless"
+	 functions this might work too.  */
+
+      get_frame_register (this_frame, PROPELLER_SP_REGNUM, buf);
+      cache->base = extract_unsigned_integer (buf, 4, byte_order)
+		    + cache->sp_offset;
+    }
+
+  /* Now that we have the base address for the stack frame we can
+     calculate the value of %sp in the calling frame.  */
+  cache->saved_sp = cache->base + 8;
+
+  /* Adjust all the saved registers such that they contain addresses
+     instead of offsets.  */
+  for (i = 0; i < PROPELLER_NUM_REGS; i++)
+    if (cache->saved_regs[i] != -1)
+      cache->saved_regs[i] += cache->base;
+
+  return cache;
+}
+
+static void
+propeller_frame_this_id (struct frame_info *this_frame, void **this_cache,
+		    struct frame_id *this_id)
+{
+  struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
+
+  /* This marks the outermost frame.  */
+  if (cache->base == 0)
+    return;
+
+  /* See the end of m68k_push_dummy_call.  */
+  *this_id = frame_id_build (cache->base + 8, cache->pc);
+}
+
+static struct value *
+propeller_frame_prev_register (struct frame_info *this_frame, void **this_cache,
+			  int regnum)
+{
+  struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
+
+  gdb_assert (regnum >= 0);
+
+  if (regnum == PROPELLER_SP_REGNUM && cache->saved_sp)
+    return frame_unwind_got_constant (this_frame, regnum, cache->saved_sp);
+
+  if (regnum < PROPELLER_NUM_REGS && cache->saved_regs[regnum] != -1)
+    return frame_unwind_got_memory (this_frame, regnum,
+				    cache->saved_regs[regnum]);
+
+  return frame_unwind_got_register (this_frame, regnum, regnum);
+}
+
+static const struct frame_unwind propeller_frame_unwind =
+{
+  NORMAL_FRAME,
+  default_frame_unwind_stop_reason,
+  propeller_frame_this_id,
+  propeller_frame_prev_register,
+  NULL,
+  default_frame_sniffer
+};
+
+static CORE_ADDR
+propeller_frame_base_address (struct frame_info *this_frame, void **this_cache)
+{
+  struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
+
+  return cache->base;
+}
+
+static const struct frame_base propeller_frame_base =
+{
+  &propeller_frame_unwind,
+  propeller_frame_base_address,
+  propeller_frame_base_address,
+  propeller_frame_base_address
+};
+
 static const gdb_byte *propeller_breakpoint_from_pc(struct gdbarch *arch, CORE_ADDR *addr, int *x){
   return 0;
 }
@@ -285,7 +419,7 @@ propeller_gdbarch_init (struct gdbarch_info info,
   //  tdep->prologue = propeller_prologue;
   set_gdbarch_addr_bit (gdbarch, 32);
   //  set_gdbarch_num_pseudo_regs (gdbarch, PROPELLER_NUM_PSEUDO_REGS);
-  set_gdbarch_pc_regnum (gdbarch, HARD_PC_REGNUM);
+  set_gdbarch_pc_regnum (gdbarch, PROPELLER_PC_REGNUM);
   set_gdbarch_num_regs (gdbarch, PROPELLER_NUM_REGS);
 
   /* Initially set everything according to the ABI.
@@ -304,13 +438,13 @@ propeller_gdbarch_init (struct gdbarch_info info,
   /* Characters are signed.  */
   set_gdbarch_char_signed (gdbarch, 1);
 
-  //  set_gdbarch_unwind_pc (gdbarch, propeller_unwind_pc);
+  set_gdbarch_unwind_pc (gdbarch, propeller_unwind_pc);
   //  set_gdbarch_unwind_sp (gdbarch, propeller_unwind_sp);
 
   /* Set register info.  */
   set_gdbarch_fp0_regnum (gdbarch, -1);
 
-  //  set_gdbarch_sp_regnum (gdbarch, HARD_SP_REGNUM);
+  set_gdbarch_sp_regnum (gdbarch, PROPELLER_SP_REGNUM);
   set_gdbarch_register_name (gdbarch, propeller_register_name);
   set_gdbarch_register_type (gdbarch, propeller_register_type);
   //  set_gdbarch_pseudo_register_read (gdbarch, propeller_pseudo_register_read);
@@ -331,16 +465,13 @@ propeller_gdbarch_init (struct gdbarch_info info,
   /* Hook in the DWARF CFI frame unwinder.  */
   dwarf2_append_unwinders (gdbarch);
 
-  //  frame_unwind_append_unwinder (gdbarch, &propeller_frame_unwind);
-  //  frame_base_set_default (gdbarch, &propeller_frame_base);
+  frame_unwind_append_unwinder (gdbarch, &propeller_frame_unwind);
+  frame_base_set_default (gdbarch, &propeller_frame_base);
   
   /* Methods for saving / extracting a dummy frame's ID.  The ID's
      stack address must match the SP value returned by
      PUSH_DUMMY_CALL, and saved by generic_save_dummy_frame_tos.  */
   //  set_gdbarch_dummy_id (gdbarch, propeller_dummy_id);
-
-  /* Return the unwound PC value.  */
-  //  set_gdbarch_unwind_pc (gdbarch, propeller_unwind_pc);
 
   /* Minsymbol frobbing.  */
   //  set_gdbarch_elf_make_msymbol_special (gdbarch,
