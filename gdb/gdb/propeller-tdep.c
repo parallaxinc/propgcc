@@ -54,6 +54,9 @@
 #define PROPELLER_SP_REGNUM 16
 #define PROPELLER_FP_REGNUM 14
 
+#define PROPELLER_R0_REGNUM 0
+#define PROPELLER_R1_REGNUM 1
+
 struct gdbarch_tdep {
   int elf_flags;
 };
@@ -381,8 +384,136 @@ static const struct frame_base propeller_frame_base =
   propeller_frame_base_address
 };
 
+static struct frame_id
+propeller_dummy_id (struct gdbarch *gdbarch, struct frame_info *this_frame)
+{
+  CORE_ADDR fp;
+
+  fp = get_frame_register_unsigned (this_frame, PROPELLER_FP_REGNUM);
+
+  /* See the end of m68k_push_dummy_call.  */
+  return frame_id_build (fp + 8, get_frame_pc (this_frame));
+}
+
 static const gdb_byte *propeller_breakpoint_from_pc(struct gdbarch *arch, CORE_ADDR *addr, int *x){
   return 0;
+}
+
+/* There is a fair number of calling conventions that are in somewhat
+   wide use.  The 68000/08/10 don't support an FPU, not even as a
+   coprocessor.  All function return values are stored in %d0/%d1.
+   Structures are returned in a static buffer, a pointer to which is
+   returned in %d0.  This means that functions returning a structure
+   are not re-entrant.  To avoid this problem some systems use a
+   convention where the caller passes a pointer to a buffer in %a1
+   where the return values is to be stored.  This convention is the
+   default, and is implemented in the function m68k_return_value.
+
+   The 68020/030/040/060 do support an FPU, either as a coprocessor
+   (68881/2) or built-in (68040/68060).  That's why System V release 4
+   (SVR4) instroduces a new calling convention specified by the SVR4
+   psABI.  Integer values are returned in %d0/%d1, pointer return
+   values in %a0 and floating values in %fp0.  When calling functions
+   returning a structure the caller should pass a pointer to a buffer
+   for the return value in %a0.  This convention is implemented in the
+   function m68k_svr4_return_value, and by appropriately setting the
+   struct_value_regnum member of `struct gdbarch_tdep'.
+
+   GNU/Linux returns values in the same way as SVR4 does, but uses %a1
+   for passing the structure return value buffer.
+
+   GCC can also generate code where small structures are returned in
+   %d0/%d1 instead of in memory by using -freg-struct-return.  This is
+   the default on NetBSD a.out, OpenBSD and GNU/Linux and several
+   embedded systems.  This convention is implemented by setting the
+   struct_return member of `struct gdbarch_tdep' to reg_struct_return.  */
+
+/* Read a function return value of TYPE from REGCACHE, and copy that
+   into VALBUF.  */
+
+static void
+propeller_extract_return_value (struct type *type, struct regcache *regcache,
+			   gdb_byte *valbuf)
+{
+  int len = TYPE_LENGTH (type);
+  gdb_byte buf[4];
+
+  if (len <= 4)
+    {
+      regcache_raw_read (regcache, PROPELLER_R0_REGNUM, buf);
+      memcpy (valbuf, buf + (4 - len), len);
+    }
+  else if (len <= 8)
+    {
+      regcache_raw_read (regcache, PROPELLER_R0_REGNUM, buf);
+      memcpy (valbuf, buf + (8 - len), len - 4);
+      regcache_raw_read (regcache, PROPELLER_R1_REGNUM, valbuf + (len - 4));
+    }
+  else
+    internal_error (__FILE__, __LINE__,
+		    _("Cannot extract return value of %d bytes long."), len);
+}
+
+/* Write a function return value of TYPE from VALBUF into REGCACHE.  */
+
+static void
+propeller_store_return_value (struct type *type, struct regcache *regcache,
+			 const gdb_byte *valbuf)
+{
+  int len = TYPE_LENGTH (type);
+
+  if (len <= 4)
+    regcache_raw_write_part (regcache, PROPELLER_R0_REGNUM, 4 - len, len, valbuf);
+  else if (len <= 8)
+    {
+      regcache_raw_write_part (regcache, PROPELLER_R0_REGNUM, 8 - len,
+			       len - 4, valbuf);
+      regcache_raw_write (regcache, PROPELLER_R1_REGNUM, valbuf + (len - 4));
+    }
+  else
+    internal_error (__FILE__, __LINE__,
+		    _("Cannot store return value of %d bytes long."), len);
+}
+
+/* Determine, for architecture GDBARCH, how a return value of TYPE
+   should be returned.  If it is supposed to be returned in registers,
+   and READBUF is non-zero, read the appropriate value from REGCACHE,
+   and copy it into READBUF.  If WRITEBUF is non-zero, write the value
+   from WRITEBUF into REGCACHE.  */
+
+static enum return_value_convention
+propeller_return_value (struct gdbarch *gdbarch, struct type *func_type,
+		   struct type *type, struct regcache *regcache,
+		   gdb_byte *readbuf, const gdb_byte *writebuf)
+{
+  enum type_code code = TYPE_CODE (type);
+
+  /* GCC returns a `long double' in memory too.  */
+  if (((code == TYPE_CODE_STRUCT || code == TYPE_CODE_UNION)
+       && !propeller_reg_struct_return_p (gdbarch, type))
+      || (code == TYPE_CODE_FLT && TYPE_LENGTH (type) == 12))
+    {
+      /* The default on m68k is to return structures in static memory.
+         Consequently a function must return the address where we can
+         find the return value.  */
+
+      if (readbuf)
+	{
+	  ULONGEST addr;
+
+	  regcache_raw_read_unsigned (regcache, PROPELLER_R0_REGNUM, &addr);
+	  read_memory (addr, readbuf, TYPE_LENGTH (type));
+	}
+
+      return RETURN_VALUE_ABI_RETURNS_ADDRESS;
+    }
+
+  if (readbuf)
+    propeller_extract_return_value (type, regcache, readbuf);
+  if (writebuf)
+    propeller_store_return_value (type, regcache, writebuf);
+
+  return RETURN_VALUE_REGISTER_CONVENTION;
 }
 
 static struct gdbarch *
@@ -471,11 +602,7 @@ propeller_gdbarch_init (struct gdbarch_info info,
   /* Methods for saving / extracting a dummy frame's ID.  The ID's
      stack address must match the SP value returned by
      PUSH_DUMMY_CALL, and saved by generic_save_dummy_frame_tos.  */
-  //  set_gdbarch_dummy_id (gdbarch, propeller_dummy_id);
-
-  /* Minsymbol frobbing.  */
-  //  set_gdbarch_elf_make_msymbol_special (gdbarch,
-  //                                    propeller_elf_make_msymbol_special);
+  set_gdbarch_dummy_id (gdbarch, propeller_dummy_id);
 
   set_gdbarch_believe_pcc_promotion (gdbarch, 1);
 
@@ -486,5 +613,4 @@ void
 _initialize_propeller_tdep (void)
 {
   register_gdbarch_init (bfd_arch_propeller, propeller_gdbarch_init);
-  //  propeller_init_reggroups ();
 } 
