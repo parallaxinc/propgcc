@@ -147,6 +147,17 @@ static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 static int Error(char *fmt, ...);
 static void *NullError(char *fmt, ...);
 
+static int ShowPort(const char* port, void* data)
+{
+    printf("%s\n", port);
+    return 1;
+}
+
+void ShowPorts(char *prefix)
+{
+    serial_find(prefix, ShowPort, NULL);
+}
+
 typedef struct {
     int baud;
     int flags;

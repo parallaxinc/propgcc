@@ -402,6 +402,9 @@ enum bfd_architecture
   bfd_arch_lm32,      /* Lattice Mico32 */
 #define bfd_mach_lm32      1
   bfd_arch_microblaze,/* Xilinx MicroBlaze. */
+  bfd_arch_propeller,      /* Parallax Propeller */
+#define bfd_mach_prop1      1
+#define bfd_mach_prop2      2
   bfd_arch_last
   @};
 @end example
