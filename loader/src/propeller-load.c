@@ -118,6 +118,9 @@ int main(int argc, char *argv[])
                 }
 #endif
                 break;
+            case 'P':
+                ShowPorts(PORT_PREFIX);
+                break;
             case 'e':
                 flags |= LFLAG_WRITE_EEPROM;
                 break;
@@ -287,6 +290,7 @@ static void Usage(void)
 usage: propeller-load\n\
          [ -b <type> ]     select target board (default is 'default')\n\
          [ -p <port> ]     serial port (default is to auto-detect the port)\n\
+         [ -P ]            list available serial ports\n\
          [ -I <path> ]     add a directory to the include path\n\
          [ -D var=value ]  define a board configuration variable\n\
          [ -e ]            write the program into EEPROM\n\
@@ -303,7 +307,8 @@ usage: propeller-load\n\
 \n\
 Variables that can be set with -D are:\n\
   clkfreq clkmode baudrate rxpin txpin tvpin cache-driver cache-size cache-param1 cache-param2\n\
-  sd-cache sdspi-do sdspi-clk sdspi-di sdspi-cs eeprom-first\n\
+  sd-cache sdspi-do sdspi-clk sdspi-di sdspi-cs sdspi-clr sdspi-inc sdspi-sel sdspi-msk\n\
+  eeprom-first\n\
 \n\
 Value expressions for -D can include:\n\
   rcfast rcslow xinput xtal1 xtal2 xtal3 pll1x pll2x pll4x pll8x pll16x k m mhz true false\n\

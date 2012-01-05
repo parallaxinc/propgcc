@@ -36,6 +36,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define LFLAG_WRITE_SDLOADER        (1 << 4)
 #define LFLAG_WRITE_SDCACHELOADER   (1 << 5)
 
+void ShowPorts(char *prefix);
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
