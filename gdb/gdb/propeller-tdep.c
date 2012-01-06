@@ -49,7 +49,7 @@
 #include "elf-bfd.h"
 
 
-#define PROPELLER_NUM_REGS 18
+#define PROPELLER_NUM_REGS 19
 #define PROPELLER_PC_REGNUM 17
 #define PROPELLER_SP_REGNUM 16
 #define PROPELLER_FP_REGNUM 14
@@ -79,7 +79,8 @@ static const char *propeller_register_names[] = {
   "r14",
   "r15",
   "sp",
-  "pc"
+  "pc",
+  "cogpc"
 };
 
 /* Return the GDB type object for the "standard" data type of data in
