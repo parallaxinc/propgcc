@@ -178,8 +178,8 @@ propeller_analyze_prologue (struct gdbarch *gdbarch, CORE_ADDR pc,
   struct symbol *r0;
   CORE_ADDR base;
 
-  r0 = lookup_symbol_global("r0", GLOBAL_BLOCK, VAR_DOMAIN);
-  base = r0->ginfo.value.address / 4;
+  //  r0 = lookup_symbol_global("r0", GLOBAL_BLOCK, VAR_DOMAIN);
+  //  base = r0->ginfo.value.address / 4;
 
   for(;;)
     {
@@ -189,7 +189,7 @@ propeller_analyze_prologue (struct gdbarch *gdbarch, CORE_ADDR pc,
 	{
 	  int reg;
 	  reg = GET_DST(op);
-	  cache->saved_regs[reg - base] = 0;
+	  cache->saved_regs[reg/* - base*/] = 0;
 	  cache->sp_offset += 4;
 	  pc += 4;
 	}
