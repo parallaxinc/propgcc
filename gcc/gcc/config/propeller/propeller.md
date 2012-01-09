@@ -160,9 +160,9 @@
 
 (define_insn_reservation "coreop" 1 (eq_attr "type" "core")
 			 "use_slot1 | use_slot2 | use_slot3 | use_slot4")
-(define_insn_reservation "hubop" 1 (eq_attr "type" "hub")
+(define_insn_reservation "hubop" 1 (eq_attr "type" "hub,wait")
 			 "(issue+slot1+slot2),(slot1+slot2)*3")
-(define_insn_reservation "multiop" 1 (eq_attr "type" "multi")
+(define_insn_reservation "multiop" 1 (eq_attr "type" "multi,call")
 			 "issue+slot1,nothing*3")
 
 ;; -------------------------------------------------------------------------
