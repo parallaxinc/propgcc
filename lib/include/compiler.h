@@ -26,6 +26,9 @@
 #define _CONST    __attribute__((const))
 #define _WEAK     __attribute__((weak))
 
+#ifndef _WCHAR_T_TYPE
+#define _WCHAR_T_TYPE __WCHAR_TYPE__
+#endif
 #define _CONSTRUCTOR __attribute__((constructor))
 #define _DESTRUCTOR __attribute__((destructor))
 
