@@ -219,6 +219,9 @@ extern "C" {
   intmax_t strtoimax(const char *__restrict, char **__restrict, int);
   uintmax_t strtouimax(const char *__restrict, char **__restrict, int);
 
+  intmax_t wcstoimax(const _WCHAR_T_TYPE *__restrict, _WCHAR_T_TYPE **__restrict, int);
+  uintmax_t wcstouimax(const _WCHAR_T_TYPE *__restrict, _WCHAR_T_TYPE **__restrict, int);
+
 #ifdef __cplusplus
 }
 #endif
