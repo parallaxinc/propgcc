@@ -40,6 +40,10 @@ extern "C" {
 #define EDEADLK   28
 
   /* unlikely errors */
+  /* in fact, these and the networking errors are only here because
+     the GNU libstdc++ expects errno.h to define them; the library
+     cannot generate them, and strerror will report "unknown error"
+     for them */
 #define ENOBUFS      50
 #define ECHILD       51
 #define ENOLCK       52
