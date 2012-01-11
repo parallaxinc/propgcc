@@ -6,7 +6,7 @@
 #
 # ADJUST THE FOLLOWING VARIABLES IF NECESSARY
 #
-PREFIX=/opt/parallax
+echo Prefix is ${PREFIX=/opt/parallax}
 export PREFIX
 
 #
