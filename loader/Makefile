@@ -2,18 +2,21 @@
 # propeller-load Makefile #
 ###########################
 
+ifndef BUILDROOT
+BUILDROOT=.
+endif
+
 ifndef TARGET
-TARGET=.
+TARGET=/opt/parallax
 endif
 
 SRCDIR=src
 SPINDIR=spin
-OBJDIR=$(TARGET)/obj/$(OS)
-BINDIR=$(TARGET)/bin/$(OS)
-DRVDIR=$(TARGET)/include
-INSTALLDIR=/usr/local/propeller
-INSTALLBINDIR=$(INSTALLDIR)/bin
-INSTALLLIBDIR=$(INSTALLDIR)/propeller-load
+OBJDIR=$(BUILDROOT)/obj/$(OS)
+BINDIR=$(BUILDROOT)/bin/$(OS)
+DRVDIR=$(BUILDROOT)/include
+INSTALLBINDIR=$(TARGET)/bin
+INSTALLLIBDIR=$(TARGET)/propeller-load
 
 DIRS = $(OBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
 
@@ -79,8 +82,8 @@ clean:
 	
 .PHONY:
 clean-all:	clean
-	@$(RM) -f -r $(TARGET)/obj
-	@$(RM) -f -r $(TARGET)/bin
+	@$(RM) -f -r $(BUILDROOT)/obj
+	@$(RM) -f -r $(BUILDROOT)/bin
 	@$(RM) -f $(DRVDIR)/*.dat
 	@$(RM) -f *.binary
 	
@@ -159,7 +162,7 @@ drivers:	$(DRVDIR) $(DRIVERS)
 
 .PHONY:	sd-loader
 sd-loader:	$(DRVDIR)
-	$(MAKE) -C sdloader TARGET=$(realpath $(TARGET))
+	$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT))
 
 ##################
 # SPIN TO BINARY #
@@ -244,7 +247,7 @@ $(DIRS):
 
 .PHONY:	install
 install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
-	$(CP) -f $(TARGET)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
+	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
 	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
 	$(CP) -f include/* $(INSTALLLIBDIR)
 
