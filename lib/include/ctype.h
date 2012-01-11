@@ -5,14 +5,7 @@
 extern "C" {
 #endif
 
-extern unsigned char __ctype[];
-#define _CTc    0x01            /* control character */
-#define _CTd    0x02            /* numeric digit */
-#define _CTu    0x04            /* upper case */
-#define _CTl    0x08            /* lower case */
-#define _CTs    0x10            /* whitespace */
-#define _CTp    0x20            /* punctuation */
-#define _CTx    0x40            /* hexadecimal */
+#include <sys/ctype.h>
 
   extern int isalnum(int c);
   extern int isalpha(int c);
@@ -32,7 +25,7 @@ extern unsigned char __ctype[];
 
 #define isalnum(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl|_CTd))
 #define isalpha(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl))
-#define isblank(c)      (__ctype[(unsigned char)(c)]&(_CTs) && ((c) == ' ') || (c == '\t'))
+#define isblank(c)      (__ctype[(unsigned char)(c)]&(_CTb))
 #define iscntrl(c)      (__ctype[(unsigned char)(c)]&_CTc)
 #define isdigit(c)      (__ctype[(unsigned char)(c)]&_CTd)
 #define isgraph(c)      (!(__ctype[(unsigned char)(c)]&(_CTc|_CTs)) && (__ctype[(unsigned char)(c)]))
