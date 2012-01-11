@@ -16,7 +16,7 @@ static void docheck(int condition, const char *msg, int x)
   }
 }
 
-#define check(func, x) docheck(func(x), string_(func), x)
+#define check(cond, x) docheck(cond, string_(cond), x)
 
 /* test whether the macro isctype() returns true for all (and only) the
  * characters in "str"
@@ -25,37 +25,18 @@ static void docheck(int condition, const char *msg, int x)
  */
 
 #define TESTMATCH(isctype, str)        \
-  do {				      \
-    printf("%s ", string_(isctype));  \
-    for (i = 0; i < 256; i++)	      \
+  do {				       \
+    printf("%s ", string_(isctype));   \
+    for (i = 0; i < 256; i++)	       \
       {				       \
 	if (i && strchr(str, i))       \
-	  check(isctype, i);	       \
+	  check(isctype(i), i);	       \
 	else			       \
-	  check(!isctype, i);	       \
+	  check(!isctype(i), i);       \
       }				       \
   } while (0)
 
 
-#if 0
-void
-verifywc(int x)
-{
-  assert(iswalnum(x) == isalnum(x));
-  assert(iswalpha(x) == isalpha(x));
-  if (x == ' ' || x == '\t')
-    assert(iswblank(x));
-  else
-    assert(!iswblank(x));
-  assert(iswcntrl(x) == iscntrl(x));
-  assert(iswdigit(x) == isdigit(x));
-  assert(iswgraph(x) == isgraph(x));
-  assert(iswprint(x) == isprint(x));
-  assert(iswpunct(x) == ispunct(x));
-  assert(iswspace(x) == isspace(x));
-  assert(iswxdigit(x) == isxdigit(x));
-}
-#endif
 
 #define LOWER "abcdefghijklmnopqrstuvwxyz"
 #define UPPER "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -88,14 +69,14 @@ testctrlmacro(void)
   int i;
   printf("iscntrl ");
   for (i = 0; i < 0x20; i++) {
-    check(iscntrl, i);
+    check(iscntrl(i), i);
   }
   for (i = 0x20; i < 0x7f; i++) {
-    check(!iscntrl, i);
+    check(!iscntrl(i), i);
   }
-  check(iscntrl, 0x7f);
+  check(iscntrl(0x7f), 0x7f);
   for (i = 0x80; i <= 0xff; i++) {
-    check(!iscntrl, i);
+    check(!iscntrl(i), i);
   }
 }
 
@@ -135,20 +116,41 @@ testctrlfunc(void)
   int i;
   printf("iscntrl ");
   for (i = 0; i < 0x20; i++) {
-    check(iscntrl, i);
+    check(iscntrl(i), i);
   }
   for (i = 0x20; i < 0x7f; i++) {
-    check(!iscntrl, i);
+    check(!iscntrl(i), i);
   }
-  check(iscntrl, 0x7f);
+  check(iscntrl(0x7f), 0x7f);
   for (i = 0x80; i <= 0xff; i++) {
-    check(!iscntrl, i);
+    check(!iscntrl(i), i);
   }
+}
+
+void
+verifywc(unsigned char x, wchar_t wx)
+{
+  /* note that the iswxxx functions do not have to return
+     the exact same value as isxxx, but they do have to
+     be nonzero or zero at the same time
+  */
+  check(!!iswalnum(wx) == !!isalnum(x), wx);
+  check(!!iswalpha(wx) == !!isalpha(x), wx);
+  check(!!iswblank(wx) == !!isblank(x), wx);
+  check(!!iswcntrl(wx) == !!iscntrl(x), wx);
+  check(!!iswdigit(wx) == !!isdigit(x), wx);
+  check(!!iswgraph(wx) == !!isgraph(x), wx);
+  check(!!iswprint(wx) == !!isprint(x), wx);
+  check(!!iswpunct(wx) == !!ispunct(x), wx);
+  check(!!iswspace(wx) == !!isspace(x), wx);
+  check(!!iswxdigit(wx) == !!isxdigit(x), wx);
 }
 
 int
 main()
 {
+  int i;
+
   printf("testing ctype macros..."); fflush(stdout);
   testmacros();
   testctrlmacro();
@@ -157,5 +159,15 @@ main()
   testfuncs();
   testctrlfunc();
   printf(" ok\n");
+  printf("testing wide character ctypes..."); fflush(stdout);
+
+  for (i = 0; i < 256; i++) {
+    verifywc(i, i);
+  }
+  verifywc(255, 512);
+  verifywc(-1, -1);
+  printf(" ok\n");
+
+  printf("\nAll tests passed!\n");
   return 0;
 }

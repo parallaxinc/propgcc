@@ -17,7 +17,7 @@ endif
 CC=propeller-elf-gcc
 MKDIR = mkdir -p
 
-VPATH=.:cog:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm
+VPATH=.:cog:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:wchar
 
 all:	$(OBJDIR)
 	make -f Makefile.incl MODEL=lmm OBJDIR=$(OBJDIR)
