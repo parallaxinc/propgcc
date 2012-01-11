@@ -2,13 +2,13 @@
 # sd_loader Makefile #
 ######################
 
-ifndef TARGET
-TARGET=.
+ifndef BUILDROOT
+BUILDROOT=.
 endif
 
 SRCDIR=.
-OBJDIR=$(TARGET)/obj
-DRVDIR=$(TARGET)/include
+OBJDIR=$(BUILDROOT)/obj
+DRVDIR=$(BUILDROOT)/include
 
 DIRS = $(OBJDIR) $(DRVDIR)
 

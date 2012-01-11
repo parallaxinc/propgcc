@@ -6,11 +6,12 @@
 #
 # ADJUST THE FOLLOWING VARIABLES IF NECESSARY
 #
-PREFIX=/usr/local/propeller
+#PREFIX=/usr/local/propeller
+PREFIX=/opt/parallax
 export PREFIX
 
 #
-# ADD /usr/local/propeller/bin to PATH
+# ADD build target bin directory to PATH
 #
 PATH=$PREFIX/bin:$PATH
 export PATH
@@ -59,21 +60,25 @@ then
   OS=macosx
   PORT=/dev/cu.usbserial-A8004ILf
   BOARD=hub
+  BSTC=bstc.osx
 elif test x$UNAME = xCygwin
 then
   OS=cygwin
   PORT=COM16
   BOARD=c3
+  BSTC=bstc.exe
 elif test x$UNAME = xMsys
 then
   OS=msys
   PORT=COM16
   BOARD=c3
+  BSTC=bstc.exe
 elif test x$UNAME = xLinux
 then
   OS=linux
   PORT=/dev/ttyUSB0
   BOARD=c3
+  BSTC=bstc.linux
 else
   echo "Unknown system: " $UNAME
   exit 1
@@ -163,7 +168,7 @@ cd ../../propgcc
 #
 #mkdir -p ../build/newlib
 #cd ../build/newlib
-#../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller --enable-target-optspace
+#../../propgcc/newlib/src/configure --target=propeller-elf --prefix=$PREFIX --enable-target-optspace
 #if test $? != 0
 #then
 #   echo "newlib configure failed."
@@ -196,14 +201,14 @@ then
   cd ..
   exit 1
 fi
-make ${JOBS}
+make PREFIX=$PREFIX ${JOBS}
 if test $? != 0
 then
   echo "library build failed - make"
   cd ..
   exit 1
 fi
-make install
+make PREFIX=$PREFIX install
 if test $? != 0
 then
   echo "library install failed"
@@ -219,6 +224,22 @@ cp -f ldscripts/* $PREFIX/propeller-elf/lib
 if test $? != 0
 then
   echo "ldscripts install failed"
+  exit 1
+fi
+
+#
+# copy Brad's Spin Tool
+#
+cp -f release/$BSTC $PREFIX/bin
+if test $? != 0
+then
+  echo "bstc install failed"
+  exit 1
+fi
+chmod a+x $PREFIX/bin/$BSTC
+if test $? != 0
+then
+  echo "bstc chmod failed"
   exit 1
 fi
 
@@ -247,8 +268,8 @@ cd ../../propgcc
 #
 # build propeller-load
 #
-make -C loader TARGET=../../build/loader
-make -C loader TARGET=../../build/loader install
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader install
 
 echo "Build complete."
 exit 0
