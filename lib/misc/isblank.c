@@ -4,5 +4,5 @@
 
 int isblank(int c)
 {
-  return (__ctype[(unsigned char)(c)]&(_CTs)) && (c == ' ' || c == '\t');
+  return (__ctype[(unsigned char)(c)]&(_CTb));
 }
