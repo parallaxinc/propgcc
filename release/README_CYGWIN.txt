@@ -1,8 +1,8 @@
 To install and use this package for use with Cygwin, please move or copy the
-propeller directory to /usr/local.
+propeller directory to /opt/parallax.
 
-$ mv propeller /usr/local/.
-$ PATH=/usr/local/propeller/bin:$PATH
+$ mv propeller /opt/parallax/.
+$ PATH=/opt/parallax/bin:$PATH
 
 Add the PATH setting to your .bashrc file for future use.
 
