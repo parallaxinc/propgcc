@@ -31,7 +31,7 @@ unsigned char __ctype[UCHAR_MAX+1] =
 	{
 	_CTc, _CTc, _CTc, _CTc,				/* 0x00..0x03 */
 	_CTc, _CTc, _CTc, _CTc,				/* 0x04..0x07 */
-	_CTc, _CTc|_CTs, _CTc|_CTs, _CTc|_CTs,		/* 0x08..0x0B */
+	_CTc, _CTc|_CTs|_CTb, _CTc|_CTs, _CTc|_CTs,     /* 0x08..0x0B */
 	_CTc|_CTs, _CTc|_CTs, _CTc, _CTc,		/* 0x0C..0x0F */
 
 	_CTc, _CTc, _CTc, _CTc,				/* 0x10..0x13 */
@@ -39,7 +39,7 @@ unsigned char __ctype[UCHAR_MAX+1] =
 	_CTc, _CTc, _CTc, _CTc,				/* 0x18..0x1B */
 	_CTc, _CTc, _CTc, _CTc,				/* 0x1C..0x1F */
 
-	_CTs, _CTp, _CTp, _CTp,				/* 0x20..0x23 */
+	_CTs|_CTb, _CTp, _CTp, _CTp,				/* 0x20..0x23 */
 	_CTp, _CTp, _CTp, _CTp,				/* 0x24..0x27 */
 	_CTp, _CTp, _CTp, _CTp,				/* 0x28..0x2B */
 	_CTp, _CTp, _CTp, _CTp,				/* 0x2C..0x2F */
