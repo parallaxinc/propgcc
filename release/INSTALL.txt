@@ -7,15 +7,15 @@ Integrated package installs will be available later.
 1. Propeller GCC Linux install:
 
 To install Propeller GCC on linux: unpack the tar file in some
-suitable location. I use /usr/local, but that requires root access;
+suitable location. I use /opt/parallax, but that requires root access;
 you can also use your home directory.
 
-Add /usr/local/propeller/bin (or $HOME/propeller/bin, as appropriate)
+Add /opt/parallax/bin (or $HOME/parallax/bin, as appropriate)
 to your PATH. 
 
 Move demo files to some working directory.
 
-$ PATH=/usr/local/propeller/bin:$PATH
+$ PATH=/opt/parallax/bin:$PATH
 $ mv demo ~/.
 
 
