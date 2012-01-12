@@ -49,13 +49,13 @@ testuns(const char *str, unsigned long expect, const wchar_t *lstr, unsigned lon
   unsigned long xl;
   unsigned long long xll;
 
-  printf("testing strtoul [%s, %d]\n", str, base);
+  printf("testing [%s, %d] strtoul ", str, base); fflush(stdout);
   xl = strtoul(str, NULL, base);
   check((unsigned long long)xl == expect, expect);
   xll = strtoull(str, NULL, base);
   check(xll == lexpect, lexpect);
 
-  printf("testing wcstoul\n");
+  printf("wcstoul\n");
   xl = wcstoul(lstr, NULL, base);
   check((unsigned long long)xl == expect, expect);
   xll = wcstoull(lstr, NULL, base);
@@ -75,5 +75,8 @@ main()
   testuns("99A", 99, L"99x", 99LL, 10);
   testuns("-99", 0xFFFFFF9D, L"-99", -99LL, 10);
   testuns("80000000", 0x80000000UL, L"80000000", 0x80000000LL, 16);
+  testuns("4294967295", 0xFFFFFFFFUL, L"4294967295", 0xFFFFFFFFULL, 10);
+  testuns("4294967296", 0xFFFFFFFFUL, L"4294967296", 0x100000000ULL, 10);
+
   return 0;
 }
