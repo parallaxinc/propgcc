@@ -1,3 +1,28 @@
+/*
+ * Implementation of wide character functions
+ *
+ * Copyright (c) 2012 Parallax, Inc.
+ * Written by Eric R. Smith, Total Spectrum Software Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 #include <ctype.h>
 #include <wctype.h>
 #include <assert.h>
@@ -140,10 +165,25 @@ verifywc(unsigned char x, wchar_t wx)
   check(!!iswcntrl(wx) == !!iscntrl(x), wx);
   check(!!iswdigit(wx) == !!isdigit(x), wx);
   check(!!iswgraph(wx) == !!isgraph(x), wx);
+  check(!!iswlower(wx) == !!islower(x), wx);
   check(!!iswprint(wx) == !!isprint(x), wx);
   check(!!iswpunct(wx) == !!ispunct(x), wx);
   check(!!iswspace(wx) == !!isspace(x), wx);
+  check(!!iswupper(wx) == !!isupper(x), wx);
   check(!!iswxdigit(wx) == !!isxdigit(x), wx);
+
+  check(iswalnum(wx) == iswctype(wx, wctype("alnum")), wx);
+  check(iswalpha(wx) == iswctype(wx, wctype("alpha")), wx);
+  check(iswblank(wx) == iswctype(wx, wctype("blank")), wx);
+  check(iswcntrl(wx) == iswctype(wx, wctype("cntrl")), wx);
+  check(iswdigit(wx) == iswctype(wx, wctype("digit")), wx);
+  check(iswgraph(wx) == iswctype(wx, wctype("graph")), wx);
+  check(iswlower(wx) == iswctype(wx, wctype("lower")), wx);
+  check(iswprint(wx) == iswctype(wx, wctype("print")), wx);
+  check(iswpunct(wx) == iswctype(wx, wctype("punct")), wx);
+  check(iswspace(wx) == iswctype(wx, wctype("space")), wx);
+  check(iswupper(wx) == iswctype(wx, wctype("upper")), wx);
+  check(iswxdigit(wx) == iswctype(wx, wctype("xdigit")), wx);
 }
 
 int
