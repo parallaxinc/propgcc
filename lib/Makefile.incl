@@ -64,7 +64,8 @@ MISC = 	ctype.o toupper.o tolower.o \
 WCHAR = wctype.o iswctype.o iswalnum.o iswalpha.o iswblank.o \
       iswcntrl.o iswdigit.o iswgraph.o iswlower.o iswprint.o \
       iswpunct.o iswspace.o iswupper.o iswxdigit.o towlower.o \
-      wcscat.o wcscpy.o wcslen.o wcschr.o wcsrchr.o \
+      wcscat.o wcscmp.o wcscpy.o wcslen.o wcschr.o wcsrchr.o \
+      wcsncat.o wcsncmp.o wcsncpy.o \
       wcstol.o wcstoul.o wcstoll.o wcstoull.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
