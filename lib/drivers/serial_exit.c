@@ -36,7 +36,8 @@ void _serial_tx(int value)
   _DIRA |= txmask;
 
   value = (value | 256)<<1;
-  waitcycles = _CNT + bitcycles;
+  /* start with a nice long pulse of high bits */
+  waitcycles = _CNT + 10*bitcycles;
   for (i = 0; i < 10; i++)
     {
       waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
@@ -48,6 +49,7 @@ void _serial_tx(int value)
     }
 }
 
+__attribute__((section(".hubtext")))
 void
 _serial_exit(int n)
 {
