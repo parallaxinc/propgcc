@@ -1,5 +1,6 @@
+MODEL = -mxmmc
 CC = propeller-elf-gcc
-CFLAGS = -Os -Wall -u __serial_exit
+CFLAGS = $(MODEL) -Os -Wall -u __serial_exit
 
 tests: ctype.run
 
