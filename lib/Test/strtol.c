@@ -44,21 +44,22 @@ static void docheck(int condition, const char *msg, unsigned long long x)
 
 
 void
-testuns(const char *str, const wchar_t *lstr, unsigned long long expect, int base)
+testuns(const char *str, unsigned long expect, const wchar_t *lstr, unsigned long long lexpect, int base)
 {
   unsigned long xl;
   unsigned long long xll;
 
-  printf("testing [%s, %d]\n", str, base);
+  printf("testing strtoul [%s, %d]\n", str, base);
   xl = strtoul(str, NULL, base);
   check((unsigned long long)xl == expect, expect);
+  xll = strtoull(str, NULL, base);
+  check(xll == lexpect, lexpect);
+
+  printf("testing wcstoul\n");
   xl = wcstoul(lstr, NULL, base);
   check((unsigned long long)xl == expect, expect);
-
-  xll = strtoul(str, NULL, base);
-  check(xll == expect, expect);
-  xll = wcstoul(lstr, NULL, base);
-  check(xll == expect, expect);
+  xll = wcstoull(lstr, NULL, base);
+  check(xll == lexpect, lexpect);
 
 
 }
@@ -66,13 +67,13 @@ testuns(const char *str, const wchar_t *lstr, unsigned long long expect, int bas
 int
 main()
 {
-  testuns("0", L"0", 0LL, 10);
-  testuns("0x10", L"0x10", 16LL, 0);
-  testuns("0x10", L"0x10", 0LL, 10);
-  testuns("ABC", L"ABC", 0xABCLL, 16);
-  testuns("011", L"011", 3LL, 2);
-  testuns("99A", L"99x", 99LL, 10);
-  testuns("-99", L"-99", 0xFFFFFF9DLL, 10);
-  testuns("80000000", L"80000000", 0x80000000LL, 16);
+  testuns("0", 0, L"0", 0LL, 10);
+  testuns("0x10", 16, L"0x10", 16LL, 0);
+  testuns("0x10", 0, L"0x10", 0LL, 10);
+  testuns("ABC", 0xABC, L"ABC", 0xABCLL, 16);
+  testuns("011", 3, L"011", 3LL, 2);
+  testuns("99A", 99, L"99x", 99LL, 10);
+  testuns("-99", 0xFFFFFF9D, L"-99", -99LL, 10);
+  testuns("80000000", 0x80000000UL, L"80000000", 0x80000000LL, 16);
   return 0;
 }
