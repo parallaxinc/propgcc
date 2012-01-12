@@ -15,3 +15,6 @@ wstring.elf: wstring.o
 
 wstring.run: wstring.elf
 	propeller-load -bc3 -p1 $^ -r -t -q
+
+clean:
+	rm -rf *.o *.elf

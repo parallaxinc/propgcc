@@ -36,6 +36,7 @@
 wchar_t s1[] = L"hello, ";
 wchar_t s2[] = L"world";
 
+
 int
 main()
 {
@@ -43,8 +44,7 @@ main()
   wchar_t *x;
   size_t n;
 
-  printf("checking basic string operations..."); fflush(stdout);
-  printf("\nwcslen(s1) == %d, wcslen(s2) == %d\n", wcslen(s1), wcslen(s2));
+  printf("checking wide character string operations..."); fflush(stdout);
   x = wcscpy(d1, s1);
   assert(x == d1);
   x = 0;
@@ -52,6 +52,15 @@ main()
   assert(x == d1);
   n = wcslen(d1);
   assert(n == 12);
+
+  x = wcschr(s1, L'e');
+  assert(x == &s1[1]);
+  x = wcschr(s1, L'w');
+  assert(x == NULL);
+  x = wcsrchr(s1, L'l');
+  assert(x == &s1[3]);
+  x = wcsrchr(s1, L'z');
+  assert(x == NULL);
 
   printf(" ok\n");
   return 0;
