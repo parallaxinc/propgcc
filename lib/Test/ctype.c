@@ -208,6 +208,5 @@ main()
   verifywc(-1, -1);
   printf(" ok\n");
 
-  printf("\nAll tests passed!\n");
   return 0;
 }

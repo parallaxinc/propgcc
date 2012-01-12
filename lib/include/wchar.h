@@ -16,6 +16,8 @@ extern "C" {
 
   wchar_t *wcscpy(wchar_t *__restrict s1, const wchar_t *__restrict s2);
   wchar_t *wcscat(wchar_t *__restrict s1, const wchar_t *__restrict s2);
+  wchar_t *wcschr(const wchar_t *s, wchar_t c);
+  wchar_t *wcsrchr(const wchar_t *s, wchar_t c);
   size_t   wcslen(const wchar_t *s);
 
 #if defined(__cplusplus)
