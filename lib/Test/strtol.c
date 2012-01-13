@@ -55,12 +55,36 @@ testuns(const char *str, unsigned long expect, const wchar_t *lstr, unsigned lon
   xll = strtoull(str, NULL, base);
   check(xll == lexpect, lexpect);
 
-  printf("wcstoul\n");
+  printf("wcstoul ");
   xl = wcstoul(lstr, NULL, base);
   check((unsigned long long)xl == expect, expect);
   xll = wcstoull(lstr, NULL, base);
   check(xll == lexpect, lexpect);
 
+  if (base == 8 || base == 10 || base == 16 || base == 0) {
+    printf("scanf ");
+    switch (base) {
+    case 8:
+      sscanf(str, "%lo", &xl);
+      sscanf(str, "%llo", &xll);
+      break;
+    case 10:
+      sscanf(str, "%lu", &xl);
+      sscanf(str, "%llu", &xll);
+      break;
+    case 16:
+      sscanf(str, "%lx", &xl);
+      sscanf(str, "%llx", &xll);
+      break;
+    default:
+      sscanf(str, "%li", &xl);
+      sscanf(str, "%lli", &xll);
+      break;
+    }
+    check((unsigned long long)xl == expect, expect);
+    check(xll == lexpect, lexpect);
+  }
+  printf("ok\n");
 
 }
 
@@ -72,11 +96,13 @@ main()
   testuns("0x10", 0, L"0x10", 0LL, 10);
   testuns("ABC", 0xABC, L"ABC", 0xABCLL, 16);
   testuns("011", 3, L"011", 3LL, 2);
+  testuns("41", 33, L"41", 33LL, 8); 
   testuns("99A", 99, L"99x", 99LL, 10);
   testuns("-99", 0xFFFFFF9D, L"-99", -99LL, 10);
   testuns("80000000", 0x80000000UL, L"80000000", 0x80000000LL, 16);
   testuns("4294967295", 0xFFFFFFFFUL, L"4294967295", 0xFFFFFFFFULL, 10);
   testuns("4294967296", 0xFFFFFFFFUL, L"4294967296", 0x100000000ULL, 10);
+  testuns("-1", 0xFFFFFFFFUL, L"-1", 0xFFFFFFFFFFFFFFFFULL, 10);
 
   return 0;
 }

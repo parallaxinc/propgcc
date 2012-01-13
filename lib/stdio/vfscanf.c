@@ -32,6 +32,9 @@
 #include <math.h>
 #include <compiler.h>
 
+#define MAX(x,y) ((x)>(y)?(x):(y))
+#define MIN(x,y) ((x)<(y)?(x):(y))
+
 #define WCHAR_SUBTYPE 'l'
 
 /*
@@ -415,15 +418,19 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		    case 'z':
 		    case 'j':
 		    case 't':
+		      v = MIN(v, ULONG_MAX);
 		      *va_arg(args,unsigned long *)=v;
 		      break;
 		    case 'i':
+		      v = MIN(v, UINT_MAX);
 		      *va_arg(args,unsigned int *)=v;
 		      break;
 		    case 'h':
+		      v = MIN(v, USHRT_MAX);
 		      *va_arg(args,unsigned short *)=v;
 		      break;
 		    case 'H':
+		      v = MIN(v, UCHAR_MAX);
 		      *va_arg(args,unsigned char *)=v;
 		      break;
 		    }
@@ -442,13 +449,20 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		      case 'z':
 		      case 'j':
 		      case 't':
+			v = MAX(MIN(v, LONG_MAX), LONG_MIN);
 			*va_arg(args,signed long *)=v2;
 		        break;
 		      case 'i':
+			v = MAX(MIN(v, INT_MAX), INT_MIN);
 			*va_arg(args,signed int *)=v2;
 			break;
 		      case 'h':
+			v = MAX(MIN(v, SHRT_MAX), SHRT_MIN);
 			*va_arg(args,signed short *)=v2;
+			break;
+		      case 'H':
+			v = MAX(MIN(v, SCHAR_MAX), SCHAR_MIN);
+			*va_arg(args,signed char *)=v2;
 			break;
 		      }
 		  }
