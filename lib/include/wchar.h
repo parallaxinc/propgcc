@@ -23,9 +23,13 @@ extern "C" {
   unsigned long long wcstoull( const wchar_t *__restrict nptr,
 			     wchar_t **__restrict endptr, int base);
 
+  wchar_t *wcscpy(wchar_t *__restrict s1, const wchar_t *__restrict s2);
+  wchar_t *wcsncpy(wchar_t *__restrict s1, const wchar_t *__restrict s2, size_t n);
+  wchar_t *wmemcpy(wchar_t *__restrict s1, const wchar_t *__restrict s2, size_t n);
+  wchar_t *wmemmove(wchar_t *s1, const wchar_t *s2, size_t n);
+
   int wcscmp(const wchar_t *s1, const wchar_t *s2);
 
-  wchar_t *wcscpy(wchar_t *__restrict s1, const wchar_t *__restrict s2);
   wchar_t *wcscat(wchar_t *__restrict s1, const wchar_t *__restrict s2);
   wchar_t *wcschr(const wchar_t *s, wchar_t c);
   wchar_t *wcsrchr(const wchar_t *s, wchar_t c);
