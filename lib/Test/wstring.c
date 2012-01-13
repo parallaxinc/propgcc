@@ -62,6 +62,9 @@ main()
   x = wcsrchr(s1, L'z');
   assert(x == NULL);
 
+  assert(wcscmp(s1, s1) == 0);
+  assert(wcscmp(s1, s2) < 0);
+
   printf(" ok\n");
   return 0;
 }
