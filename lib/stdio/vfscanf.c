@@ -449,19 +449,19 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		      case 'z':
 		      case 'j':
 		      case 't':
-			v = MAX(MIN(v, LONG_MAX), LONG_MIN);
+			v2 = MAX(MIN(v2, LONG_MAX), LONG_MIN);
 			*va_arg(args,signed long *)=v2;
 		        break;
 		      case 'i':
-			v = MAX(MIN(v, INT_MAX), INT_MIN);
+			v2 = MAX(MIN(v2, INT_MAX), INT_MIN);
 			*va_arg(args,signed int *)=v2;
 			break;
 		      case 'h':
-			v = MAX(MIN(v, SHRT_MAX), SHRT_MIN);
+			v2 = MAX(MIN(v2, SHRT_MAX), SHRT_MIN);
 			*va_arg(args,signed short *)=v2;
 			break;
 		      case 'H':
-			v = MAX(MIN(v, SCHAR_MAX), SCHAR_MIN);
+			v2 = MAX(MIN(v2, SCHAR_MAX), SCHAR_MIN);
 			*va_arg(args,signed char *)=v2;
 			break;
 		      }
