@@ -269,6 +269,7 @@ struct gdbarch
   gdbarch_auto_wide_charset_ftype *auto_wide_charset;
   const char * solib_symbols_extension;
   int has_dos_based_file_system;
+  int load_writes_pc;
 };
 
 
@@ -421,6 +422,7 @@ struct gdbarch startup_gdbarch =
   default_auto_wide_charset,  /* auto_wide_charset */
   0,  /* solib_symbols_extension */
   0,  /* has_dos_based_file_system */
+  1,  /* load_writes_pc */
   /* startup_gdbarch() */
 };
 
@@ -511,6 +513,7 @@ gdbarch_alloc (const struct gdbarch_info *info,
   gdbarch->fast_tracepoint_valid_at = default_fast_tracepoint_valid_at;
   gdbarch->auto_charset = default_auto_charset;
   gdbarch->auto_wide_charset = default_auto_wide_charset;
+  gdbarch->load_writes_pc = 1;  /* Nearly everybody wants it */
   /* gdbarch_alloc() */
 
   return gdbarch;
@@ -704,6 +707,7 @@ verify_gdbarch (struct gdbarch *gdbarch)
   /* Skip verify of auto_charset, invalid_p == 0 */
   /* Skip verify of auto_wide_charset, invalid_p == 0 */
   /* Skip verify of has_dos_based_file_system, invalid_p == 0 */
+  /* Skip verify of load_writes_pc, invalid_p == 0 */
   buf = ui_file_xstrdup (log, &length);
   make_cleanup (xfree, buf);
   if (length > 0)
@@ -970,6 +974,9 @@ gdbarch_dump (struct gdbarch *gdbarch, struct ui_file *file)
   fprintf_unfiltered (file,
                       "gdbarch_dump: has_dos_based_file_system = %s\n",
                       plongest (gdbarch->has_dos_based_file_system));
+  fprintf_unfiltered (file,
+                      "gdbarch_dump: load_writes_pc = %s\n",
+                      plongest (gdbarch->load_writes_pc));
   fprintf_unfiltered (file,
                       "gdbarch_dump: has_global_breakpoints = %s\n",
                       plongest (gdbarch->has_global_breakpoints));
@@ -3828,6 +3835,23 @@ set_gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch,
                                        int has_dos_based_file_system)
 {
   gdbarch->has_dos_based_file_system = has_dos_based_file_system;
+}
+
+int
+gdbarch_load_writes_pc (struct gdbarch *gdbarch)
+{
+  gdb_assert (gdbarch != NULL);
+  /* Skip verify of load_writes_pc, invalid_p == 0 */
+  if (gdbarch_debug >= 2)
+    fprintf_unfiltered (gdb_stdlog, "gdbarch_load_writes_pc called\n");
+  return gdbarch->load_writes_pc;
+}
+
+void
+set_gdbarch_load_writes_pc (struct gdbarch *gdbarch,
+			  int load_writes_pc)
+{
+  gdbarch->load_writes_pc = load_writes_pc;
 }
 
 
