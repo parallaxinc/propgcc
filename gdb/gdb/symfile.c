@@ -2041,15 +2041,17 @@ generic_load (char *args, int from_tty)
 
   gettimeofday (&end_time, NULL);
 
-  entry = bfd_get_start_address (loadfile_bfd);
-  ui_out_text (uiout, "Start address ");
-  ui_out_field_fmt (uiout, "address", "%s", paddress (target_gdbarch, entry));
-  ui_out_text (uiout, ", load size ");
-  ui_out_field_fmt (uiout, "load-size", "%lu", total_progress.data_count);
-  ui_out_text (uiout, "\n");
-  /* We were doing this in remote-mips.c, I suspect it is right
-     for other targets too.  */
-  regcache_write_pc (get_current_regcache (), entry);
+  if(gdbarch_load_writes_pc(target_gdbarch)){
+    entry = bfd_get_start_address (loadfile_bfd);
+    ui_out_text (uiout, "Start address ");
+    ui_out_field_fmt (uiout, "address", "%s", paddress (target_gdbarch, entry));
+    ui_out_text (uiout, ", load size ");
+    ui_out_field_fmt (uiout, "load-size", "%lu", total_progress.data_count);
+    ui_out_text (uiout, "\n");
+    /* We were doing this in remote-mips.c, I suspect it is right
+       for other targets too.  */
+    regcache_write_pc (get_current_regcache (), entry);
+  }
 
   /* Reset breakpoints, now that we have changed the load image.  For
      instance, breakpoints may have been set (or reset, by
