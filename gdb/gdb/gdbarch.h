@@ -1003,6 +1003,11 @@ extern void set_gdbarch_solib_symbols_extension (struct gdbarch *gdbarch, const 
 extern int gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch);
 extern void set_gdbarch_has_dos_based_file_system (struct gdbarch *gdbarch, int has_dos_based_file_system);
 
+/* If true, the program counter should be set when the remote is loaded. */
+
+extern int gdbarch_load_writes_pc (struct gdbarch *gdbarch);
+extern void set_gdbarch_load_writes_pc (struct gdbarch *gdbarch, int load_writes_pc);
+
 /* Definition for an unknown syscall, used basically in error-cases.  */
 #define UNKNOWN_SYSCALL (-1)
 
