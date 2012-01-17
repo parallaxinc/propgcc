@@ -39,6 +39,8 @@ extern char *hubram;
 extern int32_t memsize;
 extern int32_t symflag;
 
+extern FILE *tracefile;
+
 void RemoveCRLF(char *str)
 {
     int32_t len = strlen(str);
@@ -104,7 +106,7 @@ void ProcessRet(void)
 {
     if (!symflag) return;
     methodlev--;
-    printf("return %s\n\n", objname[methodlev]);
+    fprintf(tracefile, "return %s\n\n", objname[methodlev]);
 }
 
 static char linebuf[200];
@@ -133,7 +135,7 @@ void ProcessCall(int32_t subnum, int32_t mode)
 	    methnum++;
 	    if (methnum == subnum)
 	    {
-		printf("call %s:%s\n", objname[methodlev], linebuf);
+	      fprintf(tracefile, "call %s:%s\n", objname[methodlev], linebuf);
 		fclose(infile);
 		return;
 	    }
@@ -150,7 +152,7 @@ void ProcessCall(int32_t subnum, int32_t mode)
 	    methnum++;
 	    if (methnum == subnum)
 	    {
-		printf("call %s:%s\n", objname[methodlev], linebuf);
+	      fprintf(tracefile, "call %s:%s\n", objname[methodlev], linebuf);
 		fclose(infile);
 		return;
 	    }
@@ -284,7 +286,7 @@ void PrintOp(SpinVarsT *spinvars)
 
     memset(bytestr, ' ', 40);
     bytestr[20] = 0;
-    sprintf(bytestr, "%4.4x %2.2x", pcurr, opcode);
+    sprintf(bytestr, "%4.4x %2.2x", (unsigned int)pcurr, opcode);
     symstr[0] = 0;
 
     switch (opform & 0x1f)
@@ -450,8 +452,8 @@ void PrintOp(SpinVarsT *spinvars)
 	pcurr++;
     }
     bytestr[strlen(bytestr)] = ' ';
-    printf("%s %s\n", bytestr, symstr);
-    //printf("%s [%2d,%2d] %s\n", bytestr, exop1, exop2, symstr);
+    fprintf(tracefile, "%s %s\n", bytestr, symstr);
+    //fprintf(tracefile, "%s [%2d,%2d] %s\n", bytestr, exop1, exop2, symstr);
 }
 
 static int opcount[256];
@@ -558,14 +560,14 @@ void PrintStats(void)
                     }
 		    exname = optable[k].opname;
 		}
-                printf("%10d, %2.2x:%2.2x, %s:%s\n",
+                fprintf(tracefile, "%10d, %2.2x:%2.2x, %s:%s\n",
 		    exopcount[opindex][j], i, exop, opname, exname);
 
 	    }
 	}
 	else
 	{
-            printf("%10d, %2.2x,    %s\n", opcount[i], i, opname);
+	  fprintf(tracefile, "%10d, %2.2x,    %s\n", opcount[i], i, opname);
 	}
     }
 }

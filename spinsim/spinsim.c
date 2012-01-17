@@ -47,6 +47,8 @@
 #define SYS_EXTMEM_WRITE  18
 #define SYS_EXTMEM_ALLOC  19
 
+#define GCC_REG_BASE 0
+
 static char rootdir[100];
 char *hubram;
 char *extram[4];
@@ -70,6 +72,12 @@ int32_t loopcount = 0;
 int32_t proptwo = 0;
 int32_t baudrate = 0;
 int32_t pin_val = -1;
+int32_t gdbmode = 0;
+
+FILE *logfile = NULL;
+FILE *tracefile = NULL;
+
+char cmd[1028];
 
 PasmVarsT PasmVars[8];
 
@@ -79,19 +87,22 @@ char *FindChar(char *str, int32_t val);
 
 void usage(void)
 {
-    printf("SpinSim Version 0.51\n");
-    printf("usage: spinsim [options] file\n");
-    printf("The options are as follows:\n");
-    printf("     -l  List executed instructions\n");
-    printf("     -p  Use PASM Spin interpreter\n");
-    printf("     -#  Execute # instructions\n");
-    printf("     -P  Profile Spin opcode usage\n");
-    printf("     -m# Set the hub memory size to # K-bytes\n");
-    //printf("     -c  Enable cycle-accurate mode for pasm cogs\n");
-    printf("     -t  Enable the Prop 2 mode\n");
-    printf("     -b# Enable the serial port and set the baudrate to # (default 115200)\n");
-    //printf("     -x# Set the external memory size to # K-bytes\n");
-    exit(1);
+  fprintf(stderr, "SpinSim Version 0.51-kr\n");
+  fprintf(stderr, "usage: spinsim [options] file\n");
+  fprintf(stderr, "The options are as follows:\n");
+  fprintf(stderr, "     -l  List executed instructions\n");
+  fprintf(stderr, "     -l <filename>  List executed instructions to <filename>\n");
+  fprintf(stderr, "     -p  Use PASM Spin interpreter\n");
+  fprintf(stderr, "     -#  Execute # instructions\n");
+  fprintf(stderr, "     -P  Profile Spin opcode usage\n");
+  fprintf(stderr, "     -m# Set the hub memory size to # K-bytes\n");
+  //fprintf(stderr, "     -c  Enable cycle-accurate mode for pasm cogs\n");
+  fprintf(stderr, "     -t  Enable the Prop 2 mode\n");
+  fprintf(stderr, "     -b# Enable the serial port and set the baudrate to # (default 115200)\n");
+  fprintf(stderr, "     -gdb Operate as a GDB target over stdin/stdout\n");
+  fprintf(stderr, "     -L <filename> Log GDB remote comm to <filename>\n");
+  //fprintf(stderr, "     -x# Set the external memory size to # K-bytes\n");
+  exit(1);
 }
 
 void putchx(int32_t val)
@@ -116,17 +127,17 @@ char *FindExtMem(uint32_t addr, int32_t num)
     uint32_t addr1 = addr + num - 1;
     uint32_t curraddr, curraddr1;
 
-    //printf("FindExtMem(%d, %d)\n", addr, num);
+    //fprintf(stderr, "FindExtMem(%d, %d)\n", addr, num);
 
     for (i = 0; i < extmemnum; i++)
     {
-	//printf("i = %d\n", i);
+	//fprintf(stderr, "i = %d\n", i);
         curraddr = extmembase[i];
         curraddr1 = curraddr + extmemsize[i] - 1;
         if (curraddr <= addr && addr <= curraddr1)
 	{
-	    //printf("1: %d %d %d\n", addr, curraddr, curraddr1);
-	    //printf("2: %d %d %d\n", addr1, curraddr, curraddr1);
+	    //fprintf(stderr, "1: %d %d %d\n", addr, curraddr, curraddr1);
+	    //fprintf(stderr, "2: %d %d %d\n", addr1, curraddr, curraddr1);
             if (curraddr <= addr1 && addr1 <= curraddr1)
 	        ptr = extram[i] + addr - extmembase[i];
 	    break;
@@ -468,7 +479,7 @@ void CheckSerialOut(void)
 
     txbit = (pin_val >> 30) & 1;
 
-    //if (txbit != txbit0) printf("txbit = %d, loopcount = %d\n", txbit, loopcount);
+    //if (txbit != txbit0) fprintf(stderr, "txbit = %d, loopcount = %d\n", txbit, loopcount);
     //txbit0 = txbit;
 
 
@@ -477,7 +488,7 @@ void CheckSerialOut(void)
 	if (txbit)
 	{
 	    state = -1;
-	    //printf("Start Serial\n");
+	    //fprintf(stderr, "Start Serial\n");
 	}
     }
     else if (state == -1)
@@ -505,7 +516,7 @@ void CheckSerialOut(void)
 	    }
 	    else
 	    {
-		//printf("%d", txbit);
+		//fprintf(stderr, "%d", txbit);
 	        val |= txbit << state;
 	        count = LONG(0) / baudrate;
 	        if (!proptwo) count >>= 2;
@@ -536,16 +547,18 @@ void reboot(void)
     memset(lockstate, 0, 8);
     memset(lockalloc, 0, 8);
 
-    infile = fopen(bootfile, "rb");
+    if(!gdbmode){
+      infile = fopen(bootfile, "rb");
+      
+      if (infile == 0)
+	{
+	  fprintf(stderr, "Could not open %s\n", bootfile);
+	  exit(1);
+	}
 
-    if (infile == 0)
-    {
-	printf("Could not open %s\n", bootfile);
-	exit(1);
+      i = fread(hubram, 1, 32768, infile);
+      fclose(infile);
     }
-
-    i = fread(hubram, 1, 32768, infile);
-    fclose(infile);
 
     // Copy in the ROM contents
     if (!proptwo)
@@ -582,27 +595,179 @@ void reboot(void)
     else
         StartCog((SpinVarsT *)&PasmVars[0].mem[0x1e0], 4, 0);
 
-    strcpy(objname[0], "xxx");
-    strcpy(objname[1], bootfile);
-    ptr = FindChar(objname[1], '.');
-    if (*ptr)
-    {
-        *ptr = 0;
-	if (symflag && strcmp(ptr + 1, "bin") == 0)
-	  symflag = 2;
-    }
-    if (symflag == 2)
+    if(!gdbmode){
+      strcpy(objname[0], "xxx");
+      strcpy(objname[1], bootfile);
+      ptr = FindChar(objname[1], '.');
+      if (*ptr)
+	{
+	  *ptr = 0;
+	  if (symflag && strcmp(ptr + 1, "bin") == 0)
+	    symflag = 2;
+	}
+      if (symflag == 2)
         strcat(objname[1], ".spn");
-    else
+      else
         strcat(objname[1], ".spin");
-    methodnum[0] = 1;
-    methodnum[1] = 1;
-    methodlev = 1;
+      methodnum[0] = 1;
+      methodnum[1] = 1;
+      methodlev = 1;
+    }
 
     LONG(SYS_DEBUG) = printflag;
 }
 
-int32_t main(int32_t argc, char **argv)
+void reply(char *ptr, int len){
+  unsigned char cksum = 0;
+  int i;
+
+  putc('$', stdout);
+  if(logfile) fprintf(logfile, "sim>$");
+  for(i = 0; i < len; i++){
+    putc(ptr[i], stdout);
+    if(logfile) putc(ptr[i], logfile);
+    cksum += ptr[i];
+  }
+  fprintf(stdout, "#%02x", cksum);
+  if(logfile) fprintf(logfile, "#%02x", cksum);
+  if(logfile) putc('\n', logfile);
+  fflush(stdout);
+  if(logfile) fflush(logfile);
+}
+
+char parse_byte(char *ch){
+  char s[3];
+  char val;
+  s[0] = ch[0];
+  s[1] = ch[1];
+  s[2] = 0;
+  val = 0xff & strtol(s, NULL, 16);
+  return val;
+}
+
+char get_byte(uint32_t addr){
+  if(addr & 0x80000000){
+    int cog = (addr >> 28) - 8;
+    uint32_t tmp;
+    tmp = PasmVars[cog].mem[(addr & 0x000007ff) >> 2];
+    return (tmp >> 8*(addr & 0x3)) & 0xff;
+  } else {
+    return BYTE(addr);
+  }
+}
+
+void put_byte(uint32_t addr, unsigned char val){
+  if(addr & 0x80000000){
+    int cog = (addr >> 28) - 8;
+    uint32_t tmp;
+    tmp = PasmVars[cog].mem[(addr & 0x000007ff) >> 2];
+    switch(addr & 3){
+    case 0:
+      tmp &= 0xffffff00;
+      tmp |= val;
+      break;
+    case 1:
+      tmp &= 0xffff00ff;
+      tmp |= val << 8;
+      break;
+    case 2:
+      tmp &= 0xff00ffff;
+      tmp |= val << 16;
+      break;
+    case 3:
+      tmp &= 0x00ffffff;
+      tmp |= val << 24;
+      break;
+    }
+    PasmVars[cog].mem[(addr & 0x000007ff) >> 2] = tmp;
+    return;
+  } else {
+    BYTE(addr) = val;
+    return;
+  }
+}
+
+void get_cmd(){
+  int i = 0;
+  int ch;
+
+  do{
+    ch = getc(stdin);
+  } while(ch != '$');
+
+  if(logfile) fprintf(logfile, "gdb>");
+  if(logfile) putc(ch, logfile);
+
+  for(i = 0; i < sizeof(cmd); i++){
+    ch = getc(stdin);
+    if(logfile) putc(ch, logfile);
+    if(ch == '#') break;
+    cmd[i] = ch;
+  }
+  cmd[i] = 0;
+  // eat the checksum
+  ch = getc(stdin);
+  if(logfile) putc(ch, logfile);
+  ch = getc(stdin);
+  if(logfile) putc(ch, logfile);
+  if(logfile) putc('\n', logfile);
+  // send an ACK
+  putchar('+');
+  fflush(stdout);
+  if(logfile) fflush(logfile);
+}
+
+int32_t regs[18];
+
+int tohex(char x){
+  if(x >= '0' && x <= '9') return x - '0';
+  if(x >= 'a' && x <= 'f') return 10 + x - 'a';
+  if(x >= 'A' && x <= 'F') return 10 + x - 'A';
+  return 0;
+}
+
+void step_chip(int32_t *state, SpinVarsT *spinvars, int32_t *runflag){
+  int i;
+  for (i = 0; i < 8; i++)
+    {
+      *state = PasmVars[i].state;
+      if (*state & 4)
+	{
+	  if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5)
+	    {
+	      fprintf(tracefile, "Cog %d:  ", i);
+	      if (proptwo)
+		DebugPasmInstruction2(&PasmVars[i]);
+	      else
+		DebugPasmInstruction(&PasmVars[i]);
+	    }
+	  if (proptwo)
+	    {
+	      ExecutePasmInstruction2(&PasmVars[i]);
+	      if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5) fprintf(tracefile, "\n");
+	    }
+	  else
+	    ExecutePasmInstruction(&PasmVars[i]);
+	  *runflag = 1;
+	}
+      else if (*state)
+	{
+	  spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
+	  if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 1)
+	    {
+	      int32_t dcurr = spinvars->dcurr;
+	      fprintf(tracefile, "Cog %d: %4.4x %8.8x - ", i, dcurr, LONG(dcurr - 4));
+	      PrintOp(spinvars);
+	    }
+	  if (profile) CountOp(spinvars);
+	  ExecuteOp(spinvars);
+	  *runflag = 1;
+	}
+    }
+  loopcount++;
+}
+
+int main(int argc, char **argv)
 {
     char *ptr;
     char *fname = 0;
@@ -616,11 +781,22 @@ int32_t main(int32_t argc, char **argv)
 
     for (i = 1; i < argc; i++)
     {
-	if (strcmp(argv[i], "-l") == 0)
+        if (strcmp(argv[i], "-l") == 0){
 	    printflag = 0xffff;
-	//else if (strcmp(argv[i], "-c") == 0)
-	    //cycleaccurate = 1;
-	else if (strcmp(argv[i], "-t") == 0)
+	    if(argv[i+1] && (argv[i+1][0] != '-')){
+	      i++;
+	      tracefile = fopen(argv[i], "wt");
+	      if(!tracefile){
+		fprintf(stderr, "Unable to open trace file %s.\n", argv[i]);
+		exit(1);
+	      }
+	    } else {
+	      tracefile = stdin;
+	    }
+	//else if (strcmp(argv[i], "-c") == 0){
+	  //cycleaccurate = 1;
+	//}
+	} else if (strcmp(argv[i], "-t") == 0)
 	{
             proptwo = 1;
 	    pasmspin = 1;
@@ -649,6 +825,16 @@ int32_t main(int32_t argc, char **argv)
             else
 	        sscanf(&argv[i][2], "%d", &baudrate);
 	}
+	else if (strcmp(argv[i], "-gdb") == 0)
+	{
+	    gdbmode = 1;
+	    cycleaccurate = 1;
+	    pasmspin = 1;
+	}
+	else if (strcmp(argv[i], "-L") == 0)
+	{
+	  logfile = fopen(argv[++i], "wt");
+	}
 #if 0
 	else if (strncmp(argv[i], "-x", 2) == 0)
 	{
@@ -668,15 +854,15 @@ int32_t main(int32_t argc, char **argv)
     // Check the hub memory size and allocate it
     if (memsize < 32)
     {
-	printf("Specified memory size is too small\n");
-	exit(1);
+      fprintf(stderr, "Specified memory size is too small\n");
+      exit(1);
     }
     if (memsize < 64) memsize = 64;
     memsize <<= 10; // Multiply it by 1024
     hubram = malloc(memsize + 16 + 3);
     if (!hubram)
     {
-	printf("Specified memory size is too large\n");
+      fprintf(stderr, "Specified memory size is too large\n");
 	exit(1);
     }
     // Make sure it's long aligned
@@ -690,8 +876,8 @@ int32_t main(int32_t argc, char **argv)
     // Check the ext memory size and allocate it if non-zero
     if (extmemsize < 0)
     {
-	printf("Invalid external memory size\n");
-	exit(1);
+      fprintf(stderr, "Invalid external memory size\n");
+      exit(1);
     }
     else if (extmemsize)
     {
@@ -699,8 +885,8 @@ int32_t main(int32_t argc, char **argv)
         extram = malloc(extmemsize);
         if (!extram)
         {
-	    printf("Specified external memory size is too large\n");
-	    exit(1);
+	  fprintf(stderr, "Specified external memory size is too large\n");
+	  exit(1);
         }
     }
 #endif
@@ -709,57 +895,180 @@ int32_t main(int32_t argc, char **argv)
 
     bootfile = fname;
 
-    if (!fname) usage();
-
-    reboot();
+    if (!fname && !gdbmode) usage();
 
     runflag = 1;
-    while (runflag && (maxloops < 0 || loopcount < maxloops))
+    if (gdbmode)
     {
-	runflag = 0;
-	for (i = 0; i < 8; i++)
-	{
-	    state = PasmVars[i].state;
-	    if (state & 4)
-	    {
-	        if ((LONG(SYS_DEBUG) & (1 << i)) && state == 5)
-		{
-		    printf("Cog %d:  ", i);
-		    if (proptwo)
-		        DebugPasmInstruction2(&PasmVars[i]);
-		    else
-		        DebugPasmInstruction(&PasmVars[i]);
-		}
-		if (proptwo)
-		{
-	            ExecutePasmInstruction2(&PasmVars[i]);
-	            if ((LONG(SYS_DEBUG) & (1 << i)) && state == 5) printf("\n");
-		}
-		else
-	            ExecutePasmInstruction(&PasmVars[i]);
-		runflag = 1;
-	    }
-	    else if (state)
-	    {
-		spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
-	        if ((LONG(SYS_DEBUG) & (1 << i)) && state == 1)
-		{
-		    int32_t dcurr = spinvars->dcurr;
-		    printf("Cog %d: %4.4x %8.8x - ", i, dcurr, LONG(dcurr - 4));
-		    PrintOp(spinvars);
-		}
-		if (profile) CountOp(spinvars);
-	        ExecuteOp(spinvars);
-		runflag = 1;
-	    }
-            CheckCommand();
+      int i;
+      int j;
+      char response[1024];
+      unsigned int addr;
+      int len;
+      char *end;
+      char val;
+      int32_t reg;
+      int cog = 0;
+      char *halt_code = "S05";
+
+      if(logfile) fprintf(logfile, "\n\nStarting log:\n");
+
+      reboot();
+
+      for(;;){
+	get_cmd();
+	i = 0;
+	switch(cmd[i++]){
+	case 'g':
+	  for(i = 0; i < 18; i++){
+	    reg = PasmVars[cog].mem[GCC_REG_BASE + i];
+	    sprintf(response+8*i,
+		    "%02x%02x%02x%02x",
+		    (unsigned char)(reg & 0xff),
+		    (unsigned char)((reg>>8) & 0xff),
+		    (unsigned char)((reg>>16) & 0xff),
+		    (unsigned char)((reg>>24) & 0xff));
+	  }
+	  reg = PasmVars[cog].pc * 4 + 0x80000000 + cog * 0x10000000;
+	  sprintf(response+8*i,
+		  "%02x%02x%02x%02x",
+		  (unsigned char)(reg & 0xff),
+		  (unsigned char)((reg>>8) & 0xff),
+		  (unsigned char)((reg>>16) & 0xff),
+		  (unsigned char)((reg>>24) & 0xff));
+	  reply(response, 8*18+8);
+	  break;
+
+	case 'G':
+	  for(j = 0; j < 18; j++){
+	    reg  = tohex(cmd[i++]) << 4;
+	    reg |= tohex(cmd[i++]) << 0;
+	    reg |= tohex(cmd[i++]) << 12;
+	    reg |= tohex(cmd[i++]) << 8;
+	    reg |= tohex(cmd[i++]) << 20;
+	    reg |= tohex(cmd[i++]) << 16;
+	    reg |= tohex(cmd[i++]) << 28;
+	    reg |= tohex(cmd[i++]) << 24;
+	    PasmVars[cog].mem[GCC_REG_BASE + j] = reg;
+	  }
+	  reg  = tohex(cmd[i++]) << 4;
+	  reg |= tohex(cmd[i++]) << 0;
+	  reg |= tohex(cmd[i++]) << 12;
+	  reg |= tohex(cmd[i++]) << 8;
+	  reg |= tohex(cmd[i++]) << 20;
+	  reg |= tohex(cmd[i++]) << 16;
+	  reg |= tohex(cmd[i++]) << 28;
+	  reg |= tohex(cmd[i++]) << 24;
+	  PasmVars[cog].pc = (reg & ~0xfffff800) >> 2;
+	  reply("OK",2);
+	  break;
+
+	case 'm':
+	  addr = strtol(&cmd[i], &end, 16);
+	  i = (size_t)end - (size_t)cmd;
+	  i++;
+	  len = strtol(&cmd[i], NULL, 16);
+	  if(len > 512) len = 512;
+	  j = 0;
+	  while(len--){
+	    val = get_byte(addr);
+	    addr++;
+	    sprintf(&response[j], "%02x", (unsigned char)val);
+	    j += 2;
+	  }
+	  reply(response, j);
+	  break;
+
+	case 'M':
+	  addr = strtol(&cmd[i], &end, 16);
+	  i = (size_t)end - (size_t)cmd;
+	  i++;
+	  len = strtol(&cmd[i], &end, 16);
+	  i = (size_t)end - (size_t)cmd;
+	  i++;
+	  while(len--){
+	    val = parse_byte(&cmd[i]);
+	    i += 2;
+	    put_byte(addr, val & 0xff);
+	    addr++;
+	  }
+	  reply("OK",2);
+	  break;
+
+	case 's':
+	  if(cmd[i]){
+	    // Get the new LMM PC
+	    reg  = tohex(cmd[i++]) << 4;
+	    reg |= tohex(cmd[i++]) << 0;
+	    reg |= tohex(cmd[i++]) << 12;
+	    reg |= tohex(cmd[i++]) << 8;
+	    reg |= tohex(cmd[i++]) << 20;
+	    reg |= tohex(cmd[i++]) << 16;
+	    reg |= tohex(cmd[i++]) << 28;
+	    reg |= tohex(cmd[i++]) << 24;
+	    PasmVars[cog].mem[GCC_REG_BASE + 17] = reg;
+	  }
+	  step_chip(&state, spinvars, &runflag);
+	  halt_code = "S05";
+	  reply(halt_code, 3);
+	  break;
+
+	case 'c':
+	  if(cmd[i]){
+	    reg  = tohex(cmd[i++]) << 4;
+	    reg |= tohex(cmd[i++]) << 0;
+	    reg |= tohex(cmd[i++]) << 12;
+	    reg |= tohex(cmd[i++]) << 8;
+	    reg |= tohex(cmd[i++]) << 20;
+	    reg |= tohex(cmd[i++]) << 16;
+	    reg |= tohex(cmd[i++]) << 28;
+	    reg |= tohex(cmd[i++]) << 24;
+	    PasmVars[cog].mem[GCC_REG_BASE + 17] = reg;
+	  }
+	  do {
+	    step_chip(&state, spinvars, &runflag);
+	  } while(getch() != 0x03); // look for a CTRL-C
+	  halt_code = "S02";
+	  reply(halt_code, 3);
+	  break;
+
+	case 'H':
+	  if((cmd[i] == 'g') && (cmd[i+1] == '0')){
+	    reply("OK", 2);
+	  } else {
+	    reply("", 0);
+	  }
+	  break;
+
+	case 'k':
+	  reply("OK", 2);
+	  goto out;
+
+	case '?':
+	  reply(halt_code, 3);
+	  break;
+
+	default:
+	  reply("", 0);
+	  break;
 	}
-	if (baudrate)
-	{
-	    CheckSerialOut();
-	    CheckSerialIn();
-	}
-	loopcount++;
+      }
+    out:
+      ;
+    }
+    else
+    {
+      reboot();
+      while (runflag && (maxloops < 0 || loopcount < maxloops))
+      {
+	  runflag = 0;
+	  step_chip(&state, spinvars, &runflag);
+	  if (baudrate)
+	  {
+	      CheckSerialOut();
+	      CheckSerialIn();
+	  }
+      }
     }
     if (profile) PrintStats();
     return 0;

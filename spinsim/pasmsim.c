@@ -18,6 +18,8 @@ extern int32_t loopcount;
 extern int32_t proptwo;
 extern int32_t pin_val;
 
+extern FILE *tracefile;
+
 static int32_t parity(int32_t val)
 {
     val ^= val >> 16;
@@ -660,7 +662,7 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
     //CheckSerialOut(pasmvars);
     if (pasmvars->waitflag)
     {
-	printf("XXXXXXXXXX BAD XXXXXXXXXXXXXXX\n");
+      fprintf(tracefile, "XXXXXXXXXX BAD XXXXXXXXXXXXXXX\n");
 	pasmvars->waitflag--;
     }
     return result;

@@ -33,6 +33,8 @@ extern int32_t loopcount;
 extern int32_t proptwo;
 extern int32_t pin_val;
 
+extern FILE *tracefile;
+
 static int32_t parity(int32_t val)
 {
     val ^= val >> 16;
@@ -365,7 +367,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		        result = ptr[value2 & 15];
 #ifdef PRINT_RAM_ACCESS
                         if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		            printf(", rdb[%x]", value2);
+			  fprintf(tracefile, ", rdb[%x]", value2);
 #endif
 		    }
 		    else if ((opcode & 7) == 1)
@@ -374,7 +376,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		        result = ptr[(value2 >> 1) & 7];
 #ifdef PRINT_RAM_ACCESS
                         if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		            printf(", rdw[%x]", value2);
+			  fprintf(tracefile, ", rdw[%x]", value2);
 #endif
 		    }
 		    else
@@ -382,7 +384,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		        result = pasmvars->cache[(value2 >> 2) & 3];
 #ifdef PRINT_RAM_ACCESS
                         if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		            printf(", rdl[%x]", value2);
+			  fprintf(tracefile, ", rdl[%x]", value2);
 #endif
 		    }
 		}
@@ -393,7 +395,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		        result = BYTE(value2);
 #ifdef PRINT_RAM_ACCESS
                         if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		            printf(", rdb[%x]", value2);
+			  fprintf(tracefile, ", rdb[%x]", value2);
 #endif
 		    }
 		    else if ((opcode & 7) == 1)
@@ -401,7 +403,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		        result = WORD(value2);
 #ifdef PRINT_RAM_ACCESS
                         if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		            printf(", rdw[%x]", value2);
+			  fprintf(tracefile, ", rdw[%x]", value2);
 #endif
 		    }
 		    else
@@ -409,7 +411,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		        result = LONG(value2);
 #ifdef PRINT_RAM_ACCESS
                         if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		            printf(", rdl[%x]", value2);
+			  fprintf(tracefile, ", rdl[%x]", value2);
 #endif
 		    }
 		}
@@ -429,7 +431,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    BYTE(value2) = value1;
 #ifdef PRINT_RAM_ACCESS
                     if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		        printf(", wrb[%x] = %x", value2, value1);
+		      fprintf(tracefile, ", wrb[%x] = %x", value2, value1);
 #endif
 		}
 		else if ((opcode & 7) == 1)
@@ -437,7 +439,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    WORD(value2) = value1;
 #ifdef PRINT_RAM_ACCESS
                     if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		        printf(", wrw[%x] = %x", value2, value1);
+		      fprintf(tracefile, ", wrw[%x] = %x", value2, value1);
 #endif
 		}
 		else
@@ -445,7 +447,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    LONG(value2) = value1;
 #ifdef PRINT_RAM_ACCESS
                     if (LONG(SYS_DEBUG) & (1 << pasmvars->cogid))
-		        printf(", wrl[%x] = %x", value2, value1);
+		      fprintf(tracefile, ", wrl[%x] = %x", value2, value1);
 #endif
 		}
 	    }
@@ -1069,7 +1071,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 	            LONG(value1+8) = pasmvars->cache[2];
 	            LONG(value1+12) = pasmvars->cache[3];
 #ifdef  PRINT_RAM_ACCESS
-		    printf("wrquad(%8.8x) %8.8x %8.8x %8.8x %8.8x\n",
+		    fprintf(tracefile, "wrquad(%8.8x) %8.8x %8.8x %8.8x %8.8x\n",
 		        value1, pasmvars->cache[0], pasmvars->cache[1],
 		        pasmvars->cache[2], pasmvars->cache[3]);
 #endif
@@ -1094,7 +1096,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 	            pasmvars->cache[2] = LONG(value1+8);
 	            pasmvars->cache[3] = LONG(value1+12);
 #ifdef  PRINT_RAM_ACCESS
-		    printf("rdquad(%8.8x) %8.8x %8.8x %8.8x %8.8x\n",
+		    fprintf(tracefile, "rdquad(%8.8x) %8.8x %8.8x %8.8x %8.8x\n",
 		        value1, pasmvars->cache[0], pasmvars->cache[1],
 		        pasmvars->cache[2], pasmvars->cache[3]);
 #endif
@@ -2043,13 +2045,13 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
     {
 	pasmvars->zflag = zflag;
         if (LONG(SYS_DEBUG) & (1 << (8 + pasmvars->cogid)))
-	    printf(", z = %d", zflag);
+	  fprintf(tracefile, ", z = %d", zflag);
     }
     if (zcri & 4)
     {
 	pasmvars->cflag = cflag;
         if (LONG(SYS_DEBUG) & (1 << (8 + pasmvars->cogid)))
-	    printf(", c = %d", cflag);
+	  fprintf(tracefile, ", c = %d", cflag);
     }
     if (zcri & 2)
     {
@@ -2059,13 +2061,13 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 	    //printf("cache[%d] = %8.8x\n", dstaddr & 3, result);
 	    pasmvars->cache[dstaddr & 3] = result;
             if (LONG(SYS_DEBUG) & (1 << (8 + pasmvars->cogid)))
-	        printf(", cache[%d] = %x", dstaddr & 3, result);
+	      fprintf(tracefile, ", cache[%d] = %x", dstaddr & 3, result);
 	}
 	else
 	{
 	    pasmvars->mem[dstaddr] = result;
             if (LONG(SYS_DEBUG) & (1 << (8 + pasmvars->cogid)))
-	        printf(", cram[%x] = %x", dstaddr, result);
+	      fprintf(tracefile, ", cram[%x] = %x", dstaddr, result);
 	}
 	// Check if we need to update the pins
 	//if (dstaddr == 0x1f4 || dstaddr == 0x1f6) UpdatePins2();
@@ -2074,7 +2076,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
     //CheckSerialOut(pasmvars);
     if (pasmvars->waitflag)
     {
-	printf("XXXXXXXXXX BAD XXXXXXXXXXXXXXX\n");
+      fprintf(tracefile, "XXXXXXXXXX BAD XXXXXXXXXXXXXXX\n");
 	pasmvars->waitflag--;
     }
     return result;

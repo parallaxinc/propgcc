@@ -16,6 +16,8 @@ extern int32_t memsize;
 extern int32_t loopcount;
 extern int32_t cycleaccurate;
 
+extern FILE *tracefile;
+
 static char *condnames[16] = {
     "if_never    ", "if_nz_and_nc", "if_z_and_nc ", "if_nc       ",
     "if_nz_and_c ", "if_nz       ", "if_z_ne_c   ", "if_nz_or_nc ",
@@ -184,11 +186,11 @@ void DebugPasmInstruction(PasmVarsT *pasmvars)
     opstr[i] = 0;
 
 #if 0
-    printf("%3.3x %8.8x %d %d %s %s %s %3.3x %s%3.3x %8.8x %8.8x", pasmvars->pc,
+    fprintf(tracefile, "%3.3x %8.8x %d %d %s %s %s %3.3x %s%3.3x %8.8x %8.8x", pasmvars->pc,
         instruct, zflag, cflag, xstr[xflag], condnames[cond], opstr, dstaddr,
 	istr[zcri & 1], srcaddr, value1, value2);
 #else
-    printf("%3.3x %8.8x %s %s %s %3.3x, %s%3.3x%s%s%s\n", pasmvars->pc,
+    fprintf(tracefile, "%3.3x %8.8x %s %s %s %3.3x, %s%3.3x%s%s%s\n", pasmvars->pc,
         instruct, xstr[xflag], condnames[cond], opstr, dstaddr,
 	istr[zcri & 1], srcaddr, wzstr, wcstr, wrstr);
 #endif

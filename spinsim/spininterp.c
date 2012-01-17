@@ -28,6 +28,8 @@ extern int32_t pin_val;
 extern char lockstate[8];
 extern char lockalloc[8];
 
+extern FILE *tracefile;
+
 int32_t ExecuteMathOp(SpinVarsT *spinvars, int32_t opcode, int32_t parm1);
 int32_t ExecuteExtraOp(SpinVarsT *spinvars, int32_t opcode, int32_t parm1, int32_t mask);
 void ExecuteRegisterOp(SpinVarsT *spinvars, int32_t operand, int32_t msb, int32_t lsb);
@@ -46,10 +48,10 @@ int32_t MAP_ADDR(int32_t addr)
     }
     else if (((uint32_t)addr) >= memsize)
     {
-        printf("MAP_ADDR: address out of bounds %8.8x\n", addr);
+      fprintf(tracefile, "MAP_ADDR: address out of bounds %8.8x\n", addr);
 	addr = memsize + 12;
     }
-    //printf("MAP_ADDR: %8.8x %8.8x\n", addr, ((uint32_t *)hubram)[addr>>2]);
+    //fprintf(tracefile, "MAP_ADDR: %8.8x %8.8x\n", addr, ((uint32_t *)hubram)[addr>>2]);
 
     return addr;
 }
@@ -396,7 +398,7 @@ void ExecuteLowerOp(SpinVarsT *spinvars)
 	    pcurr = 0xfffc;
 	}
 	else
-	    printf("%4.4x %2.2x - NOT IMPLEMENTED\n", pcurr - 1, opcode);
+	  fprintf(tracefile, "%4.4x %2.2x - NOT IMPLEMENTED\n", pcurr - 1, opcode);
     }
     else if (opcode >= 0x16 && opcode <= 0x23)
     {
@@ -727,7 +729,7 @@ void ExecuteLowerOp(SpinVarsT *spinvars)
     }
     else
     {
-        printf("NOT PROCESSED\n");
+      fprintf(tracefile, "NOT PROCESSED\n");
     }
     spinvars->pcurr = pcurr;
     spinvars->dcurr = dcurr;
@@ -823,7 +825,7 @@ void ExecuteRegisterOp(SpinVarsT *spinvars, int32_t operand, int32_t msb, int32_
         dcurr = spinvars->dcurr;
     }
     else
-        printf("Undefined register operation\n");
+      fprintf(tracefile, "Undefined register operation\n");
 
     spinvars->pcurr = pcurr;
     spinvars->dcurr = dcurr;
@@ -1038,7 +1040,7 @@ int32_t ExecuteExtraOp(SpinVarsT *spinvars, int32_t opcode, int32_t parm1, int32
     }
     else
     {
-        printf("NOT IMPLEMENTED\n");
+      fprintf(tracefile, "NOT IMPLEMENTED\n");
         parm2 = 0;
     }
 
@@ -1262,7 +1264,7 @@ int32_t ExecuteMathOp(SpinVarsT *spinvars, int32_t opcode, int32_t parm1)
 	break;
 
 	default:
-        printf("NOT PROCESSED\n");
+	  fprintf(tracefile, "NOT PROCESSED\n");
     }
 
     // Push the result back to the stack
