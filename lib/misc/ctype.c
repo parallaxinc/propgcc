@@ -27,7 +27,9 @@ avoid the problem of digressive versions of dLibs.
 		/* some code uses these as function pointers --  i   */
 		/* have seen code that does.			     */
 
-unsigned char __ctype[UCHAR_MAX+1] =
+/* table reduced to 129 entries by Eric Smith */
+
+unsigned char __ctype[129] =
 	{
 	_CTc, _CTc, _CTc, _CTc,				/* 0x00..0x03 */
 	_CTc, _CTc, _CTc, _CTc,				/* 0x04..0x07 */
@@ -68,14 +70,6 @@ unsigned char __ctype[UCHAR_MAX+1] =
 	_CTl, _CTl, _CTl, _CTl,				/* 0x74..0x77 */
 	_CTl, _CTl, _CTl, _CTp,				/* 0x78..0x7B */
 	_CTp, _CTp, _CTp, _CTc,				/* 0x7C..0x7F */
-
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0x80..0x8F */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0x90..0x9F */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0xA0..0xAF */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0xB0..0xBF */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0xC0..0xCF */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0xD0..0xDF */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0xE0..0xEF */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  /* 0xF0..0xFF */
+	0
 	};
 

@@ -4,5 +4,5 @@
 
 int isprint(int c)
 {
-  return  (!(__ctype[(unsigned char)(c)]&_CTc) && (__ctype[(unsigned char)(c)]));
+  return (!__isctype(c, (_CTc)) && (__ctype_get(c) != 0));
 }

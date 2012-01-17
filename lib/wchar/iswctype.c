@@ -32,10 +32,7 @@ iswctype(wint_t wc, wctype_t desc)
   unsigned int mask;
   unsigned int cprop;
 
-  /* for now our table only contains entries for the first 255 characters */
-  if (wc < 0 || wc > 255)
-    return 0;
-  cprop = __ctype[wc];  /* character properties */
+  cprop = __ctype_get(wc);  /* character properties */
 
   mask = desc & _CTmask;
 

@@ -23,18 +23,21 @@ extern "C" {
   extern int tolower(int c);
   extern int toupper(int c);
 
-#define isalnum(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl|_CTd))
-#define isalpha(c)      (__ctype[(unsigned char)(c)]&(_CTu|_CTl))
-#define isblank(c)      (__ctype[(unsigned char)(c)]&(_CTb))
-#define iscntrl(c)      (__ctype[(unsigned char)(c)]&_CTc)
-#define isdigit(c)      (__ctype[(unsigned char)(c)]&_CTd)
-#define isgraph(c)      (!(__ctype[(unsigned char)(c)]&(_CTc|_CTs)) && (__ctype[(unsigned char)(c)]))
-#define islower(c)      (__ctype[(unsigned char)(c)]&_CTl)
-#define isprint(c)      (!(__ctype[(unsigned char)(c)]&_CTc) && (__ctype[(unsigned char)(c)]))
-#define ispunct(c)      (__ctype[(unsigned char)(c)]&_CTp)
-#define isspace(c)      (__ctype[(unsigned char)(c)]&_CTs)
-#define isupper(c)      (__ctype[(unsigned char)(c)]&_CTu)
-#define isxdigit(c)     (__ctype[(unsigned char)(c)]&_CTx)
+
+#define __isctype(c, x) (__ctype_get(c) & x)
+
+#define isalnum(c)     __isctype(c, _CTalnum)
+#define isalpha(c)     __isctype(c, _CTalpha)
+#define isblank(c)     __isctype(c, _CTb)
+#define iscntrl(c)     __isctype(c, _CTc)
+#define isdigit(c)     __isctype(c, _CTd)
+#define isgraph(c)     (!__isctype(c, (_CTc|_CTs)) && (__ctype_get(c) != 0))
+#define islower(c)     __isctype(c, _CTl)
+#define isprint(c)     (!__isctype(c, (_CTc)) && (__ctype_get(c) != 0))
+#define ispunct(c)     __isctype(c, _CTp)
+#define isspace(c)     __isctype(c, _CTs)
+#define isupper(c)     __isctype(c, _CTu)
+#define isxdigit(c)    __isctype(c, _CTx)
 
 
 #if defined(__cplusplus)
