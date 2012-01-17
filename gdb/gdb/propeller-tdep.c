@@ -607,6 +607,9 @@ propeller_gdbarch_init (struct gdbarch_info info,
 
   set_gdbarch_believe_pcc_promotion (gdbarch, 1);
 
+  /* Don't set the target's PC; startup code does it for us. */
+  set_gdbarch_load_writes_pc(gdbarch, 0);
+
   return gdbarch;
 }
 
