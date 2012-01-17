@@ -4,5 +4,5 @@
 
 int isdigit(int c)
 {
-  return (__ctype[(unsigned char)(c)]&(_CTd));
+  return __isctype(c, _CTd);
 }

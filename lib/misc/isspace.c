@@ -4,5 +4,5 @@
 
 int isspace(int c)
 {
-  return (__ctype[(unsigned char)(c)]&(_CTs));
+  return __isctype(c, _CTs);
 }

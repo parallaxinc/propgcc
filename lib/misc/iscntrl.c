@@ -4,5 +4,5 @@
 
 int iscntrl(int c)
 {
-  return (__ctype[(unsigned char)(c)]&(_CTc));
+  return __isctype(c, _CTc);
 }
