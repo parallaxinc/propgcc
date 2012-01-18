@@ -1,9 +1,37 @@
 /*
- * Implementation of wide character functions
+ * @wmemcpy.c
+ * Implementation of string library functions
  *
- * Copyright (c) 2012 Parallax, Inc.
+ * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
- *
+ * MIT licensed (see terms at end of file)
+ */
+#include <wchar.h>
+
+#define HUBMEM(a)  ( 0 == ( ((unsigned)(a)) & 0xFFF00000 ) )
+
+wchar_t *
+wmemcpy(wchar_t *dest, const wchar_t *src, size_t n)
+{
+  wchar_t *orig_dest = dest;
+
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+  extern void *_copy_from_xmm(void *dest, const void *src, size_t n);
+  if (HUBMEM(dest) && !HUBMEM(src))
+    return (wchar_t *)_copy_from_xmm(dest, src, n*sizeof(wchar_t));
+#endif
+
+  while (n > 0) {
+    *dest++ = *src++;
+    --n;
+  }
+
+  return orig_dest;
+}
+
+/* +--------------------------------------------------------------------
+ * ¦  TERMS OF USE: MIT License
+ * +--------------------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
  * (the "Software"), to deal in the Software without restriction,
@@ -22,26 +50,5 @@
  * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * +--------------------------------------------------------------------
  */
-#include <wctype.h>
-
-int
-iswctype(wint_t wc, wctype_t desc)
-{
-  int ok = 0;
-  unsigned int mask;
-  unsigned int cprop;
-
-  cprop = __ctype_get(wc);  /* character properties */
-
-  mask = desc & _CTmask;
-
-  if (desc & _CTanybut) {
-    ok = (cprop  != 0) && ((mask & cprop) == 0);
-  } else {
-    ok = (cprop & mask) != 0;
-  }
-  if (desc & _CTnot)
-    ok = !ok;
-  return ok;
-}
