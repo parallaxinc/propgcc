@@ -1,9 +1,48 @@
 /*
- * Implementation of wide character functions
+ * @memmove.c
+ * Implementation of string library functions
  *
- * Copyright (c) 2012 Parallax, Inc.
+ * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
- *
+ * MIT licensed (see terms at end of file)
+ */
+#include <wchar.h>
+
+/*
+ * this function has to handle overlapping regions correctly
+ */
+
+wchar_t *
+wmemmove(wchar_t *dst, const wchar_t *src, size_t n)
+{
+  wchar_t *orig_dst = dst;
+
+  if ( (unsigned long)dst < (unsigned long)src )
+    {
+      while (n > 0) {
+	*dst++ = *src++;
+	--n;
+      }
+    }
+  else
+    {
+      /* copy backwards */
+      dst += n;
+      src += n;
+      while (n > 0) {
+	--n;
+	--src;
+	--dst;
+	*dst = *src;
+      }
+    }
+
+  return orig_dst;
+}
+
+/* +--------------------------------------------------------------------
+ * ¦  TERMS OF USE: MIT License
+ * +--------------------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
  * (the "Software"), to deal in the Software without restriction,
@@ -22,26 +61,5 @@
  * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * +--------------------------------------------------------------------
  */
-#include <wctype.h>
-
-int
-iswctype(wint_t wc, wctype_t desc)
-{
-  int ok = 0;
-  unsigned int mask;
-  unsigned int cprop;
-
-  cprop = __ctype_get(wc);  /* character properties */
-
-  mask = desc & _CTmask;
-
-  if (desc & _CTanybut) {
-    ok = (cprop  != 0) && ((mask & cprop) == 0);
-  } else {
-    ok = (cprop & mask) != 0;
-  }
-  if (desc & _CTnot)
-    ok = !ok;
-  return ok;
-}

@@ -4,5 +4,5 @@
 
 int isgraph(int c)
 {
-  return  (!(__ctype[(unsigned char)(c)]&(_CTc|_CTs)) && (__ctype[(unsigned char)(c)]));
+  return (!__isctype(c, (_CTc|_CTs)) && (__ctype_get(c) != 0));
 }

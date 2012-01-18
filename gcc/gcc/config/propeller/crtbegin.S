@@ -62,6 +62,7 @@ argc_cnt
 	jmp	#__LMM_MVI_r2
 	.long	__environ	' set environment pointer
 
+	mov	r14,#0		' set frame pointer to 0
 	jmp	#__LMM_CALL
 	.long	_main	' call main
 

@@ -4,5 +4,5 @@
 
 int ispunct(int c)
 {
-  return (__ctype[(unsigned char)(c)]&(_CTp));
+  return __isctype(c, _CTp);
 }

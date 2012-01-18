@@ -3,7 +3,14 @@
 
 
 /* internal definitions for ctype.h and wctype.h */
+/* we have an array of 129 bytes (0..128) */
 extern unsigned char __ctype[];
+#if defined(__GNUC__)
+#define __ctype_get(c) __extension__({unsigned int _i_ = c; if (_i_ > 128) _i_ = 128; __ctype[_i_];}) 
+#else
+#define __ctype_get(c) __ctype[((unsigned int)(c) > 128 ? 128 : (c))]
+#endif
+
 #define _CTc    0x01            /* control character */
 #define _CTd    0x02            /* numeric digit */
 #define _CTu    0x04            /* upper case */

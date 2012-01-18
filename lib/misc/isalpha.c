@@ -4,5 +4,5 @@
 
 int isalpha(int c)
 {
-  return (__ctype[(unsigned char)(c)]&(_CTu|_CTl));
+  return __isctype(c, _CTalpha);
 }
