@@ -28,19 +28,20 @@
 #include <wchar.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #define string__(x) #x
 #define string_(x) string__(x)
 
-static void docheck(int condition, const char *msg, unsigned long long x)
+static void docheck(unsigned long long a, unsigned long long expect)
 {
-  if (!condition) {
-    fprintf(stderr, "%s failed for value 0x%llx\n", msg, x);
-    abort();
+  if (a != expect) {
+    fprintf(stderr, "check failed: expected 0x%llx, got 0x%llx\n", expect, a);
+    exit(1);
   }
 }
 
-#define check(cond, x) docheck(cond, string_(cond), x)
+#define check(x, expect) docheck((unsigned long long)x, (unsigned long long)expect)
 
 
 void
@@ -51,18 +52,20 @@ testuns(const char *str, unsigned long expect, const wchar_t *lstr, unsigned lon
 
   printf("testing [%s, %d] strtoul ", str, base); fflush(stdout);
   xl = strtoul(str, NULL, base);
-  check((unsigned long long)xl == expect, expect);
+  check(xl, expect);
+  printf("strtoull "); fflush(stdout);
   xll = strtoull(str, NULL, base);
-  check(xll == lexpect, lexpect);
+  check(xll, lexpect);
 
-  printf("wcstoul ");
+  printf("wcstoul "); fflush(stdout);
   xl = wcstoul(lstr, NULL, base);
-  check((unsigned long long)xl == expect, expect);
+  check(xl, expect);
+  printf("wcstoull "); fflush(stdout);
   xll = wcstoull(lstr, NULL, base);
-  check(xll == lexpect, lexpect);
+  check(xll, lexpect);
 
   if (base == 8 || base == 10 || base == 16 || base == 0) {
-    printf("scanf ");
+    printf("scanf "); fflush(stdout);
     switch (base) {
     case 8:
       sscanf(str, "%lo", &xl);
@@ -81,8 +84,10 @@ testuns(const char *str, unsigned long expect, const wchar_t *lstr, unsigned lon
       sscanf(str, "%lli", &xll);
       break;
     }
-    check((unsigned long long)xl == expect, expect);
-    check(xll == lexpect, lexpect);
+    /* NOTE: scanf does not have to handle overwrap */
+    if (expect <= LONG_MAX)
+      check(xl, expect);
+    check(xll, lexpect);
   }
   printf("ok\n");
 

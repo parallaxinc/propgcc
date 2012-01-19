@@ -418,19 +418,15 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		    case 'z':
 		    case 'j':
 		    case 't':
-		      v = MIN(v, ULONG_MAX);
 		      *va_arg(args,unsigned long *)=v;
 		      break;
 		    case 'i':
-		      v = MIN(v, UINT_MAX);
 		      *va_arg(args,unsigned int *)=v;
 		      break;
 		    case 'h':
-		      v = MIN(v, USHRT_MAX);
 		      *va_arg(args,unsigned short *)=v;
 		      break;
 		    case 'H':
-		      v = MIN(v, UCHAR_MAX);
 		      *va_arg(args,unsigned char *)=v;
 		      break;
 		    }
@@ -449,19 +445,15 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		      case 'z':
 		      case 'j':
 		      case 't':
-			v2 = MAX(MIN(v2, LONG_MAX), LONG_MIN);
 			*va_arg(args,signed long *)=v2;
 		        break;
 		      case 'i':
-			v2 = MAX(MIN(v2, INT_MAX), INT_MIN);
 			*va_arg(args,signed int *)=v2;
 			break;
 		      case 'h':
-			v2 = MAX(MIN(v2, SHRT_MAX), SHRT_MIN);
 			*va_arg(args,signed short *)=v2;
 			break;
 		      case 'H':
-			v2 = MAX(MIN(v2, SCHAR_MAX), SCHAR_MIN);
 			*va_arg(args,signed char *)=v2;
 			break;
 		      }
