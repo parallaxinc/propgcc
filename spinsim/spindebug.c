@@ -267,7 +267,8 @@ static int GetExOpIndex(int opcode);
 void PrintOp(SpinVarsT *spinvars)
 {
     long pcurr = spinvars->pcurr;
-    int32_t opcode, opform;
+    int32_t opcode;
+    int32_t opform = 0;
     char *opstr;
     int exop1, exop2;
     int32_t val;

@@ -220,7 +220,6 @@ void DebugPasmInstruction2(PasmVarsT *pasmvars)
     int32_t instruct, pc, cond, xflag;
     int32_t opcode, value2, value1, zcri, zcri0;
     int32_t srcaddr, dstaddr;
-    int32_t zflag1;
     int32_t nbit = 0;
     char *wzstr = "";
     char *wcstr = "";
