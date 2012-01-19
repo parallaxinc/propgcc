@@ -17,6 +17,7 @@ extern "C" {
 
   size_t mbrtowc( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
   size_t wcrtomb( char *s, wchar_t wc, mbstate_t *ps );
+  size_t mbsrtowcs( wchar_t *dst, const char **src, size_t n, mbstate_t *ps);
 
   long int wcstol( const wchar_t *__restrict nptr,
 		   wchar_t **__restrict endptr, int base);

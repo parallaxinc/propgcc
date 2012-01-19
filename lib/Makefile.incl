@@ -53,7 +53,7 @@ STDLIB = malloc.o calloc.o realloc.o atoi.o atoll.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o strtof.o \
 	strtoll.o strtoull.o \
 	assert.o rand.o setjmp.o div.o lldiv.o abs.o llabs.o getenv.o \
-	multibyte.o fenv.o
+	multibyte.o fenv.o mblencur.o
 
 MISC = 	ctype.o toupper.o tolower.o \
 	isalpha.o isalnum.o iscntrl.o isprint.o isspace.o isdigit.o \
@@ -67,7 +67,8 @@ WCHAR = wctype.o iswctype.o iswalnum.o iswalpha.o iswblank.o \
       wcscat.o wcscmp.o wcscpy.o wcslen.o wcschr.o wcsrchr.o \
       wcsncat.o wcsncmp.o wcsncpy.o wmemcpy.o wmemmove.o \
       wcstol.o wcstoul.o wcstoll.o wcstoull.o \
-      mbrtowc.o wcrtomb.o
+      mbrtowc_utf.o mbrtowc_ascii.o wcrtomb_utf.o wcrtomb_ascii.o \
+      mbsrtowcs.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \

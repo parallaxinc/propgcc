@@ -15,19 +15,21 @@ _wcrtomb_utf8(char *s, wchar_t wcorig, mbstate_t *ps)
     wc = 0;
     count = 1;
   } else if (wc <= 0x7ff) {
-    /* 10 bits valid */
+    /* 11 bits valid */
+    /* shift up by 21 bits, then down by 3 */
     init = 0xC0;
-    wc = (wc << (22-1));
+    wc = (wc << 18);
     count = 2;
   } else if (wc <= 0xffff) {
-    /* 16 bits valid */
+    /* 16 bits valid; shift up by 16 bits, down by 4 */
     init = 0xE0;
-    wc = (wc << (16-2));
+    wc = (wc << 12);
     count = 3;
   } else if (wc <= 0x10ffff) {
-    /* 22 bits (perhaps) valid */
+    /* 21 bits (perhaps) valid */
+    /* shift up by 11, down by 5 */
     init = 0xF0;
-    wc = (wc << (10-3));
+    wc = (wc << 6);
     count = 4;
   } else {
     errno = EILSEQ;
@@ -44,3 +46,30 @@ _wcrtomb_utf8(char *s, wchar_t wcorig, mbstate_t *ps)
 
   return count;
 }
+
+#ifdef TEST
+#include <string.h>
+#include <stdio.h>
+static void test(wchar_t x)
+{
+  size_t i, n;
+  unsigned char buf[8];
+
+  memset(buf, 0, sizeof(buf));
+  n = _wcrtomb_utf8((char *)buf, x, NULL);
+  printf("test of 0x%x returned %lu chars=%2x %2x %2x %2x\n",
+	 x, n, buf[0], buf[1], buf[2], buf[3]);
+}
+
+int
+main()
+{
+  test(0x20);
+  test(0x7f);
+  test(0x80);
+  test(0xfd);   /* should produce C3 BD */
+  test(0x20ac); /* should produce E2 82 AC */
+  test(0x024B62); /* should produce F0 A4 AD A2 */
+  return 0;
+}
+#endif
