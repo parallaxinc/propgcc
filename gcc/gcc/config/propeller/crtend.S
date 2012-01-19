@@ -13,11 +13,12 @@
 	.section .fini
 	.global __Exit
 	.global	__exit
-__Exit
-__exit
+
 	'' finish up the exit function
 	mov	r0,r12		' restore exit status
-
+	'' fall through
+__Exit
+__exit
 	'' provide for a special hook to do something like send
 	'' a message to the host to indicate we have stopped
 	jmp	#__LMM_CALL
