@@ -27,6 +27,7 @@
 
 #include <sys/jmpbuf.h>
 #include <sys/fenv.h>
+#include <sys/wchar_t.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -82,6 +83,9 @@ struct _thread {
      cog
   */
   unsigned short affinity; /* processor affinity mask inverted */
+
+  /* multibyte character conversion state */
+  _Mbstate_t mbr_intern;
 
   /* floating point environment; not used currently */
   /* _fenv_t fenv; */

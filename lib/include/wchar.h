@@ -13,6 +13,10 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+  typedef _Mbstate_t mbstate_t;
+
+  size_t mbrtowc( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
+  size_t wcrtomb( char *s, wchar_t wc, mbstate_t *ps );
 
   long int wcstol( const wchar_t *__restrict nptr,
 		   wchar_t **__restrict endptr, int base);
@@ -34,6 +38,17 @@ extern "C" {
   wchar_t *wcschr(const wchar_t *s, wchar_t c);
   wchar_t *wcsrchr(const wchar_t *s, wchar_t c);
   size_t   wcslen(const wchar_t *s);
+
+
+  /* internal versions of some of the above functions */
+  size_t (*_mbrtowc_ptr)( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
+  size_t (*_wcrtomb_ptr)( char *s, wchar_t wc, mbstate_t *ps );
+
+  size_t _mbrtowc_utf8( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
+  size_t _mbrtowc_ascii( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
+
+  size_t _wcrtomb_utf8( char *s, wchar_t wc, mbstate_t *ps );
+  size_t _wcrtomb_ascii( char *s, wchar_t wc, mbstate_t *ps );
 
 #if defined(__cplusplus)
 }

@@ -66,7 +66,8 @@ WCHAR = wctype.o iswctype.o iswalnum.o iswalpha.o iswblank.o \
       iswpunct.o iswspace.o iswupper.o iswxdigit.o towlower.o \
       wcscat.o wcscmp.o wcscpy.o wcslen.o wcschr.o wcsrchr.o \
       wcsncat.o wcsncmp.o wcsncpy.o wmemcpy.o wmemmove.o \
-      wcstol.o wcstoul.o wcstoll.o wcstoull.o
+      wcstol.o wcstoul.o wcstoll.o wcstoull.o \
+      mbrtowc.o wcrtomb.o
 
 STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strcat.o strcmp.o strcpy.o strlen.o \

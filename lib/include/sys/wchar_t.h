@@ -18,3 +18,12 @@ typedef _WCHAR_T_DEFINED wchar_t;
 #define _WINT_T_DEFINED unsigned int
 typedef _WINT_T_DEFINED wint_t;
 #endif
+
+#if !defined(_MBSTATE_T_DEFINED)
+typedef struct _Mbstate {
+  unsigned int total:5;    /* total bytes in character */
+  unsigned int left:5;     /* number of bytes remaining in the character */
+  unsigned int partial:22; /* partial wide character constructed/output */
+} _Mbstate_t;
+#define _MBSTATE_T_DEFINED _Mbstate_t
+#endif
