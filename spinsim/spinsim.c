@@ -745,7 +745,7 @@ struct bkpt {
 
 struct bkpt *bkpt = 0;
 
-int step_chip(int32_t *state, SpinVarsT *spinvars, int32_t *runflag){
+int step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
   int i;
   int ret = 0;
   struct bkpt *b;
@@ -774,14 +774,14 @@ int step_chip(int32_t *state, SpinVarsT *spinvars, int32_t *runflag){
 	ExecutePasmInstruction(&PasmVars[i]);
       *runflag = 1;
     }	else if (*state)	  {
-      spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
+      *spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
       if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 1)	      {
-	int32_t dcurr = spinvars->dcurr;
+	int32_t dcurr = (*spinvars)->dcurr;
 	fprintf(tracefile, "Cog %d: %4.4x %8.8x - ", i, dcurr, LONG(dcurr - 4));
-	PrintOp(spinvars);
+	PrintOp(*spinvars);
       }
-      if (profile) CountOp(spinvars);
-      ExecuteOp(spinvars);
+      if (profile) CountOp(*spinvars);
+      ExecuteOp(*spinvars);
       *runflag = 1;
     }
   }
@@ -1006,7 +1006,7 @@ int main(int argc, char **argv)
 	    // Get the new LMM PC
 	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
 	  }
-	  step_chip(&state, spinvars, &runflag);
+	  step_chip(&state, &spinvars, &runflag);
 	  halt_code = "S05";
 	  reply(halt_code, 3);
 	  break;
@@ -1018,7 +1018,7 @@ int main(int argc, char **argv)
 	  halt_code = "S02";
 	  do {
 	    int brk;
-	    brk = step_chip(&state, spinvars, &runflag);
+	    brk = step_chip(&state, &spinvars, &runflag);
 	    if(brk){
 	      halt_code = "S05";
 	      break;
@@ -1118,7 +1118,7 @@ int main(int argc, char **argv)
       while (runflag && (maxloops < 0 || loopcount < maxloops))
       {
 	  runflag = 0;
-	  step_chip(&state, spinvars, &runflag);
+	  step_chip(&state, &spinvars, &runflag);
 	  if (baudrate)
 	  {
 	      CheckSerialOut();
