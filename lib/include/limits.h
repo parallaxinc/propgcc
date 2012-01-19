@@ -43,7 +43,7 @@
  * characters, but some day we may support
  * UTF-8
  */
-#define MB_LEN_MAX 6
+#define MB_LEN_MAX 4
 
 #define SHRT_MIN (-32768)
 #define SHRT_MAX (32767)

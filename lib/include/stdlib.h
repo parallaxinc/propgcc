@@ -68,11 +68,13 @@ extern "C" {
   char *getenv(const char *name);
 
   /* multibyte character functions */
-#define MB_CUR_MAX 1  /* in the C locale we do no multibyte characters */
-#define MB_LEN_MAX 6  /* in Unicode up to 6 UTF-8 bytes per unicode wchar_t */
+  extern int _mb_cur_max;
+#define MB_CUR_MAX _mb_cur_max
+#define MB_LEN_MAX 4  /* in Unicode up to 4 UTF-8 bytes per unicode wchar_t */
 
   int mblen(const char *s, size_t n);
   int mbtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n);
+  size_t mbstowcs(wchar_t *dest, const char *src, size_t n);
 
   /* not implemented */
   int system(const char *command);

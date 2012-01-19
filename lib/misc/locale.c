@@ -12,6 +12,8 @@
 #include <string.h>
 #include <locale.h>
 #include <limits.h>
+#include <stdlib.h>
+#include <wchar.h>
 
 /* locale structure */
 /* empty strings, or values of CHAR_MAX, indicate the item is not available
@@ -50,35 +52,58 @@ static struct lconv C_locale = {
 };
 
 /* current locale info */
-static struct lconv _LC_Curlocale;
+static struct lconv *_LC_Curlocale = &C_locale;
 
-static int localeset = 0;
 
 /* localeconv: return current locale information */
 
 struct lconv *localeconv(void)
 {
-        if (localeset == 0) {
-                _LC_Curlocale = C_locale;
-                localeset = 1;
-        }
-        return &_LC_Curlocale;
+        return _LC_Curlocale;
 }
 
 /* setlocale: set the locale.
- * FIXME: right now, only "C" is supported.
+ * We only support two locales:
+ * "C" is the ordinary C locale that we start with, and uses ASCII
+ *         as its character encoding
+ * "C.UTF-8" is the C locale with a UTF-8 encoding
  */
+
+static const char C_UTF8_NAME[] = "C.UTF-8";
+static const char C_NAME[] = "C";
 
 char *setlocale(int category, const char *name)
 {
-        if (name && strcmp(name, "C"))
-                return (char *)0;
+  const char *result = NULL;
+  if (name) {
+    if (!name[0] || !strcmp(name, "C.UTF-8")) {
+      result = C_UTF8_NAME;
+    } else if (!strcmp(name, C_NAME)) {
+      result = C_NAME;
+    }
+  } else {
+    if (category & LC_CTYPE) {
+      result = (MB_CUR_MAX == 1) ? C_NAME : C_UTF8_NAME;
+    } else {
+      result = C_NAME;
+    }
+  }
+  if (!result)
+    return (char *)result;
 
-        if (!localeset) {
-                localeset = 1;
-                _LC_Curlocale = C_locale;
-        }
-
-/* here's where we usually would change things */
-        return "C";
+  /* set the locale info here */
+  if (category & LC_CTYPE) {
+    if (result == C_NAME) {
+      /* ASCII conversion */
+      MB_CUR_MAX = 1;
+      _mbrtowc_ptr = _mbrtowc_ascii;
+      _wcrtomb_ptr = _wcrtomb_ascii;
+    } else {
+      /* UTF-8 conversion */
+      MB_CUR_MAX = 4;
+      _mbrtowc_ptr = _mbrtowc_utf8;
+      _wcrtomb_ptr = _wcrtomb_utf8;
+    }
+  }
+  return (char *)result;  
 }

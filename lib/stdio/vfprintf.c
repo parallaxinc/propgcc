@@ -1,7 +1,7 @@
 /* $Id: snprintf.c,v 1.9 2008/01/20 14:02:00 holger Exp $ */
 
 /* Modifications to convert from snprintf to vfprintf
- * Copyright (c) 2011 Parallax, Inc.
+ * Copyright (c) 2011,2012 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -132,6 +132,7 @@
 #include <stdio.h>	/* For NULL, size_t, vsnprintf(3), and vasprintf(3). */
 #include <stdarg.h>
 #include <stdlib.h>	/* For malloc(3). */
+#include <wchar.h>      /* for wctomb */
 
 #define VA_START(ap, last) va_start(ap, last)
 #define VA_SHIFT(ap, value, type) /* No-op for ANSI C. */
@@ -586,7 +587,8 @@ vfprintf(FILE *fp, const char *format, va_list args)
 			     and we do not support multibyte characters
 			  */
 				cvalue = va_arg(args, int);
-				OUTCHAR(fp, len, cvalue);
+				/* NOTE: this assumes little endian!! */
+				len += fmtstr(fp, (char *)&cvalue, width, 1, flags, cflags);
 				break;
 			case 's':
 				strvalue = va_arg(args, char *);
@@ -685,6 +687,8 @@ fmtstr(FILE *fp, const char *value, int width,
 	int noprecision = (precision == -1);
 	const wchar_t *wvalue = (wchar_t *)value;
 	size_t len = 0;
+	char mbbuf[MB_LEN_MAX];
+	int mblen;
 
 	if (value == NULL)	/* We're forgiving. */
 	  {
@@ -714,8 +718,16 @@ fmtstr(FILE *fp, const char *value, int width,
 	}
 	if (cflags == PRINT_C_LONG)
 	  {
+	    int i;
 	    while (*wvalue != '\0' && (noprecision || precision-- > 0)) {
-	      OUTCHAR(fp, len, (unsigned char)*wvalue);
+	      mblen = (int)(*_wcrtomb_ptr)(mbbuf, *wvalue, NULL);
+	      if (mblen < 0) {
+		/* illegal character */
+		mbbuf[0] = '?';
+		mblen = 1;
+	      }
+	      for (i = 0; i < mblen; i++)
+		OUTCHAR(fp, len, mbbuf[i]);
 	      wvalue++;
 	    }
 	  }
