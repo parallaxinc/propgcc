@@ -9,6 +9,7 @@
 <H1>Contents</H1>
 <A HREF="#intro">Introduction</A><BR>
 <A HREF="#environment">Environment</A><BR>
+<A HREF="#locales">Locales and Character Sets</A><BR>
 <A HREF="#stdio">Standard I/O</A><BR>
 <A HREF="#fopen">...fopen</A><BR>
 <A HREF="#cooked">...Raw vs. Cooked mode</A><BR>
@@ -66,6 +67,45 @@ Propeller specific details of this library rather than general usage.
     the only environment variable that is actually used by the library
     (for the <A HREF="TimeZOnes">time zone</A>), but some applications
     may also look at the environment and require customized settings.
+</P>
+
+<A NAME="locales"><H1>Locales and Character Sets</H1></A>
+<P>
+The library starts up in a plain "C" locale which uses an 8 bit ASCII
+character set. Only the 7 bit ASCII subset is
+recognized by the character classification functions, but character
+conversion to wide characters uses ISO 8859-1 (so a character
+like <CODE>'\xa0'</CODE> converts to the wide
+character <CODE>L'\u00a0'</CODE> when processed by <CODE>mbtowc</CODE>
+or a similar function).
+</P>
+<P>
+The library also provides a "C.UTF-8" locale which is the same as the
+"C" locale except that the encoding is UTF-8 rather than ISO
+8859-1. UTF-8 allows wide characters to be represented by multiple
+bytes in a lossless way. Only the multibyte to/from wide character
+conversion routines (including the ones inside functions such as
+printf) are affected; character classification functions
+like <CODE>isalpha</CODE> still only recognize the ASCII subset of Unicode.
+</P>
+<P>
+To set the UTF-8 character encoding, do
+<PRE>
+  setlocale(LC_CTYPE, "C.UTF-8");
+</PRE>
+or just
+<PRE>
+  setlocale(LC_ALL, "");
+</PRE>
+in your <CODE>main</CODE> function. To switch back to ASCII, do
+<PRE>
+  setlocale(LC_CTYPE, "C");
+</PRE>
+</P>
+<P>
+Note that the locale setting affects all threads in a program. Also,
+the locale and multibyte/wide character functions are not available
+in <CODE>-mcog</CODE> mode.
 </P>
 
 <A NAME="stdio"><H1>Stdio</H1></A>
