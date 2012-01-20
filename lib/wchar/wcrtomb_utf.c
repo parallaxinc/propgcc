@@ -69,6 +69,7 @@ main()
   test(0x80);
   test(0xfd);   /* should produce C3 BD */
   test(0x20ac); /* should produce E2 82 AC */
+  test(0xffff); /* should produce EB BF BF */
   test(0x024B62); /* should produce F0 A4 AD A2 */
   return 0;
 }
