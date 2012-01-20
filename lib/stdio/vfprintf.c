@@ -296,7 +296,7 @@ vfprintf(FILE *fp, const char *format, va_list args)
 {
 	LDOUBLE fvalue;
 	INTMAX_T value;
-	unsigned char cvalue;
+	unsigned int cvalue;
 	const char *strvalue;
 	INTMAX_T *intmaxptr;
 	PTRDIFF_T *ptrdiffptr;

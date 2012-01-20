@@ -49,17 +49,26 @@ main()
   TEST1("%02d", 4, "04");
   TEST1("%04x", 16, "0010");
   TEST1("%04X", 10, "000A");
+  TEST1("%08x", -1, "ffffffff");
+  TEST1("%-4o", 12, "14  ");
+  TEST1("%4x", 12, "   c");
   printf("ok\n");
 
   printf("testing wide characters: "); fflush(stdout);
   // \u00eb is lower case e with umlaut
   // \u00f8 is lower case o with slash
-  TEST1("%ls", L"h\u00ebll\u00f8", "h?ll?");
+  TEST1("%ls", L"h\u00ebll\u00f8", "h\xebll\xf8");
+  TEST1("%ls", L"h\u01ebll\u01f8", "h?ll?");
   printf("ok\n");
 
   printf("now testing UTF-8: "); fflush(stdout);
   setlocale(LC_ALL, "");
   TEST1("%ls", L"h\u00ebll\u00f8", "h\xc3\xabll\xc3\xb8");
-
+  TEST1("%ls", L"\u03ba\u03c3", "\xce\xba\xcf\x83");
+  TEST1("%ls", L"\ufffd", "\xef\xbf\xbd");
+  TEST1("%lc", 0x80, "\xc2\x80");
+  TEST1("%lc", 0xFF, "\xc3\xbf");
+  TEST1("%lc", 0x7FF, "\xdf\xbf");
+  TEST1("%lc", 0x0000FFFD, "\xef\xbf\xbd");
   return 0;
 }
