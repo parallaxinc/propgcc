@@ -31,6 +31,8 @@
 #include <ctype.h>
 #include <math.h>
 #include <compiler.h>
+#include <wchar.h>
+#include <string.h>
 
 #define MAX(x,y) ((x)>(y)?(x):(y))
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -47,25 +49,89 @@
  * PREV(c);     ungetc a character
  * VAL(a)       leads to 1 if a is true and valid
  */
-#define NEXT(c) ((c)=fgetc(stream),size++,incount++)
-#define PREV(c) do{if((c)!=EOF)ungetc((c),stream);size--;incount--;}while(0)
-#define VAL(a)  ((a)&&size<=width)
+#define NEXT(c) ((c)=mygetc(stream, &ms))
+//#define NEXT(c) ((c)=fgetc(stream),ms.size++,ms.incount++)
+#define PREV(c) myungetc((c),stream, &ms)
+//#define PREV(c) do{if((c)!=EOF)ungetc((c),stream);ms.size--;ms.incount--;}while(0)
+#define VAL(a)  ((a)&&ms.size<=width)
 
+#define NEXTFMT() (*format_ptr++)
 
-int vfscanf(FILE *stream,const char *format,va_list args)
+#define MAX_UNGET 2
+typedef struct mystate {
+  size_t size;
+  size_t incount;
+  mbstate_t mbs;
+} MyState;
+
+static int
+mygetc(FILE *stream, MyState *ms)
 {
-  size_t blocks=0,incount=0;
+  int mbc;
+  size_t count;
+  wchar_t wc;
+
+  ms->size++;
+  ms->mbs.left = 0;
+  do {
+    mbc = fgetc(stream);
+    ms->incount++;
+    if (mbc < 0) {
+      return mbc;
+    }
+    /* NOTE: assumes mbc is little-endian here */
+    count = _mbrtowc_ptr(&wc, (char *)&mbc, 1, &ms->mbs);
+  } while (count == ((size_t)-2));
+  if (count == (size_t)-1) {
+    /* this is harsh, but makes us pass the compatiblity test */
+    return EOF;
+  }
+  return wc;
+}
+
+static void
+myungetc(int c, FILE *stream, MyState *ms)
+{
+  char xput[MB_LEN_MAX];
+  size_t count;
+  int i;
+
+  ms->size--;
+  if (c != EOF) {
+    /* fixme: we may have to unget multiple times */
+    count = _wcrtomb_ptr(xput, c, &ms->mbs);
+    i = (int)count;
+    while (i > 0) {
+      --i;
+      ungetc(xput[i], stream);
+      ms->incount--;
+    }
+  } else {
+    ms->incount--;
+  }
+}
+
+int vfscanf(FILE *stream,const char *format_ptr,va_list args)
+{
+  size_t blocks=0;
   int c=0;
+  int fmt=0;
+  MyState ms;
+  mbstate_t fmts;
 
-  while(*format)
+  memset(&ms, 0, sizeof(ms));
+  memset(&fmts, 0, sizeof(fmts));
+
+  fmt = NEXTFMT();
+  while(fmt)
     {
-      size_t size=0;
+      ms.size=0;
 
-      if(*format=='%')
+      if(fmt=='%')
 	{
 	  size_t width=ULONG_MAX;
 	  char type,subtype='i',ignore=0;
-	  const unsigned char *ptr=(const unsigned char *)(format+1);
+	  const unsigned char *ptr=(const unsigned char *)(format_ptr);
 	  size_t i;
 
 	  if(isdigit(*ptr))
@@ -97,7 +163,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 	    { do /* ignore leading whitespace characters */
 		NEXT(c);
 	      while(isspace(c));
-	      size=1;
+	      ms.size=1;
 	    } /* The first non-whitespace character is already read */
 
 	  switch(type)
@@ -129,7 +195,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		  }
 		PREV(c);
 
-		if(!ignore&&size)
+		if(!ignore&&ms.size)
 		  blocks++;
 		break;
 		}
@@ -176,7 +242,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		  }
 		PREV(c);
 
-		if(!ignore&&size)
+		if(!ignore&&ms.size)
 		  { *bp++='\0';
 		    blocks++; }
 		break;
@@ -205,7 +271,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		  }
 		PREV(c);
 
-		if(!ignore&&size)
+		if(!ignore&&ms.size)
 		  { 
 		    if (subtype==WCHAR_SUBTYPE)
 		      *wp++=L'\0';
@@ -270,17 +336,17 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 			  { v=v+dp*(c-'0');
 			    dp=dp/10.0;
 			    NEXT(c); }
-			if(size==2+(min!=0)) /* No number read till now -> malformatted */
+			if(ms.size==2+(min!=0)) /* No number read till now -> malformatted */
 			  { PREV(c);
 			    c='.';
 			  }
 		      }
 
-		    if(min&&size==2) /* No number read till now -> malformatted */
+		    if(min&&ms.size==2) /* No number read till now -> malformatted */
 		      { PREV(c);
 			c=min;
 		      }
-		    if(size==1)
+		    if(ms.size==1)
 		      break;
 
 		    if(VAL(tolower(c)=='e'))
@@ -315,7 +381,7 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 
 		  }while(0);
 
-		if(!ignore&&size)
+		if(!ignore&&ms.size)
 		  { switch(subtype)
 		      {
 		      case 'L':
@@ -341,8 +407,8 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 	      break;
 	    case 'n':
 	      if(!ignore)
-		*va_arg(args,int *)=incount;
-	      size=1; /* fake a valid argument */
+		*va_arg(args,int *)=ms.incount;
+	      ms.size=1; /* fake a valid argument */
 	      blocks++;
 	      break;
 	    default:
@@ -399,13 +465,13 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		    NEXT(c);
 		  }
 
-		if(min&&size==2) /* If there is no valid character after sign, unget last */
+		if(min&&ms.size==2) /* If there is no valid character after sign, unget last */
 		  { PREV(c);
 		    c=min; }
 
 		PREV(c);
 
-		if(ignore||!size)
+		if(ignore||!ms.size)
 		  break;
 
 		if(type=='u')
@@ -462,21 +528,22 @@ int vfscanf(FILE *stream,const char *format,va_list args)
 		break;
 	      }
 	    }
-	  format=(const char *)ptr;
+	  format_ptr=(const char *)ptr;
+	  fmt = NEXTFMT();
 	}else
-	{ if(isspace(*format))
+	{ if(isspace(fmt))
 	    { do
 		NEXT(c);
 	      while(isspace(c));
 	      PREV(c);
-	      size=1; }
+	      ms.size=1; }
 	  else
 	    { NEXT(c);
-	      if(c!=*format)
+	      if(c!=fmt)
 		PREV(c); }
-	  format++;
+	  fmt = NEXTFMT();
 	}
-      if(!size)
+      if(!ms.size)
 	break;
     }
 

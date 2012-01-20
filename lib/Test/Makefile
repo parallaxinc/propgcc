@@ -1,19 +1,25 @@
-MODEL = -mxmmc
+MODEL = xmmc
 CC = propeller-elf-gcc
-CFLAGS = $(MODEL) -std=c99 -Os -Wall -u __serial_exit
+CFLAGS = -m$(MODEL) -std=c99 -Os -Wall -u __serial_exit
 
-tests: sprintf.run strtol.run wstring.run ctype.run
+BUILD=../../../build/lib/obj/$(MODEL)
+LIB=$(BUILD)/libc.a
 
-ctype.elf: ctype.o
+tests: scanf.run sprintf.run strtol.run wstring.run ctype.run
+
+ctype.elf: ctype.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 
-wstring.elf: wstring.o
+wstring.elf: wstring.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 
-strtol.elf: strtol.o
+strtol.elf: strtol.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 
-sprintf.elf: sprintf.o
+sprintf.elf: sprintf.o $(LIB)
+	$(CC) $(CFLAGS) -o $@ $^
+
+scanf.elf: scanf.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 
 
