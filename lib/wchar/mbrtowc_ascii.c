@@ -31,12 +31,10 @@ _mbrtowc_ascii(wchar_t *wcptr, const char *cptr, size_t n, _Mbstate_t *ps)
   c = *cptr;
   if (c == 0) {
     return 0;
-  } else if (c <= 127) {
+  } else {
     if (wcptr) *wcptr = c;
     return 1;
   }
-  errno = EILSEQ;
-  return (size_t)-1;
 }
 
 size_t (*_mbrtowc_ptr)(wchar_t *, const char *, size_t, mbstate_t *) = _mbrtowc_ascii;

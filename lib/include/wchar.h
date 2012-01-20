@@ -15,9 +15,14 @@ extern "C" {
 #endif
   typedef _Mbstate_t mbstate_t;
 
+  int    mbsinit(const mbstate_t *ps);
+  size_t mbrlen(const char *__restrict s, size_t n, mbstate_t *__restrict ps);
   size_t mbrtowc( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
   size_t wcrtomb( char *s, wchar_t wc, mbstate_t *ps );
   size_t mbsrtowcs( wchar_t *dst, const char **src, size_t n, mbstate_t *ps);
+
+  wint_t btowc(int c);
+  int    wctob(wint_t c);
 
   long int wcstol( const wchar_t *__restrict nptr,
 		   wchar_t **__restrict endptr, int base);
