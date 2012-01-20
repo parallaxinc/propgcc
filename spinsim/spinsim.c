@@ -717,8 +717,6 @@ void get_cmd(){
   if(logfile) fflush(logfile);
 }
 
-int32_t regs[18];
-
 int tohex(char x){
   if(x >= '0' && x <= '9') return x - '0';
   if(x >= 'a' && x <= 'f') return 10 + x - 'a';
@@ -726,45 +724,69 @@ int tohex(char x){
   return 0;
 }
 
-void step_chip(int32_t *state, SpinVarsT *spinvars, int32_t *runflag){
+int32_t get_addr(int *i){
+  int32_t reg;
+  reg  = tohex(cmd[(*i)++]) << 4;
+  reg |= tohex(cmd[(*i)++]) << 0;
+  reg |= tohex(cmd[(*i)++]) << 12;
+  reg |= tohex(cmd[(*i)++]) << 8;
+  reg |= tohex(cmd[(*i)++]) << 20;
+  reg |= tohex(cmd[(*i)++]) << 16;
+  reg |= tohex(cmd[(*i)++]) << 28;
+  reg |= tohex(cmd[(*i)++]) << 24;
+  return reg;
+}
+
+struct bkpt {
+  struct bkpt *next;
+  uint32_t addr;
+  uint32_t len;
+};
+
+struct bkpt *bkpt = 0;
+
+int step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
   int i;
-  for (i = 0; i < 8; i++)
-    {
-      *state = PasmVars[i].state;
-      if (*state & 4)
-	{
-	  if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5)
-	    {
-	      fprintf(tracefile, "Cog %d:  ", i);
-	      if (proptwo)
-		DebugPasmInstruction2(&PasmVars[i]);
-	      else
-		DebugPasmInstruction(&PasmVars[i]);
-	    }
-	  if (proptwo)
-	    {
-	      ExecutePasmInstruction2(&PasmVars[i]);
-	      if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5) fprintf(tracefile, "\n");
-	    }
-	  else
-	    ExecutePasmInstruction(&PasmVars[i]);
-	  *runflag = 1;
-	}
-      else if (*state)
-	{
-	  spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
-	  if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 1)
-	    {
-	      int32_t dcurr = spinvars->dcurr;
-	      fprintf(tracefile, "Cog %d: %4.4x %8.8x - ", i, dcurr, LONG(dcurr - 4));
-	      PrintOp(spinvars);
-	    }
-	  if (profile) CountOp(spinvars);
-	  ExecuteOp(spinvars);
-	  *runflag = 1;
-	}
+  int ret = 0;
+  struct bkpt *b;
+
+  for (i = 0; i < 8; i++)    {
+    for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
+      if((PasmVars[i].mem[GCC_REG_BASE + 17] >= b->next->addr)
+	 && (PasmVars[i].mem[GCC_REG_BASE + 17] <= b->next->addr + b->next->len)){
+	ret = 1;
+      }
     }
+    *state = PasmVars[i].state;
+    if (*state & 4)	  {
+      if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5)	      {
+	fprintf(tracefile, "Cog %d:  ", i);
+	if (proptwo){
+	  DebugPasmInstruction2(&PasmVars[i]);
+	} else {
+	  DebugPasmInstruction(&PasmVars[i]);
+	}
+      }
+      if (proptwo)	      {
+	ExecutePasmInstruction2(&PasmVars[i]);
+	if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5) fprintf(tracefile, "\n");
+      }	    else
+	ExecutePasmInstruction(&PasmVars[i]);
+      *runflag = 1;
+    }	else if (*state)	  {
+      *spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
+      if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 1)	      {
+	int32_t dcurr = (*spinvars)->dcurr;
+	fprintf(tracefile, "Cog %d: %4.4x %8.8x - ", i, dcurr, LONG(dcurr - 4));
+	PrintOp(*spinvars);
+      }
+      if (profile) CountOp(*spinvars);
+      ExecuteOp(*spinvars);
+      *runflag = 1;
+    }
+  }
   loopcount++;
+  return ret;
 }
 
 int main(int argc, char **argv)
@@ -941,25 +963,9 @@ int main(int argc, char **argv)
 
 	case 'G':
 	  for(j = 0; j < 18; j++){
-	    reg  = tohex(cmd[i++]) << 4;
-	    reg |= tohex(cmd[i++]) << 0;
-	    reg |= tohex(cmd[i++]) << 12;
-	    reg |= tohex(cmd[i++]) << 8;
-	    reg |= tohex(cmd[i++]) << 20;
-	    reg |= tohex(cmd[i++]) << 16;
-	    reg |= tohex(cmd[i++]) << 28;
-	    reg |= tohex(cmd[i++]) << 24;
-	    PasmVars[cog].mem[GCC_REG_BASE + j] = reg;
+	    PasmVars[cog].mem[GCC_REG_BASE + j] = get_addr(&i);
 	  }
-	  reg  = tohex(cmd[i++]) << 4;
-	  reg |= tohex(cmd[i++]) << 0;
-	  reg |= tohex(cmd[i++]) << 12;
-	  reg |= tohex(cmd[i++]) << 8;
-	  reg |= tohex(cmd[i++]) << 20;
-	  reg |= tohex(cmd[i++]) << 16;
-	  reg |= tohex(cmd[i++]) << 28;
-	  reg |= tohex(cmd[i++]) << 24;
-	  PasmVars[cog].pc = (reg & ~0xfffff800) >> 2;
+	  PasmVars[cog].pc = (get_addr(&i) & ~0xfffff800) >> 2;
 	  reply("OK",2);
 	  break;
 
@@ -998,37 +1004,26 @@ int main(int argc, char **argv)
 	case 's':
 	  if(cmd[i]){
 	    // Get the new LMM PC
-	    reg  = tohex(cmd[i++]) << 4;
-	    reg |= tohex(cmd[i++]) << 0;
-	    reg |= tohex(cmd[i++]) << 12;
-	    reg |= tohex(cmd[i++]) << 8;
-	    reg |= tohex(cmd[i++]) << 20;
-	    reg |= tohex(cmd[i++]) << 16;
-	    reg |= tohex(cmd[i++]) << 28;
-	    reg |= tohex(cmd[i++]) << 24;
-	    PasmVars[cog].mem[GCC_REG_BASE + 17] = reg;
+	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
 	  }
-	  step_chip(&state, spinvars, &runflag);
+	  step_chip(&state, &spinvars, &runflag);
 	  halt_code = "S05";
 	  reply(halt_code, 3);
 	  break;
 
 	case 'c':
 	  if(cmd[i]){
-	    reg  = tohex(cmd[i++]) << 4;
-	    reg |= tohex(cmd[i++]) << 0;
-	    reg |= tohex(cmd[i++]) << 12;
-	    reg |= tohex(cmd[i++]) << 8;
-	    reg |= tohex(cmd[i++]) << 20;
-	    reg |= tohex(cmd[i++]) << 16;
-	    reg |= tohex(cmd[i++]) << 28;
-	    reg |= tohex(cmd[i++]) << 24;
-	    PasmVars[cog].mem[GCC_REG_BASE + 17] = reg;
+	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
 	  }
-	  do {
-	    step_chip(&state, spinvars, &runflag);
-	  } while(getch() != 0x03); // look for a CTRL-C
 	  halt_code = "S02";
+	  do {
+	    int brk;
+	    brk = step_chip(&state, &spinvars, &runflag);
+	    if(brk){
+	      halt_code = "S05";
+	      break;
+	    }
+	  } while(getch() != 0x03); // look for a CTRL-C
 	  reply(halt_code, 3);
 	  break;
 
@@ -1043,6 +1038,67 @@ int main(int argc, char **argv)
 	case 'k':
 	  reply("OK", 2);
 	  goto out;
+
+	case 'z':
+	  /* Remove breakpoint */
+	  if(cmd[i++] == '0'){
+	    long addr;
+	    long len;
+	    struct bkpt *b;
+	    char *p = &cmd[i];
+
+	    p++;   /* Skip the comma */
+	    addr = strtol(p, &p, 16);
+	    p++;   /* Skip the other comma */
+	    len = strtol(p, NULL, 16);
+	    for(b = (struct bkpt *)&bkpt; b && b->next; b = b->next){
+	      if((b->next->addr == addr) && (b->next->len == len)){
+		struct bkpt *t = b->next;
+		b->next = t->next;
+		free(t);
+	      }
+	    }
+	    reply("OK", 2);
+	  } else {
+	    reply("", 0);
+	  }
+	  break;
+
+	case 'Z':
+	  /* Set breakpoint */
+	  if(cmd[i++] == '0'){
+	    long addr;
+	    long len;
+	    struct bkpt *b;
+	    char *p = &cmd[i];
+	    p++;   /* Skip the comma */
+	    addr = strtol(p, &p, 16);
+	    p++;   /* Skip the other comma */
+	    len = strtol(p, NULL, 16);
+	    for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
+	      if((b->addr == addr) && (b->len == len)){
+		/* Duplicate; bail out */
+		break;
+	      }
+	    }
+	    if(b->next){
+	      /* Was a duplicate, do nothing */
+	    } else {
+	      struct bkpt *t = (struct bkpt *)malloc(sizeof(struct bkpt));
+	      if(!t){
+		fprintf(stderr, "Failed to allocate a breakpoint structure\n");
+		exit(1);
+	      }
+	      t->addr = addr;
+	      t->len = len;
+	      t->next = bkpt;
+	      bkpt = t;
+	    }
+	    reply("OK", 2);
+	  } else {
+	    reply("", 0);
+	  }
+	  break;
 
 	case '?':
 	  reply(halt_code, 3);
@@ -1062,7 +1118,7 @@ int main(int argc, char **argv)
       while (runflag && (maxloops < 0 || loopcount < maxloops))
       {
 	  runflag = 0;
-	  step_chip(&state, spinvars, &runflag);
+	  step_chip(&state, &spinvars, &runflag);
 	  if (baudrate)
 	  {
 	      CheckSerialOut();

@@ -5,7 +5,7 @@ OBJECTS = $(SOURCES:.c=.o)
 
 CC = gcc
 LDFLAGS = -Wl,--relax -Wl,--gc-sections
-CFLAGS  = -c -g -Wall -Wno-format -Os -I/usr/include -D LINUX
+CFLAGS  = -c -g -Wall -Wno-format -O3 -I/usr/include -D LINUX
 
 all: $(SOURCES) $(OBJECTS) Makefile
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET)
