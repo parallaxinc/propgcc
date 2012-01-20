@@ -7,7 +7,7 @@ _wcrtomb_ascii(char *s, wchar_t wcorig, mbstate_t *ps)
 {
   uint32_t wc = wcorig;
 
-  if (wc <= 0x7f) {
+  if (wc <= 0xff) {
     *s++ = wc;
     return 1;
   } else {
