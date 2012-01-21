@@ -97,6 +97,7 @@ mywgetc(int c, wchar_t *wc_ptr, FILE *stream, MyState *ms)
   } while (1);
   if (count == (size_t)-1) {
     /* this is harsh, but makes us pass the compatiblity test */
+    *wc_ptr = 0;
     return EOF;
   }
   return c;
@@ -116,9 +117,6 @@ myungetc(int c, FILE *stream, MyState *ms)
  */
 #define NEXTFMT(fmt) (fmt = *format_ptr++)
 
-#ifdef WCHAR_SCANSETS
-#define WNEXTFMT(fmt) (format_ptr += getFmtChar(&fmt, format_ptr, &fmts))
-
 static int getFmtChar(wchar_t *ch, const char *fmt_ptr, mbstate_t *fmts)
 {
   size_t count;
@@ -129,7 +127,6 @@ static int getFmtChar(wchar_t *ch, const char *fmt_ptr, mbstate_t *fmts)
   }
   return count;
 }
-#endif
 
 /*
  * see if a character is acceptable based on a scan set
@@ -139,6 +136,7 @@ in_scanset(int c, const char *scanset)
 {
   wchar_t wc;
   wchar_t last = 0;
+  mbstate_t fmts = { 0, 0, 0 };
 
   if (!scanset)
     return 1;
@@ -146,9 +144,12 @@ in_scanset(int c, const char *scanset)
     if (c == ']') return 1;
     last = *scanset++;
   }
-  while ( (wc = *scanset++) != 0 ) {
+  for(;;) {
+    scanset += getFmtChar(&wc, scanset, &fmts);
+    if (wc <= 0 || wc == ']')
+      return 0;
     if (wc == '-' && last && *scanset != ']') {
-      wc = *scanset++;
+      scanset += getFmtChar(&wc, scanset, &fmts);
       if (c >= last && c <= wc)
 	return 1;
     } else if (c == wc) {
