@@ -22,7 +22,7 @@ static void docheck_str(const char *buf, const char *expect, int line)
 static void docheck_wstr(const wchar_t *buf, const wchar_t *expect, int line)
 {
   if (wcscmp(buf, expect) != 0) {
-    fprintf(stderr, "test failed on line %d: got [%ls] expected [%ls]\n", line, buf, expect);
+    fprintf(stderr, "test failed on line %d: got {%ls} expected {%ls}\n", line, buf, expect);
     abort();
   }
 }
@@ -65,21 +65,35 @@ main()
   teststr("7THE0bestA", "%[a-z0-9]", "7");
   teststr("123456789", "%3[0-9]", "123");
   teststr("ab123cd", "%4[^0-9]", "ab");
+  teststr("[[a", "%[[]", "[[");
+  teststr("ab]]", "%[^]]", "ab");
+  teststr("ab]]", "%[]]", "");
+  teststr("]]cd", "%[]]", "]]");
 
   setlocale(LC_ALL, "");
 
-  printf("wide chars "); fflush(stdout);
-  testwstr("αβγ", "%lc", L"\u03B1");
+  printf("wchars "); fflush(stdout);
+#define AlphaBetaGamma "\u03B1\u03B2\u03B3"
 
-  printf("wide strings "); fflush(stdout);
+  testwstr(AlphaBetaGamma, "%lc", L"\u03B1");
+
+  printf("wstrings "); fflush(stdout);
   testwstr(" abcd", "%3ls", L"abc");
-  testwstr(" α  ", "%ls", L"\u03B1");
-  testwstr("αβγ", "%ls", L"\u03B1\u03B2\u03B3");
-  testwstr("αβγ", "%1ls", L"\u03B1");
-  testwstr("αβγ", "%2ls", L"\u03B1\u03B2");
-  testwstr("αβγ", "%3ls", L"\u03B1\u03B2\u03B3");
+  testwstr(" \u03B1  ", "%ls", L"\u03B1");
+  testwstr(AlphaBetaGamma, "%ls", L"\u03B1\u03B2\u03B3");
+  testwstr(AlphaBetaGamma, "%1ls", L"\u03B1");
+  testwstr(AlphaBetaGamma, "%2ls", L"\u03B1\u03B2");
+  testwstr(AlphaBetaGamma, "%3ls", L"\u03B1\u03B2\u03B3");
+  testwstr("ab123cd", "%4l[^0-9]", L"ab");
+  testwstr("[[a", "%l[[]", L"[[");
+  testwstr("ab]]", "%l[^]]", L"ab");
+  testwstr("ab]]", "%l[]]", L"");
+  testwstr("]]cd", "%l[]]", L"]]");
+  testwstr(AlphaBetaGamma, "%l[\u03B1\u03B2]", L"\u03B1\u03B2");
+
   memset(wbuf, 0, sizeof(wbuf));
   testwstr("a\x80R", "%ls", L"a");
+
 
   printf("ok\n");
   return 0;
