@@ -36,7 +36,6 @@ con
   _CLKFREQ      = 80_000_000
 
   BAUDRATE      = 115200
-  EOL           = $D
 
 obj
 {{
@@ -72,6 +71,8 @@ var
     long testsize               ' user's test size
     byte cmdbuf[128]            ' test interface command buffer
 
+dat
+
 {{
 =====================================================================
 main test
@@ -79,11 +80,11 @@ main test
 pub main | n, a
     sx.start(31,30,0,BAUDRATE)  ' start serial interface
     waitcnt(clkfreq/2+cnt)      ' wait for user terminal to start
-    sx.str(string(EOL,EOL,"Cache Test.",EOL,EOL))
+    sx.str(string($d,$a,$d,$a,"Cache Test.",$d,$a,$d,$a))
 
     linelen  := mem.start(dev.image, @command, @cache, config1, config2)
     ifnot linelen 
-        sx.str(string(EOL,"Error driver returned tag count=0. Fix it.",EOL))
+        sx.str(string($d,$a,"Error driver returned tag count=0. Fix it.",$d,$a))
         repeat
     linelen++
     tagcount := CACHESIZE/linelen
@@ -101,11 +102,11 @@ pub main | n, a
     memsize
 
     testsize := $8000           ' 32K brief test
-    sx.str(string(EOL,EOL,"Starting Cache Sanity Test in 2 seconds.",EOL,EOL))
+    sx.str(string($d,$a,$d,$a,"Starting Cache Sanity Test in 2 seconds.",$d,$a,$d,$a))
 
     if sx.rxtime(2000) < 1
         testall
-        sx.str(string(EOL,EOL,"Brief RAM Test All Done. Now for full test, enter: t a",EOL,EOL))
+        sx.str(string($d,$a,$d,$a,"Brief RAM Test All Done. Now for full test, enter: t a",$d,$a,$d,$a))
 '}
 
     testsize := $8000           ' 32KB
@@ -115,21 +116,21 @@ pub main | n, a
         prompt(string("CACHE TEST"))
         result := \menu
         if result < 0
-            sx.str(string(sx#EOL,"Bad command syntax. Enter ? for help."))
+            sx.str(string($d,$a,"Bad command syntax. Enter ? for help."))
 
 {{
 =====================================================================
 user interface code
 }}
 pub help
-    sx.out(EOL)
-    sx.str(string(EOL,"Cache TEST.",EOL,EOL," Cache size: "))
+    lfcr
+    sx.str(string($d,$a,"Cache TEST.",$d,$a,$d,$a," Cache size: "))
     sx.dec(CACHESIZE)
     sx.str(string(" Tag count: "))
     sx.dec(TAGCOUNT)
     sx.str(string(" Line size: "))
     sx.dec(LINELEN)
-    sx.out(EOL)
+    lfcr
     sx.str(string(" ",34,"Test All",34," memory size: $"))
     sx.hex(testSize,8)
     sx.str(string(" or "))
@@ -137,35 +138,35 @@ pub help
 '   sx.str(string("MB. "))
     sx.dec(testSize/1024)
     sx.str(string("KB. Change with ",34,"s n",34," command."))
-    sx.out(EOL)
-    sx.str(string(EOL,"User commands (numbers are expected to be hexadecimal):",EOL))
-    sx.out(EOL)
-    sx.str(string("t n   - run test number n. t ? for help. t a runs all tests.",EOL))
-    sx.str(string("T n   - loop run test number n. T a loop runs all tests.",EOL))
-    sx.out(EOL)
-    sx.str(string("0     - run walking 0 address test.",EOL))
-    sx.str(string("1     - run walking 1 address test.",EOL))
-    sx.str(string("a n   - psrand address test from 0 to n.",EOL))
-    sx.str(string("A n   - loop psrand address test from 0 to n.",EOL))
-    sx.str(string("c     - dump cache",EOL))
-    sx.str(string("d a n - dump n bytes of memory from address a",EOL))
-    sx.str(string("f a n - Program Flash or EEPROM with cache contents. n = page size.",EOL))
-    sx.str(string("i n   - incremental test from 0 to n.",EOL))
-    sx.str(string("I n   - loop incremental test from 0 to n.",EOL))
-    sx.str(string("p n   - psrand data test from 0 to n.",EOL))
-    sx.str(string("P n   - loop psrand data test from 0 to n.",EOL))
-    sx.str(string("r a   - read long from address a.",EOL))
-    sx.str(string("R a   - loop read long from address a.",EOL))
-    sx.str(string("s n   - change default test size to n.",EOL))
-    sx.str(string("w a d - write long data d to address a.",EOL))
-    sx.str(string("W a d - loop write long data d to address a.",EOL))
-    sx.str(string("z     - zero cache.",EOL))
-    sx.str(string("8     - fill cache with $88.",EOL))
-    sx.str(string("5     - fill cache with $55.",EOL))
-    sx.str(string("e     - fill cache with $ff.",EOL))
-    sx.str(string("?     - show command help.",EOL,EOL))
-    sx.str(string("Most commands are designed for RAM testing.",EOL))
-    sx.str(string("Flash/EEPROM testing is limited to flash fill/dump.",EOL))
+    lfcr
+    sx.str(string($d,$a,"User commands (numbers are expected to be hexadecimal):",$d,$a))
+    lfcr
+    sx.str(string("t n   - run test number n. t ? for help. t a runs all tests.",$d,$a))
+    sx.str(string("T n   - loop run test number n. T a loop runs all tests.",$d,$a))
+    lfcr
+    sx.str(string("0     - run walking 0 address test.",$d,$a))
+    sx.str(string("1     - run walking 1 address test.",$d,$a))
+    sx.str(string("a n   - psrand address test from 0 to n.",$d,$a))
+    sx.str(string("A n   - loop psrand address test from 0 to n.",$d,$a))
+    sx.str(string("c     - dump cache",$d,$a))
+    sx.str(string("d a n - dump n bytes of memory from address a",$d,$a))
+    sx.str(string("f a n - Program Flash or EEPROM with cache contents. n = page size.",$d,$a))
+    sx.str(string("i n   - incremental test from 0 to n.",$d,$a))
+    sx.str(string("I n   - loop incremental test from 0 to n.",$d,$a))
+    sx.str(string("p n   - psrand data test from 0 to n.",$d,$a))
+    sx.str(string("P n   - loop psrand data test from 0 to n.",$d,$a))
+    sx.str(string("r a   - read long from address a.",$d,$a))
+    sx.str(string("R a   - loop read long from address a.",$d,$a))
+    sx.str(string("s n   - change default test size to n.",$d,$a))
+    sx.str(string("w a d - write long data d to address a.",$d,$a))
+    sx.str(string("W a d - loop write long data d to address a.",$d,$a))
+    sx.str(string("z     - zero cache.",$d,$a))
+    sx.str(string("8     - fill cache with $88.",$d,$a))
+    sx.str(string("5     - fill cache with $55.",$d,$a))
+    sx.str(string("e     - fill cache with $ff.",$d,$a))
+    sx.str(string("?     - show command help.",$d,$a,$d,$a))
+    sx.str(string("Most commands are designed for RAM testing.",$d,$a))
+    sx.str(string("Flash/EEPROM testing is limited to flash fill/dump.",$d,$a))
 
 {{
 =====================================================================
@@ -173,7 +174,7 @@ main menu code
 }}
 pub menu | s, ad, val, upper, dels
     gets(@cmdbuf)
-    dels := string(" ",$9,$A,EOL)
+    dels := string(" ",$9,$A,$d,$a)
     s := strtok(@cmdbuf,dels)
 
     upper := 0
@@ -210,7 +211,7 @@ pub menu | s, ad, val, upper, dels
             while upper and not sx.rxready
 
         "f","F" :
-            sx.str(string(sx#EOL,"f "))
+            sx.str(string($d,$a,"f "))
             s := strtok(0,dels)
             ad:= atox(s)
             sx.hex(ad,8)
@@ -242,13 +243,13 @@ pub menu | s, ad, val, upper, dels
             repeat
                 val := mem.readLong(ad)
             while upper and not sx.rxready
-            sx.str(string(sx#EOL,"R "))
+            sx.str(string($d,$a,"R "))
             sx.hex(ad,8)
             sx.out(" ")
             sx.hex(val,8)
 
         "w","W" :
-            sx.str(string(sx#EOL,"W "))
+            sx.str(string($d,$a,"W "))
             s := strtok(0,dels)
             ad:= atox(s)
             sx.hex(ad,8)
@@ -278,7 +279,7 @@ pub menu | s, ad, val, upper, dels
 
         "x","X" :
 
-            sx.str(string(sx#EOL,"X "))
+            sx.str(string($d,$a,"X "))
             s := strtok(0,dels)
             ad:= atox(s)
             sx.hex(ad,8)
@@ -316,9 +317,14 @@ pub menu | s, ad, val, upper, dels
             bytefill(@cache,$FF,CACHESIZE)
 
 pub prompt(s)
-    sx.out(EOL)
+    sx.out($d)
+    sx.out($a)
     sx.str(s)
     sx.str(string("> "))
+
+pub lfcr
+    sx.out($d)
+    sx.out($a)
 
 {{
 =====================================================================
@@ -326,17 +332,17 @@ dumpcache - dumps contents of the cache
 }}
 pub dumpCache | n, m, mod
 
-    sx.str(string(EOL,EOL,"Cache Dump",EOL))
+    sx.str(string($d,$a,$d,$a,"Cache Dump",$d,$a))
     sx.str(string("TAG TAGVAL  : Cache Line"))
 {
     mod := 8
     repeat n from 0 to TAGCOUNT>>2-1
-        sx.out(EOL)
+        lfcr
         sx.hex(n,3)
         sx.out(":")
         repeat m from 0 to LINELEN-1
             ifnot m // mod
-                sx.out(EOL)
+                lfcr
             sx.out(" ")
             sx.hex(cache[n*LINELEN+m],8)
 }            
@@ -344,7 +350,7 @@ pub dumpCache | n, m, mod
     mod := 8
     repeat n from 0 to constant(CACHESIZE>>2-1)
         ifnot n // mod
-            sx.out(EOL)
+            lfcr
             sx.hex(n/(linelen>>2),3)
             sx.out(" ")
             sx.hex(n,8)
@@ -352,8 +358,7 @@ pub dumpCache | n, m, mod
         sx.out(" ")
         sx.hex(cache[n],8)
 '}
-    sx.out(EOL)
-
+    lfcr
 {{
 =====================================================================
 flashCache - programs contents of the cache into flash memory
@@ -362,13 +367,13 @@ pub flashCache(ad, plen) | n, j
     j := 0
     repeat n from 0 to constant(CACHESIZE>>0-1) step plen
         ifnot j++ // 8
-            sx.out(EOL)
+            lfcr
         sx.hex(ad+n,8)
         sx.out(" ")
         mem.writeFlash(ad+n, @cache+n, plen)
 '        waitcnt(_clkfreq/4+cnt)
 
-    sx.str(string(EOL,"Flash Cache Done",EOL))
+    sx.str(string($d,$a,"Flash Cache Done",$d,$a))
 
 {{
 =====================================================================
@@ -398,12 +403,12 @@ Algorithm:
     mem.writelong(0,0)
     rval := mem.readlong(0)
     if rval <> 0
-        sx.str(string(EOL,EOL,"Memory Autosize ERROR! Expected 0 @ 0. Memory size indeterminant!"))
+        sx.str(string($d,$a,$d,$a,"Memory Autosize ERROR! Expected 0 @ 0. Memory size indeterminant!"))
         sx.hex(rval,8)
-        sx.out(EOL)
+        lfcr
         return 1
 
-    sx.str(string(EOL,EOL,"Detected MEMORY SIZE: "))
+    sx.str(string($d,$a,$d,$a,"Detected MEMORY SIZE: "))
 
     repeat n from 2 to 22
         mem.writelong(1<<n,1<<n)
@@ -416,7 +421,7 @@ Algorithm:
             sx.str(string("KB = $"))
             sx.hex(1<<n,8)
             sx.str(string(" Bytes "))
-            sx.out(EOL)
+            lfcr
             return 0
 
     return 0
@@ -425,13 +430,13 @@ Algorithm:
 test code
 }}
 pub testhelp
-    sx.str(string(EOL,"t ? for this help, t a runs all tests.",EOL,EOL))
-    sx.str(string("Test List:",EOL))
-    sx.str(string("t 0   - Walking 0's test.",EOL))
-    sx.str(string("t 1   - Walking 1's test.",EOL))
-    sx.str(string("t 2   - Incremental test.",EOL))
-    sx.str(string("t 3   - Pseudo-Random Address test.",EOL))
-    sx.str(string("t 4   - Pseudo-Random test.",EOL))
+    sx.str(string($d,$a,"t ? for this help, t a runs all tests.",$d,$a,$d,$a))
+    sx.str(string("Test List:",$d,$a))
+    sx.str(string("t 0   - Walking 0's test.",$d,$a))
+    sx.str(string("t 1   - Walking 1's test.",$d,$a))
+    sx.str(string("t 2   - Incremental test.",$d,$a))
+    sx.str(string("t 3   - Pseudo-Random Address test.",$d,$a))
+    sx.str(string("t 4   - Pseudo-Random test.",$d,$a))
 
 pub testall | n
     repeat n from 0 to 4
@@ -440,9 +445,9 @@ pub testall | n
 
 pub testrun(num)
 
-    sx.str(string(EOL,"Test "))
+    sx.str(string($d,$a,"Test "))
     sx.dec(num)
-    sx.out(EOL)
+    lfcr
 
     result := 0
     case num
@@ -482,7 +487,7 @@ Algorithm:
   write 1<<address bit to 1<<address
   check non-zero at 0 address
 }}
-    sx.str(string(EOL,"Address Walking 1's "))
+    sx.str(string($d,$a,"Address Walking 1's "))
 {
     sx.dec(CACHESIZE)
     sx.out(" ")
@@ -495,9 +500,9 @@ Algorithm:
     mem.writelong(0,0)
     rval := mem.readlong(0)
     if rval <> 0
-        sx.str(string(EOL,EOL,"ERROR! Expected 0 @ 0 before march test. Got "))
+        sx.str(string($d,$a,$d,$a,"ERROR! Expected 0 @ 0 before march test. Got "))
         sx.hex(rval,8)
-        sx.out(EOL)
+        lfcr
         return 1
 
     repeat n from 2 to maxbit
@@ -505,17 +510,17 @@ Algorithm:
         mem.writelong(1<<n,1<<n)
         rval := mem.readlong(0)
         'rval := mem.readlong(1<<n)
-        sx.out(EOL)
+        lfcr
         sx.hex(1<<n,8)
         sx.out(" ")
         sx.hex(rval,8)
 
         if rval <> 0
-            sx.str(string(EOL,EOL,"ERROR! Expected 0 @ 0 after write to address "))
+            sx.str(string($d,$a,$d,$a,"ERROR! Expected 0 @ 0 after write to address "))
             sx.hex(1<<n,8)
             sx.out(" ")
             sx.hex(rval,8)
-            sx.out(EOL)
+            lfcr
             return 1
 
     return 0
@@ -529,7 +534,7 @@ Algorithm:
   write 1<<address bit to !(1<<address)
   check non-zero at max address
 }}
-    sx.str(string(EOL,"Address Walking 0's "))
+    sx.str(string($d,$a,"Address Walking 0's "))
 {
     sx.dec(CACHESIZE)
     sx.out(" ")
@@ -543,28 +548,28 @@ Algorithm:
     mem.writelong(maxaddr,0)
     rval := mem.readlong(maxaddr)
     if rval <> 0
-        sx.str(string(EOL,EOL,"ERROR! Expected 0 @ 0 before march test. Got "))
+        sx.str(string($d,$a,$d,$a,"ERROR! Expected 0 @ 0 before march test. Got "))
         sx.hex(rval,8)
-        sx.out(EOL)
+        lfcr
         return 1
 
     repeat n from 2 to maxbit
         naddr := !(1<<n) & maxaddr
         mem.writelong(naddr,1<<n)
         rval := mem.readlong(maxaddr)
-        sx.out(EOL)
+        lfcr
         sx.hex(naddr,8)
         sx.out(" ")
         sx.hex(rval,8)
 
         if rval <> 0
-            sx.str(string(EOL,EOL,"ERROR! Expected 0 @ "))
+            sx.str(string($d,$a,$d,$a,"ERROR! Expected 0 @ "))
             sx.hex(maxaddr,8)
             sx.str(string(" after write to address "))
             sx.hex(!(1<<n) & maxaddr,8)
             sx.out(" ")
             sx.hex(rval,8)
-            sx.out(EOL)
+            lfcr
             return 1
 
     return 0
@@ -584,17 +589,17 @@ Algorithm:
   write incremental pattern from 0 to size
   read and check incremental pattern from 0 to size
 }}
-    sx.str(string(EOL,"Incremental Pattern Test "))
+    sx.str(string($d,$a,"Incremental Pattern Test "))
 
     end  := size-LINELEN
     spit := (end >> 6) - 1
     base := 0
 
     sx.dec(size/1000)
-    sx.str(string(" KB",EOL))
+    sx.str(string(" KB",$d,$a))
 
     sx.str(string("----------------------------------------------------------------"))
-    sx.out(EOL)
+    lfcr
     seed := 0
     repeat a from 0 to end step LINELEN
         repeat n from 0 to LINELEN-1 step 4
@@ -602,14 +607,14 @@ Algorithm:
             mem.writeLong(a+base+n, ++seed)
 {
             ifnot n & 31
-                sx.out(EOL)
+                lfcr
             sx.out(" ")
             sx.hex(long[@mybuffer][n],8)
 '}
         'mem.writeBuffer(a+base,@mybuffer)
         ifnot a & spit
             sx.out("w")
-    sx.out(EOL)
+    lfcr
 
 {
     seed := 0
@@ -618,10 +623,10 @@ Algorithm:
             mem.readBuffer(a+base,@mybuffer)
 
             ifnot n & 31
-                sx.out(EOL)
+                lfcr
             sx.out(" ")
             sx.hex(long[@mybuffer][n],8)
-    sx.out(EOL)
+    lfcr
 '}
 
     seed := 0
@@ -633,13 +638,13 @@ Algorithm:
             'd := long[@mybuffer][n]
             d := mem.readLong(a+base+n)
             if ++seed <> d
-                sx.str(string(EOL,EOL,"ERROR at $"))
+                sx.str(string($d,$a,$d,$a,"ERROR at $"))
                 sx.hex(a,8)
                 sx.str(string(" Expected $"))
                 sx.hex(seed,8)
                 sx.str(string(" Received $"))
                 sx.hex(d,8)
-                sx.str(string(EOL,"Address  $"))
+                sx.str(string($d,$a,"Address  $"))
                 sx.hex(a,8)
                 'sx.str(string(" Buffer at $"))
                 'sx.hex(mem.dataptr,8)
@@ -649,7 +654,7 @@ Algorithm:
                 dumpCache
                 return 1
 
-    sx.str(string(EOL,"Test Complete!",EOL))
+    sx.str(string($d,$a,"Test Complete!",$d,$a))
     return 0
 
 pub psrand(size) | n, a, base, d, j, end, seed, spit
@@ -661,17 +666,17 @@ Algorithm:
   write pseudo random data from 0 to size
   read and check data from 0 to size
 }}
-    sx.str(string(EOL,"Pseudo-Random Pattern Test "))
+    sx.str(string($d,$a,"Pseudo-Random Pattern Test "))
 
     end  := size-LINELEN
     spit := (end >> 6) - 1
     base := 0
 
     sx.dec(end/1000)
-    sx.str(string(" KB",EOL))
+    sx.str(string(" KB",$d,$a))
 
     sx.str(string("----------------------------------------------------------------"))
-    sx.out(EOL)
+    lfcr
     seed := newseed
     repeat a from 0 to end step LINELEN
         repeat n from 0 to LINELEN-1 step 4
@@ -679,14 +684,14 @@ Algorithm:
             mem.writeLong(a+base+n, ?seed)
 {
             ifnot n & 31
-                sx.out(EOL)
+                lfcr
             sx.out(" ")
             sx.hex(long[@mybuffer][n],8)
 '}
         'mem.writeBuffer(a+base,@mybuffer)
         ifnot a & spit
             sx.out("w")
-    sx.out(EOL)
+    lfcr
 
     seed := newseed
     repeat a from 0 to end step LINELEN
@@ -697,13 +702,13 @@ Algorithm:
             'd := long[@mybuffer][n]
             d := mem.readLong(a+base+n)
             if ?seed <> d
-                sx.str(string(EOL,EOL,"ERROR at $"))
+                sx.str(string($d,$a,$d,$a,"ERROR at $"))
                 sx.hex(a,8)
                 sx.str(string(" Expected $"))
                 sx.hex(seed,8)
                 sx.str(string(" Received $"))
                 sx.hex(d,8)
-                sx.str(string(EOL,"Address  $"))
+                sx.str(string($d,$a,"Address  $"))
                 sx.hex(a,8)
                 'sx.str(string(" Buffer at $"))
                 'sx.hex(mem.dataptr,8)
@@ -715,7 +720,7 @@ Algorithm:
 
     newseed := seed ' use different seed every test pass
 
-    sx.str(string(EOL,"Test Complete!",EOL))
+    sx.str(string($d,$a,"Test Complete!",$d,$a))
     return 0
 
 
@@ -728,23 +733,23 @@ Algorithm:
   write pseudo random data to pseudo random addresses in range 0 to size
   read and check data from from addresses in range 0 to size
 }}
-    sx.str(string(EOL,"Random Addr Pattern Test "))
+    sx.str(string($d,$a,"Random Addr Pattern Test "))
 
     end  := size-LINELEN
     spit := (end >> 6) - 1
     mask := (size-1) >> 1
 
     sx.dec(end/1000)
-    sx.str(string(" KB",EOL))
+    sx.str(string(" KB",$d,$a))
 
     sx.str(string("----------------------------------------------------------------"))
-    sx.out(EOL)
+    lfcr
 
     repeat a from 0 to end step LINELEN
         mem.writeLong(a,0)
         ifnot a & spit
             sx.out("c")
-    sx.out(EOL)
+    lfcr
 
     newseed := 0
     seed := newseed | 1
@@ -766,13 +771,13 @@ Algorithm:
             mem.writeLong(a+madr+n,seed++)
 {
             ifnot n & 31
-                sx.out(EOL)
+                lfcr
                 sx.hex(madr,8)
                 sx.out(":")
             sx.out(" ")
             sx.hex(long[@mybuffer][n],8)
 '}
-    sx.out(EOL)
+    lfcr
 
     seed := newseed | 1
     madr := newseed
@@ -788,15 +793,15 @@ Algorithm:
             'd := long[@mybuffer][n]
             d := mem.readLong(a+madr+n)
             if seed++ <> d
-                sx.str(string(EOL,EOL,"ERROR at $"))
+                sx.str(string($d,$a,$d,$a,"ERROR at $"))
                 sx.hex(a+madr,8)
                 sx.str(string(" Expected $"))
                 sx.hex(seed,8)
                 sx.str(string(" Received $"))
                 sx.hex(d,8)
-                sx.str(string(EOL,"Address  $"))
+                sx.str(string($d,$a,"Address  $"))
                 sx.hex(a+madr,8)
-                sx.str(string(EOL,"Tag "))
+                sx.str(string($d,$a,"Tag "))
                 sx.hex(((a+madr)>>LINESHIFT) & (TAGCOUNT-1),3)
                 sx.str(string(" TagValue $"))
                 sx.hex((a+madr)>>LINESHIFT,8)
@@ -807,7 +812,7 @@ Algorithm:
                 sx.str(string("K Page"))
                 return 1
 
-    sx.str(string(EOL,"Test Complete!",EOL))
+    sx.str(string($d,$a,"Test Complete!",$d,$a))
     newseed := madr
     return 0
 
@@ -826,19 +831,19 @@ pub dumpMem (addr, size) | n, a, base, d, j, end, seed, spit
 {
     repeat a from addr to end step 4
         mem.readlong(a)
-        sx.out(EOL)
+        lfcr
 }
 
 '{
-    sx.out(EOL)
+    lfcr
     repeat a from addr to end step 4
         ifnot a & (spit-1)
-            sx.out(EOL)
+            lfcr
             sx.hex(a,8)
             sx.out(":")
         sx.out(" ")
         sx.hex(mem.readlong(a),8)
-    sx.out(EOL)
+    lfcr
 '}
 
 {{
@@ -853,15 +858,15 @@ pub dumpMemBytes (addr, size) | n, a, base, d, j, end, seed, spit
     spit := 16
     base := 0
 
-    sx.out(EOL)
+    lfcr
     repeat a from addr to end
         ifnot a & (spit-1)
-            sx.out(EOL)
+            lfcr
             sx.hex(a,8)
             sx.out(":")
         sx.out(" ")
         sx.hex(mem.readbyte(a),2)
-    sx.out(EOL)
+    lfcr
 {{
 =====================================================================
 string utility code
@@ -884,7 +889,6 @@ pub atox(s) | len,ch,n
 '' if input s represents a valid positive hexadecimal number
 ''   returns string to number
 '' else
-''  returns -1
 ''
     len := strsize(s)-1
     repeat n from 0 to len
@@ -911,9 +915,9 @@ pub gets(bp) | ch
     repeat
         ch := sx.rx
         byte[bp++] := ch
-        if(ch <> EOL)
+        if(ch <> $d)
             sx.out(ch)
-    until ch == $A or ch == EOL
+    until ch == $A or ch == $D
     byte[bp++] := 0
 
 pub strtok(str,ds) | j,k,count
