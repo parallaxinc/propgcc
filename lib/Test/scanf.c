@@ -90,6 +90,8 @@ main()
   testwstr("ab]]", "%l[]]", L"");
   testwstr("]]cd", "%l[]]", L"]]");
   testwstr(AlphaBetaGamma, "%l[\u03B1\u03B2]", L"\u03B1\u03B2");
+  testwstr(AlphaBetaGamma, "%l[^\u03B2]", L"\u03B1");
+  testwstr(AlphaBetaGamma, "%l[\u0300-\u03B2]", L"\u03B1\u03B2");
 
   memset(wbuf, 0, sizeof(wbuf));
   testwstr("a\x80R", "%ls", L"a");
