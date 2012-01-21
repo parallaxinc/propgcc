@@ -53,7 +53,7 @@
 //#define NEXT(c) ((c)=fgetc(stream),ms.size++,ms.incount++)
 #define PREV(c) myungetc((c),stream, ms_ptr)
 //#define PREV(c) do{if((c)!=EOF)ungetc((c),stream);ms.size--;ms.incount--;}while(0)
-#define VAL(a)  ((a)&&ms.size<=width)
+#define VAL(a)  ((a)&&ms_ptr->size<=width)
 
 typedef struct mystate {
   size_t size;
@@ -131,6 +131,94 @@ static int getFmtChar(wchar_t *ch, const char *fmt_ptr, mbstate_t *fmts)
 }
 #endif
 
+/*
+ * see if a character is acceptable based on a scan set
+ */
+static int
+in_scanset(int c, const char *scanset)
+{
+  wchar_t wc;
+  wchar_t last = 0;
+
+  if (!scanset)
+    return 1;
+  if (*scanset == ']') {
+    if (c == ']') return 1;
+    last = *scanset++;
+  }
+  while ( (wc = *scanset++) != 0 ) {
+    if (wc == '-' && last && *scanset != ']') {
+      wc = *scanset++;
+      if (c >= last && c <= wc)
+	return 1;
+    } else if (c == wc) {
+      return 1;
+    }
+    last = wc;
+  }
+  return 0;
+}
+
+/*
+ * get a string from the stream
+ * this may be a wide or narrow string, depending on
+ * "is_wchar"
+ * dest is where to put it, and width is the maximum number of characters to put
+ * c is the next character from the stream
+ * ignore is true if we should not assign
+ * scanset is NULL if all characters are accepted, otherwise a set of characters
+ * to accept or reject
+ * "need_zero" is true if we should append a trailing 0
+ */
+static void
+get_string(int is_wchar, void *dest, size_t width, int c, FILE *stream,
+	   int ignore, MyState *ms_ptr,
+	   const char *scanset, int need_zero)
+{
+  unsigned char *bp = NULL;
+  wchar_t *wp = NULL;
+  wchar_t wc;
+  int invert; /* if 1 invert the sense of the set */
+
+  if (scanset && *scanset == L'^') {
+    invert = 1;
+    scanset++;
+  } else {
+    invert = 0;
+  }
+  if (is_wchar)
+    wp = dest;
+  else
+    bp = dest;
+
+  while (VAL(c!=EOF))
+    {
+      if (!ignore)
+	{
+	  if (is_wchar)
+	    {
+	      c = mywgetc(c, &wc, stream, ms_ptr);
+	      if (!(invert^in_scanset(wc, scanset)))
+		break;
+	      *wp++ = wc;
+	    }
+	  else
+	    {
+	      if (!(invert^in_scanset(c, scanset)))
+		break;
+	      *bp++ = c;
+	    }
+	}
+      NEXT(c);
+    }
+  if (need_zero && !ignore && ms_ptr->size) {
+    if (is_wchar)
+      *wp++ = L'\0';
+    else
+      *bp++ = 0;
+  }
+  PREV(c);
+}
 
 int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 {
@@ -155,7 +243,6 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 	  size_t width=ULONG_MAX;
 	  char type,subtype='i',ignore=0;
 	  const unsigned char *ptr=(const unsigned char *)(format_ptr);
-	  size_t i;
 
 	  if(isdigit(*ptr))
 	    {
@@ -191,118 +278,64 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 
 	  switch(type)
 	    { case 'c':
-		{ unsigned char *bp = NULL;
-		wchar_t *wp = NULL;
+		{ 
+		  void *dest = NULL;
 
-		if(width==ULONG_MAX) /* Default */
-		  width=1;
+		  if(width==ULONG_MAX) /* Default */
+		    width=1;
 		
-		if(!ignore)
-		  {
-		    if (subtype == WCHAR_SUBTYPE)
-		      wp = va_arg(args, wchar_t *);
-		    else
-		      bp = va_arg(args, unsigned char *);
-		  }
+		  if(!ignore)
+		    {
+		      dest = va_arg(args, void *);
+		    }
 
-		NEXT(c); /* 'c' did not skip whitespace */
-		while(VAL(c!=EOF))
-		  { if(!ignore)
-		      {
-			if (subtype == WCHAR_SUBTYPE)
-			  {
-			    c = mywgetc(c, wp, stream, &ms);
-			    wp++;
-			  }
-			else
-			  *bp++=c;
-		      }
-		    NEXT(c);
-		  }
-		PREV(c);
-
-		if(!ignore&&ms.size)
-		  blocks++;
-		break;
+		  NEXT(c);  /* 'c' did not skip space */
+		  get_string( subtype == WCHAR_SUBTYPE,
+			      dest, width, c, stream, ignore, ms_ptr, NULL, 0 );
+		  if(!ignore&&ms.size)
+		    blocks++;
+		  break;
 		}
 	    case '[':
 	      {
-		unsigned char *bp;
-		unsigned char tab[32],a,b;
-		char circflag=0;
+		void *dest = NULL;
+		const char *scanset;
 
+		scanset = (const char *)ptr;
 		if(*ptr=='^')
-		  {
-		    circflag=1;
 		    ptr++;
-		  }
-		for(i=0;i<sizeof(tab);i++)
-		  tab[i]=circflag?255:0;
-		for(;;)
-		  { if(!*ptr)
-		      break;
-		    a=b=*ptr++;
-		    if(*ptr=='-'&&ptr[1]&&ptr[1]!=']')
-		      { ptr++;
-			b=*ptr++; }
-		    for(i=a;i<=b;i++)
-		      if(circflag)
-			tab[i/8]&=~(1<<(i&7));
-		      else
-			tab[i/8]|=1<<(i&7);
-		    if(*ptr==']')
-		      { ptr++;
-			break; }
-		  }
+		if (*ptr==']')
+		  ptr++;
+		while (*ptr && *ptr != ']')
+		  ptr++;
+		if (*ptr) ptr++;
 
 		if(!ignore)
-		  bp=va_arg(args,unsigned char *);
-		else
-		  bp=NULL; /* Just to get the compiler happy */
+		  dest=va_arg(args,void *);
 
 		NEXT(c);
-		while(VAL(c!=EOF&&tab[c/8]&(1<<(c&7))))
-		  { if(!ignore)
-		      *bp++=c;
-		    NEXT(c);
-		  }
-		PREV(c);
-
+		get_string( subtype == WCHAR_SUBTYPE,
+			    dest, width, c, stream, ignore, ms_ptr, scanset, 1 );
 		if(!ignore&&ms.size)
-		  { *bp++='\0';
-		    blocks++; }
+		  {
+		    blocks++;
+		  }
 		break;
 	      }
 	    case 's':
-	      { unsigned char *bp=NULL;
-		wchar_t *wp=NULL;
+	      { void *destp = NULL;
 
 		if(!ignore)
 		  {
-		    if (subtype==WCHAR_SUBTYPE)
-		      wp=va_arg(args,wchar_t *);
-		    else
-		      bp=va_arg(args,unsigned char *);
+		    destp=va_arg(args,void *);
 		  }
-
-		while(VAL(c!=EOF&&!isspace(c)))
-		  { if(!ignore)
-		      {
-			if (subtype==WCHAR_SUBTYPE)
-			  *wp++=c;
-			else
-			  *bp++=c;
-		      }
-		    NEXT(c);
-		  }
-		PREV(c);
+		get_string( subtype == WCHAR_SUBTYPE,
+			    destp, width, c, stream, ignore, ms_ptr,
+			    "^ \t\r\n\f\v]",
+			    1 );
 
 		if(!ignore&&ms.size)
 		  { 
-		    if (subtype==WCHAR_SUBTYPE)
-		      *wp++=L'\0';
-		    else
-		      *bp++='\0';
 		    blocks++;
 		  }
 		break;
