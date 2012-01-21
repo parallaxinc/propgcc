@@ -49,71 +49,75 @@
  * PREV(c);     ungetc a character
  * VAL(a)       leads to 1 if a is true and valid
  */
-#define NEXT(c) ((c)=mygetc(stream, &ms))
+#define NEXT(c) ((c)=mygetc(stream, ms_ptr))
 //#define NEXT(c) ((c)=fgetc(stream),ms.size++,ms.incount++)
-#define PREV(c) myungetc((c),stream, &ms)
+#define PREV(c) myungetc((c),stream, ms_ptr)
 //#define PREV(c) do{if((c)!=EOF)ungetc((c),stream);ms.size--;ms.incount--;}while(0)
 #define VAL(a)  ((a)&&ms.size<=width)
 
-#define MAX_UNGET 2
 typedef struct mystate {
   size_t size;
   size_t incount;
   mbstate_t mbs;
 } MyState;
 
+/* get a single byte */
 static int
 mygetc(FILE *stream, MyState *ms)
 {
   int mbc;
-  size_t count;
-  wchar_t wc;
 
+  mbc = fgetc(stream);
   ms->size++;
+  ms->incount++;
+  return mbc;
+}
+
+/* get a single character from stream; this may be
+ * multiple bytes depending on locale
+ * c is the first byte of the character
+ * returns the last byte read, or EOF
+ */
+static int
+mywgetc(int c, wchar_t *wc_ptr, FILE *stream, MyState *ms)
+{
+  size_t count;
+
   ms->mbs.left = 0;
   do {
-    mbc = fgetc(stream);
-    ms->incount++;
-    if (mbc < 0) {
-      return mbc;
+    if (c < 0) {
+      return c;
     }
-    /* NOTE: assumes mbc is little-endian here */
-    count = _mbrtowc_ptr(&wc, (char *)&mbc, 1, &ms->mbs);
-  } while (count == ((size_t)-2));
+    /* NOTE: assumes c is little-endian here */
+    count = _mbrtowc_ptr(wc_ptr, (char *)&c, 1, &ms->mbs);
+    if (count != ((size_t)-2)) break;
+    /* need more bytes */
+    c = fgetc(stream);
+    ms->incount++;
+  } while (1);
   if (count == (size_t)-1) {
     /* this is harsh, but makes us pass the compatiblity test */
     return EOF;
   }
-  return wc;
+  return c;
 }
 
 static void
 myungetc(int c, FILE *stream, MyState *ms)
 {
-  char xput[MB_LEN_MAX];
-  size_t count;
-  int i;
-
   ms->size--;
-  if (c != EOF) {
-    /* we may have to unget multiple times */
-    count = _wcrtomb_ptr(xput, c, &ms->mbs);
-    i = (int)count;
-    while (i > 0) {
-      --i;
-      ungetc(xput[i], stream);
-      ms->incount--;
-    }
-  } else {
-    ms->incount--;
-  }
+  ms->incount--;
+  /* our ungetc will ignore EOF, no need to check here */
+  ungetc(c, stream);
 }
 
 /*
  * get the next format character
  */
-//#define NEXTFMT(fmt) (fmt = *format_ptr++)
-#define NEXTFMT(fmt) (format_ptr += getFmtChar(&fmt, format_ptr, &fmts))
+#define NEXTFMT(fmt) (fmt = *format_ptr++)
+
+#ifdef WCHAR_SCANSETS
+#define WNEXTFMT(fmt) (format_ptr += getFmtChar(&fmt, format_ptr, &fmts))
 
 static int getFmtChar(wchar_t *ch, const char *fmt_ptr, mbstate_t *fmts)
 {
@@ -125,19 +129,21 @@ static int getFmtChar(wchar_t *ch, const char *fmt_ptr, mbstate_t *fmts)
   }
   return count;
 }
- 
+#endif
 
 
 int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 {
   size_t blocks=0;
   int c=0;
-  wchar_t fmt=0;
-  MyState ms;
+  int fmt=0;
+  MyState ms, *ms_ptr;
+#ifdef WCHAR_SCANSETS
   mbstate_t fmts;
 
-  memset(&ms, 0, sizeof(ms));
   memset(&fmts, 0, sizeof(fmts));
+#endif
+  memset((ms_ptr = &ms), 0, sizeof(ms));
 
   NEXTFMT(fmt);
   while(fmt)
@@ -204,7 +210,10 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 		  { if(!ignore)
 		      {
 			if (subtype == WCHAR_SUBTYPE)
-			  *wp++=c;
+			  {
+			    c = mywgetc(c, wp, stream, &ms);
+			    wp++;
+			  }
 			else
 			  *bp++=c;
 		      }

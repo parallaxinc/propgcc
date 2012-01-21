@@ -49,7 +49,11 @@ wchar_t wbuf[128];
 int
 main()
 {
-  printf("checking: strings "); fflush(stdout);
+  printf("checking: chars "); fflush(stdout);
+  teststr("abcd", "%c", "a");
+  teststr(" abcd", "%2c", " a");
+
+  printf("strings ");
   teststr("abcd", "%3s", "abc");
   teststr("a", "%1s", "a");
   teststr("  abcd", "%5s", "abcd");
@@ -63,6 +67,9 @@ main()
   teststr("ab123cd", "%4[^0-9]", "ab");
 
   setlocale(LC_ALL, "");
+
+  printf("wide chars "); fflush(stdout);
+  testwstr("αβγ", "%lc", L"\u03B1");
 
   printf("wide strings "); fflush(stdout);
   testwstr(" abcd", "%3ls", L"abc");
