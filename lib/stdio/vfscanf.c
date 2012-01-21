@@ -55,8 +55,6 @@
 //#define PREV(c) do{if((c)!=EOF)ungetc((c),stream);ms.size--;ms.incount--;}while(0)
 #define VAL(a)  ((a)&&ms.size<=width)
 
-#define NEXTFMT() (*format_ptr++)
-
 #define MAX_UNGET 2
 typedef struct mystate {
   size_t size;
@@ -98,7 +96,7 @@ myungetc(int c, FILE *stream, MyState *ms)
 
   ms->size--;
   if (c != EOF) {
-    /* fixme: we may have to unget multiple times */
+    /* we may have to unget multiple times */
     count = _wcrtomb_ptr(xput, c, &ms->mbs);
     i = (int)count;
     while (i > 0) {
@@ -111,18 +109,37 @@ myungetc(int c, FILE *stream, MyState *ms)
   }
 }
 
+/*
+ * get the next format character
+ */
+//#define NEXTFMT(fmt) (fmt = *format_ptr++)
+#define NEXTFMT(fmt) (format_ptr += getFmtChar(&fmt, format_ptr, &fmts))
+
+static int getFmtChar(wchar_t *ch, const char *fmt_ptr, mbstate_t *fmts)
+{
+  size_t count;
+  count = _mbrtowc_ptr(ch, fmt_ptr, MB_LEN_MAX, fmts);
+  if (((int)count) <= 0) {
+    *ch = 0;
+    return 0;
+  }
+  return count;
+}
+ 
+
+
 int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 {
   size_t blocks=0;
   int c=0;
-  int fmt=0;
+  wchar_t fmt=0;
   MyState ms;
   mbstate_t fmts;
 
   memset(&ms, 0, sizeof(ms));
   memset(&fmts, 0, sizeof(fmts));
 
-  fmt = NEXTFMT();
+  NEXTFMT(fmt);
   while(fmt)
     {
       ms.size=0;
@@ -529,7 +546,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 	      }
 	    }
 	  format_ptr=(const char *)ptr;
-	  fmt = NEXTFMT();
+	  NEXTFMT(fmt);
 	}else
 	{ if(isspace(fmt))
 	    { do
@@ -541,7 +558,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 	    { NEXT(c);
 	      if(c!=fmt)
 		PREV(c); }
-	  fmt = NEXTFMT();
+	  NEXTFMT(fmt);
 	}
       if(!ms.size)
 	break;
