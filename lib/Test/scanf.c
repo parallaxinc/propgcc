@@ -117,6 +117,7 @@ main()
   printf("testing 2 strings: "); fflush(stdout);
   test2str("12345 ab", "%s %s", "12345", "ab");
   test2str("12345ab", "%[0-9]%s", "12345", "ab");
+  test2str("hello bob, how are you today?", "hello %[^,], how are %s today?", "bob", "you");
 
   test2wstr("12345\u0310ab", "%l[0-9]%ls", L"12345", L"\u0310ab");
   printf("ok\n");
