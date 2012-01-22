@@ -36,15 +36,32 @@ static void docheck_wstr(const wchar_t *buf, const wchar_t *expect, int line)
     sscanf(inp, fmt, &buf[0]);	  \
     checkstr(buf, expect);	  \
   }
+#define test2str(inp, fmt, expect1, expect2)		\
+  {				  \
+    buf[0] = 0;	buf2[0] = 0;	  \
+    sscanf(inp, fmt, &buf[0], &buf2[0]);	  \
+    checkstr(buf, expect1);	  \
+    checkstr(buf2, expect2);	  \
+  }
 #define testwstr(inp, fmt, expect) \
   {				  \
     memset(wbuf, 0, sizeof(wbuf));	\
     sscanf(inp, fmt, &wbuf[0]);	  \
     checkwstr(wbuf, expect);	  \
   }
+#define test2wstr(inp, fmt, expect1, expect2)	\
+  {						\
+    memset(wbuf, 0, sizeof(wbuf));		\
+    memset(wbuf2, 0, sizeof(wbuf2));		\
+    sscanf(inp, fmt, &wbuf[0], &wbuf2[0]);	\
+    checkwstr(wbuf, expect1);			\
+    checkwstr(wbuf2, expect2);			\
+  }
 
 char buf[128];
+char buf2[128];
 wchar_t wbuf[128];
+wchar_t wbuf2[128];
 
 int
 main()
@@ -90,13 +107,18 @@ main()
   testwstr("ab]]", "%l[]]", L"");
   testwstr("]]cd", "%l[]]", L"]]");
   testwstr(AlphaBetaGamma, "%l[\u03B1\u03B2]", L"\u03B1\u03B2");
-  testwstr(AlphaBetaGamma, "%l[^\u03B2]", L"\u03B1");
-  testwstr(AlphaBetaGamma, "%l[\u0300-\u03B2]", L"\u03B1\u03B2");
+  testwstr(AlphaBetaGamma, "%l[^\u03B2]", L"");
 
   memset(wbuf, 0, sizeof(wbuf));
   testwstr("a\x80R", "%ls", L"a");
 
+  printf("ok\n");
 
+  printf("testing 2 strings: "); fflush(stdout);
+  test2str("12345 ab", "%s %s", "12345", "ab");
+  test2str("12345ab", "%[0-9]%s", "12345", "ab");
+
+  test2wstr("12345\u0310ab", "%l[0-9]%ls", L"12345", L"\u0310ab");
   printf("ok\n");
   return 0;
 }

@@ -73,19 +73,25 @@ mygetc(FILE *stream, MyState *ms)
   return mbc;
 }
 
+static int in_scanset(int c, const unsigned char *scanset);
+
 /* get a single character from stream; this may be
  * multiple bytes depending on locale
  * c is the first byte of the character
  * returns the last byte read, or EOF
+ * "scanset" is a set we should check; if any byte read is not in the
+ * scanset abort
  */
 static int
-mywgetc(int c, wchar_t *wc_ptr, FILE *stream, MyState *ms)
+mywgetc(int c, wchar_t *wc_ptr, FILE *stream, MyState *ms, const unsigned char *scanset, int *scan_check)
 {
   size_t count;
 
   ms->mbs.left = 0;
+  *scan_check = 1;
   do {
-    if (c < 0) {
+    if (c < 0 || !in_scanset(c, scanset)) {
+      *scan_check = 0;
       return c;
     }
     /* NOTE: assumes c is little-endian here */
@@ -113,51 +119,38 @@ myungetc(int c, FILE *stream, MyState *ms)
 }
 
 /*
- * get the next format character
- */
-#define NEXTFMT(fmt) (fmt = *format_ptr++)
-
-static int getFmtChar(wchar_t *ch, const char *fmt_ptr, mbstate_t *fmts)
-{
-  size_t count;
-  count = _mbrtowc_ptr(ch, fmt_ptr, MB_LEN_MAX, fmts);
-  if (((int)count) <= 0) {
-    *ch = 0;
-    return 0;
-  }
-  return count;
-}
-
-/*
  * see if a character is acceptable based on a scan set
  */
 static int
-in_scanset(int c, const char *scanset)
+in_scanset(int c, const unsigned char *scanset)
 {
-  wchar_t wc;
-  wchar_t last = 0;
-  mbstate_t fmts = { 0, 0, 0 };
+  int wc, last;
+  int inset = 1;
 
   if (!scanset)
-    return 1;
+    return inset;
+  if (*scanset == '^') {
+    inset = 0;
+    scanset++;
+  }
   if (*scanset == ']') {
-    if (c == ']') return 1;
+    if (c == ']') return inset;
     last = *scanset++;
   }
   for(;;) {
-    scanset += getFmtChar(&wc, scanset, &fmts);
+    wc = *scanset++;
     if (wc <= 0 || wc == ']')
-      return 0;
+      return !inset;
     if (wc == '-' && last && *scanset != ']') {
-      scanset += getFmtChar(&wc, scanset, &fmts);
+      wc = *scanset++;
       if (c >= last && c <= wc)
-	return 1;
+	return inset;
     } else if (c == wc) {
-      return 1;
+      return inset;
     }
     last = wc;
   }
-  return 0;
+  return !inset;
 }
 
 /*
@@ -174,19 +167,12 @@ in_scanset(int c, const char *scanset)
 static void
 get_string(int is_wchar, void *dest, size_t width, int c, FILE *stream,
 	   int ignore, MyState *ms_ptr,
-	   const char *scanset, int need_zero)
+	   const unsigned char *scanset, int need_zero)
 {
   unsigned char *bp = NULL;
   wchar_t *wp = NULL;
   wchar_t wc;
-  int invert; /* if 1 invert the sense of the set */
 
-  if (scanset && *scanset == L'^') {
-    invert = 1;
-    scanset++;
-  } else {
-    invert = 0;
-  }
   if (is_wchar)
     wp = dest;
   else
@@ -198,14 +184,15 @@ get_string(int is_wchar, void *dest, size_t width, int c, FILE *stream,
 	{
 	  if (is_wchar)
 	    {
-	      c = mywgetc(c, &wc, stream, ms_ptr);
-	      if (!(invert^in_scanset(wc, scanset)))
+	      int scan_check;
+	      c = mywgetc(c, &wc, stream, ms_ptr, scanset, &scan_check);
+	      if (!scan_check)
 		break;
 	      *wp++ = wc;
 	    }
 	  else
 	    {
-	      if (!(invert^in_scanset(c, scanset)))
+	      if (!(in_scanset(c, scanset)))
 		break;
 	      *bp++ = c;
 	    }
@@ -227,14 +214,10 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
   int c=0;
   int fmt=0;
   MyState ms, *ms_ptr;
-#ifdef WCHAR_SCANSETS
-  mbstate_t fmts;
 
-  memset(&fmts, 0, sizeof(fmts));
-#endif
   memset((ms_ptr = &ms), 0, sizeof(ms));
 
-  NEXTFMT(fmt);
+  fmt = *format_ptr++;
   while(fmt)
     {
       ms.size=0;
@@ -300,9 +283,9 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 	    case '[':
 	      {
 		void *dest = NULL;
-		const char *scanset;
+		const unsigned char *scanset;
 
-		scanset = (const char *)ptr;
+		scanset = (const unsigned char *)ptr;
 		if(*ptr=='^')
 		    ptr++;
 		if (*ptr==']')
@@ -332,7 +315,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 		  }
 		get_string( subtype == WCHAR_SUBTYPE,
 			    destp, width, c, stream, ignore, ms_ptr,
-			    "^ \t\r\n\f\v]",
+			    (unsigned char *)"^ \t\r\n\f\v]",
 			    1 );
 
 		if(!ignore&&ms.size)
@@ -589,7 +572,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 	      }
 	    }
 	  format_ptr=(const char *)ptr;
-	  NEXTFMT(fmt);
+	  fmt = *format_ptr++;
 	}else
 	{ if(isspace(fmt))
 	    { do
@@ -601,7 +584,7 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 	    { NEXT(c);
 	      if(c!=fmt)
 		PREV(c); }
-	  NEXTFMT(fmt);
+	  fmt = *format_ptr++;
 	}
       if(!ms.size)
 	break;
