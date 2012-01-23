@@ -185,10 +185,33 @@ main()
 
   fclose(f);
 
-  count = sscanf("078", "%i%c", &tmp, &buf[0]);
+  count = sscanf("0178ag", "%i%c", &tmp, &buf[0]);
   EXPECTEQ(count, 2);
-  EXPECTEQ(tmp, 7);
+  EXPECTEQ(tmp, 017);
   EXPECTEQ(buf[0], '8');
+  count = sscanf("0178ag", "%d%c", &tmp, &buf[0]);
+  EXPECTEQ(count, 2);
+  EXPECTEQ(tmp, 178);
+  EXPECTEQ(buf[0], 'a');
+  count = sscanf("0178ag", "%x%c", &tmp, &buf[0]);
+  EXPECTEQ(count, 2);
+  EXPECTEQ(tmp, 0x178a);
+  EXPECTEQ(buf[0], 'g');
+  count = sscanf("0178ag", "%o%c", &tmp, &buf[0]);
+  EXPECTEQ(count, 2);
+  EXPECTEQ(tmp, 15);
+  EXPECTEQ(buf[0], '8');
+
+  strcpy(buf, "xxxxxx");
+  strcpy(buf2, "xxxxxx");
+  wcscpy(wbuf, L"xxxxxx");
+  count = sscanf("ab\u0311\u0312cd", "a%[a-z]%l[^a-z]%c", buf, wbuf, buf2);
+  EXPECTEQ(count, 3);
+  EXPECTEQ(strcmp(buf, "b"), 0);
+  EXPECTEQ(wbuf[0], L'\u0311');
+  EXPECTEQ(wbuf[1], L'\u0312');
+  EXPECTEQ(strcmp(buf2, "cxxxxx"), 0);
+
   printf("done\n");
 
   if (numerrors > 0) {
