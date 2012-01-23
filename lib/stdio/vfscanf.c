@@ -470,36 +470,16 @@ int vfscanf(FILE *stream,const char *format_ptr,va_list args)
 		  { min=c;
 		    NEXT(c); }
 
-		if(type=='i') /* which one to use ? */
-		  { if(VAL(c=='0')) /* Could be octal or sedecimal */
-		      { int d;
-			NEXT(d); /* Get a look at next character */
-			if(VAL(tolower(d)=='x'))
-			  { int e;
-			    NEXT(e); /* And the next */
-			    if(VAL(isxdigit(c)))
-			      type='x'; /* Is a valid x number with '0x?' */
-			    PREV(e);
-			  }else
-			  type='o';
-			PREV(d);
-		      }else if(VAL(!isdigit(c)&&isxdigit(c)))
-		      type='x'; /* Is a valid x number without '0x' */
-		  }
-		
-		while(type=='x'&&VAL(c=='0')) /* sedecimal */
-		  { int d;
-		    NEXT(d);
-		    if(VAL(tolower(d)=='x'))
-		      { int e;
-			NEXT(e);
-			if(VAL(isxdigit(e)))
-			  { c=e;
-			    break; } /* Used while just to do this ;-) */
-			PREV(e);
-		      }
-		    PREV(d);
-		    break; /* Need no loop */
+		if (VAL(c=='0')&&(type=='x'||type=='i'))
+		  {
+		    if (type=='i')
+		      type='o';
+		    NEXT(c);
+		    if (VAL(c=='x')) {
+		      ms.size = 0;
+		      type='x';
+		      NEXT(c);
+		    }
 		  }
 
 		base=type=='x'||type=='X'?16:(type=='o'?8:10);
