@@ -43,7 +43,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	putc.o getc.o ungetc.o gets.o fgets.o \
 	setvbuf.o setbuf.o setlinebuf.o setbuffer.o \
 	fopen.o fopen_intern.o freopen.o \
-	fwrite.o fread.o fseek.o ftell.o fgetpos.o fsetpos.o \
+	fwrite.o fread.o fseek.o ftell.o fgetpos.o fsetpos.o rewind.o \
 	stringio.o vfprintf.o vfscanf.o \
 	$(PRINTF) $(SCANF) \
 	simple_printf.o \
