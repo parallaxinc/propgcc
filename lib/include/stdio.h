@@ -111,9 +111,12 @@ extern "C" {
 
   void setbuf(FILE *fp, char *buf);
   int  setvbuf(FILE *fp, char *buf, int mode, size_t size);
-#ifdef _BSD_SOURCE
+#if defined(_BSD_SOURCE)
   void setbuffer(FILE *fp, char *buf, size_t size);
   void setlinebuf(FILE *fp);
+#endif
+#if defined(_GNU_SOURCE) || defined(_POSIX_SOURCE)
+  FILE *fmemopen(void *buf, size_t size, const char *mode);
 #endif
 
   int fputc(int c, FILE *fp);
@@ -180,6 +183,9 @@ extern "C" {
   /* internal functions */
   /* set up the FILE pointer in fp to point to a particular driver */
   FILE *__fopen_driver(FILE *fp, struct __driver *drv, const char *name, const char *mode);
+  /* find a free FILE slot in the table, and mark it as in use with driver drv */
+  FILE *__fopen_findslot(struct __driver *drv);
+
   /* set up a FILE pointer to do I/O from a string */
   FILE *__string_file(FILE *fp, char *str, const char *mode, size_t len);
 

@@ -12,15 +12,13 @@
 #include <compiler.h>
 
 /*
- * the actual fopen routine
+ * find an empty slot
  */
 FILE *
-fopen(const char *name, const char *mode)
+__fopen_findslot(_Driver *d)
 {
-  size_t plen = 0;
-  _Driver *d;
   int i;
-  FILE *fp;
+  FILE *fp = NULL;
 
   __lock_stdio();
   /*
@@ -39,6 +37,21 @@ fopen(const char *name, const char *mode)
     }
 
   fp = &__files[i];
+  fp->_drv = d;  /* mark it used */
+  __unlock_stdio();
+  return fp;
+}
+
+/*
+ * the actual fopen routine
+ */
+FILE *
+fopen(const char *name, const char *mode)
+{
+  size_t plen = 0;
+  _Driver *d;
+  int i;
+  FILE *fp;
 
   /*
    * find the driver corresponding to the name
@@ -58,11 +71,10 @@ fopen(const char *name, const char *mode)
     {
       /* driver not found */
       errno = ENOENT;
-      __unlock_stdio();
       return NULL;
     }
-  fp->_drv = d;  /* mark it used */
-  __unlock_stdio();
+  fp = __fopen_findslot(d);
+  if (!fp) return fp;
 
   return __fopen_driver(fp, d, name+plen, mode);
 }
