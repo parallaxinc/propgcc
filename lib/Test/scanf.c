@@ -2,20 +2,24 @@
  * tests for scanf
  */
 
+#define _GNU_SOURCE /* allow fmemopen function */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <wchar.h>
 #include <locale.h>
+#include <assert.h>
 
 #define string__(x) #x
 #define string_(x) string__(x)
+
+int numerrors = 0;
 
 static void docheck_str(const char *buf, const char *expect, int line)
 {
   if (strcmp(buf, expect) != 0) {
     fprintf(stderr, "test failed on line %d: got [%s] expected [%s]\n", line, buf, expect);
-    abort();
+    numerrors++;
   }
 }
 
@@ -23,10 +27,18 @@ static void docheck_wstr(const wchar_t *buf, const wchar_t *expect, int line)
 {
   if (wcscmp(buf, expect) != 0) {
     fprintf(stderr, "test failed on line %d: got {%ls} expected {%ls}\n", line, buf, expect);
-    abort();
+    numerrors++;
   }
 }
 
+static void checkequal(const char *msg, int num, int expect, int line)
+{
+  if (num != expect) {
+    fprintf(stderr, "test %s failed on line %d: got %d expected %d\n", msg, line, num, expect);
+    numerrors++;
+  }
+}
+#define EXPECTEQ(var, expect) checkequal(string_(var), var, expect, __LINE__)
 #define checkstr(buf, expect) docheck_str(buf, expect, __LINE__)
 #define checkwstr(buf, expect) docheck_wstr(buf, expect, __LINE__)
 
@@ -63,9 +75,17 @@ char buf2[128];
 wchar_t wbuf[128];
 wchar_t wbuf2[128];
 
+/* start of a prefix */
+char test0x[] = "0xyz";
+
 int
 main()
 {
+  int count;
+  int tmp;
+  int nextc;
+  FILE *f;
+
   printf("checking: chars "); fflush(stdout);
   teststr("abcd", "%c", "a");
   teststr(" abcd", "%2c", " a");
@@ -112,7 +132,7 @@ main()
   memset(wbuf, 0, sizeof(wbuf));
   testwstr("a\x80R", "%ls", L"a");
 
-  printf("ok\n");
+  printf("done\n");
 
   printf("testing 2 strings: "); fflush(stdout);
   test2str("12345 ab", "%s %s", "12345", "ab");
@@ -120,6 +140,59 @@ main()
   test2str("hello bob, how are you today?", "hello %[^,], how are %s today?", "bob", "you");
 
   test2wstr("12345\u0310ab", "%l[0-9]%ls", L"12345", L"\u0310ab");
-  printf("ok\n");
-  return 0;
+  printf("done\n");
+
+  printf("checking some corner cases... "); fflush(stdout);
+  f = fmemopen(test0x, strlen(test0x), "r");
+  tmp = -1;
+  count = fscanf(f, "%d", &tmp);
+  nextc = fgetc(f);
+  EXPECTEQ(count, 1);
+  EXPECTEQ(tmp, 0);
+  EXPECTEQ(nextc, 'x');
+  rewind(f);
+  count = fscanf(f, "%c", &buf[0]);
+  nextc = fgetc(f);
+  EXPECTEQ(count, 1);
+  EXPECTEQ(buf[0], '0');
+  EXPECTEQ(nextc, 'x');
+
+  rewind(f);
+  tmp = 12;
+  count = fscanf(f, "0%x", &tmp);
+  nextc = fgetc(f);
+  EXPECTEQ(count, 0);
+  EXPECTEQ(tmp, 12);
+  EXPECTEQ(nextc, 'x');
+
+  /* this test is a little bit nasty; the string "0xyz" has a valid
+     hex prefix, but is not a valid number. strtol will return 0 for it
+     and leave the pointer at "x", but scanf can't because the
+     standard doesn't allow more than 1 character of pushback;
+     so it has to fail and leave the pointer at "y". GLIBC on Linux actually
+     gets this wrong :-(
+  */
+  rewind(f);
+  count = fscanf(f, "%x", &tmp);
+  nextc = fgetc(f);
+  EXPECTEQ(count, 0);
+  EXPECTEQ(nextc, 'y');
+  rewind(f);
+  count = fscanf(f, "%i", &tmp);
+  nextc = fgetc(f);
+  EXPECTEQ(count, 0);
+  EXPECTEQ(nextc, 'y');
+
+  fclose(f);
+
+  count = sscanf("078", "%i%c", &tmp, &buf[0]);
+  EXPECTEQ(count, 2);
+  EXPECTEQ(tmp, 7);
+  EXPECTEQ(buf[0], '8');
+  printf("done\n");
+
+  if (numerrors > 0) {
+    printf("*** TEST FAILURES! ***\n");
+  }
+  return numerrors;
 }
