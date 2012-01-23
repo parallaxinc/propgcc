@@ -1,6 +1,6 @@
 {{
     Command Line Interface Memory Test Program
-    for cache_interface.spin devices.
+    for cache_interface.spin mdevices.
 }}
 
 {{
@@ -44,7 +44,7 @@ objects used for testing
 }}
   sx  : "FullDuplexSingleton"
   mem : "cache_interface"
-  dev : "eeprom_cache"
+  mdev : "eeprom_cache"
 
 con
 ''
@@ -59,8 +59,8 @@ var
 ''
 '' Cache interface variables must be in this order
 ''
-    long command                ' device driver command pointer
-    long databuf                ' device driver data or buffer pointer
+    long command                ' mdevice driver command pointer
+    long databuf                ' mdevice driver data or buffer pointer
 
     long cache[CACHESIZE>>2]    ' cache area
     long tagcount
@@ -82,7 +82,7 @@ pub main | n, a
     waitcnt(clkfreq/2+cnt)      ' wait for user terminal to start
     sx.str(string($d,$a,$d,$a,"Cache Test.",$d,$a,$d,$a))
 
-    linelen  := mem.start(dev.image, @command, @cache, config1, config2)
+    linelen  := mem.start(mdev.image, @command, @cache, config1, config2)
     ifnot linelen 
         sx.str(string($d,$a,"Error driver returned tag count=0. Fix it.",$d,$a))
         repeat
