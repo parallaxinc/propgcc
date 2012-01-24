@@ -57,6 +57,17 @@ The compiler and library mostly conform to the C99 standard (ISO/IEC
   not actually a standard violation, but it may be surprising.)
 </P>
 
+<A NAME="stdlib"><H3>Missing features in stdlib functions</H3></A>
+<P>
+  The <CODE>strtod</CODE> and <CODE>strtof</CODE> functions do not
+  accept input of hexadecimal floating point numbers.
+</P>
+<P>
+  <CODE>strtod</CODE> and <CODE>strtof</CODE> do not always round
+  their outputs correctly according to the standard; there may be an
+  error of one unit in the last place.
+</P>
+
 <A NAME="wide-char"><H3>Wide character I/O is not implemented</H3></A>
 <P>
   The wide character input and output functions from &lt;wchar.h&gt;, such
