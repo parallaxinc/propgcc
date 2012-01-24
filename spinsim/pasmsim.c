@@ -620,10 +620,36 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
 	    }
 	    break;
 
-	    case 4: // waitpeq
+	    case 4: // waitpeq - result, zflag and cflag not validated
+            result = (pin_val & value2) ^ value1;
+	    if (result)
+	    {
+		pasmvars->state = 6;
+    		pasmvars->pc = (pasmvars->pc - 1) & 511;
+		return 0;
+	    }
+	    else
+	    {
+		pasmvars->state = 5;
+	        zflag = (result == 0);
+	        cflag = 0;
+	    }
 	    break;
 
-	    case 5: // waitpne
+	    case 5: // waitpne - result, zflag and cflag not validated
+            result = (pin_val & value2) ^ value1;
+	    if (!result)
+	    {
+		pasmvars->state = 6;
+    		pasmvars->pc = (pasmvars->pc - 1) & 511;
+		return 0;
+	    }
+	    else
+	    {
+		pasmvars->state = 5;
+	        zflag = (result == 0);
+	        cflag = zflag;
+	    }
 	    break;
 
 	    case 6: // waitcnt
