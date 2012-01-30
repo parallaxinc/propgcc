@@ -58,6 +58,7 @@ CPU_DOCS = \
 	c-pdp11.texi \
 	c-pj.texi \
 	c-ppc.texi \
+	c-propeller.texi \
 	c-rx.texi \
 	c-s390.texi \
 	c-score.texi \
