@@ -7128,6 +7128,10 @@ family.
 @include c-ppc.texi
 @end ifset
 
+@ifset PROPELLER
+@include c-propeller.texi
+@end ifset
+
 @ifset RX
 @include c-rx.texi
 @end ifset
