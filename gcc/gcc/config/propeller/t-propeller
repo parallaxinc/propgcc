@@ -58,7 +58,7 @@ MULTILIB_EXCEPTIONS =
 #don't think we need these
 #EXTRA_MULTILIB_PARTS = crtbegin.o crtend.o
 
-EXTRA_PARTS += spinboot.o hubstart_xmm.o _crt0.o _crtbegin.o _crtend.o
+EXTRA_PARTS += spinboot.o hubstart_xmm.o _crt0.o _crt0_debug.o _crtbegin.o _crtend.o
 
 #
 # Assemble startup files
@@ -71,6 +71,9 @@ $(T)spinboot.o: $(PROPDIR)/spinboot.s
 
 $(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s
 	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
+
+$(T)_crt0_debug.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -DDEBUG_KERNEL -o $@ -c $<
 
 $(T)_crtbegin.o: $(PROPDIR)/crtbegin.S
 	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
