@@ -59,7 +59,7 @@ recognized:
 As far as possible, the GAS syntax for the Propeller family duplicates
 the syntax of the Parallax assembler.
 
-@table code
+@table @code
 
 @item
 Conditional execution prefixes appear at the beginning of the line,
