@@ -54,7 +54,6 @@ strtof(const char *str, char **endptr)
 {
   float v = 0.0f;
   float base = 10.0f;
-  float invbase = 0.1f;
   int hex = 0;
   int minus = 0;
   int minuse = 0;
@@ -101,23 +100,22 @@ strtof(const char *str, char **endptr)
   if (c == '0' && toupper(*str) == 'X') {
     hex = 1;
     base = 16.0;
-    invbase = (1.0/16.0);
     str++;
     c = toupper(*str++);
   }
 
-  while (isdigit(c) || (hex && isxdigit(c) && (c -= ('A' - '0')))) {
+  while (isdigit(c) || (hex && isxdigit(c) && (c = c - 'A' + 10 + '0'))) {
     v = base * v + (c - '0');
     c = toupper(*str++);
   }
   if (c == '.') {
-    float frac = invbase;
+    float frac = base;
     c = toupper(*str++);
-    while (isdigit(c) || (hex && isxdigit(c) && (c -= ('A' - '0'))))
+    while (isdigit(c) || (hex && isxdigit(c) && (c =  c - 'A' + 10 + '0')))
       {
-	v = v + frac*(c-'0');
-	frac = frac * invbase;
-	c = *str++;
+	v = v + (c-'0') / frac;
+	frac = frac * base;
+	c = toupper(*str++);
       }
   }
   if (c == 'E' || c == 'P') 

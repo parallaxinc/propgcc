@@ -17,7 +17,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strerror.o
 
 STDLIB = malloc.o calloc.o realloc.o atoi.o atof.o \
-	qsort.o bsearch.o strtol.o strtoul.o strtod.o \
+	qsort.o bsearch.o strtol.o strtoul.o \
 	strtoll.o strtoull.o \
 	rand.o div.o abs.o getenv.o
 
