@@ -54,7 +54,6 @@ strtold(const char *str, char **endptr)
 {
   long double v = 0.0;
   long double base = 10.0;
-  long double invbase = 0.1;
   int hex = 0;
   int minus = 0;
   int minuse = 0;
@@ -101,23 +100,22 @@ strtold(const char *str, char **endptr)
   if (c == '0' && toupper(*str) == 'X') {
     hex = 1;
     base = 16.0;
-    invbase = (1.0/16.0);
     str++;
     c = toupper(*str++);
   }
 
-  while (isdigit(c) || (hex && isxdigit(c) && (c -= ('A' - '0')))) {
+  while (isdigit(c) || (hex && isxdigit(c) && (c = c - 'A' + 10 + '0'))) {
     v = base * v + (c - '0');
     c = toupper(*str++);
   }
   if (c == '.') {
-    long double frac = invbase;
+    long double frac = base;
     c = toupper(*str++);
-    while (isdigit(c) || (hex && isxdigit(c) && (c -= ('A' - '0'))))
+    while (isdigit(c) || (hex && isxdigit(c) && (c = c - 'A' + 10 + '0')))
       {
-	v = v + frac*(c-'0');
-	frac = frac * invbase;
-	c = *str++;
+	v = v + (c-'0') / frac;
+	frac = frac * base;
+	c = toupper(*str++);
       }
   }
   if (c == 'E' || c == 'P') 
