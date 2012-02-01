@@ -21,12 +21,18 @@
  *
  * calc = 10.0 * 10^4 * 10^8
  */
+static float _tens[] = {
+  1.0e2f, 1.0e4f, 1.0e8f, 1.0e16f,
+  1.0e32f
+};
+
 static float
 __mul_pow(float v, int n, float base)
 {
   float powten = base;
   float calc = 1.0f;
   int minus = 0;
+  int idx = 0;
 
   if (n < 0)
     {
@@ -39,7 +45,12 @@ __mul_pow(float v, int n, float base)
 	{
 	    calc = calc * powten;
 	}
-      powten = powten * powten;
+      if (base == 10.0 && idx < 5) {
+	powten = _tens[idx];
+	idx++;
+      } else {
+	powten = powten * powten;
+      }
       n = n>>1;
     }
   if (minus)
@@ -59,6 +70,8 @@ strtof(const char *str, char **endptr)
   int minuse = 0;
   int c;
   int exp = 0;
+  int expbump;
+  int digits;
 
   while (isspace(*str))
     str++;
@@ -104,22 +117,50 @@ strtof(const char *str, char **endptr)
     c = toupper(*str++);
   }
 
-  while (isdigit(c) || (hex && isxdigit(c) && (c = c - 'A' + 10 + '0'))) {
-    v = base * v + (c - '0');
-    c = toupper(*str++);
+  if (hex) {
+    digits = 7;
+  } else {
+    digits = 10;
   }
-  if (c == '.') {
-    float frac = base;
-    c = toupper(*str++);
-    while (isdigit(c) || (hex && isxdigit(c) && (c =  c - 'A' + 10 + '0')))
-      {
-	v = v + (c-'0') / frac;
-	frac = frac * base;
-	c = toupper(*str++);
+
+  /* get up to "digits" digits */
+  exp = 0;
+  expbump = 0;
+  v = 0.0;
+
+  while (digits > 0
+	 && (isdigit(c) 
+	     || (hex && isxdigit(c) && (c = c - 'A' + 10 + '0'))
+	     || (c == '.' && expbump == 0)))
+    {
+      if (c == '.') {
+	expbump = -1;
+      } else {
+	v = base * v + (c - '0');
+	exp += expbump;
+	--digits;
       }
+      c = toupper(*str++);
+    }
+  expbump++;
+  // skip any superfluous digits 
+  while (isdigit(c) || (hex && isxdigit(c)) || (c == '.' && expbump == 1))
+    {
+      if (c == '.')
+	expbump = 0;
+      else
+	exp += expbump;
+      c = toupper(*str++);
+    }
+
+  if (hex) {
+    // convert exponent to binary
+    exp *= 4;
   }
+
   if (c == 'E' || c == 'P') 
     {
+      int tmpe = 0;
       c = *str++;
       if (c == '-') {
 	minuse = 1;
@@ -129,17 +170,19 @@ strtof(const char *str, char **endptr)
       }
       while (isdigit(c))
 	{
-	  exp = 10*exp + (c-'0');
+	  tmpe = 10*tmpe + (c-'0');
 	  c = *str++;
 	}
       if (minuse)
 	{
-	  exp = -exp;
+	  tmpe = -tmpe;
 	}
-      v = __mul_pow(v, exp, hex ? 2.0 : 10.0);
+      exp += tmpe;
     }
 
-  if (v == HUGE_VALL)
+  v = __mul_pow(v, exp, hex ? 2.0 : 10.0);
+
+  if (v == HUGE_VALF)
     errno = ERANGE;
 
  done:
