@@ -36,7 +36,6 @@ entry                   mov     t1,par                'get structure address
 
                         add     t1,#4                 'get bit_ticks
                         rdlong  bitticks,t1
-
                         add     t1,#4                 'get buffer_ptr
                         rdlong  rxbuff,t1
                         mov     txbuff,rxbuff
@@ -104,6 +103,11 @@ transmit                jmpret  txcode,rxcode         'run a chunk of receive co
                         add     t1,#1 << 2
                         rdlong  t3,t1
                         cmp     t2,t3           wz
+
+			' update the ticks if necessary
+			add	t1,#3 << 2
+			rdlong	bitticks,t1
+	
         if_z            jmp     #transmit
 
                         add     t3,txbuff             'get byte and inc tail

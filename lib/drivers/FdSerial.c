@@ -139,11 +139,13 @@ fdserial_fopen(FILE *fp, const char *name, const char *mode)
   unsigned int baud = _baud;
   unsigned int txpin = _txpin;
   unsigned int rxpin = _rxpin;
+  int setBaud = 0;
   FdSerial_t *data;
   int r;
 
   if (name && *name) {
     baud = atoi(name);
+    setBaud = 1;
     while (*name && *name != ',') name++;
     if (*name) {
       name++;
@@ -158,7 +160,13 @@ fdserial_fopen(FILE *fp, const char *name, const char *mode)
   for (data = coglist; data; data = data->next)
     {
       if (data->tx_pin == txpin || data->rx_pin == rxpin)
-	break;
+	{
+	  // if the baud differs, tell the cog to change it
+	  if (setBaud) {
+	    data->ticks = _clkfreq / baud;
+	  }
+	  break;
+	}
     }
 
   if (!data)

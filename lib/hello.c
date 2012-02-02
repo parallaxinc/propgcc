@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/driver.h>
 #include <compiler.h>
+#include <unistd.h>
 
 #ifndef SIMPLE
 /* list of drivers we can use */
@@ -24,5 +25,11 @@ main(int argc, char **argv, char **environ)
 {
   printf("hello, world\n");
   fprintf(stderr, "%ls\n", L"hello, stderr");
+  printf("switching to 38400 baud now...\n");
+  sleep(1);
+  freopen("FDS:38400", "w+", stdout);
+  for(;;) {
+    printf("hello, 38400 baud!\n");
+  }
   return 99;
 }
