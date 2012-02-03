@@ -39,6 +39,10 @@
 #define DOWNLOAD_EEPROM         2
 #define DOWNLOAD_RUN_EEPROM     3
 
+#define PLOAD_STATUS_OK             0
+#define PLOAD_STATUS_OPEN_FAILED    -1
+#define PLOAD_STATUS_NO_PROPELLER   -2
+
 int popenport(const char* port, int baud);
 int preset(void);
 int pload(const char* file, int type);

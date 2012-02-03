@@ -91,13 +91,13 @@ int serial_init(const char* port, unsigned long baud)
     /* open the port */
     hSerial = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if(hSerial == -1) {
-        fprintf(stderr, "error: opening '%s' -- %s\n", port, strerror(errno));
+        //fprintf(stderr, "error: opening '%s' -- %s\n", port, strerror(errno));
         return 0;
     }
     
     /* set the terminal to exclusive mode */
     if (ioctl(hSerial, TIOCEXCL) != 0) {
-        fprintf(stderr, "error: can't open terminal for exclusive access\n");
+        //fprintf(stderr, "error: can't open terminal for exclusive access\n");
         close(hSerial);
         return 0;
     }
@@ -144,7 +144,7 @@ int serial_init(const char* port, unsigned long baud)
     chk("tcflush", tcflush(hSerial, TCIFLUSH));
     chk("tcsetattr", tcsetattr(hSerial, TCSANOW, &sparm));
 
-    return hSerial;
+    return 1;
 }
 
 /**
