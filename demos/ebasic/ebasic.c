@@ -9,7 +9,7 @@ uint8_t __attribute__((far)) space[HEAPSIZE];
 uint8_t space[HEAPSIZE];
 #endif
 
-#ifdef PROPELLER_GCC
+#if defined(PROPELLER_GCC) && defined(USE_FDS)
 /* list of drivers we can use */
 extern _Driver _FullDuplexSerialDriver;
 _Driver *_driverlist[] = {

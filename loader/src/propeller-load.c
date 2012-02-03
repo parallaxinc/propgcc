@@ -226,8 +226,19 @@ int main(int argc, char *argv[])
 
     /* initialize the serial port */
     if ((flags & (LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
-        if (InitPort(PORT_PREFIX, port, baud, verbose ? IFLAG_VERBOSE : 0, actualport) == 0) {
-            fprintf(stderr, "error: opening serial port\n");
+        int sts = InitPort(PORT_PREFIX, port, baud, verbose ? IFLAG_VERBOSE : 0, actualport);
+        switch (sts) {
+        case PLOAD_STATUS_OK:
+            // port initialized successfully
+            break;
+        case PLOAD_STATUS_OPEN_FAILED:
+            fprintf(stderr, "error: opening serial port '%s'\n", port);
+            return 1;
+        case PLOAD_STATUS_NO_PROPELLER:
+            if (port)
+                fprintf(stderr, "error: no propeller chip on port '%s'\n", port);
+            else
+                fprintf(stderr, "error: can't find a port with a propeller chip\n");
             return 1;
         }
     }

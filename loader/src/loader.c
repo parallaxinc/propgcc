@@ -170,7 +170,7 @@ static int CheckPort(const char* port, void* data)
     int rc;
     if (info->flags & IFLAG_VERBOSE)
         printf("Trying %s                    \r", port); fflush(stdout);
-    if ((rc = popenport(port, info->baud)) != 0)
+    if ((rc = popenport(port, info->baud)) != PLOAD_STATUS_OK)
         return rc;
     strncpy(info->actualport, port, PATH_MAX - 1);
     info->actualport[PATH_MAX - 1] = '\0';
@@ -191,10 +191,13 @@ int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
         info.baud = baud;
         info.flags = flags;
         info.actualport = actualport;
-        rc = serial_find(prefix, CheckPort, &info);
+        if (serial_find(prefix, CheckPort, &info) == 0)
+            rc = PLOAD_STATUS_OK;
+        else
+            rc = PLOAD_STATUS_NO_PROPELLER;
     }
         
-    return rc == 0;
+    return rc;
 }
 
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags)

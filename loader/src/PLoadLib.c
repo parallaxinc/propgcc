@@ -146,13 +146,13 @@ static int hwfind(void)
         } while(rc == 0 && to++ < 100);
         //printf("%d", rc);
         if(to > 100) {
-            printf("Timeout waiting for response bit. Propeller Not Found!\n");
+            //printf("Timeout waiting for response bit. Propeller Not Found!\n");
             return 0;
         }
         jj = iterate();
         //printf("%d:%d ", ii, jj);
         if(ii != jj) {
-            printf("Lost HW contact. %d %x\n", n, *mybuf & 0xff);
+            //printf("Lost HW contact. %d %x\n", n, *mybuf & 0xff);
             return 0;
         }
     }
@@ -240,8 +240,8 @@ static int upload(const uint8_t* dlbuf, int count, int type)
         getAck(&rc, 100);
         if(rc) break;
     }
-    if(n >= wv) printf("Upload Timeout Error!\n");
-    else        printf("Upload OK!\n");
+    if(n >= wv) printf("Timeout Error!\n");
+    else        printf("Download OK!\n");
 
     return 0;
 }
@@ -252,17 +252,17 @@ int popenport(const char* port, int baud)
     // open the port
     //
     if (serial_init(port, baud) == 0)
-        return -1;
+        return PLOAD_STATUS_OPEN_FAILED;
         
     //
     // find propeller
     //
     if (findprop(port) != 0) {
         serial_done();
-        return -1;
+        return PLOAD_STATUS_NO_PROPELLER;
     }
 
-    return 0;
+    return PLOAD_STATUS_OK;
 }
 
 int preset(void)
@@ -284,7 +284,7 @@ int pload(const char* file, int type)
     //
     FILE* fp = fopen(file, "rb");
     if(!fp) {
-        printf("Can't open '%s' for upload.\n", file);
+        printf("Can't open '%s' for download.\n", file);
         return 4;
     }
     else {
