@@ -186,6 +186,15 @@ a <CODE>FILE</CODE> structure's <CODE>_flag</CODE> field. If the bit
 is clear, then "raw" mode is used, where there is no echoing and no
 interpretation of special characters.
 </P>
+<P>
+Cooked mode is the default. To read characters directly from stdin
+without processing, do something like:
+<PRE>
+  stdin->_flag &= ~_IOCOOKED;
+</PRE>
+This also causes stdin to effectively be unbuffered, since the
+terminal driver only processes 1 character at a time in raw mode.
+</P>
 
 <A NAME="printf"><H2>Printf and Code Size</H2></A>
 <P>
