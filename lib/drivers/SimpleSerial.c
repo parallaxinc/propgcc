@@ -135,6 +135,9 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
   fp->drvarg[2] = baud;
   fp->drvarg[3] = bitcycles;
 
+  /* mark it as being a terminal */
+  fp->_flag |= _IODEV;
+
   /* all OK */
   return 0;
 }

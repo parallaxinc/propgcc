@@ -185,6 +185,7 @@ fdserial_fopen(FILE *fp, const char *name, const char *mode)
       coglist = data;
     }
   fp->drvarg[0] = (unsigned long)data;
+  fp->_flag |= _IODEV;
   return 0;
 }
 
