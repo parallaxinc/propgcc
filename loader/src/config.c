@@ -87,17 +87,23 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
 {
     char path[PATH_MAX];
     BoardConfig *config;
-    char *tag, *value;
+    char *tag, *value, *dst;
+    const char *src;
     LineBuf buf;
     FILE *fp;
     int ch;
     
+    /* make a local copy of the name in lowercase */
+    src = name; dst = path;
+    while ((*dst++ = tolower(*src++)) != '\0')
+        ;
+    
     /* check for a request for the default configuration */
-    if (strcmp(name, DEF_NAME) == 0)
+    if (strcmp(path, DEF_NAME) == 0)
         return SetupDefaultConfiguration();
     
     /* make the configuration file name */
-    sprintf(path, "%s.cfg", name);
+    strcat(path, ".cfg");
 
     /* open the configuration file */
     if (!(fp = xbOpenFileInPath(sys, path, "r")))
