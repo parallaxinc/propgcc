@@ -19,7 +19,7 @@
 # #########################################################
 
 # where we installed the propeller binaries and libraries
-PREFIX = /usr/local/propeller
+PREFIX = /opt/parallax
 
 ifndef MODEL
 MODEL=lmm
