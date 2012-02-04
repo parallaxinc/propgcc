@@ -62,6 +62,7 @@ static ConfigSymbol configSymbols[] = {
 {   NULL,           0           }
 };
 
+static BoardConfig *SetupDefaultConfiguration(void);
 static int SkipSpaces(LineBuf *buf);
 static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm);
 static int ParseNumericExpr(char *token, int *pValue);
@@ -90,6 +91,10 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
     LineBuf buf;
     FILE *fp;
     int ch;
+    
+    /* check for a request for the default configuration */
+    if (strcmp(name, DEF_NAME) == 0)
+        return SetupDefaultConfiguration();
     
     /* make the configuration file name */
     sprintf(path, "%s.cfg", name);
@@ -296,6 +301,32 @@ void MergeConfigs(BoardConfig *dst, BoardConfig *src)
         dst->validMask |= VALID_EEPROMFIRST;
         dst->eepromFirst = src->eepromFirst;
     }
+}
+
+static BoardConfig *SetupDefaultConfiguration(void)
+{
+    BoardConfig *config;
+    
+    if (!(config = (BoardConfig *)malloc(sizeof(BoardConfig) + strlen(DEF_NAME))))
+        Fatal("insufficient memory");
+        
+    memset(config, 0, sizeof(BoardConfig));
+    config->validMask = VALID_CLKFREQ | VALID_CLKMODE | VALID_BAUDRATE | VALID_RXPIN | VALID_TXPIN | VALID_TVPIN
+                      | VALID_SDDRIVER | VALID_SDSPIDO | VALID_SDSPICLK | VALID_SDSPIDI | VALID_SDSPICS;
+    config->clkfreq = DEF_CLKFREQ;
+    config->clkmode = DEF_CLKMODE;
+    config->baudrate = DEF_BAUDRATE;
+    config->rxpin = DEF_RXPIN;
+    config->txpin = DEF_TXPIN;
+    config->tvpin = DEF_TVPIN;
+    config->sdDriver = CopyString("sd_driver.dat");
+    config->sdspiDO = DEF_SDSPIDO;
+    config->sdspiClk = DEF_SDSPICLK;
+    config->sdspiDI = DEF_SDSPIDI;
+    config->sdspiCS = DEF_SDSPICS;
+    strcpy(config->name, DEF_NAME);
+    
+    return config;
 }
 
 static int SkipSpaces(LineBuf *buf)
