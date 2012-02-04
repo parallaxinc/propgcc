@@ -93,7 +93,7 @@ static int File_fopen(FILE *fp, const char *fname1, const char *mode)
     // Set up file buffer in the FILE struct
     fp->_ptr = fp->_base = ((void *)fileinfo) + sizeof(FILEINFO);
     fp->_bsiz = FILE_BUFFER_SIZE;
-    fp->_flag |= _IOFREEBUF | _IOBIN;
+    fp->_flag |= _IOFREEBUF;
 
     return 0;
 }

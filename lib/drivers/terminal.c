@@ -46,6 +46,9 @@ _term_read(FILE *fp, unsigned char *buf, int size)
   if (!putbyte || !getbyte)
     return 0;
 
+  if (!cooked)
+    size = 1;
+
   while (count < size)
     {
       value = (*getbyte)(fp);
