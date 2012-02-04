@@ -24,6 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include "config.h"
 #include "system.h"
@@ -61,10 +62,6 @@ static ConfigSymbol configSymbols[] = {
 {   NULL,           0           }
 };
 
-/* board configurations */
-static BoardConfig *boardConfigs = NULL;
-
-static BoardConfig *SetupDefaultConfiguration(void);
 static int SkipSpaces(LineBuf *buf);
 static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm);
 static int ParseNumericExpr(char *token, int *pValue);
@@ -84,31 +81,27 @@ BoardConfig *NewBoardConfig(const char *name)
     return config;
 }
 
-BoardConfig *GetBoardConfig(const char *name)
-{
-    BoardConfig *config;
-    for (config = boardConfigs; config != NULL; config = config->next)
-        if (strcasecmp(name, config->name) == 0)
-            return config;
-    return NULL;
-}
-
 /* ParseConfigurationFile - parse a configuration file */
-void ParseConfigurationFile(System *sys, const char *path)
+BoardConfig *ParseConfigurationFile(System *sys, const char *name)
 {
-    BoardConfig *config = NULL;
-    BoardConfig **pNextConfig;
+    char path[PATH_MAX];
+    BoardConfig *config;
     char *tag, *value;
     LineBuf buf;
     FILE *fp;
     int ch;
+    
+    /* make the configuration file name */
+    sprintf(path, "%s.cfg", name);
 
-    boardConfigs = SetupDefaultConfiguration();
-    pNextConfig = &boardConfigs->next;
-        
+    /* open the configuration file */
     if (!(fp = xbOpenFileInPath(sys, path, "r")))
-        return;
+        return NULL;
 
+    /* create a new board configuration */
+    if (!(config = NewBoardConfig(name)))
+        ParseError(&buf, "insufficient memory");
+        
     /* process each line in the configuration file */
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {
     
@@ -124,33 +117,8 @@ void ParseConfigurationFile(System *sys, const char *path)
             // ignore blank lines and comments
             break;
             
-        case '[':   /* board tag */
-        
-            /* get the board name */
-            ++buf.linePtr;
-            if (!(tag = NextToken(&buf, "]", &ch)))
-                ParseError(&buf, "missing board tag");
-            if (ch != ']') {
-                if (SkipSpaces(&buf) != ']')
-                    ParseError(&buf, "missing close bracket after board tag");
-                ++buf.linePtr;
-            }
-            if (SkipSpaces(&buf) != '\n')
-                ParseError(&buf, "missing end of line");
-                
-            /* add a new board configuration */
-            if (!(config = NewBoardConfig(tag)))
-                ParseError(&buf, "insufficient memory");
-            *pNextConfig = config;
-            pNextConfig = &config->next;
-            break;
-            
         default:    /* tag:value pair */
         
-            /* make sure we're in a board configuration */
-            if (!config)
-                ParseError(&buf, "not in a board configuration");
-                
             /* get the tag */
             if (!(tag = NextToken(&buf, ":", &ch)))
                 ParseError(&buf, "missing tag");
@@ -179,7 +147,11 @@ void ParseConfigurationFile(System *sys, const char *path)
         }
     }
 
+    /* close the board configuration file */
     fclose(fp);
+    
+    /* return the board configuration */
+    return config;
 }
 
 static int chktag(char *tag, char *chktag)
@@ -324,32 +296,6 @@ void MergeConfigs(BoardConfig *dst, BoardConfig *src)
         dst->validMask |= VALID_EEPROMFIRST;
         dst->eepromFirst = src->eepromFirst;
     }
-}
-
-static BoardConfig *SetupDefaultConfiguration(void)
-{
-    BoardConfig *config;
-    
-    if (!(config = (BoardConfig *)malloc(sizeof(BoardConfig) + strlen(DEF_NAME))))
-        Fatal("insufficient memory");
-        
-    memset(config, 0, sizeof(BoardConfig));
-    config->validMask = VALID_CLKFREQ | VALID_CLKMODE | VALID_BAUDRATE | VALID_RXPIN | VALID_TXPIN | VALID_TVPIN
-                      | VALID_SDDRIVER | VALID_SDSPIDO | VALID_SDSPICLK | VALID_SDSPIDI | VALID_SDSPICS;
-    config->clkfreq = DEF_CLKFREQ;
-    config->clkmode = DEF_CLKMODE;
-    config->baudrate = DEF_BAUDRATE;
-    config->rxpin = DEF_RXPIN;
-    config->txpin = DEF_TXPIN;
-    config->tvpin = DEF_TVPIN;
-    config->sdDriver = CopyString("sd_driver.dat");
-    config->sdspiDO = DEF_SDSPIDO;
-    config->sdspiClk = DEF_SDSPICLK;
-    config->sdspiDI = DEF_SDSPIDI;
-    config->sdspiCS = DEF_SDSPICS;
-    strcpy(config->name, DEF_NAME);
-    
-    return config;
 }
 
 static int SkipSpaces(LineBuf *buf)

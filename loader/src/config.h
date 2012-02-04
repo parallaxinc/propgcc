@@ -120,14 +120,12 @@ struct BoardConfig {
     uint32_t sdspiSel;
     uint32_t sdspiMsk;
     uint32_t eepromFirst;
-    BoardConfig *next;
     char name[1];
 };
 
 BoardConfig *NewBoardConfig(const char *name);
-void ParseConfigurationFile(System *sys, const char *path);
+BoardConfig *ParseConfigurationFile(System *sys, const char *path);
 int SetConfigField(BoardConfig *config, char *tag, char *value);
-BoardConfig *GetBoardConfig(const char *name);
 void MergeConfigs(BoardConfig *dst, BoardConfig *src);
 #ifdef NEED_STRCASECMP
 int strcasecmp(const char *s1, const char *s2);

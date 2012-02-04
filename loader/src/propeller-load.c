@@ -210,10 +210,9 @@ int main(int argc, char *argv[])
 #endif
     
     sys.ops = &myOps;
-    ParseConfigurationFile(&sys, "propeller-load.cfg");
 
     /* setup for the selected board */
-    if (!(config = GetBoardConfig(board))) {
+    if (!(config = ParseConfigurationFile(&sys, board))) {
         fprintf(stderr, "error: can't find board configuration '%s'\n", board);
         return 1;
     }
