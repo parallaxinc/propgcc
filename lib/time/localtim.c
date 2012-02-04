@@ -40,6 +40,7 @@ DEBUG_TM(const char *nm, struct tm *tm)
 #define SECS_PER_HOUR   (3600L)
 #define SECS_PER_DAY    (86400L)
 #define SECS_PER_YEAR   (31536000L)
+#define SECS_PER_LEAP_YEAR   (31536000L + SECS_PER_DAY)
 #define SECS_PER_FOUR_YEARS (4*SECS_PER_YEAR + SECS_PER_DAY)
 
 time_t _timezone = -1;	/* holds # seconds west of GMT */
@@ -108,8 +109,8 @@ struct tm *_gmtime_r(const time_t *t, struct tm *stm)
 
         stm->tm_wday = (int) (((time/SECS_PER_DAY) + 4) % 7);
 
-	/* align on 1972 boundary (start of leap years) */
-	if (time > 2*SECS_PER_YEAR)
+	/* align on 1972 boundary (first leap year in epoch) */
+	if (time >= 2*SECS_PER_YEAR)
 	  {
 	    time -= 2*SECS_PER_YEAR;
 	    /* look at how many 4 year periods (including leap year) have
@@ -117,12 +118,18 @@ struct tm *_gmtime_r(const time_t *t, struct tm *stm)
 	    quadyears = time / SECS_PER_FOUR_YEARS;
 	    time = time % SECS_PER_FOUR_YEARS;
 	    year = 72 + 4*quadyears;
+	    if (time >= SECS_PER_LEAP_YEAR) {
+	      year++;
+	      time -= SECS_PER_LEAP_YEAR;
+	      year += (time / SECS_PER_YEAR);
+	      time = time % SECS_PER_YEAR;
+	    }
 	  }
 	else
-	  year = 70;
-	/* now look at left over years */
-	year += (time / SECS_PER_YEAR);
-	time = time % SECS_PER_YEAR;
+	  {
+	    year = 70 + (time / SECS_PER_YEAR);
+	    time = time % SECS_PER_YEAR;
+	  }
 
         stm->tm_year = year;
         mday = stm->tm_yday = (int)(time/SECS_PER_DAY);
@@ -131,7 +138,7 @@ struct tm *_gmtime_r(const time_t *t, struct tm *stm)
         for (i = 0; mday >= days_per_mth[i]; i++)
                 mday -= days_per_mth[i];
         stm->tm_mon = i;
-        stm->tm_mday = mday;
+        stm->tm_mday = mday + 1;
 
         time = time % SECS_PER_DAY;
         stm->tm_hour = (int) (time/SECS_PER_HOUR);
