@@ -203,14 +203,14 @@ terminal driver only processes 1 character at a time in raw mode.
   reduce the footprint of these functions, the library provides
   several options:
   <UL>
-    <LI><CODE>_simple_printf</CODE> is a simple version of printf with
+    <LI><CODE>__simple_printf</CODE> is a simple version of printf with
       support for the most common output formats (hex and decimal
       integers, strings, and characters) but without support for
       floating point, 64 bit integers, right
       justification, precision, alternate output formats, and other
       advanced features. You can
       use this version of printf in your code by
-      adding <CODE>-Dprintf=_simple_printf</CODE> to the command
+      adding <CODE>-Dprintf=__simple_printf</CODE> to the command
       line. The simple printf is by far the smallest version of
       printf, but obviously it is limited.
     </LI>
@@ -230,7 +230,7 @@ terminal driver only processes 1 character at a time in raw mode.
 <A NAME="cogprintf"><H3>Printf in -mcog mode</H3></A>
 <P>
   The stdio functions in -mcog mode are even simpler. Only the
-  equivalent of <CODE>_simple_printf</CODE> is available in -mcog mode
+  equivalent of <CODE>__simple_printf</CODE> is available in -mcog mode
   (there isn't enough room for more). Only the standard output is
   available in -mcog.
 </P>
@@ -376,7 +376,18 @@ on most boards.
 The simple serial driver does not require any additional cogs to
 operate.
 </P>
-
+<P>
+  Note that because the simple serial driver runs completely in the
+  local cog, it shares the cog's DIRA and OUTA register with the
+  calling code.  Therefore, avoid overwriting the DIRA/OUTA bits
+  corresponding to the simple serial driver's TX and RX pins.  You can
+  do this when setting or clearing bits for other I/O devices by using
+  bit-setting and bit-masking instead of direct assignment
+  (e.g. <CODE>DIRA |= 3</CODE> or <CODE>DIRA &= ~3</CODE> instead
+  of <CODE>DIRA = 3</CODE> or <CODE>DIRA = 0</CODE>).  This is always
+  a good idea, but failing to do this in any code that uses the simple
+  serial driver will result in unpredictable I/O.
+</P>
 <H3>Full Duplex Serial Driver (Prefix FDS:)</H3>
 <P>
 The full duplex serial driver (<CODE>_Driver
