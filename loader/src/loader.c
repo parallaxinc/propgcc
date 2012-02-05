@@ -147,6 +147,8 @@ static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 static int Error(char *fmt, ...);
 static void *NullError(char *fmt, ...);
 
+#if 0
+
 static int ShowPort(const char* port, void* data)
 {
     printf("%s\n", port);
@@ -199,6 +201,8 @@ int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
         
     return rc;
 }
+
+#endif
 
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags)
 {    
