@@ -358,7 +358,7 @@ void cmd_M_write_memory(int i){
 
 /* 's' - single step */
 char *cmd_s_step(int cog, int i){
-      uint8_t step_fcn = FCN_STEP;
+      uint8_t byte = FCN_STEP;
       char *halt_code;
 
           if(cmd[i]){
@@ -372,8 +372,12 @@ char *cmd_s_step(int cog, int i){
               // BUG: do something about a write error
             }
           }
-          tx(&step_fcn, 1);
-          // BUG: wait for a halt
+          tx(&byte, 1);
+          if(rx_timeout(&byte, 1, PKT_TIMEOUT) != 1 || byte != ACK){
+            // BUG: handle timeout or NAK
+          }
+          while (rx(&byte, 1) != 1 || byte != HALT)
+            ;
           halt_code = "S05";
           reply(halt_code, 3);
           
@@ -382,7 +386,7 @@ char *cmd_s_step(int cog, int i){
 
 /* 'c' - continue */
 char *cmd_c_continue(int cog, int i){
-      uint8_t run_fcn = FCN_RUN;
+      uint8_t byte = FCN_RUN;
       char *halt_code;
       
           if(cmd[i]){
@@ -397,8 +401,12 @@ char *cmd_c_continue(int cog, int i){
             }
           }
           halt_code = "S02";
-          tx(&run_fcn, 1);
-          // BUG: wait for a halt
+          tx(&byte, 1);
+          if(rx_timeout(&byte, 1, PKT_TIMEOUT) != 1 || byte != ACK){
+            // BUG: handle timeout or NAK
+          }
+          while (rx(&byte, 1) != 1 || byte != HALT)
+            ;
           reply(halt_code, 3);
           
     return halt_code;
