@@ -105,6 +105,9 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 		  case 'd':
                         sprintf(buf, "%02d", ts->tm_mday);
                         break;
+		  case 'F':
+		        sprintf(buf, "%04d-%02d-%02d", 1900+ts->tm_year, ts->tm_mon+1, ts->tm_mday);
+			break;
                   case 'H':
                         sprintf(buf, "%02d", ts->tm_hour);
                         break;

@@ -243,6 +243,34 @@ then
 fi
 
 #
+# build gcc libgcc
+# this must be done after the library build, since it depends on
+# library header files
+#
+cd ../build/gcc
+make ${JOBS} all-target-libgcc
+if test $? != 0
+then
+   echo "gcc make all failed"
+   cd ../../propgcc
+   exit 1
+fi
+make install-target-libgcc
+if test $? != 0
+then
+   echo "gcc make install failed."
+   cd ../../propgcc
+   exit 1
+fi
+cd ../../propgcc
+
+#
+# build propeller-load
+#
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader install
+
+#
 # build gcc libstdc++
 # this must be done after the library build, since it depends on
 # library header files
@@ -263,12 +291,6 @@ then
    exit 1
 fi
 cd ../../propgcc
-
-#
-# build propeller-load
-#
-make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader
-make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader install
 
 echo "Build complete."
 exit 0

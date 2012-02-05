@@ -6,7 +6,10 @@ BUILD=../../../build/lib/obj/$(MODEL)
 LIB=$(BUILD)/libc.a
 LIBM=$(BUILD)/libm.a $(BUILD)/libc.a
 
-tests: strtod.run scanf.run sprintf.run strtol.run wstring.run ctype.run
+tests: time.run strtod.run scanf.run sprintf.run strtol.run wstring.run ctype.run
+
+time.elf: time.o $(LIB)
+	$(CC) $(CFLAGS) -o $@ $^
 
 ctype.elf: ctype.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
