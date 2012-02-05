@@ -237,9 +237,8 @@ static void ShowLastError(void)
  */
 #define EXIT_CHAR   0xff
 
-void terminal_mode(void)
+void terminal_mode(int check_for_exit)
 {
-    extern int check_for_exit;
     int sawexit_char = 0;
     int sawexit_valid = 0;
     int exitcode = 0;
