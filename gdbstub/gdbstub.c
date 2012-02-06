@@ -32,6 +32,10 @@
 /* timeout waiting for packet data */
 #define PKT_TIMEOUT 1000
 
+/* attention byte sent before a command is sent */
+#define ATTN        0x01
+#define ACK         0x40
+
 /* serial debug kernel function codes */
 #define FCN_STEP    0x01
 #define FCN_RUN     0x02
@@ -39,7 +43,6 @@
 #define FCN_WRITE   0x04
 
 /* protocol ack/nak */
-#define ACK         0x06
 #define NAK         0x15
 
 /* code to send to the serial debug kernel to interrupt program execution */
@@ -51,12 +54,8 @@
 /* maximum amount of data in a READ or WRITE packet */
 #define MAX_DATA    128
 
-/* serial debug kernel data packet */
-#define PKT_FCN     0
-#define PKT_ADDR    1
-#define PKT_COUNT   5
-#define PKT_DATA    6   /* checksum immediately follows the data for WRITE and the address for READ */
-#define PKT_SIZE    (6 + MAX_DATA + 1)
+/* maximum packet size (FCN_WRITE packet with 2 byte addr, 1 byte count, 128 data bytes, 1 checksum */
+#define PKT_MAX     (3 + MAX_DATA + 1)
 
 #define DEF_GCC_REG_BASE    0
 #define GCC_REG_COUNT       18  // r0-r14, lr, sp, pc -- what about flags, breakpt?
@@ -101,12 +100,30 @@ char parse_byte(char *ch){
   return val;
 }
 
+int debug_cmd(int fcn) {
+	uint8_t byte;
+	
+	/* send the attention byte */
+	byte = ATTN;
+	tx(&byte, 1);
+
+	/* wait for an ACK or a timeout */
+	do {
+	    if (rx_timeout(&byte, 1, PKT_TIMEOUT) != 0)
+	        return -1;
+	} while (byte != ACK);
+
+    /* send the function code */
+	byte = fcn;
+	tx(&byte, 1);
+	
+	/* return successfully */
+	return 0;
+}
+
 int read_memory(uint32_t addr, uint8_t *buf, int len){
-    uint8_t pkt[PKT_SIZE], byte;
-    uint8_t pktlen, chksum, *p;
-    
-    /* setup to read from memory */
-    pkt[PKT_FCN] = FCN_READ;
+    uint8_t pkt[PKT_MAX], byte;
+    uint8_t pktlen, chksum, i, *p;
     
     /* read data in MAX_DATA sized chunks */
     while (len > 0) {
@@ -118,17 +135,14 @@ int read_memory(uint32_t addr, uint8_t *buf, int len){
         chksum = 0;
         
         /* insert the address into the packet */
-        p = &pkt[PKT_ADDR];
-        chksum ^= (*p++ = ( addr        & 0xff));
-        chksum ^= (*p++ = ((addr >>  8) & 0xff));
-        chksum ^= (*p++ = ((addr >> 16) & 0xff));
-        chksum ^= (*p++ = ((addr >> 24) & 0xff));
+        p = pkt;
+        *p++ =  addr        & 0xff;
+        *p++ = (addr >>  8) & 0xff;
+        *p++ = pktlen;
 
-        /* store the data byte count */
-        chksum ^= (pkt[PKT_COUNT] = pktlen);
-        
-        /* store the checksum */
-        *p++ = chksum;
+        /* setup for a read command */
+        if (debug_cmd(FCN_READ) != 0)
+            return -1;
         
         /* send the packet to the debug kernel */
         tx(pkt, p - pkt);
@@ -137,12 +151,14 @@ int read_memory(uint32_t addr, uint8_t *buf, int len){
         if (rx_timeout(&byte, 1, PKT_TIMEOUT) != 1 || byte != ACK)
             return -1;
             
-        /* check that the byte count is the same as what we asked for */
-        if (rx_timeout(&byte, 1, PKT_TIMEOUT) != 1 || byte != pktlen)
+        /* read the data */
+        if (rx_timeout(buf, pktlen + 1, PKT_TIMEOUT) != pktlen)
             return -1;
             
-        /* read the data */
-        if (rx_timeout(buf, pktlen, PKT_TIMEOUT) != pktlen)
+        /* verify the checksum */
+        for (i = 0, chksum = 0; i < pktlen; ++i)
+            chksum += buf[i];
+        if (chksum != buf[pktlen])
             return -1;
             
         /* move ahead to the next packet */
@@ -156,11 +172,8 @@ int read_memory(uint32_t addr, uint8_t *buf, int len){
 }
 
 int write_memory(uint32_t addr, uint8_t *buf, int len){
-    uint8_t pkt[PKT_SIZE], byte;
+    uint8_t pkt[PKT_MAX], byte;
     uint8_t pktlen, chksum, *p;
-    
-    /* setup to write to memory */
-    pkt[PKT_FCN] = FCN_WRITE;
     
     /* write data in MAX_DATA sized chunks */
     while (len > 0) {
@@ -172,21 +185,21 @@ int write_memory(uint32_t addr, uint8_t *buf, int len){
         chksum = 0;
         
         /* insert the address into the packet */
-        p = &pkt[PKT_ADDR];
+        p = pkt;
         chksum ^= (*p++ = ( addr        & 0xff));
         chksum ^= (*p++ = ((addr >>  8) & 0xff));
-        chksum ^= (*p++ = ((addr >> 16) & 0xff));
-        chksum ^= (*p++ = ((addr >> 24) & 0xff));
+        chksum ^= (*p++ = pktlen);
 
-        /* store the data byte count */
-        chksum ^= (pkt[PKT_COUNT] = pktlen);
-        
         /* store the data into the packet */
-        for (p = &pkt[PKT_DATA]; pktlen > 0; --pktlen)
+        for (; pktlen > 0; --pktlen)
             chksum ^= (*p++ = *buf++);
         
         /* store the checksum */
         *p++ = chksum;
+        
+        /* setup for a write command */
+        if (debug_cmd(FCN_READ) != 0)
+            return -1;
         
         /* send the packet to the debug kernel */
         tx(pkt, p - pkt);
@@ -196,8 +209,8 @@ int write_memory(uint32_t addr, uint8_t *buf, int len){
             return -1;
             
         /* move ahead to the next packet */
-        addr += pkt[PKT_COUNT];
-        len -= pkt[PKT_COUNT];
+        addr += pktlen;
+        len -= pktlen;
     }
     
     /* return successfully */
@@ -358,7 +371,6 @@ void cmd_M_write_memory(int i){
 
 /* 's' - single step */
 char *cmd_s_step(int cog, int i){
-      uint8_t byte = FCN_STEP;
       char *halt_code;
 
           if(cmd[i]){
@@ -372,12 +384,9 @@ char *cmd_s_step(int cog, int i){
               // BUG: do something about a write error
             }
           }
-          tx(&byte, 1);
-          if(rx_timeout(&byte, 1, PKT_TIMEOUT) != 1 || byte != ACK){
-            // BUG: handle timeout or NAK
+          if (debug_cmd(FCN_STEP) != 0){
+            // BUG: handle step error
           }
-          while (rx(&byte, 1) != 1 || byte != HALT)
-            ;
           halt_code = "S05";
           reply(halt_code, 3);
           
@@ -386,7 +395,6 @@ char *cmd_s_step(int cog, int i){
 
 /* 'c' - continue */
 char *cmd_c_continue(int cog, int i){
-      uint8_t byte = FCN_RUN;
       char *halt_code;
       
           if(cmd[i]){
@@ -401,12 +409,9 @@ char *cmd_c_continue(int cog, int i){
             }
           }
           halt_code = "S02";
-          tx(&byte, 1);
-          if(rx_timeout(&byte, 1, PKT_TIMEOUT) != 1 || byte != ACK){
-            // BUG: handle timeout or NAK
+          if (debug_cmd(FCN_RUN) != 0){
+            // BUG: handle step error
           }
-          while (rx(&byte, 1) != 1 || byte != HALT)
-            ;
           reply(halt_code, 3);
           
     return halt_code;
