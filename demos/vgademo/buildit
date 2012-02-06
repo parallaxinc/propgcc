@@ -1,1 +1,0 @@
-propeller-elf-gcc -Os -mxmmc vgademo.c vga.c draw.c text.c text2.c -o vgademo.elf
