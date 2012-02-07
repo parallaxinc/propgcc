@@ -9,7 +9,8 @@
 //#define DEBUG
 
 #include <sys/rtc.h>
-#include <cog.h>
+#include <sys/thread.h>
+#include <propeller.h>
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -21,7 +22,7 @@
  * (when time was set) in "baseticks"
  */
 
-union {
+HUBDATA union {
   unsigned long long curticks;
   struct {
     unsigned int lo;
@@ -29,33 +30,34 @@ union {
   } s;
 } _default_ticks;
 
-int _default_ticks_updated = 0;
+HUBDATA _atomic_t _default_ticks_lock;
+
+HUBDATA int _default_ticks_updated = 0;
 
 static unsigned long long baseticks;
 static time_t basetime;
 
-static void
-update_ticks(void)
+void
+_default_update_ticks(void)
 {
   unsigned int lastlo, now;
-
-  /* if another cog is keeping _default_ticks up to date, then
-     do nothing here */
-  if (_default_ticks_updated)
-    return;
 
   /* update the "curticks" variable based on the current clock counter */
   /* note that this works only if we are called often enough to notice
      counter overflow, which happens about every 54 seconds or so
   */
   now = _CNT;
-  lastlo = _default_ticks.s.lo;
-  if (lastlo > now)
-    {
-      /* overflowed */
-      _default_ticks.s.hi++;
-    }
-  _default_ticks.s.lo = now;
+  __lock(&_default_ticks_lock);
+  {
+      lastlo = _default_ticks.s.lo;
+      if (lastlo > now)
+        {
+          /* overflowed */
+          _default_ticks.s.hi++;
+        }
+      _default_ticks.s.lo = now;
+  }
+  __unlock(&_default_ticks_lock);
 }
 
 int
@@ -63,14 +65,22 @@ _default_rtc_gettime(struct timeval *tv)
 {
   unsigned long long t;
   unsigned long long rem;
+  if (!_default_ticks_updated)
+      _default_update_ticks();
 
-  update_ticks();
-  t = (_default_ticks.curticks - baseticks) / _clkfreq;
-  rem = (_default_ticks.curticks - baseticks) % _clkfreq;
+  unsigned long long diff;
+  __lock(&_default_ticks_lock);
+  {
+      diff  = _default_ticks.curticks - baseticks;
+  }
+  __unlock(&_default_ticks_lock);
+
+  t = diff / _clkfreq;
+  rem = diff % _clkfreq;
 
 #ifdef DEBUG
-  printf("curticks = %lld baseticks = %lld basetime=%lu t = %llu\n",
-	 _default_ticks.curticks, baseticks, basetime, t);
+  printf("curticks = %lld baseticks = %lld basetime=%lu diff = %llu t = %llu rem = %llu\n",
+	 _default_ticks.curticks, baseticks, basetime, diff, t, rem);
 #endif
   tv->tv_sec = basetime + (time_t)t;
   tv->tv_usec = rem * 1000000 / _clkfreq;
@@ -80,8 +90,15 @@ _default_rtc_gettime(struct timeval *tv)
 int
 _default_rtc_settime(const struct timeval *tv)
 {
-  update_ticks();
-  baseticks = _default_ticks.curticks;
+  if (!_default_ticks_updated)
+      _default_update_ticks();
+
+  __lock(&_default_ticks_lock);
+  {
+      baseticks = _default_ticks.curticks;
+  }
+  __unlock(&_default_ticks_lock);
+
   basetime = tv->tv_sec;
   /* FIXME? the tv_usec field of tv is ignored */
   return 0;
