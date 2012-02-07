@@ -11,6 +11,7 @@
 #include <sys/rtc.h>
 #include <sys/thread.h>
 #include <propeller.h>
+#include <stdint.h>
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -22,13 +23,7 @@
  * (when time was set) in "baseticks"
  */
 
-HUBDATA union {
-  unsigned long long curticks;
-  struct {
-    unsigned int lo;
-    unsigned int hi;
-  } s;
-} _default_ticks;
+HUBDATA uint64_t _default_ticks;
 
 HUBDATA _atomic_t _default_ticks_lock;
 
@@ -40,24 +35,30 @@ static time_t basetime;
 void
 _default_update_ticks(void)
 {
-  unsigned int lastlo, now;
+  unsigned int now;
+  union {
+    unsigned long long curticks;
+    struct {
+      unsigned int lo;
+      unsigned int hi;
+    } s;
+  } ticks;
 
-  /* update the "curticks" variable based on the current clock counter */
+
+  /* update the "_default_ticks" variable based on the current clock counter */
   /* note that this works only if we are called often enough to notice
      counter overflow, which happens about every 54 seconds or so
   */
+  ticks.curticks = _getAtomic64(&_default_ticks);
   now = _CNT;
-  __lock(&_default_ticks_lock);
-  {
-      lastlo = _default_ticks.s.lo;
-      if (lastlo > now)
-        {
-          /* overflowed */
-          _default_ticks.s.hi++;
-        }
-      _default_ticks.s.lo = now;
-  }
-  __unlock(&_default_ticks_lock);
+
+  if (ticks.s.lo > now)
+    {
+      /* overflowed */
+      ticks.s.hi++;
+    }
+  ticks.s.lo = now;
+  _putAtomic64(ticks.curticks, &_default_ticks);
 }
 
 int
@@ -69,11 +70,8 @@ _default_rtc_gettime(struct timeval *tv)
       _default_update_ticks();
 
   unsigned long long diff;
-  __lock(&_default_ticks_lock);
-  {
-      diff  = _default_ticks.curticks - baseticks;
-  }
-  __unlock(&_default_ticks_lock);
+  diff = _getAtomic64(&_default_ticks);
+  diff  = diff - baseticks;
 
   t = diff / _clkfreq;
   rem = diff % _clkfreq;
@@ -93,12 +91,7 @@ _default_rtc_settime(const struct timeval *tv)
   if (!_default_ticks_updated)
       _default_update_ticks();
 
-  __lock(&_default_ticks_lock);
-  {
-      baseticks = _default_ticks.curticks;
-  }
-  __unlock(&_default_ticks_lock);
-
+  baseticks = _getAtomic64(&_default_ticks);
   basetime = tv->tv_sec;
   /* FIXME? the tv_usec field of tv is ignored */
   return 0;

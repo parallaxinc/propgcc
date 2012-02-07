@@ -125,10 +125,18 @@ int _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_s
   (*ptr += inc)
 #endif
 
+  /* functions to atomicly fetch or set a 64 bit quantity in HUB memory */
+  /* by "atomic" we mean in 2 consecutive hub operations, low then high;
+     all users must follow this protocol
+  */
+  unsigned long long _getAtomic64(unsigned long long *ptr);
+  void _putAtomic64(unsigned long long x, unsigned long long *ptr);
+
 /* type for a volatile lock */
 /* if we change this type, change the definitions of SIG_ATOMIC_{MIN,MAX}
  * in stdint.h too
  */
+/* also note that in practice these have to go in HUB memory */
 typedef volatile int _atomic_t;
 typedef _atomic_t atomic_t;
 

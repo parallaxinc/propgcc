@@ -8,20 +8,29 @@
 __asm__(
 "    .section .cogrtcupdate,\"ax\"\n"
 "L_main\n"
-"    rdlong lastlo, default_ticks_ptr\n"
-"    mov    now, CNT\n"
-"    wrlong now, default_ticks_ptr\n"
-"    cmp    now,lastlo wc\n"
-" IF_NC jmp #L_main\n"
+
+"    rdlong oldlo, default_ticks_ptr\n"
+"    mov    newlo, CNT\n"
+"    cmp    newlo,oldlo wc\n"
 "    add    default_ticks_ptr,#4\n"
-"    rdlong lasthi, default_ticks_ptr\n" 
-"    add    lasthi,#1\n"
-"    wrlong lasthi, default_ticks_ptr\n"
+"    rdlong newhi, default_ticks_ptr\n" 
+"    addx   newhi,#0\n"  /* adds in the carry set above */
+"    sub    default_ticks_ptr,#4\n"
+
+/* the sequence here makes sure to write newlo,newhi in that
+ * order and in the fewest possible hub windows; if all readers
+ * of default_ticks also read lo,hi in the fewest possible
+ * hub cycles, then all users will
+ * see consistent values
+ */
+"    wrlong newlo, default_ticks_ptr\n"
+"    add    default_ticks_ptr,#4\n"
+"    wrlong newhi, default_ticks_ptr\n"
 "    sub    default_ticks_ptr,#4\n"
 "    jmp    #L_main\n"
-"lastlo long 0\n"
-"lasthi long 0\n"
-"now    long 0\n"
+"newlo long 0\n"
+"newhi long 0\n"
+"oldlo long 0\n"
 "default_ticks_ptr long __default_ticks\n"
 	);
 
