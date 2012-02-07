@@ -76,6 +76,7 @@ int32_t gdbmode = 0;
 
 FILE *logfile = NULL;
 FILE *tracefile = NULL;
+FILE *cmdfile = NULL;
 
 char cmd[1028];
 
@@ -101,6 +102,7 @@ void usage(void)
   fprintf(stderr, "     -b# Enable the serial port and set the baudrate to # (default 115200)\n");
   fprintf(stderr, "     -gdb Operate as a GDB target over stdin/stdout\n");
   fprintf(stderr, "     -L <filename> Log GDB remote comm to <filename>\n");
+  fprintf(stderr, "     -r <filename> Replay GDB session from <filename>\n");
   //fprintf(stderr, "     -x# Set the external memory size to # K-bytes\n");
   exit(1);
 }
@@ -115,7 +117,7 @@ int32_t getchx(void)
 {
     uint8_t val = 0;
     // GCC compiler issues warning for ignored fread return value
-    if(fread(&val, 1, 1, stdin))
+    if(fread(&val, 1, 1, cmdfile /*stdin*/))
     	if (val == 10) val = 13;
     return val;
 }
@@ -692,23 +694,23 @@ void get_cmd(){
   int ch;
 
   do{
-    ch = getc(stdin);
+    ch = getc(cmdfile);
   } while(ch != '$');
 
   if(logfile) fprintf(logfile, "gdb>");
   if(logfile) putc(ch, logfile);
 
   for(i = 0; i < sizeof(cmd); i++){
-    ch = getc(stdin);
+    ch = getc(cmdfile);
     if(logfile) putc(ch, logfile);
     if(ch == '#') break;
     cmd[i] = ch;
   }
   cmd[i] = 0;
   // eat the checksum
-  ch = getc(stdin);
+  ch = getc(cmdfile);
   if(logfile) putc(ch, logfile);
-  ch = getc(stdin);
+  ch = getc(cmdfile);
   if(logfile) putc(ch, logfile);
   if(logfile) putc('\n', logfile);
   // send an ACK
@@ -745,20 +747,45 @@ struct bkpt {
 
 struct bkpt *bkpt = 0;
 
+// Check the cog's PC to see if the LMM microcode is at an appropriate place
+// for a breakpoint to occur.  We don't want to break on LMM administrative
+// instructions.
+// FIXME we need a more general way to do this.  This is too dependent on special knowledge.
+int breakable_point(int i){
+  int32_t pc = PasmVars[i].pc;
+  if ((pc == 0x00000050/4)
+   || (pc == 0x0000005c/4)
+   || (pc == 0x00000068/4)
+   || (pc == 0x00000074/4)
+   || (pc == 0x00000080/4)
+   || (pc == 0x0000008c/4)
+   || (pc == 0x00000098/4)
+   || (pc == 0x000000a4/4))
+     return 1;
+   else
+     return 0;
+}
+
 int step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
   int i;
   int ret = 0;
   struct bkpt *b;
 
-  for (i = 0; i < 8; i++)    {
-    for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
-      if((PasmVars[i].mem[GCC_REG_BASE + 17] >= b->next->addr)
-	 && (PasmVars[i].mem[GCC_REG_BASE + 17] <= b->next->addr + b->next->len)){
-	ret = 1;
+  for (i = 0; i < 8; i++) {
+    if(breakable_point(i)){
+      // Look to see if the cog's LMM PC is at a breakpoint
+      for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
+        if((PasmVars[i].mem[GCC_REG_BASE + 17] >= b->next->addr)
+           && (PasmVars[i].mem[GCC_REG_BASE + 17] <= b->next->addr + b->next->len)){
+          ret = 1;
+        }
       }
     }
+  }
+  if(ret) return 1; // Hit a breakpoint; execute nothing.
+  for (i = 0; i < 8; i++) {
     *state = PasmVars[i].state;
-    if (*state & 4)	  {
+    if (*state & 4) {
       if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5)	      {
 	fprintf(tracefile, "Cog %d:  ", i);
 	if (proptwo){
@@ -786,7 +813,7 @@ int step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
     }
   }
   loopcount++;
-  return ret;
+  return 0;
 }
 
 int main(int argc, char **argv)
@@ -857,6 +884,10 @@ int main(int argc, char **argv)
 	{
 	  logfile = fopen(argv[++i], "wt");
 	}
+	else if (strcmp(argv[i], "-r") == 0)
+	{
+	  cmdfile = fopen(argv[++i], "rt");
+	}
 #if 0
 	else if (strncmp(argv[i], "-x", 2) == 0)
 	{
@@ -872,6 +903,8 @@ int main(int argc, char **argv)
 	else
 	    usage();
     }
+
+    if(!cmdfile) cmdfile = stdin;
 
     // Check the hub memory size and allocate it
     if (memsize < 32)

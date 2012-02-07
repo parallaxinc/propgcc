@@ -57,7 +57,7 @@ SPINDIR=.
 
 ifneq ($(NAME),)
 $(NAME).elf: $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS) -s
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 endif
 
 ifneq ($(LIBNAME),)

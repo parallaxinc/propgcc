@@ -48,10 +48,6 @@ static SystemOps myOps = {
     MyError
 };
 
-/* flag to terminal_mode to check for a certain sequence to indicate
-   program exit */
-int check_for_exit = 0;
-
 int main(int argc, char *argv[])
 {
     char actualport[PATH_MAX];
@@ -65,6 +61,7 @@ int main(int argc, char *argv[])
     int verbose = FALSE;
     int i;
     int terminalBaud = 0;
+    int check_for_exit = 0; /* flag to terminal_mode to check for a certain sequence to indicate program exit */
 
     /* get the environment settings */
     if (!(port = getenv("PROPELLER_LOAD_PORT")))
@@ -225,7 +222,7 @@ int main(int argc, char *argv[])
 
     /* initialize the serial port */
     if ((flags & (LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
-        int sts = InitPort(PORT_PREFIX, port, baud, verbose ? IFLAG_VERBOSE : 0, actualport);
+        int sts = InitPort(PORT_PREFIX, port, baud, verbose, actualport);
         switch (sts) {
         case PLOAD_STATUS_OK:
             // port initialized successfully
@@ -288,7 +285,7 @@ int main(int argc, char *argv[])
             serial_done();
             serial_init(actualport, terminalBaud);
         }
-        terminal_mode();
+        terminal_mode(check_for_exit);
     }
     return 0;
 }
