@@ -262,9 +262,7 @@ void msleep(int ms)
 /**
  * simple terminal emulator
  */
-extern int check_for_exit;
-
-void terminal_mode(void)
+void terminal_mode(int check_for_exit)
 {
     struct termios oldt, newt;
     char buf[128];

@@ -99,6 +99,7 @@ $(OBJDIR)/packet.o \
 $(OBJDIR)/PLoadLib.o \
 $(OBJDIR)/config.o \
 $(OBJDIR)/system.o \
+$(OBJDIR)/port.o \
 $(OBJDIR)/serial_helper.o \
 $(OBJDIR)/flash_loader.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
@@ -195,6 +196,10 @@ $(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
 	@$(ECHO) $@
+
+############
+# DAT TO C #
+############
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.dat
 	@$(BINDIR)/bin2c$(EXT) $< $@
