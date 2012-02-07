@@ -165,6 +165,24 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 		  case 'Y':
                         sprintf(buf, "%d", ts->tm_year + 1900);
                         break;
+		  case 'z':
+                        if (NULL != (s = getenv("TZ")))
+			  {
+			    int hh, mm;
+			    char c='+';
+			    _tzset();
+			    hh = -_timezone;
+			    if (hh < 0) {
+			      c = '-';
+			      hh = -hh;
+			    }
+			    mm = (hh/60)%60;
+			    hh = hh/3600;
+			    sprintf(buf, "%c%02d%02d", c, hh, mm);
+			  }
+			else
+			  buf[0] = '\0'; /* empty string */
+                        break;
                   case 'Z':
                         if (NULL != (s = getenv("TZ")))
 			  {

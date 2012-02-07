@@ -79,6 +79,11 @@ extern "C" {
   /* not implemented */
   int system(const char *command);
 
+#if defined(_POSIX_SOURCE) || defined(_GNU_SOURCE)
+  /* some non-ANSI functions */
+  int putenv(char *string);
+#endif
+
 #if defined(__cplusplus)
 }
 #endif
