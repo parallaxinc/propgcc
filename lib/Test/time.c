@@ -79,6 +79,13 @@ main()
   testgmttime(63072000, "%F %T %a", "1972-01-01 00:00:00 Sat");
   testgmttime(1293840000, "%F %H:%M:%S %A", "2011-01-01 00:00:00 Saturday");
   testgmttime(1330559999, "%x %X", "02/29/12 23:59:59");
+  testgmttime(1230465600, "%G-W%V-%u", "2008-W52-7");
+  testgmttime(1230552000, "%G-W%V-%u", "2009-W01-1");
+  testgmttime(1262174400, "%g-W%V-%u", "09-W53-3");
+  testgmttime(1262433600, "%g-W%V-%u", "09-W53-6");
+  testgmttime(1262692800, "%g-W%V-%u", "10-W01-2");
+  testgmttime(1325419200, "%G-W%V-%u", "2011-W52-7");
+  testgmttime(1325505600, "%G-W%V-%u", "2012-W01-1");
 
   testlocaltime(1330559999, "%x %X %z", "02/29/12 18:59:59 -0500");
   testlocaltime(1330621200, "%j %B %r %Z", "061 March 12:00:00 PM EST");

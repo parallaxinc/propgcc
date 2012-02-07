@@ -17,6 +17,7 @@
 #define BIG_LEN 80
 
 static int weeknumber (const struct tm *timeptr, int firstweekday);
+static int isoweeknumber(const struct tm *timeptr, int *year_ptr);
 
 #if 1
 /* probably should be in a separate locale file, but put them here for now */
@@ -42,6 +43,7 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
         long	num = 0;
         long    len;
 	int n;
+	int year;
         char    q;
         char    buf[BIG_LEN], *putstr, *s;
 
@@ -105,6 +107,12 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 		  case 'F':
 		        sprintf(buf, "%04d-%02d-%02d", 1900+ts->tm_year, ts->tm_mon+1, ts->tm_mday);
 			break;
+		  case 'g':
+		  case 'G':
+		        isoweeknumber(ts, &year);
+		        if (q == 'g') year = year % 100;
+		        sprintf(buf, "%02d", year);
+			break;
                   case 'H':
                         sprintf(buf, "%02d", ts->tm_hour);
                         break;
@@ -133,10 +141,10 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 			 */
                         putstr = (ts->tm_hour < 12) ? "AM" : "PM";
                         break;
-		   case 'r':	/* time as %I:%M:%S %p */
+		  case 'r':	/* time as %I:%M:%S %p */
 			strftime(buf, sizeof buf, "%I:%M:%S %p", ts);
 			break;
-		   case 'R':	/* time as %H:%M */
+		  case 'R':	/* time as %H:%M */
 			strftime(buf, sizeof buf, "%H:%M", ts);
 			break;
                   case 'S':
@@ -150,14 +158,20 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
                         sprintf(buf, "%02d:%02d:%02d", ts->tm_hour,
                                 ts->tm_min, ts->tm_sec);
                         break;
+		  case 'u':
+		    	sprintf(buf, "%d", (ts->tm_wday == 0) ? 7 : ts->tm_wday);
+                        break;
                   case 'U':  /* week of year - starting Sunday */
 			sprintf(buf, "%02d", weeknumber(ts, 0));
                         break;
+		  case 'V':
+		        sprintf(buf, "%02d", isoweeknumber(ts, &year));
+                        break;
+		  case 'w':
+		    	sprintf(buf, "%d", ts->tm_wday);
+                        break;
                   case 'W': /* week of year - starting Monday */
 			sprintf(buf, "%02d", weeknumber(ts, 1));
-                        break;
-                  case 'w':
-                        sprintf(buf, "%d", ts->tm_wday);
                         break;
                   case 'y':
                         sprintf(buf, "%02d", ts->tm_year % 100);
@@ -230,4 +244,39 @@ weeknumber(const struct tm *timeptr, int firstweekday)
 {
     return (timeptr->tm_yday - timeptr->tm_wday +
 	    (firstweekday ? (timeptr->tm_wday ? 8 : 1) : 7)) / 7;
+}
+
+static int
+days_in_thisyear(int year)
+{
+  return 365 + (((year%4) == 0) && ((year%100 != 0) || (year%400 == 0)));
+}
+
+static int
+isoweeknumber(const struct tm *timeptr, int *year_ptr)
+{
+  int weeknum;
+  int weekday = timeptr->tm_wday;
+  int nearest_thursday;
+  int year = timeptr->tm_year + 1900;
+  int yday = timeptr->tm_yday;
+
+  if (weekday == 0) weekday = 7;
+  if (weekday <= 4) {
+    nearest_thursday = yday + (4 - weekday);
+    if (nearest_thursday >= days_in_thisyear(year)) {
+      nearest_thursday -= days_in_thisyear(year);
+      year++;
+    }
+  } else  {
+    nearest_thursday = yday - (weekday - 4);
+    if (nearest_thursday < 0) {
+      year--;
+      nearest_thursday += days_in_thisyear(year);
+    }
+  }
+
+  weeknum = 1 + (nearest_thursday / 7);
+  *year_ptr = year;
+  return weeknum;
 }
