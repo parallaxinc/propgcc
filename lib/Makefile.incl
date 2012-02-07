@@ -59,7 +59,8 @@ MISC = 	ctype.o toupper.o tolower.o \
 	isalpha.o isalnum.o iscntrl.o isprint.o isspace.o isdigit.o \
         isblank.o isxdigit.o isupper.o islower.o isgraph.o ispunct.o \
 	sbrk.o write.o signal.o assert.o locale.o \
-	chdir.o rmdir.o mkdir.o opendir.o rdwr.o lseek.o
+	chdir.o rmdir.o mkdir.o opendir.o rdwr.o lseek.o \
+	putenv.o
 
 WCHAR = wctype.o iswctype.o iswalnum.o iswalpha.o iswblank.o \
       iswcntrl.o iswdigit.o iswgraph.o iswlower.o iswprint.o \
