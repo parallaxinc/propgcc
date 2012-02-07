@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+char **_environ_ptr;
 extern char *_environ[];
 
 char *
@@ -15,7 +16,10 @@ getenv(const char *tag)
 	char *name;
 	size_t len = strlen(tag);
 
-	for (var = _environ; (name = *var) != 0; var++) {
+	if (!_environ_ptr)
+	  _environ_ptr = _environ;
+
+	for (var = _environ_ptr; (name = *var) != 0; var++) {
 		if (!strncmp(name, tag, len) && name[len] == '=')
 			return name+len+1;
 	}
