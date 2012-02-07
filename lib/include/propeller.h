@@ -133,7 +133,7 @@ do { \
  * wait until system counter reaches a value
  * @param a - target value
  */
-#define waitcnt(a) __builtin_propeller_waitcnt((a),_CNT)
+#define waitcnt(a) __builtin_propeller_waitcnt((a),0)
 
 /*
  * wait until system counter reaches a value
