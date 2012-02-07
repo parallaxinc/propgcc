@@ -80,7 +80,7 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strstr.o strpbrk.o \
 	strerror.o strcasecmp.o strncasecmp.o xmmcopy.o
 
-TIME = clock.o sleep.o time.o difftime.o strftime.o localtim.o asctime.o \
+TIME = clock.o sleep.o usleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 	settimeofday.o gettimeofday.o
 
 THREADS = thread.o cogthread.o nap.o
