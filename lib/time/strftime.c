@@ -166,27 +166,17 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
                         sprintf(buf, "%d", ts->tm_year + 1900);
                         break;
                   case 'Z':
-                        if (NULL != (s = getenv("TZ"))) {
-				strcpy(buf, s);
-				s = buf;
-				if (ts->tm_isdst) {
-				    while (*s && isalpha(*s)) s++;
-					    while (*s && (isdigit(*s)||
-							  *s == '+'  ||
-							  *s == '-'  ||
-							  *s == ':')) {
-						    s++;
-					    };
-					    if (*s)
-					        putstr = s;
-				}
-				s = putstr;
-				while (*s && isalpha(*s))
-				        s++;
-				*s = 0;
-			}
+                        if (NULL != (s = getenv("TZ")))
+			  {
+			    _tzset();
+			    if (ts->tm_isdst) {
+			      strcpy(buf, _tzname[1]);
+			    } else {
+			      strcpy(buf, _tzname[0]);
+			    }
+			  }
 			else
-			        buf[0] = '\0'; /* empty string */
+			  buf[0] = '\0'; /* empty string */
                         break;
                    case '%':
                         putstr = "%";
