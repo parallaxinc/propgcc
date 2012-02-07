@@ -53,6 +53,18 @@ struct tm {
   char *ctime(const time_t *timep);
   char *ctime_r(const time_t *timep, char *buf);
 
+#if defined(_POSIX_SOURCE) || defined(_GNU_SOURCE)
+  struct tm *gmtime_r(const time_t *t, struct tm *stm);
+  struct tm *localtime_r(const time_t *t, struct tm *stm);
+#endif
+
+  /* time zone functions */
+  /* set time zone to contents of environment string */
+  void _tzset(void);
+
+  char *_tzname[2];  /* 0 is ordinary, 1 is dst */
+  int   _timezone;   /* holds seconds west of GMT */
+
 #if defined(__cplusplus)
 }
 #endif

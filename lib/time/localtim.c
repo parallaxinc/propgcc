@@ -18,8 +18,6 @@ struct TLS *_TLS = &foo;
 #include <sys/thread.h>
 #endif
 
-void _tzset(void);
-
 #define toint(c) ((c)-'0')
 
 #if 0
@@ -43,7 +41,7 @@ DEBUG_TM(const char *nm, struct tm *tm)
 #define SECS_PER_LEAP_YEAR   (31536000L + SECS_PER_DAY)
 #define SECS_PER_FOUR_YEARS (4*SECS_PER_YEAR + SECS_PER_DAY)
 
-time_t _timezone = -1;	/* holds # seconds west of GMT */
+int _timezone = -1;	/* holds # seconds west of GMT */
 
 static int
 days_per_mth[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
