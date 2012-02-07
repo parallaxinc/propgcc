@@ -11,6 +11,9 @@ tests: time.run strtod.run scanf.run sprintf.run strtol.run wstring.run ctype.ru
 time.elf: time.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 
+rtc.elf: rtc.o $(LIB)
+	$(CC) $(CFLAGS) -o $@ $^
+
 ctype.elf: ctype.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 

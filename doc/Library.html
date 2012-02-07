@@ -283,7 +283,7 @@ defines for these are mostly in <CODE>&lt;time.h&gt;</CODE>.
 <P>
   The interface to real time clocks is via two function pointers:
   <PRE>
-    #include &lt;sys/time.h&gt;
+    #include &lt;sys/rtc.h&gt;
     int (*_rtc_gettime)(struct timeval *tv);
     int (*_rtc_settime)(const struct timeval *tv);
   </PRE>
@@ -292,24 +292,37 @@ defines for these are mostly in <CODE>&lt;time.h&gt;</CODE>.
   by POSIX, and has two fields <CODE>tv_sec</CODE> (giving the current
   time in <CODE>time_t</CODE> format) and <CODE>tv_usec</CODE> (giving
   the microseconds elapsed since <CODE>tv_sec</CODE> last changed;
-  during a leap second this might go up to 2000000000.
+  during a leap second this might go up to 2000000000).
 </P>
 <P>
   There is a default clock that simply uses the built-in cycle
   counter. At a typical clock rate of 80MHz this counter overflows in
   54 seconds. The default RTC driver uses a 64 bit tick counter to
-  compensate for this, but it must be called more often than the
-  counter overflows in order for it to keep the high word of the tick
-  counter accurate.
+  compensate for this, but a time retrieval function (such as time())
+  must be called more often than the counter overflows in order for it
+  to keep the high word of the tick counter accurate.
 </P>
 <P>
   There is also a mechanism to use another cog to update the cycle
   counter, which will remove the requirement for frequent calling of
-  the clock functions. If the global
-  variable <CODE>_default_ticks_updated</CODE> is set to a non-zero
-  value, then the default RTC assumes that another cog is keeping the
-  64 bit counter <CODE>_default_ticks</CODE> up to date, and it does
-  not set it from the cycle counter.
+  the clock functions. To do this, call
+  the <CODE>_rtc_start_timekeeping_cog()</CODE> routine, which will
+  start a cog running whose entire purpose is to keep the clock
+  up-to-date.
+</P>
+<P>
+  Alternatively, if you have spare time on one of your cogs, you can
+  kick the built-in cycle counter yourself (without the expensive call
+  to the time() routine which performs several 64-bit math
+  operations).  To do this, set the global variable
+  <CODE>_default_ticks_updated</CODE> to a non-zero value, and call the
+  _update_default_ticks() routine on a regular basis.
+</P>
+<P>
+  If you have an alternate way to keep time (such as a hardware chip
+  like the DS1318), replace the built-in drivers by assigning the
+  global <CODE>_rtc_gettime</CODE> and <CODE>_rtc_settime</CODE>
+  pointers to your own gettime() and settime() routines.
 </P>
 
 <A NAME="drivers"><H1>Device Drivers</H1></A>
