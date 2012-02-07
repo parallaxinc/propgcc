@@ -14,6 +14,7 @@ uint8_t space[HEAPSIZE];
 extern _Driver _FullDuplexSerialDriver;
 _Driver *_driverlist[] = {
     &_FullDuplexSerialDriver,
+    NULL
 };
 #endif
 
