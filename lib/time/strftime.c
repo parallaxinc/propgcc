@@ -35,14 +35,6 @@ extern char **_LC_Mth_name;     /* in setlocale.c */
 extern char **_LC_Day_name;
 #endif
 
-/*
- * FIXME: I'm not sure what the formats for 'c', 'x', and 'X' should be
- * for various locales, or even for the "C" locale. I've assumed that
- * 'c' gives the same as asctime(), 'x' is e.g. Jan 01 1970, and
- * 'X' is e.g. 12:20:37.
- *
- * I would venture that for "C" locale these formats are fine - mj.
- */
 
 size_t
 strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
@@ -84,11 +76,9 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 				        sprintf(buf, "%-.3s",
 						_LC_Day_name[ts->tm_wday]);
                         break;
-                  case 'B':
                   case 'b':
-#ifdef SYSV_EXT
+                  case 'B':
                   case 'h':	/* same as 'b' */
-#endif
 	                if (ts->tm_mon < 0 || ts->tm_mon > 11)
 			        putstr = "?";
 			else
@@ -105,6 +95,13 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 		  case 'd':
                         sprintf(buf, "%02d", ts->tm_mday);
                         break;
+		  case 'D':	/* date as %m/%d/%y */
+ 		  case 'x':     /* locale preferred date; for C locale same as 'D' */
+			strftime(buf, sizeof buf, "%m/%d/%y", ts);
+			break;
+		  case 'e':	/* day of month, blank padded */
+			sprintf(buf, "%2d", ts->tm_mday);
+			break;
 		  case 'F':
 		        sprintf(buf, "%04d-%02d-%02d", 1900+ts->tm_year, ts->tm_mon+1, ts->tm_mday);
 			break;
@@ -126,6 +123,9 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
                   case 'M':
                         sprintf(buf, "%02d", ts->tm_min);
                         break;
+		   case 'n':	/* same as \n */
+			putstr = "\n";
+			break;
                   case 'p':
 			/*
 			 * this is wrong - strings "AM', "PM" are
@@ -133,8 +133,22 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
 			 */
                         putstr = (ts->tm_hour < 12) ? "AM" : "PM";
                         break;
+		   case 'r':	/* time as %I:%M:%S %p */
+			strftime(buf, sizeof buf, "%I:%M:%S %p", ts);
+			break;
+		   case 'R':	/* time as %H:%M */
+			strftime(buf, sizeof buf, "%H:%M", ts);
+			break;
                   case 'S':
                         sprintf(buf, "%02d", ts->tm_sec);
+                        break;
+		  case 't':	/* same as \t */
+			putstr = "\t";
+			break;
+                  case 'T':
+		  case 'X': /* locale dependent time form; for now, fix to C locale  */
+                        sprintf(buf, "%02d:%02d:%02d", ts->tm_hour,
+                                ts->tm_min, ts->tm_sec);
                         break;
                   case 'U':  /* week of year - starting Sunday */
 			sprintf(buf, "%02d", weeknumber(ts, 0));
@@ -144,15 +158,6 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
                         break;
                   case 'w':
                         sprintf(buf, "%d", ts->tm_wday);
-                        break;
-                  case 'x':
-		        /* once again - format may be locale dependent */ 
-                        strftime(buf, sizeof buf, "%b %d %Y", ts);
-                        break;
-                  case 'X':
-			/* same applies to this format as well */
-                        sprintf(buf, "%02d:%02d:%02d", ts->tm_hour,
-                                ts->tm_min, ts->tm_sec);
                         break;
                   case 'y':
                         sprintf(buf, "%02d", ts->tm_year % 100);
@@ -186,29 +191,6 @@ strftime(char *str, size_t maxsize, const char *fmt, const struct tm *ts)
                    case '%':
                         putstr = "%";
                         break;
-#ifdef SYSV_EXT
-		   case 'n':	/* same as \n */
-			putstr = "\n";
-			break;
-		   case 't':	/* same as \t */
-			putstr = "\t";
-			break;
-		   case 'D':	/* date as %m/%d/%y */
-			strftime(buf, sizeof buf, "%m/%d/%y", ts);
-			break;
-		   case 'e':	/* day of month, blank padded */
-			sprintf(buf, "%2d", ts->tm_mday);
-			break;
-		   case 'r':	/* time as %I:%M:%S %p */
-			strftime(buf, sizeof buf, "%I:%M:%S %p", ts);
-			break;
-		   case 'R':	/* time as %H:%M */
-			strftime(buf, sizeof buf, "%H:%M", ts);
-			break;
-		   case 'T':	/* time as %H:%M:%S */
-			strftime(buf, sizeof buf, "%H:%M:%S", ts);
-			break;
-#endif
 		   default:
 			buf[0] = q;
 			buf[1] = 0;
