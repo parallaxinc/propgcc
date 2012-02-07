@@ -5,7 +5,7 @@ EMBEDDED=yes
 TEMPLATE_NAME=elf32
 EXTRA_EM_FILE=propeller
 
-TEXT_MEMORY=">rom"
+TEXT_MEMORY=">rom AT>rom"
 DATA_MEMORY=">hub AT>rom"
 DATA_BSS_MEMORY=">hub AT>hub"
 HUBTEXT_MEMORY=">hub AT>rom"
