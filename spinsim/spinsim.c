@@ -766,23 +766,8 @@ int breakable_point(int i){
      return 0;
 }
 
-int step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
+void step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
   int i;
-  int ret = 0;
-  struct bkpt *b;
-
-  for (i = 0; i < 8; i++) {
-    if(breakable_point(i)){
-      // Look to see if the cog's LMM PC is at a breakpoint
-      for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
-        if((PasmVars[i].mem[GCC_REG_BASE + 17] >= b->next->addr)
-           && (PasmVars[i].mem[GCC_REG_BASE + 17] <= b->next->addr + b->next->len)){
-          ret = 1;
-        }
-      }
-    }
-  }
-  if(ret) return 1; // Hit a breakpoint; execute nothing.
   for (i = 0; i < 8; i++) {
     *state = PasmVars[i].state;
     if (*state & 4) {
@@ -813,7 +798,7 @@ int step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
     }
   }
   loopcount++;
-  return 0;
+  return;
 }
 
 int main(int argc, char **argv)
@@ -1039,7 +1024,17 @@ int main(int argc, char **argv)
 	    // Get the new LMM PC
 	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
 	  }
-	  step_chip(&state, &spinvars, &runflag);
+	  {
+	    int brk = 0;
+	    do {
+	      int i;
+	      // Step through a full LMM instruction
+	      step_chip(&state, &spinvars, &runflag);
+              for(i = 0; i < 8; i++){
+	        if(breakable_point(i)) brk = 1;
+	      }
+	    } while (!brk);
+	  }
 	  halt_code = "S05";
 	  reply(halt_code, 3);
 	  break;
@@ -1050,11 +1045,25 @@ int main(int argc, char **argv)
 	  }
 	  halt_code = "S02";
 	  do {
-	    int brk;
-	    brk = step_chip(&state, &spinvars, &runflag);
+	    int brk = 0;
+            struct bkpt *b;
+
+            for (i = 0; i < 8; i++) {
+              if(breakable_point(i)){
+                // Look to see if the cog's LMM PC is at a breakpoint
+                for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
+                  if((PasmVars[i].mem[GCC_REG_BASE + 17] >= b->next->addr)
+                     && (PasmVars[i].mem[GCC_REG_BASE + 17] <= b->next->addr + b->next->len)){
+                    brk = 1;
+                  }
+                }
+              }
+            }
 	    if(brk){
 	      halt_code = "S05";
 	      break;
+	    } else {
+	      step_chip(&state, &spinvars, &runflag);
 	    }
 	  } while(getch() != 0x03); // look for a CTRL-C
 	  reply(halt_code, 3);
