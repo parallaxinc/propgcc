@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <unistd.h>
 
 #define string__(x) #x
 #define string_(x) string__(x)
@@ -67,9 +68,52 @@ testtime(time_t t, const char *fmt, const char *expect, int local)
 #define testlocaltime(t, fmt, expect) testtime(t, fmt, expect, 1)
 #define testgmttime(t, fmt, expect) testtime(t, fmt, expect, 0)
 
+#define CLOCKS_PER_USEC (CLOCKS_PER_SEC/1000000)
+
+
+/* test of sleep functions */
+void
+sleeptest(void)
+{
+  unsigned int now, delta;
+
+  printf("testing sleep(1)... "); fflush(stdout);
+  now = clock();
+  sleep(1);
+  delta = clock() - now;
+  printf("delta = %u cycles ", delta); fflush(stdout);
+  assert (delta >= CLOCKS_PER_SEC);
+  assert (delta < CLOCKS_PER_SEC + CLOCKS_PER_SEC/1000);
+  printf("ok\n");
+
+  /* usleep() can really only provide accuracy to about 10 usec */
+  printf("testing usleep(1000): "); fflush(stdout);
+  now = clock();
+  usleep(1000);
+  delta = clock() - now;
+  printf("delta = %u cycles ", delta); fflush(stdout);
+  assert (delta >= 1000*CLOCKS_PER_USEC);
+  assert (delta <  1010*CLOCKS_PER_USEC);
+  printf("ok\n");
+
+  printf("testing usleep(50): "); fflush(stdout);
+  now = clock();
+  usleep(50);
+  delta = clock() - now;
+  printf("delta = %u cycles ", delta); fflush(stdout);
+  assert (delta >= 50*CLOCKS_PER_USEC);
+  assert (delta <  60*CLOCKS_PER_USEC);
+  printf("ok\n");
+
+
+}
+
 int
 main()
 {
+  printf("sleep tests:\n");
+  sleeptest();
+
   printf("time tests:\n");
 
   putenv("TZ=EST5EDT");
