@@ -396,8 +396,11 @@ propeller_dummy_id (struct gdbarch *gdbarch, struct frame_info *this_frame)
   return frame_id_build (fp + 8, get_frame_pc (this_frame));
 }
 
+static const gdb_byte bpt_little[4] = {0x14, 0x00, 0x7c, 0x5c};
+static const gdb_byte bpt_big[4] = {0x5c, 0x7c, 0x00, 0x14};
 static const gdb_byte *propeller_breakpoint_from_pc(struct gdbarch *arch, CORE_ADDR *addr, int *x){
-  return 0;
+  *x = 4;
+  return bpt_little;
 }
 
 /* There is a fair number of calling conventions that are in somewhat
