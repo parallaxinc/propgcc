@@ -64,6 +64,8 @@ mkdir -p ${PACKROOT}
 cp ../gcc/COPYING* ${PACKROOT}/.
 cp ../LICENSE.txt ${PACKROOT}/.
 
+echo "Propeller GCC Version ${BUILDNUM} build time ${DATECMD}" >> ${PACKROOT}/${ARCHIVE}.txt
+
 #
 # copy in the basic build tree
 #
