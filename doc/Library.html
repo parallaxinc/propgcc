@@ -208,7 +208,9 @@ terminal driver only processes 1 character at a time in raw mode.
       integers, strings, and characters) but without support for
       floating point, 64 bit integers, right
       justification, precision, alternate output formats, and other
-      advanced features. You can
+      advanced features. <CODE>__simple_printf</CODE> is also not
+      thread safe, so it should be used only in single threaded
+      applications. You can
       use this version of printf in your code by
       adding <CODE>-Dprintf=__simple_printf</CODE> to the command
       line. The simple printf is by far the smallest version of
