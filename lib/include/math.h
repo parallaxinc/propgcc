@@ -62,8 +62,9 @@ extern char __infinity[];
  */
 #if __ISO_C_VISIBLE >= 1999
 
-  //typedef	__double_t	double_t;
-  //typedef	__float_t	float_t;
+  // these assume FLT_EVAL_METHOD to be hard-coded to 0
+  typedef	double	double_t;
+  typedef	float	float_t;
 
 #ifdef __GNUC__
 #define	HUGE_VALF	__builtin_huge_valf()
