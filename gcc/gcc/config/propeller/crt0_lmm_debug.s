@@ -1,3 +1,7 @@
+'--------------------------------------------------------------------
+' LMM debug kernel
+'--------------------------------------------------------------------
+
 	.section .lmmkernel, "ax"
 	.global r0
 	.global r1
@@ -13,66 +17,320 @@
 	.global r11
 	.global r12
 	.global r13
-	.global r14
-	.global lr
+	.global r14	
+	.global lr	
 	.global sp
 	.global pc
 
+	.set ACK, 6
+
 	.global __LMM_entry
 __LMM_entry
+
 r0	mov	sp, PAR
 r1	mov	r0, sp
 r2	cmp	sp,r14	wz	' see if stack is at top of memory
-r3 IF_NE jmp    #r7		' if not, skip some stuff
-	'' initialization for first time run
-r4      locknew	__TMP0 wc	' allocate a lock
-r5 IF_NC wrlong __TMP0, __C_LOCK_PTR	' save it to ram if successful
-r6      jmp    #__LMM_loop
-	'' initialization for non-primary cogs
-r7      rdlong pc,sp		' if user stack, pop the pc
-r8      add	sp,#4
-r9      rdlong r0,sp		' pop the argument for the function
-r10     add	sp,#4
-r11     rdlong __TLS,sp	' and the _TLS variable
-r12     add	sp,#4
-r13	jmp	#__LMM_loop
+r3 if_e	jmp	#new_lock
+r4      rdlong 	pc,sp		' if user stack, pop the pc	'' initialization for non-primary cogs
+r5      add	sp,#4
+r6      rdlong 	r0,sp		' pop the argument for the function
+r7	add	sp,#4
+r8      rdlong 	__TLS,sp	' and the _TLS variable
+r9      add	sp,#4
+done_lock
+r10	mov	dira,txbit	' enable tx and Quickstart led's for debugging
+r11	mov	outa,txbit	' make sure tx is high
+r12	jmp	#__LMM_debug
+r13	long	$1F0-((_AFTER_CACHE-__LMM_entry)/4) ' free longs in cog0
 r14	long	0x00008000
-r15	'' alias for link register lr
+r15		' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
+flags	long	0
+breakpt	long	0
 
+'--------------------------------------------------------------------
+' LMM debugger entry - as there are 20 registers above, a simple
+' "jmp #20" is our breakpoint primitive
+'--------------------------------------------------------------------
 
-	''
-	'' main LMM loop -- read instructions from hub memory
-	'' and executes them
-	''
+__LMM_debug
+	muxnz	flags,#2	' save zero flag
+	muxc	flags,#1	' save Carry flag
+
+wt1	call	#rxbyte
+	cmp	ch,#1 wz
+ if_nz	jmp	#wt1
+
+	mov	ch,#$40
+	call	#txbyte
+
+'--------------------------------------------------------------------
+' Debug command dispatcher
+'--------------------------------------------------------------------
+
+	call	#rxbyte
+
+	cmp	ch,#1 wz	' single step
+ if_z	jmp	#dbg_STEP
+
+	cmp	ch,#2 wz	' run
+ if_z	jmp	#debug_resume
+
+	cmp	ch,#3 wz	' read bytes
+ if_z	call	#tx_packet '#read_bytes
+
+	cmp	ch,#4 wz	' write bytes
+ if_z	call	#rx_packet '#write_bytes
+
+	call	#dbg_load
+
+	jmp	#__LMM_debug
+
+'--------------------------------------------------------------------
+' packet xmit/rcv control variables, also new_lock at startup
+'--------------------------------------------------------------------
+
+new_lock
+
+chksum		locknew	__TMP0 wc	' allocate a lock - initialization for first time run
+ix 	IF_NC 	wrlong __TMP0, __C_LOCK_PTR	' save it to ram if successful
+len	jmp	#done_lock
+
+'--------------------------------------------------------------------
+' dbg_STEP
+'--------------------------------------------------------------------
+
+dbg_STEP
+
+	shr	flags,#1 nr,wc,wz	' restore flags, continue
+
+	rdlong	dbg_ins,pc
+	add	pc,#4
+dbg_ins	nop
+
+	jmp	#__LMM_debug
+	
+'--------------------------------------------------------------------
+' LMM virtual machine 
+'--------------------------------------------------------------------
+
 __LMM_loop
-	rdlong	L_ins0,pc
-	add	pc,#4
-L_ins0	nop
-	rdlong	L_ins1,pc
-	add	pc,#4
-L_ins1	nop
-	rdlong	L_ins2,pc
-	add	pc,#4
-L_ins2	nop
-	rdlong	L_ins3,pc
-	add	pc,#4
-L_ins3	nop
-	rdlong	L_ins4,pc
-	add	pc,#4
-L_ins4	nop
-	rdlong	L_ins5,pc
-	add	pc,#4
-L_ins5	nop
-	rdlong	L_ins6,pc
-	add	pc,#4
-L_ins6	nop
-	rdlong	L_ins7,pc
-	add	pc,#4
-L_ins7	nop
-	jmp	#__LMM_loop
+
+	muxnz	flags,#2	' save zero flag
+	muxc	flags,#1	' save Carry flag
+
+	and	rxbit,ina nr,wz	' check for low on RX
+
+	if_z	jmp	#__LMM_debug
+
+debug_resume
+	shr	flags,#1 nr,wc,wz	' restore flags, continue
+
+'--------------------------------------------------------------------
+' fetch & execute LMM instruction
+'--------------------------------------------------------------------
+
+L_cont
+	rdlong	L_ins0,pc	' fetch instruction to execute
+	add	pc,#4		' update LMM program counter
+L_ins0	nop			' execute instruction
+
+debug_jump
+	jmp	#__LMM_loop	' loop
+
+'--------------------------------------------------------------------
+' get address and length from serial
+'--------------------------------------------------------------------
+
+get_addr_len
+	call	#rxbyte
+	mov	ix,ch
+
+	call	#rxbyte
+	shl	ch,#8
+	or	ix,ch
+
+	call	#rxbyte
+	mov	len,ch
+
+	mov	chksum,len
+
+get_addr_len_ret
+	ret
+
+'--------------------------------------------------------------------
+' tx_packet - set up ix&len before calling, sends 0x40,len,dat...,chk
+'--------------------------------------------------------------------
+
+tx_packet
+
+	call	#get_addr_len
+
+chrs	rdbyte	ch,ix		' real code
+	add	ix,#1
+	add	chksum,ch
+	call	#txbyte
+	djnz	len,#chrs
+
+	mov	ch,chksum
+	call	#txbyte
+
+tx_packet_ret
+	ret
+
+'--------------------------------------------------------------------
+' rx_packet - returns ix&len after receiving 0x40,len,dat...,chk
+'--------------------------------------------------------------------
+
+rx_packet
+
+	call	#get_addr_len
+
+rxchr	call	#rxbyte
+	wrbyte	ch,ix		' real code
+	add	ix,#1
+	add	chksum,ch
+	djnz	len,#rxchr
+
+	mov	ch,chksum
+	call	#txbyte
+
+rx_packet_ret
+	ret
+
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,twostop
+	shl	ch,#1
+	mov	bits,#11 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+	muxc	outa,txbit  ' 22
+'-------
+	mov	now,CNT
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+'-------
+	djnz	bits,#txloop wz
+
+txbyte_ret
+	ret
+
+twostop	long	0xFFFFFF00 ' allows up to 23 stop bits
+
+' 115200
+halfbit	long	347  '80000000 / (2*115200) = 347.2222
+onebit		long	694
+
+' 57600
+'halfbit	long	694  
+'onebit		long	1389
+
+' 38400
+'halfbit		long	1041 
+'onebit		long	2083
+
+' 19200
+'halfbit		long	2083 
+'onebit		long	4167
+
+' 9600
+'halfbit		long	2083-11 
+'onebit		long	4166-16 
+
+'--------------------------------------------------------------------
+' debugger control variables
+'--------------------------------------------------------------------
+
+start		long	0
+now		long	0
+bits		long	0
+ch		long	0
+
+
+dbg_image	long	0x20
+rxbit		long	0x80000000
+txbit		long	0x40000000
+
+'--------------------------------------------------------------------
+' rxbyte	Receive byte into ch
+'--------------------------------------------------------------------
+
+rxbyte	call	#rx8bits
+	shr	ch,#24
+rxbyte_ret
+	ret
+
+'--------------------------------------------------------------------
+' rx8bits	Receive 8 bits
+'--------------------------------------------------------------------
+
+rx8bits	mov	bits,#8
+	waitpeq	zero,rxbit	' wait for startbit
+	mov	now,CNT
+	add	now,halfbit
+	sub	now,#8
+	waitcnt	now,#0
+
+rxloop	mov	now,CNT
+	add	now,onebit
+	waitcnt	now,#0
+	test	rxbit,ina wc
+	rcr	ch,#1
+	djnz	bits,#rxloop
+
+	mov	now,CNT
+	add	now,onebit
+	waitcnt	now,#0
+rx8bits_ret
+	ret
+
+zero	long 	0
+
+'--------------------------------------------------------------------
+' dbg_dump - save kernel image over the initial starting kernel
+'--------------------------------------------------------------------
+
+dbg_dump	
+	mov	start,#0x01EF
+	mov	dbg_image, cog_end
+	
+dbg_lp1
+	movd	inx,start
+	sub	dbg_image,#4
+inx	wrlong	0-0,dbg_image
+	djnz	start,#dbg_lp1
+	sub	dbg_image,#4
+	wrlong	0,dbg_image
+dbg_dump_ret
+	ret
+
+cog_end long	(0x01F0 << 2)+0x20
+
+'--------------------------------------------------------------------
+' dbg_load - load kernel registers from hub kernel image
+'--------------------------------------------------------------------
+
+dbg_load
+	mov	dbg_image,#$68
+	mov	start,#$12
+dbg_lp2	
+	movd	ixr,start
+	nop
+ixr	rdlong	0-0,dbg_image
+	sub	dbg_image,#4
+	djnz	start,#dbg_lp2
+dbg_load_ret
+	ret
+
+'-----------------------------------------------------------------------
+' GCC support code
+'-----------------------------------------------------------------------
 
 	''
 	'' LMM support functions
@@ -273,6 +531,7 @@ __MULSI_loop
  IF_NZ	jmp	#__MULSI_loop
 __MULSI_ret	ret
 
+
 	''
 	'' code for atomic compare and swap
 	''
@@ -367,12 +626,15 @@ Lmm_fcache_doit
 	jmp	#__LMM_loop
 
 
+
 	''
 	'' the fcache area should come last in the file
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	256	'' reserve 256 longs = 1K
+	res	$80	' normally reserve 256 longs
+_AFTER_CACHE
+	long	_AFTER_CACHE
 
 	''
 	'' global variables
