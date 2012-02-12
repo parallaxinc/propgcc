@@ -43,6 +43,7 @@
 #define PLOAD_STATUS_OPEN_FAILED    -1
 #define PLOAD_STATUS_NO_PROPELLER   -2
 
+void psetverbose(int verbose);
 int popenport(const char* port, int baud);
 int preset(void);
 int pload(const char* file, int type);

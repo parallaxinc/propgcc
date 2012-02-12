@@ -1,6 +1,8 @@
 CC=gcc
+PROPCC=propeller-elf-gcc
 ECHO=echo
 RM=rm
+LOAD=propeller-load
 
 LOADER=../loader
 LOADERSRC=$(LOADER)/src
@@ -45,9 +47,9 @@ endif
 
 TARGET=gdbstub$(EXT)
 
-OBJS=gdbstub.o config.o system.o port.o PLoadLib.o $(OSINT).o
+OBJS=gdbstub.o config.o system.o port.o PLoadLib.o $(OSINT).o dummy_binary.o
 
-all:    bin2c$(EXT) $(TARGET)
+all:	bin2c$(EXT) $(TARGET)
 
 $(TARGET):	$(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS)
@@ -55,16 +57,20 @@ $(TARGET):	$(OBJS)
 %.o:	%.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-#############
-# SPIN TO C #
-#############
+###########################
+# C TO BINARY IMAGE ARRAY #
+###########################
 
-%.binary:	%.spin
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+%_binary.elf:	%.c
+	@$(ECHO) $@
+	@$(PROPCC) -mlmm -g -o $@ $< 
+
+%.binary:	%.elf
+	@$(LOAD) -s $<
 	@$(ECHO) $@
 
 %.c:	%.binary
-	@$(BINDIR)/bin2c$(EXT) $< $@
+	bin2c$(EXT) $< $@
 	@$(ECHO) $@
 
 #########
@@ -77,4 +83,4 @@ bin2c$(EXT):	$(LOADERSRC)/tools/bin2c.c
 
 .PHONY:	clean
 clean:
-	$(RM) -rf *.o $(TARGET) bin2c *.log
+	$(RM) -rf *.o $(TARGET) bin2c *.log dummy.binary dummy_binary.*
