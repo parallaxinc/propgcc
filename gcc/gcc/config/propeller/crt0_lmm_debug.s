@@ -59,6 +59,9 @@ __LMM_debug
 	muxnz	flags,#2	' save zero flag
 	muxc	flags,#1	' save Carry flag
 
+	mov ch,#$21 ' "!"
+	call #txbyte
+
 wt1	call	#rxbyte
 	cmp	ch,#1 wz
  if_nz	jmp	#wt1
