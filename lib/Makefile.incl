@@ -58,7 +58,7 @@ STDLIB = malloc.o calloc.o realloc.o atoi.o atoll.o atof.o atexit.o abort.o \
 MISC = 	ctype.o toupper.o tolower.o \
 	isalpha.o isalnum.o iscntrl.o isprint.o isspace.o isdigit.o \
         isblank.o isxdigit.o isupper.o islower.o isgraph.o ispunct.o \
-	sbrk.o write.o signal.o assert.o locale.o \
+	sbrk.o signal.o assert.o locale.o \
 	chdir.o rmdir.o mkdir.o opendir.o rdwr.o lseek.o \
 	putenv.o
 

@@ -62,8 +62,8 @@ struct tm {
   /* set time zone to contents of environment string */
   void _tzset(void);
 
-  char *_tzname[2];  /* 0 is ordinary, 1 is dst */
-  int   _timezone;   /* holds seconds west of GMT */
+  extern char *_tzname[2];  /* 0 is ordinary, 1 is dst */
+  extern int   _timezone;   /* holds seconds west of GMT */
 
 #if defined(__cplusplus)
 }
