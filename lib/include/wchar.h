@@ -53,14 +53,14 @@ extern "C" {
 
 
   /* internal versions of some of the above functions */
-  size_t (*_mbrtowc_ptr)( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
-  size_t (*_wcrtomb_ptr)( char *s, wchar_t wc, mbstate_t *ps );
+  extern size_t (*_mbrtowc_ptr)( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
+  extern size_t (*_wcrtomb_ptr)( char *s, wchar_t wc, mbstate_t *ps );
 
-  size_t _mbrtowc_utf8( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
-  size_t _mbrtowc_ascii( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
+  extern size_t _mbrtowc_utf8( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
+  extern size_t _mbrtowc_ascii( wchar_t *pwc, const char *s, size_t n, mbstate_t *ps);
 
-  size_t _wcrtomb_utf8( char *s, wchar_t wc, mbstate_t *ps );
-  size_t _wcrtomb_ascii( char *s, wchar_t wc, mbstate_t *ps );
+  extern size_t _wcrtomb_utf8( char *s, wchar_t wc, mbstate_t *ps );
+  extern size_t _wcrtomb_ascii( char *s, wchar_t wc, mbstate_t *ps );
 
 #if defined(__cplusplus)
 }
