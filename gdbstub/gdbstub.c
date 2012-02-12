@@ -14,6 +14,9 @@
 #define FALSE   0
 #endif
 
+/* disable breakpoint support */
+#define NO_BKPT
+
 /* defaults */
 #if defined(CYGWIN) || defined(WIN32) || defined(MINGW)
 #define PORT_PREFIX NULL
@@ -37,7 +40,7 @@
 #define INI_TIMEOUT 2000
 
 /* timeout waiting for packet data */
-#define PKT_TIMEOUT 1000
+#define PKT_TIMEOUT 10000
 
 /* attention byte sent before a command is sent */
 #define ATTN        0x01
@@ -56,7 +59,7 @@
 #define INT         0x01
 
 /* code received from the serial debug kernel when the program halts do to a breakpoint or single step */
-#define HALT        '@'
+#define HALT        '!'
 
 /* maximum amount of data in a READ or WRITE packet */
 #define MAX_DATA    128
@@ -122,7 +125,7 @@ int debug_cmd(int fcn) {
 
 	/* wait for an ACK or a timeout */
 	do {
-	    if (rx_timeout(&byte, 1, PKT_TIMEOUT) != 0)
+	    if (rx_timeout(&byte, 1, PKT_TIMEOUT) != 1)
 	        return ERR_TIMEOUT;
 	} while (byte != ACK);
 
@@ -159,7 +162,7 @@ int read_memory(uint32_t addr, uint8_t *buf, int len){
         tx(pkt, p - pkt);
         
         /* read the data */
-        if (rx_timeout(buf, pktlen + 1, PKT_TIMEOUT) != pktlen)
+        if (rx_timeout(buf, pktlen + 1, PKT_TIMEOUT) != pktlen + 1)
             return ERR_TIMEOUT;
             
         /* initialize the checksum */
@@ -183,7 +186,7 @@ int read_memory(uint32_t addr, uint8_t *buf, int len){
 
 int write_memory(uint32_t addr, uint8_t *buf, int len){
     uint8_t pkt[PKT_MAX], byte;
-    uint8_t pktlen, chksum, *p;
+    uint8_t pktlen, chksum, i, *p;
     int err;
     
     /* write data in MAX_DATA sized chunks */
@@ -202,11 +205,11 @@ int write_memory(uint32_t addr, uint8_t *buf, int len){
         chksum = pktlen;
         
         /* store the data into the packet */
-        for (; pktlen > 0; --pktlen)
+        for (i = 0; i < pktlen; ++i)
             chksum += (*p++ = *buf++);
         
         /* setup for a write command */
-        if ((err = debug_cmd(FCN_READ)) != ERR_NONE)
+        if ((err = debug_cmd(FCN_WRITE)) != ERR_NONE)
             return err;
         
         /* send the packet to the debug kernel */
@@ -290,7 +293,6 @@ void cmd_g_get_registers(int cog){
       uint8_t buf[GCC_REG_COUNT * sizeof(uint32_t)];
       char response[1024];
       int32_t reg;
-      int i;
       int j;
       int err;
       
@@ -298,18 +300,17 @@ void cmd_g_get_registers(int cog){
             error_reply(err);
             return;
           }
-          for(j = 0; j < GCC_REG_COUNT * sizeof(uint32_t); j++){
-            sprintf(response+2*i, "%02x", buf[j]);
-            i += 2;
+          for(j = 0; j < sizeof(buf); j++){
+            sprintf(response+2*j, "%02x", buf[j]);
           }
           reg = get_cog_pc(cog) * 4 + 0x80000000 + cog * 0x10000000;
-          sprintf(response+2*i,
+          sprintf(response+2*j,
                   "%02x%02x%02x%02x",
                   (unsigned char)(reg & 0xff),
                   (unsigned char)((reg>>8) & 0xff),
                   (unsigned char)((reg>>16) & 0xff),
                   (unsigned char)((reg>>24) & 0xff));
-          reply(response, 8*18+8);
+          reply(response, sizeof(buf)*2+8);
 }
 
 /* 'G' - set registers */
@@ -452,6 +453,9 @@ void cmd_H_set_thread(int i){
 
 /* 'z' - remove breakpoint */
 void cmd_z_remove_breakpoint(int i){
+#ifdef NO_BKPT
+    reply("", 0);
+#else
           /* Remove breakpoint */
           if(cmd[i++] == '0'){
             long addr;
@@ -474,10 +478,14 @@ void cmd_z_remove_breakpoint(int i){
           } else {
             reply("", 0);
           }
+#endif
 }
 
 /* 'Z' - set breakpoint */
 void cmd_Z_set_breakpoint(int i){
+#ifdef NO_BKPT
+    reply("", 0);
+#else
           /* Set breakpoint */
           if(cmd[i++] == '0'){
             long addr;
@@ -511,6 +519,7 @@ void cmd_Z_set_breakpoint(int i){
           } else {
             reply("", 0);
           }
+#endif
 }
 
 int command_loop(void){
@@ -580,9 +589,11 @@ usage: propeller-load\n\
 
 int main(int argc, char *argv[])
 {
+    extern uint8_t dummy_binary_array[];
+    extern int dummy_binary_size;
     BoardConfig *config, *configSettings;
     char *port, *board, *p, *p2;
-    int verbose, i;
+    int verbose = FALSE, i;
     int baud = 0;
     uint8_t byte;
     System sys;
@@ -691,6 +702,9 @@ int main(int argc, char *argv[])
         
     /* use the baud rate from the configuration */
     baud = config->baudrate;
+    
+    /* enble verbose progress messages if requested (confuses gdb so should only be used for testing the stub) */
+    psetverbose(verbose);
 
     /* find and open the serial port */
     switch (InitPort(PORT_PREFIX, port, baud, verbose, NULL)) {
@@ -708,8 +722,18 @@ int main(int argc, char *argv[])
         return 1;
     }
         
-    if (rx_timeout(&byte, 1, INI_TIMEOUT) != 1 || byte != HALT) {
+    /* load the serial helper program */
+    if (ploadbuf(dummy_binary_array, dummy_binary_size, DOWNLOAD_RUN_BINARY) != 0) {
+        fprintf(stderr, "error: debug kernel load failed\n");
+        return 1;
+    }
+
+    if (rx_timeout(&byte, 1, INI_TIMEOUT) != 1) {
         fprintf(stderr, "error: timeout waiting for initial response from debug kernel\n");
+        return 1;
+    }
+    else if (byte != HALT) {
+        fprintf(stderr, "error: bad initial response from debug kernel: %02x\n", byte);
         return 1;
     }
 

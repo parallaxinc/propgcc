@@ -79,7 +79,7 @@
 
 #ifdef XGSPIC
 
-#include "FSIO.h"
+//#include "FSIO.h"
 
 #define XGS_COMMON
 #define PIC_COMMON
