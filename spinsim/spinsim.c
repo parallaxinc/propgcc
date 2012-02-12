@@ -753,14 +753,14 @@ struct bkpt *bkpt = 0;
 // FIXME we need a more general way to do this.  This is too dependent on special knowledge.
 int breakable_point(int i){
   int32_t pc = PasmVars[i].pc;
-  if ((pc == 0x00000050/4)
-   || (pc == 0x0000005c/4)
-   || (pc == 0x00000068/4)
-   || (pc == 0x00000074/4)
-   || (pc == 0x00000080/4)
-   || (pc == 0x0000008c/4)
-   || (pc == 0x00000098/4)
-   || (pc == 0x000000a4/4))
+  if ((pc == 0x0000004c/4)
+   || (pc == 0x00000058/4)
+   || (pc == 0x00000064/4)
+   || (pc == 0x00000070/4)
+   || (pc == 0x0000007c/4)
+   || (pc == 0x00000088/4)
+   || (pc == 0x00000094/4)
+   || (pc == 0x000000a0/4))
      return 1;
    else
      return 0;
