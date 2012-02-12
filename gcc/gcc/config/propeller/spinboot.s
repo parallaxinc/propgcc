@@ -20,6 +20,8 @@ __clkmode
 chksum	.byte 0x00		' checksum: see above
 
 	.word 0x0010		' PBASE
+	.global __sys_mbox	' added 20/09/11 for debugger/system support (WH)
+__sys_mbox
 	.word 0x7fe8		' VBASE - start of variables
 	.word 0x7ff0		' DBASE - start of stack 
 	.word 0x0018		' PCURR - initial program counter

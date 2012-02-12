@@ -23,7 +23,7 @@ STDLIB = malloc.o calloc.o realloc.o atoi.o atof.o \
 
 MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
         isblank.o isxdigit.o isupper.o islower.o isgraph.o ispunct.o \
-	sbrk.o write.o signal.o locale.o
+	sbrk.o rdwr.o signal.o locale.o
 
 COG = cogregs.o div.o udiv.o mask.o mult.o miniprintf.o clock.o \
     cogserial.o cogputs.o
