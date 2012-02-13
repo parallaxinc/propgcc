@@ -94,6 +94,8 @@ _serial_getbyte(FILE *fp)
     waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
     value = ( (0 != (_INA & rxmask)) << 7) | (value >> 1);
   }
+  /* stop bit */
+  __builtin_propeller_waitcnt(waitcycles, 0);
   return value;
 }
 
