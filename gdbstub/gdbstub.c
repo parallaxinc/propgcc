@@ -589,8 +589,8 @@ usage: propeller-load\n\
 
 int main(int argc, char *argv[])
 {
-    extern uint8_t dummy_binary_array[];
-    extern int dummy_binary_size;
+    extern uint8_t kernel_image_array[];
+    extern int kernel_image_size;
     BoardConfig *config, *configSettings;
     char *port, *board, *p, *p2;
     int verbose = FALSE, i;
@@ -722,8 +722,8 @@ int main(int argc, char *argv[])
         return 1;
     }
         
-    /* load the serial helper program */
-    if (ploadbuf(dummy_binary_array, dummy_binary_size, DOWNLOAD_RUN_BINARY) != 0) {
+    /* load the dummy debug kernel */
+    if (ploadbuf(kernel_image_array, kernel_image_size, DOWNLOAD_RUN_BINARY) != 0) {
         fprintf(stderr, "error: debug kernel load failed\n");
         return 1;
     }
