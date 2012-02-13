@@ -47,7 +47,7 @@ endif
 
 TARGET=gdbstub$(EXT)
 
-OBJS=gdbstub.o config.o system.o port.o PLoadLib.o $(OSINT).o dummy_binary.o
+OBJS=gdbstub.o config.o system.o port.o PLoadLib.o $(OSINT).o kernel_image.o
 
 all:	bin2c$(EXT) $(TARGET)
 
@@ -56,6 +56,13 @@ $(TARGET):	$(OBJS)
 
 %.o:	%.c
 	$(CC) -c $(CFLAGS) -o $@ $<
+
+################
+# DUMMY KERNEL #
+################
+
+kernel_image.elf:	kernel.c
+	$(PROPCC) -Os -mcog -fomit-frame-pointer -o $@ $<
 
 ###########################
 # C TO BINARY IMAGE ARRAY #
