@@ -35,14 +35,15 @@ pbase
 	.word 0			' ??
 
 	'' here is the spin code to switch to pasm mode
-	.byte 0x35		' constant 1 $00000000 (id)
+	'' removed a load of the constant 0 and replaced it with cogid
+	.byte 0x3F		' Register op $1E9 Read - cogid
+	.byte 0x89
 	.byte 0xc7		' memory op: push PBASE + next byte
 	.byte 0x10
 	.byte 0x37		' constant mask Y= 14 0x00008000
 	.byte 14
 	.byte 0x2C		' CogInit(Id, Addr, Ptr)
 	.byte 0x32		' Return (unused)
-	.byte 0x00		' padding
 
 '' here is where the pasm code actually goes
 
