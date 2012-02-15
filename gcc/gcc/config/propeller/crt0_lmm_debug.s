@@ -59,8 +59,8 @@ __LMM_debug
 	muxnz	flags,#2	' save zero flag
 	muxc	flags,#1	' save Carry flag
 
-	mov ch,#$21 ' "!"
-	call #txbyte
+	mov ch,#$21 ' "!"	
+	call #txbyte		' comment this line out when testing with kdbg.c
 
 wt1	call	#rxbyte
 	cmp	ch,#1 wz
@@ -72,6 +72,8 @@ wt1	call	#rxbyte
 '--------------------------------------------------------------------
 ' Debug command dispatcher
 '--------------------------------------------------------------------
+
+	call	#dbg_dump
 
 	call	#rxbyte
 
@@ -184,7 +186,7 @@ tx_packet_ret
 	ret
 
 '--------------------------------------------------------------------
-' rx_packet - returns ix&len after receiving 0x40,len,dat...,chk
+' rx_packet - returns ix&len after receiving 0x40,len,dat...,chk 
 '--------------------------------------------------------------------
 
 rx_packet
@@ -199,6 +201,8 @@ rxchr	call	#rxbyte
 
 	mov	ch,chksum
 	call	#txbyte
+
+	call	#dbg_load
 
 rx_packet_ret
 	ret
