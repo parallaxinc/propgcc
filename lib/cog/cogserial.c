@@ -19,6 +19,9 @@ int putchar(int origval)
   int bitcycles;
   int waitcycles;
 
+  if (origval == '\n')
+    putchar('\r');
+
   _DIRA |= txmask;
   _OUTA |= txmask;
 
