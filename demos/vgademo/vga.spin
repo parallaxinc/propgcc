@@ -478,6 +478,7 @@ syncPixels              long    $00_00_3F_FC              ' F-porch, h-sync, and
 HSyncColors             long    $01_03_01_03              ' Horizontal sync color mask.
 VSyncColors             long    $00_02_00_02              ' Vertical sync color mask.
 HVSyncColors            long    $03_03_03_03              ' Horizontal and vertical sync colors.
+                        long    0[3]                      ' Pad out to 1200 bytes (40*30)
 
 
 '/////////////////////Run Time Variables///////////////////////////////////
