@@ -139,6 +139,6 @@ int _NATIVE rxbyte(void)
     waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
     value = ( (0 != (_INA & rxmask)) << 7) | (value >> 1);
   }
-  __builtin_propeller_waitcnt(waitcycles, bitcycles);
+  __builtin_propeller_waitpeq(rxmask, rxmask);
   return value;
 }

@@ -90,4 +90,4 @@ bin2c$(EXT):	$(LOADERSRC)/tools/bin2c.c
 
 .PHONY:	clean
 clean:
-	$(RM) -rf *.o $(TARGET) bin2c *.log dummy.binary dummy_binary.*
+	$(RM) -rf *.o $(TARGET) bin2c *.log kernel_image.*
