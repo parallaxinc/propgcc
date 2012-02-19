@@ -35,7 +35,10 @@
 #define PROPELLER_OPERAND_JMPRET      7
 #define PROPELLER_OPERAND_MOVA        8
 #define PROPELLER_OPERAND_LDI         9
-#define PROPELLER_OPERAND_BR         10
+#define PROPELLER_OPERAND_BRL         10
+#define PROPELLER_OPERAND_BRS         11
+#define PROPELLER_OPERAND_XMMIO       12
+
 struct propeller_opcode
 {
   const char *name;
