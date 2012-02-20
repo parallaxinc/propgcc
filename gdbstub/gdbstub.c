@@ -603,9 +603,6 @@ int command_loop(void){
       int cog = 0;
       char *halt_code = "S05";
 
-      logfile = fopen("gdbstub.log", "w");
-      if(logfile) fprintf(logfile, "\n\nStarting log:\n");
-
 #if 0
       reboot();
 #endif
@@ -659,6 +656,7 @@ usage: propeller-load\n\
          [ -P ]            list available serial ports\n\
          [ -I <path> ]     add a directory to the include path\n\
          [ -D var=value ]  define a board configuration variable\n\
+         [ -l <logfile> ]  write a log file\n\
          [ -v ]            verbose output\n");
     exit(1);
 }
@@ -669,6 +667,7 @@ int main(int argc, char *argv[])
     extern int kernel_image_size;
     BoardConfig *config, *configSettings;
     char *port, *board, *p, *p2;
+    char *logname = NULL;
     int verbose = FALSE, i;
     int baud = 0;
     uint8_t byte;
@@ -754,6 +753,14 @@ int main(int argc, char *argv[])
             case 'v':
                 verbose = TRUE;
                 break;
+            case 'l':
+                if(argv[i][2])
+                    logname = &argv[i][2];
+                else if(++i < argc)
+                    logname = argv[i];
+                else
+                    Usage();
+                break;
             default:
                 Usage();
                 break;
@@ -765,6 +772,12 @@ int main(int argc, char *argv[])
             Usage();
     }
     
+    if (logname) {
+        logfile = fopen(logname, "w");
+        if (logfile)
+            fprintf(logfile, "\n\nStarting log:\n");
+    }
+
     sys.ops = &myOps;
 
     /* setup for the selected board */
