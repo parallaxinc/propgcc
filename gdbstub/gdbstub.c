@@ -35,6 +35,7 @@
 #define ERR_READ    2
 #define ERR_WRITE   3
 #define ERR_CHKSUM  4
+#define ERR_INIT    5
 
 /* timeout waiting for debug kernel to initialize */
 #define INI_TIMEOUT 2000
@@ -67,9 +68,11 @@
 /* maximum packet size (FCN_WRITE packet with 2 byte addr, 1 byte count, 128 data bytes */
 #define PKT_MAX     (3 + MAX_DATA)
 
-#define DEF_GCC_REG_BASE    0
+#define DEF_GCC_REG_BASE    0x20
 #define GCC_REG_COUNT       18  // r0-r14, lr, sp, pc -- what about flags, breakpt?
 #define GCC_REG_PC          17
+
+#define PC_ADDR             (gcc_reg_base + GCC_REG_PC * sizeof(uint32_t))
 
 FILE *logfile = NULL;
 char cmd[1028];
@@ -116,6 +119,11 @@ char parse_byte(char *ch){
   return val;
 }
 
+/* On the first 'c' or 's' request we need to start the real debug kernel that was downloaded as
+   part of the user's program.
+*/
+static int first_run = 1;
+
 int debug_cmd(int fcn) {
 	uint8_t byte;
 	
@@ -135,6 +143,41 @@ int debug_cmd(int fcn) {
 	
 	/* return successfully */
 	return ERR_NONE;
+}
+
+int start_debug_kernel(void){
+    uint8_t byte;
+    int err;
+    
+    if ((err = debug_cmd(FCN_RUN)) != ERR_NONE)
+        return err;
+        
+    if (rx_timeout(&byte, 1, INI_TIMEOUT) != 1) {
+        fprintf(stderr, "error: timeout waiting for initial response from debug kernel\n");
+        return ERR_TIMEOUT;
+    }
+    else if (byte != HALT) {
+        fprintf(stderr, "error: bad initial response from debug kernel: %02x\n", byte);
+        return ERR_INIT;
+    }
+
+    first_run = 0;
+    return ERR_NONE;
+}
+
+int wait_for_halt(void){
+    uint8_t byte;
+
+    if (rx(&byte, 1) != 1) {
+        fprintf(stderr, "error: waiting for halt message\n");
+        return ERR_TIMEOUT;
+    }
+    else if (byte != HALT) {
+        fprintf(stderr, "error: bad halt message from debug kernel: %02x\n", byte);
+        return ERR_INIT;
+    }
+    
+    return ERR_NONE;
 }
 
 int read_memory(uint32_t addr, uint8_t *buf, int len){
@@ -228,6 +271,18 @@ int write_memory(uint32_t addr, uint8_t *buf, int len){
     
     /* return successfully */
     return ERR_NONE;
+}
+
+uint32_t read_long(uint32_t addr){
+    uint32_t value;
+    if (read_memory(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
+        fprintf(stderr, "error: reading %08x\n", addr);
+    return value;
+}
+
+void write_long(uint32_t addr, uint32_t value){
+    if (write_memory(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
+        fprintf(stderr, "error: writing %08x\n", addr);
 }
 
 void get_cmd(){
@@ -393,6 +448,12 @@ char *cmd_s_step(int cog, int i){
       char *halt_code;
       int err;
 
+          if (first_run) {
+            if ((err = start_debug_kernel()) != ERR_NONE){
+              error_reply(err);
+              return "E99";   // BUG: what should this be?
+            }
+          }
           if(cmd[i]){
             uint8_t buf[sizeof(uint32_t)];
             int j;
@@ -409,6 +470,10 @@ char *cmd_s_step(int cog, int i){
             error_reply(err);
             return "E99";   // BUG: what should this be?
           }
+          if ((err = wait_for_halt()) != ERR_NONE){
+            error_reply(err);
+            return "E99";   // BUG: what should this be?
+          }
           halt_code = "S05";
           reply(halt_code, 3);
           
@@ -420,6 +485,12 @@ char *cmd_c_continue(int cog, int i){
       char *halt_code;
       int err;
       
+          if (first_run) {
+            if ((err = start_debug_kernel()) != ERR_NONE){
+              error_reply(err);
+              return "E99";   // BUG: what should this be?
+            }
+          }
           if(cmd[i]){
             uint8_t buf[sizeof(uint32_t)];
             int j;
@@ -432,11 +503,16 @@ char *cmd_c_continue(int cog, int i){
               return "E99"; // BUG: what should this be?
             }
           }
-          halt_code = "S02";
+          halt_code = "S05";
           if ((err = debug_cmd(FCN_RUN)) != ERR_NONE){
             error_reply(err);
             return "E99";   // BUG: what should this be?
           }
+          if ((err = wait_for_halt()) != ERR_NONE){
+            error_reply(err);
+            return "E99";   // BUG: what should this be?
+          }
+          write_long(PC_ADDR, read_long(PC_ADDR) - 4); // backup so pc points to the breakpoint instruction
           reply(halt_code, 3);
           
       return halt_code;
