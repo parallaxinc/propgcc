@@ -108,13 +108,11 @@ len	jmp	#done_lock
 '--------------------------------------------------------------------
 
 dbg_STEP
-
-	shr	flags,#1 nr,wc,wz	' restore flags, continue
-
-	rdlong	dbg_ins,pc
-	add	pc,#4
-dbg_ins	nop
-
+	mova	L_target, #dbg_STEP_finish
+	jmp	#debug_resume
+    
+dbg_STEP_finish
+	mova	L_target, #__LMM_loop
 	jmp	#__LMM_debug
 	
 '--------------------------------------------------------------------
@@ -142,8 +140,11 @@ L_cont
 	add	pc,#4		' update LMM program counter
 L_ins0	nop			' execute instruction
 
-debug_jump
-	jmp	#__LMM_loop	' loop
+L_jump
+	jmp	L_target	' loop
+	
+L_target
+	long	(__LMM_loop - __LMM_entry) / 4
 
 '--------------------------------------------------------------------
 ' get address and length from serial
@@ -349,7 +350,7 @@ dbg_load_ret
 __LMM_MVI_\reg
 	rdlong	\reg,pc
 	add	pc,#4
-	jmp	#__LMM_loop
+	jmp	L_target
 	.endm
 
 	LMM_movi r0
@@ -380,7 +381,7 @@ __LMM_CALL
 __LMM_CALL_INDIRECT
 	mov	lr,pc
 	mov	pc,__TMP0
-	jmp	#__LMM_loop
+	jmp	L_target
 
 	''
 	'' direct jmp
@@ -388,7 +389,7 @@ __LMM_CALL_INDIRECT
 	.global __LMM_JMP
 __LMM_JMP
 	rdlong	pc,pc
-	jmp	#__LMM_loop
+	jmp	L_target
 
 	''
 	'' push and pop multiple
@@ -630,7 +631,7 @@ Lmm_fcache_loop4
 
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
-	jmp	#__LMM_loop
+	jmp	L_target
 
 
 
