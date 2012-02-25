@@ -223,7 +223,7 @@ static void PlaceStrings(ParseContext *c)
     String *str;
     for (str = c->strings; str != NULL; str = str->next) {
         if (str->fixups) {
-            str->object = StoreBVector(c, str->value, strlen((char *)str->value) + 1);
+            str->object = StoreBVector(c, str->value, strlen((char *)str->value));
             str->placed = VMTRUE;
             fixup(c, str->fixups, str->object);
             str->fixups = 0;
