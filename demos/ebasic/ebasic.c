@@ -3,20 +3,7 @@
 #include "db_vm.h"
 #include "db_edit.h"
 
-#ifdef CHAMELEONPIC
-uint8_t __attribute__((far)) space[HEAPSIZE];
-#else
-uint8_t space[HEAPSIZE];
-#endif
-
-#if defined(PROPELLER_GCC) && defined(USE_FDS)
-/* list of drivers we can use */
-extern _Driver _FullDuplexSerialDriver;
-_Driver *_driverlist[] = {
-    &_FullDuplexSerialDriver,
-    NULL
-};
-#endif
+static DATA_SPACE uint8_t space[HEAPSIZE];
 
 int main(int argc, char *argv[])
 {
@@ -27,7 +14,7 @@ int main(int argc, char *argv[])
     VM_sysinit(argc, argv);
 
     InitCompiler(c, freeSpace, freeSize);
-    
+
     EditWorkspace(c);
     
     return 0;

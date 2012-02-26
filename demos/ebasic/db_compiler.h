@@ -112,7 +112,7 @@ typedef struct String String;
 struct String {
     String *next;
     int placed;
-    int16_t object;
+    VMVALUE object;
     int fixups;
     uint8_t value[1];
 };
@@ -142,8 +142,8 @@ struct SymbolTable {
 struct Symbol {
     Symbol *next;
     StorageClass storageClass;
-    int16_t value;
-    int16_t initialValue;
+    VMVALUE value;
+    VMVALUE initialValue;
     char name[1];
 };
 
@@ -163,7 +163,7 @@ typedef struct {
     uint8_t *nextLocal;             /* next local heap space location */
     size_t heapSize;                /* size of heap space in bytes */
     size_t maxHeapUsed;             /* maximum amount of heap space allocated so far */
-    int (*getLine)(void *cookie, char *buf, int len, int16_t *pLineNumber);
+    int (*getLine)(void *cookie, char *buf, int len, VMVALUE *pLineNumber);
                                     /* scan - function to get a line of input */
     void *getLineCookie;            /* scan - cookie for the getLine function */
     char lineBuf[MAXLINE];          /* scan - current input line */
@@ -172,7 +172,7 @@ typedef struct {
     Token savedToken;               /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
     char token[MAXTOKEN];           /* scan - current token string */
-    int16_t value;                  /* scan - current token integer value */
+    VMVALUE value;                  /* scan - current token integer value */
     int inComment;                  /* scan - inside of a slash/star comment */
     SymbolTable globals;            /* parse - global variables and constants */
     String *strings;                /* parse - string constants */
@@ -182,7 +182,7 @@ typedef struct {
     SymbolTable arguments;          /* parse - arguments of current function definition */
     SymbolTable locals;             /* parse - local variables of current function definition */
     int localOffset;                /* parse - offset to next available local variable */
-    int16_t code;                   /* parse - code object under construction */
+    VMVALUE code;                   /* parse - code object under construction */
     Block blockBuf[10];             /* parse - stack of nested blocks */
     Block *bptr;                    /* parse - current block */
     Block *btop;                    /* parse - top of block stack */
@@ -190,7 +190,7 @@ typedef struct {
     uint8_t *ctop;                  /* generate - top of code staging buffer */
     uint8_t codeBuf[MAXCODE];       /* generate - code staging buffer */
     ImageHdr *image;                /* bytecode - header of image being constructed */
-    int16_t maxObjects;             /* bytecode - maximum number of objects */
+    VMVALUE maxObjects;             /* bytecode - maximum number of objects */
 } ParseContext;
 
 /* partial value function codes */
@@ -205,7 +205,7 @@ struct PVAL {
     void (*fcn)(ParseContext *c, PValOp op, PVAL *pv);
     union {
         String *str;
-        int val;
+        VMVALUE val;
     } u;
 };
 
@@ -236,7 +236,7 @@ struct ParseTreeNode {
             String *string;
         } stringLit;
         struct {
-            int16_t value;
+            VMVALUE value;
         } integerLit;
         struct {
             int offset;
@@ -278,7 +278,7 @@ void StartCode(ParseContext *c, char *name, CodeType type);
 void StoreCode(ParseContext *c);
 void AddIntrinsic(ParseContext *c, char *name, int index);
 String *AddString(ParseContext *c, char *value);
-int16_t AddStringRef(String *str, int offset);
+VMVALUE AddStringRef(String *str, int offset);
 void *GlobalAlloc(ParseContext *c, size_t size);
 void *LocalAlloc(ParseContext *c, size_t size);
 void Fatal(ParseContext *c, char *fmt, ...);
@@ -309,7 +309,7 @@ void ParseError(ParseContext *c, char *fmt, ...);
 
 /* db_symbols.c */
 void InitSymbolTable(SymbolTable *table);
-Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, int value, int16_t initialValue);
+Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, int value, VMVALUE initialValue);
 Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, int value);
 Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, int value);
 Symbol *FindSymbol(SymbolTable *table, const char *name);
@@ -331,14 +331,14 @@ void fixup(ParseContext *c, int chn, int val);
 void fixupbranch(ParseContext *c, int chn, int val);
 
 /* db_image.c */
-int16_t StoreBVector(ParseContext *c, const uint8_t *buf, int size);
-void StoreBVectorData(ParseContext *c, int16_t object, int16_t proto, const uint8_t *buf, int size);
-int16_t StoreVector(ParseContext *c, const int16_t *buf, int size);
-int16_t NewObject(ParseContext *c);
+VMVALUE StoreBVector(ParseContext *c, const uint8_t *buf, int size);
+void StoreBVectorData(ParseContext *c, VMVALUE object, VMVALUE proto, const uint8_t *buf, int size);
+VMVALUE StoreVector(ParseContext *c, const VMVALUE *buf, int size);
+VMVALUE NewObject(ParseContext *c);
 
 /* scratch buffer interface */
-int BufWriteWords(int offset, const int16_t *buf, int size);
-int BufReadWords(int offset, int16_t *buf, int size);
+int BufWriteWords(int offset, const VMVALUE *buf, int size);
+int BufReadWords(int offset, VMVALUE *buf, int size);
 
 #endif
 

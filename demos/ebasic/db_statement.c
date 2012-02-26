@@ -12,10 +12,10 @@
 static void ParseDef(ParseContext *c);
 static void ParseEndDef(ParseContext *c);
 static void ParseDim(ParseContext *c);
-static int ParseVariableDecl(ParseContext *c, char *name, int16_t *pSize);
-static int16_t ParseScalarInitializer(ParseContext *c);
-static void ParseArrayInitializers(ParseContext *c, int16_t size);
-static void ClearArrayInitializers(ParseContext *c, int16_t size);
+static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize);
+static VMVALUE ParseScalarInitializer(ParseContext *c);
+static void ParseArrayInitializers(ParseContext *c, VMVALUE size);
+static void ClearArrayInitializers(ParseContext *c, VMVALUE size);
 static void ParseImpliedLetOrFunctionCall(ParseContext *c);
 static void ParseLet(ParseContext *c);
 static void ParseIf(ParseContext *c);
@@ -207,7 +207,7 @@ static void ParseConstantDef(ParseContext *c, char *name)
 static void ParseDim(ParseContext *c)
 {
     char name[MAXTOKEN];
-    int16_t value, size;
+    VMVALUE value, size;
     int isArray;
     Token tkn;
 
@@ -235,7 +235,7 @@ static void ParseDim(ParseContext *c)
             }
 
             /* create a vector object for arrays */
-            value = isArray ? StoreVector(c, (int16_t *)c->codeBuf, size) : 0;
+            value = isArray ? StoreVector(c, (VMVALUE *)c->codeBuf, size) : 0;
 
             /* add the symbol to the global symbol table */
             AddGlobal(c, name, SC_VARIABLE, c->image->variableCount++, value);
@@ -255,7 +255,7 @@ static void ParseDim(ParseContext *c)
 }
 
 /* ParseVariableDecl - parse a variable declaration */
-static int ParseVariableDecl(ParseContext *c, char *name, int16_t *pSize)
+static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize)
 {
     Token tkn;
 
@@ -304,7 +304,7 @@ static int ParseVariableDecl(ParseContext *c, char *name, int16_t *pSize)
 }
 
 /* ParseScalarInitializer - parse a scalar initializer */
-static int16_t ParseScalarInitializer(ParseContext *c)
+static VMVALUE ParseScalarInitializer(ParseContext *c)
 {
     ParseTreeNode *expr = ParseExpr(c);
     if (!IsIntegerLit(expr))
@@ -313,10 +313,10 @@ static int16_t ParseScalarInitializer(ParseContext *c)
 }
 
 /* ParseArrayInitializers - parse array initializers */
-static void ParseArrayInitializers(ParseContext *c, int16_t size)
+static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 {
-    int16_t *dataPtr = (int16_t *)c->codeBuf;
-    int16_t *dataTop = (int16_t *)c->ctop;
+    VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
+    VMVALUE *dataTop = (VMVALUE *)c->ctop;
     int done = VMFALSE;
     Token tkn;
 
@@ -375,13 +375,13 @@ static void ParseArrayInitializers(ParseContext *c, int16_t size)
 }
 
 /* ClearArrayInitializers - clear the array initializers */
-static void ClearArrayInitializers(ParseContext *c, int16_t size)
+static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
 {
-    int16_t *dataPtr = (int16_t *)c->codeBuf;
-    int16_t *dataTop = (int16_t *)c->ctop;
+    VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
+    VMVALUE *dataTop = (VMVALUE *)c->ctop;
     if (dataPtr + size > dataTop)
         ParseError(c, "insufficient object initializer space");
-    memset(dataPtr, 0, size * sizeof(int16_t));
+    memset(dataPtr, 0, size * sizeof(VMVALUE));
 }
 
 /* ParseImpliedLetOrFunctionCall - parse an implied let statement or a function call */

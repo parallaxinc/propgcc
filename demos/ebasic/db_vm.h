@@ -22,10 +22,10 @@ typedef void IntrinsicFcn(Interpreter *i);
 struct Interpreter {
     ImageHdr *image;
     jmp_buf errorTarget;
-    int16_t *stack;
-    int16_t *stackTop;
-    int16_t *fp;
-    int16_t *sp;
+    VMVALUE *stack;
+    VMVALUE *stackTop;
+    VMVALUE *fp;
+    VMVALUE *sp;
     uint8_t *pc;
     int argc;
 };
@@ -92,17 +92,24 @@ void Warn(const char *fmt, ...);                    /* fmt in FLASH_SPACE */
 void Abort(Interpreter *i, const char *fmt, ...);   /* fmt in FLASH_SPACE */
 
 /* prototypes from db_vmdebug.c */
-void DecodeFunction(uint16_t base, const uint8_t *code, int len);
-int DecodeInstruction(uint16_t base, const uint8_t *code, const uint8_t *lc);
+void DecodeFunction(UVMVALUE base, const uint8_t *code, int len);
+int DecodeInstruction(UVMVALUE base, const uint8_t *code, const uint8_t *lc);
 void ShowStack(Interpreter *i);
 
 void VM_sysinit(int argc, char *argv[]);
+void VM_sysexit(void);
 void VM_printf(const char *fmt, ...);           /* fmt in FLASH_SPACE */
 void VM_vprintf(const char *fmt, va_list ap);   /* fmt in FLASH_SPACE */
 int VM_getchar(void);
 void VM_putchar(int ch);
 void VM_getline(char *buf, int size);
 
+VMFILE *VM_fopen(const char *name, const char *mode);
+int VM_fclose(VMFILE *fp);
+char *VM_fgets(char *buf, int size, VMFILE *fp);
+int VM_fputs(const char *buf, VMFILE *fp);
+
 void LOG_printf(const char *fmt, ...);
+void putstr(char *str);
 
 #endif

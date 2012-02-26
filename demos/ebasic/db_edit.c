@@ -11,6 +11,10 @@
 
 /* command handlers */
 static void DoNew(ParseContext *e);
+#ifdef LOAD_SAVE
+static void DoLoad(ParseContext *e);
+static void DoSave(ParseContext *e);
+#endif
 static void DoList(ParseContext *e);
 static void DoRun(ParseContext *e);
 
@@ -20,20 +24,24 @@ static struct {
     void (*handler)(ParseContext *e);
 } cmds[] = {
     {   "NEW",   DoNew   },
+#ifdef LOAD_SAVE
+    {   "LOAD",  DoLoad  },
+    {   "SAVE",  DoSave  },
+#endif
     {   "LIST",  DoList  },
     {   "RUN",   DoRun   },
     {   NULL,    NULL    }
 };
 
 /* prototypes */
-static int EditGetLine(void *cookie, char *buf, int len, int16_t *pLineNumber);
+static int EditGetLine(void *cookie, char *buf, int len, VMVALUE *pLineNumber);
 static char *NextToken(ParseContext *e);
-static int ParseNumber(ParseContext *e, char *token, int16_t *pValue);
+static int ParseNumber(ParseContext *e, char *token, VMVALUE *pValue);
 static int IsBlank(char *p);
 
 void EditWorkspace(ParseContext *c)
 {
-    int16_t lineNumber;
+    VMVALUE lineNumber;
     char *token;
 
     BufInit();
@@ -80,9 +88,65 @@ static void DoNew(ParseContext *c)
     BufInit();
 }
 
+#ifdef LOAD_SAVE
+
+static void DoLoad(ParseContext *c)
+{
+    char *name;
+    if (!(name = NextToken(c)))
+        VM_printf("Please specify a file to load\n");
+    else {
+        VMFILE *fp;
+        if (!(fp = VM_fopen(name, "r")))
+            VM_printf("error loading '%s'\n", name);
+        else {
+            VM_printf("Loading '%s'\n", name);
+            BufInit();
+            while (VM_fgets(c->lineBuf, sizeof(c->lineBuf), fp) != NULL) {
+                int len = strlen(c->lineBuf);
+                int16_t lineNumber;
+                char *token;
+                c->linePtr = c->lineBuf;
+                if ((token = NextToken(c)) != NULL) {
+                    if (ParseNumber(c, token, &lineNumber))
+                        BufAddLineN(lineNumber, c->linePtr);
+                    else
+                        VM_printf("expecting a line number: %s\n", token);
+                }
+            }
+            VM_fclose(fp);
+        }
+    }
+}
+
+static void DoSave(ParseContext *c)
+{
+    char *name;
+    if (!(name = NextToken(c)))
+        VM_printf("Please specify a file to save\n");
+    else {
+        VMFILE *fp;
+        if (!(fp = VM_fopen(name, "w")))
+            VM_printf("error saving '%s'\n", name);
+        else {
+            VMVALUE lineNumber;
+            BufSeekN(0);
+            while (BufGetLine(&lineNumber, c->lineBuf)) {
+                char buf[32];
+                sprintf(buf, "%d ", lineNumber);
+                VM_fputs(buf, fp);
+                VM_fputs(c->lineBuf, fp);
+            }
+            VM_fclose(fp);
+        }
+    }
+}
+
+#endif
+
 static void DoList(ParseContext *c)
 {
-    int16_t lineNumber;
+    VMVALUE lineNumber;
     BufSeekN(0);
     while (BufGetLine(&lineNumber, c->lineBuf))
         VM_printf("%d %s", lineNumber, c->lineBuf);
@@ -97,7 +161,7 @@ char *prog[] = {
 };
 int prog_i;
 
-static int EditGetLine(void *cookie, char *buf, int len, int16_t *pLineNumber)
+static int EditGetLine(void *cookie, char *buf, int len, VMVALUE *pLineNumber)
 {
 #if 0
     if (!prog[prog_i])
@@ -116,7 +180,7 @@ static void DoRun(ParseContext *c)
 prog_i = 0;
     if (Compile(c, MAXOBJECTS)) {
         Interpreter *i = (Interpreter *)c->freeNext;
-        size_t stackSize = (c->freeTop - c->freeNext - sizeof(Interpreter)) / sizeof(int16_t);
+        size_t stackSize = (c->freeTop - c->freeNext - sizeof(Interpreter)) / sizeof(VMVALUE);
         if (stackSize <= 0)
             VM_printf("insufficient memory\n");
         else {
@@ -140,7 +204,7 @@ static char *NextToken(ParseContext *c)
     return *token == '\0' ? NULL : token;
 }
 
-static int ParseNumber(ParseContext *c, char *token, int16_t *pValue)
+static int ParseNumber(ParseContext *c, char *token, VMVALUE *pValue)
 {
     int ch;
     *pValue = 0;
