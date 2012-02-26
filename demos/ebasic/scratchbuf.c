@@ -3,20 +3,28 @@
 
 static DATA_SPACE VMVALUE data[SCRATCHBUFSIZE];
 static VMVALUE *dataTop = (VMVALUE *)((char *)data + sizeof(data));
+static VMVALUE *dataPtr = data;
 
-int BufWriteWords(int offset, const VMVALUE *buf, int size)
+void BufRewind(void)
 {
-    if (data + offset + size > dataTop)
+    dataPtr = data;
+}
+
+int BufWriteWords(const VMVALUE *buf, int size)
+{
+    if (dataPtr + size > dataTop)
         return VMFALSE;
-    memcpy(data + offset, buf, size * sizeof(VMVALUE));
+    memcpy(dataPtr, buf, size * sizeof(VMVALUE));
+    dataPtr += size;
     return VMTRUE;
 }
 
-int BufReadWords(int offset, VMVALUE *buf, int size)
+int BufReadWords(VMVALUE *buf, int size)
 {
-    if (data + offset + size > dataTop)
+    if (dataPtr + size > dataTop)
         return VMFALSE;
-    memcpy(buf, data + offset, size * sizeof(VMVALUE));
+    memcpy(buf, dataPtr, size * sizeof(VMVALUE));
+    dataPtr += size;
     return VMTRUE;
 }
 

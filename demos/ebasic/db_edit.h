@@ -1,11 +1,11 @@
 #ifndef __EDIT_H__
 #define __EDIT_H__
 
-#include "db_compiler.h"
+#include "db_system.h"
 
 #define MAX_PROG_NAME   32
 
-void EditWorkspace(ParseContext *c);
+void EditWorkspace(System *sys);
 
 /* edit buffer interface */
 void BufInit(void);

@@ -11,6 +11,7 @@ db_scan.o \
 db_statement.o \
 db_strings.o \
 db_symbols.o \
+db_system.o \
 db_vmdebug.o \
 db_vmfcn.o \
 db_vmint.o \
