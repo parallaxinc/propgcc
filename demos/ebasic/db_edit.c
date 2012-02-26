@@ -88,6 +88,7 @@ void EditWorkspace(ParseContext *c)
     }
 }
 
+#ifdef LOAD_SAVE
 static int SetProgramName(ParseContext *c)
 {
     char *name;
@@ -97,11 +98,14 @@ static int SetProgramName(ParseContext *c)
     }
     return programName[0] != '\0';
 }
+#endif
 
 static void DoNew(ParseContext *c)
 {
     /* check for a program name on the command line */
+#ifdef LOAD_SAVE
     SetProgramName(c);
+#endif
     BufInit();
 }
 
@@ -176,32 +180,14 @@ static void DoList(ParseContext *c)
         VM_printf("%d %s", lineNumber, c->lineBuf);
 }
 
-char *prog[] = {
-//  "for x=1 to 10\n",
-//  "printf(\"%d %d\n\", x, x*x)\n",
-//  "next x\n",
-    "for\n",
-    0
-};
-int prog_i;
-
 static int EditGetLine(void *cookie, char *buf, int len, VMVALUE *pLineNumber)
 {
-#if 0
-    if (!prog[prog_i])
-        return VMFALSE;
-    strcpy(buf, prog[prog_i++]);
-    *pLineNumber = prog_i;
-    return VMTRUE;
-#else
     return BufGetLine(pLineNumber, buf);
-#endif
 }
 
 static void DoRun(ParseContext *c)
 {
     BufSeekN(0);
-prog_i = 0;
     if (Compile(c, MAXOBJECTS)) {
         Interpreter *i = (Interpreter *)c->freeNext;
         size_t stackSize = (c->freeTop - c->freeNext - sizeof(Interpreter)) / sizeof(VMVALUE);
