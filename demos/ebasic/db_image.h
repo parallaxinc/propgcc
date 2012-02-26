@@ -17,13 +17,13 @@
 
 /* in-memory image header */
 typedef struct {
-    int16_t     mainCode;           /* main code object number */
-    int16_t     *objects;           /* object table */
-    uint16_t    objectCount;        /* object count */
-    int16_t     *objectData;        /* object data space */
-    uint16_t    objectDataSize;     /* object data space size in words */
-    int16_t     *variables;         /* variable table */
-    uint16_t    variableCount;      /* variable count */
+    VMVALUE     mainCode;           /* main code object number */
+    VMVALUE     *objects;           /* object table */
+    UVMVALUE    objectCount;        /* object count */
+    VMVALUE     *objectData;        /* object data space */
+    UVMVALUE    objectDataSize;     /* object data space size in words */
+    VMVALUE     *variables;         /* variable table */
+    UVMVALUE    variableCount;      /* variable count */
 } ImageHdr;
 
 /* stack frame offsets */
@@ -40,30 +40,30 @@ typedef struct {
 #define PROTO_BVECTOR   0x7ffd
 
 /* get the size of an object in words */
-#define GetObjSizeInWords(s)    (((s) + sizeof(int16_t) - 1) / sizeof(int16_t))
+#define GetObjSizeInWords(s)    (((s) + sizeof(VMVALUE) - 1) / sizeof(VMVALUE))
 
 /* object header structure */
 typedef struct {
-    int16_t prototype;
+    VMVALUE prototype;
 } ObjectHdr;
 
 /* vector or byte vector object header structure */
 typedef struct {
-    int16_t prototype;  // must be PROTO_CODE, PROTO_VECTOR, or PROTO_BVECTOR
-    int16_t size;
+    VMVALUE prototype;  // must be PROTO_CODE, PROTO_VECTOR, or PROTO_BVECTOR
+    VMVALUE size;
 } VectorObjectHdr;
 
 /* get a pointer to an object header */
 #define GetObjHdr(i, n)         ((ObjectHdr *)&(i)->objectData[(i)->objects[(n) - 1]])
 
 /* get the prototype of an object */
-#define GetObjPrototype(h)      ((int16_t)(h)->prototype)
+#define GetObjPrototype(h)      ((VMVALUE)(h)->prototype)
 
 /* get the size of a vector */
 #define GetVectorSize(h)        ((VectorObjectHdr *)(h))->size
 
 /* get the base of a word vector */
-#define GetVectorBase(h)        ((int16_t *)((uint8_t *)(h) + sizeof(VectorObjectHdr)))
+#define GetVectorBase(h)        ((VMVALUE *)((uint8_t *)(h) + sizeof(VectorObjectHdr)))
 
 /* get the base of a byte vector */
 #define GetBVectorBase(h)       ((uint8_t *)(h) + sizeof(VectorObjectHdr))

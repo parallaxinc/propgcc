@@ -62,7 +62,7 @@ static FLASH_SPACE OTDEF otab[] = {
 };
 
 /* DecodeFunction - decode the instructions in a function code object */
-void DecodeFunction(uint16_t base, const uint8_t *code, int len)
+void DecodeFunction(UVMVALUE base, const uint8_t *code, int len)
 {
     const uint8_t *lc = code;
     const uint8_t *end = code + len;
@@ -71,11 +71,11 @@ void DecodeFunction(uint16_t base, const uint8_t *code, int len)
 }
 
 /* DecodeInstruction - decode a single bytecode instruction */
-int DecodeInstruction(uint16_t base, const uint8_t *code, const uint8_t *lc)
+int DecodeInstruction(UVMVALUE base, const uint8_t *code, const uint8_t *lc)
 {
     uint8_t opcode, byte1, byte2;
     const OTDEF *op;
-    int16_t offset;
+    VMVALUE offset;
     int n, addr;
 
     /* get the opcode */
@@ -107,7 +107,7 @@ int DecodeInstruction(uint16_t base, const uint8_t *code, const uint8_t *lc)
             case FMT_BR:
                 byte1 = VMCODEBYTE(lc + 1);
                 byte2 = VMCODEBYTE(lc + 2);
-                offset = (int16_t)((byte2 << 8) | byte1);
+                offset = (VMVALUE)((byte2 << 8) | byte1);
                 VM_printf("%02x %02x %s %02x%02x # %04x\n", byte1, byte2, op->name, byte2, byte1, addr + 3 + offset);
                 n += 2;
                 break;

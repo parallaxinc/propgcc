@@ -43,7 +43,7 @@ int Compile(ParseContext *c, int maxObjects)
         ParseError(c, "insufficient space for image header");
 
     /* allocate space for the object table */
-    if (!(c->image->objects = (int16_t *)AllocateFreeSpace(c, maxObjects * sizeof(int16_t))))
+    if (!(c->image->objects = (VMVALUE *)AllocateFreeSpace(c, maxObjects * sizeof(VMVALUE))))
         ParseError(c, "insufficient space for object table\n");
     c->image->objectCount = 0;
     c->maxObjects = maxObjects;
@@ -103,7 +103,7 @@ int Compile(ParseContext *c, int maxObjects)
     StoreCode(c);
 
     /* allocate the global variable table */
-    if (!(c->image->variables = (int16_t *)AllocateFreeSpace(c, c->image->variableCount * sizeof(int16_t))))
+    if (!(c->image->variables = (VMVALUE *)AllocateFreeSpace(c, c->image->variableCount * sizeof(VMVALUE))))
         ParseError(c, "insufficient space for variable table");
 
     /* store the initial values of the global variables */
@@ -113,15 +113,15 @@ int Compile(ParseContext *c, int maxObjects)
     }
 
     /* allocate space for the object data */
-    if (!(c->image->objectData = (int16_t *)AllocateFreeSpace(c, c->image->objectDataSize * sizeof(int16_t))))
+    if (!(c->image->objectData = (VMVALUE *)AllocateFreeSpace(c, c->image->objectDataSize * sizeof(VMVALUE))))
         ParseError(c, "insufficient space for object data");
     if (!BufReadWords(0, c->image->objectData, c->image->objectDataSize))
         ParseError(c, "error reading object data");
 
     {
-        int objectTableSize = c->image->objectCount  * sizeof(int16_t);
-        int objectDataSize = c->image->objectDataSize  * sizeof(int16_t);
-        int dataSize = objectTableSize + objectDataSize + c->image->variableCount * sizeof(int16_t);
+        int objectTableSize = c->image->objectCount  * sizeof(VMVALUE);
+        int objectDataSize = c->image->objectDataSize  * sizeof(VMVALUE);
+        int dataSize = objectTableSize + objectDataSize + c->image->variableCount * sizeof(VMVALUE);
 #if 0
         DumpSymbols(&c->globals, "symbols");
 #endif
@@ -197,7 +197,7 @@ void StoreCode(ParseContext *c)
 
 #if 0
     VM_printf("%s:\n", c->codeName);
-    DecodeFunction((c->image->objectDataSize + GetObjSizeInWords(sizeof(VectorObjectHdr))) * sizeof(int16_t), c->codeBuf, codeSize);
+    DecodeFunction((c->image->objectDataSize + GetObjSizeInWords(sizeof(VectorObjectHdr))) * sizeof(VMVALUE), c->codeBuf, codeSize);
     DumpSymbols(&c->arguments, "arguments");
     DumpSymbols(&c->locals, "locals");
     VM_printf("\n");
@@ -264,7 +264,7 @@ String *AddString(ParseContext *c, char *value)
 }
 
 /* AddStringRef - add a reference to a string in the string table */
-int16_t AddStringRef(String *str, int offset)
+VMVALUE AddStringRef(String *str, int offset)
 {
     int link;
 

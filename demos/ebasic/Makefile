@@ -16,12 +16,12 @@ db_vmfcn.o \
 db_vmint.o \
 editbuf.o \
 scratchbuf.o \
-osint_posix.o
+osint_propgcc.o
 
 ifndef MODEL
 MODEL = xmmc
 endif
 
-CFLAGS = -Os -DPROPELLER_GCC -DUSE_FDS
+CFLAGS = -Os -DPROPELLER_GCC -DUSE_FDS -DLOAD_SAVE
 
 include ../common/common.mk

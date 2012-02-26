@@ -15,7 +15,7 @@ static void fcn_printStr(Interpreter *i);
 static void fcn_printInt(Interpreter *i);
 static void fcn_printTab(Interpreter *i);
 static void fcn_printNL(Interpreter *i);
-uint8_t *GetArgBVector(Interpreter *i, int16_t object, int16_t *pSize);
+uint8_t *GetArgBVector(Interpreter *i, VMVALUE object, VMVALUE *pSize);
 
 /* this table must be in the same order as the FN_xxx macros */
 IntrinsicFcn * FLASH_SPACE Intrinsics[] = {
@@ -53,7 +53,7 @@ static void fcn_rnd(Interpreter *i)
 static void fcn_printStr(Interpreter *i)
 {
     uint8_t *str;
-    int16_t size;
+    VMVALUE size;
     CheckArgCountEq(i, 1);
     str = GetArgBVector(i, i->sp[0], &size);
     while (--size >= 0)
@@ -84,12 +84,12 @@ static void fcn_printNL(Interpreter *i)
 }
 
 /* GetArgBVector - get a byte vector argument */
-uint8_t *GetArgBVector(Interpreter *i, int16_t object, int16_t *pSize)
+uint8_t *GetArgBVector(Interpreter *i, VMVALUE object, VMVALUE *pSize)
 {
     VectorObjectHdr *hdr;
     CheckObjNumber(i, object);
     hdr = (VectorObjectHdr *)GetObjHdr(i->image, object);
     CheckObjType(i, hdr, PROTO_BVECTOR);
-    *pSize = (int16_t)GetVectorSize(hdr);
+    *pSize = (VMVALUE)GetVectorSize(hdr);
     return GetBVectorBase(hdr);
 }

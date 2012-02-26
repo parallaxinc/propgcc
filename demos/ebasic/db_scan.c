@@ -63,7 +63,7 @@ static int XGetC(ParseContext *c);
 /* GetLine - get the next input line */
 int GetLine(ParseContext *c)
 {
-    int16_t lineNumber;
+    VMVALUE lineNumber;
     if (!(*c->getLine)(c->getLineCookie, c->lineBuf, sizeof(c->lineBuf), &lineNumber))
         return VMFALSE;
     c->lineNumber = lineNumber;
@@ -404,7 +404,7 @@ static int NumberToken(ParseContext *c, int ch)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (int16_t)atol(c->token);
+    c->value = (VMVALUE)atol(c->token);
     
     /* return the token */
     return T_NUMBER;
@@ -427,7 +427,7 @@ static int HexNumberToken(ParseContext *c)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (int16_t)strtoul(c->token, NULL, 16);
+    c->value = (VMVALUE)strtoul(c->token, NULL, 16);
     
     /* return the token */
     return T_NUMBER;
@@ -450,7 +450,7 @@ static int BinaryNumberToken(ParseContext *c)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (int16_t)strtoul(c->token, NULL, 2);
+    c->value = (VMVALUE)strtoul(c->token, NULL, 2);
     
     /* return the token */
     return T_NUMBER;
