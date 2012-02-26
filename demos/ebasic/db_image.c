@@ -23,9 +23,8 @@ VMVALUE StoreVector(ParseContext *c, const VMVALUE *buf, int size)
     /* write the object header and data */
     hdr.prototype = PROTO_VECTOR;
     hdr.size = size;
-    if (!BufWriteWords(c->image->objectDataSize, (VMVALUE *)&hdr, hdrSizeInWords)
-    ||  !BufWriteWords(c->image->objectDataSize + hdrSizeInWords, buf, size))
-        ParseError(c, "insufficient object data space");
+    if (!BufWriteWords((VMVALUE *)&hdr, hdrSizeInWords) || !BufWriteWords(buf, size))
+        ParseError(c, "insufficient scratch space");
 
     /* update the object data size */
     c->image->objectDataSize += hdrSizeInWords + size;
@@ -62,9 +61,8 @@ void StoreBVectorData(ParseContext *c, VMVALUE object, VMVALUE proto, const uint
     /* write the object header and data */
     hdr.prototype = proto;
     hdr.size = size;
-    if (!BufWriteWords(c->image->objectDataSize, (VMVALUE *)&hdr, hdrSizeInWords)
-    ||  !BufWriteWords(c->image->objectDataSize + hdrSizeInWords, (VMVALUE *)buf, dataSizeInWords))
-        ParseError(c, "insufficient object data space");
+    if (!BufWriteWords((VMVALUE *)&hdr, hdrSizeInWords) || !BufWriteWords((VMVALUE *)buf, dataSizeInWords))
+        ParseError(c, "insufficient scratch space");
 
     /* update the object data size */
     c->image->objectDataSize += hdrSizeInWords + dataSizeInWords;

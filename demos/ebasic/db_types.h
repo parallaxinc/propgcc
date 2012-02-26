@@ -56,11 +56,13 @@ typedef uint16_t UVMVALUE;
 #define VMCODEBYTE(p)           *(uint8_t *)(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
 
+#define ANSI_FILE_IO
+
 #endif  // WIN32
 
-/*******/
-/* MAC */
-/*******/
+/*****************/
+/* MAC and LINUX */
+/*****************/
 
 #if defined(MAC) || defined(LINUX)
 
@@ -78,6 +80,8 @@ typedef uint16_t UVMVALUE;
 
 #define VMCODEBYTE(p)           *(uint8_t *)(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
+
+#define ANSI_FILE_IO
 
 #endif  // MAC
 
@@ -157,6 +161,8 @@ typedef uint16_t UVMVALUE;
 #define VMCODEBYTE(p)           *(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
 
+#define ANSI_FILE_IO
+
 #endif  // PIC32
 
 /**********/
@@ -223,6 +229,8 @@ typedef uint16_t UVMVALUE;
 #define VMCODEBYTE(p)           pgm_read_byte(p)
 #define VMINTRINSIC(i)          ((IntrinsicFcn *)pgm_read_word(&Intrinsics[i]))
 
+#define ANSI_FILE_IO
+
 #endif  // AVR
 
 /*****************/
@@ -267,7 +275,6 @@ int strcasecmp(const char *s1, const char *s2);
 
 typedef int16_t VMVALUE;
 typedef uint16_t UVMVALUE;
-typedef FILE VMFILE;
 
 int strcasecmp(const char *s1, const char *s2);
 
@@ -291,11 +298,10 @@ int strcasecmp(const char *s1, const char *s2);
 #ifdef PROPELLER_GCC
 
 #include <string.h>
-#include "db_inttypes.h"
+#include <stdint.h>
 
 typedef int16_t VMVALUE;
 typedef uint16_t UVMVALUE;
-typedef FILE VMFILE;
 
 int strcasecmp(const char *s1, const char *s2);
 
@@ -318,6 +324,8 @@ int strcasecmp(const char *s1, const char *s2);
 /****************/
 
 #ifdef ANSI_FILE_IO
+
+#include <stdio.h>
 
 typedef FILE VMFILE;
 

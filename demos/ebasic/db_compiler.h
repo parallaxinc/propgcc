@@ -11,13 +11,13 @@
 #include <setjmp.h>
 #include "db_types.h"
 #include "db_image.h"
+#include "db_system.h"
 
 #ifdef WIN32
 #define strcasecmp  _stricmp
 #endif
 
 /* program limits */
-#define MAXLINE         128
 #define MAXTOKEN        32
 #if 0
 #define MAXCODE         32768
@@ -155,10 +155,8 @@ typedef enum {
 
 /* parse context */
 typedef struct {
+    System *sys;                    /* system context */
     jmp_buf errorTarget;            /* error target */
-    uint8_t *freeSpace;             /* base of free space */
-    uint8_t *freeNext;              /* next free space available */
-    uint8_t *freeTop;               /* top of free space */
     uint8_t *nextGlobal;            /* next global heap space location */
     uint8_t *nextLocal;             /* next local heap space location */
     size_t heapSize;                /* size of heap space in bytes */
@@ -166,8 +164,6 @@ typedef struct {
     int (*getLine)(void *cookie, char *buf, int len, VMVALUE *pLineNumber);
                                     /* scan - function to get a line of input */
     void *getLineCookie;            /* scan - cookie for the getLine function */
-    char lineBuf[MAXLINE];          /* scan - current input line */
-    char *linePtr;                  /* scan - pointer to the current character */
     int lineNumber;                 /* scan - current line number */
     Token savedToken;               /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
@@ -272,8 +268,8 @@ struct ExprListEntry {
 };
 
 /* db_compiler.c */
-void InitCompiler(ParseContext *c, uint8_t *freeSpace, size_t freeSize);
-int Compile(ParseContext *c, int maxObjects);
+ParseContext *InitCompiler(System *sys, int maxObjects);
+ImageHdr *Compile(ParseContext *c);
 void StartCode(ParseContext *c, char *name, CodeType type);
 void StoreCode(ParseContext *c);
 void AddIntrinsic(ParseContext *c, char *name, int index);
@@ -337,8 +333,9 @@ VMVALUE StoreVector(ParseContext *c, const VMVALUE *buf, int size);
 VMVALUE NewObject(ParseContext *c);
 
 /* scratch buffer interface */
-int BufWriteWords(int offset, const VMVALUE *buf, int size);
-int BufReadWords(int offset, VMVALUE *buf, int size);
+void BufRewind(void);
+int BufWriteWords(const VMVALUE *buf, int size);
+int BufReadWords(VMVALUE *buf, int size);
 
 #endif
 

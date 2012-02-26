@@ -16,47 +16,65 @@
 
 /* local function prototypes */
 static void PlaceStrings(ParseContext *c);
-static uint8_t *AllocateFreeSpace(ParseContext *c, size_t size);
 
-/* InitCompiler - initialize the compiler */
-void InitCompiler(ParseContext *c, uint8_t *freeSpace, size_t freeSize)
+/* InitCompiler - initialize the compiler and create a parse context */
+ParseContext *InitCompiler(System *sys, int maxObjects)
 {
+    ImageHdr *image;
+    ParseContext *c;
+
+    /* allocate space for the image header */
+    if (!(image = (ImageHdr *)AllocateFreeSpace(sys, sizeof(ImageHdr))))
+        ParseError(c, "insufficient space for image header");
+        
+    /* mark the current position in free space to allow compiler data structures to be freed */
+    MarkFreeSpace(sys);
+
+    /* allocate space for the object table */
+    if (!(image->objects = (VMVALUE *)AllocateFreeSpace(sys, maxObjects * sizeof(VMVALUE))))
+        ParseError(c, "insufficient space for object table\n");
+
+    /* allocate and initialize the parse context */
+    if (!(c = (ParseContext *)AllocateFreeSpace(sys, sizeof(ParseContext))))
+        ParseError(c, "insufficient space for parse context\n");
     memset(c, 0, sizeof(ParseContext));
-    c->freeSpace = freeSpace;
-    c->freeTop = freeSpace + freeSize;
+    c->sys = sys;
+    c->image = image;
+    c->maxObjects = maxObjects;
+    
+    /* return the new parse context */
+    return c;
 }
 
 /* Compile - compile a program */
-int Compile(ParseContext *c, int maxObjects)
+ImageHdr *Compile(ParseContext *c)
 {
+    System *sys = c->sys;
+    ImageHdr *image = c->image;
+    size_t maxHeapUsed = c->maxHeapUsed;
+    VMVALUE *variables;
+    UVMVALUE totalSize;
     Symbol *sym;
     
     /* setup an error target */
     if (setjmp(c->errorTarget) != 0)
-        return VMFALSE;
+        return NULL;
 
-    /* reset the free space allocator */
-    c->freeNext = c->freeSpace;
-
-    /* allocate space for the image header */
-    if (!(c->image = (ImageHdr *)AllocateFreeSpace(c, sizeof(ImageHdr))))
-        ParseError(c, "insufficient space for image header");
+    /* initialize the scratch buffer */
+    BufRewind();
 
     /* allocate space for the object table */
-    if (!(c->image->objects = (VMVALUE *)AllocateFreeSpace(c, maxObjects * sizeof(VMVALUE))))
-        ParseError(c, "insufficient space for object table\n");
-    c->image->objectCount = 0;
-    c->maxObjects = maxObjects;
-    c->image->objectDataSize = 0;
+    image->objectCount = 0;
+    image->objectDataSize = 0;
 
     /* use the rest of the free space for the compiler heap */
-    c->nextGlobal = c->freeNext;
-    c->nextLocal = c->freeTop;
-    c->heapSize = c->freeTop - c->freeNext;
+    c->nextGlobal = sys->freeNext;
+    c->nextLocal = sys->freeTop;
+    c->heapSize = sys->freeTop - sys->freeNext;
     c->maxHeapUsed = 0;
 
     /* initialize the global variable count */
-    c->image->variableCount = 0;
+    image->variableCount = 0;
 
     /* initialize block nesting table */
     c->btop = (Block *)((char *)c->blockBuf + sizeof(c->blockBuf));
@@ -99,41 +117,54 @@ int Compile(ParseContext *c, int maxObjects)
     
     /* write the main code */
     StartCode(c, "main", CODE_TYPE_MAIN);
-    c->image->mainCode = c->code;
+    image->mainCode = c->code;
     StoreCode(c);
 
     /* allocate the global variable table */
-    if (!(c->image->variables = (VMVALUE *)AllocateFreeSpace(c, c->image->variableCount * sizeof(VMVALUE))))
+    if (!(image->variables = (VMVALUE *)AllocateFreeSpace(sys, image->variableCount * sizeof(VMVALUE))))
         ParseError(c, "insufficient space for variable table");
 
     /* store the initial values of the global variables */
     for (sym = c->globals.head; sym != NULL; sym = sym->next) {
         if (!(sym->value & INTRINSIC_FLAG))
-            c->image->variables[sym->value] = sym->initialValue;
+            variables[sym->value] = sym->initialValue;
     }
 
-    /* allocate space for the object data */
-    if (!(c->image->objectData = (VMVALUE *)AllocateFreeSpace(c, c->image->objectDataSize * sizeof(VMVALUE))))
-        ParseError(c, "insufficient space for object data");
-    if (!BufReadWords(0, c->image->objectData, c->image->objectDataSize))
-        ParseError(c, "error reading object data");
+    /* write out the variable and object tables */
+    if (!BufWriteWords(variables, image->variableCount) || !BufWriteWords(image->objects, image->objectCount))
+        ParseError(c, "insufficient scratch space");
+        
+    /* free up the space the compiler was consuming */
+    RestoreFreeSpace(sys);
+
+    /* allocate space for the object data and variables */
+    totalSize = (image->objectDataSize + image->variableCount + image->objectCount) * sizeof(VMVALUE);
+    if (!(image->objectData = (VMVALUE *)AllocateFreeSpace(sys, totalSize)))
+        ParseError(c, "insufficient space for objects and variables");
+    image->variables = image->objectData + image->objectDataSize;
+    image->objects = image->variables + image->variableCount;
+    
+    /* read the object data from the scratch buffer */
+    BufRewind();
+    if (!BufReadWords(image->objectData, totalSize))
+        ParseError(c, "error reading objects and variables");
 
     {
-        int objectTableSize = c->image->objectCount  * sizeof(VMVALUE);
-        int objectDataSize = c->image->objectDataSize  * sizeof(VMVALUE);
-        int dataSize = objectTableSize + objectDataSize + c->image->variableCount * sizeof(VMVALUE);
+        int objectTableSize = image->objectCount  * sizeof(VMVALUE);
+        int objectDataSize = image->objectDataSize  * sizeof(VMVALUE);
+        int dataSize = objectTableSize + objectDataSize + image->variableCount * sizeof(VMVALUE);
 #if 0
         DumpSymbols(&c->globals, "symbols");
 #endif
-        VM_printf("H:%d", c->maxHeapUsed);
-        VM_printf(" O:%d", c->image->objectCount);
+        VM_printf("H:%d", maxHeapUsed);
+        VM_printf(" O:%d", image->objectCount);
         VM_printf(" D:%d", objectDataSize);
-        VM_printf(" V:%d", c->image->variableCount);
+        VM_printf(" V:%d", image->variableCount);
         VM_printf(" T:%d\n", dataSize);
     }
 
-    /* return successfully */
-    return VMTRUE;
+    /* return the image */
+    return image;
 }
 
 /* StartCode - start a function or method under construction */
@@ -207,7 +238,7 @@ void StoreCode(ParseContext *c)
     StoreBVectorData(c, c->code, PROTO_CODE, c->codeBuf, codeSize);
 
     /* empty the local heap */
-    c->nextLocal = c->freeTop;
+    c->nextLocal = c->sys->freeTop;
     InitSymbolTable(&c->arguments);
     InitSymbolTable(&c->locals);
     c->labels = NULL;
@@ -229,17 +260,6 @@ static void PlaceStrings(ParseContext *c)
             str->fixups = 0;
         }
     }
-}
-
-/* AllocateFreeSpace - allocate free space */
-static uint8_t *AllocateFreeSpace(ParseContext *c, size_t size)
-{
-    uint8_t *p = c->freeNext;
-    size = (size + ALIGN_MASK) & ~ALIGN_MASK;
-    if (p + size > c->freeTop)
-        return NULL;
-    c->freeNext += size;
-    return p;
 }
 
 /* AddString - add a string to the string table */
