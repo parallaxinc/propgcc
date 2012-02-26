@@ -3,6 +3,8 @@
 
 #include "db_compiler.h"
 
+#define MAX_PROG_NAME   32
+
 void EditWorkspace(ParseContext *c);
 
 /* edit buffer interface */
