@@ -33,6 +33,11 @@ static struct {
     {   NULL,    NULL    }
 };
 
+/* memory of the last filename */
+#ifdef LOAD_SAVE
+static DATA_SPACE char programName[MAX_PROG_NAME] = "";
+#endif
+
 /* prototypes */
 static int EditGetLine(void *cookie, char *buf, int len, VMVALUE *pLineNumber);
 static char *NextToken(ParseContext *e);
@@ -83,8 +88,20 @@ void EditWorkspace(ParseContext *c)
     }
 }
 
+static int SetProgramName(ParseContext *c)
+{
+    char *name;
+    if ((name = NextToken(c)) != NULL) {
+        strncpy(programName, name, MAX_PROG_NAME - 1);
+        programName[MAX_PROG_NAME - 1] = '\0';
+    }
+    return programName[0] != '\0';
+}
+
 static void DoNew(ParseContext *c)
 {
+    /* check for a program name on the command line */
+    SetProgramName(c);
     BufInit();
 }
 
@@ -92,53 +109,60 @@ static void DoNew(ParseContext *c)
 
 static void DoLoad(ParseContext *c)
 {
-    char *name;
-    if (!(name = NextToken(c)))
-        VM_printf("Please specify a file to load\n");
+    VMFILE *fp;
+    
+    /* check for a program name on the command line */
+    if (!SetProgramName(c)) {
+        VM_printf("expecting a file name\n");
+        return;
+    }
+    
+    /* load the program */
+    if (!(fp = VM_fopen(programName, "r")))
+        VM_printf("error loading '%s'\n", programName);
     else {
-        VMFILE *fp;
-        if (!(fp = VM_fopen(name, "r")))
-            VM_printf("error loading '%s'\n", name);
-        else {
-            VM_printf("Loading '%s'\n", name);
-            BufInit();
-            while (VM_fgets(c->lineBuf, sizeof(c->lineBuf), fp) != NULL) {
-                int len = strlen(c->lineBuf);
-                int16_t lineNumber;
-                char *token;
-                c->linePtr = c->lineBuf;
-                if ((token = NextToken(c)) != NULL) {
-                    if (ParseNumber(c, token, &lineNumber))
-                        BufAddLineN(lineNumber, c->linePtr);
-                    else
-                        VM_printf("expecting a line number: %s\n", token);
-                }
+        VM_printf("Loading '%s'\n", programName);
+        BufInit();
+        while (VM_fgets(c->lineBuf, sizeof(c->lineBuf), fp) != NULL) {
+            int len = strlen(c->lineBuf);
+            int16_t lineNumber;
+            char *token;
+            c->linePtr = c->lineBuf;
+            if ((token = NextToken(c)) != NULL) {
+                if (ParseNumber(c, token, &lineNumber))
+                    BufAddLineN(lineNumber, c->linePtr);
+                else
+                    VM_printf("expecting a line number: %s\n", token);
             }
-            VM_fclose(fp);
         }
+        VM_fclose(fp);
     }
 }
 
 static void DoSave(ParseContext *c)
 {
-    char *name;
-    if (!(name = NextToken(c)))
-        VM_printf("Please specify a file to save\n");
+    VMFILE *fp;
+    
+    /* check for a program name on the command line */
+    if (!SetProgramName(c)) {
+        VM_printf("expecting a file name\n");
+        return;
+    }
+    
+    /* save the program */
+    if (!(fp = VM_fopen(programName, "w")))
+        VM_printf("error saving '%s'\n", programName);
     else {
-        VMFILE *fp;
-        if (!(fp = VM_fopen(name, "w")))
-            VM_printf("error saving '%s'\n", name);
-        else {
-            VMVALUE lineNumber;
-            BufSeekN(0);
-            while (BufGetLine(&lineNumber, c->lineBuf)) {
-                char buf[32];
-                sprintf(buf, "%d ", lineNumber);
-                VM_fputs(buf, fp);
-                VM_fputs(c->lineBuf, fp);
-            }
-            VM_fclose(fp);
+        VMVALUE lineNumber;
+        VM_printf("Saving '%s'\n", programName);
+        BufSeekN(0);
+        while (BufGetLine(&lineNumber, c->lineBuf)) {
+            char buf[32];
+            sprintf(buf, "%d ", lineNumber);
+            VM_fputs(buf, fp);
+            VM_fputs(c->lineBuf, fp);
         }
+        VM_fclose(fp);
     }
 }
 
