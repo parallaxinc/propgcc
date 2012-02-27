@@ -151,7 +151,7 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
 		result = value1 & 0xff;
 		if (result & 0x80)
 		{
-		    reboot();
+		    RebootProp();
 		    return 0;
 		}
 		break;

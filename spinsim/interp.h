@@ -92,7 +92,7 @@ typedef struct SpinVarsS {
     int32_t state;
 } SpinVarsT;
 
-void reboot(void);
+void RebootProp(void);
 int32_t GetCnt(void);
 void UpdatePins(void);
 int32_t MAP_ADDR(int32_t addr);

@@ -499,7 +499,7 @@ void ExecuteLowerOp(SpinVarsT *spinvars)
 	    clkmode = LONG(dcurr);
 	    if (clkmode & 0x80)
 	    {
-		reboot();
+		RebootProp();
 		return;
 	    }
 	    LONG(0) = clkfreq;
@@ -539,12 +539,12 @@ void ExecuteLowerOp(SpinVarsT *spinvars)
     }
     else if (opcode >= 0x24 && opcode <= 0x2f)
     {
-	if (opcode >= 0x24 && opcode <= 0x26) // ldregx, stregx, exregx
+	if (opcode >= 0x24 && opcode <= 0x26) // ldregx, stregx, exregx (spr)
 	{
 	    int32_t operand;
 	    dcurr -= 4;
 	    operand = LONG(dcurr);
-	    operand = ((opcode & 3) << 5) | (operand & 15);
+	    operand = ((opcode & 3) << 5) | 0x10 | (operand & 15);
             spinvars->pcurr = pcurr;
             spinvars->dcurr = dcurr;
 	    ExecuteRegisterOp(spinvars, operand, 31, 0);
