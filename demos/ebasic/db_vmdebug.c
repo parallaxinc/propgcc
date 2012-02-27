@@ -62,7 +62,7 @@ static FLASH_SPACE OTDEF otab[] = {
 };
 
 /* DecodeFunction - decode the instructions in a function code object */
-void DecodeFunction(UVMVALUE base, const uint8_t *code, int len)
+void DecodeFunction(VMUVALUE base, const uint8_t *code, int len)
 {
     const uint8_t *lc = code;
     const uint8_t *end = code + len;
@@ -71,7 +71,7 @@ void DecodeFunction(UVMVALUE base, const uint8_t *code, int len)
 }
 
 /* DecodeInstruction - decode a single bytecode instruction */
-int DecodeInstruction(UVMVALUE base, const uint8_t *code, const uint8_t *lc)
+int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
 {
     uint8_t opcode, byte1, byte2;
     const OTDEF *op;

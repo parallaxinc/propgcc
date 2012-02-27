@@ -808,7 +808,7 @@ static int ReferenceLabel(ParseContext *c, char *name, int offset)
         if (strcasecmp(name, label->name) == 0) {
             int link;
             if (!(link = label->fixups))
-                return label->offset - offset - 2;
+                return label->offset - offset - sizeof(VMUVALUE);
             else {
                 label->fixups = offset;
                 return link;

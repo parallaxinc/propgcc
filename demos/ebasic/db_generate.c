@@ -12,6 +12,8 @@ static void code_shortcircuit(ParseContext *c, int op, ParseTreeNode *expr, PVAL
 static void code_arrayref(ParseContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_call(ParseContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_index(ParseContext *c, PValOp fcn, PVAL *pv);
+static VMVALUE rd_cword(ParseContext *c, VMUVALUE off);
+static void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w);
 
 /* code_lvalue - generate code for an l-value expression */
 void code_lvalue(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
@@ -206,18 +208,64 @@ int putcbyte(ParseContext *c, int b)
 }
 
 /* putcword - put a code word into the code buffer */
-int putcword(ParseContext *c, int w)
+int putcword(ParseContext *c, VMVALUE w)
 {
     int addr = codeaddr(c);
-    if (c->cptr + 2 > c->ctop)
+    if (c->cptr + sizeof(VMVALUE) > c->ctop)
         Fatal(c, "Bytecode buffer overflow");
-    *c->cptr++ = w;
-    *c->cptr++ = w >> 8;
+    wr_cword(c, c->cptr - c->codeBuf, w);
+    c->cptr += sizeof(VMVALUE);
     return addr;
 }
 
+#if 0
+/* rd_cword - get a code word from the code buffer */
+static VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
+{
+    int cnt = sizeof(VMVALUE);
+    VMVALUE w = 0;
+    while (--cnt >= 0)
+        w = (w << 8) | c->codeBuf[off++];
+    return w;
+}
+
+/* wr_cword - put a code word into the code buffer */
+static void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w)
+{
+    uint8_t *p = &c->codeBuf[off] + sizeof(VMVALUE);
+    int cnt = sizeof(VMVALUE);
+    while (--cnt >= 0) {
+        *--p = w;
+        w >>= 8;
+    }
+}
+#else
+/* rd_cword - get a code word from the code buffer */
+static VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
+{
+    uint8_t *p = &c->codeBuf[off] + sizeof(VMVALUE);
+    int cnt = sizeof(VMVALUE);
+    VMVALUE w = 0;
+    while (--cnt >= 0) {
+        w <<= 8;
+        w |= *--p;
+    }
+    return w;
+}
+
+/* wr_cword - put a code word into the code buffer */
+static void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w)
+{
+    int cnt = sizeof(VMVALUE);
+    while (--cnt >= 0) {
+       c->codeBuf[off++] = w;
+       w >>= 8;
+    }
+}
+#endif
+
 /* merge - merge two reference chains */
-int merge(ParseContext *c, int chn, int chn2)
+int merge(ParseContext *c, VMUVALUE chn, VMUVALUE chn2)
 {
     int last, nxt;
 
@@ -228,38 +276,35 @@ int merge(ParseContext *c, int chn, int chn2)
     /* find the last entry in the new chain */
     last = chn2;
     while (last != 0) {
-        if (!(nxt = (VMVALUE)(c->codeBuf[last] | (c->codeBuf[last + 1] << 8))))
+        if (!(nxt = rd_cword(c, last)))
             break;
         last = nxt;
     }
 
     /* link the last entry in the new chain to the first entry in the original chain */
-    c->codeBuf[last] = chn;
-    c->codeBuf[last + 1] = chn >> 8;
+    wr_cword(c, last, chn);
 
     /* return the new chain now linked to the original chain */
     return chn2;
 }
 
 /* fixup - fixup a reference chain */
-void fixup(ParseContext *c, int chn, int val)
+void fixup(ParseContext *c, VMUVALUE chn, VMUVALUE val)
 {
     while (chn != 0) {
-        int nxt = (VMVALUE)(c->codeBuf[chn] | (c->codeBuf[chn + 1] << 8));
-        c->codeBuf[chn] = val;
-        c->codeBuf[chn + 1] = val >> 8;
+        int nxt = rd_cword(c, chn);
+        wr_cword(c, chn, val);
         chn = nxt;
     }
 }
 
 /* fixupbranch - fixup a reference chain */
-void fixupbranch(ParseContext *c, int chn, int val)
+void fixupbranch(ParseContext *c, VMUVALUE chn, VMUVALUE val)
 {
     while (chn != 0) {
-        int nxt = (VMVALUE)(c->codeBuf[chn] | (c->codeBuf[chn + 1] << 8));
-        int off = val - (chn + 2); /* this assumes all three byte branch instructions */
-        c->codeBuf[chn] = off;
-        c->codeBuf[chn + 1] = off >> 8;
+        int nxt = rd_cword(c, chn);
+        int off = val - (chn + sizeof(VMUVALUE)); /* this assumes all 1+sizeof(VMUVALUE) byte branch instructions */
+        wr_cword(c, chn, off);
         chn = nxt;
     }
 }

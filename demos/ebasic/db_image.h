@@ -19,11 +19,11 @@
 typedef struct {
     VMVALUE     mainCode;           /* main code object number */
     VMVALUE     *objects;           /* object table */
-    UVMVALUE    objectCount;        /* object count */
+    VMUVALUE    objectCount;        /* object count */
     VMVALUE     *objectData;        /* object data space */
-    UVMVALUE    objectDataSize;     /* object data space size in words */
+    VMUVALUE    objectDataSize;     /* object data space size in words */
     VMVALUE     *variables;         /* variable table */
-    UVMVALUE    variableCount;      /* variable count */
+    VMUVALUE    variableCount;      /* variable count */
 } ImageHdr;
 
 /* stack frame offsets */
