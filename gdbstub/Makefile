@@ -77,7 +77,7 @@ kernel_image.elf:	kernel.c
 	@$(ECHO) $@
 
 %.c:	%.binary
-	bin2c$(EXT) $< $@
+	./bin2c$(EXT) $< $@
 	@$(ECHO) $@
 
 #########

@@ -117,6 +117,8 @@ struct propeller_frame_cache
 {
   /* Base address.  */
   CORE_ADDR base;
+  CORE_ADDR args;
+  CORE_ADDR reg_bytes_saved;
   CORE_ADDR sp_offset;
   CORE_ADDR pc;
 
@@ -139,8 +141,10 @@ propeller_alloc_frame_cache (void)
 
   /* Base address.  */
   cache->base = 0;
-  cache->sp_offset = -4;
+  cache->sp_offset = 0;
   cache->pc = 0;
+  cache->args = 0;
+  cache->reg_bytes_saved = 0;
 
   /* Saved registers.  We initialize these to -1 since
      zero is a valid offset  */
@@ -227,16 +231,21 @@ propeller_analyze_prologue (struct gdbarch *gdbarch,
     op = read_memory_unsigned_integer (pc, 4, byte_order);
     if(WRLONG_P(op)){
       reg = GET_DST(op);
-      cache->saved_regs[reg] = 0;
-fprintf(stderr, "Recording register %d at offset %d\n", reg, 0);
       cache->sp_offset += 4;
+      cache->saved_regs[reg] = cache->sp_offset;
+      // fprintf(stderr, "Recording register %d at offset %d\n", reg, cache->sp_offset);
+      if(reg == 15){
+	cache->saved_regs[PROPELLER_PC_REGNUM] = cache->sp_offset;
+      }
       pc += 4;
       op = read_memory_unsigned_integer (pc, 4, byte_order);
+      cache->reg_bytes_saved = 4;
       if(MOVE_P(op)){
 	pc += 4;
 	op = read_memory_unsigned_integer (pc, 4, byte_order);
 	if(SUB_P(op)){
-	  cache->locals = GET_SRC(op);
+	  cache->locals = GET_SRC(op) + 4;
+	  fprintf(stderr, "Setting locals to %d\n", cache->locals);
 	  pc += 4;
 	} else {
 	  return base_pc;
@@ -252,27 +261,30 @@ fprintf(stderr, "Recording register %d at offset %d\n", reg, 0);
     int count;
     reg = GET_SRC(op) & 0xf;
     count = (GET_SRC(op) & 0xf0) >> 4;
-    reg += count;
     op = read_memory_unsigned_integer (pc+4, 4, byte_order);
     if(CALL_P(op)){
       pc += 8;
+      cache->locals = 4 * count;
+      cache-> reg_bytes_saved = 4 * count;
+      fprintf(stderr, "Setting locals to %d\n", cache->locals);
       for(; count; count--){
 	cache->sp_offset += 4;
-	reg--;
+	//	reg--;
 	if(reg == 15){
 	  // do the PC, too
 	  cache->saved_regs[PROPELLER_PC_REGNUM] = cache->sp_offset;
-fprintf(stderr, "Recording pc at offset %ld\n", cache->sp_offset);
+	  //fprintf(stderr, "Recording pc at offset %ld\n", cache->sp_offset);
 	}
-fprintf(stderr, "Recording register %d at offset %ld\n", reg, cache->sp_offset);
-	  cache->saved_regs[reg] = cache->sp_offset;
+	//fprintf(stderr, "Recording register %d at offset %ld\n", reg, cache->sp_offset);
+	  cache->saved_regs[reg++] = cache->sp_offset;
       }
       op = read_memory_unsigned_integer (pc, 4, byte_order);
       if(MOVE_P(op)){
 	pc += 4;
 	op = read_memory_unsigned_integer (pc, 4, byte_order);
 	if(SUB_P(op)){
-	  cache->locals = GET_SRC(op);
+	  cache->locals += GET_SRC(op);
+	  fprintf(stderr, "Setting locals to %d\n", cache->locals);
 	  pc += 4;
 	} else {
 	  return base_pc;
@@ -285,6 +297,7 @@ fprintf(stderr, "Recording register %d at offset %ld\n", reg, cache->sp_offset);
     }
   }
   while(pc < current_pc){
+    int offset;
     // some number of parameters will be written into the frame.
     op = read_memory_unsigned_integer (pc, 4, byte_order);
     if(MOVE_P(op)){
@@ -294,23 +307,32 @@ fprintf(stderr, "Recording register %d at offset %ld\n", reg, cache->sp_offset);
     }
     op = read_memory_unsigned_integer (pc+4, 4, byte_order);
     if(SUB_P(op)){
+      offset = GET_SRC(op);
     } else {
       // Not part of the prologue.
       break;
     }
     op = read_memory_unsigned_integer (pc+8, 4, byte_order);
     if(WRLONG_P(op)) {
+      int reg;
       // FIXME track where the value went
+      reg = GET_DST(op);
+      if(offset > cache->args) cache->args = offset;
+      cache->saved_regs[reg] = cache->sp_offset + offset;
+      // fprintf(stderr, "Recording register %d at offset %d\n", reg, cache->sp_offset);
+      if(reg == 15){
+	cache->saved_regs[PROPELLER_PC_REGNUM] = cache->sp_offset;
+      }
       pc += 12;
 
       // Remove 4 bytes from alleged local space
-      cache->locals -= 4;
+      //????      cache->locals -= 4;
     } else {
       // Not part of the prologue.
       break;
     }
   }
-  
+
   if (pc >= current_pc)
     return current_pc;
   return pc;
@@ -335,11 +357,31 @@ propeller_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
 static CORE_ADDR
 propeller_unwind_pc (struct gdbarch *gdbarch, struct frame_info *next_frame)
 {
-  gdb_byte buf[8];
+  //  gdb_byte buf[8];
 
-  frame_unwind_register (next_frame, gdbarch_pc_regnum (gdbarch), buf);
-  return extract_typed_address (buf, builtin_type (gdbarch)->builtin_func_ptr);
+  //  frame_unwind_register (next_frame, gdbarch_pc_regnum (gdbarch), buf);
+  //  return extract_typed_address (buf, builtin_type (gdbarch)->builtin_func_ptr);
+  ULONGEST pc;
+  pc = frame_unwind_register_unsigned (next_frame, PROPELLER_PC_REGNUM);
+  return gdbarch_addr_bits_remove (gdbarch, pc);}
+
+static CORE_ADDR
+propeller_unwind_sp (struct gdbarch *gdbarch, struct frame_info *this_frame)
+{
+  //  return frame_unwind_register_unsigned (this_frame, PROPELLER_SP_REGNUM);
+  ULONGEST sp;
+  sp = frame_unwind_register_unsigned (this_frame, PROPELLER_SP_REGNUM);
+  return gdbarch_addr_bits_remove (gdbarch, sp);}
+
+static void
+propeller_virtual_frame_pointer (struct gdbarch *gdbarch, 
+			    CORE_ADDR pc, int *reg, LONGEST *offset)
+{
+  fprintf(stderr, "In virtual_frame_pointer\n");
+  *reg = PROPELLER_FP_REGNUM;
+  *offset = 8;
 }
+
 /* Normal frames.  */
 
 static struct propeller_frame_cache *
@@ -353,6 +395,15 @@ propeller_frame_cache (struct frame_info *this_frame, void **this_cache)
 
   if (*this_cache)
     return *this_cache;
+  { CORE_ADDR sp;
+  if (this_frame != NULL)
+    sp = get_frame_register_signed (this_frame,
+				    // gdbarch_num_regs (gdbarch)
+				    + PROPELLER_SP_REGNUM);
+  else
+    sp = 0;
+  fprintf(stderr, "SP is %08x\n",sp);
+  }
 
   cache = propeller_alloc_frame_cache ();
   *this_cache = cache;
@@ -366,18 +417,19 @@ propeller_frame_cache (struct frame_info *this_frame, void **this_cache)
      They (usually) share their frame pointer with the frame that was
      in progress when the signal occurred.  */
 
-  get_frame_register (this_frame, PROPELLER_FP_REGNUM, buf);
+  //  get_frame_register (this_frame, PROPELLER_FP_REGNUM, buf);
+  get_frame_register (this_frame, PROPELLER_SP_REGNUM, buf);
   cache->base = extract_unsigned_integer (buf, 4, byte_order);
-fprintf(stderr, "Setting cache->base to %08x\n", cache->base);
   if (cache->base == 0)
     return cache;
+fprintf(stderr, "Setting cache->base to %08x\n", cache->base);
 
   /* For normal frames, %pc is stored at 0(%fp).  */
   // FIXME is this right?
-  cache->saved_regs[PROPELLER_PC_REGNUM] = 0;
+//  cache->saved_regs[PROPELLER_PC_REGNUM] = 0;
 
   cache->pc = get_frame_func (this_frame);
-fprintf(stderr, "Function address is %08x\n", cache->pc);
+  //fprintf(stderr, "Function address is %08x\n", cache->pc);
   if (cache->pc != 0)
     propeller_analyze_prologue (get_frame_arch (this_frame), cache->pc,
 			   get_frame_pc (this_frame), cache);
@@ -394,23 +446,24 @@ fprintf(stderr, "Function address is %08x\n", cache->pc);
 
       get_frame_register (this_frame, PROPELLER_SP_REGNUM, buf);
       cache->base = extract_unsigned_integer (buf, 4, byte_order)
-		    + cache->sp_offset;
+	;//   + cache->sp_offset;
       fprintf(stderr, "No locals; setting base to %08x, sp_offset %08x\n", cache->base, cache->sp_offset);
+      cache->locals = 0;
     }
 
   /* Now that we have the base address for the stack frame we can
      calculate the value of %sp in the calling frame.  */
-  cache->saved_sp = cache->base + 8;
+  cache->saved_sp = cache->base + cache->locals;
 fprintf(stderr, "We imagine that sp was %08x in the calling frame\n", cache->saved_sp);
 
   /* Adjust all the saved registers such that they contain addresses
      instead of offsets.  */
- for (i = 0; i < PROPELLER_NUM_REGS; i++){
+  for (i = 0; i < PROPELLER_NUM_REGS; i++){
     if (cache->saved_regs[i] != -1){
-      cache->saved_regs[i] += cache->base;
+      cache->saved_regs[i] = cache->base + cache->locals - cache->saved_regs[i];
 fprintf(stderr, "Address of r%d is %08x\n", i, cache->saved_regs[i]);
     }
- }
+  }
   return cache;
 }
 
@@ -435,16 +488,35 @@ propeller_frame_prev_register (struct frame_info *this_frame, void **this_cache,
   struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
 
   gdb_assert (regnum >= 0);
-
-  if (regnum == PROPELLER_SP_REGNUM && cache->saved_sp)
+  //  fprintf(stderr, "Getting register %d ", regnum);
+  if (regnum == PROPELLER_SP_REGNUM && cache->saved_sp){
+    //    fprintf(stderr, "SP is %08x\n", cache->saved_sp);
     return frame_unwind_got_constant (this_frame, regnum, cache->saved_sp);
-
-  if (regnum < PROPELLER_NUM_REGS && cache->saved_regs[regnum] != -1)
+  }
+  if (regnum < PROPELLER_NUM_REGS && cache->saved_regs[regnum] != -1){
+    //    fprintf(stderr, "stored at %08x\n", cache->saved_regs[regnum]);
     return frame_unwind_got_memory (this_frame, regnum,
 				    cache->saved_regs[regnum]);
-
+  }
+  //  fprintf(stderr, "still in register\n");
   return frame_unwind_got_register (this_frame, regnum, regnum);
 }
+
+//struct frame_unwind
+//{
+//  /* The frame's type.  Should this instead be a collection of
+//     predicates that test the frame for various attributes?  */
+//  enum frame_type type;
+//  /* Should an attribute indicating the frame's address-in-block go
+//     here?  */
+//  frame_unwind_stop_reason_ftype *stop_reason;
+//  frame_this_id_ftype *this_id;
+//  frame_prev_register_ftype *prev_register;
+//  const struct frame_data *unwind_data;
+//  frame_sniffer_ftype *sniffer;
+//  frame_dealloc_cache_ftype *dealloc_cache;
+//  frame_prev_arch_ftype *prev_arch;
+//};
 
 static const struct frame_unwind propeller_frame_unwind =
 {
@@ -453,23 +525,43 @@ static const struct frame_unwind propeller_frame_unwind =
   propeller_frame_this_id,
   propeller_frame_prev_register,
   NULL,
-  default_frame_sniffer
+  default_frame_sniffer,
+  NULL,
+  NULL
 };
 
 static CORE_ADDR
 propeller_frame_base_address (struct frame_info *this_frame, void **this_cache)
 {
   struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
-
+  fprintf(stderr, "In frame_base_address (%04x)\n", cache->base);
   return cache->base;
+}
+
+static CORE_ADDR
+propeller_frame_local_address (struct frame_info *this_frame, void **this_cache)
+{
+  struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
+
+  fprintf(stderr, "In frame_base_address (%04x)\n", cache->base);
+  return cache->base;
+}
+
+static CORE_ADDR
+propeller_frame_arg_address (struct frame_info *this_frame, void **this_cache)
+{
+  struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
+
+  fprintf(stderr, "In frame_arg_address (%04x)\n", cache->base + cache->locals - cache->args - cache->reg_bytes_saved);
+  return cache->base + cache->locals - cache->args - cache->reg_bytes_saved;
 }
 
 static const struct frame_base propeller_frame_base =
 {
   &propeller_frame_unwind,
   propeller_frame_base_address,
-  propeller_frame_base_address,
-  propeller_frame_base_address
+  propeller_frame_local_address,
+  propeller_frame_arg_address
 };
 
 static struct frame_id
@@ -637,7 +729,6 @@ propeller_gdbarch_init (struct gdbarch_info info,
   tdep = (struct gdbarch_tdep *) xmalloc (sizeof (struct gdbarch_tdep));
   gdbarch = gdbarch_alloc (&info, tdep);
   tdep->elf_flags = elf_flags;
-  //  tdep->stack_correction = 1;
   //  tdep->prologue = propeller_prologue;
   set_gdbarch_addr_bit (gdbarch, 32);
   //  set_gdbarch_num_pseudo_regs (gdbarch, PROPELLER_NUM_PSEUDO_REGS);
@@ -657,11 +748,11 @@ propeller_gdbarch_init (struct gdbarch_info info,
   set_gdbarch_ptr_bit (gdbarch, 32);
   set_gdbarch_long_long_bit (gdbarch, 64);
 
-  /* Characters are signed.  */
-  set_gdbarch_char_signed (gdbarch, 1);
+  /* Characters are unsigned.  */
+  set_gdbarch_char_signed (gdbarch, 0);
 
   set_gdbarch_unwind_pc (gdbarch, propeller_unwind_pc);
-  //  set_gdbarch_unwind_sp (gdbarch, propeller_unwind_sp);
+  set_gdbarch_unwind_sp (gdbarch, propeller_unwind_sp);
 
   /* Set register info.  */
   set_gdbarch_fp0_regnum (gdbarch, -1);
@@ -669,6 +760,7 @@ propeller_gdbarch_init (struct gdbarch_info info,
   set_gdbarch_sp_regnum (gdbarch, PROPELLER_SP_REGNUM);
   set_gdbarch_register_name (gdbarch, propeller_register_name);
   set_gdbarch_register_type (gdbarch, propeller_register_type);
+  set_gdbarch_virtual_frame_pointer (gdbarch, propeller_virtual_frame_pointer);
   //  set_gdbarch_pseudo_register_read (gdbarch, propeller_pseudo_register_read);
   //  set_gdbarch_pseudo_register_write (gdbarch, propeller_pseudo_register_write);
 
@@ -685,7 +777,7 @@ propeller_gdbarch_init (struct gdbarch_info info,
   //  set_gdbarch_print_registers_info (gdbarch, propeller_print_registers_info);
 
   /* Hook in the DWARF CFI frame unwinder.  */
-  dwarf2_append_unwinders (gdbarch);
+  //  dwarf2_append_unwinders (gdbarch);
 
   frame_unwind_append_unwinder (gdbarch, &propeller_frame_unwind);
   frame_base_set_default (gdbarch, &propeller_frame_base);
@@ -703,8 +795,17 @@ propeller_gdbarch_init (struct gdbarch_info info,
   return gdbarch;
 }
 
+static void
+propeller_dump_tdep (struct gdbarch *gdbarch, struct ui_file *file)
+{
+  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+
+  if (tdep == NULL)
+    return;
+}
+
 void
 _initialize_propeller_tdep (void)
 {
-  register_gdbarch_init (bfd_arch_propeller, propeller_gdbarch_init);
+  gdbarch_register (bfd_arch_propeller, propeller_gdbarch_init, propeller_dump_tdep);
 } 
