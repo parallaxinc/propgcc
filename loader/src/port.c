@@ -64,8 +64,10 @@ int InitPort(char *prefix, char *port, int baud, int verbose, char *actualport)
     int rc;
     
     if (port) {
-        strncpy(actualport, port, PATH_MAX - 1);
-        actualport[PATH_MAX - 1] = '\0';
+        if (actualport) {
+            strncpy(actualport, port, PATH_MAX - 1);
+            actualport[PATH_MAX - 1] = '\0';
+        }
         rc = popenport(port, baud);
     }
     else {

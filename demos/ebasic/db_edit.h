@@ -1,16 +1,18 @@
 #ifndef __EDIT_H__
 #define __EDIT_H__
 
-#include "db_compiler.h"
+#include "db_system.h"
 
-void EditWorkspace(ParseContext *c);
+#define MAX_PROG_NAME   32
+
+void EditWorkspace(System *sys);
 
 /* edit buffer interface */
 void BufInit(void);
-int BufAddLineN(int16_t lineNumber, const char *text);
-int BufDeleteLineN(int16_t lineNumber);
-int BufSeekN(int16_t lineNumber);
-int BufGetLine(int16_t *pLineNumber, char *text);
+int BufAddLineN(VMVALUE lineNumber, const char *text);
+int BufDeleteLineN(VMVALUE lineNumber);
+int BufSeekN(VMVALUE lineNumber);
+int BufGetLine(VMVALUE *pLineNumber, char *text);
 
 #endif
 

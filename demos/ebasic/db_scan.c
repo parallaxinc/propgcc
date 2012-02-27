@@ -63,11 +63,11 @@ static int XGetC(ParseContext *c);
 /* GetLine - get the next input line */
 int GetLine(ParseContext *c)
 {
-    int16_t lineNumber;
-    if (!(*c->getLine)(c->getLineCookie, c->lineBuf, sizeof(c->lineBuf), &lineNumber))
+    VMVALUE lineNumber;
+    if (!(*c->getLine)(c->getLineCookie, c->sys->lineBuf, sizeof(c->sys->lineBuf), &lineNumber))
         return VMFALSE;
     c->lineNumber = lineNumber;
-    c->linePtr = c->lineBuf;
+    c->sys->linePtr = c->sys->lineBuf;
     return VMTRUE;
 }
 
@@ -217,7 +217,7 @@ static int NextToken(ParseContext *c)
     ch = SkipSpaces(c);
 
     /* remember the start of the current token */
-    c->tokenOffset = (int)(c->linePtr - c->lineBuf);
+    c->tokenOffset = (int)(c->sys->linePtr - c->sys->lineBuf);
 
     /* check the next character */
     switch (ch) {
@@ -275,22 +275,22 @@ static int NextToken(ParseContext *c)
             char *savePtr;
             switch (tkn = IdentifierToken(c,ch)) {
             case T_ELSE:
-                savePtr = c->linePtr;
+                savePtr = c->sys->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_IF:
                         tkn = T_ELSE_IF;
                         break;
                     default:
-                        c->linePtr = savePtr;
+                        c->sys->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->linePtr = savePtr;
+                    c->sys->linePtr = savePtr;
                 break;
             case T_END:
-                savePtr = c->linePtr;
+                savePtr = c->sys->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_DEF:
@@ -300,15 +300,15 @@ static int NextToken(ParseContext *c)
                         tkn = T_END_IF;
                         break;
                     default:
-                        c->linePtr = savePtr;
+                        c->sys->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->linePtr = savePtr;
+                    c->sys->linePtr = savePtr;
                 break;
             case T_DO:
-                savePtr = c->linePtr;
+                savePtr = c->sys->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_WHILE:
@@ -318,15 +318,15 @@ static int NextToken(ParseContext *c)
                         tkn = T_DO_UNTIL;
                         break;
                     default:
-                        c->linePtr = savePtr;
+                        c->sys->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->linePtr = savePtr;
+                    c->sys->linePtr = savePtr;
                 break;
             case T_LOOP:
-                savePtr = c->linePtr;
+                savePtr = c->sys->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_WHILE:
@@ -336,12 +336,12 @@ static int NextToken(ParseContext *c)
                         tkn = T_LOOP_UNTIL;
                         break;
                     default:
-                        c->linePtr = savePtr;
+                        c->sys->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->linePtr = savePtr;
+                    c->sys->linePtr = savePtr;
                 break;
             }
         }
@@ -404,7 +404,7 @@ static int NumberToken(ParseContext *c, int ch)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (int16_t)atol(c->token);
+    c->value = (VMVALUE)atol(c->token);
     
     /* return the token */
     return T_NUMBER;
@@ -427,7 +427,7 @@ static int HexNumberToken(ParseContext *c)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (int16_t)strtoul(c->token, NULL, 16);
+    c->value = (VMVALUE)strtoul(c->token, NULL, 16);
     
     /* return the token */
     return T_NUMBER;
@@ -450,7 +450,7 @@ static int BinaryNumberToken(ParseContext *c)
     *p = '\0';
     
     /* convert the string to an integer */
-    c->value = (int16_t)strtoul(c->token, NULL, 2);
+    c->value = (VMVALUE)strtoul(c->token, NULL, 2);
     
     /* return the token */
     return T_NUMBER;
@@ -588,8 +588,8 @@ static int XGetC(ParseContext *c)
     int ch;
     
     /* get the next character on the current line */
-    if (!(ch = *c->linePtr++)) {
-        --c->linePtr;
+    if (!(ch = *c->sys->linePtr++)) {
+        --c->sys->linePtr;
         return EOF;
     }
     
@@ -601,7 +601,7 @@ static int XGetC(ParseContext *c)
 void UngetC(ParseContext *c)
 {
     /* backup the input pointer */
-    --c->linePtr;
+    --c->sys->linePtr;
 }
 
 /* ParseError - report a parsing error */
@@ -618,7 +618,7 @@ void ParseError(ParseContext *c, char *fmt, ...)
 
     /* show the context */
     VM_printf("  line %d\n", c->lineNumber);
-    VM_printf("    %s\n", c->lineBuf);
+    VM_printf("    %s\n", c->sys->lineBuf);
     VM_printf("    %*s\n", c->tokenOffset, "^");
 
     /* exit until we fix the compiler so it can recover from parse errors */

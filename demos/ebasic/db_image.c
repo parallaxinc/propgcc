@@ -8,11 +8,11 @@
 #include "db_vmdebug.h"
 
 /* StoreVector - store a vector object */
-int16_t StoreVector(ParseContext *c, const int16_t *buf, int size)
+VMVALUE StoreVector(ParseContext *c, const VMVALUE *buf, int size)
 {
     VectorObjectHdr hdr;
     int hdrSizeInWords = GetObjSizeInWords(sizeof(hdr));
-    int16_t object;
+    VMVALUE object;
 
     /* allocate and initialize the intrinsic function object */
     object = NewObject(c);
@@ -23,9 +23,8 @@ int16_t StoreVector(ParseContext *c, const int16_t *buf, int size)
     /* write the object header and data */
     hdr.prototype = PROTO_VECTOR;
     hdr.size = size;
-    if (!BufWriteWords(c->image->objectDataSize, (int16_t *)&hdr, hdrSizeInWords)
-    ||  !BufWriteWords(c->image->objectDataSize + hdrSizeInWords, buf, size))
-        ParseError(c, "insufficient object data space");
+    if (!BufWriteWords((VMVALUE *)&hdr, hdrSizeInWords) || !BufWriteWords(buf, size))
+        ParseError(c, "insufficient scratch space");
 
     /* update the object data size */
     c->image->objectDataSize += hdrSizeInWords + size;
@@ -35,9 +34,9 @@ int16_t StoreVector(ParseContext *c, const int16_t *buf, int size)
 }
 
 /* StoreBVector - store a byte vector object */
-int16_t StoreBVector(ParseContext *c, const uint8_t *buf, int size)
+VMVALUE StoreBVector(ParseContext *c, const uint8_t *buf, int size)
 {
-    int16_t object;
+    VMVALUE object;
 
     /* allocate and initialize the intrinsic function object */
     object = NewObject(c);
@@ -50,7 +49,7 @@ int16_t StoreBVector(ParseContext *c, const uint8_t *buf, int size)
 }
 
 /* StoreBVectorData - store data for a byte vector object */
-void StoreBVectorData(ParseContext *c, int16_t object, int16_t proto, const uint8_t *buf, int size)
+void StoreBVectorData(ParseContext *c, VMVALUE object, VMVALUE proto, const uint8_t *buf, int size)
 {
     VectorObjectHdr hdr;
     int hdrSizeInWords = GetObjSizeInWords(sizeof(hdr));
@@ -62,18 +61,17 @@ void StoreBVectorData(ParseContext *c, int16_t object, int16_t proto, const uint
     /* write the object header and data */
     hdr.prototype = proto;
     hdr.size = size;
-    if (!BufWriteWords(c->image->objectDataSize, (int16_t *)&hdr, hdrSizeInWords)
-    ||  !BufWriteWords(c->image->objectDataSize + hdrSizeInWords, (int16_t *)buf, dataSizeInWords))
-        ParseError(c, "insufficient object data space");
+    if (!BufWriteWords((VMVALUE *)&hdr, hdrSizeInWords) || !BufWriteWords((VMVALUE *)buf, dataSizeInWords))
+        ParseError(c, "insufficient scratch space");
 
     /* update the object data size */
     c->image->objectDataSize += hdrSizeInWords + dataSizeInWords;
 }
 
 /* NewObject - create a new object */
-int16_t NewObject(ParseContext *c)
+VMVALUE NewObject(ParseContext *c)
 {
-    int16_t object;
+    VMVALUE object;
     if (c->image->objectCount >= c->maxObjects)
         ParseError(c, "too many objects");
     object = ++c->image->objectCount;
