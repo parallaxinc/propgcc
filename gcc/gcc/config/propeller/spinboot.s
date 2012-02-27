@@ -12,6 +12,7 @@
 	.section .boot, "ax", @progbits
 	.global __clkfreq
 	.global __clkmode
+	.extern __hub_end
 start
 __clkfreq
 	.long __clkfreqval	' clock frequency
@@ -22,10 +23,13 @@ chksum	.byte 0x00		' checksum: see above
 	.word 0x0010		' PBASE
 	.global __sys_mbox	' added 20/09/11 for debugger/system support (WH)
 __sys_mbox
-	.word 0x7fe8		' VBASE - start of variables
-	.word 0x7ff0		' DBASE - start of stack 
+'	.word 0x7fe8		' VBASE - start of variables
+	.word __hub_end		' VBASE - start of variables
+'	.word 0x7ff0		' DBASE - start of stack 
+	.word __hub_end+8	' DBASE - start of stack 
 	.word 0x0018		' PCURR - initial program counter
-	.word 0x7ff8		' DCURR - initial stack pointer
+'	.word 0x7ff8		' DCURR - initial stack pointer
+	.word __hub_end+12	' DCURR - initial stack pointer
 pbase
 	'' 8 byte header
 	.word 0x0008		' length of object ?

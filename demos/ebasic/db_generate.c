@@ -228,7 +228,7 @@ int merge(ParseContext *c, int chn, int chn2)
     /* find the last entry in the new chain */
     last = chn2;
     while (last != 0) {
-        if (!(nxt = (int16_t)(c->codeBuf[last] | (c->codeBuf[last + 1] << 8))))
+        if (!(nxt = (VMVALUE)(c->codeBuf[last] | (c->codeBuf[last + 1] << 8))))
             break;
         last = nxt;
     }
@@ -245,7 +245,7 @@ int merge(ParseContext *c, int chn, int chn2)
 void fixup(ParseContext *c, int chn, int val)
 {
     while (chn != 0) {
-        int nxt = (int16_t)(c->codeBuf[chn] | (c->codeBuf[chn + 1] << 8));
+        int nxt = (VMVALUE)(c->codeBuf[chn] | (c->codeBuf[chn + 1] << 8));
         c->codeBuf[chn] = val;
         c->codeBuf[chn + 1] = val >> 8;
         chn = nxt;
@@ -256,7 +256,7 @@ void fixup(ParseContext *c, int chn, int val)
 void fixupbranch(ParseContext *c, int chn, int val)
 {
     while (chn != 0) {
-        int nxt = (int16_t)(c->codeBuf[chn] | (c->codeBuf[chn + 1] << 8));
+        int nxt = (VMVALUE)(c->codeBuf[chn] | (c->codeBuf[chn + 1] << 8));
         int off = val - (chn + 2); /* this assumes all three byte branch instructions */
         c->codeBuf[chn] = off;
         c->codeBuf[chn + 1] = off >> 8;

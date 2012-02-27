@@ -12,12 +12,12 @@
 #include "db_vm.h"
 
 /* prototypes for local functions */
-static void StartCode(Interpreter *i, int16_t object);
+static void StartCode(Interpreter *i, VMVALUE object);
 
 /* InitInterpreter - initialize the interpreter */
 uint8_t *InitInterpreter(Interpreter *i, size_t stackSize)
 {
-    i->stack = (int16_t *)((uint8_t *)i + sizeof(Interpreter));
+    i->stack = (VMVALUE *)((uint8_t *)i + sizeof(Interpreter));
     i->stackTop = i->stack + stackSize;
     return (uint8_t *)i->stackTop;
 }
@@ -26,7 +26,7 @@ uint8_t *InitInterpreter(Interpreter *i, size_t stackSize)
 int Execute(Interpreter *i, ImageHdr *image)
 {
     ObjectHdr *hdr;
-    int16_t tmp, tmp2, ind;
+    VMVALUE tmp, tmp2, ind;
     int8_t tmpb;
 
     /* setup the new image */
@@ -52,13 +52,13 @@ int Execute(Interpreter *i, ImageHdr *image)
             return VMTRUE;
         case OP_BRT:
             tmp = VMCODEBYTE(i->pc++);
-            tmp |= (int16_t)(VMCODEBYTE(i->pc++) << 8);
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
             if (Pop(i))
                 i->pc += tmp;
             break;
         case OP_BRTSC:
             tmp = VMCODEBYTE(i->pc++);
-            tmp |= (int16_t)(VMCODEBYTE(i->pc++) << 8);
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
             if (*i->sp)
                 i->pc += tmp;
             else
@@ -66,13 +66,13 @@ int Execute(Interpreter *i, ImageHdr *image)
             break;
         case OP_BRF:
             tmp = VMCODEBYTE(i->pc++);
-            tmp |= (int16_t)(VMCODEBYTE(i->pc++) << 8);
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
             if (!Pop(i))
                 i->pc += tmp;
             break;
         case OP_BRFSC:
             tmp = VMCODEBYTE(i->pc++);
-            tmp |= (int16_t)(VMCODEBYTE(i->pc++) << 8);
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
             if (!*i->sp)
                 i->pc += tmp;
             else
@@ -80,7 +80,7 @@ int Execute(Interpreter *i, ImageHdr *image)
             break;
         case OP_BR:
             tmp = VMCODEBYTE(i->pc++);
-            tmp |= (int16_t)(VMCODEBYTE(i->pc++) << 8);
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
             i->pc += tmp;
             break;
         case OP_NOT:
@@ -158,16 +158,16 @@ int Execute(Interpreter *i, ImageHdr *image)
             break;
         case OP_LIT:
             tmp = VMCODEBYTE(i->pc++);
-            CPush(i, (int16_t)(VMCODEBYTE(i->pc++) << 8) | tmp);
+            CPush(i, (VMVALUE)(VMCODEBYTE(i->pc++) << 8) | tmp);
             break;
         case OP_GREF:
             tmp = VMCODEBYTE(i->pc++);
-            tmp |= (int16_t)VMCODEBYTE(i->pc++) << 8;
+            tmp |= (VMVALUE)VMCODEBYTE(i->pc++) << 8;
             CPush(i, i->image->variables[tmp]);
             break;
         case OP_GSET:
             tmp = VMCODEBYTE(i->pc++);
-            tmp |= (int16_t)VMCODEBYTE(i->pc++) << 8;
+            tmp |= (VMVALUE)VMCODEBYTE(i->pc++) << 8;
             i->image->variables[tmp] = Pop(i);
             break;
         case OP_LREF:
@@ -226,10 +226,10 @@ int Execute(Interpreter *i, ImageHdr *image)
     }
 }
 
-static void StartCode(Interpreter *i, int16_t object)
+static void StartCode(Interpreter *i, VMVALUE object)
 {
     if (object & INTRINSIC_FLAG) {
-        uint16_t index = object & ~INTRINSIC_FLAG;
+        UVMVALUE index = object & ~INTRINSIC_FLAG;
         if (index < IntrinsicCount)
             (*VMINTRINSIC(index))(i);
         else
@@ -240,11 +240,11 @@ static void StartCode(Interpreter *i, int16_t object)
         CheckObjNumber(i, object);
         hdr = GetObjHdr(i->image, object);
         if (GetObjPrototype(hdr) == PROTO_CODE) {
-            int16_t tmp = (int16_t)(i->fp - i->stack);
+            VMVALUE tmp = (VMVALUE)(i->fp - i->stack);
             i->fp = i->sp;
             Reserve(i, F_SIZE);
             i->fp[F_FP] = tmp;
-            i->fp[F_PC] = (int16_t)(i->pc - (uint8_t *)i->image->objectData);
+            i->fp[F_PC] = (VMVALUE)(i->pc - (uint8_t *)i->image->objectData);
             i->pc = GetBVectorBase(hdr);
         }
         else
@@ -254,7 +254,7 @@ static void StartCode(Interpreter *i, int16_t object)
 
 void ShowStack(Interpreter *i)
 {
-    int16_t *p;
+    VMVALUE *p;
     for (p = i->stack; p <= i->sp; ++p) {
         if (p == i->fp)
             VM_printf(" <fp>");
@@ -289,5 +289,5 @@ void Abort(Interpreter *i, const char *fmt, ...)
     if (i)
         longjmp(i->errorTarget, 1);
     else
-        exit(1);
+        VM_sysexit;
 }

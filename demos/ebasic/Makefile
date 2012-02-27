@@ -11,17 +11,18 @@ db_scan.o \
 db_statement.o \
 db_strings.o \
 db_symbols.o \
+db_system.o \
 db_vmdebug.o \
 db_vmfcn.o \
 db_vmint.o \
 editbuf.o \
 scratchbuf.o \
-osint_posix.o
+osint_propgcc.o
 
 ifndef MODEL
 MODEL = xmmc
 endif
 
-CFLAGS = -Os -DPROPELLER_GCC -DUSE_FDS
+CFLAGS = -Os -DPROPELLER_GCC -DUSE_FDS -DLOAD_SAVE
 
 include ../common/common.mk

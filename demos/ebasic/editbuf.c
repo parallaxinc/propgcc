@@ -2,17 +2,17 @@
 #include "db_edit.h"
 
 typedef struct {
-    uint16_t lineNumber;
-    uint16_t length;
+    UVMVALUE lineNumber;
+    UVMVALUE length;
     char text[1];
 } Line;
 
-static uint8_t buffer[EDITBUFSIZE];
+static DATA_SPACE uint8_t buffer[EDITBUFSIZE];
 static uint8_t *bufferMax = buffer + sizeof(buffer);
 static uint8_t *bufferTop = buffer;
 static Line *current = (Line *)buffer;
 
-static int FindLineN(int16_t lineNumber, Line **pLine);
+static int FindLineN(VMVALUE lineNumber, Line **pLine);
 
 void BufInit(void)
 {
@@ -20,7 +20,7 @@ void BufInit(void)
     current = (Line *)buffer;
 }
 
-int BufAddLineN(int16_t lineNumber, const char *text)
+int BufAddLineN(VMVALUE lineNumber, const char *text)
 {
     int newLength = sizeof(Line) + strlen(text);
     int spaceNeeded;
@@ -63,7 +63,7 @@ int BufAddLineN(int16_t lineNumber, const char *text)
     return VMTRUE;
 }
 
-int BufDeleteLineN(int16_t lineNumber)
+int BufDeleteLineN(VMVALUE lineNumber)
 {
     Line *line, *next;
     int spaceFreed;
@@ -85,7 +85,7 @@ int BufDeleteLineN(int16_t lineNumber)
     return VMTRUE;
 }
 
-int BufSeekN(int16_t lineNumber)
+int BufSeekN(VMVALUE lineNumber)
 {
     /* if the line number is zero start at the first line */
     if (lineNumber == 0)
@@ -99,7 +99,7 @@ int BufSeekN(int16_t lineNumber)
     return VMTRUE;
 }
 
-int BufGetLine(int16_t *pLineNumber, char *text)
+int BufGetLine(VMVALUE *pLineNumber, char *text)
 {
     /* check for the end of the buffer */
     if ((uint8_t *)current >= bufferTop)
@@ -116,7 +116,7 @@ int BufGetLine(int16_t *pLineNumber, char *text)
     return VMTRUE;
 }
 
-static int FindLineN(int16_t lineNumber, Line **pLine)
+static int FindLineN(VMVALUE lineNumber, Line **pLine)
 {
     uint8_t *p = buffer;
     while (p < bufferTop) {

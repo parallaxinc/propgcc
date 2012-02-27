@@ -3,7 +3,7 @@
 
 #include "db_types.h"
 
-void DecodeFunction(uint16_t offset, const uint8_t *code, int len);
-int DecodeInstruction(uint16_t base, const uint8_t *code, const uint8_t *lc);
+void DecodeFunction(UVMVALUE offset, const uint8_t *code, int len);
+int DecodeInstruction(UVMVALUE base, const uint8_t *code, const uint8_t *lc);
 
 #endif

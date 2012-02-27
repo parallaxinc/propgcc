@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "db_edit.h"
+#include "db_compiler.h"
 #include "db_vm.h"
 
 #ifdef WIN32
@@ -10,52 +11,62 @@
 #endif
 
 /* command handlers */
-static void DoNew(ParseContext *e);
-static void DoList(ParseContext *e);
-static void DoRun(ParseContext *e);
+static void DoNew(System *sys);
+#ifdef LOAD_SAVE
+static void DoLoad(System *sys);
+static void DoSave(System *sys);
+#endif
+static void DoList(System *sys);
+static void DoRun(System *sys);
 
 /* command table */
 static struct {
     char *name;
-    void (*handler)(ParseContext *e);
+    void (*handler)(System *sys);
 } cmds[] = {
     {   "NEW",   DoNew   },
+#ifdef LOAD_SAVE
+    {   "LOAD",  DoLoad  },
+    {   "SAVE",  DoSave  },
+#endif
     {   "LIST",  DoList  },
     {   "RUN",   DoRun   },
     {   NULL,    NULL    }
 };
 
+/* memory of the last filename */
+#ifdef LOAD_SAVE
+static DATA_SPACE char programName[MAX_PROG_NAME] = "";
+#endif
+
 /* prototypes */
-static int EditGetLine(void *cookie, char *buf, int len, int16_t *pLineNumber);
-static char *NextToken(ParseContext *e);
-static int ParseNumber(ParseContext *e, char *token, int16_t *pValue);
+static int EditGetLine(void *cookie, char *buf, int len, VMVALUE *pLineNumber);
+static char *NextToken(System *sys);
+static int ParseNumber(char *token, VMVALUE *pValue);
 static int IsBlank(char *p);
 
-void EditWorkspace(ParseContext *c)
+void EditWorkspace(System *sys)
 {
-    int16_t lineNumber;
+    VMVALUE lineNumber;
     char *token;
 
     BufInit();
-
-    c->getLine = EditGetLine;
-    c->getLineCookie = c;
     
     VM_printf("ebasic 0.001\n");
 
     for (;; ) {
         
-        VM_getline(c->lineBuf, sizeof(c->lineBuf));
+        VM_getline(sys->lineBuf, sizeof(sys->lineBuf));
 
-        c->linePtr = c->lineBuf;
+        sys->linePtr = sys->lineBuf;
 
-        if ((token = NextToken(c)) != NULL) {
-            if (ParseNumber(c, token, &lineNumber)) {
-                if (IsBlank(c->linePtr)) {
+        if ((token = NextToken(sys)) != NULL) {
+            if (ParseNumber(token, &lineNumber)) {
+                if (IsBlank(sys->linePtr)) {
                     if (!BufDeleteLineN(lineNumber))
                         VM_printf("no line %d\n", lineNumber);
                 }
-                else if (!BufAddLineN(lineNumber, c->linePtr))
+                else if (!BufAddLineN(lineNumber, sys->linePtr))
                     VM_printf("out of edit buffer space\n");
             }
 
@@ -65,7 +76,7 @@ void EditWorkspace(ParseContext *c)
                     if (strcasecmp(token, cmds[i].name) == 0)
                         break;
                     if (cmds[i].handler) {
-                        (*cmds[i].handler)(c);
+                        (*cmds[i].handler)(sys);
                         VM_printf("OK\n");
                     }
                 else
@@ -75,72 +86,141 @@ void EditWorkspace(ParseContext *c)
     }
 }
 
-static void DoNew(ParseContext *c)
+#ifdef LOAD_SAVE
+static int SetProgramName(System *sys)
 {
+    char *name;
+    if ((name = NextToken(sys)) != NULL) {
+        strncpy(programName, name, MAX_PROG_NAME - 1);
+        programName[MAX_PROG_NAME - 1] = '\0';
+    }
+    return programName[0] != '\0';
+}
+#endif
+
+static void DoNew(System *sys)
+{
+    /* check for a program name on the command line */
+#ifdef LOAD_SAVE
+    SetProgramName(sys);
+#endif
     BufInit();
 }
 
-static void DoList(ParseContext *c)
+#ifdef LOAD_SAVE
+
+static void DoLoad(System *sys)
 {
-    int16_t lineNumber;
-    BufSeekN(0);
-    while (BufGetLine(&lineNumber, c->lineBuf))
-        VM_printf("%d %s", lineNumber, c->lineBuf);
+    VMFILE *fp;
+    
+    /* check for a program name on the command line */
+    if (!SetProgramName(sys)) {
+        VM_printf("expecting a file name\n");
+        return;
+    }
+    
+    /* load the program */
+    if (!(fp = VM_fopen(programName, "r")))
+        VM_printf("error loading '%s'\n", programName);
+    else {
+        VM_printf("Loading '%s'\n", programName);
+        BufInit();
+        while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
+            int len = strlen(sys->lineBuf);
+            int16_t lineNumber;
+            char *token;
+            sys->linePtr = sys->lineBuf;
+            if ((token = NextToken(sys)) != NULL) {
+                if (ParseNumber(token, &lineNumber))
+                    BufAddLineN(lineNumber, sys->linePtr);
+                else
+                    VM_printf("expecting a line number: %s\n", token);
+            }
+        }
+        VM_fclose(fp);
+    }
 }
 
-char *prog[] = {
-//  "for x=1 to 10\n",
-//  "printf(\"%d %d\n\", x, x*x)\n",
-//  "next x\n",
-    "for\n",
-    0
-};
-int prog_i;
-
-static int EditGetLine(void *cookie, char *buf, int len, int16_t *pLineNumber)
+static void DoSave(System *sys)
 {
-#if 0
-    if (!prog[prog_i])
-        return VMFALSE;
-    strcpy(buf, prog[prog_i++]);
-    *pLineNumber = prog_i;
-    return VMTRUE;
-#else
-    return BufGetLine(pLineNumber, buf);
+    VMFILE *fp;
+    
+    /* check for a program name on the command line */
+    if (!SetProgramName(sys)) {
+        VM_printf("expecting a file name\n");
+        return;
+    }
+    
+    /* save the program */
+    if (!(fp = VM_fopen(programName, "w")))
+        VM_printf("error saving '%s'\n", programName);
+    else {
+        VMVALUE lineNumber;
+        VM_printf("Saving '%s'\n", programName);
+        BufSeekN(0);
+        while (BufGetLine(&lineNumber, sys->lineBuf)) {
+            char buf[32];
+            sprintf(buf, "%d ", lineNumber);
+            VM_fputs(buf, fp);
+            VM_fputs(sys->lineBuf, fp);
+        }
+        VM_fclose(fp);
+    }
+}
+
 #endif
+
+static void DoList(System *sys)
+{
+    VMVALUE lineNumber;
+    BufSeekN(0);
+    while (BufGetLine(&lineNumber, sys->lineBuf))
+        VM_printf("%d %s", lineNumber, sys->lineBuf);
 }
 
-static void DoRun(ParseContext *c)
+static int EditGetLine(void *cookie, char *buf, int len, VMVALUE *pLineNumber)
 {
-    BufSeekN(0);
-prog_i = 0;
-    if (Compile(c, MAXOBJECTS)) {
-        Interpreter *i = (Interpreter *)c->freeNext;
-        size_t stackSize = (c->freeTop - c->freeNext - sizeof(Interpreter)) / sizeof(int16_t);
-        if (stackSize <= 0)
-            VM_printf("insufficient memory\n");
-        else {
-            InitInterpreter(i, stackSize);
-            Execute(i, c->image);
+    return BufGetLine(pLineNumber, buf);
+}
+
+static void DoRun(System *sys)
+{
+    ParseContext *c;
+    sys->freeNext = sys->freeSpace;
+    if (!(c = InitCompiler(sys, MAXOBJECTS)))
+        VM_printf("insufficient memory\n");
+    else {
+        ImageHdr *image;
+        BufSeekN(0);
+        c->getLine = EditGetLine;
+        if ((image = Compile(c)) != NULL) {
+            Interpreter *i = (Interpreter *)sys->freeNext;
+            size_t stackSize = (sys->freeTop - sys->freeNext - sizeof(Interpreter)) / sizeof(VMVALUE);
+            if (stackSize <= 0)
+                VM_printf("insufficient memory\n");
+            else {
+                InitInterpreter(i, stackSize);
+                Execute(i, image);
+            }
         }
     }
 }
 
-static char *NextToken(ParseContext *c)
+static char *NextToken(System *sys)
 {
     char *token;
     int ch;
-    while ((ch = *c->linePtr) != '\0' && isspace(ch))
-        ++c->linePtr;
-    token = c->linePtr;
-    while ((ch = *c->linePtr) != '\0' && !isspace(ch))
-        ++c->linePtr;
-    if (*c->linePtr != '\0')
-        *c->linePtr++ = '\0';
+    while ((ch = *sys->linePtr) != '\0' && isspace(ch))
+        ++sys->linePtr;
+    token = sys->linePtr;
+    while ((ch = *sys->linePtr) != '\0' && !isspace(ch))
+        ++sys->linePtr;
+    if (*sys->linePtr != '\0')
+        *sys->linePtr++ = '\0';
     return *token == '\0' ? NULL : token;
 }
 
-static int ParseNumber(ParseContext *c, char *token, int16_t *pValue)
+static int ParseNumber(char *token, VMVALUE *pValue)
 {
     int ch;
     *pValue = 0;
@@ -157,5 +237,3 @@ static int IsBlank(char *p)
             return VMFALSE;
     return VMTRUE;
 }
-
-
