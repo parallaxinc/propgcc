@@ -1,7 +1,7 @@
 /*******************************************************************************
 ' Author: Dave Hein
-' Version 0.51
-' Copyright (c) 2010, 2011
+' Version 0.52
+' Copyright (c) 2010, 2011, 2012
 ' See end of file for terms of use.
 '******************************************************************************/
 #include <stdio.h>
@@ -88,7 +88,7 @@ char *FindChar(char *str, int32_t val);
 
 void usage(void)
 {
-  fprintf(stderr, "SpinSim Version 0.51-kr\n");
+  fprintf(stderr, "SpinSim Version 0.52\n");
   fprintf(stderr, "usage: spinsim [options] file\n");
   fprintf(stderr, "The options are as follows:\n");
   fprintf(stderr, "     -l  List executed instructions\n");
@@ -537,7 +537,7 @@ void PrintStack(SpinVarsT *spinvars)
 
 char *bootfile;
 
-void reboot(void)
+void RebootProp(void)
 {
     int32_t i;
     int32_t dbase;
@@ -953,7 +953,7 @@ int main(int argc, char **argv)
 
       if(logfile) fprintf(logfile, "\n\nStarting log:\n");
 
-      reboot();
+      RebootProp();
 
       for(;;){
 	get_cmd();
@@ -1156,7 +1156,7 @@ int main(int argc, char **argv)
     }
     else
     {
-      reboot();
+      RebootProp();
       while (runflag && (maxloops < 0 || loopcount < maxloops))
       {
 	  runflag = 0;
