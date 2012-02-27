@@ -2,8 +2,8 @@
 #include "db_edit.h"
 
 typedef struct {
-    UVMVALUE lineNumber;
-    UVMVALUE length;
+    VMUVALUE lineNumber;
+    VMUVALUE length;
     char text[1];
 } Line;
 

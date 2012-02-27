@@ -322,10 +322,10 @@ void code_global(ParseContext *c, PValOp fcn, PVAL *pv);
 void code_local(ParseContext *c, PValOp fcn, PVAL *pv);
 int codeaddr(ParseContext *c);
 int putcbyte(ParseContext *c, int b);
-int putcword(ParseContext *c, int w);
-int merge(ParseContext *c, int chn, int chn2);
-void fixup(ParseContext *c, int chn, int val);
-void fixupbranch(ParseContext *c, int chn, int val);
+int putcword(ParseContext *c, VMVALUE w);
+int merge(ParseContext *c, VMUVALUE chn, VMUVALUE chn2);
+void fixup(ParseContext *c, VMUVALUE chn, VMUVALUE val);
+void fixupbranch(ParseContext *c, VMUVALUE chn, VMUVALUE val);
 
 /* db_image.c */
 VMVALUE StoreBVector(ParseContext *c, const uint8_t *buf, int size);

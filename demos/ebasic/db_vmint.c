@@ -11,6 +11,17 @@
 #include <ctype.h>
 #include "db_vm.h"
 
+#if 1
+#define VMVALUE_to_tmp                                  \
+            tmp = VMCODEBYTE(i->pc++);                  \
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8)
+#else
+            tmp = VMCODEBYTE(i->pc++);                  \
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8)  \
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 16) \
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 24)
+#endif
+
 /* prototypes for local functions */
 static void StartCode(Interpreter *i, VMVALUE object);
 
@@ -51,36 +62,31 @@ int Execute(Interpreter *i, ImageHdr *image)
         case OP_HALT:
             return VMTRUE;
         case OP_BRT:
-            tmp = VMCODEBYTE(i->pc++);
-            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
+            VMVALUE_to_tmp;
             if (Pop(i))
                 i->pc += tmp;
             break;
         case OP_BRTSC:
-            tmp = VMCODEBYTE(i->pc++);
-            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
+            VMVALUE_to_tmp;
             if (*i->sp)
                 i->pc += tmp;
             else
                 Drop(i, 1);
             break;
         case OP_BRF:
-            tmp = VMCODEBYTE(i->pc++);
-            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
+            VMVALUE_to_tmp;
             if (!Pop(i))
                 i->pc += tmp;
             break;
         case OP_BRFSC:
-            tmp = VMCODEBYTE(i->pc++);
-            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
+            VMVALUE_to_tmp;
             if (!*i->sp)
                 i->pc += tmp;
             else
                 Drop(i, 1);
             break;
         case OP_BR:
-            tmp = VMCODEBYTE(i->pc++);
-            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);
+            VMVALUE_to_tmp;
             i->pc += tmp;
             break;
         case OP_NOT:
@@ -157,17 +163,15 @@ int Execute(Interpreter *i, ImageHdr *image)
             *i->sp = (*i->sp > tmp ? VMTRUE : VMFALSE);
             break;
         case OP_LIT:
-            tmp = VMCODEBYTE(i->pc++);
-            CPush(i, (VMVALUE)(VMCODEBYTE(i->pc++) << 8) | tmp);
+            VMVALUE_to_tmp;
+            CPush(i, tmp);
             break;
         case OP_GREF:
-            tmp = VMCODEBYTE(i->pc++);
-            tmp |= (VMVALUE)VMCODEBYTE(i->pc++) << 8;
+            VMVALUE_to_tmp;
             CPush(i, i->image->variables[tmp]);
             break;
         case OP_GSET:
-            tmp = VMCODEBYTE(i->pc++);
-            tmp |= (VMVALUE)VMCODEBYTE(i->pc++) << 8;
+            VMVALUE_to_tmp;
             i->image->variables[tmp] = Pop(i);
             break;
         case OP_LREF:
@@ -229,7 +233,7 @@ int Execute(Interpreter *i, ImageHdr *image)
 static void StartCode(Interpreter *i, VMVALUE object)
 {
     if (object & INTRINSIC_FLAG) {
-        UVMVALUE index = object & ~INTRINSIC_FLAG;
+        VMUVALUE index = object & ~INTRINSIC_FLAG;
         if (index < IntrinsicCount)
             (*VMINTRINSIC(index))(i);
         else

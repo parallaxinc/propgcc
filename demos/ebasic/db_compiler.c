@@ -55,7 +55,7 @@ ImageHdr *Compile(ParseContext *c)
     ImageHdr *image = c->image;
     size_t maxHeapUsed = c->maxHeapUsed;
     VMVALUE *variables;
-    UVMVALUE totalSize;
+    VMUVALUE totalSize;
     Symbol *sym;
     
     /* setup an error target */
