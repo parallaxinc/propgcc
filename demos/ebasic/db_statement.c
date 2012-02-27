@@ -561,7 +561,7 @@ static void ParseFor(ParseContext *c)
     /* generate the increment code */
     putcbyte(c, OP_ADD);
     inst = putcbyte(c, OP_BR);
-    putcword(c, test - inst - 3);
+    putcword(c, test - inst - 1 - sizeof(VMUVALUE));
 
     /* branch to the loop body */
     fixupbranch(c, body, codeaddr(c));
@@ -579,7 +579,7 @@ static void ParseNext(ParseContext *c)
         var = GetSymbolRef(c, c->token);
         /* BUG: check to make sure it matches the symbol used in the FOR */
         inst = putcbyte(c, OP_BR);
-        putcword(c, c->bptr->u.ForBlock.nxt - inst - 3);
+        putcword(c, c->bptr->u.ForBlock.nxt - inst - 1 - sizeof(VMUVALUE));
         fixupbranch(c, c->bptr->u.ForBlock.end, codeaddr(c));
         PopBlock(c);
         break;
@@ -631,7 +631,7 @@ static void ParseLoop(ParseContext *c)
     switch (CurrentBlockType(c)) {
     case BLOCK_DO:
         inst = putcbyte(c, OP_BR);
-        putcword(c, c->bptr->u.DoBlock.nxt - inst - 3);
+        putcword(c, c->bptr->u.DoBlock.nxt - inst - 1 - sizeof(VMUVALUE));
         fixupbranch(c, c->bptr->u.DoBlock.end, codeaddr(c));
         PopBlock(c);
         break;
@@ -650,7 +650,7 @@ static void ParseLoopWhile(ParseContext *c)
     case BLOCK_DO:
         ParseRValue(c);
         inst = putcbyte(c, OP_BRT);
-        putcword(c, c->bptr->u.DoBlock.nxt - inst - 3);
+        putcword(c, c->bptr->u.DoBlock.nxt - inst - 1 - sizeof(VMUVALUE));
         fixupbranch(c, c->bptr->u.DoBlock.end, codeaddr(c));
         PopBlock(c);
         break;
@@ -669,7 +669,7 @@ static void ParseLoopUntil(ParseContext *c)
     case BLOCK_DO:
         ParseRValue(c);
         inst = putcbyte(c, OP_BRF);
-        putcword(c, c->bptr->u.DoBlock.nxt - inst - 3);
+        putcword(c, c->bptr->u.DoBlock.nxt - inst - 1 - sizeof(VMUVALUE));
         fixupbranch(c, c->bptr->u.DoBlock.end, codeaddr(c));
         PopBlock(c);
         break;
