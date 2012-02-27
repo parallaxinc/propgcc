@@ -103,6 +103,7 @@ ImageHdr *Compile(ParseContext *c)
     AddIntrinsic(c, "printInt",         FN_printInt);
     AddIntrinsic(c, "printTab",         FN_printTab);
     AddIntrinsic(c, "printNL",          FN_printNL);
+    AddIntrinsic(c, "printFlush",       FN_printFlush);
 #ifdef PROPELLER
     AddIntrinsic(c, "IN",               FN_IN);
     AddIntrinsic(c, "OUT",              FN_OUT);

@@ -57,6 +57,11 @@ void VM_vprintf(const char *fmt, va_list ap)
         VM_putchar(*p++);
 }
 
+void VM_flush(void)
+{
+    fflush(stdout);
+}
+
 int VM_getchar(void)
 {
     return getchar();

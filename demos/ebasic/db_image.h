@@ -115,6 +115,7 @@ enum {
     FN_printInt,
     FN_printTab,
     FN_printNL,
+    FN_printFlush,
 #ifdef PROPELLER
     FN_IN,
     FN_OUT,
