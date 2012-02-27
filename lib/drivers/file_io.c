@@ -30,7 +30,7 @@ static volatile uint32_t __attribute__((section(".hub"))) *sd_mbox;
 extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
 
 #ifndef __PROPELLER_LMM__
-uint16_t _xmm_mbox_p;
+extern uint16_t _xmm_mbox_p;
 #endif
 uint32_t *_sd_mbox_p = 0;
 
