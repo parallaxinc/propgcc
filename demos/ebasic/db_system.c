@@ -27,15 +27,3 @@ uint8_t *AllocateFreeSpace(System *sys, size_t size)
     sys->freeNext += size;
     return p;
 }
-
-/* MarkFreeSpace - mark the current position in free space */
-void MarkFreeSpace(System *sys)
-{
-    sys->freeMark = sys->freeNext;
-}
-
-/* RestoreFreeSpace - restore to previously marked position */
-void RestoreFreeSpace(System *sys)
-{
-    sys->freeNext = sys->freeMark;
-}

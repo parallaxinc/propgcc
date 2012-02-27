@@ -22,13 +22,14 @@ ParseContext *InitCompiler(System *sys, int maxObjects)
 {
     ImageHdr *image;
     ParseContext *c;
+    uint8_t *freeMark;
 
     /* allocate space for the image header */
     if (!(image = (ImageHdr *)AllocateFreeSpace(sys, sizeof(ImageHdr))))
         ParseError(c, "insufficient space for image header");
         
     /* mark the current position in free space to allow compiler data structures to be freed */
-    MarkFreeSpace(sys);
+    freeMark = sys->freeNext;
 
     /* allocate space for the object table */
     if (!(image->objects = (VMVALUE *)AllocateFreeSpace(sys, maxObjects * sizeof(VMVALUE))))
@@ -39,6 +40,7 @@ ParseContext *InitCompiler(System *sys, int maxObjects)
         ParseError(c, "insufficient space for parse context\n");
     memset(c, 0, sizeof(ParseContext));
     c->sys = sys;
+    c->freeMark = freeMark;
     c->image = image;
     c->maxObjects = maxObjects;
     
@@ -95,12 +97,23 @@ ImageHdr *Compile(ParseContext *c)
     InitSymbolTable(&c->globals);
 
     /* add the intrinsic functions */
-    AddIntrinsic(c, "ABS",             FN_ABS);
-    AddIntrinsic(c, "RND",             FN_RND);
-    AddIntrinsic(c, "printStr",        FN_printStr);
-    AddIntrinsic(c, "printInt",        FN_printInt);
-    AddIntrinsic(c, "printTab",        FN_printTab);
-    AddIntrinsic(c, "printNL",         FN_printNL);
+    AddIntrinsic(c, "ABS",              FN_ABS);
+    AddIntrinsic(c, "RND",              FN_RND);
+    AddIntrinsic(c, "printStr",         FN_printStr);
+    AddIntrinsic(c, "printInt",         FN_printInt);
+    AddIntrinsic(c, "printTab",         FN_printTab);
+    AddIntrinsic(c, "printNL",          FN_printNL);
+#ifdef PROPELLER
+    AddIntrinsic(c, "IN",               FN_IN);
+    AddIntrinsic(c, "OUT",              FN_OUT);
+    AddIntrinsic(c, "HIGH",             FN_HIGH);
+    AddIntrinsic(c, "LOW",              FN_LOW);
+    AddIntrinsic(c, "TOGGLE",           FN_TOGGLE);
+    AddIntrinsic(c, "DIR",              FN_DIR);
+    AddIntrinsic(c, "GETDIR",           FN_GETDIR);
+    AddIntrinsic(c, "CNT",              FN_CNT);
+    AddIntrinsic(c, "PAUSE",            FN_PAUSE);
+#endif
 
     /* initialize scanner */
     c->inComment = VMFALSE;
@@ -135,7 +148,7 @@ ImageHdr *Compile(ParseContext *c)
         ParseError(c, "insufficient scratch space");
         
     /* free up the space the compiler was consuming */
-    RestoreFreeSpace(sys);
+    sys->freeNext = c->freeMark;
 
     /* allocate space for the object data and variables */
     totalSize = (image->objectDataSize + image->variableCount + image->objectCount) * sizeof(VMVALUE);
