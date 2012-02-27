@@ -115,7 +115,6 @@ Functions:
 
 RND(x)
 ABS(x)
-CNT
 IN(pin)
 IN(high, low)
 OUT(pin)
@@ -127,5 +126,5 @@ DIR(pin, state)
 DIR(high, low, state)
 GETDIR(pin)
 GETDIR(high, low)
-CNT
+CNT()
 PAUSE(milliseconds)
