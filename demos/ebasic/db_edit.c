@@ -127,7 +127,7 @@ static void DoLoad(System *sys)
         BufInit();
         while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
             int len = strlen(sys->lineBuf);
-            int16_t lineNumber;
+            VMVALUE lineNumber;
             char *token;
             sys->linePtr = sys->lineBuf;
             if ((token = NextToken(sys)) != NULL) {

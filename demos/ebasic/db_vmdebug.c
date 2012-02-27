@@ -102,14 +102,14 @@ int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
                 byte1 = VMCODEBYTE(lc + 1);
                 byte2 = VMCODEBYTE(lc + 2);
                 VM_printf("%02x %02x %s %02x%02x\n", byte1, byte2, op->name, byte2, byte1);
-                n += 2;
+                n += sizeof(VMVALUE);
                 break;
             case FMT_BR:
                 byte1 = VMCODEBYTE(lc + 1);
                 byte2 = VMCODEBYTE(lc + 2);
                 offset = (VMVALUE)((byte2 << 8) | byte1);
                 VM_printf("%02x %02x %s %02x%02x # %04x\n", byte1, byte2, op->name, byte2, byte1, addr + 3 + offset);
-                n += 2;
+                n += sizeof(VMVALUE);
                 break;
             }
             return n;

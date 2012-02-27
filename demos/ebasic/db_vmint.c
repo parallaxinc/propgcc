@@ -11,14 +11,15 @@
 #include <ctype.h>
 #include "db_vm.h"
 
-#if 1
-#define VMVALUE_to_tmp                                  \
-            tmp = VMCODEBYTE(i->pc++);                  \
+#if ALIGN_MASK == 1
+#define VMVALUE_to_tmp                                      \
+            tmp =  VMCODEBYTE(i->pc++);                     \
             tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8)
 #else
-            tmp = VMCODEBYTE(i->pc++);                  \
-            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8)  \
-            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 16) \
+#define VMVALUE_to_tmp                                      \
+            tmp =  VMCODEBYTE(i->pc++);                     \
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 8);     \
+            tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 16);    \
             tmp |= (VMVALUE)(VMCODEBYTE(i->pc++) << 24)
 #endif
 
