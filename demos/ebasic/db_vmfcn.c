@@ -16,6 +16,7 @@ static void fcn_printStr(Interpreter *i);
 static void fcn_printInt(Interpreter *i);
 static void fcn_printTab(Interpreter *i);
 static void fcn_printNL(Interpreter *i);
+static void fcn_printFlush(Interpreter *i);
 
 #ifdef PROPELLER
 
@@ -43,6 +44,7 @@ IntrinsicFcn * FLASH_SPACE Intrinsics[] = {
     fcn_printInt,
     fcn_printTab,
     fcn_printNL,
+    fcn_printFlush,
 #ifdef PROPELLER
     fcn_IN,
     fcn_OUT,
@@ -110,6 +112,12 @@ static void fcn_printNL(Interpreter *i)
 {
     CheckArgCountEq(i, 0);
     VM_putchar('\n');
+}
+
+/* fcn_printFlush - printFlush(): flush the output buffer */
+static void fcn_printFlush(Interpreter *i)
+{
+    VM_flush();
 }
 
 #ifdef PROPELLER

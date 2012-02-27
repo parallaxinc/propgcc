@@ -746,6 +746,8 @@ static void ParsePrint(ParseContext *c)
 
     if (needNewline)
         CallHandler(c, "printNL", NULL);
+    else
+        CallHandler(c, "printFlush", NULL);
 }
 
 /* CallHandler - compile a call to a runtime print function */
