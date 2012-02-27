@@ -4,7 +4,10 @@ SOURCES = spinsim.c spininterp.c spindebug.c pasmsim.c pasmdebug.c pasmsim2.c pa
 OBJECTS = $(SOURCES:.c=.o)
 
 CC = gcc
-LDFLAGS = -Wl,--relax -Wl,--gc-sections
+# I'm not sure why these linker flags were being used but the break the build on Mac OS X so I've
+# commented them out for the time being
+#LDFLAGS = -Wl,--relax -Wl,--gc-sections
+LDFLAGS =
 OPT := -O3
 CFLAGS  = -c -g -Wall -Wno-format $(OPT) -I/usr/include -D LINUX
 
