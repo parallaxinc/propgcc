@@ -56,7 +56,7 @@ int Execute(Interpreter *i, ImageHdr *image)
 
     for (;;) {
 #if 0
-        //ShowStack(i);
+        ShowStack(i);
         DecodeInstruction(0, (uint8_t *)i->image->objectData, i->pc);
 #endif
         switch (VMCODEBYTE(i->pc++)) {

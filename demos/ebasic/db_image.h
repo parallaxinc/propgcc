@@ -32,7 +32,11 @@ typedef struct {
 #define F_SIZE  2
 
 /* intrinsic function flag */
+#if ALIGN_MASK == 1
 #define INTRINSIC_FLAG  0x8000
+#else
+#define INTRINSIC_FLAG  0x80000000
+#endif
 
 /* primitive prototypes */
 #define PROTO_CODE      0x7fff
