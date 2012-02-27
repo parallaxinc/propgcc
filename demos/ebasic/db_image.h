@@ -94,6 +94,12 @@ typedef struct {
                                         Abort(i, str_argument_count_err);       \
                                 } while (0)
 
+/* check for a range of number of arguments */
+#define CheckArgCountBt(i, m, n) do {                                           \
+                                    if ((i)->argc < (m) || (i)->argc > (n))     \
+                                        Abort(i, str_argument_count_err);       \
+                                } while (0)
+
 /* get the argument pointer */
 #define GetArgPointer(i)        &i->sp[-i->argc]
 
@@ -104,7 +110,18 @@ enum {
     FN_printStr,
     FN_printInt,
     FN_printTab,
-    FN_printNL
+    FN_printNL,
+#ifdef PROPELLER
+    FN_IN,
+    FN_OUT,
+    FN_HIGH,
+    FN_LOW,
+    FN_TOGGLE,
+    FN_DIR,
+    FN_GETDIR,
+    FN_CNT,
+    FN_PAUSE
+#endif
 };
 
 /* opcodes */
