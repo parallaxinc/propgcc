@@ -5,6 +5,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <ctype.h>
 #include "db_vm.h"
 

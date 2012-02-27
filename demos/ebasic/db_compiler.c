@@ -134,7 +134,7 @@ ImageHdr *Compile(ParseContext *c)
     StoreCode(c);
 
     /* allocate the global variable table */
-    if (!(image->variables = (VMVALUE *)AllocateFreeSpace(sys, image->variableCount * sizeof(VMVALUE))))
+    if (!(variables = (VMVALUE *)AllocateFreeSpace(sys, image->variableCount * sizeof(VMVALUE))))
         ParseError(c, "insufficient space for variable table");
 
     /* store the initial values of the global variables */
