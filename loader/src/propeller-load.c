@@ -229,6 +229,7 @@ int main(int argc, char *argv[])
             break;
         case PLOAD_STATUS_OPEN_FAILED:
             fprintf(stderr, "error: opening serial port '%s'\n", port);
+	    perror("Error is ");
             return 1;
         case PLOAD_STATUS_NO_PROPELLER:
             if (port)

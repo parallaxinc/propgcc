@@ -637,7 +637,7 @@ int main(int argc, char *argv[])
 #endif
 #if defined(LINUX)
                     static char buf[64];
-                    sprintf(buf, "/dev/ttyUSB%d", atoi(port));
+		    sprintf(buf, "/dev/ttyUSB%d", atoi(port));
                     port = buf;
 #endif
                 }
