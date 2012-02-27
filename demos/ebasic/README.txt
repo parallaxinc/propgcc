@@ -1,3 +1,14 @@
+Editor commands:
+
+NEW
+NEW filename
+LOAD
+LOAD filename
+SAVE
+SAVE filename
+LIST
+RUN
+
 Language syntax:
 
 REM comment
