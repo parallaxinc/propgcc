@@ -322,7 +322,7 @@ void AddIntrinsic(ParseContext *c, char *name, int index)
 void *GlobalAlloc(ParseContext *c, size_t size)
 {
     void *p;
-    if (size & 1) ++size;
+    size = (size + ALIGN_MASK) & ~ALIGN_MASK;
     if (c->nextGlobal + size > c->nextLocal)
         Fatal(c, "insufficient memory");
     p = c->nextGlobal;
@@ -335,7 +335,7 @@ void *GlobalAlloc(ParseContext *c, size_t size)
 /* LocalAlloc - allocate memory from the local heap */
 void *LocalAlloc(ParseContext *c, size_t size)
 {
-    if (size & 1) ++size;
+    size = (size + ALIGN_MASK) & ~ALIGN_MASK;
     if (c->nextLocal + size < c->nextGlobal)
         Fatal(c, "insufficient memory");
     c->nextLocal -= size;
