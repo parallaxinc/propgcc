@@ -60,6 +60,27 @@ DIR *opendir(const char *dirname1)
     return 0;
 }
 
+static void ConvertFilename(char *str1, char *str2)
+{
+    int i;
+
+    for (i = 0; i < 8; i++)
+    {
+        if (str1[i] == ' ') break;
+        *str2++ = str1[i];
+    }
+    if (str1[8] != ' ')
+    {
+        *str2++ = '.';
+        for (i = 8; i < 11; i++)
+        {
+            if (str1[i] == ' ') break;
+            *str2++ = str1[i];
+        }
+    }
+    *str2 = 0;
+}
+
 struct dirent *readdir(DIR *dirinfo)
 {
     int retval;
@@ -69,7 +90,11 @@ struct dirent *readdir(DIR *dirinfo)
     {
         retval = DFS_GetNext(&dfs_volinfo, (PDIRINFO)dirinfo, (PDIRENT)pdirent);
         if (retval != DFS_OK) return 0;
-        if (pdirent->name[0]) break;
+        if (pdirent->name[0])
+        {
+            ConvertFilename((char *)pdirent->name, pdirent->d_name);
+            break;
+        }
     }
 
     return pdirent;
