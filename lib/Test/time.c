@@ -69,6 +69,8 @@ testtime(time_t t, const char *fmt, const char *expect, int local)
 #define testgmttime(t, fmt, expect) testtime(t, fmt, expect, 0)
 
 #define CLOCKS_PER_USEC (CLOCKS_PER_SEC/1000000)
+/* function call overhead for usleep */
+#define OVERHEAD 1024
 
 
 /* test of sleep functions */
@@ -83,17 +85,26 @@ sleeptest(void)
   delta = clock() - now;
   printf("delta = %u cycles ", delta); fflush(stdout);
   assert (delta >= CLOCKS_PER_SEC);
-  assert (delta < CLOCKS_PER_SEC + CLOCKS_PER_SEC/1000);
+  assert (delta <= CLOCKS_PER_SEC + OVERHEAD);
   printf("ok\n");
 
   /* usleep() can really only provide accuracy to about 10 usec */
+  printf("testing usleep(10000): "); fflush(stdout);
+  now = clock();
+  usleep(10000);
+  delta = clock() - now;
+  printf("delta = %u cycles ", delta); fflush(stdout);
+  assert (delta >= 10000*CLOCKS_PER_USEC);
+  assert (delta <=  OVERHEAD + 10000*CLOCKS_PER_USEC);
+  printf("ok\n");
+
   printf("testing usleep(1000): "); fflush(stdout);
   now = clock();
   usleep(1000);
   delta = clock() - now;
   printf("delta = %u cycles ", delta); fflush(stdout);
   assert (delta >= 1000*CLOCKS_PER_USEC);
-  assert (delta <  1010*CLOCKS_PER_USEC);
+  assert (delta <=  OVERHEAD + 1000*CLOCKS_PER_USEC);
   printf("ok\n");
 
   printf("testing usleep(50): "); fflush(stdout);
@@ -102,7 +113,7 @@ sleeptest(void)
   delta = clock() - now;
   printf("delta = %u cycles ", delta); fflush(stdout);
   assert (delta >= 50*CLOCKS_PER_USEC);
-  assert (delta <  60*CLOCKS_PER_USEC);
+  assert (delta <=  OVERHEAD + 50*CLOCKS_PER_USEC);
   printf("ok\n");
 
 
