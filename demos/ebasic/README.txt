@@ -20,10 +20,6 @@ DEF function-name ( arg [ , arg ]... )
 
 END DEF
 
-arg:
-
-    var
-    
 RETURN expr
 
 dim-statement:

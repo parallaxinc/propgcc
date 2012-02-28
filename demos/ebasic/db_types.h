@@ -131,7 +131,7 @@ typedef FSFILE VMFILE;
 #include <p33fxxxx.h>
 #endif
 
-#define ALIGN_MASK              3
+#define ALIGN_MASK              1
 
 #define FLASH_SPACE             const
 #define DATA_SPACE              __attribute__((far))
