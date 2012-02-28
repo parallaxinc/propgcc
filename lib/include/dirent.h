@@ -43,6 +43,7 @@ struct dirent {
     uint8_t filesize_1;      // file size, byte 1
     uint8_t filesize_2;      // file size, byte 2
     uint8_t filesize_3;      // file size, byte 3
+    char d_name[13];         // filename in file.ext format
 };
 
 DIR *opendir(const char *path);
