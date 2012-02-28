@@ -431,7 +431,7 @@ static int ParseNumericExpr(char *token, int *pValue)
                     op = -1;
                     break;
                 }
-            if (!sym) {
+            if (!sym->name) {
                 Error("undefined symbol: %s", id);
                 return FALSE;
             }
