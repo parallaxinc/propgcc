@@ -104,7 +104,7 @@ expr MOD expr
 NOT expr
 
 function ( arg [, arg ]... )
-array ( index )
+array [ index ]
 
 (expr)
 var
