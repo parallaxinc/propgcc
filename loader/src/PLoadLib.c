@@ -126,27 +126,50 @@ static int hwfind(void)
     int  n, ii, jj, rc, to;
     uint8_t mybuf[300];
 
-    msleep(50); // pause after reset - 100ms is too long
+    /* Do not pause after reset.
+     * Propeller can give up if it does not see a response in 100ms of reset.
+     */
     mybuf[0] = 0xF9;
     LFSR = 'P';  // P is for Propeller :)
 
     // set magic propeller byte stream
     for(n = 1; n < 251; n++)
         mybuf[n] = iterate() | 0xfe;
-    tx(mybuf, 251);
+    if(tx(mybuf, 251) == 0)
+        return 0;   // tx should never return 0, return error if it does.
 
     // send gobs of 0xF9 for id sync-up - these clock out the LSFR bits and the id
     for(n = 0; n < 258; n++)
         mybuf[n] = 0xF9;
-    tx(mybuf, 258);
+    if(tx(mybuf, 258) == 0)
+        return 0;   // tx should never return 0, return error if it does.
 
     //for(n = 0; n < 250; n++) printf("%d", iterate() & 1);
     //printf("\n\n");
 
-    msleep(100);
-    
+    /*
+     * Wait at least 100ms for the first response. Allow some margin.
+     * Some chips may respond < 50ms, but there's no guarantee all will.
+     * If we don't get it, we can assume the propeller is not there.
+     */
+    ii = getBit(&rc, 110);
+    if(rc == 0) {
+        //printf("Timeout waiting for first response bit. Propeller not found.\n");
+        return 0;
+    }
+
     // wait for response so we know we have a Propeller
-    for(n = 0; n < 250; n++) {
+    for(n = 1; n < 250; n++) {
+
+        jj = iterate();
+        //printf("%d:%d ", ii, jj);
+        //fflush(stdout);
+
+        if(ii != jj) {
+            //printf("Lost HW contact. %d %x\n", n, *mybuf & 0xff);
+            return 0;
+        }
+
         to = 0;
         do {
             ii = getBit(&rc, 100);
@@ -154,12 +177,6 @@ static int hwfind(void)
         //printf("%d", rc);
         if(to > 100) {
             //printf("Timeout waiting for response bit. Propeller Not Found!\n");
-            return 0;
-        }
-        jj = iterate();
-        //printf("%d:%d ", ii, jj);
-        if(ii != jj) {
-            //printf("Lost HW contact. %d %x\n", n, *mybuf & 0xff);
             return 0;
         }
     }
