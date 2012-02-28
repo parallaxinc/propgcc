@@ -5,7 +5,6 @@
  */
 
 #include <stdlib.h>
-#include <unistd.h>
 #include <ctype.h>
 #include "db_vm.h"
 
@@ -20,6 +19,7 @@ static void fcn_printFlush(Interpreter *i);
 
 #ifdef PROPELLER
 
+#include <unistd.h>
 #include <propeller.h>
 
 static void fcn_IN(Interpreter *i);
