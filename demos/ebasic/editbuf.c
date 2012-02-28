@@ -28,8 +28,7 @@ int BufAddLineN(VMVALUE lineNumber, const char *text)
     Line *line;
 
     /* make sure the length is a multiple of the word size */
-    if (newLength & 1)
-        ++newLength;
+    newLength = (newLength + ALIGN_MASK) & ~ALIGN_MASK;
 
     /* replace an existing line */
     if (FindLineN(lineNumber, &line)) {

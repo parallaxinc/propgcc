@@ -158,7 +158,7 @@ ImageHdr *Compile(ParseContext *c)
     image->variables = image->objectData + image->objectDataSize;
     image->objects = image->variables + image->variableCount;
     
-    /* read the object data from the scratch buffer */
+    /* read the object data and variables from the scratch buffer */
     BufRewind();
     if (!BufReadWords(image->objectData, totalSize))
         ParseError(c, "error reading objects and variables");
