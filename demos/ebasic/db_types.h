@@ -124,6 +124,15 @@ typedef int16_t VMVALUE;
 typedef uint16_t VMUVALUE;
 typedef FSFILE VMFILE;
 
+struct VMDIR {
+    SearchRec rec;
+    int first;
+};
+
+struct VMDIRENT {
+    char name[FILE_NAME_SIZE_8P3 + 2];
+};
+
 #ifdef PIC24
 #include <p24hxxxx.h>
 #endif
@@ -303,7 +312,6 @@ int strcasecmp(const char *s1, const char *s2);
 
 #define PROPELLER
 #define ANSI_FILE_IO
-//#define LINE_EDIT
 
 #endif  // PROPELLER_GCC
 
@@ -327,6 +335,7 @@ typedef uint32_t VMUVALUE;
 #ifdef ANSI_FILE_IO
 
 #include <stdio.h>
+#include <dirent.h>
 
 typedef FILE VMFILE;
 
@@ -334,6 +343,14 @@ typedef FILE VMFILE;
 #define VM_fclose	fclose
 #define VM_fgets	fgets
 #define VM_fputs	fputs
+
+struct VMDIR {
+    DIR *dirp;
+};
+
+struct VMDIRENT {
+    char name[FILENAME_MAX];
+};
 
 #endif // ANSI_FILE_IO
 

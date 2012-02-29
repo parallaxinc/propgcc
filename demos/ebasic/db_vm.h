@@ -96,6 +96,12 @@ void DecodeFunction(VMUVALUE base, const uint8_t *code, int len);
 int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc);
 void ShowStack(Interpreter *i);
 
+/* directory entry structure (platform specific) */
+typedef struct VMDIRENT VMDIRENT;
+
+/* open directory structure (platform specific) */
+typedef struct VMDIR VMDIR;
+
 void VM_sysinit(int argc, char *argv[]);
 void VM_sysexit(void);
 void VM_printf(const char *fmt, ...);           /* fmt in FLASH_SPACE */
@@ -104,6 +110,9 @@ void VM_flush(void);
 int VM_getchar(void);
 void VM_putchar(int ch);
 void VM_getline(char *buf, int size);
+int VM_opendir(const char *path, VMDIR *dir);
+int VM_readdir(VMDIR *dir, VMDIRENT *entry);
+void VM_closedir(VMDIR *dir);
 
 VMFILE *VM_fopen(const char *name, const char *mode);
 int VM_fclose(VMFILE *fp);

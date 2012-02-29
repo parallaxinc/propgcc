@@ -72,6 +72,32 @@ void VM_putchar(int ch)
     putchar(ch);
 }
 
+int VM_opendir(const char *path, VMDIR *dir)
+{
+    if (!(dir->dirp = opendir(path)))
+        return -1;
+    return 0;
+}
+
+int VM_readdir(VMDIR *dir, VMDIRENT *entry)
+{
+    struct dirent *ansi_entry;
+    char *ptr;
+    int i;
+    
+    if (!(ansi_entry = readdir(dir->dirp)))
+        return -1;
+        
+    strcpy(entry->name, ansi_entry->d_name);
+    
+    return 0;
+}
+
+void VM_closedir(VMDIR *dir)
+{
+    closedir(dir->dirp);
+}
+
 void LOG_printf(const char *fmt, ...)
 {
     va_list ap;
