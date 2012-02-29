@@ -175,8 +175,11 @@ static void DoCat(System *sys)
     VMDIRENT entry;
     VMDIR dir;    
     if (VM_opendir(".", &dir) == 0) {
-        while (VM_readdir(&dir, &entry) == 0)
-            VM_printf("  %s\n", entry.name);
+        while (VM_readdir(&dir, &entry) == 0) {
+            int len = strlen(entry.name);
+            if (len >= 4 && strcasecmp(&entry.name[len - 4], ".bas") == 0)
+                VM_printf("  %s\n", entry.name);
+        }
         VM_closedir(&dir);
     }
 }

@@ -75,13 +75,15 @@ int VM_opendir(const char *path, VMDIR *dir)
 int VM_readdir(VMDIR *dir, VMDIRENT *entry)
 {
     struct dirent *propgcc_entry;
-    char *ptr;
-    int i;
+    char *src, *dst;
     
     if (!(propgcc_entry = readdir(dir->dirp)))
         return -1;
     
-    strcpy(entry->name, propgcc_entry->d_name);
+    src = propgcc_entry->d_name;
+    dst = entry->name;
+    while ((*dst++ = tolower(*src++)) != '\0')
+        ;
     
     return 0;
 }
