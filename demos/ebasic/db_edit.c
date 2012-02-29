@@ -15,6 +15,7 @@ static void DoNew(System *sys);
 #ifdef LOAD_SAVE
 static void DoLoad(System *sys);
 static void DoSave(System *sys);
+static void DoCat(System *sys);
 #endif
 static void DoList(System *sys);
 static void DoRun(System *sys);
@@ -24,14 +25,15 @@ static struct {
     char *name;
     void (*handler)(System *sys);
 } cmds[] = {
-    {   "NEW",   DoNew   },
+{   "NEW",      DoNew   },
 #ifdef LOAD_SAVE
-    {   "LOAD",  DoLoad  },
-    {   "SAVE",  DoSave  },
+{   "LOAD",     DoLoad  },
+{   "SAVE",     DoSave  },
+{   "CAT",      DoCat   },
 #endif
-    {   "LIST",  DoList  },
-    {   "RUN",   DoRun   },
-    {   NULL,    NULL    }
+{   "LIST",     DoList  },
+{   "RUN",      DoRun   },
+{   NULL,       NULL    }
 };
 
 /* memory of the last filename */
@@ -165,6 +167,17 @@ static void DoSave(System *sys)
             VM_fputs(sys->lineBuf, fp);
         }
         VM_fclose(fp);
+    }
+}
+
+static void DoCat(System *sys)
+{
+    VMDIRENT entry;
+    VMDIR dir;    
+    if (VM_opendir(".", &dir) == 0) {
+        while (VM_readdir(&dir, &entry) == 0)
+            VM_printf("  %s\n", entry.name);
+        VM_closedir(&dir);
     }
 }
 

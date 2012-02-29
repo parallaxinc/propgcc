@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <ctype.h>
+#include <dirent.h>
 #include "db_vm.h"
 
 #if defined(USE_FDS) || defined(LOAD_SAVE)
@@ -61,6 +63,32 @@ int VM_getchar(void)
 void VM_putchar(int ch)
 {
     putchar(ch);
+}
+
+int VM_opendir(const char *path, VMDIR *dir)
+{
+    if (!(dir->dirp = opendir(path)))
+        return -1;
+    return 0;
+}
+
+int VM_readdir(VMDIR *dir, VMDIRENT *entry)
+{
+    struct dirent *propgcc_entry;
+    char *ptr;
+    int i;
+    
+    if (!(propgcc_entry = readdir(dir->dirp)))
+        return -1;
+    
+    strcpy(entry->name, propgcc_entry->d_name);
+    
+    return 0;
+}
+
+void VM_closedir(VMDIR *dir)
+{
+    closedir(dir->dirp);
 }
 
 void LOG_printf(const char *fmt, ...)
