@@ -513,6 +513,16 @@ typedef unsigned int CUMULATIVE_ARGS;
    the prologue.  */
 #define INCOMING_RETURN_ADDR_RTX  gen_rtx_REG( SImode, PROP_LR_REGNUM)
 
+/* A C expression whose value is an integer giving the offset, in bytes,
+from the value of the stack pointer register to the top of the stack
+frame at the beginning of any function, before the prologue.  The top of
+the frame is defined to be the value of the stack pointer in the
+previous frame, just before the call instruction.
+
+You only need to define this macro if you want to support call frame
+debugging information like that provided by DWARF 2.  */
+#define INCOMING_FRAME_SP_OFFSET 8
+
 /*
  * function results
  */
