@@ -114,6 +114,8 @@ ImageHdr *Compile(ParseContext *c)
     AddIntrinsic(c, "GETDIR",           FN_GETDIR);
     AddIntrinsic(c, "CNT",              FN_CNT);
     AddIntrinsic(c, "PAUSE",            FN_PAUSE);
+    AddIntrinsic(c, "PULSEIN",          FN_PULSEIN);
+    AddIntrinsic(c, "PULSEOUT",         FN_PULSEOUT);
 #endif
 
     /* initialize scanner */

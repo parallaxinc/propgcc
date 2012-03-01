@@ -125,7 +125,9 @@ enum {
     FN_DIR,
     FN_GETDIR,
     FN_CNT,
-    FN_PAUSE
+    FN_PAUSE,
+    FN_PULSEIN,
+    FN_PULSEOUT
 #endif
 };
 
