@@ -6,7 +6,7 @@
 #
 # ADJUST THE FOLLOWING VARIABLES IF NECESSARY
 #
-PREFIX=/usr/local/propeller
+PREFIX=/opt/parallax
 export PREFIX
 
 #
