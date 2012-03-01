@@ -31,6 +31,8 @@ static void fcn_DIR(Interpreter *i);
 static void fcn_GETDIR(Interpreter *i);
 static void fcn_CNT(Interpreter *i);
 static void fcn_PAUSE(Interpreter *i);
+static void fcn_PULSEIN(Interpreter *i);
+static void fcn_PULSEOUT(Interpreter *i);
 
 #endif // PROPELLER
 
@@ -54,7 +56,9 @@ IntrinsicFcn * FLASH_SPACE Intrinsics[] = {
     fcn_DIR,
     fcn_GETDIR,
     fcn_CNT,
-    fcn_PAUSE
+    fcn_PAUSE,
+    fcn_PULSEIN,
+    fcn_PULSEOUT
 #endif
 };
 
@@ -207,6 +211,28 @@ static void fcn_GETDIR(Interpreter *i)
         uint32_t pin_mask = ((1 << (high - low + 1)) - 1) << low;
         i->sp[-2] = (DIRA & pin_mask) >> low;
     }
+}
+
+static void fcn_PULSEIN(Interpreter *i)
+{
+    uint32_t mask = 1 << i->sp[-1];
+    uint32_t value = i->sp[0] << i->sp[-1];
+    uint32_t start;
+    DIRA &= ~mask;
+    waitpeq(value, mask);
+    start = CNT;
+    waitpne(value, mask);
+    i->sp[-2] = (CNT - start) / (CLKFREQ / 1000000);
+}
+
+static void fcn_PULSEOUT(Interpreter *i)
+{
+    uint32_t mask = 1 << i->sp[-1];
+    uint32_t ticks = i->sp[0] * (CLKFREQ / 1000000);
+    OUTA ^= mask;
+    DIRA |= mask;
+    waitcnt(CNT + ticks);
+    OUTA ^=mask;
 }
 
 static void fcn_CNT(Interpreter *i)
