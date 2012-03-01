@@ -213,26 +213,37 @@ static void fcn_GETDIR(Interpreter *i)
     }
 }
 
+static HUBTEXT int pulseIn(int pin, int state)
+{
+    uint32_t mask = 1 << pin;
+    uint32_t data = state << pin;
+    uint32_t ticks;
+    DIRA &= ~mask;
+    waitpeq(data, mask);
+    ticks = CNT;
+    waitpne(data, mask);
+    ticks = CNT - ticks;
+    return ticks / (CLKFREQ / 1000000);
+}
+
 static void fcn_PULSEIN(Interpreter *i)
 {
-    uint32_t mask = 1 << i->sp[-1];
-    uint32_t value = i->sp[0] << i->sp[-1];
-    uint32_t start;
-    DIRA &= ~mask;
-    waitpeq(value, mask);
-    start = CNT;
-    waitpne(value, mask);
-    i->sp[-2] = (CNT - start) / (CLKFREQ / 1000000);
+    i->sp[-2] = pulseIn(i->sp[-1], i->sp[0]);
+}
+
+static HUBTEXT void pulseOut(int pin, int duration)
+{
+    uint32_t mask = 1 << pin;
+    uint32_t ticks = duration * (CLKFREQ / 1000000);
+    OUTA ^= mask;
+    DIRA |= mask;
+    waitcnt(CNT + ticks);
+    OUTA ^= mask;
 }
 
 static void fcn_PULSEOUT(Interpreter *i)
 {
-    uint32_t mask = 1 << i->sp[-1];
-    uint32_t ticks = i->sp[0] * (CLKFREQ / 1000000);
-    OUTA ^= mask;
-    DIRA |= mask;
-    waitcnt(CNT + ticks);
-    OUTA ^=mask;
+    pulseOut(i->sp[-1], i->sp[0]);
 }
 
 static void fcn_CNT(Interpreter *i)
