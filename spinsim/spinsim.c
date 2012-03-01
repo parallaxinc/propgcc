@@ -1161,6 +1161,7 @@ int main(int argc, char **argv)
       {
 	  runflag = 0;
 	  step_chip(&state, &spinvars, &runflag);
+          CheckCommand();
 	  if (baudrate)
 	  {
 	      CheckSerialOut();
