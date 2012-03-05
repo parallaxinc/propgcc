@@ -26,6 +26,7 @@
 #include "safe-ctype.h"
 #include "opcode/propeller.h"
 #include "elf/propeller.h"
+#include "dwarf2dbg.h"
 
 /* A representation for Propeller machine code.  */
 struct propeller_code
@@ -647,6 +648,11 @@ md_assemble (char *instruction_string)
      in dos mode */
   for (p = instruction_string; *p; p++)
     if (*p == '\r') *p = ' ';
+
+#ifdef OBJ_ELF
+  /* Tie dwarf2 debug info to the address at the start of the insn.  */
+  dwarf2_emit_insn (0);
+#endif
 
   str = skip_whitespace (instruction_string);
   p = find_whitespace (str);
