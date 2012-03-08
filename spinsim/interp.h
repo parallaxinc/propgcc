@@ -51,7 +51,7 @@ typedef struct PasmVarsS {
     int32_t repbot;
     int32_t reptop;
     int32_t cache[4];
-    int32_t clut[128];
+    int32_t clut[256];
 } PasmVarsT;
 
 // This struct is used by the Spin simulator

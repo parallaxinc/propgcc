@@ -10,6 +10,9 @@
 #define IGNORE_WZ_WC
 #define PRINT_RAM_ACCESS
 
+#define CLUT_SIZE 256
+#define CLUT_MASK (CLUT_SIZE - 1)
+
 #if 1
 #define REG_INDA 0x1f6
 #define REG_INDB 0x1f7
@@ -109,7 +112,7 @@ static int32_t CheckWaitFlag(PasmVarsT *pasmvars, int mode)
 // Compute the hub RAM address from the pointer instruction - 1SUPIIIII
 int32_t GetPointer(PasmVarsT *pasmvars, int32_t ptrinst, int32_t size)
 {
-    int32_t address;
+    int32_t address = 0; // Set to zero to avoid compiler warning
     int32_t offset = (ptrinst << 27) >> (27 - size);
 
     switch ((ptrinst >> 5) & 7)
@@ -593,15 +596,49 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
                 case 0x008:
 	        switch (value2 & 7)
 	        {
-		    case 0: // rcvser, sndser
-		    // TODO
+		    case 0:
+                    switch (dstaddr & 7)
+                    {
+		        case 0: // cachex
+		        result = 0;
+		        zflag = 1;
+		        cflag = 0;
+		        pasmvars->cachehubaddr = 0xffffffff;
+		        break;
+
+		        case 1: // clracca
+                        // TODO
+                        break;
+
+		        case 2: // clraccb
+                        // TODO
+                        break;
+
+		        case 3: // clraccs
+                        // TODO
+                        break;
+
+		        case 4: // unknown
+                        // TODO
+                        break;
+
+		        case 5: // fitacca
+                        // TODO
+                        break;
+
+		        case 6: // fitaccb
+                        // TODO
+                        break;
+
+		        case 7: // fitaccs
+                        // TODO
+                        break;
+                    }
 		    break;
 
-		    case 1: // swapzc
-		    result = (value1 & 0xfffffffc) | (zflag << 1) | cflag;
-		    zflag = (value1 >> 1) & 1;
-		    cflag = value1 & 1;
-		    break;
+		    case 1: // rcvser, sndser
+                    // TODO
+                    break;
 
 		    case 2: // pushzc
 		    result = (value1 << 2) | (zflag << 1) | cflag;
@@ -615,28 +652,23 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    cflag = value1 & 1;
 		    break;
 
-		    case 4: // cachex
-		    result = 0;
-		    zflag = 1;
-		    cflag = 0;
-		    pasmvars->cachehubaddr = 0xffffffff;
+		    case 4: // subcnt
+                    // TODO
 		    break;
 
-		    case 5: // clracc
-		    pasmvars->acch = 0;
-		    pasmvars->accl = 0;
-		    break;
-
-		    case 6: // getacc
-		    result = pasmvars->accl;
-		    zflag = (result == 0);
-		    cflag = 0;
-		    break;
-
-		    case 7: // getcnt
+		    case 5: // getcnt
 		    result = GetCnt();
 		    zflag = (result == 0);
 		    cflag = 0;
+                    // TODO - add 64-bit support
+		    break;
+
+		    case 6: // getacca
+                    // TODO
+		    break;
+
+		    case 7: // getaccb
+                    // TODO
 		    break;
 		}
 		break;
@@ -668,7 +700,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    break;
 
 		    case 5: // getspd
-		    result = (pasmvars->spa - pasmvars->spb) & 127;
+		    result = (pasmvars->spa - pasmvars->spb) & CLUT_MASK;
 		    break;
 
 		    case 6: // getspa
@@ -686,29 +718,29 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
                 case 0x018:
 	        switch (value2 & 7)
 	        {
-		    case 0: // popupa
+		    case 0: // popar
 		    result = pasmvars->clut[pasmvars->spa];
-		    pasmvars->spa = (pasmvars->spa + 1) & 127;
+		    pasmvars->spa = (pasmvars->spa + 1) & CLUT_MASK;
 		    break;
 
-		    case 1: // popupb
+		    case 1: // popbr
 		    result = pasmvars->clut[pasmvars->spb];
-		    pasmvars->spb = (pasmvars->spb + 1) & 127;
+		    pasmvars->spb = (pasmvars->spb + 1) & CLUT_MASK;
 		    break;
 
 		    case 2: // popa
-		    pasmvars->spa = (pasmvars->spa - 1) & 127;
+		    pasmvars->spa = (pasmvars->spa - 1) & CLUT_MASK;
 		    result = pasmvars->clut[pasmvars->spa];
 		    break;
 
 		    case 3: // popb
-		    pasmvars->spb = (pasmvars->spb - 1) & 127;
+		    pasmvars->spb = (pasmvars->spb - 1) & CLUT_MASK;
 		    result = pasmvars->clut[pasmvars->spb];
 		    break;
 
 		    case 4: // reta
 		    zcri &= 0xd; // Disable the WR bit
-		    pasmvars->spa = (pasmvars->spa - 1) & 127;
+		    pasmvars->spa = (pasmvars->spa - 1) & CLUT_MASK;
 		    result = pasmvars->clut[pasmvars->spa];
 		    pasmvars->pc = result & 0x1ff;
 	            // Invalidate the instruction pipeline
@@ -718,7 +750,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 
 		    case 5: // retb
 		    zcri &= 0xd; // Disable the WR bit
-		    pasmvars->spb = (pasmvars->spb - 1) & 127;
+		    pasmvars->spb = (pasmvars->spb - 1) & CLUT_MASK;
 		    result = pasmvars->clut[pasmvars->spb];
 		    pasmvars->pc = result & 0x1ff;
 	            // Invalidate the instruction pipeline
@@ -728,14 +760,14 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 
 		    case 6: // retad
 		    zcri &= 0xd; // Disable the WR bit
-		    pasmvars->spa = (pasmvars->spa - 1) & 127;
+		    pasmvars->spa = (pasmvars->spa - 1) & CLUT_MASK;
 		    result = pasmvars->clut[pasmvars->spa];
 		    pasmvars->pc = result & 0x1ff;
 		    break;
 
 		    case 7: // retbd
 		    zcri &= 0xd; // Disable the WR bit
-		    pasmvars->spb = (pasmvars->spb - 1) & 127;
+		    pasmvars->spb = (pasmvars->spb - 1) & CLUT_MASK;
 		    result = pasmvars->clut[pasmvars->spb];
 		    pasmvars->pc = result & 0x1ff;
 		    break;
@@ -747,26 +779,26 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
                 case 0x020:
 	        switch (value2 & 7)
 	        {
-		    case 0: // decod2
-		    result = 1 << (value1 & 3);
-		    result |= result << 4;
-		    result |= result << 8;
+		    case 0: // decod5
+		    result = 1 << (value1 & 0x1f);
+		    break;
+
+		    case 1: // decod4
+		    result = 1 << (value1 & 0xf);
 		    result |= result << 16;
 		    break;
 
-		    case 1: // decod3
+		    case 2: // decod3
 		    result = 1 << (value1 & 7);
 		    result |= result << 8;
 		    result |= result << 16;
 		    break;
 
-		    case 2: // decod4
-		    result = 1 << (value1 & 0xf);
+		    case 3: // decod2
+		    result = 1 << (value1 & 3);
+		    result |= result << 4;
+		    result |= result << 8;
 		    result |= result << 16;
-		    break;
-
-		    case 3: // decod5
-		    result = 1 << (value1 & 0x1f);
 		    break;
 
 		    case 4: // blmask
@@ -870,15 +902,15 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    // TODO
 		    break;
 
-		    case 5: // corx
+		    case 5: // getqx
 		    // TODO
 		    break;
 
-		    case 6: // cory
+		    case 6: // getqy
 		    // TODO
 		    break;
 
-		    case 7: // corz
+		    case 7: // getqz
 		    // TODO
 		    break;
 		}
@@ -924,7 +956,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
                 case 0x080:
                 case 0x088:
                 case 0x090:
-                case 0x098: // rep
+                case 0x098: // repd
 		pasmvars->repcnt = value1;
 		pasmvars->repbot = (pasmvars->pc - 1) & 0x1ff;
 		pasmvars->reptop = (pasmvars->pc + (srcaddr & 31) - 1) & 0x1ff;
@@ -949,32 +981,32 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    break;
 
 		    case 2: // setspa
-		    result = value1 & 127;
+		    result = value1 & CLUT_MASK;
 		    pasmvars->spa = result;
 		    break;
 
 		    case 3: // setspb
-		    result = value1 & 127;
+		    result = value1 & CLUT_MASK;
 		    pasmvars->spb = result;
 		    break;
 
 		    case 4: // addspa
-		    result = (pasmvars->spa + value1) & 127;
+		    result = (pasmvars->spa + value1) & CLUT_MASK;
 		    pasmvars->spa = result;
 		    break;
 
 		    case 5: // addspb
-		    result = (pasmvars->spb + value1) & 127;
+		    result = (pasmvars->spb + value1) & CLUT_MASK;
 		    pasmvars->spb = result;
 		    break;
 
 		    case 6: // subspa
-		    result = (pasmvars->spa - value1) & 127;
+		    result = (pasmvars->spa - value1) & CLUT_MASK;
 		    pasmvars->spa = result;
 		    break;
 
 		    case 7: // subspb
-		    result = (pasmvars->spb - value1) & 127;
+		    result = (pasmvars->spb - value1) & CLUT_MASK;
 		    pasmvars->spb = result;
 		    break;
 		}
@@ -985,35 +1017,35 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
                 case 0x0a8:
 	        switch (value2 & 7)
 	        {
-		    case 0: // pushdna
+		    case 0: // pushar
 		    result = value1;
-		    pasmvars->spa = (pasmvars->spa - 1) & 127;
+		    pasmvars->spa = (pasmvars->spa - 1) & CLUT_MASK;
 		    pasmvars->clut[pasmvars->spa] = result;
 		    break;
 
-		    case 1: // pushdnb
+		    case 1: // pushbr
 		    result = value1;
-		    pasmvars->spb = (pasmvars->spb - 1) & 127;
+		    pasmvars->spb = (pasmvars->spb - 1) & CLUT_MASK;
 		    pasmvars->clut[pasmvars->spb] = result;
 		    break;
 
 		    case 2: // pusha
 		    result = value1;
 		    pasmvars->clut[pasmvars->spa] = result;
-		    pasmvars->spa = (pasmvars->spa + 1) & 127;
+		    pasmvars->spa = (pasmvars->spa + 1) & CLUT_MASK;
 		    break;
 
 		    case 3: // pushb
 		    result = value1;
 		    pasmvars->clut[pasmvars->spb] = result;
-		    pasmvars->spb = (pasmvars->spb + 1) & 127;
+		    pasmvars->spb = (pasmvars->spb + 1) & CLUT_MASK;
 		    break;
 
 		    case 4: // calla
 	            //result = pasmvars->pc;
 	            result = (pc + 1) & 511;
 		    pasmvars->clut[pasmvars->spa] = result;
-		    pasmvars->spa = (pasmvars->spa + 1) & 127;
+		    pasmvars->spa = (pasmvars->spa + 1) & CLUT_MASK;
 	            pasmvars->pc = value1 & 0x1ff;
 	            // Invalidate the instruction pipeline
                     pasmvars->pc1 |= 512;
@@ -1024,7 +1056,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 	            //result = pasmvars->pc;
 	            result = (pc + 1) & 511;
 		    pasmvars->clut[pasmvars->spb] = result;
-		    pasmvars->spb = (pasmvars->spb + 1) & 127;
+		    pasmvars->spb = (pasmvars->spb + 1) & CLUT_MASK;
 	            pasmvars->pc = value1 & 0x1ff;
 	            // Invalidate the instruction pipeline
                     pasmvars->pc1 |= 512;
@@ -1034,14 +1066,14 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    case 6: // callad
 	            result = pasmvars->pc;
 		    pasmvars->clut[pasmvars->spa] = result;
-		    pasmvars->spa = (pasmvars->spa + 1) & 127;
+		    pasmvars->spa = (pasmvars->spa + 1) & CLUT_MASK;
 	            pasmvars->pc = value1 & 0x1ff;
 		    break;
 
 		    case 7: // callbd
 	            result = pasmvars->pc;
 		    pasmvars->clut[pasmvars->spb] = result;
-		    pasmvars->spb = (pasmvars->spb + 1) & 127;
+		    pasmvars->spb = (pasmvars->spb + 1) & CLUT_MASK;
 	            pasmvars->pc = value1 & 0x1ff;
 		    break;
 		}
@@ -1077,7 +1109,8 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 #endif
 		    break;
 
-		    case 1: // rdquad
+		    case 1: // rdquad, rdquadc
+                    // TODO - implement rdquadc when (zcri & 4) is true
 		    zflag = 1;
 		    cflag = 0;
 
@@ -1198,15 +1231,15 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    // TODO
 		    break;
 
-		    case 5: // setcorx
+		    case 5: // setqm
 		    // TODO
 		    break;
 
-		    case 6: // setcory
+		    case 6: // setcqi
 		    // TODO
 		    break;
 
-		    case 7: // setcorz
+		    case 7: // setqz
 		    // TODO
 		    break;
 		}
@@ -1215,19 +1248,19 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
                 case 0x0c8:
 	        switch (value2 & 7)
 	        {
-		    case 0: // cordrot
+		    case 0: // qlog
 		    // TODO
 		    break;
 
-		    case 1: // cordatn
+		    case 1: // qexp
 		    // TODO
 		    break;
 
-		    case 2: // cordexp
+		    case 2: // unused
 		    // TODO
 		    break;
 
-		    case 3: // cordlog
+		    case 3: // unused
 		    // TODO
 		    break;
 
@@ -1370,7 +1403,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    // TODO
 		    break;
 
-		    case 1: // setpnz
+		    case 1: // setxfr
 		    // TODO
 		    break;
 
@@ -1378,11 +1411,11 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    // TODO
 		    break;
 
-		    case 3: // setvid
+		    case 3: // setskip
 		    // TODO
 		    break;
 
-		    case 4: // setvidm
+		    case 4: // setvid
 		    // TODO
 		    break;
 
@@ -1521,6 +1554,7 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 	    }
 	    break;
 
+#ifdef VERSION13
 	    case 4: // mac, mul
 	    result = (value1 & 0xffff) * (value2 & 0xffff);
 	    if (!(zcri & 2))
@@ -1544,6 +1578,57 @@ int32_t ExecutePasmInstruction2(PasmVarsT *pasmvars)
 		    pasmvars->acch++;
 	    }
 	    break;
+#else
+	    case 4:
+            switch (zcri >> 1)
+            {
+                case 0: // setacca
+                // TODO
+                break;
+
+                case 2: // setaccb
+                // TODO
+                break;
+
+                case 4: // maca
+                // TODO
+                break;
+
+                case 6: // macb
+                // TODO
+                break;
+
+                default:// mul
+                // TODO
+                break;
+            }
+	    break;
+
+	    case 5:
+            switch (zcri >> 1)
+            {
+                case 0: // undefined
+                // TODO
+                break;
+
+                case 2: // qsincos
+                // TODO
+                break;
+
+                case 4: // qarctan
+                // TODO
+                break;
+
+                case 6: // qrotate
+                // TODO
+                break;
+
+                default:// scl
+                // TODO
+                break;
+            }
+	    break;
+#endif
 
 	    case 6: // enc
 	    //printf("enc %8.8x = ", value2);

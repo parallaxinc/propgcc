@@ -33,29 +33,29 @@ char lowerzcri[64] = {1, 3, 1, 1, 3, 1, 1, 1, 1, 3, 3, 3, 1, 1, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 
 char *lower[64] = { "clkset", "cogid", "coginit_old", "cogstop", "locknew",
-    "lockret", "lockset", "lockclr", "sndser", "swapzc",
-    "pushzc", "popzc", "cachex", "clracc", "getacc", "getcnt", "getlfsr",
+    "lockret", "lockset", "lockclr", "cachex", "sndser",
+    "pushzc", "popzc", "subcnt", "getcnt", "getacca", "getaccb", "getlfsr",
     "gettops", "getptra", "getptrb", "getpix", "getspd", "getspa",
-    "getspb", "popupa", "popupb", "popa", "popb", "reta", "retb",
-    "retad", "retbd", "decod2", "decod3", "decod4", "decod5", "blmask",
+    "getspb", "popar", "popbr", "popa", "popb", "reta", "retb",
+    "retad", "retbd", "decod5", "decod4", "decod3", "decod2", "blmask",
     "not", "onecnt", "zercnt", "incpat", "decpat", "bingry", "grybin",
     "mergew", "splitw", "seussf", "seussr", "getmull", "getmulh", "getdivq",
-    "getdivr", "getsqrt", "getcorx", "getcory", "getcorz", "getphsa",
+    "getdivr", "getsqrt", "getqx", "getqy", "getqz", "getphsa",
     "getphza", "getcosa", "getsina", "getphsb", "getphzb", "getcosb",
     "getsinb"};
 
 char *upper[96] = {"nopx", "setzc", "setspa", "setspb", "addspa", "addspb",
-    "subspa", "subspb", "pushdna", "pushdnb", "pusha", "pushb", "calla",
+    "subspa", "subspb", "pushar", "pushbr", "pusha", "pushb", "calla",
     "callb", "callad", "callbd", "wrquad", "rdquad", "setptra", "setptrb",
     "addptra", "subptra", "addptrb", "subptrb", "setpix", "setpixu",
     "setpixv", "setpixz", "setpixr", "setpixg", "setpixb", "setpixa",
-    "setmula", "setmulb", "setdiva", "setdivb", "setsqrt", "setcorx",
-    "setcory", "setcorz", "cordrot", "cordatn", "cordexp", "cordlog",
+    "setmula", "setmulb", "setdiva", "setdivb", "setsqrt", "setqm",
+    "setqi", "setqz", "qlog", "qexp", "undefined", "undefined",
     "cfgdac0", "cfgdac1", "cfgdac2", "cfgdac3", "setdac0", "setdac1",
     "setdac2", "setdac3", "cfgdacs", "setdacs", "getp", "getpn", "offp",
     "notp", "clrp", "setp", "setpc", "setpnc", "setpz", "setpnz", "setcog",
     "setmap", "setquad", "setport", "setpora", "setporb", "setporc",
-    "setpord", "setxch", "setpnz", "setser", "setvid", "setvidm",
+    "setpord", "setxch", "setxfr", "setser", "setskip", "setvid",
     "setvidy", "setvidi", "setvidq", "setctra", "setwava", "setfrqa",
     "setphsa", "addphsa", "subphsa", "synctra", "capctra", "setctrb",
     "setwavb", "setfrqb", "setphsb", "addphsb", "subphsb", "synctrb",
@@ -64,7 +64,7 @@ char *upper[96] = {"nopx", "setzc", "setspa", "setspb", "addspa", "addspb",
 char *bitinstr[] = { "isob", "notb", "clrb",
     "setb", "setbc", "setbnc", "setbz", "setbnz"};
 
-char *legacy0[] = {"mac", "macs", "enc", "jmp", "ror", "rol", "shr", "shl",
+char *legacy0[54] = {"enc", "jmp", "ror", "rol", "shr", "shl",
     "rcr", "rcl", "sar", "rev", "mins", "maxs", "min", "max", "movs", "movd",
     "movi", "jmpd", "test", "testn", "or", "xor", "muxc", "muxnc", "muxz",
     "muxnz", "add", "cmp", "addabs", "subabs", "sumc", "sumnc", "sumz",
@@ -72,14 +72,13 @@ char *legacy0[] = {"mac", "macs", "enc", "jmp", "ror", "rol", "shr", "shl",
     "cmps", "cmpsx", "addx", "cmpx", "adds", "subs", "addsx", "subsx",
     "subr", "cmpsub", "incmod", "decmod"};
 
-char legops1[8] = {0x04, 0x05, 0x07, 0x17, 0x18, 0x19, 0x21, 0x33};
+char legops1[6] = {0x07, 0x17, 0x18, 0x19, 0x21, 0x33};
 
-char legzcri[56] = {0, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+char legzcri[54] = {2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     2, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     2, 2, 2, 0, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2};
 
-char *legacy1[] = {"mul", "muls", "jmpret",
-    "jmpretd", "and", "andn", "sub", "subx"};
+char *legacy1[] = {"jmpret", "jmpretd", "and", "andn", "sub", "subx"};
 
 char *endops[] = {"ijz", "ijzd", "ijnz", "ijnzd", "djz", "djzd", "djnz",
     "djnzd", "tjz", "tjzd", "tjnz", "tjnzd", "waitcnt", "waitcnt",
@@ -88,12 +87,19 @@ char *endops[] = {"ijz", "ijzd", "ijnz", "ijnzd", "djz", "djzd", "djnz",
 char endzcri[] = {2, 6, 0xa, 0xe, 2, 6, 0xa, 0xe,
     0, 4, 8, 0xc, 2, 2, 8, 0xa, 2, 6, 0xa, 0xe};
 
+char *macops[] = {"setacca", "mul", "setaccb", "mul", "maca", "mul", "macb",
+    "mul", "scl", "scl", "qsincos", "scl", "qarctan", "scl", "qrotate", "scl"};
+
+char *accops[] = {"cachex", "clracca", "clraccb", "clraccs",
+    "undefined", "fitacca", "fitaccb", "fitaccs"};
+
 char *GetOpname2(unsigned int instr, int *pzcri)
 {
     int index;
     int opcode = instr >> 26;
     int zcri = (instr >> 22) & 15;
     int src = instr & 0x1ff;
+    int dst = (instr >> 9) & 0x1ff;
     
     if (opcode < 3)
     {
@@ -111,22 +117,28 @@ char *GetOpname2(unsigned int instr, int *pzcri)
 	{
 	    if (src < 0x40)
 	    {
-		if (src == 8 && (zcri & 2))
+		if (src == 9 && (zcri & 2))
 		{
 		    *pzcri = 3;
 		    return "rcvser";
 		}
+                else if (src == 8)
+                {
+                    *pzcri = 0;
+                    return accops[dst & 7];
+                }
 		*pzcri = lowerzcri[src];
 		return lower[src];
 	    }
 	    else if (src >= 0x80 && src <= 0x9f)
 	    {
 		*pzcri = 1;
-		return "rep";
+		return "repd";
 	    }
 	    else if (src >= 0x0a0 && src <= 0x0ff)
 	    {
 		*pzcri = 1;
+                if (src == 0xb1 && (zcri & 5) == 5) return "rdquadc";
 		return upper[src-0x0a0];
 	    }
 	    else if (src & 0x100)
@@ -141,21 +153,27 @@ char *GetOpname2(unsigned int instr, int *pzcri)
 	    }
 	}
     }
-    else if (opcode >= 4 && opcode <= 0x3b)
+    else if (opcode >= 4 && opcode <= 5)
     {
-	for (index = 0; index < 8; index++)
+        index = (instr >> 23) & 15;
+        *pzcri = 0;
+        return macops[index];
+    }
+    else if (opcode >= 6 && opcode <= 0x3b)
+    {
+	for (index = 0; index < 6; index++)
 	{
 	    if (opcode == legops1[index]) break;
 	}
-	if (index < 8 && (zcri & 2))
+	if (index < 6 && (zcri & 2))
 	{
 	    *pzcri = 2;
 	    return legacy1[index];
 	}
 	else
 	{
-	    *pzcri = legzcri[opcode - 4];
-	    return legacy0[opcode - 4];
+	    *pzcri = legzcri[opcode - 6];
+	    return legacy0[opcode - 6];
 	}
     }
     else
