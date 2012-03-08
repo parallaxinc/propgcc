@@ -1,6 +1,6 @@
 /*******************************************************************************
 ' Author: Dave Hein
-' Version 0.52
+' Version 0.53
 ' Copyright (c) 2010, 2011, 2012
 ' See end of file for terms of use.
 '******************************************************************************/
@@ -88,7 +88,7 @@ char *FindChar(char *str, int32_t val);
 
 void usage(void)
 {
-  fprintf(stderr, "SpinSim Version 0.52\n");
+  fprintf(stderr, "SpinSim Version 0.53\n");
   fprintf(stderr, "usage: spinsim [options] file\n");
   fprintf(stderr, "The options are as follows:\n");
   fprintf(stderr, "     -l  List executed instructions\n");
@@ -548,6 +548,8 @@ void RebootProp(void)
     memset(hubram, 0, 32768);
     memset(lockstate, 0, 8);
     memset(lockalloc, 0, 8);
+
+    chdir(rootdir);
 
     if(!gdbmode){
       infile = fopen(bootfile, "rb");
