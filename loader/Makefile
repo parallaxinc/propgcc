@@ -132,7 +132,6 @@ $(SPINDIR)/cache_interface.spin \
 $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
 $(SPINDIR)/c3_cache.spin \
-$(SPINDIR)/c3f_cache.spin \
 $(SPINDIR)/ssf_cache.spin \
 $(SPINDIR)/eeprom_cache.spin \
 $(SPINDIR)/sd_cache.spin \
