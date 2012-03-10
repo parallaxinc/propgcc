@@ -2,8 +2,7 @@
 #include <string.h>
 #include "fatread.h"
 #include "sdio.h"
-
-#define DEBUG
+#include "debug.h"
 
 #define MBR_PARTITIONS              0x1be
 #define MBR_SIGNATURE               0x1fe
@@ -73,9 +72,7 @@ int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
     int type;
        
     if (SD_ReadSector(0, buffer) != 0) {
-#ifdef DEBUG
-        printf("SD_ReadSector 0 failed\n");
-#endif
+        DPRINTF("SD_ReadSector 0 failed\n");
         return -1;
     }
     
@@ -83,22 +80,18 @@ int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
     if (strncmp((char *)&buffer[BOOT_FILE_SYSTEM_TYPE], "FAT12", 5) != 0
     &&  strncmp((char *)&buffer[BOOT_FILE_SYSTEM_TYPE], "FAT16", 5) != 0
     &&  strncmp((char *)&buffer[BOOT_FILE_SYSTEM_TYPE_32], "FAT32", 5) != 0) {
-        uint8_t status;
-        uint32_t size;
-    
+
         // get the first partition information
-        status = buffer[MBR_PARTITIONS + PART_STATUS];
-        start = GetU32(buffer, MBR_PARTITIONS + PART_FIRST_SECTOR);
-        size = GetU32(buffer, MBR_PARTITIONS + PART_SECTOR_COUNT);
 #ifdef DEBUG
-        printf("status: %02x, start: %08x, size %08x\n", status, start, size);
+        uint8_t status = buffer[MBR_PARTITIONS + PART_STATUS];
+        uint32_t size = GetU32(buffer, MBR_PARTITIONS + PART_SECTOR_COUNT);
 #endif
+        start = GetU32(buffer, MBR_PARTITIONS + PART_FIRST_SECTOR);
+        DPRINTF("status: %02x, start: %08x, size %08x\n", status, start, size);
             
         // get the boot sector of the first partition
         if (SD_ReadSector(start, buffer) != 0) {
-#ifdef DEBUG
-            printf("SD_ReadSector %d failed\n", start);
-#endif
+            DPRINTF("SD_ReadSector %d failed\n", start);
             return -1;
         }
     }
@@ -167,35 +160,35 @@ int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
     vinfo->endOfClusterChain = endOfClusterChain;
     
 #ifdef DEBUG
-    printf("label:                    %-11.11s\n", volumeLabel);
-    printf("type:                     ");
+    DPRINTF("label:                    %-11.11s\n", volumeLabel);
+    DPRINTF("type:                     ");
     switch (type) {
     case TYPE_FAT12:
-        printf("FAT12\n");
+        DPRINTF("FAT12\n");
         break;
     case TYPE_FAT16:
-        printf("FAT16\n");
+        DPRINTF("FAT16\n");
         break;
     case TYPE_FAT32:
-        printf("FAT32\n");
+        DPRINTF("FAT32\n");
         break;
     default:
-        printf("UNKNOWN\n");
+        DPRINTF("UNKNOWN\n");
         break;
     }
-    printf("bytesPerSector:           %d\n", bytesPerSector);
-    printf("sectorsPerCluster:        %d\n", sectorsPerCluster);
-    printf("reservedSectorCount:      %d\n", reservedSectorCount);
-    printf("numberOfFATs:             %d\n", numberOfFATs);
-    printf("rootEntryCount:           %d\n", rootEntryCount);
-    printf("totalSectorCount:         %d\n", totalSectorCount);
-    printf("FATSize:                  %d\n", FATSize);
-    printf("firstRootDirectorySector: %d\n", firstRootDirectorySector);
-    printf("rootDirectorySectorCount: %d\n", rootDirectorySectorCount);
-    printf("firstFATSector:           %d\n", firstFATSector);
-    printf("firstDataSector:          %d\n", firstDataSector);
-    printf("dataSectorCount:          %d\n", dataSectorCount);
-    printf("clusterCount:             %d\n", clusterCount);
+    DPRINTF("bytesPerSector:           %d\n", bytesPerSector);
+    DPRINTF("sectorsPerCluster:        %d\n", sectorsPerCluster);
+    DPRINTF("reservedSectorCount:      %d\n", reservedSectorCount);
+    DPRINTF("numberOfFATs:             %d\n", numberOfFATs);
+    DPRINTF("rootEntryCount:           %d\n", rootEntryCount);
+    DPRINTF("totalSectorCount:         %d\n", totalSectorCount);
+    DPRINTF("FATSize:                  %d\n", FATSize);
+    DPRINTF("firstRootDirectorySector: %d\n", firstRootDirectorySector);
+    DPRINTF("rootDirectorySectorCount: %d\n", rootDirectorySectorCount);
+    DPRINTF("firstFATSector:           %d\n", firstFATSector);
+    DPRINTF("firstDataSector:          %d\n", firstDataSector);
+    DPRINTF("dataSectorCount:          %d\n", dataSectorCount);
+    DPRINTF("clusterCount:             %d\n", clusterCount);
 #endif
     
     return 0;
@@ -219,9 +212,7 @@ int FindFile(uint8_t *buffer, VolumeInfo *vinfo, const char *name, FileInfo *fin
         
             // get the next sector in this cluster
             if (SD_ReadSector(sector + j, buffer) != 0) {
-#ifdef DEBUG
-                printf("SD_ReadSector %d failed\n", sector + j);
-#endif
+                DPRINTF("SD_ReadSector %d failed\n", sector + j);
                 return -1;
             }
 
@@ -295,9 +286,7 @@ int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount)
             
         // get the next cluster number
         if (GetFATEntry(vinfo, buffer, finfo->cluster, &next) != 0) {
-#ifdef DEBUG
-            printf("GetFATEntry %d failed\n", finfo->cluster);
-#endif
+            DPRINTF("GetFATEntry %d failed\n", finfo->cluster);
             return -1;
         }
             
@@ -315,9 +304,7 @@ int GetNextFileSector(FileInfo *finfo, uint8_t *buffer, uint32_t *pCount)
         
     // get the next sector of the file
     if (SD_ReadSector(finfo->sector, buffer) != 0) {
-#ifdef DEBUG
-        printf("SD_ReadSector %d failed\n", finfo->sector);
-#endif
+        DPRINTF("SD_ReadSector %d failed\n", finfo->sector);
         return 1;
     }
     
@@ -358,9 +345,7 @@ int GetFATEntry(VolumeInfo *vinfo, uint8_t *buffer, uint32_t cluster, uint32_t *
     
     // get the sector containing the fat entry
     if (SD_ReadSector(sector, buffer) != 0) {
-#ifdef DEBUG
-        printf("SD_ReadSector %d failed\n", sector);
-#endif
+        DPRINTF("SD_ReadSector %d failed\n", sector);
         return -1;
     }
     

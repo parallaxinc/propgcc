@@ -1,5 +1,5 @@
 {
-  SD JCACHE external RAM driver
+  SPI SD JCACHE external memory driver
   Copyright (c) 2011 by David Betz
 
   Based on code by Steve Denson (jazzed)
@@ -30,12 +30,6 @@
 }
 
 CON
-
-  ' these defaults are for the PropBOE
-  MISO_PIN                  = 22
-  CLK_PIN                   = 23
-  MOSI_PIN                  = 24
-  CS_CLR_PIN                = 25
 
   ' SD card sector dimensions
   SECTOR_WIDTH              = 9   ' 512 byte sectors
@@ -108,10 +102,10 @@ fillme  long    0[128-fillme]           ' first 128 cog locations are used for a
 
 ' these values get patched by the loader
 params
-tmiso         long    1<<MISO_PIN
-tclk          long    1<<CLK_PIN
-tmosi         long    1<<MOSI_PIN
-tcs_clr       long    1<<CS_CLR_PIN
+tmiso         long    0
+tclk          long    0
+tmosi         long    0
+tcs_clr       long    0
 tselect_inc   long    0
 tselect_mask  long    0
 

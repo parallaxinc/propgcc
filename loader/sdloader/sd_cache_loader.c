@@ -1,3 +1,24 @@
+/* sd_cache_loader.c - load a program to run the directly from the SD card
+
+Copyright (c) 2011 David Michael Betz
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+*/
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -6,6 +27,7 @@
 #include "sdio.h"
 #include "../src/pex.h"
 #include "sd_loader.h"
+#include "debug.h"
 
 #define FILENAME    	"AUTORUN PEX"
 
@@ -32,7 +54,7 @@ uint32_t cache_line_mask;
 SdLoaderInfo __attribute__((section(".coguser0"))) info_data;
 extern unsigned int _load_start_coguser0[];
 
-/* this section contains the xmm_driver code */
+/* this section contains the cache driver code */
 uint32_t __attribute__((section(".coguser1"))) xmm_driver_data[496];
 extern unsigned int _load_start_coguser1[];
 
@@ -59,21 +81,21 @@ int main(void)
     vm_mbox = xmm_mbox - 1;
     
     // load the cache driver
-    printf("loading cache driver\n");
+    DPRINTF("loading cache driver\n");
     xmm_mbox[0] = 0xffffffff;
     cognew(_load_start_coguser1, xmm_mbox);
     while (xmm_mbox[0])
         ;
         
-    printf("initializing sd card\n");
+    DPRINTF("initializing sd card\n");
     if (SD_Init(xmm_mbox, 5) != 0) {
-        printf("SD card initialization failed\n");
+        DPRINTF("SD card initialization failed\n");
         return -1;
     }
         
-    printf("mounting sd filesystem\n");
+    DPRINTF("mounting sd filesystem\n");
     if (MountFS(buffer, &vinfo) != 0) {
-        printf("MountFS failed\n");
+        DPRINTF("MountFS failed\n");
         return 1;
     }
     
@@ -85,9 +107,9 @@ int main(void)
     }
     	
     // open the .pex file
-    printf("opening AUTORUN.PEX\n");
+    DPRINTF("opening AUTORUN.PEX\n");
     if (FindFile(buffer, &vinfo, FILENAME, &finfo) != 0) {
-        printf("FindFile '%s' failed\n", FILENAME);
+        DPRINTF("FindFile '%s' failed\n", FILENAME);
         return 1;
     }
     
@@ -114,7 +136,7 @@ int main(void)
     }
     
     // start the xmm kernel
-    printf("loading kernel\n");
+    DPRINTF("loading kernel\n");
     vm_mbox[0] = 0;
     cognew(buffer, vm_mbox);
     vm_params[0] = load_address;
@@ -125,26 +147,22 @@ int main(void)
     cache_params.offset_width = 9; 	// info->cache_param2;
 	cache_params.cluster_map = (uint32_t)cluster_map;
 
-    printf("loading cluster map\n");
+    DPRINTF("loading cluster map\n");
     cluster = finfo.cluster;
     for (i = 0; i < cluster_count; ++i) {
     	if (cluster >= vinfo.endOfClusterChain) {
-#ifdef DEBUG
-    		printf("unexpected end of cluster chain\n");
-#endif
+    		DPRINTF("unexpected end of cluster chain\n");
 			return 1;
     	}
     	cluster_map[i] = vinfo.firstDataSector + ((cluster - 2) << cache_params.cluster_width);
         if (GetFATEntry(&vinfo, buffer, cluster, &cluster) != 0) {
-#ifdef DEBUG
-            printf("GetFATEntry %d failed\n", finfo->cluster);
-#endif
+            DPRINTF("GetFATEntry %d failed\n", finfo.cluster);
             return 1;
         }
     }
 	
     // initialize the cache
-    printf("initializing cache\n");
+    DPRINTF("initializing cache\n");
     xmm_mbox[0] = INIT_CACHE_CMD | ((uint32_t)&cache_params << 8);
     while (xmm_mbox[0])
         ;
@@ -157,7 +175,7 @@ int main(void)
     vm_params[4] = (uint32_t)cluster_map;
     
     // replace this loader with vm_start.S
-    printf("starting program\n");
+    DPRINTF("starting program\n");
     coginit(cogid(), _load_start_coguser3, vm_params);
 
     // should never reach this
@@ -168,11 +186,11 @@ int ReadSector(FileInfo *finfo, uint8_t *buf)
 {
 	uint32_t count;
 	if (GetNextFileSector(finfo, buf, &count) != 0) {
-		printf("GetNextFileSector failed\n");
+		DPRINTF("GetNextFileSector failed\n");
 		return 1;
 	}
 	if (count != SECTOR_SIZE) {
-		printf("Incomplete file header\n");
+		DPRINTF("Incomplete file header\n");
 		return 1;
 	}
 	return 0;

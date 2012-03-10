@@ -73,13 +73,20 @@ typedef struct {
     uint32_t cache_code_off;
 } FlashLoaderDatHdr;
 
-/* DAT header in sd_driver.spin */
+/* SD parameters */
 typedef struct {
-    uint32_t jmp_init;
     uint32_t do_mask;
     uint32_t clk_mask;
     uint32_t di_mask;
-    uint32_t cs_mask;
+    uint32_t cs_clr_mask;
+    uint32_t select_inc_mask;
+    uint32_t select_mask;
+} SDParams;
+
+/* DAT header in sd_driver.spin */
+typedef struct {
+    uint32_t jmp_init;
+    SDParams sd_params;
 } SDDriverDatHdr;
 
 /* DAT header in sd_cache.spin */
@@ -90,12 +97,7 @@ typedef struct {
 
 /* parameter structure in sd_cache.spin */
 typedef struct {
-    uint32_t do_mask;
-    uint32_t clk_mask;
-    uint32_t di_mask;
-    uint32_t cs_clr_mask;
-    uint32_t select_inc_mask;
-    uint32_t select_mask;
+    SDParams sd_params;
 } SDCacheParams;
 
 /* target checksum for a binary file */
@@ -331,6 +333,22 @@ static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     return TRUE;
 }
 
+static void SetSDParams(BoardConfig *config, SDParams *params)
+{
+    params->do_mask = 1 << config->sdspiDO;
+    params->clk_mask = 1 << config->sdspiClk;
+    params->di_mask = 1 << config->sdspiDI;
+    if (config->validMask & VALID_SDSPICS)
+        params->cs_clr_mask = 1 << config->sdspiCS;
+    else if (config->validMask & VALID_SDSPICLR)
+        params->cs_clr_mask = 1 << config->sdspiClr;
+    if (config->validMask & VALID_SDSPISEL)
+        params->select_inc_mask = config->sdspiSel;
+    else if (config->validMask & VALID_SDSPIINC)
+        params->select_inc_mask = 1 << config->sdspiInc;
+    params->select_mask = config->sdspiMsk;
+}
+
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
     uint8_t driverImage[COG_IMAGE_MAX];
@@ -368,7 +386,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     info->cache_param2 = config->cacheParam2;
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
-        return Error("can't find xmm_driver (.coguser1) segment");
+        return Error("can't find cache driver (.coguser1) segment");
 
     if (config->cacheDriver) {
         if (!ReadCogImage(sys, config->cacheDriver, driverImage, &driverSize))
@@ -385,10 +403,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
         if (!ReadCogImage(sys, config->sdDriver, driverImage, &driverSize))
             return Error("reading sd driver image failed: %s", config->sdDriver);
-        dat->do_mask = 1 << config->sdspiDO;
-        dat->clk_mask = 1 << config->sdspiClk;
-        dat->di_mask = 1 << config->sdspiDI;
-        dat->cs_mask = 1 << config->sdspiCS;
+        SetSDParams(config, &dat->sd_params);
         memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
         info->use_cache_driver_for_sd = FALSE;
     }
@@ -406,7 +421,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     else
         return Error("expecting -e and/or -r");
         
-    /* load the serial helper program */
+    /* load the program */
     if (ploadbuf(imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
@@ -457,7 +472,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     info->cache_param2 = config->cacheParam2;
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
-        return Error("can't find xmm_driver (.coguser1) segment");
+        return Error("can't find cache driver (.coguser1) segment");
 
     if (!ReadCogImage(sys, "sd_cache.dat", driverImage, &driverSize))
         return Error("reading cache driver image failed: %s", config->cacheDriver);
@@ -465,18 +480,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     dat = (SDCacheDatHdr *)driverImage;
     params = (SDCacheParams *)(driverImage + dat->params_off);
     memset(params, 0, sizeof(SDCacheParams));
-    params->do_mask = 1 << config->sdspiDO;
-    params->clk_mask = 1 << config->sdspiClk;
-    params->di_mask = 1 << config->sdspiDI;
-    if (config->validMask & VALID_SDSPICS)
-        params->cs_clr_mask = 1 << config->sdspiCS;
-    else if (config->validMask & VALID_SDSPICLR)
-        params->cs_clr_mask = 1 << config->sdspiClr;
-    if (config->validMask & VALID_SDSPISEL)
-        params->select_inc_mask = config->sdspiSel;
-    else if (config->validMask & VALID_SDSPIINC)
-        params->select_inc_mask = 1 << config->sdspiInc;
-    params->select_mask = config->sdspiMsk;
+    SetSDParams(config, &params->sd_params);
     memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
     info->use_cache_driver_for_sd = TRUE;
             
@@ -491,7 +495,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     else
         return Error("expecting -e and/or -r");
         
-    /* load the serial helper program */
+    /* load the program */
     if (ploadbuf(imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
