@@ -1,5 +1,5 @@
 {
-  SPI SRAM and flash JCACHE driver for the Parallax C3
+  SPI SD driver
   by David Betz
 
   Based on code from VMCOG - virtual memory server for the Propeller
@@ -33,14 +33,8 @@
 
 CON
 
-  ' these defaults are for the PropBOE
-  MISO_PIN              = 11
-  CLK_PIN               = 12
-  MOSI_PIN              = 13
-  CS_PIN                = 14
-
   ' address of CLKFREQ in hub RAM
-  CLKFREQ_ADDR          = $0000
+  CLKFREQ_ADDR            = $0000
 
   ' SD commands
   CMD0_GO_IDLE_STATE      = $40|0
@@ -62,10 +56,12 @@ init
         jmp     #init2
 
 ' these four values get patched by the loader
-tmiso   long    1<<MISO_PIN
-tclk    long    1<<CLK_PIN
-tmosi   long    1<<MOSI_PIN
-tcs     long    1<<CS_PIN
+tmiso         long    0
+tclk          long    0
+tmosi         long    0
+tcs_clr       long    0
+tselect_inc   long    0
+tselect_mask  long    0
 
 init2   mov     pvmcmd, par             ' get the address of the mailbox
         mov     pvmaddr, pvmcmd         ' pvmaddr is a pointer into the cache line on return
@@ -74,12 +70,27 @@ init2   mov     pvmcmd, par             ' get the address of the mailbox
         ' build composite masks
         mov     tclk_mosi, tmosi
         or      tclk_mosi, tclk
-        mov     spidir, tcs
+        mov     spidir, tcs_clr
+        or      spidir, tselect_mask
         or      spidir, tclk
         or      spidir, tmosi
-        
+        mov     spiout, tcs_clr
+        or      spiout, tmosi
+
+        ' setup for c3 chip select if necessary
+        tjz     tselect_inc, #:not_c3
+        tjnz    tselect_mask, #:not_c3
+        mov     sd_select, c3_sd_select_jmp
+        mov     sd_release, c3_sd_release_jmp
+        or      spidir, tselect_inc
+  :not_c3
+
+        ' set the pin directions
+        mov     outa, spiout
+        mov     dira, spidir
+
         ' disable the chip select
-        or      outa, tcs
+        call    #sd_release
 
         ' get the clock frequency
         rdlong  sdFreq, #CLKFREQ_ADDR
@@ -114,11 +125,11 @@ dispatch
 
 sd_init_handler
         mov     sdError, #0             ' assume no errors
-        or      outa, tcs
+        call    #sd_release
         mov     t1, sdInitCnt
 :init   call    #spiRecvByte            ' Output a stream of 32K clocks
         djnz    t1, #:init              '  in case SD card left in some
-        andn    outa, tcs
+        call    #sd_select
         mov     sdOp, #CMD0_GO_IDLE_STATE
         mov     sdParam, #0
         call    #sdSendCmd              ' Send a reset command and deselect
@@ -140,7 +151,7 @@ sd_read_handler
   if_z  jmp     #sd_finish
         add     vmaddr, #4
         rdlong  vmaddr, vmaddr          ' get the sector address
-        andn    outa, tcs               ' Read from specified block
+        call    #sd_select
         mov     sdOp, #CMD17_READ_SINGLE_BLOCK
 :readRepeat
         mov     sdParam, vmaddr
@@ -169,7 +180,7 @@ sd_write_handler
   if_z  jmp     #sd_finish
         add     vmaddr, #4
         rdlong  vmaddr, vmaddr         ' get the sector address
-        andn    outa, tcs              ' Write to specified block
+        call    #sd_select
         mov     sdOp, #CMD24_WRITE_BLOCK
 :writeRepeat
         mov     sdParam, vmaddr
@@ -197,8 +208,9 @@ sd_write_handler
         call    #sdWaitBusy
         add     vmaddr, #1
         tjnz    count, #:writeRepeat    '  to next if more data remains
+        
 sd_finish
-        or      outa, tcs
+        call    #sd_release
         wrlong  sdError, pvmaddr        ' return error status
         jmp     #waitcmd
 
@@ -229,7 +241,7 @@ sdWaitLoop
         sub     t1, sdTime           ' Check for expired timeout (1 sec)
         cmp     t1, sdFreq wc
   if_nc mov     sdError, #1
-  if_nc jmp     #sd_finish
+  if_nc jmp     #sdSendCmd_ret
 sdWaitData
         cmp     data, #0-0 wz        ' Wait for some other response
   if_e  jmp     #sdWaitLoop          '  than that specified
@@ -241,6 +253,39 @@ sdWaitBusy_ret
 '----------------------------------------------------------------------------------------------------
 ' SPI routines
 '----------------------------------------------------------------------------------------------------
+
+sd_select
+        andn    outa, tselect_mask
+        or      outa, tselect_inc
+        andn    outa, tcs_clr
+sd_select_ret
+        ret
+
+sd_release
+        or      outa, tcs_clr
+        andn    outa, tselect_mask
+sd_release_ret
+        ret
+
+c3_sd_select_jmp
+        jmp     #c3_sd_select
+
+c3_sd_select
+        mov     t1, #5
+        andn    outa, tcs_clr
+        or      outa, tcs_clr
+:loop   or      outa, tselect_inc
+        andn    outa, tselect_inc
+        djnz    t1, #:loop
+        jmp     sd_select_ret
+
+c3_sd_release_jmp
+        jmp     #c3_sd_release
+
+c3_sd_release
+        andn    outa, tcs_clr
+        or      outa, tcs_clr
+        jmp     sd_release_ret
 
 spiSendByte
         shl     data, #24
@@ -288,8 +333,9 @@ vmpage          long    0       ' page containing the virtual address
 zero            long    0       ' zero constant
 t1              long    0       ' temporary variable
 
-tclk_mosi       long    (1<<CLK_PIN)|(1<<MOSI_PIN)
-spidir          long    (1<<CS_PIN)|(1<<CLK_PIN)|(1<<MOSI_PIN)
+tclk_mosi       long    0
+spidir          long    0
+spiout          long    0
 
 ' input parameters to BREAD and BWRITE
 vmaddr          long    0       ' virtual address

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "sdio.h"
+#include "debug.h"
 
 #define SECTOR_SIZE     512
 
@@ -28,7 +29,7 @@ int SD_Init(volatile uint32_t *mbox, int retries)
         result = do_cmd(SD_INIT_CMD);
         if (result == 0)
             return 0;
-        printf("Retrying SD init: %d\n", result);
+        DPRINTF("Retrying SD init: %d\n", result);
     }
     
     // initialization failed
@@ -43,7 +44,7 @@ int SD_ReadSector(uint32_t sector, void *buffer)
     params[2] = sector;
     result = do_cmd(SD_READ_CMD | ((uint32_t)params << 8));
     if (result != 0) {
-        printf("SD_READ_CMD failed: %d\n", result);
+        DPRINTF("SD_READ_CMD failed: %d\n", result);
         return -1;
     }
     return 0;
