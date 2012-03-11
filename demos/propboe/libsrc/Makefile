@@ -45,7 +45,7 @@ $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 	$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
 
 %.c:	%.binary bin2c
-	bin2c $< $@
+	./bin2c $< $@
 
 bin2c:	bin2c.c
 	cc -o bin2c bin2c.c
