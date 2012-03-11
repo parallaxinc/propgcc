@@ -8,11 +8,16 @@ LDFLAGS=-mlmm -Llib
 
 LIBS=-lboe
 
-$(TARGET):	boetest.cpp
+$(TARGET):	boetest.cpp boelib
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
+	
+boelib:
+	$(MAKE) -C libsrc
 
 run:	$(TARGET)
 	propeller-load -b propboe $< -r -t
 
 clean:
 	$(RM) $(TARGET)
+	$(MAKE) -C libsrc clean
+	$(RM) -r lib
