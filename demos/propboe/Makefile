@@ -1,4 +1,4 @@
-TARGET=propboe.elf
+TARGET=boetest.elf
 
 CC=propeller-elf-gcc
 RM=rm -f

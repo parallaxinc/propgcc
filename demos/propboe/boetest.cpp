@@ -20,9 +20,9 @@ static void calibrate_servo(int pin);
 
 int main(void)
 {
-	SerialTerm term(stdout);
+    SerialTerm term(stdout);
 
-	term.str("Hello, world!\n");
+    term.str("Hello, world!\n");
 
     //test_pir(PIR_PIN);
     //test_ping(PING_PIN);
