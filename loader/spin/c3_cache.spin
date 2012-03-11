@@ -703,7 +703,6 @@ tinc        long    1<<INC_PIN
 tclk        long    1<<CLK_PIN
 tmosi       long    1<<MOSI_PIN
 tmiso       long    1<<MISO_PIN
-tclk_mosi   long    (1<<CLK_PIN)|(1<<MOSI_PIN)
 
 ' input parameters to BREAD and BWRITE
 vmaddr      long    0       ' virtual address

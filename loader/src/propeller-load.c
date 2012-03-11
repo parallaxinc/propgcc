@@ -242,17 +242,9 @@ int main(int argc, char *argv[])
 
     /* load the image file */
     if (infile) {
-        if (flags & LFLAG_WRITE_SDLOADER) {
-            if (!LoadSDLoader(&sys, config, infile, flags)) {
-                fprintf(stderr, "error: load failed\n");
-                return 1;
-            }
-        }
-        else if (flags & LFLAG_WRITE_SDCACHELOADER) {
-            if (!LoadSDCacheLoader(&sys, config, infile, flags)) {
-                fprintf(stderr, "error: load failed\n");
-                return 1;
-            }
+        if ((flags & LFLAG_WRITE_SDLOADER) || (flags & LFLAG_WRITE_SDCACHELOADER)) {
+            fprintf(stderr, "error: no filename is allowed with -l or -z\n");
+            return 1;
         }
         else {
             if (!LoadImage(&sys, config, infile, flags)) {
@@ -277,6 +269,10 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    
+    /* no file to load so print a usage message if the user isn't asking to enter terminal mode */
+    else if (!terminalMode)
+        Usage();
     
     /* enter terminal mode if requested */
     if (terminalMode) {

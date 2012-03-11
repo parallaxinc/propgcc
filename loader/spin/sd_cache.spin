@@ -67,8 +67,6 @@ init2   mov     pvmcmd, par         ' pvmcmd is a pointer to the virtual address
         add     pvmaddr, #4
 
         ' build composite masks
-        mov     tclk_mosi, tmosi
-        or      tclk_mosi, tclk
         mov     spidir, tcs_clr
         or      spidir, tselect_mask
         or      spidir, tclk
@@ -514,7 +512,6 @@ sdBlkCnt        long    0
 sdInitCnt       long    32768 / 8      ' Initial SPI clocks produced
 sdBlkSize       long    SECTOR_SIZE    ' Number of bytes in an SD block
 
-tclk_mosi       long    0
 spidir          long    0
 spiout          long    0
 

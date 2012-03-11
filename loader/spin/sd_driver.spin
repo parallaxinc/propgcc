@@ -68,8 +68,6 @@ init2   mov     pvmcmd, par             ' get the address of the mailbox
         add     pvmaddr, #4
         
         ' build composite masks
-        mov     tclk_mosi, tmosi
-        or      tclk_mosi, tclk
         mov     spidir, tcs_clr
         or      spidir, tselect_mask
         or      spidir, tclk
@@ -333,7 +331,6 @@ vmpage          long    0       ' page containing the virtual address
 zero            long    0       ' zero constant
 t1              long    0       ' temporary variable
 
-tclk_mosi       long    0
 spidir          long    0
 spiout          long    0
 
