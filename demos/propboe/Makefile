@@ -9,7 +9,7 @@ LDFLAGS=-mlmm -Llib
 LIBS=-lboe
 
 $(TARGET):	boetest.cpp boelib
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS) -fno-exceptions -fno-rtti
 	
 boelib:
 	$(MAKE) -C libsrc

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "boe.h"
 #include "Pin.h"
+#include "Term.h"
 
 /* pin definitions on my PropBOE */
 #define PIR_PIN     15
@@ -19,6 +20,10 @@ static void calibrate_servo(int pin);
 
 int main(void)
 {
+	SerialTerm term(stdout);
+
+	term.str("Hello, world!\n");
+
     //test_pir(PIR_PIN);
     //test_ping(PING_PIN);
     calibrate_servo(LSERVO_PIN);
