@@ -3,6 +3,7 @@ TARGET=$(LIBDIR)/libboe.a
 
 CC=propeller-elf-gcc
 CXX=propeller-elf-gcc
+OBJCOPY=propeller-elf-objcopy
 AR=propeller-elf-ar
 BSTC=bstc
 MKDIR=mkdir -p
@@ -32,26 +33,23 @@ term_tv.o \
 toggle.o
 
 DRIVEROBJS = \
-VGA.o \
-TV.o
+VGA_firmware.o \
+TV_firmware.o
 
 CFLAGS=-Os -I../include
 CPPFLAGS=$(CFLAGS)
 
 $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
-	propeller-elf-ar rs $(TARGET) $(OBJS) $(DRIVEROBJS)
+	$(AR) rs $(TARGET) $(OBJS) $(DRIVEROBJS)
 
-%.binary:	%.spin
-	$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+%.dat: %.spin
+	$(BSTC) -Ox -c -o $(basename $@) $<
 
-%.c:	%.binary bin2c
-	./bin2c $< $@
+%_firmware.o: %.dat
+	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 
-bin2c:	bin2c.c
-	cc -o bin2c bin2c.c
-    
 clean:
-	$(RM) *.o $(TARGET) bin2c
+	$(RM) *.o $(TARGET)
 
 $(LIBDIR):
 	$(MKDIR) $(LIBDIR)

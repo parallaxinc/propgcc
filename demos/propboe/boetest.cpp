@@ -3,6 +3,8 @@
 #include "Pin.h"
 #include "Term.h"
 
+#define C3
+
 /* pin definitions on my PropBOE */
 #define PIR_PIN     15
 #define PING_PIN    14
@@ -20,9 +22,18 @@ static void calibrate_servo(int pin);
 
 int main(void)
 {
-    SerialTerm term(stdout);
+	TvTerm tv(12);
+	VgaTerm vga(16);
+    SerialTerm serial(stdout);
+    
+#ifdef C3
+	Pin vgaEnable(15);
+	vgaEnable.low();
+#endif
 
-    term.str("Hello, world!\n");
+	tv.str("Hello, world! (tv)\n");
+	vga.str("Hello, world! (vga)\n");
+    serial.str("Hello, world! (serial)\n");
 
     //test_pir(PIR_PIN);
     //test_ping(PING_PIN);
