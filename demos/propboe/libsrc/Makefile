@@ -1,8 +1,10 @@
-TARGET=../lib/libboe.a
+LIBDIR=../lib
+TARGET=$(LIBDIR)/libboe.a
 
 CC=propeller-elf-gcc
 CXX=propeller-elf-gcc
 AR=propeller-elf-ar
+MKDIR=mkdir -p
 RM=rm -f
 
 OBJS = \
@@ -27,8 +29,12 @@ toggle.o
 CFLAGS=-Os -I../include
 CPPFLAGS=$(CFLAGS)
 
-$(TARGET):	$(OBJS)
+$(TARGET):	$(OBJS) $(LIBDIR)
 	propeller-elf-ar rs $(TARGET) $(OBJS)
 
 clean:
 	$(RM) *.o $(TARGET)
+
+$(LIBDIR):
+	$(MKDIR) $(LIBDIR)
+	
