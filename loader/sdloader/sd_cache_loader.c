@@ -172,7 +172,7 @@ int main(void)
     vm_params[1] = (uint32_t)xmm_mbox;
     vm_params[2] = cache_line_mask;
     vm_params[3] = (uint32_t)vm_mbox;
-    vm_params[4] = (uint32_t)cluster_map;
+    vm_params[4] = (uint32_t)cluster_map; // space below the cluster map is used as the stack
     
     // replace this loader with vm_start.S
     DPRINTF("starting program\n");
