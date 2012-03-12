@@ -887,26 +887,35 @@
 ;; -------------------------------------------------------------------------
 
 ;; push registers on the stack
-;; operand 0 is the first register to push, operand 1 is the count of registers
+;; operand 0 is the size of the stack adjustment;
+;; operand 1 is a vector of registers to push
 
-(define_insn "pushm"
-  [(unspec_volatile [(match_operand:SI 0 "immediate_operand" "i")
-            (match_operand:SI 1 "immediate_operand" "i")]
-	  UNSPEC_PUSHM)]
-  "TARGET_LMM"
-  "mov __TMP0,#(%c1<<4)+%c0\n\tcall\t#__LMM_PUSHM"
-  [(set_attr "type" "multi")
-   (set_attr "length" "8")]
+(define_insn "stack_pushm"
+  [(match_parallel 1 "propeller_store_multiple_vector"
+     [(set (reg:SI SP_REG)
+	   (minus:SI (reg:SI SP_REG)
+		     (match_operand:SI 0 "const_int_operand" "n")))])]
+  "TARGET_LMM && reload_completed"
+  {
+    propeller_emit_stack_pushm (operands);
+    return "";
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "multi")]
 )
 
-(define_insn "popm"
-  [(unspec_volatile [(match_operand:SI 0 "immediate_operand" "i")
-            (match_operand:SI 1 "immediate_operand" "i")]
-	  UNSPEC_POPM)]
-  "TARGET_LMM"
-  "mov __TMP0,#(%c1<<4)+%c0\n\tcall\t#__LMM_POPM"
-  [(set_attr "type" "multi")
-   (set_attr "length" "8")]
+(define_insn "stack_popm"
+  [(match_parallel 1 "propeller_load_multiple_vector"
+     [(set (reg:SI SP_REG)
+	   (plus:SI (reg:SI SP_REG)
+		    (match_operand:SI 0 "const_int_operand" "n")))])]
+  "TARGET_LMM && reload_completed"
+  {
+    propeller_emit_stack_popm (operands);
+    return "";
+  }
+  [(set_attr "length" "8")
+   (set_attr "type" "multi")]
 )
 
 ;; -------------------------------------------------------------------------

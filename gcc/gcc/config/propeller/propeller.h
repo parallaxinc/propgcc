@@ -685,4 +685,7 @@ extern const char *propeller_bss_asm_op;
 extern GTY(()) struct target_globals *propeller_cog_globals;
 #endif
 
+/* Like REG_P except that this macro is true for SET expressions.  */
+#define SET_P(rtl)    (GET_CODE (rtl) == SET)
+
 #endif /* GCC_PROPELLER_H */
