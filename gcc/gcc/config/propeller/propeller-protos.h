@@ -63,6 +63,9 @@ extern RTX_CODE propeller_canonicalize_comparison (RTX_CODE, rtx *, rtx *);
 extern bool propeller_expand_call (rtx, rtx, rtx);
 extern bool propeller_forward_branch_p (rtx);
 
+extern void propeller_emit_stack_popm (rtx *operands);
+extern void propeller_emit_stack_pushm (rtx *operands);
+
 /* some variable declarations; we put them here rather than in propeller.h
  * so that the libgcc build doesn't see them
  */

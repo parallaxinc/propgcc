@@ -1457,6 +1457,24 @@ propeller_match_ccmode (rtx insn, enum machine_mode req_mode)
  * stack related functions
  */
 
+/* Mark INSN as being frame related.  If it is a PARALLEL
+   then mark each element as being frame related as well.  */
+
+static void
+mark_frame_related (rtx insn)
+{
+  RTX_FRAME_RELATED_P (insn) = 1;
+  insn = PATTERN (insn);
+
+  if (GET_CODE (insn) == PARALLEL)
+    {
+      unsigned int i;
+
+      for (i = 0; i < (unsigned) XVECLEN (insn, 0); i++)
+	RTX_FRAME_RELATED_P (XVECEXP (insn, 0, i)) = 1;
+    }
+}
+
 /* Typical stack layout should looks like this after the function's prologue:
 
                             |    |
@@ -1519,6 +1537,112 @@ propeller_initial_elimination_offset (int from, int to)
   return offset;
 }
 
+/*
+ * code for actually emitting the stack push/pop instructions
+ */
+void
+propeller_emit_stack_pushm (rtx * operands)
+{
+  HOST_WIDE_INT reg_count;
+  HOST_WIDE_INT start_reg;
+  rtx first_push;
+
+  gcc_assert (CONST_INT_P (operands[0]));
+  reg_count = (INTVAL (operands[0]) / UNITS_PER_WORD);
+
+  gcc_assert (GET_CODE (operands[1]) == PARALLEL);
+  first_push = XVECEXP (operands[1], 0, 1);
+  gcc_assert (SET_P (first_push));
+  first_push = SET_SRC (first_push);
+  gcc_assert (REG_P (first_push));
+
+  start_reg = REGNO(first_push);
+
+  asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_PUSHM\n",
+	       (long)reg_count,
+	       (long)start_reg);
+}
+
+void
+propeller_emit_stack_popm (rtx * operands)
+{
+  HOST_WIDE_INT reg_count;
+  HOST_WIDE_INT start_reg;
+  rtx first_push;
+
+  gcc_assert (CONST_INT_P (operands[0]));
+  reg_count = INTVAL (operands[0]) / UNITS_PER_WORD;
+  
+  gcc_assert (GET_CODE (operands[1]) == PARALLEL);
+
+  first_push = XVECEXP (operands[1], 0, 1);
+  gcc_assert (SET_P (first_push));
+  first_push = SET_DEST (first_push);
+  gcc_assert (REG_P (first_push));
+
+  start_reg = REGNO (first_push);
+
+  asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_POPM\n",
+	       (long)reg_count,
+	       (long)start_reg);
+}
+
+/* Generate a PARALLEL that will pass the rx_store_multiple_vector predicate.  */
+
+static rtx
+gen_propeller_store_vector (unsigned int low, unsigned int reg_count)
+{
+  unsigned int i;
+  unsigned int count = reg_count + 1;
+  /*unsigned int high = low + reg_count - 1; */
+  rtx vector;
+
+  vector = gen_rtx_PARALLEL (VOIDmode, rtvec_alloc (count));
+
+  XVECEXP (vector, 0, 0) =
+    gen_rtx_SET (VOIDmode, stack_pointer_rtx,
+		 gen_rtx_MINUS (SImode, stack_pointer_rtx,
+				GEN_INT ((count - 1) * UNITS_PER_WORD)));
+
+  for (i = 0; i < count - 1; i++)
+    XVECEXP (vector, 0, i + 1) =
+      gen_rtx_SET (VOIDmode,
+		   gen_rtx_MEM (SImode,
+				gen_rtx_MINUS (SImode, stack_pointer_rtx,
+					       GEN_INT ((i + 1) * UNITS_PER_WORD))),
+		   gen_rtx_REG (SImode, low + i));
+  return vector;
+}
+
+/* Generate a PARALLEL which will satisfy the propeller_load_multiple_vector predicate.  */
+
+static rtx
+gen_propeller_popm_vector (unsigned int high, unsigned int reg_count)
+{
+  unsigned int i;  
+  unsigned int low = high - (reg_count - 1);
+  unsigned int count = (high - low) + 2;
+  rtx vector;
+
+  vector = gen_rtx_PARALLEL (VOIDmode, rtvec_alloc (count));
+
+  XVECEXP (vector, 0, 0) =
+    gen_rtx_SET (VOIDmode, stack_pointer_rtx,
+		 plus_constant (stack_pointer_rtx,
+				(count - 1) * UNITS_PER_WORD));
+
+  for (i = 0; i < count - 1; i++)
+    XVECEXP (vector, 0, i + 1) =
+      gen_rtx_SET (VOIDmode,
+		   gen_rtx_REG (SImode, high - i),
+		   gen_rtx_MEM (SImode,
+				i == 0 ? stack_pointer_rtx
+				: plus_constant (stack_pointer_rtx,
+						 i * UNITS_PER_WORD)));
+
+  return vector;
+}
+
 /* push multiple registers on the stack; return bytes pushed */
 static int
 push_multiple (int first_reg, int reg_count)
@@ -1532,11 +1656,10 @@ push_multiple (int first_reg, int reg_count)
   if (first_reg < 0 || first_reg + reg_count > 16)
     gcc_unreachable ();
   if (TARGET_LMM && reg_count > 1) {
-    insn = gen_pushm ( GEN_INT(first_reg), GEN_INT(reg_count) );
+    insn = gen_stack_pushm ( GEN_INT(reg_count * UNITS_PER_WORD),
+			     gen_propeller_store_vector(first_reg, reg_count) );
     insn = emit_insn ( insn );
-    /* setting RTX_FRAME_RELATED_P does not work right, because the
-       pushm is not a set insn */
-    /* RTX_FRAME_RELATED_P (insn) = 1; */
+    mark_frame_related ( insn );
     return reg_count * UNITS_PER_WORD;
   }
 
@@ -1607,7 +1730,8 @@ pop_multiple (int last_reg, int reg_count)
   if (last_reg >= 16 || last_reg - reg_count < 0)
     gcc_unreachable ();
   if (TARGET_LMM && reg_count > 1) {
-    insn = gen_popm ( GEN_INT(last_reg), GEN_INT(reg_count) );
+    insn = gen_stack_popm ( GEN_INT(reg_count * UNITS_PER_WORD), 
+			    gen_propeller_popm_vector( last_reg, reg_count ) );
     insn = emit_insn ( insn );
     return;
   }

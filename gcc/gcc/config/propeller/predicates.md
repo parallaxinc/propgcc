@@ -123,3 +123,141 @@
 (define_predicate "stack_operand"
   (and (match_code "mem")
        (match_test "propeller_stack_operand_p (op)")))
+
+;;
+;; Next to predicates are taken from the RX machine description
+;;
+
+;; Return true if OP is a store multiple operation.  This looks like:
+;;
+;;   [(set (SP) (MINUS (SP) (INT)))
+;;    (set (MEM (SP)) (REG))
+;;    (set (MEM (MINUS (SP) (INT))) (REG)) {optionally repeated}
+;;   ]
+
+(define_special_predicate "propeller_store_multiple_vector"
+  (match_code "parallel")
+{
+  int count = XVECLEN (op, 0);
+  unsigned int src_regno;
+  rtx element;
+  int i;
+
+  /* Perform a quick check so we don't blow up below.  */
+  if (count <= 2)
+    return false;
+
+  /* Check that the first element of the vector is the stack adjust.  */
+  element = XVECEXP (op, 0, 0);
+  if (   ! SET_P (element)
+      || ! REG_P (SET_DEST (element))
+      ||   REGNO (SET_DEST (element)) != SP_REG
+      ||   GET_CODE (SET_SRC (element)) != MINUS
+      || ! REG_P (XEXP (SET_SRC (element), 0))
+      ||   REGNO (XEXP (SET_SRC (element), 0)) != SP_REG
+      || ! CONST_INT_P (XEXP (SET_SRC (element), 1)))
+    return false;
+	 
+  /* Check that the next element is the first push.  */
+  element = XVECEXP (op, 0, 1);
+  if (   ! SET_P (element)
+      || ! REG_P (SET_SRC (element))
+      || GET_MODE (SET_SRC (element)) != SImode
+      || ! MEM_P (SET_DEST (element))
+      || GET_MODE (SET_DEST (element)) != SImode
+      || GET_CODE (XEXP (SET_DEST (element), 0)) != MINUS
+      || ! REG_P (XEXP (XEXP (SET_DEST (element), 0), 0))
+      ||   REGNO (XEXP (XEXP (SET_DEST (element), 0), 0)) != SP_REG
+      || ! CONST_INT_P (XEXP (XEXP (SET_DEST (element), 0), 1))
+      || INTVAL (XEXP (XEXP (SET_DEST (element), 0), 1))
+        != GET_MODE_SIZE (SImode))
+    return false;
+
+  src_regno = REGNO (SET_SRC (element));
+
+  /* Check that the remaining elements use SP-<disp>
+     addressing and increasing register numbers.  */
+  for (i = 2; i < count; i++)
+    {
+      element = XVECEXP (op, 0, i);
+
+      if (   ! SET_P (element)
+	  || ! REG_P (SET_SRC (element))
+	  || GET_MODE (SET_SRC (element)) != SImode
+	  || REGNO (SET_SRC (element)) != src_regno + (i - 1)
+	  || ! MEM_P (SET_DEST (element))
+	  || GET_MODE (SET_DEST (element)) != SImode
+	  || GET_CODE (XEXP (SET_DEST (element), 0)) != MINUS
+          || ! REG_P (XEXP (XEXP (SET_DEST (element), 0), 0))
+          ||   REGNO (XEXP (XEXP (SET_DEST (element), 0), 0)) != SP_REG
+	  || ! CONST_INT_P (XEXP (XEXP (SET_DEST (element), 0), 1))
+	  || INTVAL (XEXP (XEXP (SET_DEST (element), 0), 1))
+	     != i * GET_MODE_SIZE (SImode))
+	return false;
+    }
+  return true;
+})
+
+;; Return true if OP is a load multiple operation.
+;; This looks like:
+;;  [(set (SP) (PLUS (SP) (INT)))
+;;   (set (REG) (MEM (SP)))
+;;   (set (REG) (MEM (PLUS (SP) (INT)))) {optionally repeated}
+;;  ]
+
+(define_special_predicate "propeller_load_multiple_vector"
+  (match_code "parallel")
+{
+  int count = XVECLEN (op, 0);
+  unsigned int dest_regno;
+  rtx element;
+  int i;
+
+  /* Perform a quick check so we don't blow up below.  */
+  if (count <= 2)
+    return false;
+
+  /* Check that the first element of the vector is the stack adjust.  */
+  element = XVECEXP (op, 0, 0);
+  if (   ! SET_P (element)
+      || ! REG_P (SET_DEST (element))
+      ||   REGNO (SET_DEST (element)) != SP_REG
+      ||   GET_CODE (SET_SRC (element)) != PLUS
+      || ! REG_P (XEXP (SET_SRC (element), 0))
+      ||   REGNO (XEXP (SET_SRC (element), 0)) != SP_REG
+      || ! CONST_INT_P (XEXP (SET_SRC (element), 1)))
+    return false;
+	 
+  /* Check that the next element is the first push.  */
+  element = XVECEXP (op, 0, 1);
+  if (   ! SET_P (element)
+      || ! REG_P (SET_DEST (element))
+      || ! MEM_P (SET_SRC (element))
+      || ! REG_P (XEXP (SET_SRC (element), 0))
+      ||   REGNO (XEXP (SET_SRC (element), 0)) != SP_REG)
+    return false;
+
+  dest_regno = REGNO (SET_DEST (element));
+
+  /* Check that the remaining elements use SP+<disp>
+     addressing and decremental register numbers.  */
+  for (i = 2; i < count; i++)
+    {
+      element = XVECEXP (op, 0, i);
+
+      if (   ! SET_P (element)
+	  || ! REG_P (SET_DEST (element))
+	  || GET_MODE (SET_DEST (element)) != SImode
+	  || REGNO (SET_DEST (element)) != dest_regno - (i - 1)
+	  || ! MEM_P (SET_SRC (element))
+	  || GET_MODE (SET_SRC (element)) != SImode
+	  || GET_CODE (XEXP (SET_SRC (element), 0)) != PLUS
+          || ! REG_P (XEXP (XEXP (SET_SRC (element), 0), 0))
+          ||   REGNO (XEXP (XEXP (SET_SRC (element), 0), 0)) != SP_REG
+	  || ! CONST_INT_P (XEXP (XEXP (SET_SRC (element), 0), 1))
+	  || INTVAL (XEXP (XEXP (SET_SRC (element), 0), 1))
+	     != (i - 1) * GET_MODE_SIZE (SImode))
+	return false;
+    }
+  return true;
+})
