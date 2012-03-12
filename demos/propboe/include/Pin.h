@@ -26,52 +26,88 @@ class Pin {
   private:
     uint32_t m_mask;
   public:
-  	Pin(int pin) : m_mask(1 << pin) {};
-  	~Pin() {};
-    void high()
-    {
-    	OUTA |= m_mask;
-    	DIRA |= m_mask;
-    };
-    void low()
-    {
-    	OUTA &= ~m_mask;
-    	DIRA |= m_mask;
-    };
-    void toggle()
-    {
-    	OUTA ^= m_mask;
-    	DIRA |= m_mask;
-    };
-    void input()
-    {
-        DIRA &= ~m_mask;
-    };
-    void output()
-    {
-        DIRA |= m_mask;
-    };
-    void direction(int dir)
-    {
-        if (dir)
-            DIRA |= m_mask;
-        else
-            DIRA &= ~m_mask;
-    };
-    int get()
-    {
-    	DIRA &= ~m_mask;
-    	return (INA & m_mask) != 0;
-    };
-    int set(int state)
-    {
-    	if (state)
-    		OUTA |= m_mask;
-    	else
-    		OUTA &= ~m_mask;
-    	DIRA |= m_mask;
-    	return (OUTA & m_mask) != 0;
-    };
+  	Pin(int pin);
+  	~Pin();
+    void high();
+    void low();
+    void toggle();
+    void input();
+    void output();
+    void reverse();
+    void direction(int dir);
+    int getDirection();
+    int get();
+    int set(int state);
     int pulseIn(int state);
     void pulseOut(int duration);
 };
+
+inline Pin::Pin(int pin) : m_mask(1 << pin)
+{
+}
+
+inline Pin::~Pin()
+{
+}
+
+inline void Pin::high()
+{
+    OUTA |= m_mask;
+    DIRA |= m_mask;
+}
+
+inline void Pin::low()
+{
+    OUTA &= ~m_mask;
+    DIRA |= m_mask;
+}
+
+inline void Pin::toggle()
+{
+    OUTA ^= m_mask;
+    DIRA |= m_mask;
+}
+
+inline void Pin::input()
+{
+    DIRA &= ~m_mask;
+}
+
+inline void Pin::output()
+{
+    DIRA |= m_mask;
+}
+
+inline void Pin::reverse()
+{
+    DIRA ^= m_mask;
+}
+
+inline void Pin::direction(int dir)
+{
+    if (dir)
+        DIRA |= m_mask;
+    else
+        DIRA &= ~m_mask;
+}
+
+inline int Pin::getDirection()
+{
+    return (DIRA & m_mask) ? 1 : 0;
+}
+
+inline int Pin::get()
+{
+    DIRA &= ~m_mask;
+    return (INA & m_mask) != 0;
+}
+
+inline int Pin::set(int state)
+{
+    if (state)
+        OUTA |= m_mask;
+    else
+        OUTA &= ~m_mask;
+    DIRA |= m_mask;
+    return (OUTA & m_mask) != 0;
+}
