@@ -149,10 +149,6 @@ int main(void)
     params[1] = (uint32_t)xmm_mbox;
     params[2] = cache_line_mask;
     params[3] = (uint32_t)vm_mbox;
-    DPRINTF("params[0] = 0x%08x\n", params[0]);
-    DPRINTF("params[1] = 0x%08x\n", params[1]);
-    DPRINTF("params[2] = 0x%08x\n", params[2]);
-    DPRINTF("params[3] = 0x%08x\n", params[3]);
 
     // load into flash/eeprom
     if (load_address >= 0x30000000) {

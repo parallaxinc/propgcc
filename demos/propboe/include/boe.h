@@ -33,16 +33,23 @@ extern "C" {
 #define HIGH    1
 #define LOW     0
 
+/* set pin direction */
 void input(int pin);
 void output(int pin);
+
+/* get/set pin state */
 int getPin(int pin);
 void setPin(int pin, int value);
 void high(int pin);
 void low(int pin);
 void toggle(int pin);
-void pause(int milliseconds);
+
+/* pulse input/output */
 int pulseIn(int pin, int state);
 void pulseOut(int pin, int duration);
+
+/* pause for a specified number of millisecons */
+void pause(int milliseconds);
 
 #if defined(__cplusplus)
 }
