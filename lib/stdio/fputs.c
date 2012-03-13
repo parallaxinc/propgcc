@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 int
-fputs(const char *str, FILE *fp)
+__do_fputs(const char *str, FILE *fp, int trailing_newline)
 {
   int c;
   int bytes = 0;
@@ -25,9 +25,24 @@ fputs(const char *str, FILE *fp)
       }
     bytes++;
   }
+  if (trailing_newline && bytes > 0)
+    {
+      c = fputc('\n', fp);
+      if (c < 0)
+	bytes = EOF;
+      else
+	bytes++;
+    }
   __unlock(&fp->_lock);
   return bytes;
 }
+
+int
+fputs(const char *str, FILE *fp)
+{
+  return __do_fputs(str, fp, 0);
+}
+
 
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License

@@ -9,23 +9,12 @@
 #include <stdio.h>
 #include <sys/thread.h>
 
+extern int __do_fputs(const char *str, FILE *fp, int newline);
+
 int
 puts(const char *str)
 {
-  int c;
-  int bytes = 0;
-
-  bytes = fputs(str, stdout);
-
-  if (bytes >= 0) {
-    c = fputc('\n', stdout);
-    if (c < 0) {
-      return EOF;
-    }
-    bytes++;
-  }
-
-  return bytes;
+  return __do_fputs(str, stdout, 1);
 }
 
 /* +--------------------------------------------------------------------
