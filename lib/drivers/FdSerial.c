@@ -87,6 +87,7 @@ int _FdSerial_getbyte(FILE *fp)
   int rc = _FdSerial_rxcheck(data);
   while(rc < 0) {
     (*__yield_ptr)();
+    //(*__napuntil_ptr)(_CNT + 10000);
     rc = _FdSerial_rxcheck(data);
   }
   return rc;
