@@ -85,8 +85,10 @@ int _FdSerial_getbyte(FILE *fp)
 {
   FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
   int rc = _FdSerial_rxcheck(data);
-  while(rc < 0)
+  while(rc < 0) {
+    (*__yield_ptr)();
     rc = _FdSerial_rxcheck(data);
+  }
   return rc;
 }
 
