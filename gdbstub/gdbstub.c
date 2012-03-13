@@ -378,7 +378,7 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
 {
     uint8_t pkt[PKT_MAX];
     uint8_t pktlen, chksum, i, *p;
-    int err;
+    int remaining, cnt, err;
     
     /* read data in MAX_DATA sized chunks */
     while (len > 0) {
@@ -400,8 +400,9 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
         tx(pkt, p - pkt);
         
         /* read the data */
-        if (rx_timeout(buf, pktlen + 1, PKT_TIMEOUT) != pktlen + 1)
-            return ERR_TIMEOUT;
+        for (p = buf, remaining = pktlen + 1; remaining > 0; p += cnt, remaining -= cnt)
+            if ((cnt = rx_timeout(p, remaining, PKT_TIMEOUT)) <= 0)
+                return ERR_TIMEOUT;
         
         /* initialize the checksum */
         chksum = pktlen;
