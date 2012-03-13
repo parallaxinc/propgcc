@@ -132,6 +132,8 @@ main()
   testgmttime(0, "%Y-%m-%d %H:%M:%S %a", "1970-01-01 00:00:00 Thu");
   testgmttime(63071999, "%F %r %a", "1971-12-31 11:59:59 PM Fri");
   testgmttime(63072000, "%F %T %a", "1972-01-01 00:00:00 Sat");
+  testgmttime(951825660, "%F %T %a", "2000-02-29 12:01:00 Tue");
+  testgmttime(951912060, "%F %T %a", "2000-03-01 12:01:00 Wed");
   testgmttime(1293840000, "%F %H:%M:%S %A", "2011-01-01 00:00:00 Saturday");
   testgmttime(1330559999, "%x %X", "02/29/12 23:59:59");
   testgmttime(1230465600, "%G-W%V-%u", "2008-W52-7");
@@ -141,6 +143,8 @@ main()
   testgmttime(1262692800, "%g-W%V-%u", "10-W01-2");
   testgmttime(1325419200, "%G-W%V-%u", "2011-W52-7");
   testgmttime(1325505600, "%G-W%V-%u", "2012-W01-1");
+  testgmttime(4107585660, "%F %T %A", "2100-03-01 12:01:00 Monday");
+  testgmttime(4260211200, "%F %T %A", "2105-01-01 00:00:00 Thursday");
 
   testlocaltime(1330559999, "%x %X %z", "02/29/12 18:59:59 -0500");
   testlocaltime(1330621200, "%j %B %r %Z", "061 March 12:00:00 PM EST");
