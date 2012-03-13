@@ -41,6 +41,7 @@ DEBUG_TM(const char *nm, struct tm *tm)
 #define SECS_PER_LEAP_YEAR   (31536000L + SECS_PER_DAY)
 #define SECS_PER_FOUR_YEARS (4*SECS_PER_YEAR + SECS_PER_DAY)
 
+#define START_OF_2012 (1325376000UL)
 #define START_OF_2100 (4102444800UL)
 
 int _timezone = -1;	/* holds # seconds west of GMT */
@@ -126,52 +127,27 @@ struct tm *_gmtime_r(const time_t *t, struct tm *stm)
 {
         time_t  time = *t;
         int     year, mday, i;
-	int     quadyears;
+	time_t  yearlen;
 
         stm->tm_wday = (int) (((time/SECS_PER_DAY) + 4) % 7);
-	year = 1970;
 
-	/* note that we have to handle 2100 specially, because it
-	   is not a leap year!
-	*/
-	if (time >= 2*SECS_PER_YEAR)
-	  /* align on 1972 boundary (first leap year in epoch) */
-	  {
-	    if (time >= START_OF_2100)
-	      {
-		year = 2100;
-		time -= START_OF_2100;
-		if (time > (4*SECS_PER_YEAR)) {
-		  time = time - (4*SECS_PER_YEAR);
-		  year += 4;
-		} else {
-		  goto noleap;
-		}
-	      }
-	    else
-	      {
-		time -= 2*SECS_PER_YEAR;
-		/* look at how many 4 year periods (including leap year) have
-		   passed */
-		year = 1972;
-	      }
-	    quadyears = time / SECS_PER_FOUR_YEARS;
-	    time = time % SECS_PER_FOUR_YEARS;
-	    year += 4*quadyears;
-	    if (time >= SECS_PER_LEAP_YEAR) {
-	      year++;
-	      time -= SECS_PER_LEAP_YEAR;
-	      year += (time / SECS_PER_YEAR);
-	      time = time % SECS_PER_YEAR;
-	    }
-	  }
-	else
-	  {
-	  noleap:
-	    year += (time / SECS_PER_YEAR);
-	    time = time % SECS_PER_YEAR;
-	  }
+	if (time >= START_OF_2012) {
+	  time -= START_OF_2012;
+	  year = 2012;
+	} else {
+	  year = 1970;
+	}
 
+	for(;;) {
+	  if (_is_leap_year(year))
+	    yearlen = SECS_PER_LEAP_YEAR;
+	  else
+	    yearlen = SECS_PER_YEAR;
+	  if (time < yearlen)
+	    break;
+	  year++;
+	  time -= yearlen;
+	}
 	/* at this point we should have the seconds left in the year */
         stm->tm_year = year - 1900;
         mday = stm->tm_yday = (int)(time/SECS_PER_DAY);
