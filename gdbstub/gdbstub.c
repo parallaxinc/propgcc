@@ -376,8 +376,8 @@ static int wait_for_halt(void)
 
 static int read_memory(uint32_t addr, uint8_t *buf, int len)
 {
-    uint8_t pkt[PKT_MAX];
-    uint8_t pktlen, chksum, i, *p;
+    uint8_t pkt[PKT_MAX], *p;
+    uint8_t pktlen, chksum, rchksum, i;
     int remaining, cnt, err;
     
     /* read data in MAX_DATA sized chunks */
@@ -400,9 +400,13 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
         tx(pkt, p - pkt);
         
         /* read the data */
-        for (p = buf, remaining = pktlen + 1; remaining > 0; p += cnt, remaining -= cnt)
+        for (p = buf, remaining = pktlen; remaining > 0; p += cnt, remaining -= cnt)
             if ((cnt = rx_timeout(p, remaining, PKT_TIMEOUT)) <= 0)
                 return ERR_TIMEOUT;
+                
+        /* get the checksum */
+        if (rx_timeout(&rchksum, 1, PKT_TIMEOUT) != 1)
+            return ERR_TIMEOUT;
         
         /* initialize the checksum */
         chksum = pktlen;
@@ -410,7 +414,7 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
         /* verify the checksum */
         for (i = 0; i < pktlen; ++i)
             chksum += buf[i];
-        if (chksum != buf[pktlen])
+        if (chksum != rchksum)
             return ERR_CHKSUM;
         
         /* move ahead to the next packet */
