@@ -257,11 +257,13 @@ void CheckCommand(void)
 		FILE *infile;
 		int32_t d_size = 0;
 		int32_t d_attr = 0;
+#if 0
 		int32_t d_type = pdirent->d_type;
 
 		if (d_type & DT_DIR) d_attr |= 0x10;
 		if (d_type & S_IXUSR) d_attr |= 0x20;
 		if (!(d_type & S_IWUSR)) d_attr |= 0x01;
+#endif
 
                 if ((infile = fopen(pdirent->d_name, "r")))
 		{
@@ -335,7 +337,9 @@ void CheckCommand(void)
     {
 	char *fname = (char *)&BYTE(parm);
 #ifdef LINUX
+#if 0
 	LONG(SYS_PARM) = mkdir(fname, S_IRWXU | S_IRWXG | S_IRWXO);
+#endif
 #else
 	LONG(SYS_PARM) = mkdir(fname);
 #endif
@@ -353,11 +357,15 @@ void CheckCommand(void)
 	    if (strcmp(pdirent->d_name, fname) == 0)
 	    {
 #ifdef LINUX
+#if 0
 		int32_t d_type = pdirent->d_type;
 		attrib = 0;
 		if (d_type & DT_DIR) attrib |= 0x10;
 		if (d_type & S_IXUSR) attrib |= 0x20;
 		if (!(d_type & S_IWUSR)) attrib |= 0x01;
+#else
+		attrib = 0;
+#endif
 #else
 		attrib = pdirent->d_attr;
 #endif
@@ -618,7 +626,7 @@ void RebootProp(void)
       methodlev = 1;
     }
 
-    LONG(SYS_DEBUG) = printflag;
+    //LONG(SYS_DEBUG) = printflag;
 }
 
 void reply(char *ptr, int len){
@@ -813,6 +821,7 @@ int main(int argc, char **argv)
     SpinVarsT *spinvars;
     int32_t state;
 
+    tracefile = stdout;
     ptr = getcwd(rootdir, 100);
 
     for (i = 1; i < argc; i++)
@@ -826,9 +835,9 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Unable to open trace file %s.\n", argv[i]);
 		exit(1);
 	      }
-	    } else {
-	      tracefile = stdin;
-	    }
+	    }// else {
+	      //tracefile = stdout;
+	    //}
 	//else if (strcmp(argv[i], "-c") == 0){
 	  //cycleaccurate = 1;
 	//}
@@ -913,6 +922,8 @@ int main(int argc, char **argv)
 #else
     hubram =  (char *)(((int32_t)hubram) & 0xfffffffc);
 #endif
+
+    LONG(SYS_DEBUG) = printflag;
 
 #if 0
     // Check the ext memory size and allocate it if non-zero
