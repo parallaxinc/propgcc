@@ -77,7 +77,7 @@ all:	propeller-load drivers sd-loader
 clean:
 	@$(RM) -f -r $(OBJDIR)
 	@$(RM) -f -r $(BINDIR)
-	@$(RM) -f $(DRVDIR)/*.dat
+	@$(RM) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf
 	@$(RM) -f *.binary
 	
 .PHONY:

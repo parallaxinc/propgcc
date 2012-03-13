@@ -521,7 +521,7 @@ previous frame, just before the call instruction.
 
 You only need to define this macro if you want to support call frame
 debugging information like that provided by DWARF 2.  */
-#define INCOMING_FRAME_SP_OFFSET 8
+#define INCOMING_FRAME_SP_OFFSET 0
 
 /*
  * function results
