@@ -265,12 +265,6 @@ fi
 cd ../../propgcc
 
 #
-# build propeller-load
-#
-make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader
-make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader install
-
-#
 # build gcc libstdc++
 # this must be done after the library build, since it depends on
 # library header files
@@ -291,6 +285,96 @@ then
    exit 1
 fi
 cd ../../propgcc
+
+#
+# build propeller-elf-gdb
+#
+mkdir -p ../build/gdb
+cd ../build/gdb
+../../propgcc/gdb/configure --target=propeller-elf
+if test $? != 0
+then
+   echo "gdb configure failed"
+   cd ../../propgcc
+   exit 1
+fi
+
+make ${JOBS} all
+if test $? != 0
+then
+   echo "gdb make all failed"
+   cd ../../propgcc
+   exit 1
+fi
+cp -f gdb/gdb ${PREFIX}/bin/propeller-elf-gdb
+cd ../../propgcc
+
+#
+# build spinsim
+#
+cp -r spinsim ../build/.
+cd ../build/spinsim
+make clean
+if test $? != 0
+then
+   echo "spinsim clean failed"
+   cd ../../propgcc
+   exit 1
+fi
+make
+if test $? != 0
+then
+   echo "spinsim make failed"
+   cd ../../propgcc
+   exit 1
+fi
+cp spinsim ${PREFIX}/bin/.
+cd ../../propgcc
+
+#
+# build gdbstub
+#
+cd gdbstub
+make clean
+if test $? != 0
+then
+   echo "gdbstub clean failed"
+   cd ..
+   exit 1
+fi
+make
+if test $? != 0
+then
+   echo "gdbstub make failed"
+   cd ..
+   exit 1
+fi
+cp gdbstub ${PREFIX}/bin/.
+cd ../../propgcc
+
+#
+# build propeller-load
+#
+make -C loader clean
+if test $? != 0
+then
+   echo "loader make clean failed"
+   exit 1
+fi
+
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader
+if test $? != 0
+then
+   echo "loader make failed"
+   exit 1
+fi
+
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader install
+if test $? != 0
+then
+   echo "loader install failed"
+   exit 1
+fi
 
 echo "Build complete."
 exit 0
