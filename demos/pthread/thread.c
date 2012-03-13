@@ -30,6 +30,8 @@ main()
 {
   int i;
   int r;
+  int n;
+  char buf[80];
 
   printf("threads demo\n");
   fflush(stdout);
@@ -40,6 +42,9 @@ main()
     fflush(stdout);
     r = pthread_create(&thr[i], NULL, threadfunc, (void *)(name));
   }
+  printf("Enter a number: "); fflush(stdout);
+  fgets(buf, sizeof(buf), stdin);
+  n = atoi(buf);
   for (i = 0; i < NUM_THREADS; i++) {
     void *result;
     r = pthread_join(thr[i], &result);
@@ -48,6 +53,7 @@ main()
     else
       printf("thread %d returned %d\n", i, (int)result);
   }
+  printf("you entered %d above\n", n);
   printf("all done\n");
   return 0;
 }
