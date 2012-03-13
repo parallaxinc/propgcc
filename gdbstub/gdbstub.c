@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 #include "config.h"
 #include "port.h"
 #include "PLoadLib.h"
@@ -276,17 +277,21 @@ int main(int argc, char *argv[])
     /* load the dummy debug kernel */
     if (ploadbuf(kernel_image_array, kernel_image_size, DOWNLOAD_RUN_BINARY) != 0) {
         fprintf(stderr, "error: debug kernel load failed\n");
+        serial_done();
         return 1;
     }
     
     if (rx_timeout(&byte, 1, INI_TIMEOUT) != 1) {
-        fprintf(stderr, "error: timeout waiting for initial response from debug kernel\n");
+        fprintf(stderr, "error: timeout waiting for initial response from dummy debug kernel\n");
+        serial_done();
         return 1;
     }
     else if (byte != HALT) {
         fprintf(stderr, "error: bad initial response from debug kernel: %02x\n", byte);
+        serial_done();
         return 1;
     }
+printf("connected!\n");
     
     command_loop();
     
@@ -503,7 +508,7 @@ void reply(char *ptr, int len)
     int i;
     
     putc('$', stdout);
-    if(logfile) fprintf(logfile, "sim>$");
+    if(logfile) fprintf(logfile, "stub>$");
     for(i = 0; i < len; i++){
         putc(ptr[i], stdout);
         if(logfile) putc(ptr[i], logfile);
