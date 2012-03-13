@@ -170,8 +170,6 @@ _pthread_sleep(_pthread_queue_t *queue)
  * put a thread to sleep until the system clock reaches or
  * passes "newclock"
  */
-/* if the sleep is for less than this many cycles, just return immediately */
-#define SLEEP_THRESHOLD 128
 
 static void
 _pthread_napuntil(unsigned int newclock)
@@ -189,7 +187,6 @@ _pthread_napuntil(unsigned int newclock)
   now = _CNT;
   thr->timer = newclock;
   delta = (int)(thr->timer - now);
-  if (delta > SLEEP_THRESHOLD)
     {
       thr->queue = queue;
       for(;;) {
@@ -204,13 +201,6 @@ _pthread_napuntil(unsigned int newclock)
       *queue = thr;
       _pthread_schedule();
     }
-  else
-    {
-      /* our time has passed... just yield and then resume
-	 running */
-      if (__ready_queue)
-	_pthread_sleep_with_lock(&__ready_queue);
-    }
   __unlock_pthreads();
 }
 #endif
@@ -221,7 +211,6 @@ _pthread_napuntil(unsigned int newclock)
 void
 pthread_yield(void)
 {
-  if (__ready_queue)
     _pthread_sleep(&__ready_queue);
 }
 
