@@ -153,6 +153,7 @@ int serial_init(const char* port, unsigned long baud)
 void serial_done(void)
 {
     tcsetattr(hSerial, TCSANOW, &old_sparm);
+    ioctl(hSerial, TIOCNXCL);
     close(hSerial);
 }
 
