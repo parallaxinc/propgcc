@@ -307,8 +307,9 @@ then
    exit 1
 fi
 if [ ${OS} != "msys" ]
+then
     cp -f gdb/gdb ${PREFIX}/bin/propeller-elf-gdb
-elif
+else
     cp -f gdb/gdb.exe ${PREFIX}/bin/propeller-elf-gdb.exe
 fi
 cd ../../propgcc
@@ -333,8 +334,9 @@ then
    exit 1
 fi
 if [ ${OS} != "msys" ]
+then
     cp -f spinsim ${PREFIX}/bin/.
-elif
+else
     cp -f spinsim.exe ${PREFIX}/bin/.
 fi
 cd ../../propgcc
@@ -360,8 +362,9 @@ then
    exit 1
 fi
 if [ ${OS} != "msys" ]
+then
     cp -f gdbstub ${PREFIX}/bin/.
-elif
+else
     cp -f gdbstub.exe ${PREFIX}/bin/.
 fi
 cd ../../propgcc
