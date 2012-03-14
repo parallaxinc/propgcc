@@ -544,35 +544,41 @@ char parse_byte(char *ch)
     return val;
 }
 
-void get_cmd()
+int get_cmd()
 {
     int i = 0;
     int ch;
     
     do{
-        ch = getc(stdin);
+        if ((ch = getc(stdin)) < 0)
+            return -1;
     } while(ch != '$');
     
     if(logfile) fprintf(logfile, "gdb>");
     if(logfile) putc(ch, logfile);
     
     for(i = 0; i < sizeof(cmd); i++){
-        ch = getc(stdin);
+        if ((ch = getc(stdin)) < 0)
+            return -1;
         if(logfile) putc(ch, logfile);
         if(ch == '#') break;
         cmd[i] = ch;
     }
     cmd[i] = 0;
     // eat the checksum
-    ch = getc(stdin);
+    if ((ch = getc(stdin)) < 0)
+        return -1;
     if(logfile) putc(ch, logfile);
-    ch = getc(stdin);
+    if ((ch = getc(stdin)) < 0)
+        return -1;
     if(logfile) putc(ch, logfile);
     if(logfile) putc('\n', logfile);
     // send an ACK
     putchar('+');
     fflush(stdout);
     if(logfile) fflush(logfile);
+    
+    return 0;
 }
 
 int tohex(char x)
@@ -875,8 +881,11 @@ static int command_loop(void)
     int cog = 0;
     char *halt_code = "S05";
     
-    for(;;){
-        get_cmd();
+    for (;;){
+        if (get_cmd() != 0) {
+            if (logfile) fprintf(logfile, "[ gdb closed the pipe ]\n");
+            goto out;
+        }
         i = 0;
         switch(cmd[i++]){
             case 'g':   cmd_g_get_registers(cog);           break;
