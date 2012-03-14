@@ -306,7 +306,12 @@ then
    cd ../../propgcc
    exit 1
 fi
-cp -f gdb/gdb ${PREFIX}/bin/propeller-elf-gdb
+if [ ${OS} != "msys" ]
+then
+    cp -f gdb/gdb ${PREFIX}/bin/propeller-elf-gdb
+else
+    cp -f gdb/gdb.exe ${PREFIX}/bin/propeller-elf-gdb.exe
+fi
 cd ../../propgcc
 
 #
@@ -328,12 +333,19 @@ then
    cd ../../propgcc
    exit 1
 fi
-cp spinsim ${PREFIX}/bin/.
+if [ ${OS} != "msys" ]
+then
+    cp -f spinsim ${PREFIX}/bin/.
+else
+    cp -f spinsim.exe ${PREFIX}/bin/.
+fi
 cd ../../propgcc
 
 #
 # build gdbstub
 #
+if [ ${OS} != "msys" ]
+then
 cd gdbstub
 make clean
 if test $? != 0
@@ -349,8 +361,15 @@ then
    cd ..
    exit 1
 fi
-cp gdbstub ${PREFIX}/bin/.
+if [ ${OS} != "msys" ]
+then
+    cp -f gdbstub ${PREFIX}/bin/.
+else
+    cp -f gdbstub.exe ${PREFIX}/bin/.
+fi
 cd ../../propgcc
+fi
+# end of if [ ${OS} != "msys" ]
 
 #
 # build propeller-load
