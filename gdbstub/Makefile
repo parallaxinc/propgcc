@@ -52,7 +52,7 @@ OBJS=gdbstub.o config.o system.o port.o PLoadLib.o $(foreach x, $(OSINT), $(x).o
 all:	bin2c$(EXT) $(TARGET)
 
 $(TARGET):	$(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 
 %.o:	%.c
 	$(CC) -c $(CFLAGS) -o $@ $<
