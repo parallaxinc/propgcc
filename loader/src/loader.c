@@ -99,70 +99,10 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
 static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
-static int WriteExecutableFile(char *path, ElfContext *c);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
-static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
-static int Error(char *fmt, ...);
-
-#if 0
-
-static int ShowPort(const char* port, void* data)
-{
-    printf("%s\n", port);
-    return 1;
-}
-
-void ShowPorts(char *prefix)
-{
-    serial_find(prefix, ShowPort, NULL);
-}
-
-typedef struct {
-    int baud;
-    int flags;
-    char *actualport;
-} CheckPortInfo;
-
-static int CheckPort(const char* port, void* data)
-{
-    CheckPortInfo* info = (CheckPortInfo*)data;
-    int rc;
-    if (info->flags & IFLAG_VERBOSE)
-        printf("Trying %s                    \r", port); fflush(stdout);
-    if ((rc = popenport(port, info->baud)) != PLOAD_STATUS_OK)
-        return rc;
-    strncpy(info->actualport, port, PATH_MAX - 1);
-    info->actualport[PATH_MAX - 1] = '\0';
-    return 0;
-}
-
-int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
-{
-    int rc;
-    
-    if (port) {
-        strncpy(actualport, port, PATH_MAX - 1);
-        actualport[PATH_MAX - 1] = '\0';
-        rc = popenport(port, baud);
-    }
-    else {
-        CheckPortInfo info;
-        info.baud = baud;
-        info.flags = flags;
-        info.actualport = actualport;
-        if (serial_find(prefix, CheckPort, &info) == 0)
-            rc = PLOAD_STATUS_OK;
-        else
-            rc = PLOAD_STATUS_NO_PROPELLER;
-    }
-        
-    return rc;
-}
-
-#endif
 
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags)
 {    
@@ -630,57 +570,6 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     return TRUE;
 }
     
-static int WriteExecutableFile(char *path, ElfContext *c)
-{
-    char outfile[PATH_MAX];
-    ElfProgramHdr program_kernel;
-    uint8_t *imagebuf, *buf;
-    uint32_t loadAddress;
-    PexeFileHdr hdr;
-    int imageSize;
-    FILE *fp;
-    
-    /* build the external image */
-    if (!(imagebuf = BuildExternalImage(c, &loadAddress, &imageSize)))
-        return FALSE;
-        
-    /* find the .xmmkernel segment */
-    if (FindProgramSegment(c, ".xmmkernel", &program_kernel) < 0)
-        return Error("can't find .xmmkernel segment");
-    
-    /* load the .kernel section */
-    if (!(buf = LoadProgramSegment(c, &program_kernel)))
-        return Error("can't load .xmmkernel section");
-
-    memset(&hdr, 0, sizeof(hdr));
-    strcpy(hdr.tag, PEXE_TAG);
-    hdr.version = PEXE_VERSION;
-    hdr.loadAddress = loadAddress;
-    memcpy(hdr.kernel, buf, program_kernel.filesz);
-    
-    ConstructOutputName(outfile, path, ".pex");
-    if (!(fp = fopen(outfile, "wb"))) {
-        free(imagebuf);
-        return Error("can't create '%s'", outfile);
-    }
-    
-    /* write the header */
-    if (fwrite(&hdr, 1, sizeof(hdr), fp) != sizeof(hdr)) {
-        free(imagebuf);
-        return Error("error writing '%s'", outfile);
-    }
-    
-    /* write the image */
-    if (fwrite(imagebuf, 1, imageSize, fp) != imageSize) {
-        free(imagebuf);
-        return Error("error writing '%s'", outfile);
-    }
-    
-    fclose(fp);
-    
-    return TRUE;
-}
-
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
 {
     /* build the flash loader image */
@@ -758,7 +647,7 @@ static int WriteBuffer(uint8_t *buf, int size)
 }
 
 /* ConstructOutputName - construct an output filename from an input filename */
-static char *ConstructOutputName(char *outfile, const char *infile, char *ext)
+char *ConstructOutputName(char *outfile, const char *infile, char *ext)
 {
     char *end = strrchr(infile, '.');
     if (end && !strchr(end, '/') && !strchr(end, '\\')) {
@@ -771,7 +660,7 @@ static char *ConstructOutputName(char *outfile, const char *infile, char *ext)
     return outfile;
 }
 
-static int Error(char *fmt, ...)
+int Error(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);

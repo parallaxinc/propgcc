@@ -68,13 +68,18 @@ int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
+char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);
+int Error(char *fmt, ...);
 
-/* lmmimage.c */
+/* lmm-image.c */
 uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize);
 void UpdateChecksum(uint8_t *imagebuf, int imageSize);
 
-/* xmmimage.c */
+/* xmm-image.c */
 uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
+
+/* pex-image.c */
+int WriteExecutableFile(char *path, ElfContext *c);
 
 #endif

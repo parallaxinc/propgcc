@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
     
     /* open the image file */
     if (!(fp = fopen(argv[1], "rb"))) {
-        fprintf(stderr, "error: opening '%s'\n", path);
+        fprintf(stderr, "error: opening '%s'\n", argv[1]);
         return 1;
     }
     
