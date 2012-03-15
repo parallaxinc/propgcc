@@ -287,6 +287,31 @@ fi
 cd ../../propgcc
 
 #
+# build propeller-load ... before gdb
+# gdbstub relies on a loader library
+#
+make -C loader clean
+if test $? != 0
+then
+   echo "loader make clean failed"
+   exit 1
+fi
+
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader
+if test $? != 0
+then
+   echo "loader make failed"
+   exit 1
+fi
+
+make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader install
+if test $? != 0
+then
+   echo "loader install failed"
+   exit 1
+fi
+
+#
 # build propeller-elf-gdb
 #
 mkdir -p ../build/gdb
@@ -344,8 +369,6 @@ cd ../../propgcc
 #
 # build gdbstub
 #
-if [ ${OS} != "msys" ]
-then
 cd gdbstub
 make clean
 if test $? != 0
@@ -368,32 +391,6 @@ else
     cp -f gdbstub.exe ${PREFIX}/bin/.
 fi
 cd ../../propgcc
-fi
-# end of if [ ${OS} != "msys" ]
-
-#
-# build propeller-load
-#
-make -C loader clean
-if test $? != 0
-then
-   echo "loader make clean failed"
-   exit 1
-fi
-
-make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader
-if test $? != 0
-then
-   echo "loader make failed"
-   exit 1
-fi
-
-make -C loader TARGET=$PREFIX BUILDROOT=../../build/loader install
-if test $? != 0
-then
-   echo "loader install failed"
-   exit 1
-fi
 
 echo "Build complete."
 exit 0
