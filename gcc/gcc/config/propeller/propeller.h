@@ -540,7 +540,7 @@ debugging information like that provided by DWARF 2.  */
 #define DEFAULT_PCC_STRUCT_RETURN 0
 
 /*
- * the overal assembler file framework
+ * the overall assembler file framework
  */
 #define ASM_COMMENT_START "\'"
 #define ASM_APP_ON ""
