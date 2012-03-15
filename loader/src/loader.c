@@ -35,27 +35,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 /* maximum cog image size */
 #define COG_IMAGE_MAX           (496 * 4)
 
-/* spin object file header */
-typedef struct {
-    uint32_t clkfreq;
-    uint8_t clkmode;
-    uint8_t chksum;
-    uint16_t pbase;
-    uint16_t vbase;
-    uint16_t dbase;
-    uint16_t pcurr;
-    uint16_t dcurr;
-} SpinHdr;
-
-/* spin object */
-typedef struct {
-    uint16_t next;
-    uint8_t pubcnt;
-    uint8_t objcnt;
-    uint16_t pcurr;
-    uint16_t numlocals;
-} SpinObj;
-
 /* DAT header in serial_helper.spin */
 typedef struct {
     uint32_t baudrate;
@@ -100,23 +79,6 @@ typedef struct {
     SDParams sd_params;
 } SDCacheParams;
 
-/* target checksum for a binary file */
-#define SPIN_TARGET_CHECKSUM    0x14
-
-/* image header */
-typedef struct {
-    uint32_t entry;
-    uint32_t initCount;
-    uint32_t initTableOffset;
-} ImageHdr;
-
-/* init section */
-typedef struct {
-    uint32_t vaddr;
-    uint32_t paddr;
-    uint32_t size;
-} InitSection;
-
 /* packet types */
 #define TYPE_VM_INIT            1
 #define TYPE_CACHE_INIT         2
@@ -136,18 +98,14 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp);
 static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
-static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize);
-static void UpdateChecksum(uint8_t *imagebuf, int imageSize);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteExecutableFile(char *path, ElfContext *c);
-static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 static int Error(char *fmt, ...);
-static void *NullError(char *fmt, ...);
 
 #if 0
 
@@ -536,75 +494,13 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
     return TRUE;
 }
 
-static uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize)
-{
-    uint32_t start, imageSize;
-    uint8_t *imagebuf, *buf;
-    ElfProgramHdr program;
-    SpinHdr *hdr;
-    int i;
-
-    /* get the total size of the program */
-    if (!GetProgramSize(c, &start, &imageSize))
-        return NullError("can't get program size");
-    
-    /* allocate a buffer big enough for the entire image */
-    if (!(imagebuf = (uint8_t *)malloc(imageSize)))
-        return NullError("insufficient memory");
-    memset(imagebuf, 0, imageSize);
-        
-    /* load each program section */
-    for (i = 0; i < c->hdr.phnum; ++i) {
-        if (!LoadProgramTableEntry(c, i, &program)
-        ||  !(buf = LoadProgramSegment(c, &program))) {
-            free(imagebuf);
-            return NullError("can't load program section %d", i);
-        }
-        memcpy(&imagebuf[program.paddr - start], buf, program.filesz);
-    }
-    
-    /* fixup the header to point past the spin bytecodes and generated PASM code */
-    hdr = (SpinHdr *)imagebuf;
-    hdr->clkfreq = config->clkfreq;
-    hdr->clkmode = config->clkmode;
-    hdr->vbase = imageSize;
-    hdr->dbase = imageSize + 2 * sizeof(uint32_t); // stack markers
-    hdr->dcurr = hdr->dbase + sizeof(uint32_t);
-    
-    /* update the checksum */
-    UpdateChecksum(imagebuf, imageSize);
-    
-    /* return the image */
-    *pStart = start;
-    *pImageSize = imageSize;
-    return imagebuf;
-}
-
-static void UpdateChecksum(uint8_t *imagebuf, int imageSize)
-{
-    SpinHdr *hdr = (SpinHdr *)imagebuf;
-    uint32_t cnt;
-    uint8_t *p;
-    int chksum;
-    
-    /* first zero out the checksum */
-    hdr->chksum = 0;
-    
-    /* compute the checksum */
-    for (chksum = 0, p = imagebuf, cnt = imageSize; cnt > 0; --cnt)
-        chksum += *p++;
-        
-    /* store the checksum in the header */
-    hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
-}
-
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
 {
     SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf;
-    int cacheDriverImageSize, imageSize, chksum, target, i;
+    int cacheDriverImageSize, imageSize, target;
     uint32_t loadAddress, params[3];
     ElfProgramHdr program_kernel;
 
@@ -654,10 +550,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     dat->tvpin = config->tvpin;
         
     /* recompute the checksum */
-    hdr->chksum = 0;
-    for (chksum = i = 0; i < serial_helper_size; ++i)
-        chksum += serial_helper_array[i];
-    hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
+    UpdateChecksum(serial_helper_array, serial_helper_size);
     
     /* load the serial helper program */
     if (ploadbuf(serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0) {
@@ -787,155 +680,6 @@ static int WriteExecutableFile(char *path, ElfContext *c)
     
     return TRUE;
 }
-    
-/*
-    Create an image to load into external memory.
-    
-    For programs with code in external flash memory:
-    
-        Load all sections with flash load addresses into flash.
-        
-        Create an initialization entry for every section that must be
-        relocated to either external RAM or hub memory at startup.
-        
-    For programs with code in external RAM:
-    
-        Load all sections with external RAM load addresses into external RAM.
-        
-        Create an initialization entry for every section that must be
-        relocated to hub memory at startup.
-        
-    Do not generate initialization entries for cogsysn or cogusern
-    sections that will eventually be loaded into a COG using coginit.
-    These sections have vaddr == 0 and PF_X set.
-    
-    Do not load the kernel section as this is handled separately by the 
-    loader.
-*/
-
-//#define DEBUG_BUILD_EXTERNAL_IMAGE
-
-static uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
-{
-    ElfProgramHdr program, program_kernel, program_header, program_hub;
-    int dataSize, initTableSize, imageSize, ki, hi, si, i;
-    InitSection *initSection;
-    uint8_t *imagebuf, *buf;
-    uint32_t endAddress;
-    ImageHdr *image;
-    
-    /* find the .xmmkernel segment */
-    if ((ki = FindProgramSegment(c, ".xmmkernel", &program_kernel)) < 0)
-        return NullError("can't find .xmmkernel segment");
-    
-    /* find the .header segment */
-    if ((hi = FindProgramSegment(c, ".header", &program_header)) < 0)
-        return NullError("can't find .header segment");
-        
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-    printf("header %08x\n", program_header.paddr);
-#endif
-    endAddress = program_header.paddr;
-    
-    /* find the .hub segment */
-    if ((si = FindProgramSegment(c, ".hub", &program_hub)) < 0)
-        return NullError("can't find .hub segment");
-    
-    /* determine the full image size including the hub/ram initializers */
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-    printf("determine sizes\n");
-#endif
-    for (i = initTableSize = 0; i < c->hdr.phnum; ++i) {
-        if (!LoadProgramTableEntry(c, i, &program))
-            return NullError("can't load program table entry %d", i);
-        if (i != ki && program.paddr >= program_header.paddr) {
-            if (program.filesz > 0) {
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-                printf("  %d S: vaddr %08x, paddr %08x, size %08x\n", i, program.vaddr, program.paddr, program.filesz);
-#endif
-                if (program.paddr + program.filesz > endAddress)
-                    endAddress = program.paddr + program.filesz;
-                if (i == si || (program.vaddr != program.paddr && program.vaddr != 0)) {
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-                    printf("  %d I: vaddr %08x, paddr %08x, size %08x\n", i, program.vaddr, program.paddr, program.filesz);
-#endif
-                    ++initTableSize;
-                }
-            }
-        }
-    }
-
-    /* compute the total file size */
-    dataSize = endAddress - program_header.paddr;
-    imageSize = dataSize + initTableSize * sizeof(InitSection);
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-    printf("data size %08x, init entries %d, total %d\n", dataSize, initTableSize, imageSize);
-#endif
-    
-    /* allocate a buffer big enough for the entire image */
-    if (!(imagebuf = (uint8_t *)malloc(imageSize)))
-        return NullError("insufficent memory for %d byte image", imageSize);
-    memset(imagebuf, 0, imageSize);
-    
-    /* load the image data */
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-    printf("load data\n");
-#endif
-    for (i = 0; i < c->hdr.phnum; ++i) {
-        if (!LoadProgramTableEntry(c, i, &program)) {
-            free(imagebuf);
-            return NullError("can't load program table entry %d", i);
-        }
-        if (i != ki && program.paddr >= program_header.paddr) {
-            if (program.filesz > 0) {
-                if (!(buf = LoadProgramSegment(c, &program))) {
-                    free(imagebuf);
-                    return NullError("can't load program section %d", i);
-                }
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-                printf("  %d L: vaddr %08x, paddr %08x, size %08x\n", i, program.vaddr, program.paddr, program.filesz);
-#endif
-                memcpy(&imagebuf[program.paddr - program_header.paddr], buf, program.filesz);
-                free(buf);
-            }
-        }
-    }
-    
-    /* fill in the image header */
-    image = (ImageHdr *)imagebuf;
-    image->initCount = initTableSize;
-    image->initTableOffset = dataSize;
-    
-    /* populate the init section table */
-#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-    printf("populate init table\n");
-#endif
-    initSection = (InitSection *)(imagebuf + dataSize);
-    for (i = 0; i < c->hdr.phnum; ++i) {
-        if (!LoadProgramTableEntry(c, i, &program)) {
-            free(imagebuf);
-            return NullError("can't load program table entry %d", i);
-        }
-        if (i != ki && program.paddr >= program_header.paddr) {
-            if (program.filesz > 0) {
-                if (i == si || (program.vaddr != program.paddr && program.vaddr != 0)) {
-                    initSection->vaddr = program.vaddr;
-                    initSection->paddr = program.paddr;
-                    initSection->size = program.filesz;
-    #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-                    printf("  %d T: vaddr %08x, paddr %08x, size %08x\n", i,initSection->vaddr, initSection->paddr, initSection->size);
-    #endif
-                    ++initSection;
-                }
-            }
-        }
-    }
-    
-    /* return the image */
-    *pLoadAddress = program_header.paddr;
-    *pImageSize = imageSize;
-    return imagebuf;
-}
 
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
 {
@@ -957,7 +701,7 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     SpinObj *obj = ( SpinObj *)(flash_loader_array + hdr->pbase);
     FlashLoaderDatHdr *dat = (FlashLoaderDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX];
-    int imageSize, chksum, i;
+    int imageSize;
     
     if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
         return Error("reading cache driver image failed: %s", config->cacheDriver);
@@ -978,10 +722,7 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     dat->cache_param2 = config->cacheParam2;
     
     /* recompute the checksum */
-    hdr->chksum = 0;
-    for (chksum = i = 0; i < flash_loader_size; ++i)
-        chksum += flash_loader_array[i];
-    hdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
+    UpdateChecksum(flash_loader_array, flash_loader_size);
     
     /* return successfully */
     return TRUE;
@@ -1041,7 +782,7 @@ static int Error(char *fmt, ...)
     return FALSE;
 }
 
-static void *NullError(char *fmt, ...)
+void *NullError(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);

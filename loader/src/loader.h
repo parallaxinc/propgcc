@@ -24,6 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include "config.h"
 #include "system.h"
+#include "loadelf.h"
 #include "PLoadLib.h"
 
 /* InitPort flags */
@@ -37,10 +38,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define LFLAG_WRITE_SDLOADER        (1 << 4)
 #define LFLAG_WRITE_SDCACHELOADER   (1 << 5)
 
+/* target checksum for a binary file */
+#define SPIN_TARGET_CHECKSUM    0x14
+
+/* spin object file header */
+typedef struct {
+    uint32_t clkfreq;
+    uint8_t clkmode;
+    uint8_t chksum;
+    uint16_t pbase;
+    uint16_t vbase;
+    uint16_t dbase;
+    uint16_t pcurr;
+    uint16_t dcurr;
+} SpinHdr;
+
+/* spin object */
+typedef struct {
+    uint16_t next;
+    uint8_t pubcnt;
+    uint8_t objcnt;
+    uint16_t pcurr;
+    uint16_t numlocals;
+} SpinObj;
+
+/* loader.c */
 void ShowPorts(char *prefix);
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
+void *NullError(char *fmt, ...);
+
+/* lmmimage.c */
+uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize);
+void UpdateChecksum(uint8_t *imagebuf, int imageSize);
+
+/* xmmimage.c */
+uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 
 #endif
