@@ -1,0 +1,3 @@
+export OS=cygwin
+export PORT=COM16
+export BOARD=hub
