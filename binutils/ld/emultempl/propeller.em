@@ -36,8 +36,12 @@ propeller_elf_create_output_section_statements (void)
   /* not actually implemented yet */
   extern void bfd_elf32_propeller_set_target_flags (bfd_boolean);
 
+  /* set target specific flags */
   bfd_elf32_propeller_set_target_flags (propeller_build_flag);
 #endif
+  /* turn off the D_PAGED bit in the output */
+  if (link_info.output_bfd)
+    link_info.output_bfd->flags &= ~D_PAGED;
 }
 
 /*
