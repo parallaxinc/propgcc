@@ -12,8 +12,8 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     uint32_t start, imageSize;
     uint8_t *imagebuf, *buf;
     ElfProgramHdr program;
+    int ivalue, i;
     SpinHdr *hdr;
-    int i;
 
     /* get the total size of the program */
     if (!GetProgramSize(c, &start, &imageSize))
@@ -36,8 +36,10 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     
     /* fixup the header to point past the spin bytecodes and generated PASM code */
     hdr = (SpinHdr *)imagebuf;
-    hdr->clkfreq = config->clkfreq;
-    hdr->clkmode = config->clkmode;
+    GetNumericConfigField(config, "clkfreq", &ivalue);
+    hdr->clkfreq = ivalue;
+    GetNumericConfigField(config, "clkmode", &ivalue);
+    hdr->clkmode = ivalue;
     hdr->vbase = imageSize;
     hdr->dbase = imageSize + 2 * sizeof(uint32_t); // stack markers
     hdr->dcurr = hdr->dbase + sizeof(uint32_t);

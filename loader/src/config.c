@@ -29,7 +29,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "config.h"
 #include "system.h"
 
+#ifdef NEED_STRCASECMP
+int strcasecmp(const char *s1, const char *s2);
+#endif
+
 #define MAXLINE 128
+
+typedef struct Field Field;
+struct Field {
+    char *tag;
+    char *value;
+    Field *next;
+};
+
+struct BoardConfig {
+    BoardConfig *parent;
+    BoardConfig *sibling;
+    BoardConfig *child;
+    BoardConfig **pNextChild;
+    Field *fields;
+    char name[1];
+};
 
 typedef struct {
     char lineBuf[MAXLINE];  /* line buffer */
@@ -41,6 +61,18 @@ typedef struct {
     char *name;
     int value;
 } ConfigSymbol;
+
+#define RCFAST      0x00
+#define RCSLOW      0x01
+#define XINPUT      0x22
+#define XTAL1       0x2a
+#define XTAL2       0x32
+#define XTAL3       0x3a
+#define PLL1X       0x41
+#define PLL2X       0x42
+#define PLL4X       0x43
+#define PLL8X       0x44
+#define PLL16X      0x45
 
 static ConfigSymbol configSymbols[] = {
 {   "RCFAST",       0x00        },
@@ -62,23 +94,28 @@ static ConfigSymbol configSymbols[] = {
 {   NULL,           0           }
 };
 
-static BoardConfig *SetupDefaultConfiguration(void);
+static BoardConfig *GetDefaultConfiguration(void);
 static int SkipSpaces(LineBuf *buf);
 static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm);
 static int ParseNumericExpr(char *token, int *pValue);
 static int DoOp(int *pValue, int op, int left, int right);
-static char *CopyString(const char *str);
 static void ParseError(LineBuf *buf, const char *fmt, ...);
 static int Error(const char *fmt, ...);
 static void Fatal(const char *fmt, ...);
 
-BoardConfig *NewBoardConfig(const char *name)
+BoardConfig *NewBoardConfig(BoardConfig *parent, const char *name)
 {
     BoardConfig *config;
     if (!(config = (BoardConfig *)malloc(sizeof(BoardConfig) + strlen(name))))
         Fatal("insufficient memory");
     memset(config, 0, sizeof(BoardConfig));
     strcpy(config->name, name);
+    config->parent = parent;
+    config->pNextChild = &config->child;
+    if (parent) {
+        *parent->pNextChild = config;
+        parent->pNextChild = &config->sibling;
+    }
     return config;
 }
 
@@ -86,7 +123,7 @@ BoardConfig *NewBoardConfig(const char *name)
 BoardConfig *ParseConfigurationFile(System *sys, const char *name)
 {
     char path[PATH_MAX];
-    BoardConfig *config;
+    BoardConfig *baseConfig, *config;
     char *tag, *value, *dst;
     const char *src;
     LineBuf buf;
@@ -99,8 +136,8 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
         ;
     
     /* check for a request for the default configuration */
-    if (strcmp(path, DEF_NAME) == 0)
-        return SetupDefaultConfiguration();
+    if (strcmp(path, DEF_BOARD) == 0)
+        return GetDefaultConfiguration();
     
     /* make the configuration file name */
     strcat(path, ".cfg");
@@ -110,8 +147,7 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
         return NULL;
 
     /* create a new board configuration */
-    if (!(config = NewBoardConfig(name)))
-        ParseError(&buf, "insufficient memory");
+    baseConfig = config = NewBoardConfig(NULL, name);
         
     /* process each line in the configuration file */
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {
@@ -128,6 +164,24 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
             // ignore blank lines and comments
             break;
             
+        case '[':   /* configuration tag */
+        
+            /* get the configuration name */
+            ++buf.linePtr;
+            if (!(tag = NextToken(&buf, "]", &ch)))
+                ParseError(&buf, "missing configuration tag");
+            if (ch != ']') {
+                if (SkipSpaces(&buf) != ']')
+                    ParseError(&buf, "missing close bracket after configuration tag");
+                ++buf.linePtr;
+            }
+            if (SkipSpaces(&buf) != '\n')
+                ParseError(&buf, "missing end of line");
+                
+            /* add a new board configuration */
+            config = NewBoardConfig(baseConfig, tag);
+            break;
+
         default:    /* tag:value pair */
         
             /* get the tag */
@@ -165,174 +219,75 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
     return config;
 }
 
-static int chktag(char *tag, char *chktag)
+/* GetConfigSubtype - get a subtype of a board configuration */
+BoardConfig *GetConfigSubtype(BoardConfig *config, const char *name)
 {
-    return strcasecmp(tag, chktag) == 0;
+    BoardConfig *subconfig;
+    for (subconfig = config->child; subconfig != NULL; subconfig = subconfig->sibling)
+        if (strcasecmp(name, subconfig->name) == 0)
+            return subconfig;
+    return strcasecmp(name, DEF_SUBTYPE) == 0 ? config : NULL;
 }
 
-static void SetNumericField(BoardConfig *config, char *value, uint32_t *pValue, int flag)
+void SetConfigField(BoardConfig *config, char *tag, char *value)
 {
-    int iValue;
-    if (ParseNumericExpr(value, &iValue)) {
-        *pValue = (uint32_t)iValue;
-        config->validMask |= flag;
-    }
-}
-
-static void SetStringField(BoardConfig *config, char *value, char **pValue, int flag)
-{
-    if (*pValue)
-        free(*pValue);
-    *pValue = CopyString(value);
-    config->validMask |= flag;
-}
-
-int SetConfigField(BoardConfig *config, char *tag, char *value)
-{
-         if (chktag(tag, "clkfreq"))       SetNumericField(config, value, &config->clkfreq,     VALID_CLKFREQ);
-    else if (chktag(tag, "clkmode"))       SetNumericField(config, value, &config->clkmode,     VALID_CLKMODE);
-    else if (chktag(tag, "baudrate"))      SetNumericField(config, value, &config->baudrate,    VALID_BAUDRATE);
-    else if (chktag(tag, "rxpin"))         SetNumericField(config, value, &config->rxpin,       VALID_RXPIN);
-    else if (chktag(tag, "txpin"))         SetNumericField(config, value, &config->txpin,       VALID_TXPIN);
-    else if (chktag(tag, "tvpin"))         SetNumericField(config, value, &config->tvpin,       VALID_TVPIN);
-    else if (chktag(tag, "cache-driver"))  SetStringField (config, value, &config->cacheDriver, VALID_CACHEDRIVER);
-    else if (chktag(tag, "cache-size"))    SetNumericField(config, value, &config->cacheSize,   VALID_CACHESIZE);
-    else if (chktag(tag, "cache-param1"))  SetNumericField(config, value, &config->cacheParam1, VALID_CACHEPARAM1);
-    else if (chktag(tag, "cache-param2"))  SetNumericField(config, value, &config->cacheParam2, VALID_CACHEPARAM2);
-    else if (chktag(tag, "sd-driver"))     SetStringField (config, value, &config->sdDriver,    VALID_SDDRIVER);
-    else if (chktag(tag, "sdspi-do"))      SetNumericField(config, value, &config->sdspiDO,     VALID_SDSPIDO);
-    else if (chktag(tag, "sdspi-clk"))     SetNumericField(config, value, &config->sdspiClk,    VALID_SDSPICLK);
-    else if (chktag(tag, "sdspi-di"))      SetNumericField(config, value, &config->sdspiDI,     VALID_SDSPIDI);
-    else if (chktag(tag, "sdspi-cs"))      SetNumericField(config, value, &config->sdspiCS,     VALID_SDSPICS);
-    else if (chktag(tag, "sdspi-clr"))     SetNumericField(config, value, &config->sdspiClr,    VALID_SDSPICLR);
-    else if (chktag(tag, "sdspi-inc"))     SetNumericField(config, value, &config->sdspiInc,    VALID_SDSPIINC);
-    else if (chktag(tag, "sdspi-sel"))     SetNumericField(config, value, &config->sdspiSel,    VALID_SDSPISEL);
-    else if (chktag(tag, "sdspi-msk"))     SetNumericField(config, value, &config->sdspiMsk,    VALID_SDSPIMSK);
-    else if (chktag(tag, "eeprom-first"))  SetNumericField(config, value, &config->eepromFirst, VALID_EEPROMFIRST);
-    else {
-        Error("unknown board configuration variable: %s", tag);
-        return FALSE;
-    }
-    return TRUE;
-}
-
-void MergeConfigs(BoardConfig *dst, BoardConfig *src)
-{
-    if (src->validMask & VALID_CLKFREQ) {
-        dst->validMask |= VALID_CLKFREQ;
-        dst->clkfreq = src->clkfreq;
-    }
-    if (src->validMask & VALID_CLKMODE) {
-        dst->validMask |= VALID_CLKMODE;
-        dst->clkmode = src->clkmode;
-    }
-    if (src->validMask & VALID_BAUDRATE) {
-        dst->validMask |= VALID_BAUDRATE;
-        dst->baudrate = src->baudrate;
-    }
-    if (src->validMask & VALID_RXPIN) {
-        dst->validMask |= VALID_RXPIN;
-        dst->rxpin = src->rxpin;
-    }
-    if (src->validMask & VALID_TXPIN) {
-        dst->validMask |= VALID_TXPIN;
-        dst->txpin = src->txpin;
-    }
-    if (src->validMask & VALID_TVPIN) {
-        dst->validMask |= VALID_TVPIN;
-        dst->tvpin = src->tvpin;
-    }
-    if (src->validMask & VALID_CACHEDRIVER) {
-        dst->validMask |= VALID_CACHEDRIVER;
-        if (dst->cacheDriver)
-            free(dst->cacheDriver);
-        dst->cacheDriver = CopyString(src->cacheDriver);
-    }
-    if (src->validMask & VALID_CACHESIZE) {
-        dst->validMask |= VALID_CACHESIZE;
-        dst->cacheSize = src->cacheSize;
-    }
-    if (src->validMask & VALID_CACHEPARAM1) {
-        dst->validMask |= VALID_CACHEPARAM1;
-        dst->cacheParam1 = src->cacheParam1;
-    }
-    if (src->validMask & VALID_CACHEPARAM2) {
-        dst->validMask |= VALID_CACHEPARAM2;
-        dst->cacheParam2 = src->cacheParam2;
-    }
-    if (src->validMask & VALID_SDDRIVER) {
-        dst->validMask |= VALID_SDDRIVER;
-        if (dst->sdDriver)
-            free(dst->sdDriver);
-        dst->sdDriver = CopyString(src->sdDriver);
-    }
-    if (src->validMask & VALID_SDSPIDO) {
-        dst->validMask |= VALID_SDSPIDO;
-        dst->sdspiDO = src->sdspiDO;
-    }
-    if (src->validMask & VALID_SDSPICLK) {
-        dst->validMask |= VALID_SDSPICLK;
-        dst->sdspiClk = src->sdspiClk;
-    }
-    if (src->validMask & VALID_SDSPIDI) {
-        dst->validMask |= VALID_SDSPIDI;
-        dst->sdspiDI = src->sdspiDI;
-    }
-    if (src->validMask & VALID_SDSPICS) {
-        dst->validMask &= ~(VALID_SDSPICLR | VALID_SDSPIINC);
-        dst->validMask |= VALID_SDSPICS;
-        dst->sdspiCS = src->sdspiCS;
-    }
-    if (src->validMask & VALID_SDSPICLR) {
-        dst->validMask &= ~VALID_SDSPICS;
-        dst->validMask |= VALID_SDSPICLR;
-        dst->sdspiClr = src->sdspiClr;
-    }
-    if (src->validMask & VALID_SDSPIINC) {
-        dst->validMask &= ~(VALID_SDSPISEL | VALID_SDSPIMSK);
-        dst->validMask |= VALID_SDSPIINC;
-        dst->sdspiInc = src->sdspiInc;
-    }
-    if (src->validMask & VALID_SDSPISEL) {
-        dst->validMask &= ~(VALID_SDSPICLR | VALID_SDSPIINC);
-        dst->validMask |= VALID_SDSPISEL;
-        dst->sdspiSel = src->sdspiSel;
-    }
-    if (src->validMask & VALID_SDSPIMSK) {
-        dst->validMask &= ~(VALID_SDSPICLR | VALID_SDSPIINC);
-        dst->validMask |= VALID_SDSPIMSK;
-        dst->sdspiMsk = src->sdspiMsk;
-    }
-    if (src->validMask & VALID_EEPROMFIRST) {
-        dst->validMask |= VALID_EEPROMFIRST;
-        dst->eepromFirst = src->eepromFirst;
-    }
-}
-
-static BoardConfig *SetupDefaultConfiguration(void)
-{
-    BoardConfig *config;
-    
-    if (!(config = (BoardConfig *)malloc(sizeof(BoardConfig) + strlen(DEF_NAME))))
+    Field **pNext, *field;
+    int taglen;
+    for (pNext = &config->fields; (field = *pNext) != NULL; pNext = &field->next)
+        if (strcasecmp(tag, field->tag) == 0) {
+            *pNext = field->next;
+            free(field);
+            break;
+        }
+    taglen = strlen(tag) + 1;
+    if (!(field = (Field *)malloc(sizeof(Field) + taglen + strlen(value) + 1)))
         Fatal("insufficient memory");
-        
-    memset(config, 0, sizeof(BoardConfig));
-    config->validMask = VALID_CLKFREQ | VALID_CLKMODE | VALID_BAUDRATE | VALID_RXPIN | VALID_TXPIN | VALID_TVPIN
-                      | VALID_SDDRIVER | VALID_SDSPIDO | VALID_SDSPICLK | VALID_SDSPIDI | VALID_SDSPICS;
-    config->clkfreq = DEF_CLKFREQ;
-    config->clkmode = DEF_CLKMODE;
-    config->baudrate = DEF_BAUDRATE;
-    config->rxpin = DEF_RXPIN;
-    config->txpin = DEF_TXPIN;
-    config->tvpin = DEF_TVPIN;
-    config->sdDriver = CopyString("sd_driver.dat");
-    config->sdspiDO = DEF_SDSPIDO;
-    config->sdspiClk = DEF_SDSPICLK;
-    config->sdspiDI = DEF_SDSPIDI;
-    config->sdspiCS = DEF_SDSPICS;
-    strcpy(config->name, DEF_NAME);
-    
-    return config;
+    field->tag = (char *)field + sizeof(Field);
+    field->value = field->tag + taglen;
+    strcpy(field->tag, tag);
+    strcpy(field->value, value);
+    field->next = *pNext;
+    *pNext = field;
+}
+
+char *GetConfigField(BoardConfig *config, char *tag)
+{
+    while (config != NULL) {
+        Field *field;
+        for (field = config->fields; field != NULL; field = field->next)
+            if (strcasecmp(tag, field->tag) == 0)
+                return field->value;
+        config = config->parent;
+    }
+    return NULL;
+}
+
+int GetNumericConfigField(BoardConfig *config, char *tag, int *pValue)
+{
+    char *value;
+    if (!(value = GetConfigField(config, tag)))
+        return FALSE;
+    return ParseNumericExpr(value, pValue);
+}
+
+BoardConfig *MergeConfigs(BoardConfig *parent, BoardConfig *child)
+{
+    child->parent = parent;
+    return child;
+}
+
+static BoardConfig *GetDefaultConfiguration(void)
+{
+    static BoardConfig *defaultConfig = NULL;
+    if (!defaultConfig) {
+        defaultConfig = NewBoardConfig(NULL, DEF_BOARD);
+        SetConfigField(defaultConfig, "clkfreq",  "80000000");
+        SetConfigField(defaultConfig, "clkmode",  "XTAL1+PLL16X");
+        SetConfigField(defaultConfig, "baudrate", "115200");
+        SetConfigField(defaultConfig, "rxpin",    "31");
+        SetConfigField(defaultConfig, "txpin",    "30");
+    }
+    return defaultConfig;
 }
 
 static int SkipSpaces(LineBuf *buf)
@@ -490,15 +445,6 @@ static int DoOp(int *pValue, int op, int left, int right)
     }
     *pValue = left;
     return TRUE;
-}
-
-static char *CopyString(const char *str)
-{
-    char *copy = (char *)malloc(strlen(str) + 1);
-    if (!copy)
-        Fatal("insufficient memory");
-    strcpy(copy, str);
-    return copy;
 }
 
 static void ParseError(LineBuf *buf, const char *fmt, ...)

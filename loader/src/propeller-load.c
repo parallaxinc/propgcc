@@ -37,7 +37,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #ifdef MACOSX
 #define PORT_PREFIX "cu.usbserial"
 #endif
-#define DEF_BOARD   "default"
 
 static void Usage(void);
 
@@ -54,7 +53,7 @@ int main(int argc, char *argv[])
     char *infile = NULL, *p, *p2;
     int terminalMode = FALSE;
     BoardConfig *config, *configSettings;
-    char *port, *board;
+    char *port, *board, *subtype;
     System sys;
     int baud = 0;
     int flags = 0;
@@ -62,15 +61,17 @@ int main(int argc, char *argv[])
     int i;
     int terminalBaud = 0;
     int check_for_exit = 0; /* flag to terminal_mode to check for a certain sequence to indicate program exit */
+    
+    /* just display a usage message if no arguments are supplied */
+    if (argc <= 1)
+        Usage();
 
     /* get the environment settings */
-    if (!(port = getenv("PROPELLER_LOAD_PORT")))
-        port = NULL;
-    if (!(board = getenv("PROPELLER_LOAD_BOARD")))
-        board = DEF_BOARD;
+    port = getenv("PROPELLER_LOAD_PORT");
+    board = getenv("PROPELLER_LOAD_BOARD");
         
     /* setup a configuration to collect command line -D settings */
-    configSettings = NewBoardConfig("");
+    configSettings = NewBoardConfig(NULL, "");
 
     /* get the arguments */
     for(i = 1; i < argc; ++i) {
@@ -154,8 +155,7 @@ int main(int argc, char *argv[])
                 if ((p2 = strchr(p, '=')) == NULL)
                     Usage();
                 *p2++ = '\0';
-                if (!SetConfigField(configSettings, p, p2))
-                    return 1;
+                SetConfigField(configSettings, p, p2);
                 break;
             case 'I':
                 if(argv[i][2])
@@ -169,6 +169,8 @@ int main(int argc, char *argv[])
             case 'v':
                 verbose = TRUE;
                 break;
+            case '?':
+                /* fall through */
             default:
                 Usage();
                 break;
@@ -207,6 +209,25 @@ int main(int argc, char *argv[])
 #endif
     
     sys.ops = &myOps;
+    
+    /* parse the board option */
+    if (board) {
+    
+        /* split the board type from the subtype */
+        if ((p = strchr(board, ':')) != NULL) {
+            *p++ = '\0';
+            subtype = p;
+        }
+        
+        /* no subtype */
+        else
+            subtype = DEF_SUBTYPE;
+    }
+    
+    else {
+        board = DEF_BOARD;
+        subtype = DEF_SUBTYPE;
+    }
 
     /* setup for the selected board */
     if (!(config = ParseConfigurationFile(&sys, board))) {
@@ -214,11 +235,17 @@ int main(int argc, char *argv[])
         return 1;
     }
     
+    /* select the subtype */
+    if (subtype) {
+        if (!(config = GetConfigSubtype(config, subtype)))
+            fprintf(stderr, "error: can't find board configuration subtype '%s'\n", subtype);
+    }
+    
     /* override with any command line settings */
-    MergeConfigs(config, configSettings);
+    config = MergeConfigs(config, configSettings);
         
     /* use the baud rate from the configuration */
-    baud = config->baudrate;
+    GetNumericConfigField(config, "baudrate", &baud);
 
     /* initialize the serial port */
     if ((flags & (LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
@@ -270,10 +297,6 @@ int main(int argc, char *argv[])
         }
     }
     
-    /* no file to load so print a usage message if the user isn't asking to enter terminal mode */
-    else if (!terminalMode)
-        Usage();
-    
     /* enter terminal mode if requested */
     if (terminalMode) {
         printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
@@ -290,9 +313,9 @@ int main(int argc, char *argv[])
 /* Usage - display a usage message and exit */
 static void Usage(void)
 {
-    fprintf(stderr, "\
+fprintf(stderr, "\
 usage: propeller-load\n\
-         [ -b <type> ]     select target board (default is 'default')\n\
+         [ -b <type> ]     select target board (default is 'default:default')\n\
          [ -p <port> ]     serial port (default is to auto-detect the port)\n\
          [ -P ]            list available serial ports\n\
          [ -I <path> ]     add a directory to the include path\n\
@@ -307,7 +330,11 @@ usage: propeller-load\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
          [ -v ]            verbose output\n\
+         [ -? ]            display a usage message and exit\n\
          <name>            elf or spin binary file to load\n\
+\n\
+Target board type can be either a single identifier like 'propboe' in which case the subtype\n\
+defaults to 'default' or it can be of the form <type>:<subtype> like 'c3:ram'.\n\
 \n\
 Variables that can be set with -D are:\n\
   clkfreq clkmode baudrate rxpin txpin tvpin cache-driver cache-size cache-param1 cache-param2\n\
@@ -323,10 +350,10 @@ The -b option defaults to the value of the environment variable PROPELLER_LOAD_B
 The -p option defaults to the value of the environment variable PROPELLER_LOAD_PORT\n\
 if it is set. If not the port will be auto-detected.\n\
 \n\
-The \"sd loader\" loads AUTORUN.PEX from an SD card into external memory.\n\
+The 'sd loader' loads AUTORUN.PEX from an SD card into external memory.\n\
 It requires a board with either external RAM or ROM.\n\
 \n\
-The \"sd cache loader\" arranges to run AUTORUN.PEX directly from the SD card.\n\
+The 'sd cache loader' arranges to run AUTORUN.PEX directly from the SD card.\n\
 It can be used on any board with an SD card slot.\n\
 ");
     exit(1);
