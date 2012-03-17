@@ -470,8 +470,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     int cacheDriverImageSize, imageSize, target, ivalue;
     uint32_t loadAddress, params[3];
     ElfProgramHdr program_kernel;
+    char *cacheDriver, *value;
     int eepromFirst = FALSE;
-    char *cacheDriver;
 
     /* check for a cache driver for loading the external image */
     if (!(cacheDriver = GetConfigField(config, "cache-driver")))
@@ -481,8 +481,6 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     if (!(imagebuf = BuildExternalImage(c, &loadAddress, &imageSize)))
         return FALSE;
         
-#if 0
-    char *value; // move above if this code is enabled
     /* get the target memory space */
     if ((value = GetConfigField(config, "load-target")) != NULL) {
         if (strcasecmp(value, "flash") == 0)
@@ -493,12 +491,9 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
             return Error("unexpected value for 'load-target': %s", value);
     }
     
-    /* no load target so assume flash */
+    /* no load target so check the address */
     else
-        target = TYPE_FLASH_WRITE;
-#else
-    target = (loadAddress >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
-#endif
+        target = (loadAddress >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
 
     /* find the .xmmkernel segment */
     if (FindProgramSegment(c, ".xmmkernel", &program_kernel) < 0) {
