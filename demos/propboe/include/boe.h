@@ -25,6 +25,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 /* pin directions */
 #define IN      0
 #define OUT     1
@@ -50,6 +52,27 @@ void pulseOut(int pin, int duration);
 
 /* pause for a specified number of millisecons */
 void pause(int milliseconds);
+
+/* maximum size of an i2c data transfer */
+#define I2C_BUFFER_MAX  32
+
+/* i2c state information */
+typedef struct {
+    uint32_t scl_mask;
+    uint32_t sda_mask;
+    uint8_t address;
+    uint8_t buffer[I2C_BUFFER_MAX];
+    int count;
+    int index;
+} I2C;
+
+/* i2c functions */
+void i2cInit(I2C *dev, int scl, int sda);
+int i2cBegin(I2C *dev, int address);
+int i2cSend(I2C *dev, int byte);
+int i2cEnd(I2C *dev);
+int i2cRequest(I2C *dev, int address, int count);
+int i2cReceive(I2C *dev);
 
 #if defined(__cplusplus)
 }

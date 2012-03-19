@@ -13,6 +13,7 @@ OBJS = \
 getdir.o \
 getpin.o \
 high.o \
+i2c.o \
 input.o \
 low.o \
 output.o \
