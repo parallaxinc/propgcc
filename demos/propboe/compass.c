@@ -55,8 +55,8 @@ void CompassRead(I2C *dev, int *px, int *py, int *pz)
         
     /* assemble the return values */
     x = (data[0] << 8) | data[1];
-    y = (data[2] << 8) | data[3];
-    z = (data[4] << 8) | data[5];
+    z = (data[2] << 8) | data[3];
+    y = (data[4] << 8) | data[5];
     
     /* return the signed values */
     *px = x;
