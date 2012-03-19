@@ -4,17 +4,15 @@ CC=propeller-elf-gcc
 RM=rm -f
 
 CFLAGS=-Os -mlmm -Iinclude
+CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti
 LDFLAGS=-mlmm -Llib
 
 LIBS=-lboe
 
 all:	$(TARGETS)
 
-boetest.elf:	boetest.cpp boelib
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS) -fno-exceptions -fno-rtti
-	
-compass.elf:	compass.c boelib
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
+%.elf:	%.cpp boelib
+	$(CC) $(CXXFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
 	
 boelib:
 	$(MAKE) -C libsrc

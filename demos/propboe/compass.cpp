@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "Term.h"
 #include "boe.h"
 
 #define COMPASS_ADDR    0x1e
@@ -8,6 +9,7 @@ void CompassRead(I2C *dev, int *px, int *py, int *pz);
 
 int main(void)
 {
+    SerialTerm serial(stdout);
     I2C dev;
     
     i2cInit(&dev, 1, 0);
@@ -18,7 +20,13 @@ int main(void)
         int x, y, z;
         
         CompassRead(&dev, &x, &y, &z);
-        printf("x %d, y %d, z %d\n", x, y, z);
+        serial.str("x ");
+        serial.dec(x);
+        serial.str(", y ");
+        serial.dec(y);
+        serial.str(", z ");
+        serial.dec(z);
+        serial.str("\n");
     
         pause(2000);
     }
