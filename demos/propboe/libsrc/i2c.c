@@ -79,27 +79,35 @@ int i2cEnd(I2C_STATE *dev)
     return 0;
 }
 
-int i2cRequest(I2C_STATE *dev, int address, int count)
+int i2cRequestBuf(I2C_STATE *dev, int address, int count, uint8_t *buf)
 {
-    int remaining, i;
+    int i;
     
-    if (count >= I2C_BUFFER_MAX)
-        return -1;
-        
     i2cStart(dev);
         
     if (i2cSendByte(dev, (address << 1) | I2C_READ) != 0)
         return -1;
     
-    for (i = 0, remaining = count; --remaining >= 0; ++i) {
-        int byte = i2cReceiveByte(dev, remaining != 0);
+    for (i = 0; --count >= 0; ++i) {
+        int byte = i2cReceiveByte(dev, count != 0);
         if (byte < 0)
             return -1;
-        dev->buffer[i] = byte;
+        buf[i] = byte;
     }
     
     i2cStop(dev);
     
+    return 0;
+}
+
+int i2cRequest(I2C_STATE *dev, int address, int count)
+{
+    if (count >= I2C_BUFFER_MAX)
+        return -1;
+        
+    if (i2cRequestBuf(dev, address, count, dev->buffer) != 0)
+        return -1;
+
     dev->count = count;
     dev->index = 0;
     

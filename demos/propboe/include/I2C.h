@@ -32,6 +32,7 @@ class I2C {
     int begin(int address);
     int send(int byte);
     int end();
+    int request(int address, int count, uint8_t *buf);
     int request(int address, int count);
     int receive();
 };
@@ -58,6 +59,11 @@ inline int I2C::send(int byte)
 inline int I2C::end()
 {
     return i2cEnd(&m_dev);
+}
+
+inline int I2C::request(int address, int count, uint8_t *buf)
+{
+    return i2cRequestBuf(&m_dev, address, count, buf);
 }
 
 inline int I2C::request(int address, int count)
