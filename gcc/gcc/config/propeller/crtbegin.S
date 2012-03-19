@@ -41,9 +41,11 @@
 
 	.section .init
 	.global entry
+	.global start
 	.global _exit
 	
 entry
+start
 	jmp	#__LMM_CALL
 	.long	___init
 
