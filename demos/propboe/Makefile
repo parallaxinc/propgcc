@@ -14,10 +14,10 @@ all:	$(TARGETS)
 %.elf:	%.cpp lib/libboe.a
 	$(CC) $(CXXFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
 	
-boelib:
+lib/libboe.a:
 	$(MAKE) -C libsrc
 
-run:	$(TARGET)
+run:	$(TARGET).elf
 	propeller-load -b propboe $< -r -t
 
 clean:

@@ -64,15 +64,15 @@ typedef struct {
     uint8_t buffer[I2C_BUFFER_MAX];
     int count;
     int index;
-} I2C;
+} I2C_STATE;
 
 /* i2c functions */
-void i2cInit(I2C *dev, int scl, int sda);
-int i2cBegin(I2C *dev, int address);
-int i2cSend(I2C *dev, int byte);
-int i2cEnd(I2C *dev);
-int i2cRequest(I2C *dev, int address, int count);
-int i2cReceive(I2C *dev);
+void i2cInit(I2C_STATE *dev, int scl, int sda);
+int i2cBegin(I2C_STATE *dev, int address);
+int i2cSend(I2C_STATE *dev, int byte);
+int i2cEnd(I2C_STATE *dev);
+int i2cRequest(I2C_STATE *dev, int address, int count);
+int i2cReceive(I2C_STATE *dev);
 
 #if defined(__cplusplus)
 }

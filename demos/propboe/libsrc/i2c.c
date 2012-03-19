@@ -32,12 +32,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define i2c_set_sda_low(dev)    (DIRA |= (dev)->sda_mask)
 
 /* local functions */
-static void i2cStart(I2C *dev);
-static void i2cStop(I2C *dev);
-static int i2cSendByte(I2C *dev, uint8_t byte);
-static uint8_t i2cReceiveByte(I2C *dev, int acknowledge);
+static void i2cStart(I2C_STATE *dev);
+static void i2cStop(I2C_STATE *dev);
+static int i2cSendByte(I2C_STATE *dev, uint8_t byte);
+static uint8_t i2cReceiveByte(I2C_STATE *dev, int acknowledge);
 
-void i2cInit(I2C *dev, int scl, int sda)
+void i2cInit(I2C_STATE *dev, int scl, int sda)
 {
     uint32_t both_mask;
     dev->scl_mask = 1 << scl;
@@ -47,13 +47,13 @@ void i2cInit(I2C *dev, int scl, int sda)
     OUTA &= both_mask;
 }
 
-int i2cBegin(I2C *dev, int address)
+int i2cBegin(I2C_STATE *dev, int address)
 {
     dev->address = address;
     dev->count = 0;
 }
 
-int i2cSend(I2C *dev, int byte)
+int i2cSend(I2C_STATE *dev, int byte)
 {
     if (dev->count >= I2C_BUFFER_MAX)
         return -1;
@@ -61,7 +61,7 @@ int i2cSend(I2C *dev, int byte)
     return 0;
 }
 
-int i2cEnd(I2C *dev)
+int i2cEnd(I2C_STATE *dev)
 {
     int i;
     
@@ -79,7 +79,7 @@ int i2cEnd(I2C *dev)
     return 0;
 }
 
-int i2cRequest(I2C *dev, int address, int count)
+int i2cRequest(I2C_STATE *dev, int address, int count)
 {
     int remaining, i;
     
@@ -106,26 +106,26 @@ int i2cRequest(I2C *dev, int address, int count)
     return 0;
 }
 
-int i2cReceive(I2C *dev)
+int i2cReceive(I2C_STATE *dev)
 {
     if (dev->index >= dev->count)
         return -1;
     return dev->buffer[dev->index++];
 }
 
-static void i2cStart(I2C *dev)
+static void i2cStart(I2C_STATE *dev)
 {
     i2c_set_sda_low(dev);
     i2c_set_scl_low(dev);
 }
 
-static void i2cStop(I2C *dev)
+static void i2cStop(I2C_STATE *dev)
 {
     i2c_float_scl_high(dev);
     i2c_float_sda_high(dev);
 }
 
-static int i2cSendByte(I2C *dev, uint8_t byte)
+static int i2cSendByte(I2C_STATE *dev, uint8_t byte)
 {
     int count, result;
     
@@ -150,7 +150,7 @@ static int i2cSendByte(I2C *dev, uint8_t byte)
     return result;
 }
 
-static uint8_t i2cReceiveByte(I2C *dev, int acknowledge)
+static uint8_t i2cReceiveByte(I2C_STATE *dev, int acknowledge)
 {
     uint8_t byte = 0;
     int count;
