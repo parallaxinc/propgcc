@@ -103,9 +103,34 @@ int serial_init(const char* port, unsigned long baud)
     }
 
     switch(baud) {
-        case 0:
+        case 0: // default
             tbaud = B115200;
             break;
+#ifdef B921600
+        case 921600:
+            tbaud = B921600;
+            break;
+#endif
+#ifdef B576000
+        case 576000:
+            tbaud = B576000;
+            break;
+#endif
+#ifdef B500000
+        case 500000:
+            tbaud = B500000;
+            break;
+#endif
+#ifdef B460800
+        case 460800:
+            tbaud = B460800;
+            break;
+#endif
+#ifdef B230400
+        case 230400:
+            tbaud = B230400;
+            break;
+#endif
         case 115200:
             tbaud = B115200;
             break;

@@ -99,70 +99,10 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
 static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
-static int WriteExecutableFile(char *path, ElfContext *c);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
-static char *ConstructOutputName(char *outfile, const char *infile, char *ext);
-static int Error(char *fmt, ...);
-
-#if 0
-
-static int ShowPort(const char* port, void* data)
-{
-    printf("%s\n", port);
-    return 1;
-}
-
-void ShowPorts(char *prefix)
-{
-    serial_find(prefix, ShowPort, NULL);
-}
-
-typedef struct {
-    int baud;
-    int flags;
-    char *actualport;
-} CheckPortInfo;
-
-static int CheckPort(const char* port, void* data)
-{
-    CheckPortInfo* info = (CheckPortInfo*)data;
-    int rc;
-    if (info->flags & IFLAG_VERBOSE)
-        printf("Trying %s                    \r", port); fflush(stdout);
-    if ((rc = popenport(port, info->baud)) != PLOAD_STATUS_OK)
-        return rc;
-    strncpy(info->actualport, port, PATH_MAX - 1);
-    info->actualport[PATH_MAX - 1] = '\0';
-    return 0;
-}
-
-int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
-{
-    int rc;
-    
-    if (port) {
-        strncpy(actualport, port, PATH_MAX - 1);
-        actualport[PATH_MAX - 1] = '\0';
-        rc = popenport(port, baud);
-    }
-    else {
-        CheckPortInfo info;
-        info.baud = baud;
-        info.flags = flags;
-        info.actualport = actualport;
-        if (serial_find(prefix, CheckPort, &info) == 0)
-            rc = PLOAD_STATUS_OK;
-        else
-            rc = PLOAD_STATUS_NO_PROPELLER;
-    }
-        
-    return rc;
-}
-
-#endif
 
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags)
 {    
@@ -291,20 +231,36 @@ static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     return TRUE;
 }
 
-static void SetSDParams(BoardConfig *config, SDParams *params)
+static int SetSDParams(BoardConfig *config, SDParams *params)
 {
-    params->do_mask = 1 << config->sdspiDO;
-    params->clk_mask = 1 << config->sdspiClk;
-    params->di_mask = 1 << config->sdspiDI;
-    if (config->validMask & VALID_SDSPICS)
-        params->cs_clr_mask = 1 << config->sdspiCS;
-    else if (config->validMask & VALID_SDSPICLR)
-        params->cs_clr_mask = 1 << config->sdspiClr;
-    if (config->validMask & VALID_SDSPISEL)
-        params->select_inc_mask = config->sdspiSel;
-    else if (config->validMask & VALID_SDSPIINC)
-        params->select_inc_mask = 1 << config->sdspiInc;
-    params->select_mask = config->sdspiMsk;
+    int value;
+    
+    if (!GetNumericConfigField(config, "sdspi-do", &value))
+        return Error("missing configuration parameter: sdspi-do");
+    params->do_mask = 1 << value;
+
+    if (!GetNumericConfigField(config, "sdspi-clk", &value))
+        return Error("missing configuration parameter: sdspi-clk");
+    params->clk_mask = 1 << value;
+    
+    if (!GetNumericConfigField(config, "sdspi-di", &value))
+        return Error("missing configuration parameter: sdspi-di");
+    params->di_mask = 1 << value;
+
+    if (GetNumericConfigField(config, "sdspi-cs", &value))
+        params->cs_clr_mask = 1 << value;
+    else if (GetNumericConfigField(config, "sdspi-clr", &value))
+        params->cs_clr_mask = 1 << value;
+        
+    if (GetNumericConfigField(config, "sdspi-sel", &value))
+        params->select_inc_mask = value;
+    else if (GetNumericConfigField(config, "sdspi-inc", &value))
+        params->select_inc_mask = 1 << value;
+        
+    if (GetNumericConfigField(config, "sdspi-msk", &value))
+        params->select_mask = value;
+        
+    return TRUE;
 }
 
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
@@ -317,6 +273,8 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     uint32_t start;
     ElfContext *c;
     ElfHdr hdr;
+    char *value;
+    int ivalue;
     FILE *fp;
     
     /* open the sd loader executable */
@@ -339,16 +297,19 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("can't find info (.coguser0) segment");
     
     info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
-    info->cache_size = config->cacheSize;
-    info->cache_param1 = config->cacheParam1;
-    info->cache_param2 = config->cacheParam2;
+    if (GetNumericConfigField(config, "cache-size", &ivalue))
+        info->cache_size = ivalue;
+    if (GetNumericConfigField(config, "cache-param1", &ivalue))
+        info->cache_param1 = ivalue;
+    if (GetNumericConfigField(config, "cache-param2", &ivalue))
+        info->cache_param2 = ivalue;
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find cache driver (.coguser1) segment");
 
-    if (config->cacheDriver) {
-        if (!ReadCogImage(sys, config->cacheDriver, driverImage, &driverSize))
-            return Error("reading cache driver image failed: %s", config->cacheDriver);
+    if ((value = GetConfigField(config, "cache-driver")) != NULL) {
+        if (!ReadCogImage(sys, value, driverImage, &driverSize))
+            return Error("reading cache driver image failed: %s", value);
         memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
     }
     else
@@ -357,11 +318,12 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     if (FindProgramSegment(c, ".coguser2", &program) < 0)
         return Error("can't find sd_driver (.coguser2) segment");
     
-    if (config->sdDriver) {
+    if ((value = GetConfigField(config, "sd-driver")) != NULL) {
         SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
-        if (!ReadCogImage(sys, config->sdDriver, driverImage, &driverSize))
-            return Error("reading sd driver image failed: %s", config->sdDriver);
-        SetSDParams(config, &dat->sd_params);
+        if (!ReadCogImage(sys, value, driverImage, &driverSize))
+            return Error("reading sd driver image failed: %s", value);
+        if (!SetSDParams(config, &dat->sd_params))
+            return FALSE;
         memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
         info->use_cache_driver_for_sd = FALSE;
     }
@@ -403,6 +365,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     uint32_t start;
     ElfContext *c;
     ElfHdr hdr;
+    int ivalue;
     FILE *fp;
     
     /* open the sd loader executable */
@@ -425,20 +388,24 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("can't find info (.coguser0) segment");
     
     info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
-    info->cache_size = config->cacheSize;
-    info->cache_param1 = config->cacheParam1;
-    info->cache_param2 = config->cacheParam2;
+    if (GetNumericConfigField(config, "cache-size", &ivalue))
+        info->cache_size = ivalue;
+    if (GetNumericConfigField(config, "cache-param1", &ivalue))
+        info->cache_param1 = ivalue;
+    if (GetNumericConfigField(config, "cache-param2", &ivalue))
+        info->cache_param2 = ivalue;
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find cache driver (.coguser1) segment");
 
     if (!ReadCogImage(sys, "sd_cache.dat", driverImage, &driverSize))
-        return Error("reading cache driver image failed: %s", config->cacheDriver);
+        return Error("reading cache driver image failed: sd_cache.dat");
         
     dat = (SDCacheDatHdr *)driverImage;
     params = (SDCacheParams *)(driverImage + dat->params_off);
     memset(params, 0, sizeof(SDCacheParams));
-    SetSDParams(config, &params->sd_params);
+    if (!SetSDParams(config, &params->sd_params))
+        return FALSE;
     memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
     info->use_cache_driver_for_sd = TRUE;
             
@@ -500,20 +467,33 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf;
-    int cacheDriverImageSize, imageSize, target;
+    int cacheDriverImageSize, imageSize, target, ivalue;
     uint32_t loadAddress, params[3];
     ElfProgramHdr program_kernel;
+    char *cacheDriver, *value;
+    int eepromFirst = FALSE;
 
     /* check for a cache driver for loading the external image */
-    if (!config->cacheDriver)
+    if (!(cacheDriver = GetConfigField(config, "cache-driver")))
         return Error("no cache driver to load external image");
     
     /* build the external image */
     if (!(imagebuf = BuildExternalImage(c, &loadAddress, &imageSize)))
         return FALSE;
         
-    /* determine the load target (flash or ram) */
-    target = (loadAddress >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
+    /* get the target memory space */
+    if ((value = GetConfigField(config, "load-target")) != NULL) {
+        if (strcasecmp(value, "flash") == 0)
+            target = TYPE_FLASH_WRITE;
+        else if (strcasecmp(value, "ram") == 0)
+            target = TYPE_RAM_WRITE;
+        else
+            return Error("unexpected value for 'load-target': %s", value);
+    }
+    
+    /* no load target so check the address */
+    else
+        target = (loadAddress >= FLASH_BASE ? TYPE_FLASH_WRITE : TYPE_RAM_WRITE);
 
     /* find the .xmmkernel segment */
     if (FindProgramSegment(c, ".xmmkernel", &program_kernel) < 0) {
@@ -528,7 +508,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     }
 
     /* handle downloads to eeprom that must be done before the external memory download */
-    if (config->eepromFirst && (flags & LFLAG_WRITE_EEPROM)) {
+    GetNumericConfigField(config, "eeprom-first", &eepromFirst);
+    if (eepromFirst && (flags & LFLAG_WRITE_EEPROM)) {
         if (target == TYPE_FLASH_WRITE) {
             if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, DOWNLOAD_EEPROM)) {
                 free(kernelbuf);
@@ -542,12 +523,18 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     }
     
     /* patch serial helper for clock mode and frequency */
-    hdr->clkfreq = config->clkfreq;
-    hdr->clkmode = config->clkmode;
-    dat->baudrate = config->baudrate;
-    dat->rxpin = config->rxpin;
-    dat->txpin = config->txpin;
-    dat->tvpin = config->tvpin;
+    GetNumericConfigField(config, "clkfreq", &ivalue);
+    hdr->clkfreq = ivalue;
+    GetNumericConfigField(config, "clkmode", &ivalue);
+    hdr->clkmode = ivalue;
+    GetNumericConfigField(config, "baudrate", &ivalue);
+    dat->baudrate = ivalue;
+    GetNumericConfigField(config, "rxpin", &ivalue);
+    dat->rxpin = ivalue;
+    GetNumericConfigField(config, "txpin", &ivalue);
+    dat->txpin = ivalue;
+    if (GetNumericConfigField(config, "clkfreq", &ivalue))
+        dat->tvpin = ivalue;
         
     /* recompute the checksum */
     UpdateChecksum(serial_helper_array, serial_helper_size);
@@ -567,15 +554,18 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     }
     
     /* load the cache driver */
-    if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &cacheDriverImageSize)) {
+    if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &cacheDriverImageSize)) {
         free(kernelbuf);
         free(imagebuf);
-        return Error("reading cache driver image failed: %s", config->cacheDriver);
+        return Error("reading cache driver image failed: %s", cacheDriver);
     }
-    printf("Loading cache driver '%s'\n", config->cacheDriver);
-    params[0] = config->cacheSize;
-    params[1] = config->cacheParam1;
-    params[2] = config->cacheParam2;
+    printf("Loading cache driver '%s'\n", cacheDriver);
+    if (GetNumericConfigField(config, "cache-size", &ivalue))
+        params[0] = ivalue;
+    if (GetNumericConfigField(config, "cache-param1", &ivalue))
+        params[1] = ivalue;
+    if (GetNumericConfigField(config, "cache-param2", &ivalue))
+        params[2] = ivalue;
     if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
     ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
     ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
@@ -585,7 +575,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     }
             
     /* write the full image to memory */
-    printf("Loading program image\n");
+    printf("Loading program image to %s\n", target == TYPE_FLASH_WRITE ? "flash" : "RAM");
     if (!SendPacket(target, (uint8_t *)"", 0)
     ||  !WriteBuffer(imagebuf, imageSize)) {
         free(kernelbuf);
@@ -598,7 +588,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     
     /* handle downloads to eeprom */
     if (flags & LFLAG_WRITE_EEPROM) {
-        if (config->eepromFirst)
+        if (eepromFirst)
             preset(); // just reset to start the program loaded into eeprom above
         else {
             int mode = (flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM);
@@ -630,62 +620,11 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     return TRUE;
 }
     
-static int WriteExecutableFile(char *path, ElfContext *c)
-{
-    char outfile[PATH_MAX];
-    ElfProgramHdr program_kernel;
-    uint8_t *imagebuf, *buf;
-    uint32_t loadAddress;
-    PexeFileHdr hdr;
-    int imageSize;
-    FILE *fp;
-    
-    /* build the external image */
-    if (!(imagebuf = BuildExternalImage(c, &loadAddress, &imageSize)))
-        return FALSE;
-        
-    /* find the .xmmkernel segment */
-    if (FindProgramSegment(c, ".xmmkernel", &program_kernel) < 0)
-        return Error("can't find .xmmkernel segment");
-    
-    /* load the .kernel section */
-    if (!(buf = LoadProgramSegment(c, &program_kernel)))
-        return Error("can't load .xmmkernel section");
-
-    memset(&hdr, 0, sizeof(hdr));
-    strcpy(hdr.tag, PEXE_TAG);
-    hdr.version = PEXE_VERSION;
-    hdr.loadAddress = loadAddress;
-    memcpy(hdr.kernel, buf, program_kernel.filesz);
-    
-    ConstructOutputName(outfile, path, ".pex");
-    if (!(fp = fopen(outfile, "wb"))) {
-        free(imagebuf);
-        return Error("can't create '%s'", outfile);
-    }
-    
-    /* write the header */
-    if (fwrite(&hdr, 1, sizeof(hdr), fp) != sizeof(hdr)) {
-        free(imagebuf);
-        return Error("error writing '%s'", outfile);
-    }
-    
-    /* write the image */
-    if (fwrite(imagebuf, 1, imageSize, fp) != imageSize) {
-        free(imagebuf);
-        return Error("error writing '%s'", outfile);
-    }
-    
-    fclose(fp);
-    
-    return TRUE;
-}
-
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
 {
     /* build the flash loader image */
     if (!BuildFlashLoaderImage(sys, config, vm_array, vm_size))
-        return Error("reading cache driver image failed: %s", config->cacheDriver);
+        return Error("building flash loader image failed");
         
     /* load the flash loader program */
     if (preset() != 0 || ploadbuf(flash_loader_array, flash_loader_size, mode) != 0)
@@ -701,14 +640,20 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     SpinObj *obj = ( SpinObj *)(flash_loader_array + hdr->pbase);
     FlashLoaderDatHdr *dat = (FlashLoaderDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX];
-    int imageSize;
+    int imageSize, ivalue;
+    char *cacheDriver;
     
-    if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
-        return Error("reading cache driver image failed: %s", config->cacheDriver);
+    if (!(cacheDriver = GetConfigField(config, "cache-driver")))
+        return Error("no cache driver in board configuration");
+        
+    if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &imageSize))
+        return Error("reading cache driver image failed: %s", cacheDriver);
         
     /* patch flash loader for clock mode and frequency */
-    hdr->clkfreq = config->clkfreq;
-    hdr->clkmode = config->clkmode;
+    GetNumericConfigField(config, "clkfreq", &ivalue);
+    hdr->clkfreq = ivalue;
+    GetNumericConfigField(config, "clkmode", &ivalue);
+    hdr->clkmode = ivalue;
     
     /* copy the vm image to the binary file */
     memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
@@ -717,9 +662,12 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     memcpy((uint8_t *)dat + dat->cache_code_off, cacheDriverImage, imageSize);
     
     /* get the cache size */
-    dat->cache_size = config->cacheSize;
-    dat->cache_param1 = config->cacheParam1;
-    dat->cache_param2 = config->cacheParam2;
+    if (GetNumericConfigField(config, "cache-size", &ivalue))
+        dat->cache_size = ivalue;
+    if (GetNumericConfigField(config, "cache-param1", &ivalue))
+        dat->cache_param1 = ivalue;
+    if (GetNumericConfigField(config, "cache-param2", &ivalue))
+        dat->cache_param2 = ivalue;
     
     /* recompute the checksum */
     UpdateChecksum(flash_loader_array, flash_loader_size);
@@ -758,7 +706,7 @@ static int WriteBuffer(uint8_t *buf, int size)
 }
 
 /* ConstructOutputName - construct an output filename from an input filename */
-static char *ConstructOutputName(char *outfile, const char *infile, char *ext)
+char *ConstructOutputName(char *outfile, const char *infile, char *ext)
 {
     char *end = strrchr(infile, '.');
     if (end && !strchr(end, '/') && !strchr(end, '\\')) {
@@ -771,7 +719,7 @@ static char *ConstructOutputName(char *outfile, const char *infile, char *ext)
     return outfile;
 }
 
-static int Error(char *fmt, ...)
+int Error(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);

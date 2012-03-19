@@ -224,7 +224,8 @@ uint32_t dfs_mount(void)
     strcpy(dfs_currdir, "/");
 
     // Start up the low-level file I/O driver
-    DFS_InitFileIO();
+    if ((retval = DFS_InitFileIO()) != DFS_OK)
+        return retval;
 
     // Find the first sector of the volume
     DFS_ReadSector(0, dfs_scratch, 0, 1);
@@ -232,8 +233,7 @@ uint32_t dfs_mount(void)
         !strncmp((char *)dfs_scratch+0x52, "FAT32", 5))
         sector = 0;
     else
-        sector = dfs_scratch[0x1c6] | (dfs_scratch[0x1c7] << 8) |
-                (dfs_scratch[0x1c8] << 16) | (dfs_scratch[0x1c9] << 24);
+        memcpy(&sector, &dfs_scratch[0x1c6], 4);
 
     // Get the volume information
     retval = DFS_GetVolInfo(0, dfs_scratch, sector, &dfs_volinfo);

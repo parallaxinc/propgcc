@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
     int baud = 0;
     uint8_t byte;
     System sys;
+    int ivalue;
     
     /* get the environment settings */
     if (!(port = getenv("PROPELLER_LOAD_PORT")))
@@ -143,7 +144,7 @@ int main(int argc, char *argv[])
         board = DEF_BOARD;
     
     /* setup a configuration to collect command line -D settings */
-    configSettings = NewBoardConfig("");
+    configSettings = NewBoardConfig(NULL, "");
     
     /* get the arguments */
     for(i = 1; i < argc; ++i) {
@@ -201,8 +202,7 @@ int main(int argc, char *argv[])
                     if ((p2 = strchr(p, '=')) == NULL)
                         Usage();
                     *p2++ = '\0';
-                    if (!SetConfigField(configSettings, p, p2))
-                        return 1;
+                    SetConfigField(configSettings, p, p2);
                     break;
                 case 'I':
                     if(argv[i][2])
@@ -253,7 +253,8 @@ int main(int argc, char *argv[])
     MergeConfigs(config, configSettings);
     
     /* use the baud rate from the configuration */
-    baud = config->baudrate;
+    if (GetNumericConfigField(config, "baudrate", &ivalue))
+        baud = ivalue;
     
     /* enble verbose progress messages if requested (confuses gdb so should only be used for testing the stub) */
     psetverbose(verbose);

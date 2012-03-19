@@ -24,6 +24,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include <stdint.h>
 
+#define ST_NULL     0
+#define ST_PROGBITS 1
+#define ST_SYMTAB   2
+#define ST_STRTAB   3
+#define ST_RELA     4
+#define ST_HASH     5
+#define ST_DYNAMIC  6
+#define ST_NOTE     7
+#define ST_NOBITS   8
+#define ST_REL      9
+#define ST_SHLIB    10
+#define ST_DYNSYM   11
+
+#define SF_WRITE    1
+#define SF_ALLOC    2
+#define SF_EXECUTE  4
+
 typedef struct {
     uint8_t     ident[16];
     uint16_t    type;
