@@ -57,6 +57,8 @@
 #define PROPELLER_R0_REGNUM 0
 #define PROPELLER_R1_REGNUM 1
 
+#define NUM_ARG_REGS 6
+
 struct gdbarch_tdep {
   int elf_flags;
 };
@@ -446,8 +448,8 @@ propeller_frame_this_id (struct frame_info *this_frame, void **this_cache,
   if (cache->base == 0)
     return;
 
-  /* See the end of m68k_push_dummy_call.  */
-  *this_id = frame_id_build (cache->base + 8, cache->pc);
+  /* See the end of propeller_push_dummy_call.  */
+  *this_id = frame_id_build (cache->base + 4, cache->pc);
 }
 
 static struct value *
@@ -526,6 +528,72 @@ static const struct frame_base propeller_frame_base =
   propeller_frame_arg_address
 };
 
+
+static CORE_ADDR
+propeller_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
+		      struct regcache *regcache, CORE_ADDR bp_addr, int nargs,
+		      struct value **args, CORE_ADDR sp, int struct_return,
+		      CORE_ADDR struct_addr)
+{
+  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+  gdb_byte buf[4];
+  int i;
+  int arg_regs = 0;
+
+  /* Push arguments in reverse order.  */
+  for (i = nargs - 1; i >= 0; i--)
+    if(i < NUM_ARG_REGS){
+      memcpy(buf, value_contents(args[i]), 4);
+      fprintf(stderr, "Storing %02x%02x%02x%02x into register %d\n", buf[3],buf[2],buf[1],buf[0], i);
+      regcache_cooked_write(regcache, i, value_contents(args[i]));
+    } else
+    {
+      struct type *value_type = value_enclosing_type (args[i]);
+      int len = TYPE_LENGTH (value_type);
+      int container_len = (len + 3) & ~3;
+      int offset;
+
+      /* Non-scalars bigger than 4 bytes are left aligned, others are
+	 right aligned.  */
+      if ((TYPE_CODE (value_type) == TYPE_CODE_STRUCT
+	   || TYPE_CODE (value_type) == TYPE_CODE_UNION
+	   || TYPE_CODE (value_type) == TYPE_CODE_ARRAY)
+	  && len > 4)
+	offset = 0;
+      else
+	offset = container_len - len;
+      fprintf(stderr, "Storing %d onto stack\n", value_address(args[i]));
+      sp -= container_len;
+      write_memory (sp + offset, value_contents_all (args[i]), len);
+    }
+
+  /* Store struct value address.  */
+  if (struct_return)
+    {
+      fprintf(stderr, "Storing value address %08x to r0\n", struct_addr);
+      store_unsigned_integer (buf, 4, byte_order, struct_addr);
+      regcache_cooked_write (regcache, 0, buf);
+    }
+
+  /* Store return address.  */
+  fprintf(stderr, "Storing return address %08x to r15\n", bp_addr);
+  store_unsigned_integer (buf, 4, byte_order, bp_addr);
+  regcache_cooked_write (regcache, 15, buf);
+
+  /* Finally, update the stack pointer...  */
+  fprintf(stderr, "Storing %08x to sp and fp\n", sp);
+  store_unsigned_integer (buf, 4, byte_order, sp);
+  regcache_cooked_write (regcache, PROPELLER_SP_REGNUM, buf);
+
+  /* ...and fake a frame pointer.  */
+  regcache_cooked_write (regcache, PROPELLER_FP_REGNUM, buf);
+
+  /* DWARF2/GCC uses the stack address *before* the function call as a
+     frame's CFA.  */
+  return sp + 4;
+}
+
 static struct frame_id
 propeller_dummy_id (struct gdbarch *gdbarch, struct frame_info *this_frame)
 {
@@ -533,8 +601,8 @@ propeller_dummy_id (struct gdbarch *gdbarch, struct frame_info *this_frame)
 
   fp = get_frame_register_unsigned (this_frame, PROPELLER_FP_REGNUM);
 
-  /* See the end of m68k_push_dummy_call.  */
-  return frame_id_build (fp + 8, get_frame_pc (this_frame));
+  /* See the end of propeller_push_dummy_call.  */
+  return frame_id_build (fp + 4, get_frame_pc (this_frame));
 }
 
 static const gdb_byte bpt_little[4] = {0x14, 0x00, 0x7c, 0x5c};
@@ -618,6 +686,22 @@ propeller_store_return_value (struct type *type, struct regcache *regcache,
   else
     internal_error (__FILE__, __LINE__,
 		    _("Cannot store return value of %d bytes long."), len);
+}
+
+/* Return non-zero if TYPE, which is assumed to be a structure or
+   union type, should be returned in registers for architecture
+   GDBARCH.  */
+
+static int
+propeller_reg_struct_return_p (struct gdbarch *gdbarch, struct type *type)
+{
+  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+  enum type_code code = TYPE_CODE (type);
+  int len = TYPE_LENGTH (type);
+
+  gdb_assert (code == TYPE_CODE_STRUCT || code == TYPE_CODE_UNION);
+
+   return (len == 1 || len == 2 || len == 4 || len == 8);
 }
 
 /* Determine, for architecture GDBARCH, how a return value of TYPE
@@ -726,9 +810,9 @@ propeller_gdbarch_init (struct gdbarch_info info,
   //  set_gdbarch_pseudo_register_read (gdbarch, propeller_pseudo_register_read);
   //  set_gdbarch_pseudo_register_write (gdbarch, propeller_pseudo_register_write);
 
-  //  set_gdbarch_push_dummy_call (gdbarch, propeller_push_dummy_call);
+  set_gdbarch_push_dummy_call (gdbarch, propeller_push_dummy_call);
 
-  //  set_gdbarch_return_value (gdbarch, propeller_return_value);
+  set_gdbarch_return_value (gdbarch, propeller_return_value);
   set_gdbarch_skip_prologue (gdbarch, propeller_skip_prologue);
   set_gdbarch_inner_than (gdbarch, core_addr_lessthan);
   set_gdbarch_breakpoint_from_pc (gdbarch, propeller_breakpoint_from_pc);
