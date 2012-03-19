@@ -8,7 +8,7 @@
 	You cannot re-copyright or restrict use of the code as released by Lewin Edwards.
 
     10/28/2010 - Minor edits to correct compiler warnings by David Betz
-    11/5/2011 - Added PROPGCC_MODE flag to enable/disable code - Dave Hein
+    11/5/2011 - Added PROPGCC_MODS flag to enable/disable code - Dave Hein
     11/5/2011 - Added DFS_DIRECTORY to open a directory as a file - Dave Hein
 */
 
@@ -17,7 +17,7 @@
 
 #include "dosfs.h"
 
-#ifndef PROPGCC_MODE
+#ifndef PROPGCC_MODS
 /*
 	Get starting sector# of specified partition on drive #unit
 	NOTE: This code ASSUMES an MBR on the disk.

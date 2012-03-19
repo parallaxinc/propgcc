@@ -1,4 +1,4 @@
-TARGET=boetest.elf
+TARGETS=boetest.elf compass.elf
 
 CC=propeller-elf-gcc
 RM=rm -f
@@ -8,8 +8,13 @@ LDFLAGS=-mlmm -Llib
 
 LIBS=-lboe
 
-$(TARGET):	boetest.cpp boelib
+all:	$(TARGETS)
+
+boetest.elf:	boetest.cpp boelib
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS) -fno-exceptions -fno-rtti
+	
+compass.elf:	compass.c boelib
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
 	
 boelib:
 	$(MAKE) -C libsrc

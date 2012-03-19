@@ -47,7 +47,7 @@ static uint32_t __attribute__((section(".hubtext"))) do_cmd(uint32_t cmd)
 int DFS_InitFileIO(void)
 {
     int retries = 5;
-    int32_t result;
+    int32_t result = DFS_OK;
 
 #ifdef __PROPELLER_LMM__
     sd_mbox = _sd_mbox_p;
@@ -60,14 +60,14 @@ int DFS_InitFileIO(void)
         sd_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
 #endif
 
-    do_cmd(SD_INIT_CMD); // Seems to need an extra init command on power up
     while (retries-- > 0)
     {
         result = do_cmd(SD_INIT_CMD);
         if (result == 0)
             return DFS_OK;
     }
-    return -1;
+
+    return result;
 }
 
 // This routine reads 512-byte sectors into a buffer.  If the buffer is

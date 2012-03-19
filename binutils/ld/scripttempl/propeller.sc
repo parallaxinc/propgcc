@@ -54,12 +54,6 @@ SECTIONS
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
   ${TEXT_DYNAMIC+${DYNAMIC}}
 
-  .data	${RELOCATING-0} :
-  {
-    ${DATA_DATA}
-    ${RELOCATING+. = ALIGN(4);}
-  } ${RELOCATING+ ${DATA_MEMORY}}
-
   .ctors ${RELOCATING-0} :
   {
     *(.ctors*)
@@ -68,6 +62,12 @@ SECTIONS
   {
     *(.dtors*)
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
+
+  .data	${RELOCATING-0} :
+  {
+    ${DATA_DATA}
+    ${RELOCATING+. = ALIGN(4);}
+  } ${RELOCATING+ ${DATA_MEMORY}}
 
   .bss ${RELOCATING-0} :
   {
