@@ -11,7 +11,7 @@ LIBS=-lboe
 
 all:	$(TARGETS)
 
-%.elf:	%.cpp boelib
+%.elf:	%.cpp lib/libboe.a
 	$(CC) $(CXXFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
 	
 boelib:
@@ -21,6 +21,8 @@ run:	$(TARGET)
 	propeller-load -b propboe $< -r -t
 
 clean:
-	$(RM) $(TARGET)
+	$(RM) $(TARGETS)
+
+clean-all:	clean
 	$(MAKE) -C libsrc clean
 	$(RM) -r lib
