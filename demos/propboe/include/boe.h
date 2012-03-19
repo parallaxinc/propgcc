@@ -71,6 +71,7 @@ void i2cInit(I2C_STATE *dev, int scl, int sda);
 int i2cBegin(I2C_STATE *dev, int address);
 int i2cSend(I2C_STATE *dev, int byte);
 int i2cEnd(I2C_STATE *dev);
+int i2cRequestBuf(I2C_STATE *dev, int address, int count, uint8_t *buf);
 int i2cRequest(I2C_STATE *dev, int address, int count);
 int i2cReceive(I2C_STATE *dev);
 

@@ -52,13 +52,9 @@ void CompassRead(I2C &bus, int &x, int &y, int &z)
     bus.send(0x03);
     bus.end();
     
-    /* prepare to read the data registers */
-    bus.request(COMPASS_ADDR, 6);
-    
     /* read the data registers */
-    for (i = 0; i < 6; ++i)
-        data[i] = bus.receive();
-        
+    bus.request(COMPASS_ADDR, 6, data);
+    
     /* assemble the return values */
     x16 = (data[0] << 8) | data[1];
     z16 = (data[2] << 8) | data[3];
