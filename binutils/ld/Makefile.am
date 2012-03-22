@@ -385,6 +385,7 @@ ALL_EMULATION_SOURCES = \
 	epropeller.c \
 	epropeller_cog.c \
 	epropeller_xmm.c \
+	epropeller_xmm_single.c \
 	epropeller_xmmc.c \
 	eriscix.c \
 	escore3_elf.c \
@@ -1722,6 +1723,9 @@ epropeller_cog.c: $(srcdir)/emulparams/propeller_cog.sh \
 epropeller_xmm.c: $(srcdir)/emulparams/propeller_xmm.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller_xmm "$(tdir_propeller)"
+epropeller_xmm_single.c: $(srcdir)/emulparams/propeller_xmm_single.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller_xmm_single "$(tdir_propeller)"
 epropeller_xmmc.c: $(srcdir)/emulparams/propeller_xmmc.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller_xmmc "$(tdir_propeller)"
