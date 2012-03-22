@@ -147,7 +147,7 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
         return NULL;
 
     /* create a new board configuration */
-    baseConfig = config = NewBoardConfig(NULL, name);
+    baseConfig = config = NewBoardConfig(GetDefaultConfiguration(), name);
         
     /* process each line in the configuration file */
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {

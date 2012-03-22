@@ -82,12 +82,13 @@ typedef struct {
 /* packet types */
 #define TYPE_VM_INIT            1
 #define TYPE_CACHE_INIT         2
-#define TYPE_FLASH_WRITE        3
-#define TYPE_RAM_WRITE          4
-#define TYPE_HUB_WRITE          5
-#define TYPE_DATA               6
-#define TYPE_EOF                7
-#define TYPE_RUN                8
+#define TYPE_FILE_WRITE         3
+#define TYPE_FLASH_WRITE        4
+#define TYPE_RAM_WRITE          5
+#define TYPE_HUB_WRITE          6
+#define TYPE_DATA               7
+#define TYPE_EOF                8
+#define TYPE_RUN                9
 
 extern uint8_t serial_helper_array[];
 extern int serial_helper_size;
@@ -463,9 +464,6 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
 
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
 {
-    SpinHdr *hdr = (SpinHdr *)serial_helper_array;
-    SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
-    SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf;
     int cacheDriverImageSize, imageSize, target, ivalue;
     uint32_t loadAddress, params[3];
@@ -522,37 +520,13 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
             return Error("no external ram eeprom loader is currently available");
     }
     
-    /* patch serial helper for clock mode and frequency */
-    GetNumericConfigField(config, "clkfreq", &ivalue);
-    hdr->clkfreq = ivalue;
-    GetNumericConfigField(config, "clkmode", &ivalue);
-    hdr->clkmode = ivalue;
-    GetNumericConfigField(config, "baudrate", &ivalue);
-    dat->baudrate = ivalue;
-    GetNumericConfigField(config, "rxpin", &ivalue);
-    dat->rxpin = ivalue;
-    GetNumericConfigField(config, "txpin", &ivalue);
-    dat->txpin = ivalue;
-    if (GetNumericConfigField(config, "clkfreq", &ivalue))
-        dat->tvpin = ivalue;
-        
-    /* recompute the checksum */
-    UpdateChecksum(serial_helper_array, serial_helper_size);
-    
     /* load the serial helper program */
-    if (ploadbuf(serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0) {
+    if (!LoadSerialHelper(config)) {
         free(kernelbuf);
         free(imagebuf);
-        return Error("helper load failed");
+        return FALSE;
     }
-
-    /* wait for the serial helper to complete initialization */
-    if (!WaitForInitialAck()) {
-        free(kernelbuf);
-        free(imagebuf);
-        return Error("failed to connect to helper");
-    }
-    
+        
     /* load the cache driver */
     if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &cacheDriverImageSize)) {
         free(kernelbuf);
@@ -620,6 +594,41 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     return TRUE;
 }
     
+int LoadSerialHelper(BoardConfig *config)
+{
+    SpinHdr *hdr = (SpinHdr *)serial_helper_array;
+    SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
+    SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
+    int ivalue;
+    
+    /* patch serial helper */
+    GetNumericConfigField(config, "clkfreq", &ivalue);
+    hdr->clkfreq = ivalue;
+    GetNumericConfigField(config, "clkmode", &ivalue);
+    hdr->clkmode = ivalue;
+    GetNumericConfigField(config, "baudrate", &ivalue);
+    dat->baudrate = ivalue;
+    GetNumericConfigField(config, "rxpin", &ivalue);
+    dat->rxpin = ivalue;
+    GetNumericConfigField(config, "txpin", &ivalue);
+    dat->txpin = ivalue;
+    if (GetNumericConfigField(config, "tvpin", &ivalue))
+        dat->tvpin = ivalue;
+        
+    /* recompute the checksum */
+    UpdateChecksum(serial_helper_array, serial_helper_size);
+    
+    /* load the serial helper program */
+    if (ploadbuf(serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0)
+        return Error("helper load failed");
+
+    /* wait for the serial helper to complete initialization */
+    if (!WaitForInitialAck())
+        return Error("failed to connect to helper");
+    
+    return TRUE;
+}
+
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
 {
     /* build the flash loader image */
@@ -702,6 +711,45 @@ static int WriteBuffer(uint8_t *buf, int size)
     if (!SendPacket(TYPE_EOF, (uint8_t *)"", 0))
         return Error("SendPacket EOF failed");
 
+    return TRUE;
+}
+
+int WriteFileToSDCard(char *path, char *target)
+{
+    uint8_t buf[PKTMAXLEN];
+    size_t size, remaining, cnt;
+    FILE *fp;
+
+    if (!target) {
+        if (!(target = strrchr(path, '/')))
+            target = path;
+        else
+            ++target; // skip past the slash
+    }
+    
+    if ((fp = fopen(path, "rb")) == NULL)
+        return FALSE;
+
+    fseek(fp, 0, SEEK_END);
+    size = remaining = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    if (!SendPacket(TYPE_FILE_WRITE, (uint8_t *)target, strlen(target) + 1))
+        return Error("SendPacket FILE_WRITE failed");
+    
+    while ((cnt = fread(buf, 1, PKTMAXLEN, fp)) > 0) {
+        printf("%ld bytes remaining             \r", remaining); fflush(stdout);
+        if (!SendPacket(TYPE_DATA, buf, cnt))
+            return Error("SendPacket DATA failed\n");
+        remaining -= cnt;
+    }
+    printf("%ld bytes sent             \n", size);
+
+    fclose(fp);
+
+    if (!SendPacket(TYPE_EOF, (uint8_t *)"", 0))
+        return Error("SendPacket EOF failed");
+    
     return TRUE;
 }
 

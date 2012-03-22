@@ -37,6 +37,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define LFLAG_WRITE_PEX             (1 << 3)
 #define LFLAG_WRITE_SDLOADER        (1 << 4)
 #define LFLAG_WRITE_SDCACHELOADER   (1 << 5)
+#define LFLAG_WRITE_SDFILE          (1 << 6)
 
 /* target checksum for a binary file */
 #define SPIN_TARGET_CHECKSUM    0x14
@@ -68,6 +69,8 @@ int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
+int WriteFileToSDCard(char *path, char *target);
+int LoadSerialHelper(BoardConfig *config);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);
 int Error(char *fmt, ...);

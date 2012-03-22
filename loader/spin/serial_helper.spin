@@ -8,21 +8,23 @@ CON
 
   TYPE_VM_INIT = 1
   TYPE_CACHE_INIT = 2
-  TYPE_FLASH_WRITE = 3
-  TYPE_RAM_WRITE = 4
-  TYPE_HUB_WRITE = 5
-  TYPE_DATA = 6
-  TYPE_EOF = 7
-  TYPE_RUN = 8
+  TYPE_FILE_WRITE = 3
+  TYPE_FLASH_WRITE = 4
+  TYPE_RAM_WRITE = 5
+  TYPE_HUB_WRITE = 6
+  TYPE_DATA = 7
+  TYPE_EOF = 8
+  TYPE_RUN = 9
 
   ' character codes
   CR = $0d
   LF = $0a
 
   WRITE_NONE = 0
-  WRITE_FLASH = 1
-  WRITE_RAM = 2
-  WRITE_HUB = 3
+  WRITE_FILE = 1
+  WRITE_FLASH = 2
+  WRITE_RAM = 3
+  WRITE_HUB = 4
 
 ' hub memory layout
 '   cache
@@ -32,16 +34,25 @@ CON
   hub_memory_size = 32 * 1024
   cache_mbox_size = cache#_MBOX_SIZE * 4
   vm_mbox_size = 4
+  
+  spiDO = 10
+  spiCLK = 11
+  spiDI = 9
+  spiCS = 25 ' really CLR
 
 OBJ
   pkt : "packet_driver"
 #ifdef TV_DEBUG
   tv   : "TV_Text"
 #endif
+  sd   : "fsrw"
   cache : "cache_interface"
   vmstart : "vm_start"
 VAR
 
+  long ioControl[2]      ' SD parameters
+
+  long sd_mounted
   long load_address
   long write_mode
 
@@ -56,6 +67,7 @@ PUB start | type, packet, len, ok
 #endif
 
   ' initialize
+  sd_mounted := 0
   write_mode := WRITE_NONE
 
   ' handle packets
@@ -72,6 +84,7 @@ PUB start | type, packet, len, ok
       case type
         TYPE_VM_INIT:           VM_INIT_handler
         TYPE_CACHE_INIT:        CACHE_INIT_handler(packet)
+        TYPE_FILE_WRITE:        FILE_WRITE_handler(packet)
         TYPE_FLASH_WRITE:       FLASH_WRITE_handler
         TYPE_RAM_WRITE:         RAM_WRITE_handler
         TYPE_HUB_WRITE:         HUB_WRITE_handler
@@ -107,6 +120,21 @@ PRI CACHE_INIT_handler(packet) | cache_size, param1, param2, cache_lines
   p_cache_line_mask := cache.start(@mm_data, p_cache_mbox, cache_lines, param1, param2)
   p_vm_mbox := p_cache_mbox - vm_mbox_size
 
+PRI FILE_WRITE_handler(name) | err
+  mountSD
+#ifdef TV_DEBUG
+  tv.str(string("FILE_WRITE: "))
+  tv.str(name)
+  tv.str(string("...",))
+#endif
+  err := \sd.popen(name, "w")
+#ifdef TV_DEBUG
+  tv.hex(err, 8)
+  crlf
+#endif
+  write_mode := WRITE_FILE
+  load_address := $00000000
+
 PRI FLASH_WRITE_handler
 #ifdef TV_DEBUG
   tv.str(string("FLASH_WRITE", CR))
@@ -140,6 +168,9 @@ PRI DATA_handler(packet, len) | i, val
   crlf
 #endif
   case write_mode
+    WRITE_FILE:
+      sd.pwrite(packet, len)
+      load_address += len
     WRITE_FLASH:
       cache.WriteFlash(load_address, packet, len)
       load_address += len
@@ -165,6 +196,8 @@ PRI EOF_handler
   tv.str(string("EOF", CR))
 #endif
   case write_mode
+    WRITE_FILE:
+      sd.pclose
     WRITE_FLASH:
     WRITE_RAM:
     WRITE_HUB:
@@ -189,6 +222,17 @@ PRI RUN_handler
 #ifdef TV_DEBUG
   tv.stop
 #endif
+
+PRI mountSD | err
+  if sd_mounted == 0
+    repeat
+#ifdef TV_DEBUG
+      tv.str(string("Mounting SD card...", CR))
+#endif
+      err := \sd.mount_explicit(spiDO,spiClk,spiDI,spiCS)
+    until err == 0
+    sd_mounted := 1
+  return 1
 
 #ifdef TV_DEBUG
 PRI crlf
