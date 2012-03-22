@@ -39,6 +39,10 @@ Generate code to run in external memory (XMM); data is in hub. Implies -mlmm too
 
 mxmm
 Target RejectNegative Mask(XMM) Report
+Generate code to run in external flash/rom, with data in external ram.
+
+mxmm-single
+Target RejectNegative Mask(XMM_SINGLE) Report
 Generate code to run in external memory, with data in external memory as well.
 
 mpasm

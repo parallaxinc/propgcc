@@ -47,7 +47,7 @@
 #undef LINK_SPEC
 #define LINK_SPEC "                                             \
 %{mrelax:-relax}						\
-%{mcog:-mpropeller_cog; mxmmc: -mpropeller_xmmc; mxmm: -mpropeller_xmm; :-mpropeller}	\
+%{mcog:-mpropeller_cog; mxmmc: -mpropeller_xmmc; mxmm: -mpropeller_xmm; mxmm-single: -mpropeller_xmm_single; :-mpropeller}	\
 "
 
 #define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)
@@ -71,6 +71,10 @@
       builtin_assert ("machine=propeller");                  \
       if (TARGET_XMM)					     \
 	builtin_define ("__PROPELLER_XMM__");		     \
+      else if (TARGET_XMM_SINGLE) {			     \
+	builtin_define ("__PROPELLER_XMM__");		     \
+	builtin_define ("__PROPELLER_XMM_SINGLE__");         \
+      }                                                      \
       else if (TARGET_XMM_CODE)				     \
 	builtin_define ("__PROPELLER_XMMC__");		     \
       else if (TARGET_LMM)				     \
