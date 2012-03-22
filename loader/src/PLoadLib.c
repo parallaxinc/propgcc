@@ -370,3 +370,22 @@ int ploadbuf(const uint8_t* dlbuf, int count, int type)
 {
     return upload(dlbuf, count, type);
 }
+
+#ifdef MAIN
+int main(int argc, char *argv[])
+{
+    if (argc != 3) {
+        fprintf(stderr, "usage: pload <port> <filename>\n");
+        return 1;
+    }
+    if (popenport(argv[1], 115200)) {
+        fprintf(stderr, "error opening port\n");
+        return 1;
+    }
+    if (pload(argv[2], DOWNLOAD_RUN_BINARY) != 0) {
+        fprintf(stderr, "load failed\n");
+        return 1;
+    }
+    return 0;
+}
+#endif
