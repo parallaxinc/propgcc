@@ -35,12 +35,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 /* maximum cog image size */
 #define COG_IMAGE_MAX           (496 * 4)
 
+/* SD parameters */
+typedef struct {
+    uint32_t do_mask;
+    uint32_t clk_mask;
+    uint32_t di_mask;
+    uint32_t cs_clr_mask;
+    uint32_t select_inc_mask;
+    uint32_t select_mask;
+} SDParams;
+
 /* DAT header in serial_helper.spin */
 typedef struct {
     uint32_t baudrate;
     uint8_t rxpin;
     uint8_t txpin;
     uint8_t tvpin;
+    uint8_t dopin;
+    uint8_t clkpin;
+    uint8_t dipin;
+    uint8_t cspin;
 } SerialHelperDatHdr;
 
 /* DAT header in flash_loader.spin */
@@ -51,16 +65,6 @@ typedef struct {
     uint32_t vm_code_off;
     uint32_t cache_code_off;
 } FlashLoaderDatHdr;
-
-/* SD parameters */
-typedef struct {
-    uint32_t do_mask;
-    uint32_t clk_mask;
-    uint32_t di_mask;
-    uint32_t cs_clr_mask;
-    uint32_t select_inc_mask;
-    uint32_t select_mask;
-} SDParams;
 
 /* DAT header in sd_driver.spin */
 typedef struct {
@@ -521,7 +525,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     }
     
     /* load the serial helper program */
-    if (!LoadSerialHelper(config)) {
+    if (!LoadSerialHelper(config, FALSE)) {
         free(kernelbuf);
         free(imagebuf);
         return FALSE;
@@ -594,7 +598,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     return TRUE;
 }
     
-int LoadSerialHelper(BoardConfig *config)
+int LoadSerialHelper(BoardConfig *config, int needsd)
 {
     SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
@@ -602,18 +606,43 @@ int LoadSerialHelper(BoardConfig *config)
     int ivalue;
     
     /* patch serial helper */
-    GetNumericConfigField(config, "clkfreq", &ivalue);
-    hdr->clkfreq = ivalue;
-    GetNumericConfigField(config, "clkmode", &ivalue);
-    hdr->clkmode = ivalue;
-    GetNumericConfigField(config, "baudrate", &ivalue);
-    dat->baudrate = ivalue;
-    GetNumericConfigField(config, "rxpin", &ivalue);
-    dat->rxpin = ivalue;
-    GetNumericConfigField(config, "txpin", &ivalue);
-    dat->txpin = ivalue;
+    if (GetNumericConfigField(config, "clkfreq", &ivalue))
+        hdr->clkfreq = ivalue;
+    if (GetNumericConfigField(config, "clkmode", &ivalue))
+        hdr->clkmode = ivalue;
+    if (GetNumericConfigField(config, "baudrate", &ivalue))
+        dat->baudrate = ivalue;
+    if (GetNumericConfigField(config, "rxpin", &ivalue))
+        dat->rxpin = ivalue;
+    if (GetNumericConfigField(config, "txpin", &ivalue))
+        dat->txpin = ivalue;
     if (GetNumericConfigField(config, "tvpin", &ivalue))
         dat->tvpin = ivalue;
+        
+    if (needsd) {
+    
+        if (GetNumericConfigField(config, "sdspi-do", &ivalue))
+            dat->dopin = ivalue;
+        else
+            return Error("missing sdspi-do pin configuration");
+            
+        if (GetNumericConfigField(config, "sdspi-clk", &ivalue))
+            dat->clkpin = ivalue;
+        else
+            return Error("missing sdspi-clk pin configuration");
+            
+        if (GetNumericConfigField(config, "sdspi-di", &ivalue))
+            dat->dipin = ivalue;
+        else
+            return Error("missing sdspi-di pin configuration");
+            
+        if (GetNumericConfigField(config, "sdspi-cs", &ivalue))
+            dat->cspin = ivalue;
+        else if (GetNumericConfigField(config, "sdspi-clr", &ivalue))
+            dat->cspin = ivalue;
+        else
+            return Error("missing sdspi-cs or sdspi-clr pin configuration");
+    }
         
     /* recompute the checksum */
     UpdateChecksum(serial_helper_array, serial_helper_size);

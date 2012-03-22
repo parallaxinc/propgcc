@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
     /* load the image file */
     if (infile) {
         if (flags & LFLAG_WRITE_SDFILE) {
-            if (!LoadSerialHelper(config)) {
+            if (!LoadSerialHelper(config, TRUE)) {
                 fprintf(stderr, "error: loading serial helper\n");
                 return 1;
             }
