@@ -169,6 +169,9 @@ int main(int argc, char *argv[])
             case 'v':
                 verbose = TRUE;
                 break;
+            case 'f':
+                flags |= LFLAG_WRITE_SDFILE;
+                break;
             case '?':
                 /* fall through */
             default:
@@ -205,7 +208,7 @@ int main(int argc, char *argv[])
     xbAddEnvironmentPath("PROPELLER_LOAD_PATH");
     xbAddProgramPath(argv);
 #if defined(LINUX) || defined(MACOSX) || defined(CYGWIN)
-    xbAddPath("/usr/local/propeller/propeller-load");
+    xbAddPath("/opt/parallax/propeller-load");
 #endif
     
     sys.ops = &myOps;
@@ -248,7 +251,7 @@ int main(int argc, char *argv[])
     GetNumericConfigField(config, "baudrate", &baud);
 
     /* initialize the serial port */
-    if ((flags & (LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
+    if ((flags & (LFLAG_WRITE_SDFILE | LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
         int sts = InitPort(PORT_PREFIX, port, baud, verbose, actualport);
         switch (sts) {
         case PLOAD_STATUS_OK:
@@ -269,7 +272,14 @@ int main(int argc, char *argv[])
 
     /* load the image file */
     if (infile) {
-        if ((flags & LFLAG_WRITE_SDLOADER) || (flags & LFLAG_WRITE_SDCACHELOADER)) {
+        if (flags & LFLAG_WRITE_SDFILE) {
+            if (!LoadSerialHelper(config)) {
+                fprintf(stderr, "error: loading serial helper\n");
+                return 1;
+            }
+            WriteFileToSDCard(infile, NULL);
+        }
+        else if ((flags & LFLAG_WRITE_SDLOADER) || (flags & LFLAG_WRITE_SDCACHELOADER)) {
             fprintf(stderr, "error: no filename is allowed with -l or -z\n");
             return 1;
         }
@@ -279,6 +289,12 @@ int main(int argc, char *argv[])
                 return 1;
             }
         }
+    }
+    
+    /* check for a missing sd card filename */
+    else if (flags & LFLAG_WRITE_SDFILE) {
+        fprintf(stderr, "error: must specify a filename\n");
+        return 1;
     }
     
     /* check for loading the sd loader */
