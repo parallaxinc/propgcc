@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include "PLoadLib.h"
 #include "osint.h"
