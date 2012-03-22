@@ -210,6 +210,33 @@ static int findprop(const char* port)
     return version != 0 ? 0 : 1;
 }
 
+/*
+ * forward declaration for pupload
+ */
+static int upload(const uint8_t* dlbuf, int count, int type);
+
+/**
+ * pupload is a wrapper for findprop + upload
+ * This function should be used so that we don't get timeouts between
+ * findprop and upload that can be caused by slow PC/Linux/MAC hardware.
+ * @param dlbuf - pointer to file buffer
+ * @param count - number of bytes in image
+ * @param type - type of upload
+ * @returns non-zero on error
+ */
+static int pupload(const uint8_t* dlbuf, int count, int type)
+{
+    int rc = -1;
+    int version = 0;
+    hwreset();
+    version = hwfind();
+    if(version) {
+        fprintf(stderr, "Propeller Version %d again ....\n", version);
+        rc = upload(dlbuf, count, type);
+    }
+    return rc;
+}
+
 /**
  * Upload file image to propeller on port.
  * A successful call to findprop must be completed before calling this function.
@@ -331,7 +358,7 @@ int pload(const char* file, int type)
     // if found and file, upload file
     //
     if(file) {
-        rc = upload(dlbuf, count, type);
+        rc = pupload(dlbuf, count, type);
     }
 
     return rc;
@@ -356,7 +383,7 @@ int ploadfp(const char* file, FILE *fp, int type)
     // if found and file, upload file
     //
     if(file) {
-        rc = upload(dlbuf, count, type);
+        rc = pupload(dlbuf, count, type);
     }
 
     return rc;
@@ -368,7 +395,7 @@ int ploadfp(const char* file, FILE *fp, int type)
  */
 int ploadbuf(const uint8_t* dlbuf, int count, int type)
 {
-    return upload(dlbuf, count, type);
+    return pupload(dlbuf, count, type);
 }
 
 #ifdef MAIN

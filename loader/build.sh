@@ -59,5 +59,9 @@ export BOARD
 make TARGET=../../../build/loader clean
 make TARGET=../../../build/loader
 make TARGET=../../../build/loader install
+echo "cp ./bin/${OS}/* ${PREFIX}/bin/."
+cp   ./bin/${OS}/* ${PREFIX}/bin/.
+ls -l ${PREFIX}/bin/bin2c*
+ls -l ${PREFIX}/bin/propeller-load*
 echo "Build complete."
 exit 0
