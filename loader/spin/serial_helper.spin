@@ -35,11 +35,6 @@ CON
   cache_mbox_size = cache#_MBOX_SIZE * 4
   vm_mbox_size = 4
   
-  spiDO = 10
-  spiCLK = 11
-  spiDI = 9
-  spiCS = 25 ' really CLR
-
 OBJ
   pkt : "packet_driver"
 #ifdef TV_DEBUG
@@ -229,7 +224,7 @@ PRI mountSD | err
 #ifdef TV_DEBUG
       tv.str(string("Mounting SD card...", CR))
 #endif
-      err := \sd.mount_explicit(spiDO,spiClk,spiDI,spiCS)
+      err := \sd.mount_explicit(p_dopin, p_clkpin, p_dipin, p_cspin)
     until err == 0
     sd_mounted := 1
   return 1
@@ -251,6 +246,10 @@ p_baudrate          long    0
 p_rxpin             byte    0
 p_txpin             byte    0
 p_tvpin             byte    0
+p_dopin             byte    0
+p_clkpin            byte    0
+p_dipin             byte    0
+p_cspin             byte    0
 
 p_image_base        long    0
 p_cache_mbox        long    0

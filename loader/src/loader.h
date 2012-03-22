@@ -70,7 +70,7 @@ int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
 int WriteFileToSDCard(char *path, char *target);
-int LoadSerialHelper(BoardConfig *config);
+int LoadSerialHelper(BoardConfig *config, int needsd);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);
 int Error(char *fmt, ...);
