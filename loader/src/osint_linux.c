@@ -260,7 +260,7 @@ void hwreset(void)
     ioctl(hSerial, TIOCMBIS, &cmd); // assert DTR pin
     msleep(10);
     ioctl(hSerial, TIOCMBIC, &cmd); // deassert DTR pin
-    msleep(100);
+    msleep(80);
     tcflush(hSerial, TCIFLUSH);
 }
 
