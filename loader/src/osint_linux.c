@@ -89,7 +89,7 @@ int serial_init(const char* port, unsigned long baud)
     int tbaud = 0;
 
     /* open the port */
-    hSerial = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    hSerial = open(port, O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
     if(hSerial == -1) {
         //fprintf(stderr, "error: opening '%s' -- %s\n", port, strerror(errno));
         return 0;

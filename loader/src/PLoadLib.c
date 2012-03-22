@@ -231,7 +231,6 @@ static int pupload(const uint8_t* dlbuf, int count, int type)
     hwreset();
     version = hwfind();
     if(version) {
-        fprintf(stderr, "Propeller Version %d again ....\n", version);
         rc = upload(dlbuf, count, type);
     }
     return rc;
@@ -251,6 +250,7 @@ static int upload(const uint8_t* dlbuf, int count, int type)
     int  n  = 0;
     int  rc = 0;
     int  wv = 100;
+    int  remaining = 0;
     uint32_t data = 0;
     uint8_t buf[1];
 
@@ -272,18 +272,26 @@ static int upload(const uint8_t* dlbuf, int count, int type)
 
     if (pload_verbose)
         fprintf(stderr, "Writing %d bytes to %s.\n",count,(type == DOWNLOAD_RUN_BINARY) ? "Propeller RAM":"EEPROM");
-    msleep(100);
 
+    remaining = count;
     for(n = 0; n < count; n+=4) {
-        //printf("%d ",n);
+        if(n % 1024 == 0) {
+            fprintf(stderr,"%d bytes remaining             \r", remaining);
+            fflush(stderr);
+            remaining -= 1024;
+        }
+        usleep(100);
         data = dlbuf[n] | (dlbuf[n+1] << 8) | (dlbuf[n+2] << 16) | (dlbuf[n+3] << 24) ;
         if(sendlong(data) == 0) {
             if (pload_verbose)
                 fprintf(stderr, "sendlong error");
             return 1;
         }
-        //if(n % 0x40 == 0) putchar('.');
     }
+
+    fprintf(stderr,"                               \r");
+    fprintf(stderr,"%d bytes sent\n", count);
+    fflush(stderr);
 
     msleep(150);                // wait for checksum calculation on Propeller ... 95ms is minimum
     buf[0] = 0xF9;              // need to send this to get Propeller to send the ack
