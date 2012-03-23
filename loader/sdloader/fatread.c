@@ -66,7 +66,7 @@ int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
     uint32_t firstFATSector, firstRootDirectorySector, rootDirectorySectorCount;
     uint32_t firstDataSector, dataSectorCount, clusterCount, totalSectorCount, FATSize;
     uint32_t endOfClusterChain;
-#ifdef DEBUG
+#ifdef FSDEBUG
     char *volumeLabel;
 #endif
     int type;
@@ -82,13 +82,14 @@ int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
     &&  strncmp((char *)&buffer[BOOT_FILE_SYSTEM_TYPE_32], "FAT32", 5) != 0) {
 
         // get the first partition information
-#ifdef DEBUG
+#ifdef FSDEBUG
         uint8_t status = buffer[MBR_PARTITIONS + PART_STATUS];
         uint32_t size = GetU32(buffer, MBR_PARTITIONS + PART_SECTOR_COUNT);
 #endif
         start = GetU32(buffer, MBR_PARTITIONS + PART_FIRST_SECTOR);
+#ifdef FSDEBUG
         DPRINTF("status: %02x, start: %08x, size %08x\n", status, start, size);
-            
+#endif            
         // get the boot sector of the first partition
         if (SD_ReadSector(start, buffer) != 0) {
             DPRINTF("SD_ReadSector %d failed\n", start);
@@ -133,13 +134,13 @@ int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
     switch (type) {
     case TYPE_FAT12:
     case TYPE_FAT16:
-#ifdef DEBUG
+#ifdef FSDEBUG
         volumeLabel = (char *)&buffer[BOOT_VOLUME_LABEL];
 #endif
         vinfo->rootDirectoryCluster = 0;
         break;
     case TYPE_FAT32:
-#ifdef DEBUG
+#ifdef FSDEBUG
         volumeLabel = (char *)&buffer[BOOT_VOLUME_LABEL_32];
 #endif
         vinfo->rootDirectoryCluster = GetU32(buffer, BOOT_ROOT_CLUSTER_32);
@@ -159,7 +160,7 @@ int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
     vinfo->clusterCount = clusterCount;
     vinfo->endOfClusterChain = endOfClusterChain;
     
-#ifdef DEBUG
+#ifdef FSDEBUG
     DPRINTF("label:                    %-11.11s\n", volumeLabel);
     DPRINTF("type:                     ");
     switch (type) {
