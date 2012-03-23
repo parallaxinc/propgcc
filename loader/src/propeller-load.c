@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
     GetNumericConfigField(config, "baudrate", &baud);
 
     /* initialize the serial port */
-    if ((flags & (LFLAG_WRITE_SDFILE | LFLAG_RUN | LFLAG_WRITE_EEPROM)) != 0 || terminalMode) {
+    if ((flags & NEED_PORT) != 0 || terminalMode) {
         int sts = InitPort(PORT_PREFIX, port, baud, verbose, actualport);
         switch (sts) {
         case PLOAD_STATUS_OK:
@@ -270,6 +270,12 @@ int main(int argc, char *argv[])
         }
     }
 
+    /* check for a missing filename */
+    if (flags & NEED_FILENAME) {
+        fprintf(stderr, "error: must specify a filename\n");
+        return 1;
+    }
+    
     /* load the image file */
     if (infile) {
         if (flags & LFLAG_WRITE_SDFILE) {
@@ -279,22 +285,12 @@ int main(int argc, char *argv[])
             }
             WriteFileToSDCard(infile, NULL);
         }
-        else if ((flags & LFLAG_WRITE_SDLOADER) || (flags & LFLAG_WRITE_SDCACHELOADER)) {
-            fprintf(stderr, "error: no filename is allowed with -l or -z\n");
-            return 1;
-        }
         else {
             if (!LoadImage(&sys, config, infile, flags)) {
                 fprintf(stderr, "error: load failed\n");
                 return 1;
             }
         }
-    }
-    
-    /* check for a missing sd card filename */
-    else if (flags & LFLAG_WRITE_SDFILE) {
-        fprintf(stderr, "error: must specify a filename\n");
-        return 1;
     }
     
     /* check for loading the sd loader */

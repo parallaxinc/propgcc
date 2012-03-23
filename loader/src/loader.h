@@ -39,6 +39,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define LFLAG_WRITE_SDCACHELOADER   (1 << 5)
 #define LFLAG_WRITE_SDFILE          (1 << 6)
 
+/* flags that need an open serial port */
+#define NEED_PORT                   (LFLAG_WRITE_SDFILE | LFLAG_RUN | LFLAG_WRITE_EEPROM)
+
+/* flags that require a filename */
+#define NEED_FILENAME               (LFLAG_WRITE_SDFILE)
+
 /* target checksum for a binary file */
 #define SPIN_TARGET_CHECKSUM    0x14
 
@@ -83,6 +89,6 @@ void UpdateChecksum(uint8_t *imagebuf, int imageSize);
 uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 
 /* pex-image.c */
-int WriteExecutableFile(char *path, ElfContext *c);
+int WriteExecutableFile(char *path, ElfContext *c, char *outfile);
 
 #endif

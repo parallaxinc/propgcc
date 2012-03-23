@@ -141,7 +141,23 @@ int serial_init(const char* port, unsigned long baud)
             tbaud = B38400;
             break;
         default:
-            printf("Unsupported baudrate. Use 115200, 57600, or 38400\n");
+            printf("Unsupported baudrate. Use ");
+#ifdef B921600
+            printf("921600, ");
+#endif
+#ifdef B576000
+            printf("576000, ");
+#endif
+#ifdef B500000
+            printf("500000, ");
+#endif
+#ifdef B460800
+            printf("460800, ");
+#endif
+#ifdef B230400
+            printf("230400, ");
+#endif
+            printf("115200, 57600, or 38400\n");
             serial_done();
             exit(2);
             break;

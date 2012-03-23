@@ -9,9 +9,8 @@
 #include "osint.h"
 #include "pex.h"
 
-int WriteExecutableFile(char *path, ElfContext *c)
+int WriteExecutableFile(char *path, ElfContext *c, char *outfile)
 {
-    char outfile[PATH_MAX];
     ElfProgramHdr program_kernel;
     uint8_t *imagebuf, *buf;
     uint32_t loadAddress;
