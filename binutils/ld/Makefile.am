@@ -1726,6 +1726,9 @@ epropeller_xmm.c: $(srcdir)/emulparams/propeller_xmm.sh \
 epropeller_xmm_single.c: $(srcdir)/emulparams/propeller_xmm_single.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller_xmm_single "$(tdir_propeller)"
+epropeller_xmm_split.c: $(srcdir)/emulparams/propeller_xmm_split.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller_xmm_split "$(tdir_propeller)"
 epropeller_xmmc.c: $(srcdir)/emulparams/propeller_xmmc.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller_xmmc "$(tdir_propeller)"

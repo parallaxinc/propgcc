@@ -502,7 +502,7 @@ powerpc-*-windiss*)	targ_emul=elf32ppcwindiss ;;
 powerpc-*-lynxos*)	targ_emul=ppclynx ;;
 
 propeller*)		targ_emul=propeller
-			targ_extra_emuls="propeller_cog propeller_xmm propeller_xmm_single propeller_xmmc"
+			targ_extra_emuls="propeller_cog propeller_xmm propeller_xmm_single propeller_xmm_split propeller_xmmc"
 			;;
 
 rs6000-*-aix[5-9]*)	targ_emul=aix5rs6 ;;

@@ -50,7 +50,7 @@ TARGET_LIBGCC2_CFLAGS = -Os -fomit-frame-pointer
 # anyway!
 
 MULTILIB_OPTIONS = mxmm/mxmmc m32bit-doubles
-MULTILIB_MATCHES = mxmm=mxmm-single
+MULTILIB_MATCHES = mxmm=mxmm-single mxmm=mxmm-split
 MULTILIB_DIRNAMES = xmm xmmc short-doubles
 
 # dunno if this is necessary
