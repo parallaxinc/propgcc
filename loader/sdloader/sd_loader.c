@@ -153,7 +153,7 @@ int main(void)
     // load into flash/eeprom
     if (load_address >= 0x30000000) {
         uint32_t addr = 0x00000000;
-        DPRINTF("loading flash/eeprom at 0x%08x\n", addr);
+        DPRINTF("loading flash/eeprom at 0x%08x\n", load_address);
         while (GetNextFileSector(&finfo, buffer, &count) == 0) {
             if ((addr & 0x00000fff) == 0)
                 erase_flash_block(addr);
@@ -165,7 +165,7 @@ int main(void)
     // load into ram
     else {
         uint32_t addr = load_address;
-        DPRINTF("loading ram at 0x%08x\n", addr);
+        DPRINTF("loading ram at 0x%08x\n", load_address);
         while (GetNextFileSector(&finfo, buffer, &count) == 0) {
             uint32_t *p = (uint32_t *)buffer;
             while (count > 0) {
