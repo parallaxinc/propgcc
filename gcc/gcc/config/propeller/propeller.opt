@@ -45,6 +45,10 @@ mxmm-single
 Target RejectNegative Mask(XMM_SINGLE) Report
 Generate code to run in external memory, with data in external memory as well.
 
+mxmm-split
+Target RejectNegative Mask(XMM_SPLIT) Report
+Generate code to run in external flash/rom, with data in external ram.
+
 mpasm
 Target Mask(PASM) Report
 Generate assembler output that is compatible with the PASM assembler. The default is to generate GAS compatible syntax, unless -mspin is given.

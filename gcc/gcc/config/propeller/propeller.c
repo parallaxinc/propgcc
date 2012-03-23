@@ -200,12 +200,12 @@ propeller_option_override (void)
         flag_pic = 0;
     }
 
-    /* -mxmm-single implies -mxmm */
-    if (TARGET_XMM_SINGLE)
+    /* -mxmm-single and -mxmm-split imply -mxmm */
+    if (TARGET_XMM_SINGLE || TARGET_XMM_SPLIT)
       target_flags |= MASK_XMM;
 
-    /* -mxmm and -mxmm-single imply -mxmmc */
-    if (TARGET_XMM || TARGET_XMM_SINGLE)
+    /* -mxmm, -mxmm-single, and -mxmm-split imply -mxmmc */
+    if (TARGET_XMM)
       target_flags |= MASK_XMM_CODE;
 
     /* -mxmm and -mxmmc implies -mlmm */
