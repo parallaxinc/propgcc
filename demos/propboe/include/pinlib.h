@@ -1,4 +1,4 @@
-/* boe.h - definitions for the PropBOE library
+/* pinlib.h - definitions for the pin library
 
 Copyright (c) 2012 David Michael Betz
 
@@ -25,11 +25,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 extern "C" {
 #endif
 
-#include "pinlib.h"
-#include "i2clib.h"
+#include <stdint.h>
+/* pin directions */
+#define IN      0
+#define OUT     1
 
-/* pause for a specified number of millisecons */
-void pause(int milliseconds);
+/* pin states */
+#define HIGH    1
+#define LOW     0
+
+/* set pin direction */
+void input(int pin);
+void output(int pin);
+
+/* get/set pin state */
+int getPin(int pin);
+void setPin(int pin, int value);
+void high(int pin);
+void low(int pin);
+void toggle(int pin);
+
+/* pulse input/output */
+int pulseIn(int pin, int state);
+void pulseOut(int pin, int duration);
 
 #if defined(__cplusplus)
 }
