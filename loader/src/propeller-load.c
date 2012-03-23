@@ -270,12 +270,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* check for a missing filename */
-    if (flags & NEED_FILENAME) {
-        fprintf(stderr, "error: must specify a filename\n");
-        return 1;
-    }
-    
     /* load the image file */
     if (infile) {
         if (flags & LFLAG_WRITE_SDFILE) {
@@ -290,6 +284,22 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "error: load failed\n");
                 return 1;
             }
+        }
+    }
+    
+    /* check for loading the sd loader */
+    else if (flags & LFLAG_WRITE_SDLOADER) {
+        if (!LoadSDLoader(&sys, config, "sd_loader.elf", flags)) {
+            fprintf(stderr, "error: load failed\n");
+            return 1;
+        }
+    }
+    
+    /* check for loading the sd cache loader */
+    else if (flags & LFLAG_WRITE_SDCACHELOADER) {
+        if (!LoadSDCacheLoader(&sys, config, "sd_cache_loader.elf", flags)) {
+            fprintf(stderr, "error: load failed\n");
+            return 1;
         }
     }
     
