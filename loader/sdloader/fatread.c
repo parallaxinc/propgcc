@@ -61,9 +61,9 @@ static uint32_t GetU32(uint8_t *buffer, int offset);
 
 int MountFS(uint8_t *buffer, VolumeInfo *vinfo)
 {
-    uint8_t start, sectorsPerCluster, numberOfFATs;
+    uint8_t  sectorsPerCluster, numberOfFATs;
     uint16_t bytesPerSector, reservedSectorCount, rootEntryCount;
-    uint32_t firstFATSector, firstRootDirectorySector, rootDirectorySectorCount;
+    uint32_t start, firstFATSector, firstRootDirectorySector, rootDirectorySectorCount;
     uint32_t firstDataSector, dataSectorCount, clusterCount, totalSectorCount, FATSize;
     uint32_t endOfClusterChain;
 #ifdef FSDEBUG
