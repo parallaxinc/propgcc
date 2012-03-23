@@ -293,22 +293,6 @@ int main(int argc, char *argv[])
         }
     }
     
-    /* check for loading the sd loader */
-    else if (flags & LFLAG_WRITE_SDLOADER) {
-        if (!LoadSDLoader(&sys, config, "sd_loader.elf", flags)) {
-            fprintf(stderr, "error: load failed\n");
-            return 1;
-        }
-    }
-    
-    /* check for loading the sd cache loader */
-    else if (flags & LFLAG_WRITE_SDCACHELOADER) {
-        if (!LoadSDCacheLoader(&sys, config, "sd_cache_loader.elf", flags)) {
-            fprintf(stderr, "error: load failed\n");
-            return 1;
-        }
-    }
-    
     /* enter terminal mode if requested */
     if (terminalMode) {
         printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
@@ -335,9 +319,10 @@ usage: propeller-load\n\
          [ -e ]            write the program into EEPROM\n\
          [ -r ]            run the program after loading\n\
          [ -s ]            write a spin .binary file for use with the Propeller Tool\n\
-         [ -x ]            write a .pex binary file for use with the SD loader\n\
-         [ -l ]            load the sd loader into either hub memory or EEPROM\n\
-         [ -z ]            load the sd cache loader into either hub memory or EEPROM\n\
+         [ -x ]            write a .pex binary file for use with the SD loader or SD cache\n\
+         [ -l ]            write a program to the sd card and use the SD loader\n\
+         [ -z ]            write a program to the sd card and use the SD cache\n\
+         [ -f ]            write a file to the SD card\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
@@ -365,7 +350,7 @@ if it is set. If not the port will be auto-detected.\n\
 The 'sd loader' loads AUTORUN.PEX from an SD card into external memory.\n\
 It requires a board with either external RAM or ROM.\n\
 \n\
-The 'sd cache loader' arranges to run AUTORUN.PEX directly from the SD card.\n\
+The 'sd cache' arranges to run AUTORUN.PEX directly from the SD card.\n\
 It can be used on any board with an SD card slot.\n\
 ");
     exit(1);
