@@ -1,4 +1,4 @@
-/* boe.h - definitions for the PropBOE library
+/* i2c.h - definitions for a set of simple i2c functions
 
 Copyright (c) 2012 David Michael Betz
 
@@ -19,17 +19,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 */
 
-#ifndef __BOE_H__
+#ifndef __I2C_H__
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-#include "pinlib.h"
-#include "i2clib.h"
+#include <stdint.h>
+/* maximum size of an i2c data transfer */
+#define I2C_BUFFER_MAX  32
 
-/* pause for a specified number of millisecons */
-void pause(int milliseconds);
+/* i2c state information */
+typedef struct {
+    uint32_t scl_mask;
+    uint32_t sda_mask;
+    uint8_t address;
+    uint8_t buffer[I2C_BUFFER_MAX];
+    int count;
+    int index;
+} I2C_STATE;
+
+/* i2c functions */
+void i2cInit(I2C_STATE *dev, int scl, int sda);
+int i2cBegin(I2C_STATE *dev, int address);
+int i2cSend(I2C_STATE *dev, int byte);
+int i2cEnd(I2C_STATE *dev);
+int i2cRequestBuf(I2C_STATE *dev, int address, int count, uint8_t *buf);
+int i2cRequest(I2C_STATE *dev, int address, int count);
+int i2cReceive(I2C_STATE *dev);
 
 #if defined(__cplusplus)
 }

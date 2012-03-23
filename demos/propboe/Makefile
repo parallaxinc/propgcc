@@ -1,6 +1,7 @@
 TARGETS=boetest.elf compass.elf
 
 CC=propeller-elf-gcc
+CXX=propeller-elf-gcc
 RM=rm -f
 
 CFLAGS=-Os -mlmm -Iinclude
