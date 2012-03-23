@@ -24,7 +24,7 @@ XMM_HEADER="
         LONG(entry)
         LONG(0)
         LONG(0)
-    } >rom
+    } >ram
 "
 HUB_DATA="
 "

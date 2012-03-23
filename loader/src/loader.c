@@ -144,12 +144,43 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
     /* '.header' section used for external loads */
     if (FindSectionTableEntry(c, ".header", &section)) {
     
-        if (flags & LFLAG_WRITE_PEX) {
-            if (flags & (LFLAG_WRITE_EEPROM | LFLAG_RUN))
+        if (flags & (LFLAG_WRITE_PEX | LFLAG_WRITE_SDLOADER | LFLAG_WRITE_SDCACHELOADER)) {
+            char outfile[PATH_MAX];
+        
+            /* don't allow -r or -e with -x */
+            if ((flags & LFLAG_WRITE_PEX) && (flags & (LFLAG_WRITE_EEPROM | LFLAG_RUN)))
                 return Error("can't use -e or -r with -x");
-            if (!WriteExecutableFile(path, c)) {
+                
+            /* write an executable file */
+            if (!WriteExecutableFile(path, c, outfile)) {
                 CloseElfFile(c);
                 return FALSE;
+            }
+            
+            /* write the executable file to the sd card for -l or -z */
+            if (flags & (LFLAG_WRITE_SDLOADER | LFLAG_WRITE_SDCACHELOADER)) {
+            
+                /* load the serial helper to write to the sd card */
+                if (!LoadSerialHelper(config, TRUE)) {
+                    fprintf(stderr, "error: loading serial helper\n");
+                    return 1;
+                }
+
+                /* write the .pex file to the sd card with the name 'autorun.pex' */
+                if (!WriteFileToSDCard(outfile, "autorun.pex"))
+                    return FALSE;
+            }
+            
+            /* write the sd_loader for -l */
+            if (flags & LFLAG_WRITE_SDLOADER) {
+                if (!LoadSDLoader(sys, config, "sd_loader.elf", flags))
+                    return FALSE;
+            }
+            
+            /* write the sd_cache_loader for -z */
+            else if (flags & LFLAG_WRITE_SDCACHELOADER) {
+                if (!LoadSDCacheLoader(sys, config, "sd_cache_loader.elf", flags))
+                    return FALSE;
             }
         }
         
@@ -163,6 +194,11 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
     
     /* no '.header' section for internal loads */
     else {
+    
+        if (flags & LFLAG_WRITE_SDLOADER)
+            return Error("SD loader can't be used with LMM programs");
+        else if (flags & LFLAG_WRITE_SDCACHELOADER)
+            return Error("SD cache can't be used with LMM programs");
     
         if (flags & LFLAG_WRITE_BINARY) {
             if (flags & (LFLAG_WRITE_EEPROM | LFLAG_RUN))
