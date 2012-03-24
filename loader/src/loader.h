@@ -42,9 +42,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 /* flags that need an open serial port */
 #define NEED_PORT                   (LFLAG_WRITE_SDFILE | LFLAG_RUN | LFLAG_WRITE_EEPROM)
 
-/* flags that require a filename */
-#define NEED_FILENAME               (LFLAG_WRITE_SDFILE)
-
 /* target checksum for a binary file */
 #define SPIN_TARGET_CHECKSUM    0x14
 
