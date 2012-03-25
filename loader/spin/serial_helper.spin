@@ -124,7 +124,7 @@ PRI FILE_WRITE_handler(name) | err
 #endif
   err := \sd.popen(name, "w")
 #ifdef TV_DEBUG
-  tv.hex(err, 8)
+  tv.dec(err)
   crlf
 #endif
   write_mode := WRITE_FILE
@@ -154,17 +154,18 @@ PRI HUB_WRITE_handler
   write_mode := WRITE_HUB
   load_address := $00000000
 
-PRI DATA_handler(packet, len) | i, val
+PRI DATA_handler(packet, len) | i, val, err
+  err := 0 ' assume no error
 #ifdef TV_DEBUG
   tv.str(string("DATA: "))
   tv.hex(load_address, 8)
   tv.out(" ")
   tv.dec(len)
-  crlf
+  tv.str(string("..."))
 #endif
   case write_mode
     WRITE_FILE:
-      sd.pwrite(packet, len)
+      err := \sd.pwrite(packet, len)
       load_address += len
     WRITE_FLASH:
       cache.WriteFlash(load_address, packet, len)
@@ -181,26 +182,31 @@ PRI DATA_handler(packet, len) | i, val
         load_address += 4
     other:
 #ifdef TV_DEBUG
-      tv.str(string("Bad write_mode: "))
-      tv.hex(write_mode, 8)
-      crlf
+      tv.str(string("bad write_mode: "))
+#endif
+#ifdef TV_DEBUG
+  tv.dec(err)
+  crlf
 #endif
 
-PRI EOF_handler
+PRI EOF_handler | err
+  err := 0 ' assume no errors
 #ifdef TV_DEBUG
-  tv.str(string("EOF", CR))
+  tv.str(string("EOF..."))
 #endif
   case write_mode
     WRITE_FILE:
-      sd.pclose
+      err := \sd.pclose
     WRITE_FLASH:
     WRITE_RAM:
     WRITE_HUB:
     other:
 #ifdef TV_DEBUG
-      tv.str(string("Bad write_mode: "))
-      tv.hex(write_mode, 8)
-      crlf
+      tv.str(string("bad write_mode: "))
+#endif
+#ifdef TV_DEBUG
+  tv.dec(err)
+  crlf
 #endif
 
 PRI RUN_handler
