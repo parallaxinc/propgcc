@@ -5,6 +5,7 @@ MODEL=cog
 CC=propeller-elf-gcc
 MKDIR = mkdir -p
 CFLAGS=-Os -m$(MODEL) -nostdinc -I./include
+AR=propeller-elf-ar
 
 VPATH=.:cog:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm
 
