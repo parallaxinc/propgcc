@@ -996,7 +996,10 @@ int main(int argc, char **argv)
 	  for(j = 0; j < 18; j++){
 	    PasmVars[cog].mem[GCC_REG_BASE + j] = get_addr(&i);
 	  }
-	  PasmVars[cog].pc = (get_addr(&i) & ~0xfffff800) >> 2;
+	  // Ignore writes to cog pc.  Instead, reset it to be
+	  // ready for a fresh instruction.
+	  // This is too magical.  How do we fix it?
+	  PasmVars[cog].pc = 0x12;
 	  reply("OK",2);
 	  break;
 
@@ -1034,8 +1037,9 @@ int main(int argc, char **argv)
 
 	case 's':
 	  if(cmd[i]){
-	    // Get the new LMM PC
+	    // Get the new LMM PC, reset the microcode
 	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
+	    PasmVars[cog].pc = 0x12;
 	  }
 	  {
 	    int brk = 0;
@@ -1055,6 +1059,7 @@ int main(int argc, char **argv)
 	case 'c':
 	  if(cmd[i]){
 	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
+	    PasmVars[cog].pc = 0x12;
 	  }
 	  halt_code = "S02";
 	  do {

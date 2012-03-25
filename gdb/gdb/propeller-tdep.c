@@ -545,7 +545,6 @@ propeller_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   for (i = nargs - 1; i >= 0; i--)
     if(i < NUM_ARG_REGS){
       memcpy(buf, value_contents(args[i]), 4);
-      fprintf(stderr, "Storing %02x%02x%02x%02x into register %d\n", buf[3],buf[2],buf[1],buf[0], i);
       regcache_cooked_write(regcache, i, value_contents(args[i]));
     } else
     {
@@ -563,7 +562,6 @@ propeller_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 	offset = 0;
       else
 	offset = container_len - len;
-      fprintf(stderr, "Storing %d onto stack\n", value_address(args[i]));
       sp -= container_len;
       write_memory (sp + offset, value_contents_all (args[i]), len);
     }
@@ -571,18 +569,15 @@ propeller_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   /* Store struct value address.  */
   if (struct_return)
     {
-      fprintf(stderr, "Storing value address %08x to r0\n", struct_addr);
       store_unsigned_integer (buf, 4, byte_order, struct_addr);
       regcache_cooked_write (regcache, 0, buf);
     }
 
   /* Store return address.  */
-  fprintf(stderr, "Storing return address %08x to r15\n", bp_addr);
   store_unsigned_integer (buf, 4, byte_order, bp_addr);
   regcache_cooked_write (regcache, 15, buf);
 
   /* Finally, update the stack pointer...  */
-  fprintf(stderr, "Storing %08x to sp and fp\n", sp);
   store_unsigned_integer (buf, 4, byte_order, sp);
   regcache_cooked_write (regcache, PROPELLER_SP_REGNUM, buf);
 
