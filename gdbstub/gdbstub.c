@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
     }
     
     /* load the dummy debug kernel */
-    if (ploadbuf(kernel_image_array, kernel_image_size, DOWNLOAD_RUN_BINARY) != 0) {
+    if (ploadbuf("the debug helper", kernel_image_array, kernel_image_size, DOWNLOAD_RUN_BINARY) != 0) {
         fprintf(stderr, "error: debug kernel load failed\n");
         serial_done();
         return 1;

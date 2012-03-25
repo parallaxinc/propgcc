@@ -214,25 +214,26 @@ static int findprop(const char* port)
 /*
  * forward declaration for pupload
  */
-static int upload(const uint8_t* dlbuf, int count, int type);
+static int upload(const char* file, const uint8_t* dlbuf, int count, int type);
 
 /**
  * pupload is a wrapper for findprop + upload
  * This function should be used so that we don't get timeouts between
  * findprop and upload that can be caused by slow PC/Linux/MAC hardware.
+ * @param file - filename for status message
  * @param dlbuf - pointer to file buffer
  * @param count - number of bytes in image
  * @param type - type of upload
  * @returns non-zero on error
  */
-static int pupload(const uint8_t* dlbuf, int count, int type)
+static int pupload(const char* file, const uint8_t* dlbuf, int count, int type)
 {
     int rc = -1;
     int version = 0;
     hwreset();
     version = hwfind();
     if(version) {
-        rc = upload(dlbuf, count, type);
+        rc = upload(file, dlbuf, count, type);
     }
     return rc;
 }
@@ -240,13 +241,13 @@ static int pupload(const uint8_t* dlbuf, int count, int type)
 /**
  * Upload file image to propeller on port.
  * A successful call to findprop must be completed before calling this function.
- * @param hSerial - file handle to serial port
+ * @param file - filename for status message
  * @param dlbuf - pointer to file buffer
  * @param count - number of bytes in image
  * @param type - type of upload
  * @returns non-zero on error
  */
-static int upload(const uint8_t* dlbuf, int count, int type)
+static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
 {
     int  n  = 0;
     int  rc = 0;
@@ -271,9 +272,14 @@ static int upload(const uint8_t* dlbuf, int count, int type)
         return 1;
     }
 
-    if (pload_verbose)
-        fprintf(stderr, "Writing %d bytes to %s.\n",count,(type == DOWNLOAD_RUN_BINARY) ? "Propeller RAM":"EEPROM");
-
+    if (pload_verbose) {
+        if (file)
+            fprintf(stderr, "Loading %s",file);
+        else
+            fprintf(stderr, "Loading");
+        fprintf(stderr, " to %s\n",(type == DOWNLOAD_RUN_BINARY) ? "hub memory":"EEPROM");
+    }
+    
     remaining = count;
     for(n = 0; n < count; n+=4) {
         if(n % 1024 == 0) {
@@ -367,7 +373,7 @@ int pload(const char* file, int type)
     // if found and file, upload file
     //
     if(file) {
-        rc = pupload(dlbuf, count, type);
+        rc = pupload(file, dlbuf, count, type);
     }
 
     return rc;
@@ -392,7 +398,7 @@ int ploadfp(const char* file, FILE *fp, int type)
     // if found and file, upload file
     //
     if(file) {
-        rc = pupload(dlbuf, count, type);
+        rc = pupload(file, dlbuf, count, type);
     }
 
     return rc;
@@ -402,9 +408,9 @@ int ploadfp(const char* file, FILE *fp, int type)
  * find and load propeller with buffer - assumes port is already open
  * @returns non-zero on error.
  */
-int ploadbuf(const uint8_t* dlbuf, int count, int type)
+int ploadbuf(const char* file, const uint8_t* dlbuf, int count, int type)
 {
-    return pupload(dlbuf, count, type);
+    return pupload(file, dlbuf, count, type);
 }
 
 #ifdef MAIN

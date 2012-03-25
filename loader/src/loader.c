@@ -101,7 +101,7 @@ extern int flash_loader_size;
 
 static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp, ElfHdr *hdr);
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp);
-static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
+static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
@@ -208,7 +208,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
         }
         
         else {
-            if (!LoadInternalImage(sys, config, flags, c)) {
+            if (!LoadInternalImage(sys, config, path, flags, c)) {
                 CloseElfFile(c);
                 return FALSE;
             }
@@ -241,7 +241,7 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
     return sts == 0;
 }
 
-static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
+static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c)
 {
     uint8_t *imagebuf;
     uint32_t start;
@@ -260,8 +260,8 @@ static int LoadInternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     else
         mode = SHUTDOWN_CMD;
     
-    /* load the serial helper program */
-    if (mode != SHUTDOWN_CMD && ploadbuf(imagebuf, imageSize, mode) != 0) {
+    /* load the internal image */
+    if (mode != SHUTDOWN_CMD && ploadbuf(path, imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
     }
@@ -383,7 +383,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("expecting -e and/or -r");
         
     /* load the program */
-    if (ploadbuf(imagebuf, imageSize, mode) != 0) {
+    if (ploadbuf(path, imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
     }
@@ -462,7 +462,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("expecting -e and/or -r");
         
     /* load the program */
-    if (ploadbuf(imagebuf, imageSize, mode) != 0) {
+    if (ploadbuf(path, imagebuf, imageSize, mode) != 0) {
         free(imagebuf);
         return Error("load failed");
     }
@@ -684,7 +684,7 @@ int LoadSerialHelper(BoardConfig *config, int needsd)
     UpdateChecksum(serial_helper_array, serial_helper_size);
     
     /* load the serial helper program */
-    if (ploadbuf(serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0)
+    if (ploadbuf("the serial helper", serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0)
         return Error("helper load failed");
 
     /* wait for the serial helper to complete initialization */
@@ -701,7 +701,7 @@ static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array,
         return Error("building flash loader image failed");
         
     /* load the flash loader program */
-    if (preset() != 0 || ploadbuf(flash_loader_array, flash_loader_size, mode) != 0)
+    if (preset() != 0 || ploadbuf("the flash loader", flash_loader_array, flash_loader_size, mode) != 0)
         return Error("loader load failed");
     
     /* return successfully */

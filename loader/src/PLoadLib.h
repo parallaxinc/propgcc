@@ -48,6 +48,6 @@ int popenport(const char* port, int baud);
 int preset(void);
 int pload(const char* file, int type);
 int ploadfp(const char* file, FILE *fp, int type);
-int ploadbuf(const uint8_t* dlbuf, int count, int type);
+int ploadbuf(const char *file, const uint8_t* dlbuf, int count, int type);
 
 #endif
