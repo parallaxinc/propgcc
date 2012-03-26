@@ -112,15 +112,20 @@ static void makelong(uint32_t data, uint8_t* buff)
  */
 static int sendlong(uint32_t data)
 {
-    int n;
     uint8_t mybuf[12];
+#ifndef MACOSX
+    makelong(data, mybuf);
+    return tx(mybuf, 11);
+#else
+    int n;
     makelong(data, mybuf);
     for(n = 0; n < 11; n++) {
         usleep(5);
-    	if(tx(&mybuf[n], 1) == 0)
-	    return 0;
+        if(tx(&mybuf[n], 1) == 0)
+            return 0;
     }
     return n-1;
+#endif
 }
 
 /**
