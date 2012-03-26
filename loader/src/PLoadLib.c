@@ -39,6 +39,8 @@
 #include "PLoadLib.h"
 #include "osint.h"
 
+#define SYNCUS_TIME 20
+
 uint8_t LFSR = 80; // 'P'
 
 int pload_verbose = 1;
@@ -112,9 +114,15 @@ static void makelong(uint32_t data, uint8_t* buff)
  */
 static int sendlong(uint32_t data)
 {
+    int n;
     uint8_t mybuf[12];
     makelong(data, mybuf);
-    return tx(mybuf, 11);
+    for(n = 0; n < 11; n++) {
+        usleep(SYNCUS_TIME);
+        if(tx(mybuf, 1) == 0)
+            return 0;
+    }
+    return 1;
 }
 
 /**
@@ -134,16 +142,19 @@ static int hwfind(void)
     LFSR = 'P';  // P is for Propeller :)
 
     // set magic propeller byte stream
-    for(n = 1; n < 251; n++)
+    for(n = 1; n < 251; n++) {
         mybuf[n] = iterate() | 0xfe;
-    if(tx(mybuf, 251) == 0)
-        return 0;   // tx should never return 0, return error if it does.
+        if(tx(mybuf, 1) == 0)
+            return 0;   // tx should never return 0, return error if it does.
+    }
 
     // send gobs of 0xF9 for id sync-up - these clock out the LSFR bits and the id
-    for(n = 0; n < 258; n++)
+    for(n = 0; n < 258; n++) {
         mybuf[n] = 0xF9;
-    if(tx(mybuf, 258) == 0)
-        return 0;   // tx should never return 0, return error if it does.
+        usleep(SYNCUS_TIME);
+        if(tx(mybuf, 1) == 0)
+            return 0;   // tx should never return 0, return error if it does.
+    }
 
     //for(n = 0; n < 250; n++) printf("%d", iterate() & 1);
     //printf("\n\n");
@@ -163,14 +174,15 @@ static int hwfind(void)
     for(n = 1; n < 250; n++) {
 
         jj = iterate();
-        //printf("%d:%d ", ii, jj);
-        //fflush(stdout);
+        printf("%d:%d ", ii, jj);
+        fflush(stdout);
 
         if(ii != jj) {
             //printf("Lost HW contact. %d %x\n", n, *mybuf & 0xff);
             return 0;
         }
 
+        usleep(SYNCUS_TIME);
         to = 0;
         do {
             ii = getBit(&rc, 100);
@@ -282,12 +294,14 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
     
     remaining = count;
     for(n = 0; n < count; n+=4) {
+/*
         if(n % 1024 == 0) {
             fprintf(stderr,"%d bytes remaining             \r", remaining);
             fflush(stderr);
             remaining -= 1024;
         }
-        usleep(100);
+*/
+        usleep(SYNCUS_TIME);
         data = dlbuf[n] | (dlbuf[n+1] << 8) | (dlbuf[n+2] << 16) | (dlbuf[n+3] << 24) ;
         if(sendlong(data) == 0) {
             if (pload_verbose)
