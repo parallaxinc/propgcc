@@ -112,9 +112,15 @@ static void makelong(uint32_t data, uint8_t* buff)
  */
 static int sendlong(uint32_t data)
 {
+    int n;
     uint8_t mybuf[12];
     makelong(data, mybuf);
-    return tx(mybuf, 11);
+    for(n = 0; n < 11; n++) {
+        usleep(2);
+    	if(tx(&mybuf[n], 1) == 0)
+	    return 0;
+    }
+    return n-1;
 }
 
 /**
@@ -133,20 +139,26 @@ static int hwfind(void)
     mybuf[0] = 0xF9;
     LFSR = 'P';  // P is for Propeller :)
 
-    // set magic propeller byte stream
-    for(n = 1; n < 251; n++)
-        mybuf[n] = iterate() | 0xfe;
-    if(tx(mybuf, 251) == 0)
+    /* send the calibration pulse
+     */
+    if(tx(mybuf, 1) == 0)
         return 0;   // tx should never return 0, return error if it does.
 
-    // send gobs of 0xF9 for id sync-up - these clock out the LSFR bits and the id
+    /* Send the magic propeller LFSR byte stream.
+     */
+    for(n = 0; n < 250; n++) {
+        mybuf[n] = iterate() | 0xfe;
+    }
+    if(tx(mybuf, 250) == 0)
+        return 0;   // tx should never return 0, return error if it does.
+
+    /* Send 258 0xF9 for LFSR and Version ID
+     * These bytes clock the LSFR bits and ID from propeller back to us.
+     */
     for(n = 0; n < 258; n++)
         mybuf[n] = 0xF9;
     if(tx(mybuf, 258) == 0)
         return 0;   // tx should never return 0, return error if it does.
-
-    //for(n = 0; n < 250; n++) printf("%d", iterate() & 1);
-    //printf("\n\n");
 
     /*
      * Wait at least 100ms for the first response. Allow some margin.
@@ -287,7 +299,6 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             fflush(stderr);
             remaining -= 1024;
         }
-        usleep(100);
         data = dlbuf[n] | (dlbuf[n+1] << 8) | (dlbuf[n+2] << 16) | (dlbuf[n+3] << 24) ;
         if(sendlong(data) == 0) {
             if (pload_verbose)
