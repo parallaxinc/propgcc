@@ -38,6 +38,7 @@
 #define DOWNLOAD_RUN_BINARY     1
 #define DOWNLOAD_EEPROM         2
 #define DOWNLOAD_RUN_EEPROM     3
+#define DOWNLOAD_SHUTDOWN       4
 
 #define PLOAD_STATUS_OK             0
 #define PLOAD_STATUS_OPEN_FAILED    -1
