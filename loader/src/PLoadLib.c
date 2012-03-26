@@ -267,6 +267,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
     int  n  = 0;
     int  rc = 0;
     int  wv = 100;
+    int  ack = 0;
     int  remaining = 0;
     uint32_t data = 0;
     uint8_t buf[1];
@@ -287,14 +288,24 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         return 1;
     }
 
+    if((type == 0) || (type >= DOWNLOAD_SHUTDOWN)) {
+        if (pload_verbose)
+            fprintf(stderr, "Shutdown type %d sent.\n", type);
+        return 1;
+    }
+
     if (pload_verbose) {
         if (file)
             fprintf(stderr, "Loading %s",file);
         else
             fprintf(stderr, "Loading");
-        fprintf(stderr, " to %s\n",(type == DOWNLOAD_RUN_BINARY) ? "hub memory":"EEPROM");
+
+        if(type == DOWNLOAD_RUN_BINARY)
+            fprintf(stderr, " to HUB memory.\n");
+        else
+            fprintf(stderr, " to EEPROM via HUB memory.\n");
     }
-    
+
     remaining = count;
     for(n = 0; n < count; n+=4) {
         if(n % 1024 == 0) {
@@ -314,24 +325,113 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
     fprintf(stderr,"%d bytes sent\n", count);
     fflush(stderr);
 
-    msleep(150);                // wait for checksum calculation on Propeller ... 95ms is minimum
-    buf[0] = 0xF9;              // need to send this to get Propeller to send the ack
+    msleep(50);                 // give propeller time to calculate checksum match 32K/12M sec = 32ms
+    buf[0] = 0xF9;              // need to send this to make Propeller send the ack
 
+    /* 
+     * Check for a RAM program complete signal
+     */
     if (pload_verbose) {
-        fprintf(stderr, "Verifying ... ");
+        fprintf(stderr, "Verifying RAM ... ");
         fflush(stderr);
     }
-
     for(n = 0; n < wv; n++) {
-        tx(buf, 1);
-        getAck(&rc, 100);
-        if(rc) break;
+        if(tx(buf, 1) == 0) return 1;
+        rc = getAck(&ack, 20);
+        if(ack) break;
     }
-    if (pload_verbose) {
-        if(n >= wv) fprintf(stderr, "Timeout Error!\n");
-        else        fprintf(stderr, "Download OK!\n");
+
+    /* 
+     * Check for a Timeout or Checksum Error
+     */
+    if(n >= wv) {
+        if(pload_verbose)
+            fprintf(stderr, "Timeout Error!\n");
+        return 1;
     }
-    
+
+    if(rc == 0) {
+        if(pload_verbose)
+            fprintf(stderr, "OK.\n");
+    }
+    else {
+        if(pload_verbose)
+            fprintf(stderr, "Checksum Error!\n");
+        return 1;
+    }
+
+    /* If type is DOWNLOAD_EEPROM or DOWNLOAD_RUN_EEPROM
+     * Check for a complete signal, then check for verify signal
+     * Otherwise the board will shutdown in an undesirable way.
+     */
+    if(type & DOWNLOAD_EEPROM) {
+        wv = 500;
+
+        /* send this to make Propeller send the ack
+         */
+        buf[0] = 0xF9;
+
+        if (pload_verbose) {
+            fprintf(stderr, "Programming EEPROM ... ");
+            fflush(stderr);
+        }
+        /* Check for EEPROM program finished
+         */
+        for(n = 0; n < wv; n++) {
+            msleep(20);
+            if(tx(buf, 1) == 0) return 1;
+            rc = getAck(&ack, 20);
+            if(ack) {
+                if(rc != 0) {
+                    if(pload_verbose)
+                        fprintf(stderr,"programming failed.\n");
+                    return 1;
+                }
+                break;
+            }
+        }
+        if(n >= wv) {
+            if(pload_verbose)
+                fprintf(stderr,"EEPROM programming timeout.\n");
+            return 1;
+        }
+
+        if (pload_verbose) {
+            if(rc == 0)
+                fprintf(stderr, "OK.\n");
+        }
+
+        if (pload_verbose) {
+            fprintf(stderr, "Verifying EEPROM ... ");
+            fflush(stderr);
+        }
+        /* Check for EEPROM program verify
+         */
+        for(n = 0; n < wv; n++) {
+            msleep(20);
+            if(tx(buf, 1) == 0) return 1;
+            rc = getAck(&ack, 20);
+            if(ack) {
+                if(rc != 0) {
+                    if(pload_verbose)
+                        fprintf(stderr,"verify failed.\n");
+                    return 1;
+                }
+                break;
+            }
+        }
+        if(n >= wv) {
+            if(pload_verbose)
+                fprintf(stderr,"EEPROM verify timeout.\n");
+            return 1;
+        }
+
+        if (pload_verbose) {
+            if(rc == 0)
+                fprintf(stderr, "OK.\n");
+        }
+    }
+
     return 0;
 }
 
@@ -380,7 +480,8 @@ int pload(const char* file, int type)
     else {
         count = (int)fread(dlbuf, 1, 0x8000, fp);
         if (pload_verbose)
-            fprintf(stderr, "Downloading %d bytes of '%s'\n", count, file);
+            if((type != 0) && (type < DOWNLOAD_SHUTDOWN))
+                fprintf(stderr, "Downloading %d bytes of '%s'\n", count, file);
         fclose(fp);
     }
 
@@ -430,16 +531,27 @@ int ploadbuf(const char* file, const uint8_t* dlbuf, int count, int type)
 #ifdef MAIN
 int main(int argc, char *argv[])
 {
-    if (argc != 3) {
-        fprintf(stderr, "usage: pload <port> <filename>\n");
+    int operation = DOWNLOAD_RUN_BINARY;
+    if (argc < 3) {
+        fprintf(stderr, "usage: pload <port> <filename> [-pN]\n");
         return 1;
+    }
+
+    if(argv[3] != 0 && argv[3][0] == '-') {
+        switch(argv[3][1]) {
+            case 'p':
+                operation = atoi(&argv[3][2]);
+                break;
+            default:
+                break;
+        }
     }
     if (popenport(argv[1], 115200)) {
-        fprintf(stderr, "error opening port\n");
+        fprintf(stderr, "Error opening port\n");
         return 1;
     }
-    if (pload(argv[2], DOWNLOAD_RUN_BINARY) != 0) {
-        fprintf(stderr, "load failed\n");
+    if (pload(argv[2], operation) != 0) {
+        fprintf(stderr, "Load failed\n");
         return 1;
     }
     return 0;
