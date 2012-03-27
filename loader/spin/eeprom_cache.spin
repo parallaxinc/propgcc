@@ -227,7 +227,7 @@ rd_cache_line
         mov     devs,    #EEID
         mov     psiz,    line_size
         mov     addr,    vmaddr
-        add     addr,    eebase      ' add $8000 to get upper EEPROM address
+        add     addr,    eebase      ' add eeprom base to skip the loader and get to the proper EEPROM address
         mov     tp,      hubaddr
         call    #readPage
 rd_cache_line_ret ret
