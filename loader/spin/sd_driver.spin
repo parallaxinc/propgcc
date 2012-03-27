@@ -119,8 +119,11 @@ _wait   rdlong  vmline, pvmcmd wz
         mov     dira, spidir            ' Set the pins back so we can use them
 
         test    vmline, #int#EXTEND_MASK wz ' Test for an extended command
-  if_z  jmp     #extend
-        jmp     #waitcmd
+  if_nz jmp     #waitcmd
+
+'----------------------------------------------------------------------------------------------------
+' Extended command
+'----------------------------------------------------------------------------------------------------
 
 extend  mov     vmaddr, vmline
         shr     vmaddr, #8
@@ -449,7 +452,7 @@ spiRecvByte_ret
         ret
 
 '----------------------------------------------------------------------------------------------------
-' Data
+' Data for the SD Card Routines
 '----------------------------------------------------------------------------------------------------
 
 sdOp            long    0

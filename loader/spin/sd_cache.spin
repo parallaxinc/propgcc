@@ -131,111 +131,7 @@ _wait   rdlong  vmline, pvmcmd wz
         mov     dira, spidir            ' Set the pins back so we can use them
 
         test    vmline, #int#EXTEND_MASK wz ' Test for an extended command
-  if_z  jmp     #extend
-
-'----------------------------------------------------------------------------------------------------
-' Cache command
-'----------------------------------------------------------------------------------------------------
-
-        shr     vmline, offset_width wc ' carry is now one for read and zero for write
-        mov     set_dirty_bit, #0       ' make mask to set dirty bit on writes
-        muxnc   set_dirty_bit, dirty_mask
-        mov     line, vmline            ' get the cache line index
-        and     line, index_mask
-        mov     hubaddr, line
-        shl     hubaddr, offset_width
-        add     hubaddr, cacheptr       ' get the address of the cache line
-        wrlong  hubaddr, pvmaddr        ' return the address of the cache line
-        movs    :ld, line
-        movd    :st, line
-:ld     mov     vmcurrent, 0-0          ' get the cache line tag
-        and     vmcurrent, tag_mask
-        cmp     vmcurrent, vmline wz    ' z set means there was a cache hit
-  if_nz call    #miss                   ' handle a cache miss
-:st     or      0-0, set_dirty_bit      ' set the dirty bit on writes
-        jmp     #waitcmd                ' wait for a new command
-
-' line is the cache line index
-' vmcurrent is current cache line
-' vmline is new cache line
-' hubaddr is the address of the cache line
-miss    movd    :test, line
-        movd    :st, line
-:test   test    0-0, dirty_mask wz
-  if_z  jmp     #:rd                    ' current cache line is clean, just read new one
-        mov     vmaddr, vmcurrent
-        shl     vmaddr, offset_width
-        call    #wr_cache_line          ' write current cache line
-:rd     mov     vmaddr, vmline
-        shl     vmaddr, offset_width
-        call    #rd_cache_line          ' read new cache line
-:st     mov     0-0, vmline
-miss_ret ret
-
-'----------------------------------------------------------------------------------------------------
-' Cache Support routines
-'----------------------------------------------------------------------------------------------------
-
-'----------------------------------------------------------------------------------------------------
-'
-' rd_cache_line - read a cache line from external memory
-'
-' vmaddr is the external memory address to read
-' hubaddr is the hub memory address to write
-' line_size is the number of bytes to read
-'
-'----------------------------------------------------------------------------------------------------
-
-rd_cache_line
-        call    #get_physical_sector
-        mov     count, line_size
-        call    #sd_read
-rd_cache_line_ret
-        ret
-
-'----------------------------------------------------------------------------------------------------
-'
-' wr_cache_line - write a cache line to external memory
-'
-' vmaddr is the external memory address to write
-' hubaddr is the hub memory address to read
-' line_size is the number of bytes to write
-'
-'----------------------------------------------------------------------------------------------------
-
-wr_cache_line
-wr_cache_line_ret
-        ret
-
-
-'----------------------------------------------------------------------------------------------------
-'
-' get_physical_sector - translate virtual address to sector
-'                       using the cluster_map
-'
-' on entry:
-'   vmaddr - external memory address
-' on return:
-'   vmaddr - physical sector number containing the address
-'   t1 - clobbered
-'----------------------------------------------------------------------------------------------------
-
-addrmask long $0fffffff
-
-get_physical_sector
-        and     vmaddr, addrmask
-        shr     vmaddr, #SECTOR_WIDTH
-        add     vmaddr, #4				' size of the pex header
-        mov     t1, vmaddr
-        and     t1, cluster_mask
-        andn    vmaddr, cluster_mask
-        shl     vmaddr, #2              ' byte offset to a long
-        shr     vmaddr, cluster_width
-        add     vmaddr, cluster_map
-        rdlong  vmaddr, vmaddr
-        add     vmaddr, t1
-get_physical_sector_ret
-        ret
+  if_nz jmp     #cache
 
 '----------------------------------------------------------------------------------------------------
 ' Extended command
@@ -256,42 +152,6 @@ dispatch
         jmp     #sd_read_handler
         jmp     #sd_write_handler
         jmp     #cache_init_handler
-        jmp     #waitcmd
-
-'------------------------------------------------------------------------------
-' Cache Initialization
-'------------------------------------------------------------------------------
-
-cache_init_handler
-        mov     t1, vmaddr
-        movd    :loop, #cache_params
-        mov     count, #cache_params_end - cache_params
-:loop   rdlong  0-0, t1
-        add     t1, #4
-        add     :loop, dstinc
-        djnz    count, #:loop
-
-        mov     index_count, #1
-        shl     index_count, index_width
-        mov     index_mask, index_count
-        sub     index_mask, #1
-
-        mov     line_size, #1
-        shl     line_size, offset_width
-        mov     t1, line_size
-        sub     t1, #1
-        wrlong  t1, vmaddr
-
-        mov     cluster_mask, #1
-        shl     cluster_mask, cluster_width
-        sub     cluster_mask, #1
-
-        ' initialize the cache lines
-vmflush movd    :flush, #0
-        mov     t1, index_count
-:flush  mov     0-0, empty_mask
-        add     :flush, dstinc
-        djnz    t1, #:flush
         jmp     #waitcmd
 
 '------------------------------------------------------------------------------
@@ -604,12 +464,9 @@ spiRecvByte_ret
         ret
 
 '----------------------------------------------------------------------------------------------------
-' Data
+' Data for the SD Card Routines
 '----------------------------------------------------------------------------------------------------
 
-'
-' For the SD Card Routines
-'
 sdOp            long    0
 sdParam         long    0
 sdParam1        long    0
@@ -649,9 +506,149 @@ count           long    0       ' The block count
 bits            long    0       ' # bits to send/receive
 data            long    0       ' Current data being sent/received
 
+'------------------------------------------------------------------------------
+' Cache Initialization
+'------------------------------------------------------------------------------
+
+cache_init_handler
+        mov     t1, vmaddr
+        movd    :loop, #cache_params
+        mov     count, #cache_params_end - cache_params
+:loop   rdlong  0-0, t1
+        add     t1, #4
+        add     :loop, dstinc
+        djnz    count, #:loop
+
+        mov     index_count, #1
+        shl     index_count, index_width
+        mov     index_mask, index_count
+        sub     index_mask, #1
+
+        mov     line_size, #1
+        shl     line_size, offset_width
+        mov     t1, line_size
+        sub     t1, #1
+        wrlong  t1, vmaddr
+
+        mov     cluster_mask, #1
+        shl     cluster_mask, cluster_width
+        sub     cluster_mask, #1
+
+        ' initialize the cache lines
+vmflush movd    :flush, #0
+        mov     t1, index_count
+:flush  mov     0-0, empty_mask
+        add     :flush, dstinc
+        djnz    t1, #:flush
+        jmp     #waitcmd
+
+'----------------------------------------------------------------------------------------------------
+' Cache command
+'----------------------------------------------------------------------------------------------------
+
+cache   shr     vmline, offset_width wc ' carry is now one for read and zero for write
+        mov     set_dirty_bit, #0       ' make mask to set dirty bit on writes
+        muxnc   set_dirty_bit, dirty_mask
+        mov     line, vmline            ' get the cache line index
+        and     line, index_mask
+        mov     hubaddr, line
+        shl     hubaddr, offset_width
+        add     hubaddr, cacheptr       ' get the address of the cache line
+        wrlong  hubaddr, pvmaddr        ' return the address of the cache line
+        movs    :ld, line
+        movd    :st, line
+:ld     mov     vmcurrent, 0-0          ' get the cache line tag
+        and     vmcurrent, tag_mask
+        cmp     vmcurrent, vmline wz    ' z set means there was a cache hit
+  if_nz call    #miss                   ' handle a cache miss
+:st     or      0-0, set_dirty_bit      ' set the dirty bit on writes
+        jmp     #waitcmd                ' wait for a new command
+
+' line is the cache line index
+' vmcurrent is current cache line
+' vmline is new cache line
+' hubaddr is the address of the cache line
+miss    movd    :test, line
+        movd    :st, line
+:test   test    0-0, dirty_mask wz
+  if_z  jmp     #:rd                    ' current cache line is clean, just read new one
+        mov     vmaddr, vmcurrent
+        shl     vmaddr, offset_width
+        call    #wr_cache_line          ' write current cache line
+:rd     mov     vmaddr, vmline
+        shl     vmaddr, offset_width
+        call    #rd_cache_line          ' read new cache line
+:st     mov     0-0, vmline
+miss_ret ret
+
+'----------------------------------------------------------------------------------------------------
+' Cache Support routines
+'----------------------------------------------------------------------------------------------------
+
+'----------------------------------------------------------------------------------------------------
 '
-' For the cache
+' rd_cache_line - read a cache line from external memory
 '
+' vmaddr is the external memory address to read
+' hubaddr is the hub memory address to write
+' line_size is the number of bytes to read
+'
+'----------------------------------------------------------------------------------------------------
+
+rd_cache_line
+        call    #get_physical_sector
+        mov     count, line_size
+        call    #sd_read
+rd_cache_line_ret
+        ret
+
+'----------------------------------------------------------------------------------------------------
+'
+' wr_cache_line - write a cache line to external memory
+'
+' vmaddr is the external memory address to write
+' hubaddr is the hub memory address to read
+' line_size is the number of bytes to write
+'
+'----------------------------------------------------------------------------------------------------
+
+wr_cache_line
+wr_cache_line_ret
+        ret
+
+
+'----------------------------------------------------------------------------------------------------
+'
+' get_physical_sector - translate virtual address to sector
+'                       using the cluster_map
+'
+' on entry:
+'   vmaddr - external memory address
+' on return:
+'   vmaddr - physical sector number containing the address
+'   t1 - clobbered
+'----------------------------------------------------------------------------------------------------
+
+addrmask long $0fffffff
+
+get_physical_sector
+        and     vmaddr, addrmask
+        shr     vmaddr, #SECTOR_WIDTH
+        add     vmaddr, #4				' size of the pex header
+        mov     t1, vmaddr
+        and     t1, cluster_mask
+        andn    vmaddr, cluster_mask
+        shl     vmaddr, #2              ' byte offset to a long
+        shr     vmaddr, cluster_width
+        add     vmaddr, cluster_map
+        rdlong  vmaddr, vmaddr
+        add     vmaddr, t1
+get_physical_sector_ret
+        ret
+
+'----------------------------------------------------------------------------------------------------
+' Data for the Cache
+'----------------------------------------------------------------------------------------------------
 
 ' Parameters passed by the cache driver
 cache_params
