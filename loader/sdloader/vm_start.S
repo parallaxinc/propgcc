@@ -4,17 +4,17 @@
                     .cog_ram
                        
 boot                mov     t1, PAR
-                    rdlong  image_base, t1
+                    rdlong  image_base, t1      ' params[0]
                     add     t1, #4
-                    rdlong  cache_mboxcmd, t1
+                    rdlong  cache_mboxcmd, t1   ' params[1]
                     add     t1, #4
                     mov     cache_mboxdat, cache_mboxcmd
                     add     cache_mboxdat, #4
-                    rdlong  cache_linemask, t1
+                    rdlong  cache_linemask, t1  ' params[2]
                     add     t1, #4
-                    rdlong  vm_mbox, t1
+                    rdlong  vm_mbox, t1         ' params[3]
                     add     t1, #4
-                    rdlong  stacktop, t1
+                    rdlong  stacktop, t1        ' params[4]
                     rdlong  boot_clkfreq, #0
                     rdbyte  boot_clkmode, #4
                     

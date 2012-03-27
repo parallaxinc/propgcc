@@ -27,16 +27,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "sdio.h"
 #include "../src/pex.h"
 #include "sd_loader.h"
+#include "cacheops.h"
 #include "debug.h"
 
 #define FILENAME    	"AUTORUN PEX"
 
 #define HUB_SIZE    	(32 * 1024)
-
-#define CMD_MASK        0x03
-#define WRITE_CMD       0x02
-#define READ_CMD        0x03
-#define INIT_CACHE_CMD	0x19
 
 typedef struct {
 	uint32_t	cacheptr_linemask;
