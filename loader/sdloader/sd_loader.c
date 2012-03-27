@@ -27,6 +27,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "sdio.h"
 #include "../src/pex.h"
 #include "sd_loader.h"
+#include "cacheops.h"
 #include "debug.h"
 
 #define FILENAME    "AUTORUN PEX"
@@ -63,7 +64,7 @@ int main(void)
     uint8_t *buffer = (uint8_t *)_load_start_coguser1;
     SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
     uint32_t cache_addr, load_address;
-    uint32_t params[4];
+    uint32_t params[5];
     VolumeInfo vinfo;
     FileInfo finfo;
     PexeFileHdr *hdr;
@@ -72,7 +73,7 @@ int main(void)
     uint8_t *p;
     
     cache_addr = HUB_SIZE - info->cache_size;
-    xmm_mbox = (volatile uint32_t *)(cache_addr - 2 * sizeof(uint32_t));
+    xmm_mbox = (uint32_t *)(cache_addr - 2 * sizeof(uint32_t));
     vm_mbox = xmm_mbox - 1;
     
     if (info->use_cache_driver_for_sd) {
@@ -149,6 +150,7 @@ int main(void)
     params[1] = (uint32_t)xmm_mbox;
     params[2] = cache_line_mask;
     params[3] = (uint32_t)vm_mbox;
+    params[4] = (uint32_t *)vm_mbox;
 
     // load into flash/eeprom
     if (load_address >= 0x30000000) {
@@ -203,16 +205,6 @@ static int ReadSector(FileInfo *finfo, uint8_t *buf)
 	}
 	return 0;
 }
-
-#define CMD_MASK        0x03
-#define WRITE_CMD       0x02
-#define READ_CMD        0x03
-#define ERASE_CHIP_CMD  0x01
-#define ERASE_BLOCK_CMD 0x05
-#define WRITE_DATA_CMD  0x09
-#define SD_INIT_CMD     0x0d
-#define SD_READ_CMD     0x11
-#define SD_WRITE_CMD    0x15
 
 static void write_ram_long(uint32_t addr, uint32_t val)
 {
