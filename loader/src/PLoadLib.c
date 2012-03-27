@@ -332,7 +332,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
      * Check for a RAM program complete signal
      */
     if (pload_verbose) {
-        fprintf(stderr, "Verifying RAM ... ");
+        fprintf(stderr, "Verifying RAM ");
         fflush(stderr);
     }
     for(n = 0; n < wv; n++) {
@@ -372,7 +372,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         buf[0] = 0xF9;
 
         if (pload_verbose) {
-            fprintf(stderr, "Programming EEPROM ... ");
+            fprintf(stderr, "Programming EEPROM ");
             fflush(stderr);
         }
         /* Check for EEPROM program finished
@@ -384,7 +384,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             if(ack) {
                 if(rc != 0) {
                     if(pload_verbose)
-                        fprintf(stderr,"programming failed.\n");
+                        fprintf(stderr,"failed.\n");
                     return 1;
                 }
                 break;
@@ -402,7 +402,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         }
 
         if (pload_verbose) {
-            fprintf(stderr, "Verifying EEPROM ... ");
+            fprintf(stderr, "Verifying EEPROM ");
             fflush(stderr);
         }
         /* Check for EEPROM program verify
@@ -414,7 +414,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             if(ack) {
                 if(rc != 0) {
                     if(pload_verbose)
-                        fprintf(stderr,"verify failed.\n");
+                        fprintf(stderr,"failed.\n");
                     return 1;
                 }
                 break;
