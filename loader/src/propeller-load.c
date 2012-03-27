@@ -169,6 +169,9 @@ int main(int argc, char *argv[])
             case 'v':
                 verbose = TRUE;
                 break;
+            case 'S':
+                psetdelay(argv[i][2] ? atoi(&argv[i][2]) : 5);
+                break;
             case 'f':
                 flags |= LFLAG_WRITE_SDFILE;
                 break;
@@ -337,6 +340,7 @@ usage: propeller-load\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
          [ -v ]            verbose output\n\
+         [ -S<n> ]         slow down the loader by adding <n> microseconds delay (default is 5)\n\
          [ -? ]            display a usage message and exit\n\
          <name>            elf or spin binary file to load\n\
 \n\

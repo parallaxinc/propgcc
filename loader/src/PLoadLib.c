@@ -42,10 +42,16 @@
 uint8_t LFSR = 80; // 'P'
 
 int pload_verbose = 1;
+int pload_delay = 0;
 
 void psetverbose(int verbose)
 {
     pload_verbose = verbose;
+}
+
+void psetdelay(int delay)
+{
+    pload_delay = delay;
 }
 
 static int iterate(void)
@@ -113,19 +119,20 @@ static void makelong(uint32_t data, uint8_t* buff)
 static int sendlong(uint32_t data)
 {
     uint8_t mybuf[12];
-#ifndef MACOSX
-    makelong(data, mybuf);
-    return tx(mybuf, 11);
-#else
-    int n;
-    makelong(data, mybuf);
-    for(n = 0; n < 11; n++) {
-        usleep(5);
-        if(tx(&mybuf[n], 1) == 0)
-            return 0;
+    if (pload_delay == 0) {
+        makelong(data, mybuf);
+        return tx(mybuf, 11);
     }
-    return n-1;
-#endif
+    else {
+        int n;
+        makelong(data, mybuf);
+        for(n = 0; n < 11; n++) {
+            usleep(pload_delay);
+            if(tx(&mybuf[n], 1) == 0)
+                return 0;
+        }
+        return n-1;
+    }
 }
 
 /**
@@ -171,7 +178,7 @@ static int hwfind(void)
      */
     ii = getBit(&rc, 110);
     if(rc == 0) {
-        //printf("Timeout waiting for first response bit. Propeller not found.\n");
+        //printf("Timeout waiting for first response bit. Propeller not found\n");
         return 0;
     }
 
@@ -277,20 +284,20 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
     // send type
     if(sendlong(type) == 0) {
         if (pload_verbose)
-            fprintf(stderr, "sendlong type failed.\n");
+            fprintf(stderr, "sendlong type failed\n");
         return 1;
     }
 
     // send count
     if(sendlong(longcount) == 0) {
         if (pload_verbose)
-            fprintf(stderr, "sendlong count failed.\n");
+            fprintf(stderr, "sendlong count failed\n");
         return 1;
     }
 
     if((type == 0) || (type >= DOWNLOAD_SHUTDOWN)) {
         if (pload_verbose)
-            fprintf(stderr, "Shutdown type %d sent.\n", type);
+            fprintf(stderr, "Shutdown type %d sent\n", type);
         return 1;
     }
 
@@ -301,9 +308,9 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             fprintf(stderr, "Loading");
 
         if(type == DOWNLOAD_RUN_BINARY)
-            fprintf(stderr, " to HUB memory.\n");
+            fprintf(stderr, " to HUB memory\n");
         else
-            fprintf(stderr, " to EEPROM via HUB memory.\n");
+            fprintf(stderr, " to EEPROM via HUB memory\n");
     }
 
     remaining = count;
@@ -332,7 +339,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
      * Check for a RAM program complete signal
      */
     if (pload_verbose) {
-        fprintf(stderr, "Verifying RAM ");
+        fprintf(stderr, "Verifying RAM ... ");
         fflush(stderr);
     }
     for(n = 0; n < wv; n++) {
@@ -352,7 +359,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
 
     if(rc == 0) {
         if(pload_verbose)
-            fprintf(stderr, "OK.\n");
+            fprintf(stderr, "OK\n");
     }
     else {
         if(pload_verbose)
@@ -372,7 +379,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         buf[0] = 0xF9;
 
         if (pload_verbose) {
-            fprintf(stderr, "Programming EEPROM ");
+            fprintf(stderr, "Programming EEPROM ... ");
             fflush(stderr);
         }
         /* Check for EEPROM program finished
@@ -384,7 +391,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             if(ack) {
                 if(rc != 0) {
                     if(pload_verbose)
-                        fprintf(stderr,"failed.\n");
+                        fprintf(stderr,"failed\n");
                     return 1;
                 }
                 break;
@@ -392,17 +399,17 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         }
         if(n >= wv) {
             if(pload_verbose)
-                fprintf(stderr,"EEPROM programming timeout.\n");
+                fprintf(stderr,"EEPROM programming timeout\n");
             return 1;
         }
 
         if (pload_verbose) {
             if(rc == 0)
-                fprintf(stderr, "OK.\n");
+                fprintf(stderr, "OK\n");
         }
 
         if (pload_verbose) {
-            fprintf(stderr, "Verifying EEPROM ");
+            fprintf(stderr, "Verifying EEPROM ... ");
             fflush(stderr);
         }
         /* Check for EEPROM program verify
@@ -414,7 +421,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             if(ack) {
                 if(rc != 0) {
                     if(pload_verbose)
-                        fprintf(stderr,"failed.\n");
+                        fprintf(stderr,"failed\n");
                     return 1;
                 }
                 break;
@@ -422,13 +429,13 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         }
         if(n >= wv) {
             if(pload_verbose)
-                fprintf(stderr,"EEPROM verify timeout.\n");
+                fprintf(stderr,"EEPROM verify timeout\n");
             return 1;
         }
 
         if (pload_verbose) {
             if(rc == 0)
-                fprintf(stderr, "OK.\n");
+                fprintf(stderr, "OK\n");
         }
     }
 
@@ -474,7 +481,7 @@ int pload(const char* file, int type)
     FILE* fp = fopen(file, "rb");
     if(!fp) {
         if (pload_verbose)
-            fprintf(stderr, "Can't open '%s' for download.\n", file);
+            fprintf(stderr, "Can't open '%s' for download\n", file);
         return 4;
     }
     else {
