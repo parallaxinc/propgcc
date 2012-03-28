@@ -38,6 +38,14 @@ static COMMTIMEOUTS timeouts;
 
 static void ShowLastError(void);
 
+/* normally we use DTR for reset but setting this variable to non-zero will use RTS instead */
+static int use_rts_for_reset = 0;
+
+void serial_use_rts_for_reset(int use_rts)
+{
+    use_rts_for_reset = use_rts;
+}
+
 int serial_init(const char *port, unsigned long baud)
 {
     char fullPort[20];
@@ -175,9 +183,9 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
  */
 void hwreset(void)
 {
-    EscapeCommFunction(hSerial, SETDTR);
+    EscapeCommFunction(hSerial, use_rts_for_reset ? SETRTS : SETDTR);
     Sleep(10);
-    EscapeCommFunction(hSerial, CLRDTR);
+    EscapeCommFunction(hSerial, use_rts_for_reset ? CLRRTS : CLRDTR);
     Sleep(100);
     // Purge here after reset to get rid of buffered data. Prevents "Lost HW Contact 0 f9"
     PurgeComm(hSerial, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);

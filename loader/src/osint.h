@@ -36,6 +36,7 @@
 #define SERIAL_TIMEOUT  -1
 
 /* serial i/o routines */
+void serial_use_rts_for_reset(int use_rts);
 int serial_find(const char* prefix, int (*check)(const char* port, void* data), void* data);
 int serial_init(const char *port, unsigned long baud);
 void serial_done(void);
