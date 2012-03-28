@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <math.h>
 
-
-const char *cmdchars = "+, -, *, /, or q";
+const char *cmdchars = "+, -, *, or /";
 
 
 // size of buffer for getting numbers
@@ -12,21 +12,21 @@ const char *cmdchars = "+, -, *, /, or q";
 
 float getfloat(int num)
 {
-    static char buff[NUMSIZE];
+    static char buff[NUMSIZE];    
     printf("Enter %s number: ", (num==1) ? "first ":"second");
-    fflush(stdout);
     fgets(buff, NUMSIZE, stdin);
     return atof(buff);          // strtod works too, but it is bigger
 }
 
 
-int main()
+int main(void)
 {
-    char ch = 0;        // assign to supress uninitialized warnings
+    char ch = 0;    // assign to supress uninitialized warnings
     double v1 = 2;
     double v2 = 3;
 
-
+    sleep(1);       // give terminal time to start
+    setbuf(stdout, 0);
     printf("%f\n", v1+v2);
 
 
@@ -35,8 +35,6 @@ int main()
     for(;;)
     {
         printf("\nCommand? ");
-        fflush(stdout);
-
 
         /* handle input */
         ch = getchar();
@@ -63,7 +61,6 @@ int main()
                 break;
         }
 
-
         /* print output */
         if(ch)
         {
@@ -85,6 +82,7 @@ int main()
                 default :
                     break;
             }
+            printf("\n");
         }
     }
     return 0;
