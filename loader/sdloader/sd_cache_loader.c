@@ -57,7 +57,7 @@ extern unsigned int _load_start_coguser1[];
 /* this section contains the vm_start.S code */
 extern unsigned int _load_start_coguser3[];
 
-int ReadSector(FileInfo *finfo, uint8_t *buf);
+static int ReadSector(char *tag, FileInfo *finfo, uint8_t *buf);
 
 int main(void)
 {
@@ -115,9 +115,15 @@ int main(void)
 	cluster_map = (uint32_t *)vm_mbox - cluster_count;
     
 	// read the file header
-	if (ReadSector(&finfo, buffer) != 0)
+	if (ReadSector("PEX file header", &finfo, buffer) != 0)
 		return 1;
+		
+	// verify the header
     hdr = (PexeFileHdr *)buffer;
+    if (strncmp(hdr->tag, PEXE_TAG, sizeof(hdr->tag)) != 0 || hdr->version != PEXE_VERSION) {
+        DPRINTF("Bad PEX file header\n");
+        return 1;
+    }
 	load_address = hdr->loadAddress;
 	
 	// move past the header
@@ -126,7 +132,7 @@ int main(void)
 	
     // read the .kernel cog image
     for (i = 1; i < 4; ++i) {
-    	if (ReadSector(&finfo, p) != 0)
+    	if (ReadSector("kernel image", &finfo, p) != 0)
     		return 1;
         p += SECTOR_SIZE;
     }
@@ -178,15 +184,11 @@ int main(void)
     return 0;
 }
 
-int ReadSector(FileInfo *finfo, uint8_t *buf)
+static int ReadSector(char *tag, FileInfo *finfo, uint8_t *buf)
 {
 	uint32_t count;
-	if (GetNextFileSector(finfo, buf, &count) != 0) {
-		DPRINTF("GetNextFileSector failed\n");
-		return 1;
-	}
-	if (count != SECTOR_SIZE) {
-		DPRINTF("Incomplete file header\n");
+	if (GetNextFileSector(finfo, buf, &count) != 0 || count != SECTOR_SIZE) {
+		DPRINTF("Incomplete %s\n", tag);
 		return 1;
 	}
 	return 0;
