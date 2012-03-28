@@ -803,7 +803,7 @@ int WriteFileToSDCard(char *path, char *target)
     if (!SendPacket(TYPE_FILE_WRITE, (uint8_t *)target, strlen(target) + 1))
         return Error("SendPacket FILE_WRITE failed");
     
-    printf("Loading '%s' to SD Card.\n", path);
+    printf("Loading '%s' to SD card\n", path);
     while ((cnt = fread(buf, 1, PKTMAXLEN, fp)) > 0) {
         printf("%ld bytes remaining             \r", remaining); fflush(stdout);
         if (!SendPacket(TYPE_DATA, buf, cnt))
