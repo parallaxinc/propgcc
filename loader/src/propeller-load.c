@@ -275,13 +275,8 @@ int main(int argc, char *argv[])
 
     /* load the image file */
     if (infile) {
-        if (flags & LFLAG_WRITE_SDFILE) {
-            if (!LoadSerialHelper(config, TRUE)) {
-                fprintf(stderr, "error: loading serial helper\n");
-                return 1;
-            }
-            WriteFileToSDCard(infile, NULL);
-        }
+        if (flags & LFLAG_WRITE_SDFILE)
+            WriteFileToSDCard(config, infile, NULL);
         else {
             if (!LoadImage(&sys, config, infile, flags)) {
                 fprintf(stderr, "error: load failed\n");

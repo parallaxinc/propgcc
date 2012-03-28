@@ -72,7 +72,7 @@ int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
-int WriteFileToSDCard(char *path, char *target);
+int WriteFileToSDCard(BoardConfig *config, char *path, char *target);
 int LoadSerialHelper(BoardConfig *config, int needsd);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);

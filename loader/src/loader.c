@@ -160,16 +160,10 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
             
             /* write the executable file to the sd card for -l or -z */
             if (flags & (LFLAG_WRITE_SDLOADER | LFLAG_WRITE_SDCACHELOADER)) {
-            
-                /* load the serial helper to write to the sd card */
-                if (!LoadSerialHelper(config, TRUE)) {
-                    fprintf(stderr, "error: loading serial helper\n");
-                    return 1;
-                }
-
-                /* write the .pex file to the sd card with the name 'autorun.pex' */
-                if (!WriteFileToSDCard(outfile, "autorun.pex"))
+                if (!WriteFileToSDCard(config, outfile, "autorun.pex")) {
+                    fclose(fp);
                     return FALSE;
+                }
             }
             
             /* write the sd_loader for -l */
@@ -780,12 +774,21 @@ static int WriteBuffer(uint8_t *buf, int size)
     return TRUE;
 }
 
-int WriteFileToSDCard(char *path, char *target)
+int WriteFileToSDCard(BoardConfig *config, char *path, char *target)
 {
     uint8_t buf[PKTMAXLEN];
     size_t size, remaining, cnt;
     FILE *fp;
 
+    /* open the file */
+    if ((fp = fopen(path, "rb")) == NULL)
+        return Error("can't open %s", path);
+    
+    if (!LoadSerialHelper(config, TRUE)) {
+        fclose(fp);
+        return Error("loading serial helper");
+    }
+    
     if (!target) {
         if (!(target = strrchr(path, '/')))
             target = path;
@@ -793,21 +796,22 @@ int WriteFileToSDCard(char *path, char *target)
             ++target; // skip past the slash
     }
     
-    if ((fp = fopen(path, "rb")) == NULL)
-        return FALSE;
-
     fseek(fp, 0, SEEK_END);
     size = remaining = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    if (!SendPacket(TYPE_FILE_WRITE, (uint8_t *)target, strlen(target) + 1))
+    if (!SendPacket(TYPE_FILE_WRITE, (uint8_t *)target, strlen(target) + 1)) {
+        fclose(fp);
         return Error("SendPacket FILE_WRITE failed");
+    }
     
     printf("Loading '%s' to SD card\n", path);
     while ((cnt = fread(buf, 1, PKTMAXLEN, fp)) > 0) {
         printf("%ld bytes remaining             \r", remaining); fflush(stdout);
-        if (!SendPacket(TYPE_DATA, buf, cnt))
+        if (!SendPacket(TYPE_DATA, buf, cnt)) {
+            fclose(fp);
             return Error("SendPacket DATA failed\n");
+        }
         remaining -= cnt;
     }
     printf("%ld bytes sent             \n", size);
