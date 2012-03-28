@@ -76,19 +76,12 @@ int main(void)
     xmm_mbox = (uint32_t *)(cache_addr - 2 * sizeof(uint32_t));
     vm_mbox = xmm_mbox - 1;
     
-    if (info->use_cache_driver_for_sd) {
-        DPRINTF("using cache driver for sd card access\n");
-        sd_mbox = xmm_mbox;
-        sd_id = -1;
-    }
-    else {
-        DPRINTF("loading sd driver\n");
-        sd_mbox = vm_mbox - 2;
-        sd_mbox[0] = 0xffffffff;
-        sd_id = cognew(_load_start_coguser2, sd_mbox);
-        while (sd_mbox[0])
-            ;
-    }
+    DPRINTF("loading sd driver\n");
+    sd_mbox = vm_mbox - 2;
+    sd_mbox[0] = 0xffffffff;
+    sd_id = cognew(_load_start_coguser2, sd_mbox);
+    while (sd_mbox[0])
+        ;
     
     params[0] = (uint32_t)xmm_mbox;
     params[1] = cache_addr;
