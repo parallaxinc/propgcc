@@ -48,6 +48,14 @@ typedef int HANDLE;
 static HANDLE hSerial;
 static struct termios old_sparm;
 
+/* normally we use DTR for reset but setting this variable to non-zero will use RTS instead */
+static int use_rts_for_reset = 0;
+
+void serial_use_rts_for_reset(int use_rts)
+{
+    use_rts_for_reset = use_rts;
+}
+
 static void chk(char *fun, int sts)
 {
     if (sts != 0)
@@ -272,7 +280,7 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
  */
 void hwreset(void)
 {
-    int cmd = TIOCM_DTR;
+    int cmd = use_rts_for_reset ? TIOCM_RTS : TIOCM_DTR;
     ioctl(hSerial, TIOCMBIS, &cmd); // assert DTR pin
     msleep(10);
     ioctl(hSerial, TIOCMBIC, &cmd); // deassert DTR pin
