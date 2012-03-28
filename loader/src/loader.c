@@ -336,12 +336,19 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("can't find info (.coguser0) segment");
     
     info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
+    memset(info, 0, sizeof(SdLoaderInfo));
+    
     if (GetNumericConfigField(config, "cache-size", &ivalue))
         info->cache_size = ivalue;
     if (GetNumericConfigField(config, "cache-param1", &ivalue))
         info->cache_param1 = ivalue;
     if (GetNumericConfigField(config, "cache-param2", &ivalue))
         info->cache_param2 = ivalue;
+    if ((value = GetConfigField(config, "load-target")) != NULL) {
+        if (strcasecmp(value, "ram") == 0)
+            info->flags |= SD_LOAD_RAM;
+    }
+    
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find cache driver (.coguser1) segment");

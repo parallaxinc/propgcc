@@ -145,20 +145,8 @@ int main(void)
     params[3] = (uint32_t)vm_mbox;
     params[4] = (uint32_t)vm_mbox;
 
-    // load into flash/eeprom
-    if (load_address >= 0x30000000) {
-        uint32_t addr = 0x00000000;
-        DPRINTF("Loading flash/EEPROM at 0x%08x\n", load_address);
-        while (GetNextFileSector(&finfo, buffer, &count) == 0) {
-            if ((addr & 0x00000fff) == 0)
-                erase_flash_block(addr);
-            write_flash_page(addr, buffer, count);
-            addr += SECTOR_SIZE;
-        }
-    }
-    
     // load into ram
-    else {
+    if (load_address < 0x30000000 || (info->flags & SD_LOAD_RAM)) {
         uint32_t addr = load_address;
         DPRINTF("Loading RAM at 0x%08x\n", load_address);
         while (GetNextFileSector(&finfo, buffer, &count) == 0) {
@@ -170,7 +158,19 @@ int main(void)
             }
         }
     }
-    
+
+    // load into flash/eeprom
+    else {
+        uint32_t addr = 0x00000000;
+        DPRINTF("Loading flash/EEPROM at 0x%08x\n", load_address);
+        while (GetNextFileSector(&finfo, buffer, &count) == 0) {
+            if ((addr & 0x00000fff) == 0)
+                erase_flash_block(addr);
+            write_flash_page(addr, buffer, count);
+            addr += SECTOR_SIZE;
+        }
+    }
+        
     // stop the sd driver
     if (sd_id >= 0) {
         DPRINTF("Stopping the SD driver\n");
