@@ -43,6 +43,7 @@ typedef struct {
     uint32_t cs_clr_mask;
     uint32_t select_inc_mask;
     uint32_t select_mask;
+    uint32_t select_address;
 } SDParams;
 
 /* DAT header in serial_helper.spin */
@@ -300,6 +301,9 @@ static int SetSDParams(BoardConfig *config, SDParams *params)
         
     if (GetNumericConfigField(config, "sdspi-msk", &value))
         params->select_mask = value;
+
+    if (GetNumericConfigField(config, "sdspi-addr", &value))
+        params->select_address = value;
         
     return TRUE;
 }
@@ -359,17 +363,15 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     if (FindProgramSegment(c, ".coguser2", &program) < 0)
         return Error("can't find sd_driver (.coguser2) segment");
     
-    if ((value = GetConfigField(config, "sd-driver")) != NULL) {
-        SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
-        if (!ReadCogImage(sys, value, driverImage, &driverSize))
-            return Error("reading sd driver image failed: %s", value);
-        if (!SetSDParams(config, &dat->sd_params))
-            return FALSE;
-        memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
-        info->use_cache_driver_for_sd = FALSE;
-    }
-    else
-        info->use_cache_driver_for_sd = TRUE;
+    if ((value = GetConfigField(config, "sd-driver")) == NULL)
+        return Error("no sd_driver found in the configuration");
+
+    SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
+    if (!ReadCogImage(sys, value, driverImage, &driverSize))
+        return Error("reading sd driver image failed: %s", value);
+    if (!SetSDParams(config, &dat->sd_params))
+        return FALSE;
+    memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
             
     /* update the checksum */
     UpdateChecksum(imagebuf, imageSize);
@@ -448,7 +450,6 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     if (!SetSDParams(config, &params->sd_params))
         return FALSE;
     memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
-    info->use_cache_driver_for_sd = TRUE;
             
     /* update the checksum */
     UpdateChecksum(imagebuf, imageSize);
