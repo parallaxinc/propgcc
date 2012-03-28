@@ -348,8 +348,10 @@ Target board type can be either a single identifier like 'propboe' in which case
 defaults to 'default' or it can be of the form <type>:<subtype> like 'c3:ram'.\n\
 \n\
 Variables that can be set with -D are:\n\
-  clkfreq clkmode baudrate rxpin txpin tvpin cache-driver cache-size cache-param1 cache-param2\n\
-  sd-cache sdspi-do sdspi-clk sdspi-di sdspi-cs sdspi-clr sdspi-inc sdspi-sel sdspi-msk\n\
+  clkfreq clkmode baudrate rxpin txpin tvpin\n\
+  cache-driver cache-size cache-param1 cache-param2\n\
+  sd-driver sdspi-do sdspi-clk sdspi-di sdspi-cs\n\
+  sdspi-clr sdspi-inc sdspi-sel sdspi-msk spdspi-addr\n\
   eeprom-first\n\
 \n\
 Value expressions for -D can include:\n\
