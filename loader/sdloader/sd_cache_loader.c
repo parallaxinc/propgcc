@@ -77,19 +77,19 @@ int main(void)
     vm_mbox = xmm_mbox - 1;
     
     // load the cache driver
-    DPRINTF("loading cache driver\n");
+    DPRINTF("Loading cache driver\n");
     xmm_mbox[0] = 0xffffffff;
     cognew(_load_start_coguser1, xmm_mbox);
     while (xmm_mbox[0])
         ;
         
-    DPRINTF("initializing sd card\n");
+    DPRINTF("Initializing SD card\n");
     if (SD_Init(xmm_mbox, 5) != 0) {
         DPRINTF("SD card initialization failed\n");
         return -1;
     }
         
-    DPRINTF("mounting sd filesystem\n");
+    DPRINTF("Mounting SD filesystem\n");
     if (MountFS(buffer, &vinfo) != 0) {
         DPRINTF("MountFS failed\n");
         return 1;
@@ -103,7 +103,7 @@ int main(void)
     }
     	
     // open the .pex file
-    DPRINTF("opening AUTORUN.PEX\n");
+    DPRINTF("Opening AUTORUN.PEX\n");
     if (FindFile(buffer, &vinfo, FILENAME, &finfo) != 0) {
         DPRINTF("FindFile '%s' failed\n", FILENAME);
         return 1;
@@ -132,7 +132,7 @@ int main(void)
     }
     
     // start the xmm kernel
-    DPRINTF("loading kernel\n");
+    DPRINTF("Loading kernel\n");
     vm_mbox[0] = 0;
     cognew(buffer, vm_mbox);
     vm_params[0] = load_address;
@@ -143,7 +143,7 @@ int main(void)
     cache_params.offset_width = 9; 	// info->cache_param2;
 	cache_params.cluster_map = (uint32_t)cluster_map;
 
-    DPRINTF("loading cluster map\n");
+    DPRINTF("Loading cluster map\n");
     cluster = finfo.cluster;
     for (i = 0; i < cluster_count; ++i) {
     	if (cluster >= vinfo.endOfClusterChain) {
@@ -158,7 +158,7 @@ int main(void)
     }
 	
     // initialize the cache
-    DPRINTF("initializing cache\n");
+    DPRINTF("Initializing cache\n");
     xmm_mbox[0] = INIT_CACHE_CMD | ((uint32_t)&cache_params << 8);
     while (xmm_mbox[0])
         ;
@@ -171,7 +171,7 @@ int main(void)
     vm_params[4] = (uint32_t)cluster_map; // space below the cluster map is used as the stack
     
     // replace this loader with vm_start.S
-    DPRINTF("starting program\n");
+    DPRINTF("Starting program\n");
     coginit(cogid(), _load_start_coguser3, vm_params);
 
     // should never reach this

@@ -76,7 +76,7 @@ int main(void)
     xmm_mbox = (uint32_t *)(cache_addr - 2 * sizeof(uint32_t));
     vm_mbox = xmm_mbox - 1;
     
-    DPRINTF("loading sd driver\n");
+    DPRINTF("Loading SD driver\n");
     sd_mbox = vm_mbox - 2;
     sd_mbox[0] = 0xffffffff;
     sd_id = cognew(_load_start_coguser2, sd_mbox);
@@ -89,27 +89,27 @@ int main(void)
     params[3] = info->cache_param2;
     
     // load the cache driver
-    DPRINTF("loading cache driver\n");
+    DPRINTF("Loading cache driver\n");
     xmm_mbox[0] = 0xffffffff;
     cognew(_load_start_coguser1, params);
     while (xmm_mbox[0])
         ;
     cache_line_mask = params[0];
         
-    DPRINTF("initializing sd card\n");
+    DPRINTF("Initializing SD card\n");
     if (SD_Init(sd_mbox, 5) != 0) {
         DPRINTF("SD card initialization failed\n");
         return 1;
     }
         
-    DPRINTF("mounting filesystem\n");
+    DPRINTF("Mounting filesystem\n");
     if (MountFS(buffer, &vinfo) != 0) {
         DPRINTF("MountFS failed\n");
         return 1;
     }
     
     // open the .pex file
-    DPRINTF("opening 'autorun.pex'\n");
+    DPRINTF("Opening 'autorun.pex'\n");
     if (FindFile(buffer, &vinfo, FILENAME, &finfo) != 0) {
         DPRINTF("FindFile '%s' failed\n", FILENAME);
         return 1;
@@ -133,7 +133,7 @@ int main(void)
     }
     
     // start the xmm kernel
-    DPRINTF("starting kernel\n");
+    DPRINTF("Starting kernel\n");
     hdr = (PexeFileHdr *)buffer;
     vm_mbox[0] = 0;
     cognew(buffer, vm_mbox);
@@ -148,7 +148,7 @@ int main(void)
     // load into flash/eeprom
     if (load_address >= 0x30000000) {
         uint32_t addr = 0x00000000;
-        DPRINTF("loading flash/eeprom at 0x%08x\n", load_address);
+        DPRINTF("Loading flash/EEPROM at 0x%08x\n", load_address);
         while (GetNextFileSector(&finfo, buffer, &count) == 0) {
             if ((addr & 0x00000fff) == 0)
                 erase_flash_block(addr);
@@ -160,7 +160,7 @@ int main(void)
     // load into ram
     else {
         uint32_t addr = load_address;
-        DPRINTF("loading ram at 0x%08x\n", load_address);
+        DPRINTF("Loading RAM at 0x%08x\n", load_address);
         while (GetNextFileSector(&finfo, buffer, &count) == 0) {
             uint32_t *p = (uint32_t *)buffer;
             while (count > 0) {
@@ -173,12 +173,12 @@ int main(void)
     
     // stop the sd driver
     if (sd_id >= 0) {
-        DPRINTF("stopping the sd driver\n");
+        DPRINTF("Stopping the SD driver\n");
         cogstop(sd_id);
     }
         
     // replace this loader with vm_start.S
-    DPRINTF("starting program\n");
+    DPRINTF("Starting program\n");
     coginit(cogid(), _load_start_coguser3, (uint32_t)params);
 
     // should never reach this

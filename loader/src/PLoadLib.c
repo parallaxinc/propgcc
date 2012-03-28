@@ -308,9 +308,9 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             fprintf(stderr, "Loading");
 
         if(type == DOWNLOAD_RUN_BINARY)
-            fprintf(stderr, " to HUB memory\n");
+            fprintf(stderr, " to hub memory\n");
         else
-            fprintf(stderr, " to EEPROM via HUB memory\n");
+            fprintf(stderr, " to EEPROM via hub memory\n");
     }
 
     remaining = count;
