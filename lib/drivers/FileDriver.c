@@ -254,18 +254,24 @@ void dfs_resolve_path(const char *fname, char *path)
     char *ptr1;
 
     if (!strcmp(fname, ".")) fname++;
-    else if (!strncmp(fname, "./",2)) fname += 2;
+    else if (!strncmp(fname, "./",2) || !strncmp(fname, ".\\",2)) fname += 2;
 
-    if (fname[0] == '/')
+    if (fname[0] == '/' || fname[0] == '\\')
         strcpy(path, fname);
     else if (fname[0] == 0)
         strcpy(path, dfs_currdir);
     else
     {
         strcpy(path, dfs_currdir);
-        if (path[strlen(path)-1] != '/') strcat(path, "/");
+        int pathLen = strlen(path);
+        if (path[pathLen-1] != '/' && path[pathLen-1] != '\\') strcat(path, "/");
         strcat(path, fname);
     }
+
+    // Whack DOS paths to UNIX paths
+    for (ptr = path;  *ptr;  ptr++)
+        if (*ptr == '\\')
+            *ptr = '/';
 
     // Process ..
     ptr = path;

@@ -36,6 +36,7 @@
 ' OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ' THE SOFTWARE.
 '
+
 '----------------------------------------------------------------------------------------------------
 ' Constants
 '----------------------------------------------------------------------------------------------------
@@ -76,64 +77,68 @@ _sd_driver_array
 ' Driver initialization
 '----------------------------------------------------------------------------------------------------
 
-init
-        jmp     #init2
+init    jmp     #init2
 
-' these four values get patched by the loader
-tmiso   long    1<<MISO_PIN
-tclk    long    1<<CLK_PIN
-tmosi   long    1<<MOSI_PIN
-tcs_clr long    1<<CS_CLR_PIN
+' These seven values get patched by the loader, defaulting to the C3:
+tmiso         long    1<<MISO_PIN
+tclk          long    1<<CLK_PIN
+tmosi         long    1<<MOSI_PIN
+tcs_clr       long    1<<CS_CLR_PIN
+tselect_inc   long    1<<INC_PIN
+tselect_mask  long    0
+tselect_addr  long    5
 
-' this value is used by the C3 card
-tinc    long    1<<INC_PIN
-
-init2   mov     pvmcmd, par             ' get the address of the mailbox
-        mov     pvmaddr, pvmcmd         ' pvmaddr is a pointer into the cache line on return
+init2   mov     pvmcmd, par             ' Get the address of the mailbox
+        mov     pvmaddr, pvmcmd         ' pvmaddr is the error return code (in cache drivers it is a pointer into the cache line on return)
         add     pvmaddr, #4
 
-        or      outa, tmosi             ' need to set output high so reads work correctly
-
         ' Check if C3 mode or normal CS mode
-        cmp     tinc, #0 wz
- if_nz  jmp     #c3_mode
-        mov     select, jmp_cs_sel
-        mov     deselect, jmp_cs_des
-        
-        ' build composite masks
-c3_mode mov     spidir, tcs_clr
-        or      spidir, tclk
-        or      spidir, tinc
-        or      spidir, tmosi
-        
-        ' disable the chip select
-        call    #deselect
+        tjz     tselect_inc,  #_not_c3
+        tjnz    tselect_mask, #_not_c3
+        mov     sd_select, c3_sd_select_jmp    ' We're in C3 mode, so replace select/deselect
+        mov     sd_release, c3_sd_release_jmp  ' with the C3-aware routines
+        or      spidir, tselect_inc
+_not_c3
 
-        ' get the clock frequency
-        rdlong  sdFreq, #CLKFREQ_ADDR
+        ' build composite masks
+        or      spidir, tcs_clr
+        or      spidir, tselect_mask
+        or      spidir, tclk
+        or      spidir, tmosi
+
+        mov     outa, tcs_clr
+        or      outa, tmosi             ' Need to set output high so reads work correctly
+
+        mov     dira, #0                ' Don't bother messing with the SPI bus now - wait until SD_INIT
+        call    #sd_release             ' Disable the chip select - this sets up OUTA so we're cool when we next set DIRA
+
+        rdlong  sdFreq, #CLKFREQ_ADDR   ' Get the clock frequency
 
 '----------------------------------------------------------------------------------------------------
 ' Command loop
 '----------------------------------------------------------------------------------------------------
 
-waitcmd mov     dira, #0                    ' release the pins for other SPI clients
+waitcmd mov     dira, #0                ' Release the pins for other SPI clients
         wrlong  zero, pvmcmd
-_wait1  rdlong  vmpage, pvmcmd wz
-  if_z  jmp     #_wait1
-        mov     dira, spidir                ' set the pins back so we can use them
+_wait   rdlong  vmline, pvmcmd wz
+  if_z  jmp     #_wait
+        mov     dira, spidir            ' Set the pins back so we can use them
 
-        test    vmpage, #EXTEND_MASK wz     ' test for an extended command
-  if_z  jmp     #extend
-        jmp     #waitcmd
+        test    vmline, #EXTEND_MASK wz ' Test for an extended command
+  if_nz jmp     #waitcmd
 
-extend  mov     vmaddr, vmpage
+'----------------------------------------------------------------------------------------------------
+' Extended command
+'----------------------------------------------------------------------------------------------------
+
+extend  mov     vmaddr, vmline
         shr     vmaddr, #8
-        shr     vmpage, #2
-        and     vmpage, #7
+        shr     vmline, #2
+        and     vmline, #7
         mov     t1, #dispatch
         shr     t1, #2
-        add     vmpage, t1
-        jmp     vmpage
+        add     vmline, t1
+        jmp     vmline
 
 dispatch
         jmp     #waitcmd
@@ -158,14 +163,14 @@ dispatch
 ' multi-block read/write, and the PropGCC code uses and supports neither.
 
 sd_init_handler
-        mov     sdError, #0             ' assume no errors
-        call    #deselect
+        mov     sdError, #0             ' Assume no errors
+        call    #sd_release
 
         mov     t1, sdInitCnt
 _init   call    #spiRecvByte            ' Output a stream of 32K clocks
         djnz    t1, #_init              '  in case SD card left in some
 
-        call    #select
+        call    #sd_select
         mov     count, #10
 
 _cmd0   mov     sdOp, #CMD0_GO_IDLE_STATE
@@ -274,14 +279,21 @@ _ifini  mov     sdOp, #CMD59_CRC_ON_OFF ' Sad, but we don't have the code space 
 '------------------------------------------------------------------------------
 
 sd_read_handler
-        mov     sdError, #0             ' assume no errors
-        rdlong  ptr, vmaddr             ' get the buffer pointer
+        mov     sdError, #0             ' Assume no errors
+        rdlong  hubaddr, vmaddr         ' Get the buffer pointer
         add     vmaddr, #4
-        rdlong  count, vmaddr wz        ' get the byte count
+        rdlong  count, vmaddr wz        ' Get the byte count
   if_z  jmp     #sd_finish
         add     vmaddr, #4
-        rdlong  vmaddr, vmaddr          ' get the sector address
-        call    #select                 ' Read from specified block
+        rdlong  vmaddr, vmaddr          ' Get the sector address
+        call    #sd_read
+
+sd_finish
+        call    #sd_release
+        wrlong  sdError, pvmaddr        ' Return error status
+        jmp     #waitcmd
+
+sd_read call    #sd_select
         mov     sdOp, #CMD17_READ_SINGLE_BLOCK
 _readRepeat
         mov     sdParam, vmaddr
@@ -291,26 +303,27 @@ _readRepeat
 _getRead
         call    #spiRecvByte
         tjz     count, #_skipStore      ' Check for count exhausted
-        wrbyte  data, ptr
-        add     ptr, #1
+        wrbyte  data, hubaddr
+        add     hubaddr, #1
         sub     count, #1
 _skipStore
         djnz    sdBlkCnt, #_getRead     ' Are we done with the block?
         call    #spiRecvByte
         call    #spiRecvByte            ' Yes, finish with 16 clocks
         add     vmaddr, #1
-        tjnz    count, #_readRepeat     '  and check for more blocks to do
-        jmp     #sd_finish
+        tjnz    count, #_readRepeat     ' Check for more blocks to do
+sd_read_ret
+        ret
 
 sd_write_handler
-        mov     sdError, #0             ' assume no errors
-        rdlong  ptr, vmaddr             ' get the buffer pointer
+        mov     sdError, #0             ' Assume no errors
+        rdlong  hubaddr, vmaddr         ' Get the buffer pointer
         add     vmaddr, #4
-        rdlong  count, vmaddr wz        ' get the byte count
+        rdlong  count, vmaddr wz        ' Get the byte count
   if_z  jmp     #sd_finish
         add     vmaddr, #4
-        rdlong  vmaddr, vmaddr         ' get the sector address
-        call    #select                ' Write to specified block
+        rdlong  vmaddr, vmaddr          ' Get the sector address
+        call    #sd_select
         mov     sdOp, #CMD24_WRITE_BLOCK
 _writeRepeat
         mov     sdParam, vmaddr
@@ -321,8 +334,8 @@ _writeRepeat
 _putWrite
         mov     data, #0                '  padding with zeroes if needed
         tjz     count, #_padWrite       ' Check for count exhausted
-        rdbyte  data, ptr               ' If not, get the next data byte
-        add     ptr, #1
+        rdbyte  data, hubaddr           ' If not, get the next data byte
+        add     hubaddr, #1
         sub     count, #1
 _padWrite
         call    #spiSendByte
@@ -337,36 +350,37 @@ _padWrite
         movs    sdWaitData, #0          ' Wait until not busy
         call    #sdWaitBusy
         add     vmaddr, #1
-        tjnz    count, #_writeRepeat    '  to next if more data remains
-sd_finish
-        call    #deselect
-        wrlong  sdError, pvmaddr        ' return error status
-        jmp     #waitcmd
+        tjnz    count, #_writeRepeat    ' Check for more blocks to do
+        jmp     #sd_finish
+
+'------------------------------------------------------------------------------
+' Send Sector Read/Write Command to SD Card
+'------------------------------------------------------------------------------
 
 sdSectorCmd
-        shl     sdParam, adrShift    ' SD/MMC card uses byte address, SDHC uses sector address
+        shl     sdParam, adrShift       ' SD/MMC card uses byte address, SDHC uses sector address
 sdSendCmd
-        call    #spiRecvLong         ' ?? selecting card and clocking
+        call    #spiRecvLong            ' Flush any previous command results
         mov     data, sdOp
         call    #spiSendByte
         mov     data, sdParam
         call    #spiSendLong
-        mov     data, sdCRC          ' CRC code
+        mov     data, sdCRC             ' CRC code
         call    #spiSendByte
 sdResponse
-        movs    sdWaitData, #$ff     ' Wait for response from card
+        movs    sdWaitData, #$ff        ' Wait for response from card
 sdWaitBusy
-        mov     sdTime, cnt          ' Set up a 1 second timeout
+        mov     sdTime, cnt             ' Set up a 1 second timeout
 sdWaitLoop
         call    #spiRecvByte
         mov     t1, cnt
-        sub     t1, sdTime           ' Check for expired timeout (1 sec)
+        sub     t1, sdTime              ' Check for expired timeout (1 sec)
         cmp     t1, sdFreq wc
-  if_nc mov     sdError, #2          ' Error: SD Command timed out after 1 second
+  if_nc mov     sdError, #2             ' Error: SD Command timed out after 1 second
   if_nc jmp     #sd_finish
 sdWaitData
-        cmp     data, #0-0 wz        ' Wait for some other response
-  if_e  jmp     #sdWaitLoop          '  than that specified
+        cmp     data, #0-0 wz           ' Wait for some other response
+  if_e  jmp     #sdWaitLoop             '  than that specified
 sdSectorCmd_ret
 sdSendCmd_ret
 sdResponse_ret
@@ -377,23 +391,37 @@ sdWaitBusy_ret
 ' SPI Bus Access
 '----------------------------------------------------------------------------------------------------
 
-' Select the SD card
-select  jmp     #c3_sel              ' This jump is modified for normal CS mode
-c3_sel  mov     t1, #5
+sd_select                               ' Single-SPI and Parallel-DeMUX
+        andn    outa, tselect_mask
+        or      outa, tselect_inc
+        andn    outa, tcs_clr
+sd_select_ret
+        ret
+
+sd_release                              ' Single-SPI and Parallel-DeMUX
+        or      outa, tcs_clr
+        andn    outa, tselect_mask
+sd_release_ret
+        ret
+
+c3_sd_select_jmp                        ' Serial-DeMUX Jumps
+        jmp     #c3_sd_select           ' Initialization copies these jumps
+c3_sd_release_jmp                       '   over the sd_select and sd_relase
+        jmp     #c3_sd_release          '   when in C3 mode.
+
+c3_sd_select                            ' Serial-DeMUX
+        mov     t1, tselect_addr
         andn    outa, tcs_clr
         or      outa, tcs_clr
-_loop   or      outa, tinc
-        andn    outa, tinc
+_loop   or      outa, tselect_inc
+        andn    outa, tselect_inc
         djnz    t1, #_loop
-        jmp     #select_ret
-cs_sel  andn    outa, tcs_clr
-select_ret ret
+        jmp     sd_select_ret
 
-' Deselect the SD card
-deselect jmp    #c3_des              ' This jump is modified for normal CS mode
-c3_des  andn    outa, tcs_clr
-cs_des  or      outa, tcs_clr
-deselect_ret ret
+c3_sd_release                           ' Serial-DeMUX
+        andn    outa, tcs_clr
+        or      outa, tcs_clr
+        jmp     sd_release_ret
 
 '----------------------------------------------------------------------------------------------------
 ' Low-level SPI routines
@@ -401,15 +429,15 @@ deselect_ret ret
 
 spiSendLong
         mov     bits, #32
-        jmp     #send
+        jmp     #spiSend
 spiSendByte
         shl     data, #24
         mov     bits, #8
-send    andn    outa, tclk
+spiSend andn    outa, tclk
         rol     data, #1 wc
         muxc    outa, tmosi
         or      outa, tclk
-        djnz    bits, #send
+        djnz    bits, #spiSend
         andn    outa, tclk
         or      outa, tmosi
 spiSendLong_ret
@@ -422,17 +450,17 @@ spiRecvLong
 spiRecvByte
         mov     bits, #8
 spiRecv mov     data, #0
-gloop   or      outa, tclk
+_rloop  or      outa, tclk
         test    tmiso, ina wc
         rcl     data, #1
         andn    outa, tclk
-        djnz    bits, #gloop
+        djnz    bits, #_rloop
 spiRecvLong_ret
 spiRecvByte_ret
         ret
 
 '----------------------------------------------------------------------------------------------------
-' Data
+' Data for the SD Card Routines
 '----------------------------------------------------------------------------------------------------
 
 sdOp            long    0
@@ -447,31 +475,29 @@ sdBlkCnt        long    0
 sdInitCnt       long    32768 / 8      ' Initial SPI clocks produced
 sdBlkSize       long    512            ' Number of bytes in an SD block
 
-adrShift        long    9       ' number of bits to left shift SD sector address (9 for SD/MMC, 0 for SDHC)
-sd3_3V          long    $1AA    ' tell card we want to work at 3.3V
-ccsbit          long    (1<<30) ' flag to indicates SDHC/SDXC card
+adrShift        long    9       ' Number of bits to left shift SD sector address (9 for SD/MMC, 0 for SDHC)
+sd3_3V          long    $1AA    ' Tell card we want to work at 3.3V
+ccsbit          long    (1<<30) ' Flag to indicates SDHC/SDXC card
 
-' pointers to mailbox entries
-pvmcmd          long    0       ' on call this is the virtual address and read/write bit
-pvmaddr         long    0       ' on return this is the address of the cache line containing the virtual address
-vmpage          long    0       ' page containing the virtual address
+' Pointers to mailbox entries
+pvmcmd          long    0       ' The address of the call parameter:
+                                '     the virtual address and read/write bit, or the extended command
+pvmaddr         long    0       ' The address of the call return:
+                                '     the address of the cache line containing the virtual address, or the extended command error
+vmline          long    0       ' line containing the virtual address, or the extended comand
 
 zero            long    0       ' zero constant
-t1              long    0       ' temporary variable
+t1              long    0       ' Temporary variable
 
-spidir          long    (1<<CS_CLR_PIN)|(1<<CLK_PIN)|(1<<MOSI_PIN)
+spidir          long    0       ' Saved DIRA for the SPI bus
 
-' input parameters to BREAD and BWRITE
-vmaddr          long    0       ' virtual address
+' Input parameters to block read/write
+vmaddr          long    0       ' Pointer to the read/write parameters: buffer, count, sector, then during the reads the sector
 
-' temporaries used by BREAD and BWRITE
-ptr             long    0
-count           long    0
+' Temporaries used by block read/write
+hubaddr         long    0       ' The block read/write buffer pointer
+count           long    0       ' The block count
 
-' temporaries used by send
-bits            long    0
-data            long    0
-
-' jump instructions for the single CS mode
-jmp_cs_sel      jmp     #cs_sel
-jmp_cs_des      jmp     #cs_des
+' Temporaries used by send/recv
+bits            long    0       ' # bits to send/receive
+data            long    0       ' Current data being sent/received

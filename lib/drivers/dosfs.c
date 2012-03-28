@@ -14,8 +14,32 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "dosfs.h"
+
+uint32_t DefaultFileTime = 0x0820; // 01:01:00
+uint32_t DefaultFileDate = 0x4021; // Jan 1, 2012
+
+#include <stdio.h>
+void DFS_SetDefaultFileDateTime(struct tm* tm)
+{
+    DefaultFileTime = (tm->tm_hour << 11) | (tm->tm_min << 5) | (tm->tm_sec >> 1);
+    DefaultFileDate = ((tm->tm_year - 80) << 9) | ((tm->tm_mon + 1) << 5) | tm->tm_mday;
+}
+void DFS_SetDirEntDateTime(PDIRENT pde)
+{
+    memcpy(&pde->crttime_l, &DefaultFileTime, sizeof(uint16_t));
+    memcpy(&pde->wrttime_l, &DefaultFileTime, sizeof(uint16_t));
+    memcpy(&pde->crtdate_l   , &DefaultFileDate, sizeof(uint16_t));
+    memcpy(&pde->lstaccdate_l, &DefaultFileDate, sizeof(uint16_t));
+    memcpy(&pde->wrtdate_l,    &DefaultFileDate, sizeof(uint16_t));
+}
+void DFS_SetStartCluster(PDIRENT pde, uint32_t cluster)
+{
+	memcpy(&pde->startclus_l_l, &cluster, sizeof(uint16_t));
+	memcpy(&pde->startclus_h_l, (void*)&cluster + 2, sizeof(uint16_t));
+}
 
 #ifndef PROPGCC_MODS
 /*
@@ -41,10 +65,7 @@ uint32_t DFS_GetPtnStart(uint8_t unit, uint8_t *scratchsector, uint8_t pnum, uin
 		return DFS_ERRMISC;
 	}
 
-	result = (uint32_t) mbr->ptable[pnum].start_0 |
-	  (((uint32_t) mbr->ptable[pnum].start_1) << 8) |
-	  (((uint32_t) mbr->ptable[pnum].start_2) << 16) |
-	  (((uint32_t) mbr->ptable[pnum].start_3) << 24);
+	memcpy(&result, &mbr->ptable[pnum].start_0, sizeof(uint32_t));
 
 	if (pactive)
 		*pactive = mbr->ptable[pnum].active;
@@ -53,10 +74,7 @@ uint32_t DFS_GetPtnStart(uint8_t unit, uint8_t *scratchsector, uint8_t pnum, uin
 		*pptype = mbr->ptable[pnum].type;
 
 	if (psize)
-		*psize = (uint32_t) mbr->ptable[pnum].size_0 |
-		  (((uint32_t) mbr->ptable[pnum].size_1) << 8) |
-		  (((uint32_t) mbr->ptable[pnum].size_2) << 16) |
-		  (((uint32_t) mbr->ptable[pnum].size_3) << 24);
+		memcpy(psize, &mbr->ptable[pnum].size_0, sizeof(uint32_t));
 
 	return result;
 }
@@ -84,28 +102,22 @@ uint32_t DFS_GetVolInfo(uint8_t unit, uint8_t *scratchsector, uint32_t startsect
 //	volinfo->oemid[8] = 0;
 
 	volinfo->secperclus = lbr->bpb.secperclus;
-	volinfo->reservedsecs = (uint16_t) lbr->bpb.reserved_l |
-		  (((uint16_t) lbr->bpb.reserved_h) << 8);
+	memcpy(&volinfo->reservedsecs, &lbr->bpb.reserved_l, sizeof(uint16_t));
 
-	volinfo->numsecs =  (uint16_t) lbr->bpb.sectors_s_l |
-		  (((uint16_t) lbr->bpb.sectors_s_h) << 8);
+    uint16_t tmp;
+	memcpy(&tmp, &lbr->bpb.sectors_s_l, sizeof(uint16_t));
+    volinfo->numsecs = tmp;
 
 	if (!volinfo->numsecs)
-		volinfo->numsecs = (uint32_t) lbr->bpb.sectors_l_0 |
-		  (((uint32_t) lbr->bpb.sectors_l_1) << 8) |
-		  (((uint32_t) lbr->bpb.sectors_l_2) << 16) |
-		  (((uint32_t) lbr->bpb.sectors_l_3) << 24);
+		memcpy(&volinfo->numsecs, &lbr->bpb.sectors_l_0, sizeof(uint32_t));
 
 	// If secperfat is 0, we must be in a FAT32 volume; get secperfat
 	// from the FAT32 EBPB. The volume label and system ID string are also
 	// in different locations for FAT12/16 vs FAT32.
-	volinfo->secperfat =  (uint16_t) lbr->bpb.secperfat_l |
-		  (((uint16_t) lbr->bpb.secperfat_h) << 8);
+	memcpy(&tmp, &lbr->bpb.secperfat_l, sizeof(uint16_t));
+    volinfo->secperfat = tmp;
 	if (!volinfo->secperfat) {
-		volinfo->secperfat = (uint32_t) lbr->ebpb.ebpb32.fatsize_0 |
-		  (((uint32_t) lbr->ebpb.ebpb32.fatsize_1) << 8) |
-		  (((uint32_t) lbr->ebpb.ebpb32.fatsize_2) << 16) |
-		  (((uint32_t) lbr->ebpb.ebpb32.fatsize_3) << 24);
+		memcpy(&volinfo->secperfat, &lbr->ebpb.ebpb32.fatsize_0, sizeof(uint32_t));
 
 		memcpy(volinfo->label, lbr->ebpb.ebpb32.label, 11);
 		volinfo->label[11] = 0;
@@ -124,8 +136,7 @@ uint32_t DFS_GetVolInfo(uint8_t unit, uint8_t *scratchsector, uint32_t startsect
 	}
 
 	// note: if rootentries is 0, we must be in a FAT32 volume.
-	volinfo->rootentries =  (uint16_t) lbr->bpb.rootentries_l |
-		  (((uint16_t) lbr->bpb.rootentries_h) << 8);
+	memcpy(&volinfo->rootentries, &lbr->bpb.rootentries_l, sizeof(uint16_t));
 
 	// after extracting raw info we perform some useful precalculations
 	volinfo->fat1 = startsector + volinfo->reservedsecs;
@@ -139,10 +150,7 @@ uint32_t DFS_GetVolInfo(uint8_t unit, uint8_t *scratchsector, uint32_t startsect
 	}
 	else {
 		volinfo->dataarea = volinfo->fat1 + (volinfo->secperfat * 2);
-		volinfo->rootdir = (uint32_t) lbr->ebpb.ebpb32.root_0 |
-		  (((uint32_t) lbr->ebpb.ebpb32.root_1) << 8) |
-		  (((uint32_t) lbr->ebpb.ebpb32.root_2) << 16) |
-		  (((uint32_t) lbr->ebpb.ebpb32.root_3) << 24);
+		memcpy(&volinfo->rootdir, &lbr->ebpb.ebpb32.root_0, sizeof(uint32_t));
 	}
 
 	// Calculate number of clusters in data area and infer FAT type from this information.
@@ -171,10 +179,13 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 	// Eliminate unitilialized warning for result - Dave Hein, 11/9/11
 	uint32_t result = 0;
 
+#ifndef PROPGCC_MODS
 	if (volinfo->filesystem == FAT12) {
 		offset = cluster + (cluster / 2);
 	}
-	else if (volinfo->filesystem == FAT16) {
+	else
+#endif
+	if (volinfo->filesystem == FAT16) {
 		offset = cluster * 2;
 	}
 	else if (volinfo->filesystem == FAT32) {
@@ -204,8 +215,8 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 	// FAT sectors, but that luxury is (by design intent) unavailable to DOSFS.
 	offset = ldiv(offset, SECTOR_SIZE).rem;
 
-	if (volinfo->filesystem == FAT12) {
 #ifndef PROPGCC_MODS
+	if (volinfo->filesystem == FAT12) {
 		// Special case for sector boundary - Store last byte of current sector.
 		// Then read in the next sector and put the first byte of that sector into
 		// the high byte of result.
@@ -230,17 +241,17 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 			result = result >> 4;
 		else
 			result = result & 0xfff;
-#endif
 	}
-	else if (volinfo->filesystem == FAT16) {
-		result = (uint32_t) scratch[offset] |
-		  ((uint32_t) scratch[offset+1]) << 8;
+	else
+#endif
+	if (volinfo->filesystem == FAT16) {
+        uint16_t tmp;
+        memcpy(&tmp, &scratch[offset], sizeof(uint16_t));
+		result = tmp;
 	}
 	else if (volinfo->filesystem == FAT32) {
-		result = ((uint32_t) scratch[offset] |
-		  ((uint32_t) scratch[offset+1]) << 8 |
-		  ((uint32_t) scratch[offset+2]) << 16 |
-		  ((uint32_t) scratch[offset+3]) << 24) & 0x0fffffff;
+		memcpy(&result, &scratch[offset], sizeof(uint32_t));
+        result &= 0x0fffffff;
 	}
 	else
 		result = 0x0ffffff7;	// FAT32 bad cluster	
@@ -269,11 +280,14 @@ uint32_t DFS_SetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 	uint32_t offset, sector;
 	// Eliminate unitilialized warning for result - Dave Hein, 11/9/11
 	uint32_t result = 0;
+#ifndef PROPGCC_MODS
 	if (volinfo->filesystem == FAT12) {
 		offset = cluster + (cluster / 2);
 		new_contents &=0xfff;
 	}
-	else if (volinfo->filesystem == FAT16) {
+	else
+#endif
+	if (volinfo->filesystem == FAT16) {
 		offset = cluster * 2;
 		new_contents &=0xffff;
 	}
@@ -305,8 +319,8 @@ uint32_t DFS_SetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 	// FAT sectors, but that luxury is (by design intent) unavailable to DOSFS.
 	offset = ldiv(offset, SECTOR_SIZE).rem;
 
-	if (volinfo->filesystem == FAT12) {
 #ifndef PROPGCC_MODS
+	if (volinfo->filesystem == FAT12) {
 
 		// If this is an odd cluster, pre-shift the desired new contents 4 bits to
 		// make the calculations below simpler
@@ -374,21 +388,20 @@ uint32_t DFS_SetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 			if (DFS_OK == result)
 				result = DFS_WriteSector(volinfo->unit, scratch, (*scratchcache)+volinfo->secperfat, 1);
 		}
-#endif
 	}
-	else if (volinfo->filesystem == FAT16) {
-		scratch[offset] = (new_contents & 0xff);
-		scratch[offset+1] = (new_contents & 0xff00) >> 8;
+	else
+#endif
+	if (volinfo->filesystem == FAT16) {
+		memcpy(&scratch[offset], &new_contents, sizeof(uint16_t));
 		result = DFS_WriteSector(volinfo->unit, scratch, *scratchcache, 1);
 		// mirror the FAT into copy 2
 		if (DFS_OK == result)
 			result = DFS_WriteSector(volinfo->unit, scratch, (*scratchcache)+volinfo->secperfat, 1);
 	}
 	else if (volinfo->filesystem == FAT32) {
-		scratch[offset] = (new_contents & 0xff);
-		scratch[offset+1] = (new_contents & 0xff00) >> 8;
-		scratch[offset+2] = (new_contents & 0xff0000) >> 16;
-		scratch[offset+3] = (scratch[offset+3] & 0xf0) | ((new_contents & 0x0f000000) >> 24);
+        uint8_t oldOffset3 = scratch[offset+3] & 0xf0;
+		memcpy(&scratch[offset], &new_contents, sizeof(uint32_t));
+		scratch[offset+3] = oldOffset3 | (scratch[offset + 3] & 0x0f);
 		// Note well from the above: Per Microsoft's guidelines we preserve the upper
 		// 4 bits of the FAT32 cluster value. It's unclear what these bits will be used
 		// for; in every example I've encountered they are always zero.
@@ -467,25 +480,29 @@ uint32_t DFS_OpenDir(PVOLINFO volinfo, uint8_t *dirname, PDIRINFO dirinfo)
 {
 	// Default behavior is a regular search for existing entries
 	dirinfo->flags = 0;
+	dirinfo->startcluster = 0;
 
-	if (!strlen((char *) dirname) || (strlen((char *) dirname) == 1 && dirname[0] == DIR_SEPARATOR)) {
-		if (volinfo->filesystem == FAT32) {
-			dirinfo->currentcluster = volinfo->rootdir;
-			dirinfo->currentsector = 0;
-			dirinfo->currententry = 0;
+    if (volinfo->filesystem == FAT32) {
+        dirinfo->currentcluster = volinfo->rootdir;
+        dirinfo->currentsector = 0;
+        dirinfo->currententry = 0;
 
-			// read first sector of directory
-			return DFS_ReadSector(volinfo->unit, dirinfo->scratch, volinfo->dataarea + ((volinfo->rootdir - 2) * volinfo->secperclus), 1);
-		}
-		else {
-			dirinfo->currentcluster = 0;
-			dirinfo->currentsector = 0;
-			dirinfo->currententry = 0;
+        // read first sector of directory
+        if (DFS_ReadSector(volinfo->unit, dirinfo->scratch, volinfo->dataarea + ((volinfo->rootdir - 2) * volinfo->secperclus), 1))
+            return DFS_ERRMISC;
+    }
+    else {
+        dirinfo->currentcluster = 0;
+        dirinfo->currentsector = 0;
+        dirinfo->currententry = 0;
 
-			// read first sector of directory
-			return DFS_ReadSector(volinfo->unit, dirinfo->scratch, volinfo->rootdir, 1);
-		}
-	}
+        // read first sector of directory
+        if (DFS_ReadSector(volinfo->unit, dirinfo->scratch, volinfo->rootdir, 1))
+            return DFS_ERRMISC;
+    }
+
+	if (!strlen((char *) dirname) || (strlen((char *) dirname) == 1 && dirname[0] == DIR_SEPARATOR))
+        return DFS_OK;
 
 	// This is not the root directory. We need to find the start of this subdirectory.
 	// We do this by devious means, using our own companion function DFS_GetNext.
@@ -495,25 +512,6 @@ uint32_t DFS_OpenDir(PVOLINFO volinfo, uint8_t *dirname, PDIRINFO dirinfo)
 		// Eliminate unitilialized warning for result - Dave Hein, 11/9/11
 		uint32_t result = 0;
 		DIRENT de;
-
-		if (volinfo->filesystem == FAT32) {
-			dirinfo->currentcluster = volinfo->rootdir;
-			dirinfo->currentsector = 0;
-			dirinfo->currententry = 0;
-
-			// read first sector of directory
-			if (DFS_ReadSector(volinfo->unit, dirinfo->scratch, volinfo->dataarea + ((volinfo->rootdir - 2) * volinfo->secperclus), 1))
-				return DFS_ERRMISC;
-		}
-		else {
-			dirinfo->currentcluster = 0;
-			dirinfo->currentsector = 0;
-			dirinfo->currententry = 0;
-
-			// read first sector of directory
-			if (DFS_ReadSector(volinfo->unit, dirinfo->scratch, volinfo->rootdir, 1))
-				return DFS_ERRMISC;
-		}
 
 		// skip leading path separators
 		while (*ptr == DIR_SEPARATOR && *ptr)
@@ -536,15 +534,15 @@ uint32_t DFS_OpenDir(PVOLINFO volinfo, uint8_t *dirname, PDIRINFO dirinfo)
 
 			if (!memcmp(de.name, tmpfn, 11) && ((de.attr & ATTR_DIRECTORY) == ATTR_DIRECTORY)) {
 				if (volinfo->filesystem == FAT32) {
-					dirinfo->currentcluster = (uint32_t) de.startclus_l_l |
-					  ((uint32_t) de.startclus_l_h) << 8 |
-					  ((uint32_t) de.startclus_h_l) << 16 |
-					  ((uint32_t) de.startclus_h_h) << 24;
+					memcpy(&dirinfo->currentcluster, &de.startclus_l_l, sizeof(uint16_t));
+					memcpy((void*)&dirinfo->currentcluster + 2, &de.startclus_h_l, sizeof(uint16_t));
 				}
 				else {
-					dirinfo->currentcluster = (uint32_t) de.startclus_l_l |
-					  ((uint32_t) de.startclus_l_h) << 8;
+                    uint16_t tmp;
+                    memcpy(&tmp, &de.startclus_l_l, sizeof(uint16_t));
+					dirinfo->currentcluster = tmp;
 				}
+                dirinfo->startcluster = dirinfo->currentcluster;
 				dirinfo->currentsector = 0;
 				dirinfo->currententry = 0;
 
@@ -608,7 +606,10 @@ uint32_t DFS_GetNext(PVOLINFO volinfo, PDIRINFO dirinfo, PDIRENT dirent)
 		else {
 			if (dirinfo->currentsector >= volinfo->secperclus) {
 				dirinfo->currentsector = 0;
-				if ((dirinfo->currentcluster >= 0xff7 &&  volinfo->filesystem == FAT12) ||
+				if (
+#ifndef PROPGCC_MODS
+                  (dirinfo->currentcluster >= 0xff7 &&  volinfo->filesystem == FAT12) ||
+#endif
 				  (dirinfo->currentcluster >= 0xfff7 &&  volinfo->filesystem == FAT16) ||
 				  (dirinfo->currentcluster >= 0x0ffffff7 &&  volinfo->filesystem == FAT32)) {
 				  
@@ -710,7 +711,9 @@ uint32_t DFS_GetFreeDirEnt(PVOLINFO volinfo, uint8_t *path, PDIRINFO di, PDIRENT
 			
 			// Mark newly allocated cluster as end of chain			
 			switch(volinfo->filesystem) {
+#ifndef PROPGCC_MODS
 				case FAT12:		tempclus = 0xff8;	break;
+#endif
 				case FAT16:		tempclus = 0xfff8;	break;
 				case FAT32:		tempclus = 0x0ffffff8;	break;
 				default:		return DFS_ERRMISC;
@@ -778,6 +781,8 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 	if (DFS_OpenDir(volinfo, tmppath, &di))
 		return DFS_NOTFOUND;
 
+    fileinfo->parentcluster = di.startcluster;
+
 	while (!DFS_GetNext(volinfo, &di, &de)) {
 		if (!memcmp(de.name, filename, 11)) {
 #ifdef PROPGCC_MODS
@@ -800,20 +805,16 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 				fileinfo->dirsector = volinfo->dataarea + ((di.currentcluster - 2) * volinfo->secperclus) + di.currentsector;
 			fileinfo->diroffset = di.currententry - 1;
 			if (volinfo->filesystem == FAT32) {
-				fileinfo->cluster = (uint32_t) de.startclus_l_l |
-				  ((uint32_t) de.startclus_l_h) << 8 |
-				  ((uint32_t) de.startclus_h_l) << 16 |
-				  ((uint32_t) de.startclus_h_h) << 24;
+                memcpy(&fileinfo->cluster, &de.startclus_l_l, sizeof(uint16_t));
+                memcpy((void*)&fileinfo->cluster + 2, &de.startclus_h_l, sizeof(uint16_t));
 			}
 			else {
-				fileinfo->cluster = (uint32_t) de.startclus_l_l |
-				  ((uint32_t) de.startclus_l_h) << 8;
+                uint16_t tmp;
+                memcpy(&tmp, &de.startclus_l_l, sizeof(uint16_t));
+                fileinfo->cluster = tmp;
 			}
 			fileinfo->firstcluster = fileinfo->cluster;
-			fileinfo->filelen = (uint32_t) de.filesize_0 |
-			  ((uint32_t) de.filesize_1) << 8 |
-			  ((uint32_t) de.filesize_2) << 16 |
-			  ((uint32_t) de.filesize_3) << 24;
+			memcpy(&fileinfo->filelen, &de.filesize_0, sizeof(uint32_t));
 
 			return DFS_OK;
 		}
@@ -831,16 +832,7 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 		// put sane values in the directory entry
 		memset(&de, 0, sizeof(de));
 		memcpy(de.name, filename, 11);
-		de.crttime_l = 0x20;	// 01:01:00am, Jan 1, 2006.
-		de.crttime_h = 0x08;
-		de.crtdate_l = 0x11;
-		de.crtdate_h = 0x34;
-		de.lstaccdate_l = 0x11;
-		de.lstaccdate_h = 0x34;
-		de.wrttime_l = 0x20;
-		de.wrttime_h = 0x08;
-		de.wrtdate_l = 0x11;
-		de.wrtdate_h = 0x34;
+        DFS_SetDirEntDateTime(&de);
 #ifdef PROPGCC_MODS
 		de.attr = (mode & DFS_DIRECTORY);
 #endif
@@ -848,10 +840,7 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 		// allocate a starting cluster for the directory entry
 		cluster = DFS_GetFreeFAT(volinfo, scratch);
 
-		de.startclus_l_l = cluster & 0xff;
-		de.startclus_l_h = (cluster & 0xff00) >> 8;
-		de.startclus_h_l = (cluster & 0xff0000) >> 16;
-		de.startclus_h_h = (cluster & 0xff000000) >> 24;
+        DFS_SetStartCluster(&de, cluster);
 
 		// update FILEINFO for our caller's sake
 		fileinfo->volinfo = volinfo;
@@ -879,7 +868,9 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 
 		// Mark newly allocated cluster as end of chain			
 		switch(volinfo->filesystem) {
+#ifndef PROPGCC_MODS
 			case FAT12:		cluster = 0xff8;	break;
+#endif
 			case FAT16:		cluster = 0xfff8;	break;
 			case FAT32:		cluster = 0x0ffffff8;	break;
 			default:		return DFS_ERRMISC;
@@ -988,7 +979,10 @@ uint32_t DFS_ReadFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, uin
 			// An act of minor evil - we use bytesread as a scratch integer, knowing that
 			// its value is not used after updating *successcount above
 			bytesread = 0;
-			if (((fileinfo->volinfo->filesystem == FAT12) && (fileinfo->cluster >= 0xff8)) ||
+			if (
+#ifndef PROPGCC_MODS
+              ((fileinfo->volinfo->filesystem == FAT12) && (fileinfo->cluster >= 0xff8)) ||
+#endif
 			  ((fileinfo->volinfo->filesystem == FAT16) && (fileinfo->cluster >= 0xfff8)) ||
 			  ((fileinfo->volinfo->filesystem == FAT32) && (fileinfo->cluster >= 0x0ffffff8)))
 				result = DFS_EOF;
@@ -1096,7 +1090,10 @@ uint32_t DFS_UnlinkFile(PVOLINFO volinfo, uint8_t *path, uint8_t *scratch)
 		return DFS_ERRMISC;
 
 	// Now follow the cluster chain to free the file space
-	while (!((volinfo->filesystem == FAT12 && fi.firstcluster >= 0x0ff7) ||
+	while (!(
+#ifndef PROPGCC_MODS
+      (volinfo->filesystem == FAT12 && fi.firstcluster >= 0x0ff7) ||
+#endif
 	  (volinfo->filesystem == FAT16 && fi.firstcluster >= 0xfff7) ||
 	  (volinfo->filesystem == FAT32 && fi.firstcluster >= 0x0ffffff7))) {
 		tempclus = fi.firstcluster;
@@ -1240,7 +1237,10 @@ uint32_t DFS_WriteFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, ui
 			fileinfo->cluster = DFS_GetFAT(fileinfo->volinfo, scratch, &byteswritten, fileinfo->cluster);
 			
 			// Allocate a new cluster?
-			if (((fileinfo->volinfo->filesystem == FAT12) && (fileinfo->cluster >= 0xff8)) ||
+			if (
+#ifndef PROPGCC_MODS
+			  ((fileinfo->volinfo->filesystem == FAT12) && (fileinfo->cluster >= 0xff8)) ||
+#endif
 			  ((fileinfo->volinfo->filesystem == FAT16) && (fileinfo->cluster >= 0xfff8)) ||
 			  ((fileinfo->volinfo->filesystem == FAT32) && (fileinfo->cluster >= 0x0ffffff8))) {
 			  	uint32_t tempclus;
@@ -1256,7 +1256,9 @@ uint32_t DFS_WriteFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, ui
 
 				// Mark newly allocated cluster as end of chain			
 				switch(fileinfo->volinfo->filesystem) {
+#ifndef PROPGCC_MODS
 					case FAT12:		tempclus = 0xff8;	break;
+#endif
 					case FAT16:		tempclus = 0xfff8;	break;
 					case FAT32:		tempclus = 0x0ffffff8;	break;
 					default:		return DFS_ERRMISC;
@@ -1272,10 +1274,7 @@ uint32_t DFS_WriteFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, ui
 	// Update directory entry
 		if (DFS_ReadSector(fileinfo->volinfo->unit, scratch, fileinfo->dirsector, 1))
 			return DFS_ERRMISC;
-		((PDIRENT) scratch)[fileinfo->diroffset].filesize_0 = fileinfo->filelen & 0xff;
-		((PDIRENT) scratch)[fileinfo->diroffset].filesize_1 = (fileinfo->filelen & 0xff00) >> 8;
-		((PDIRENT) scratch)[fileinfo->diroffset].filesize_2 = (fileinfo->filelen & 0xff0000) >> 16;
-		((PDIRENT) scratch)[fileinfo->diroffset].filesize_3 = (fileinfo->filelen & 0xff000000) >> 24;
+		memcpy(&(((PDIRENT) scratch)[fileinfo->diroffset].filesize_0), &fileinfo->filelen, sizeof(uint32_t));
 		if (DFS_WriteSector(fileinfo->volinfo->unit, scratch, fileinfo->dirsector, 1))
 			return DFS_ERRMISC;
 	return result;

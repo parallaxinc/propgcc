@@ -61,7 +61,8 @@ int rmdir(const char *path1)
     // Check if directory is empty
     while (DFS_OK == DFS_GetNext(&dfs_volinfo, &dirinfo, &dirent))
     {
-        if (dirent.name[0])
+        if (dirent.name[0] && !(strncmp((char*)dirent.name, ".          ", 11) == 0 ||
+                                strncmp((char*)dirent.name, "..         ", 11) == 0))
         {
             errno = ENOTEMPTY;
             return -1;

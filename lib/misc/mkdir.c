@@ -64,9 +64,26 @@ int mkdir(const char *path1, int mode)
         int firstcluster = fileinfo->firstcluster;
         int firstsector = dfs_volinfo.dataarea + ((firstcluster - 2) * secperclus);
 
-        for (i = 0; i < 512; i += 32) dfs_scratch[i] = 0;
         for (i = 0; i < secperclus; i++)
+        {
+            if (i < 2)
+                memset(dfs_scratch, 0, sizeof(dfs_scratch));
+            if (i == 0)
+            {
+                PDIRENT pde = (PDIRENT)dfs_scratch;
+                strcpy((char*)pde->name, ".          ");
+                DFS_SetStartCluster(pde, fileinfo->firstcluster);
+                pde->attr = DFS_DIRECTORY;
+                DFS_SetDirEntDateTime(pde);
+
+                PDIRENT pde1 = pde + 1;
+                memcpy(pde1, pde, sizeof(DIRENT));
+                pde1->name[1] = '.';
+                DFS_SetStartCluster(pde1, fileinfo->parentcluster);
+            }
+
             DFS_WriteSector(0, dfs_scratch, firstsector++, 1);
+        }
     }
     else
     {
