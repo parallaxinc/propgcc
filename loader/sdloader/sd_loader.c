@@ -143,7 +143,7 @@ int main(void)
     params[1] = (uint32_t)xmm_mbox;
     params[2] = cache_line_mask;
     params[3] = (uint32_t)vm_mbox;
-    params[4] = (uint32_t *)vm_mbox;
+    params[4] = (uint32_t)vm_mbox;
 
     // load into flash/eeprom
     if (load_address >= 0x30000000) {
