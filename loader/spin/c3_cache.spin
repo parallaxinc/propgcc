@@ -63,13 +63,6 @@ CON
   ' address of CLKFREQ in hub RAM
   CLKFREQ_ADDR          = $0000
 
-  ' SD commands
-  CMD0_GO_IDLE_STATE      = $40|0
-  CMD55_APP_CMD           = $40|55
-  CMD17_READ_SINGLE_BLOCK = $40|17
-  CMD24_WRITE_BLOCK       = $40|24
-  ACMD41_SD_APP_OP_COND   = $40|41
-  
 OBJ
   int: "cache_interface"
 
@@ -115,22 +108,9 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         mov     outa, spiout
         mov     dira, spidir
 
-        ' get the clock frequency
-        rdlong  sdFreq, #CLKFREQ_ADDR
-
-        call    #sd_card
-        mov     t1, sdInitCnt
-:init   call    #spiRecvByte            ' Output a stream of 32K clocks
-        djnz    t1, #:init              '  in case SD card left in some
-        call    #deselect
-        call    #sd_card
-        mov     sdOp, #CMD0_GO_IDLE_STATE
-        mov     sdParam, #0
-        call    #sdSendCmd              ' Send a reset command and deselect
-initErrorTarget
-        mov     sdErrorTarget, #sd_finish
-
 #ifdef ENABLE_RAM
+        call    #deselect
+
         ' select sequential access mode for the first SRAM chip
         call    #sram_chip1
         mov     data, ramseq
@@ -232,9 +212,9 @@ dispatch
         jmp     #erase_chip_handler
         jmp     #erase_4k_block_handler
         jmp     #write_data_handler
-        jmp     #sd_init_handler
-        jmp     #sd_read_handler
-        jmp     #sd_write_handler
+        jmp     #waitcmd
+        jmp     #waitcmd
+        jmp     #waitcmd
         jmp     #waitcmd
         jmp     #waitcmd
 
@@ -292,146 +272,6 @@ write_data_handler
 :done   call    #wait_until_done
         wrlong  data, pvmaddr
         jmp     #waitcmd
-
-sd_init_handler
-        mov     sdError, #0             ' assume no errors
-' this part of the initialization was done earlier to set the SD card to SPI mode
-{
-        call    #deselect
-        mov     t1, sdInitCnt
-:init   call    #spiRecvByte            ' Output a stream of 32K clocks
-        djnz    t1, #:init              '  in case SD card left in some
-        call    #sd_card
-        mov     sdOp, #CMD0_GO_IDLE_STATE
-        mov     sdParam, #0
-        call    #sdSendCmd              ' Send a reset command and deselect
-}
-        call    #sd_card
-:wait   mov     sdOp, #CMD55_APP_CMD
-        call    #sdSendCmd
-        mov     sdOp, #ACMD41_SD_APP_OP_COND
-        call    #sdSendCmd
-        cmp     data, #1 wz             ' Wait until response not In Idle
-  if_e  jmp     #:wait
-        tjz     data, #sd_finish        ' Initialization complete
-        mov     sdError, data
-        jmp     #sd_finish
-
-sd_read_handler
-        mov     sdError, #0             ' assume no errors
-        rdlong  ptr, vmaddr             ' get the buffer pointer
-        add     vmaddr, #4
-        rdlong  count, vmaddr wz        ' get the byte count
-  if_z  jmp     #sd_finish
-        add     vmaddr, #4
-        rdlong  vmaddr, vmaddr          ' get the sector address
-        call    #sd_card                ' Read from specified block
-        mov     sdOp, #CMD17_READ_SINGLE_BLOCK
-:readRepeat
-        mov     sdParam, vmaddr
-        call    #sdSendCmd              ' Read from specified block
-        call    #sdResponse
-        mov     sdBlkCnt, sdBlkSize     ' Transfer a block at a time
-:getRead
-        call    #spiRecvByte
-        tjz     count, #:skipStore      ' Check for count exhausted
-        wrbyte  data, ptr
-        add     ptr, #1
-        sub     count, #1
-:skipStore
-        djnz    sdBlkCnt, #:getRead     ' Are we done with the block?
-        call    #spiRecvByte
-        call    #spiRecvByte            ' Yes, finish with 16 clocks
-        add     vmaddr, #1
-        tjnz    count, #:readRepeat     '  and check for more blocks to do
-        jmp     #sd_finish
-
-sd_write_handler
-        mov     sdError, #0             ' assume no errors
-        rdlong  ptr, vmaddr             ' get the buffer pointer
-        add     vmaddr, #4
-        rdlong  count, vmaddr wz        ' get the byte count
-  if_z  jmp     #sd_finish
-        add     vmaddr, #4
-        rdlong  vmaddr, vmaddr         ' get the sector address
-        call    #sd_card                ' Write to specified block
-        mov     sdOp, #CMD24_WRITE_BLOCK
-:writeRepeat
-        mov     sdParam, vmaddr
-        call    #sdSendCmd              ' Write to specified block
-        mov     data, #$fe              ' Ask to start data transfer
-        call    #spiSendByte
-        mov     sdBlkCnt, sdBlkSize     ' Transfer a block at a time
-:putWrite
-        mov     data, #0                '  padding with zeroes if needed
-        tjz     count, #:padWrite       ' Check for count exhausted
-        rdbyte  data, ptr               ' If not, get the next data byte
-        add     ptr, #1
-        sub     count, #1
-:padWrite
-        call    #spiSendByte
-        djnz    sdBlkCnt, #:putWrite    ' Are we done with the block?
-        call    #spiRecvByte
-        call    #spiRecvByte            ' Yes, finish with 16 clocks
-        call    #sdResponse
-        and     data, #$1f              ' Check the response status
-        cmp     data, #5 wz
-  if_ne mov     sdError, #1             ' Must be Data Accepted
-  if_ne jmp     #sd_finish
-        movs    sdWaitData, #0          ' Wait until not busy
-        call    #sdWaitBusy
-        add     vmaddr, #1
-        tjnz    count, #:writeRepeat    '  to next if more data remains
-sd_finish
-        call    #deselect
-        wrlong  sdError, pvmaddr        ' return error status
-        jmp     #waitcmd
-
-sdOp          long    0
-sdParam       long    0
-sdFreq        long    0
-sdTime        long    0
-sdError       long    0
-sdBlkCnt      long    0
-sdInitCnt     long    32768 / 8      ' Initial SPI clocks produced
-sdBlkSize     long    512            ' Number of bytes in an SD block
-sdErrorTarget long    initErrorTarget
-
-sdSendCmd
-        call    #spiRecvByte         ' ?? selecting card and clocking
-        mov     data, sdOp
-        call    #spiSendByte
-        mov     data, sdParam
-        shr     data, #15            ' Supplied address is sector number
-        call    #spiSendByte
-        mov     data, sdParam        ' Send to SD card as byte address,
-        shr     data, #7             '  in multiples of 512 bytes
-        call    #spiSendByte
-        mov     data, sdParam        ' Total length of this address is
-        shl     data, #1             '  four bytes
-        call    #spiSendByte
-        mov     data, #0
-        call    #spiSendByte
-        mov     data, #$95           ' CRC code (for 1st command only)
-        call    #spiSendByte
-sdResponse
-        movs    sdWaitData, #$ff     ' Wait for response from card
-sdWaitBusy
-        mov     sdTime, cnt          ' Set up a 1 second timeout
-sdWaitLoop
-        call    #spiRecvByte
-        mov     t1, cnt
-        sub     t1, sdTime           ' Check for expired timeout (1 sec)
-        cmp     t1, sdFreq wc
-  if_nc mov     sdError, #1
-  if_nc jmp     sdErrorTarget
-sdWaitData
-        cmp     data, #0-0 wz        ' Wait for some other response
-  if_e  jmp     #sdWaitLoop          '  than that specified
-sdSendCmd_ret
-sdResponse_ret
-sdWaitBusy_ret
-        ret
 
 ' pointers to mailbox entries
 pvmcmd          long    0       ' on call this is the virtual address and read/write bit
@@ -631,10 +471,6 @@ receive_ret
 ' spi select functions
 ' all trash t1
 
-sd_card
-        mov     t1, #5
-        jmp     #select
-
 sram_chip1
         mov     t1, #1
         jmp     #select
@@ -651,7 +487,6 @@ select  andn    outa, TCLR
 :loop   or      outa, TINC
         andn    outa, TINC
         djnz    t1, #:loop
-sd_card_ret
 sram_chip1_ret
 sram_chip2_ret
 flash_chip_ret
