@@ -269,6 +269,7 @@ typedef struct _tagVOLINFO {
 	Directory search structure (Internal to DOSFS)
 */
 typedef struct _tagDIRINFO {
+	uint32_t startcluster;	    // first cluster in dir
 	uint32_t currentcluster;	// current cluster in dir
 	uint8_t currentsector;		// current sector in cluster
 	uint8_t currententry;		// current dir entry in sector
@@ -289,7 +290,18 @@ typedef struct _tagFILEINFO {
 
 	uint32_t cluster;			// current cluster
 	uint32_t pointer;			// current (BYTE) pointer
+	uint32_t parentcluster;     // first cluster of parent dir
 } FILEINFO, *PFILEINFO;
+
+/*
+    Set the Date and Time in a DIRENT to the Default Date and Time.
+*/
+void DFS_SetDirEntDateTime(PDIRENT pde);
+
+/*
+    Set the Cluster in a DIRENT
+*/
+void DFS_SetStartCluster(PDIRENT pde, uint32_t cluster);
 
 /*
 	Get starting sector# of specified partition on drive #unit

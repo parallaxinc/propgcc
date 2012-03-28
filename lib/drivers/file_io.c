@@ -57,7 +57,10 @@ int DFS_InitFileIO(void)
     if (_sd_mbox_p)
         sd_mbox = _sd_mbox_p;
     else
+    {   // We're using the SD Cache driver - it's already initialized!
         sd_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
+        return DFS_OK;
+    }
 #endif
 
     while (retries-- > 0)

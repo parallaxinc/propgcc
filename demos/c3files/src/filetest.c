@@ -15,10 +15,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cog.h>
+#include <ctype.h>
 #include <propeller.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <sys/sd.h>
 
 extern _Driver _SimpleSerialDriver;
 extern _Driver _FileDriver;
@@ -390,6 +392,116 @@ void CloseRedirection()
     }
 }
 
+void mount()
+{
+    printf("Load and mount SD: ");
+
+//
+// Important: This code assumes you're using a C3 card.
+// If you're using different hardware, make sure you
+// change the following initialization to match your card!
+
+#ifdef SPINNERET_CARD
+#define CONFIG_IS_SET
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_SingleSPI,
+        pins:
+        {
+            SingleSPI:
+            {
+                MISO: 16,   // The pin attached to the SD card's MISO or DO output
+                CLK:  21,   // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 20,   // The pin attached to the SD card's MOSI or DI input
+                CS:   19    // The pin attached to the SD card's CS input
+            }
+        }
+    };
+    LoadSDDriver(&params);
+#endif
+
+#ifdef PROP_BOE /* Board of Education */
+#define CONFIG_IS_SET
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_SingleSPI,
+        pins:
+        {
+            SingleSPI:
+            {
+                MISO: 22,   // The pin attached to the SD card's MISO or DO output
+                CLK:  23,   // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 24,   // The pin attached to the SD card's MOSI or DI input
+                CS:   25    // The pin attached to the SD card's CS input
+            }
+        }
+    };
+#endif
+
+#ifdef C3_CARD
+#define CONFIG_IS_SET
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_SerialDeMUX,
+        pins:
+        {
+            SerialDeMUX:
+            {
+                MISO: 10,    // The pin attached to the SD card's MISO or DO output
+                CLK:  11,    // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 9,     // The pin attached to the SD card's MOSI or DI input
+                CLR:  25,    // The pin attached to the counter's reset/clear pin
+                INC:  8,     // The pin attached to the counter's clock/count pin
+                ADDR: 5,     // The SD card's demux address (the counter's count)
+            }
+        }
+    };
+    LoadSDDriver(&params);
+#endif
+
+#ifdef PARALLEL_SPI /* This is a hypothetical example - modify to suit your needs */
+#define CONFIG_IS_SET
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_ParallelDeMUX,
+        pins:
+        {
+            ParallelDeMUX:
+            {
+                MISO: 4,    // The pin attached to the SD card's MISO or DO output
+                CLK:  5,    // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 6,    // The pin attached to the SD card's MOSI or DI input
+                CS:   0,    // The pin attached to the counter's reset/clear pin
+                SEL:  0x04, // The pin mask to set when selecting the SD card's deMUX address
+                MSK:  0x0E  // The pin mask for all pins attached to the deMUX address
+            }
+        }
+    };
+    LoadSDDriver(&params);
+#endif
+
+#if !defined(__PROPELLER_LMM__) && defined(XMMC_IS_USING_SD_CACHE_DRIVER)
+#define CONFIG_IS_SET
+    // Do nothing.  In this case, we'll use the SD Cache driver.
+    // Beware: This only works if you're running your program
+    // cached off of the SD card (i.e. propeller-load -z).
+#endif
+
+#ifndef CONFIG_IS_SET
+#error You must specify your SD interface paramters and call LoadSDDriver.
+#endif
+
+
+    uint32_t mountErr = dfs_mount();
+    if (mountErr)
+    {
+        printf("Mount error: %d\n", mountErr);
+        exit(1);
+    }
+
+    printf("done.\n\n");
+}
+
 /* The program starts the file system.  It then loops reading commands
    and calling the appropriate routine to process it. */
 int main()
@@ -401,23 +513,11 @@ int main()
     stdinfile = stdin;
     stdoutfile = stdout;
 
-#ifdef __PROPELLER_LMM__
-#ifdef SPINNERET_CARD
-    // Mount file system on a Spinneret card
-    buffer[0] = 16; // SD MISO PIN
-    buffer[1] = 21; // SD CLK PIN
-    buffer[2] = 20; // SD MOSI PIN
-    buffer[3] = 19; // SD CS PIN
-    LoadSDDriver(buffer);
-#else
-    // Mount file system on a C3 card
-    LoadSDDriver(0);
-#endif
-#endif
+    // Wait for the serial terminal to start
+    waitcnt(CNT + CLKFREQ);
 
-    dfs_mount();
+    mount();
 
-    printf("\n");
     Help();
 
     while (1)
@@ -461,6 +561,7 @@ int main()
 
     return 0;
 }
+
 /*
 +--------------------------------------------------------------------
 |  TERMS OF USE: MIT License
@@ -485,4 +586,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 +------------------------------------------------------------------
 */
-
