@@ -281,9 +281,9 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
 void hwreset(void)
 {
     int cmd = use_rts_for_reset ? TIOCM_RTS : TIOCM_DTR;
-    ioctl(hSerial, TIOCMBIS, &cmd); // assert DTR pin
+    ioctl(hSerial, TIOCMBIS, &cmd); // assert DTR or RTS pin
     msleep(10);
-    ioctl(hSerial, TIOCMBIC, &cmd); // deassert DTR pin
+    ioctl(hSerial, TIOCMBIC, &cmd); // deassert DTR or RTS pin
     msleep(80);
     tcflush(hSerial, TCIFLUSH);
 }
