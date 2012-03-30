@@ -197,9 +197,11 @@ PRI EOF_handler | err
   case write_mode
     WRITE_FILE:
       err := \sd.pclose
+      write_mode := WRITE_NONE
     WRITE_FLASH:
     WRITE_RAM:
     WRITE_HUB:
+    WRITE_NONE:
     other:
 #ifdef TV_DEBUG
       tv.str(string("bad write_mode: "))

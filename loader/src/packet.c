@@ -32,7 +32,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define E
 /* timeouts for waiting for ACK/NAK */
 #define INITIAL_TIMEOUT     10000   // 10 seconds
-#define PACKET_TIMEOUT      1000    // 1 second
+#define PACKET_TIMEOUT      10000   // 10 seconds - this is long because SD cards may take a file to scan the FAT
 
 /* packet format: SOH pkt# type length-lo length-hi hdrchk length*data crc1 crc2 */
 #define HDR_SOH     0
