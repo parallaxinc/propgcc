@@ -301,17 +301,15 @@ do_crc_lo               call    #updcrc               'update the crc
                         mov     t1, rcv_buf1
                         mov     rcv_buf1, rcv_buf2
                         mov     rcv_buf2, t1
-                        mov     t1, #STATUS_OK
                         mov     sndbyte, #ACK
-send_ack_nak            wrlong  t1, pkt_status_ptr
-:wait                   jmpret  rxcode,txcode         'run a chunk of transmit code, then return
+                        
+send_ack_nak            jmpret  rxcode,txcode         'run a chunk of transmit code, then return
                         call    #send_byte
-              if_z      jmp     #:wait
+              if_z      jmp     #send_ack_nak
                         mov     rcv_state, #STATE_SOH
                         jmp     #receive              'byte done, receive next byte
 
-send_nak                mov     t1, #STATUS_ERROR
-                        mov     sndbyte, #NAK
+send_nak                mov     sndbyte, #NAK
                         jmp     #send_ack_nak
 
 '
@@ -358,7 +356,7 @@ send_byte               mov     t1,tx_head            'check for head+1 <> tail
                         add     t1,#1
                         and     t1,tx_buffer_mask
                         cmp     t1,tx_tail wz
-        if_z            jmp     #send_byte_ret
+        if_z            jmp     send_byte_ret
                         add     tx_head,txbuff        'put byte and inc head
                         wrbyte  sndbyte,tx_head
 						mov		tx_head,t1
