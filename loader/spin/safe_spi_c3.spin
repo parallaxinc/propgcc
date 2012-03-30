@@ -102,6 +102,7 @@ PUB readblock( block_index, buffer_address )
   repeat while SPI_command == "r"
   if SPI_command < 0
     abort SPI_command
+  release
 
 PUB writeblock( block_index, buffer_address )
   if SPI_engine_cog == 0
@@ -114,6 +115,7 @@ PUB writeblock( block_index, buffer_address )
   repeat while SPI_command == "w"
   if SPI_command < 0
     abort SPI_command
+  release
 
 PUB get_seconds
   if SPI_engine_cog == 0

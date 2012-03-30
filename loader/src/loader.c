@@ -828,6 +828,16 @@ int WriteFileToSDCard(BoardConfig *config, char *path, char *target)
     if (!SendPacket(TYPE_EOF, (uint8_t *)"", 0))
         return Error("SendPacket EOF failed");
     
+    /*
+       We send two EOF packets for SD card writes.  The reason is that the EOF
+       packet does actual work, and that work takes time.  The packet
+       transmission protocol uses read-ahead buffering on the receiving end.
+       Therefore, we need to make sure the first EOF packet was received and
+       processed before resetting the Prop!
+    */
+    if (!SendPacket(TYPE_EOF, (uint8_t *)"", 0))
+        return Error("Second SendPacket EOF failed");
+    
     return TRUE;
 }
 
