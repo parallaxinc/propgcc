@@ -29,21 +29,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define FALSE   0
 #endif
 
-#define E
 /* timeouts for waiting for ACK/NAK */
 #define INITIAL_TIMEOUT     10000   // 10 seconds
 #define PACKET_TIMEOUT      10000   // 10 seconds - this is long because SD cards may take a file to scan the FAT
 
 /* packet format: SOH pkt# type length-lo length-hi hdrchk length*data crc1 crc2 */
 #define HDR_SOH     0
-#define HDR_PKTN    1
-#define HDR_TYPE    2
-#define HDR_LEN_HI  3
-#define HDR_LEN_LO  4
-#define HDR_CHK     5
+#define HDR_TYPE    1
+#define HDR_LEN_HI  2
+#define HDR_LEN_LO  3
+#define HDR_CHK     4
 
 /* packet header and crc lengths */
-#define PKTHDRLEN   6
+#define PKTHDRLEN   5
 #define PKTCRCLEN   2
 
 /* maximum length of a frame */
@@ -92,8 +90,6 @@ static const uint16_t crctab[256] = {
     0x6e17,  0x7e36,  0x4e55,  0x5e74,  0x2e93,  0x3eb2,  0x0ed1,  0x1ef0
 };
 
-static uint8_t snd_pktn = 0;
-
 static int WaitForAckNak(int timeout);
 
 int WaitForInitialAck(void)
@@ -109,11 +105,10 @@ int SendPacket(int type, uint8_t *buf, int len)
 
     /* setup the frame header */
     hdr[HDR_SOH] = SOH;                                 /* SOH */
-    hdr[HDR_PKTN] = ++snd_pktn;                         /* packet# */
     hdr[HDR_TYPE] = type;                               /* type type */
     hdr[HDR_LEN_HI] = (uint8_t)(len >> 8);              /* data length - high byte */
     hdr[HDR_LEN_LO] = (uint8_t)len;                     /* data length - low byte */
-    hdr[HDR_CHK] = hdr[1] + hdr[2] + hdr[3] + hdr[4];   /* header checksum */
+    hdr[HDR_CHK] = hdr[1] + hdr[2] + hdr[3];            /* header checksum */
 
     /* compute the crc */
     for (p = buf, cnt = len; --cnt >= 0; ++p)
@@ -153,10 +148,10 @@ int ReceivePacket(int *pType, uint8_t *buf, int len)
     } while (hdr[HDR_SOH] != SOH);
 
     /* receive the rest of the header */
-    rx(&hdr[HDR_PKTN], PKTHDRLEN - 1);
+    rx(&hdr[HDR_TYPE], PKTHDRLEN - 1);
 
     /* check the header checksum */
-    chk = (hdr[1] + hdr[2] + hdr[3] + hdr[4]) & 0xff;
+    chk = (hdr[1] + hdr[2] + hdr[3]) & 0xff;
     if (hdr[HDR_CHK] != chk)
         return -1;
 
