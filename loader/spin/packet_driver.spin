@@ -21,7 +21,6 @@ CON
 
   #0
   STATE_SOH
-  STATE_PKTN
   STATE_TYPE
   STATE_LEN_HI
   STATE_LEN_LO
@@ -231,7 +230,6 @@ receive                 jmpret  rxcode,txcode         'run a chunk of transmit c
                         jmp     t1
 
 dispatch                jmp     #do_soh
-                        jmp     #do_pktn
                         jmp     #do_type
                         jmp     #do_len_hi
                         jmp     #do_len_lo
@@ -241,15 +239,11 @@ dispatch                jmp     #do_soh
                         jmp     #do_crc_lo
 
 do_soh                  cmp     rxdata, #SOH wz
-              if_z      mov     rcv_state, #STATE_PKTN
-                        jmp     #receive              'byte done, receive next byte
-
-do_pktn                 mov     rcv_chk, rxdata
-                        mov     rcv_state, #STATE_TYPE
+              if_z      mov     rcv_state, #STATE_TYPE
                         jmp     #receive              'byte done, receive next byte
 
 do_type                 mov     rcv_type, rxdata
-                        add     rcv_chk, rxdata
+                        mov     rcv_chk, rxdata
                         mov     rcv_state, #STATE_LEN_HI
                         jmp     #receive              'byte done, receive next byte
 
