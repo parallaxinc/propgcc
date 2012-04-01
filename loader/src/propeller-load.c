@@ -53,9 +53,10 @@ int main(int argc, char *argv[])
     char *infile = NULL, *p, *p2;
     int terminalMode = FALSE;
     BoardConfig *config, *configSettings;
-    char *port, *board, *subtype;
+    char *port, *board, *subtype, *value;
     System sys;
-    int baud = 0;
+    int baud = 115200;
+    int useRtsForReset = FALSE;
     int flags = 0;
     int verbose = FALSE;
     int i;
@@ -172,9 +173,6 @@ int main(int argc, char *argv[])
             case 'S':
                 psetdelay(argv[i][2] ? atoi(&argv[i][2]) : 5);
                 break;
-            case 'R':
-                serial_use_rts_for_reset(TRUE);
-                break;
             case 'f':
                 flags |= LFLAG_WRITE_SDFILE;
                 break;
@@ -246,8 +244,10 @@ int main(int argc, char *argv[])
     
     /* select the subtype */
     if (subtype) {
-        if (!(config = GetConfigSubtype(config, subtype)))
+        if (!(config = GetConfigSubtype(config, subtype))) {
             fprintf(stderr, "error: can't find board configuration subtype '%s'\n", subtype);
+            return 1;
+        }
     }
     
     /* override with any command line settings */
@@ -255,6 +255,18 @@ int main(int argc, char *argv[])
         
     /* use the baud rate from the configuration */
     GetNumericConfigField(config, "baudrate", &baud);
+    if ((value = GetConfigField(config, "reset")) != NULL) {
+        if (strcasecmp(value, "dtr") == 0)
+            useRtsForReset = FALSE;
+        else if (strcmp(value, "rts") == 0)
+            useRtsForReset = TRUE;
+        else {
+            fprintf(stderr, "error: no reset type '%s'\n", value);
+            return 1;
+        }
+    }
+    serial_use_rts_for_reset(useRtsForReset);
+    
 
     /* initialize the serial port */
     if ((flags & NEED_PORT) != 0 || terminalMode) {
@@ -339,7 +351,6 @@ usage: propeller-load\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
          [ -v ]            verbose output\n\
          [ -S<n> ]         slow down the loader by adding <n> microseconds delay (default is 5)\n\
-         [ -R ]            use RTS instead of DTR to reset the Propeller\n\
          [ -? ]            display a usage message and exit\n\
          <name>            elf or spin binary file to load\n\
 \n\
@@ -347,7 +358,7 @@ Target board type can be either a single identifier like 'propboe' in which case
 defaults to 'default' or it can be of the form <type>:<subtype> like 'c3:ram'.\n\
 \n\
 Variables that can be set with -D are:\n\
-  clkfreq clkmode baudrate rxpin txpin tvpin\n\
+  clkfreq clkmode baudrate reset rxpin txpin tvpin\n\
   cache-driver cache-size cache-param1 cache-param2\n\
   sd-driver sdspi-do sdspi-clk sdspi-di sdspi-cs\n\
   sdspi-clr sdspi-inc sdspi-sel sdspi-msk spdspi-addr\n\
