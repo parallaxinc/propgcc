@@ -599,6 +599,7 @@ rd_cache_line
         call    #get_physical_sector
         mov     count, line_size
         call    #sd_read
+        call    #sd_release
 rd_cache_line_ret
         ret
 
