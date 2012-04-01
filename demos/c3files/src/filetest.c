@@ -395,14 +395,13 @@ void CloseRedirection()
 void mount()
 {
     printf("Load and mount SD: ");
+    _SD_Params* mountParams = (_SD_Params*)-1;
 
-//
 // Important: This code assumes you're using a C3 card.
 // If you're using different hardware, make sure you
 // change the following initialization to match your card!
 
 #ifdef SPINNERET_CARD
-#define CONFIG_IS_SET
     static _SD_Params params =
     {
         AttachmentType: _SDA_SingleSPI,
@@ -417,11 +416,10 @@ void mount()
             }
         }
     };
-    LoadSDDriver(&params);
+    mountParams = &params;
 #endif
 
 #ifdef PROP_BOE /* Board of Education */
-#define CONFIG_IS_SET
     static _SD_Params params =
     {
         AttachmentType: _SDA_SingleSPI,
@@ -436,10 +434,11 @@ void mount()
             }
         }
     };
+    mountParams = &params;
 #endif
 
+#define C3_CARD
 #ifdef C3_CARD
-#define CONFIG_IS_SET
     static _SD_Params params =
     {
         AttachmentType: _SDA_SerialDeMUX,
@@ -456,11 +455,10 @@ void mount()
             }
         }
     };
-    LoadSDDriver(&params);
+    mountParams = &params;
 #endif
 
 #ifdef PARALLEL_SPI /* This is a hypothetical example - modify to suit your needs */
-#define CONFIG_IS_SET
     static _SD_Params params =
     {
         AttachmentType: _SDA_ParallelDeMUX,
@@ -477,22 +475,23 @@ void mount()
             }
         }
     };
-    LoadSDDriver(&params);
+    mountParams = &params;
 #endif
 
-#if !defined(__PROPELLER_LMM__) && defined(XMMC_IS_USING_SD_CACHE_DRIVER)
-#define CONFIG_IS_SET
-    // Do nothing.  In this case, we'll use the SD Cache driver.
+#if defined(__PROPELLER_XMMC__) && defined(SD_IS_USING_SD_CACHE_DRIVER)
+    // Pass NULL as the params. In this case, we'll use the SD Cache driver.
     // Beware: This only works if you're running your program
     // cached off of the SD card (i.e. propeller-load -z).
+    mountParams = 0;
 #endif
 
-#ifndef CONFIG_IS_SET
-#error You must specify your SD interface paramters and call LoadSDDriver.
-#endif
+    if (mountParams == (_SD_Params*)-1)
+    {
+        printf("You must specify the SD paramters in the filetest.c\n");
+        exit(1);
+    }
 
-
-    uint32_t mountErr = dfs_mount();
+    uint32_t mountErr = dfs_mount(mountParams);
     if (mountErr)
     {
         printf("Mount error: %d\n", mountErr);
