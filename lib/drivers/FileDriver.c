@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/driver.h>
+#include <sys/sd.h>
 #include <compiler.h>
 #include <errno.h>
 #include <propeller.h>
@@ -33,6 +34,7 @@ char dfs_currdir[MAX_PATH];
 __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
 
 // Function prototypes
+extern void LoadSDDriver();
 int DFS_InitFileIO(void);
 int dfs_stdio_errno(int errnum);
 void dfs_resolve_path(const char *fname, char *path);
@@ -215,11 +217,14 @@ int dfs_stdio_errno(int errnum)
     return errnum;
 }
 
-uint32_t dfs_mount(void)
+uint32_t dfs_mount(_SD_Params* params)
 {
     int retval, sector;
 
     if (dfs_mountflag) return 0;
+
+    if (params)
+        LoadSDDriver(params);
 
     strcpy(dfs_currdir, "/");
 

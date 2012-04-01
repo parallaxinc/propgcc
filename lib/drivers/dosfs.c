@@ -22,7 +22,7 @@ uint32_t DefaultFileTime = 0x0820; // 01:01:00
 uint32_t DefaultFileDate = 0x4021; // Jan 1, 2012
 
 #include <stdio.h>
-void DFS_SetDefaultFileDateTime(struct tm* tm)
+void dfs_setDefaultFileDateTime(struct tm* tm)
 {
     DefaultFileTime = (tm->tm_hour << 11) | (tm->tm_min << 5) | (tm->tm_sec >> 1);
     DefaultFileDate = ((tm->tm_year - 80) << 9) | ((tm->tm_mon + 1) << 5) | tm->tm_mday;

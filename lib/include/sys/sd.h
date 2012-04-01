@@ -107,6 +107,7 @@ typedef struct
     } pins;
 } _SD_Params;
 
-void DFS_SetDefaultFileDateTime(struct tm* tm);
+uint32_t dfs_mount(_SD_Params* params);
+void dfs_setDefaultFileDateTime(struct tm* tm);
 
 #endif

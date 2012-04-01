@@ -43,31 +43,25 @@ void LoadSDDriver(_SD_Params *params)
     memcpy(driver_array, sd_driver_array, (_load_stop_cogsys1 - _load_start_cogsys1) * 4);
 #endif
 
-    _sd_mbox_p = (uint32_t *)sd_mbox;
+    memset(pinmask, 0, sizeof(pinmask));
+    pinmask[0] = 1 << pins[0];  // SD MISO
+    pinmask[1] = 1 << pins[1];  // SD CLK
+    pinmask[2] = 1 << pins[2];  // SD MOSI
+    pinmask[3] = 1 << pins[3];  // SD CS
 
-    // Overwrite pin masks if pins are specified
-    if (pins)
+    if (params->AttachmentType == _SDA_SerialDeMUX)
     {
-        memset(pinmask, 0, sizeof(pinmask));
-        pinmask[0] = 1 << pins[0];  // SD MISO
-        pinmask[1] = 1 << pins[1];  // SD CLK
-        pinmask[2] = 1 << pins[2];  // SD MOSI
-        pinmask[3] = 1 << pins[3];  // SD CS
-
-        if (params->AttachmentType == _SDA_SerialDeMUX)
-        {
-            pinmask[4] = 1 << pins[4];
-            pinmask[6] = pins[5];
-        }
-        else if (params->AttachmentType == _SDA_ParallelDeMUX)
-        {
-            pinmask[4] = pins[4];
-            pinmask[5] = pins[5];
-        }
-
-        memcpy(driver_array + 4, pinmask, sizeof(pinmask));
+        pinmask[4] = 1 << pins[4];
+        pinmask[6] = pins[5];
     }
+    else if (params->AttachmentType == _SDA_ParallelDeMUX)
+    {
+        pinmask[4] = pins[4];
+        pinmask[5] = pins[5];
+    }
+    memcpy(driver_array + 4, pinmask, sizeof(pinmask));
 
+    _sd_mbox_p = (uint32_t *)sd_mbox;
     sd_mbox[0] = 1;
     load_cog_driver(driver_array, cogsys1, (uint32_t *)sd_mbox);
     while (sd_mbox[0]);
