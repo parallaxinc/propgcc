@@ -56,6 +56,9 @@ typedef struct {
     uint8_t clkpin;
     uint8_t dipin;
     uint8_t cspin;
+    uint8_t select_address;
+    uint32_t select_inc_mask;
+    uint32_t select_mask;
 } SerialHelperDatHdr;
 
 /* DAT header in flash_loader.spin */
@@ -680,6 +683,17 @@ int LoadSerialHelper(BoardConfig *config, int needsd)
             dat->cspin = ivalue;
         else
             return Error("missing sdspi-cs or sdspi-clr pin configuration");
+
+        if (GetNumericConfigField(config, "sdspi-sel", &ivalue))
+            dat->select_inc_mask = ivalue;
+        else if (GetNumericConfigField(config, "sdspi-inc", &ivalue))
+            dat->select_inc_mask = 1 << ivalue;
+
+        if (GetNumericConfigField(config, "sdspi-msk", &ivalue))
+            dat->select_mask = ivalue;
+
+        if (GetNumericConfigField(config, "sdspi-addr", &ivalue))
+            dat->select_address = (uint8_t)ivalue;
     }
         
     /* recompute the checksum */
