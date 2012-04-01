@@ -89,7 +89,7 @@ PUB start( basepin )
   This is a compatibility wrapper, and requires that the pins be
   both consecutive, and in the order DO CLK DI CS.
 }}
-  return start_explicit( basepin, basepin+1, basepin+2, basepin+3 )
+  return start_explicit( basepin, basepin+1, basepin+2, basepin+3, 0, 0, 0 )
 
 PUB readblock( block_index, buffer_address )
   if SPI_engine_cog == 0
@@ -134,7 +134,7 @@ PUB get_milliseconds : ms
   ms := SPI_block_index * 1000
   ms += SPI_buffer_address * 1000 / clkfreq
   
-PUB start_explicit( DO, CLK, DI, CS ) : card_type | tmp, i
+PUB start_explicit( DO, CLK, DI, CS_CLR, SEL_INC, SEL_MSK, SEL_ADDR ) : card_type | tmp, i
 {{
   Do all of the card initialization in SPIN, then hand off the pin
   information to the assembly cog for hot SPI block R/W action!
@@ -149,20 +149,23 @@ PUB start_explicit( DO, CLK, DI, CS ) : card_type | tmp, i
   '}
   ' wait ~4 milliseconds
   waitcnt( 500 + (clkfreq>>8) + cnt )
-  ' check for C3 pins
-  if DO == 10 and CLK == 11 and DI == 9 and CS == 25
-    maskINC := 1 << 8
+
   ' (start with cog variables, _BEFORE_ loading the cog)
   pinDO := DO
   maskDO := |< DO
   pinCLK := CLK
   pinDI := DI
   maskDI := |< DI
-  maskCS := |< CS
-  adrShift := 9 ' block = 512 * index, and 512 = 1<<9
+  maskCS_CLR := |< CS_CLR
+  maskSEL_INC := SEL_INC
+  cntSEL_ADDR := SEL_ADDR
+
   ' pass the output pin mask via the command register
-  maskAll := maskCS | (|<pinCLK) | maskDI | maskINC
+  maskAll := maskCS_CLR | (|<pinCLK) | maskDI | maskSEL_MSK | maskSEL_INC
   dira |= maskAll  
+
+  adrShift := 9 ' block = 512 * index, and 512 = 1<<9
+
   ' get the card in a ready state: set DI and CS high, send => 74 clocks
   deselect
   outa |= (|<pinCLK) | maskDI
@@ -170,6 +173,7 @@ PUB start_explicit( DO, CLK, DI, CS ) : card_type | tmp, i
     outa[CLK]~~
     outa[CLK]~
   ' time-hack
+
   SPI_block_index := cnt
   ' reset the card
   tmp~
@@ -227,8 +231,12 @@ PUB start_explicit( DO, CLK, DI, CS ) : card_type | tmp, i
   send_cmd_slow( CMD59, 0, $91 )
   '  check the status
   'send_cmd_slow( CMD13, 0, $0D )    
+
   ' done with the SPI bus for now
   deselect
+  ' we no longer need to control any pins from here
+  dira &= !maskAll
+
   ' set my counter modes for super fast SPI operation
   ' writing: NCO single-ended mode, output on DI
   writeMode := (%00100 << 26) | (DI << 0)
@@ -252,9 +260,7 @@ PUB start_explicit( DO, CLK, DI, CS ) : card_type | tmp, i
   if( SPI_engine_cog == 0 )
     crash( ERR_SPI_ENGINE_NOT_RUNNING )
   repeat while SPI_command <> -1
-  ' and we no longer need to control any pins from here
-  deselect
-  dira &= !maskAll
+
   ' the return variable is card_type   
 
 PUB release
@@ -363,19 +369,28 @@ PRI read_slow : r
     crash( ERR_CARD_BUSY_TIMEOUT )
    
 PRI deselect
-  if maskINC
-    outa &= !maskCS
-  outa |= maskCS
+  if maskSEL_INC <> 0 AND maskSEL_MSK == 0
+    ' C3 (Serial deMUX) Mode
+    outa &= !maskCS_CLR
+    outa |= maskCS_CLR
+  else
+    ' Single SPI or Parallel deMUX Modes
+    outa |= maskCS_CLR
+    outa &= !maskSEL_MSK
 
 PRI select
-  if maskINC
-    outa &= !maskCS
-    outa |= maskCS
-    repeat 5
-      outa |= maskINC
-      outa &= !maskINC
+  if maskSEL_INC <> 0 AND maskSEL_MSK == 0
+    ' C3 (Serial deMUX) Mode
+    outa &= !maskCS_CLR
+    outa |= maskCS_CLR
+    repeat cntSEL_ADDR
+      outa |= maskSEL_INC
+      outa &= !maskSEL_INC
   else
-    outa &= !maskCS
+    ' Single SPI or Parallel deMUX Modes
+    outa &= !maskSEL_MSK
+    outa |= maskSEL_INC
+    outa &= !maskCS_CLR
 
 DAT
 {{
@@ -397,10 +412,13 @@ SPI_engine_entry
         mov last_time,cnt
 
         ' Check if C3 mode or normal CS mode
-        cmp     maskINC, #0 wz
- if_nz  jmp     #waiting_for_command 'c3_mode
-        mov     _select, jmp_cs_sel
-        mov     _deselect, jmp_cs_des
+        tjz     maskSEL_INC,  #_not_c3
+        tjnz    maskSEL_MSK,  #_not_c3
+        mov     sd_select, c3_sd_select_jmp    ' We're in C3 mode, so replace select/deselect
+        mov     sd_release, c3_sd_release_jmp  ' with the C3-aware routines
+_not_c3
+
+        call #sd_release
         
 waiting_for_command
         ' update my seconds counter, but also track the idle 
@@ -514,7 +532,7 @@ handle_command_ret
 release_DO
         ' we're already out of multiblock mode, so
         ' deselect the card and send out some clocks
-        call #_deselect
+        call #sd_release
         call #in8
         call #in8
         ' if you are using pull-up resistors, and need all
@@ -562,8 +580,8 @@ send_SPI_command_fast
         ' make sure we have control of the output lines
         mov dira,maskAll
         ' make sure the CS line transitions low
-        call #_deselect
-        call #_select
+        call #sd_release
+        call #sd_select
         ' 8 clocks
         call #in8 
         ' send the data
@@ -865,36 +883,50 @@ write_single_block_ret
         ret
 
 ' Select the SD card
-_select       jmp  #c3_sel       ' This jump is modified for normal CS mode
-c3_sel        mov  cs_cnt, #5
-              andn outa, maskCS
-              or   outa, maskCS
-_loop         or   outa, maskINC
-              andn outa, maskINC
-              djnz cs_cnt, #_loop
-              jmp  #_select_ret
-cs_sel        andn outa, maskCS
-_select_ret   ret
+sd_select                               ' Single-SPI and Parallel-DeMUX
+        andn    outa, maskSEL_MSK
+        or      outa, maskSEL_INC
+        andn    outa, maskCS_CLR
+sd_select_ret
+        ret
 
-' Deselect the SD card
-_deselect     jmp  #c3_des       ' This jump is modified for normal CS mode
-c3_des        andn outa, maskCS
-cs_des        or   outa, maskCS
-_deselect_ret ret
+sd_release                              ' Single-SPI and Parallel-DeMUX
+        or      outa, maskCS_CLR
+        andn    outa, maskSEL_MSK
+sd_release_ret
+        ret
 
-' jump instructions for the single CS mode
-jmp_cs_sel    jmp  #cs_sel
-jmp_cs_des    jmp  #cs_des
-maskINC       long 0
-cs_cnt        long 0
-        
+c3_sd_select_jmp                        ' Serial-DeMUX Jumps
+        jmp     #c3_sd_select           ' Initialization copies these jumps
+c3_sd_release_jmp                       '   over the sd_select and sd_relase
+        jmp     #c3_sd_release          '   when in C3 mode.
+
+c3_sd_select                            ' Serial-DeMUX
+        mov     cs_cnt, cntSEL_ADDR
+        andn    outa, maskCS_CLR
+        or      outa, maskCS_CLR
+_loop   or      outa, maskSEL_INC
+        andn    outa, maskSEL_INC
+        djnz    cs_cnt, #_loop
+        jmp     sd_select_ret
+
+c3_sd_release                           ' Serial-DeMUX
+        andn    outa, maskCS_CLR
+        or      outa, maskCS_CLR
+        jmp     sd_release_ret
+
+      
 {=== Assembly Interface Variables ===}
 pinDO         long 0    ' pin is controlled by a counter
 pinCLK        long 0    ' pin is controlled by a counter
 pinDI         long 0    ' pin is controlled by a counter
 maskDO        long 0    ' mask for reading the DO line from the card
 maskDI        long 0    ' mask for setting the pin high while reading  
-maskCS        long 0    ' mask = (1<<pin), and is controlled directly
+maskCS_CLR    long 0    ' mask = (1<<pin), and is controlled directly
+maskSEL_INC   long 0    ' mask = one or more bits (1<<pin), and is controlled directly
+maskSEL_MSK   long 0    ' mask = one or more bits (1<<pin), and is controlled directly
+cntSEL_ADDR   long 0    ' count: Serial deMUX address for C3-like devices
+cs_cnt        long 0
 maskAll       long 0
 adrShift      long 9    ' will be 0 for SDHC, 9 for MMC & SD
 bufAdr        long 0    ' where in Hub RAM is the buffer to copy to/from?

@@ -160,7 +160,7 @@ pri getfstype : r
    if (brlong(@buf+$52) == constant("F" + ("A" << 8) + ("T" << 16) + ("3" << 24)) and buf[$56]=="2")
      return 2
    ' return r (default return)
-pub mount_explicit(DO, CLK, DI, CS) : r | start, sectorspercluster, reserved, rootentries, sectors
+pub mount_explicit(DO, CLK, DI, CS, SEL_INC, SEL_MSK, SEL_ADDR) : r | start, sectorspercluster, reserved, rootentries, sectors
 {{
 '   Mount a volume.  The address passed in is passed along to the block
 '   layer; see the currently used block layer for documentation.  If the
@@ -171,7 +171,7 @@ pub mount_explicit(DO, CLK, DI, CS) : r | start, sectorspercluster, reserved, ro
    'ser.str(string("mount_explicit 1", 13))
    unmount
    'ser.str(string("mount_explicit 2", 13))
-   sdspi.start_explicit(DO, CLK, DI, CS)
+   sdspi.start_explicit(DO, CLK, DI, CS, SEL_INC, SEL_MSK, SEL_ADDR)
    'ser.str(string("mount_explicit 3", 13))
    lastread := -1
    dirty := 0
@@ -224,7 +224,7 @@ pub mount_explicit(DO, CLK, DI, CS) : r | start, sectorspercluster, reserved, ro
 '   For compatibility, a single pin.
 '
 pub mount(basepin) : r | start, sectorspercluster, reserved, rootentries, sectors
-   return mount_explicit(basepin, basepin+1, basepin+2, basepin+3)
+   return mount_explicit(basepin, basepin+1, basepin+2, basepin+3, 0, 0, 0)
 pri readbytec(byteloc)
 '
 '   Read a byte address from the disk through the metadata buffer and

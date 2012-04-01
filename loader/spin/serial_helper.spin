@@ -232,7 +232,7 @@ PRI mountSD | err
 #ifdef TV_DEBUG
       tv.str(string("Mounting SD card...", CR))
 #endif
-      err := \sd.mount_explicit(p_dopin, p_clkpin, p_dipin, p_cspin)
+      err := \sd.mount_explicit(p_dopin, p_clkpin, p_dipin, p_cspin, p_sel_inc, p_sel_msk, p_sel_addr)
     until err == 0
     sd_mounted := 1
   return 1
@@ -258,6 +258,9 @@ p_dopin             byte    0
 p_clkpin            byte    0
 p_dipin             byte    0
 p_cspin             byte    0
+p_sel_addr          byte    0
+p_sel_inc           long    0
+p_sel_msk           long    0
 
 p_image_base        long    0
 p_cache_mbox        long    0
