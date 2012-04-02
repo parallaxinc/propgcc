@@ -163,15 +163,31 @@ extend  mov     vmaddr, vmline
         add     vmline, #dispatch
         jmp     vmline
 
-dispatch        ' ignore all commands except the one we are using: write_data_handler
+dispatch        ' ignore all commands except the one we are using: write_data_handler and lock_set_handler
         jmp     #waitcmd    ' jmp     #erase_chip_handler ' no erase command
         jmp     #waitcmd    ' jmp     #erase_4k_block_handler ' no block erase command
         jmp     #write_data_handler
         jmp     #waitcmd    ' jmp     #sd_init_handler ' no sdcard on SSF
         jmp     #waitcmd    ' jmp     #sd_read_handler ' no sdcard on SSF
         jmp     #waitcmd    ' jmp     #sd_write_handler ' no sdcard on SSF
+        jmp     #waitcmd    ' jmp     #cache_init_handler ' not used
+'       jmp     #lock_set_handler - This is the next instruction - no need to waste a long
+
+'
+' Install an optional lock on the I2C bus.  We only provide locks while the
+' program "running", so we only need to use these locks on the cache
+' operations.  That's why the lock is located solely in the rd_cache_line routine.
+'
+lock_set_handler
+        mov     lock_id, vmaddr
+        mov     lck_i2c, lock_set
+        mov     nlk_i2c, lock_clr
         jmp     #waitcmd
-        jmp     #waitcmd
+lock_set
+        lockset lock_id wc
+lock_clr
+        lockclr lock_id
+lock_id long    0               ' lock id for optional bus interlock
 
 ' pointers to mailbox entries
 pvmcmd          long    0       ' on call this is the virtual address and read/write bit
@@ -223,6 +239,8 @@ extMemInit_ret  ret
 '------------------------------------------------------------------------------
 
 rd_cache_line
+lck_i2c test    $, #0 wc             ' lock no-op: clear the carry bit
+   if_c jmp     #lck_i2c
         mov     _delayCount, #RDELAY
         mov     devs,    #EEID
         mov     psiz,    line_size
@@ -230,6 +248,7 @@ rd_cache_line
         add     addr,    eebase      ' add eeprom base to skip the loader and get to the proper EEPROM address
         mov     tp,      hubaddr
         call    #readPage
+nlk_i2c nop        
 rd_cache_line_ret ret
 
 '------------------------------------------------------------------------------

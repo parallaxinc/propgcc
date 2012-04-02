@@ -85,7 +85,7 @@ init2   mov     pvmcmd, par             ' pvmcmd is a pointer to the virtual add
         ' Check if C3 mode or normal CS mode
         tjz     tselect_inc,  #_not_c3
         tjnz    tselect_mask, #_not_c3
-        mov     sd_select, c3_sd_select_jmp    ' We're in C3 mode, so replace select/deselect
+        mov     sd_select, c3_sd_select_jmp ' We're in C3 mode, so replace select/deselect
         mov     sd_release, c3_sd_release_jmp  ' with the C3-aware routines
         or      spidir, tselect_inc
 _not_c3
@@ -128,7 +128,6 @@ waitcmd mov     dira, #0                ' Release the pins for other SPI clients
         wrlong  zero, pvmcmd
 _wait   rdlong  vmline, pvmcmd wz
   if_z  jmp     #_wait
-        mov     dira, spidir            ' Set the pins back so we can use them
 
         test    vmline, #int#EXTEND_MASK wz ' Test for an extended command
   if_nz jmp     #cache
@@ -142,6 +141,9 @@ extend  mov     vmaddr, vmline
         shr     vmline, #2
         and     vmline, #7
         add     vmline, #dispatch
+lck_spi test    $, #0 wc                ' Lock no-op: clear the carry bit
+   if_c jmp     #lck_spi
+        mov     dira, spidir            ' Set the pins back so we can use them
         jmp     vmline
 
 dispatch
@@ -152,7 +154,24 @@ dispatch
         jmp     #sd_read_handler
         jmp     #sd_write_handler
         jmp     #cache_init_handler
+'       jmp     #lock_set_handler - This is the next instruction - no need to waste a long
+
+'------------------------------------------------------------------------------
+' SPI Bus Lock
+'------------------------------------------------------------------------------
+
+lock_set_handler
+        mov     lock_id, vmaddr
+        mov     lck_spi, lock_set
+        mov     lck_sp1, lock_set
+        mov     nlk_spi, lock_clr
+        mov     nlk_sp1, lock_clr
         jmp     #waitcmd
+lock_set
+        lockset lock_id wc
+lock_clr
+        lockclr lock_id
+lock_id long    0               ' lock id for optional bus interlock
 
 '------------------------------------------------------------------------------
 ' SD Card Initialization
@@ -295,6 +314,8 @@ sd_read_handler
 sd_finish
         call    #sd_release
         wrlong  sdError, pvmaddr        ' Return error status
+        mov     dira, #0                ' release the pins for other SPI clients
+nlk_spi nop        
         jmp     #waitcmd
 
 sd_read call    #sd_select
@@ -381,7 +402,7 @@ sdWaitLoop
         sub     t1, sdTime              ' Check for expired timeout (1 sec)
         cmp     t1, sdFreq wc
   if_nc mov     sdError, #2             ' Error: SD Command timed out after 1 second
-  if_nc jmp     #sd_finish
+  if_nc jmp     #sd_finish              ' Note: this isn't quite appropriate when we're reading a cache line, but what else is?
 sdWaitData
         cmp     data, #0-0 wz           ' Wait for some other response
   if_e  jmp     #sdWaitLoop             '  than that specified
@@ -420,12 +441,12 @@ c3_sd_select                            ' Serial-DeMUX
 _loop   or      outa, tselect_inc
         andn    outa, tselect_inc
         djnz    t1, #_loop
-        jmp     sd_select_ret
+        jmp     #sd_select_ret
 
 c3_sd_release                           ' Serial-DeMUX
         andn    outa, tcs_clr
         or      outa, tcs_clr
-        jmp     sd_release_ret
+        jmp     #sd_release_ret
 
 '----------------------------------------------------------------------------------------------------
 ' Low-level SPI routines
@@ -568,9 +589,12 @@ cache   shr     vmline, offset_width wc ' carry is now one for read and zero for
 ' vmcurrent is current cache line
 ' vmline is new cache line
 ' hubaddr is the address of the cache line
-miss    movd    :test, line
-        movd    :st, line
-:test   test    0-0, dirty_mask wz
+miss    movd    mtest, line
+        movd    mst, line
+lck_sp1 test    $, #0 wc                ' lock no-op: clear the carry bit
+   if_c jmp     #lck_sp1
+        mov     dira, spidir            ' set the pins back so we can use them
+mtest   test    0-0, dirty_mask wz
   if_z  jmp     #:rd                    ' current cache line is clean, just read new one
         mov     vmaddr, vmcurrent
         shl     vmaddr, offset_width
@@ -578,7 +602,9 @@ miss    movd    :test, line
 :rd     mov     vmaddr, vmline
         shl     vmaddr, offset_width
         call    #rd_cache_line          ' read new cache line
-:st     mov     0-0, vmline
+        mov     dira, #0                ' release the pins for other SPI clients
+nlk_sp1 nop        
+mst     mov     0-0, vmline
 miss_ret ret
 
 '----------------------------------------------------------------------------------------------------
@@ -675,6 +701,5 @@ dstinc            long  1<<9    ' increment for the destination field of an inst
 tag_mask          long  !(1<<DIRTY_BIT) ' includes EMPTY_BIT
 empty_mask        long  (1<<EMPTY_BIT)
 dirty_mask        long  (1<<DIRTY_BIT)
-t2                long  0       ' temporary variable
 
         fit     496

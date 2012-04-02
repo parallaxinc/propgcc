@@ -25,7 +25,9 @@
 #define SD_INIT_CMD  0x0d
 #define SD_READ_CMD  0x11
 #define SD_WRITE_CMD 0x15
+#define BUS_LOCK_CMD 0x1D
 
+static volatile uint32_t __attribute__((section(".hub"))) sd_lock = -1;
 static volatile uint32_t __attribute__((section(".hub"))) *sd_mbox;
 extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
 
@@ -43,6 +45,15 @@ static uint32_t __attribute__((section(".hubtext"))) do_cmd(uint32_t cmd)
     return sd_mbox[1];
 }
 
+// This routine passes a bus lock to the low-level driver
+void dfs_use_lock(uint32_t lockId)
+{
+    if (sd_mbox)
+        do_cmd(BUS_LOCK_CMD | (lockId << 8));
+    else
+        sd_lock = lockId;
+}
+
 // This routine initializes the low-level driver
 int DFS_InitFileIO(void)
 {
@@ -57,11 +68,15 @@ int DFS_InitFileIO(void)
     if (_sd_mbox_p)
         sd_mbox = _sd_mbox_p;
     else
-    {   // We're using the SD Cache driver - it's already initialized!
+    {
         sd_mbox = (uint32_t *)(uint32_t)_xmm_mbox_p;
-        return DFS_OK;
+        retries = -1;    // We're using the SD Cache driver - it's already initialized!
     }
 #endif
+
+    // Handle the case where we were given the lock before dfs_mount() was called.
+    if (sd_lock != -1)
+        dfs_use_lock(sd_lock);
 
     while (retries-- > 0)
     {

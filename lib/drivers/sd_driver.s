@@ -119,9 +119,14 @@ _not_c3
 '----------------------------------------------------------------------------------------------------
 
 waitcmd mov     dira, #0                ' Release the pins for other SPI clients
+nlk_spi nop        
+
         wrlong  zero, pvmcmd
 _wait   rdlong  vmline, pvmcmd wz
   if_z  jmp     #_wait
+
+lck_spi test    $, #0 wc                ' lock no-op: clear the carry bit
+   if_c jmp     #lck_spi
         mov     dira, spidir            ' Set the pins back so we can use them
 
         test    vmline, #EXTEND_MASK wz ' Test for an extended command
@@ -148,7 +153,22 @@ dispatch
         jmp     #sd_read_handler
         jmp     #sd_write_handler
         jmp     #waitcmd
+'       jmp     #lock_set_handler - This is the next instruction - no need to waste a long
+
+'------------------------------------------------------------------------------
+' SPI Bus Lock
+'------------------------------------------------------------------------------
+
+lock_set_handler
+        mov     lock_id, vmaddr
+        mov     lck_spi, lock_set
+        mov     nlk_spi, lock_clr
         jmp     #waitcmd
+lock_set
+        lockset lock_id wc
+lock_clr
+        lockclr lock_id
+lock_id long    0               ' lock id for optional bus interlock
 
 '------------------------------------------------------------------------------
 ' SD Card Initialization
@@ -416,12 +436,12 @@ c3_sd_select                            ' Serial-DeMUX
 _loop   or      outa, tselect_inc
         andn    outa, tselect_inc
         djnz    t1, #_loop
-        jmp     sd_select_ret
+        jmp     #sd_select_ret
 
 c3_sd_release                           ' Serial-DeMUX
         andn    outa, tcs_clr
         or      outa, tcs_clr
-        jmp     sd_release_ret
+        jmp     #sd_release_ret
 
 '----------------------------------------------------------------------------------------------------
 ' Low-level SPI routines

@@ -216,6 +216,12 @@ static __inline__ void wrlong_xmm(uint32_t *addr, uint32_t value)
     );
 }
 
+/**
+ * enable bus locking in the kernel's cache driver
+ * @param lockId - the lock that the cache driver should use
+ */
+void kernel_use_lock(uint32_t lockId);
+
 #endif
 
 #ifdef __cplusplus
