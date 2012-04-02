@@ -155,7 +155,6 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
         wrlong  zero, pvmcmd
 :wait   rdlong  vmpage, pvmcmd wz
   if_z  jmp     #:wait
-        mov     dira, spidir            ' set the pins back so we can use them
 
         test    vmpage, #int#EXTEND_MASK wz ' test for an extended command
   if_z  jmp     #extend
@@ -188,9 +187,12 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
 ' vmcurrent is current page
 ' vmpage is new page
 ' hubaddr is the address of the cache line
-miss    movd    :test, line
-        movd    :st, line
-:test   test    0-0, dirty_mask wz
+miss    movd    mtest, line
+        movd    mst, line
+lck_spi test    $, #0 wc                ' lock no-op: clear the carry bit
+   if_c jmp     #lck_spi
+        mov     dira, spidir            ' set the pins back so we can use them
+mtest   test    0-0, dirty_mask wz
   if_z  jmp     #:rd                    ' current page is clean, just read new page
         mov     vmaddr, vmcurrent
         shl     vmaddr, offset_width
@@ -198,7 +200,9 @@ miss    movd    :test, line
 :rd     mov     vmaddr, vmpage
         shl     vmaddr, offset_width
         call    #BREAD                  ' read new page
-:st     mov     0-0, vmpage
+        mov     dira, #0                ' release the pins for other SPI clients
+nlk_spi nop        
+mst     mov     0-0, vmpage
 miss_ret ret
 
 extend  mov     vmaddr, vmpage
@@ -206,6 +210,7 @@ extend  mov     vmaddr, vmpage
         shr     vmpage, #2
         and     vmpage, #7
         add     vmpage, #dispatch
+        mov     dira, spidir            ' set the pins back so we can use them
         jmp     vmpage
 
 dispatch
@@ -216,7 +221,22 @@ dispatch
         jmp     #waitcmd
         jmp     #waitcmd
         jmp     #waitcmd
+'       jmp     #lock_set_handler - This is the next instruction - no need to waste a long
+
+' Note that we only provide SD locks for the cache operations - the other
+' operations are specific to the sd_cache_loader's use of the cache driver, and
+' there's no need to provide SPI bus-locking services there.
+
+lock_set_handler
+        mov     lock_id, vmaddr
+        mov     lck_spi, lock_set
+        mov     nlk_spi, lock_clr
         jmp     #waitcmd
+lock_set
+        lockset lock_id wc
+lock_clr
+        lockclr lock_id
+lock_id long    0               ' lock id for optional bus interlock
 
 erase_chip_handler
         call    #write_enable
