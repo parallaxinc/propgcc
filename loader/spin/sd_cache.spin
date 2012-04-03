@@ -85,7 +85,7 @@ init2   mov     pvmcmd, par             ' pvmcmd is a pointer to the virtual add
         ' Check if C3 mode or normal CS mode
         tjz     tselect_inc,  #_not_c3
         tjnz    tselect_mask, #_not_c3
-        mov     sd_select, c3_sd_select_jmp ' We're in C3 mode, so replace select/deselect
+        mov     sd_select, c3_sd_select_jmp    ' We're in C3 mode, so replace select/deselect
         mov     sd_release, c3_sd_release_jmp  ' with the C3-aware routines
         or      spidir, tselect_inc
 _not_c3
@@ -147,9 +147,9 @@ lck_spi test    $, #0 wc                ' Lock no-op: clear the carry bit
         jmp     vmline
 
 dispatch
-        jmp     #waitcmd
-        jmp     #waitcmd
-        jmp     #waitcmd
+        jmp     #nlk_fin
+        jmp     #nlk_fin
+        jmp     #nlk_fin
         jmp     #sd_init_handler
         jmp     #sd_read_handler
         jmp     #sd_write_handler
@@ -161,11 +161,14 @@ dispatch
 '------------------------------------------------------------------------------
 
 lock_set_handler
+        mov     dira, #0
+nlk_ini nop                     ' Unlock previous lock
         mov     lock_id, vmaddr
         mov     lck_spi, lock_set
         mov     lck_sp1, lock_set
         mov     nlk_spi, lock_clr
         mov     nlk_sp1, lock_clr
+        mov     nlk_ini, lock_clr
         jmp     #waitcmd
 lock_set
         lockset lock_id wc
@@ -314,7 +317,7 @@ sd_read_handler
 sd_finish
         call    #sd_release
         wrlong  sdError, pvmaddr        ' Return error status
-        mov     dira, #0                ' release the pins for other SPI clients
+nlk_fin mov     dira, #0                ' release the pins for other SPI clients
 nlk_spi nop        
         jmp     #waitcmd
 
@@ -498,6 +501,7 @@ sdTime          long    0
 sdError         long    0
 sdBlkCnt        long    0
 sdInitCnt       long    32768 / 8      ' Initial SPI clocks produced
+dstinc                                 ' 1<<9 = increment for the destination field of an instruction = same as sdBlkSize!
 sdBlkSize       long    512            ' Number of bytes in an SD block
 
 adrShift        long    9       ' Number of bits to left shift SD sector address (9 for SD/MMC, 0 for SDHC)
@@ -579,7 +583,7 @@ cache   shr     vmline, offset_width wc ' carry is now one for read and zero for
         movs    :ld, line
         movd    :st, line
 :ld     mov     vmcurrent, 0-0          ' get the cache line tag
-        and     vmcurrent, tag_mask
+        andn    vmcurrent, dirty_mask   ' = &tag_mask (includes EMPTY_BIT)
         cmp     vmcurrent, vmline wz    ' z set means there was a cache hit
   if_nz call    #miss                   ' handle a cache miss
 :st     or      0-0, set_dirty_bit      ' set the dirty bit on writes
@@ -688,7 +692,6 @@ cache_params_end
 
 ' Computed values that could be passed as parameters
 cluster_mask      long  0
-cluster_map_mask  long  0
 index_mask        long  0
 index_count       long  0
 line_size         long  0       ' line size in bytes
@@ -697,8 +700,6 @@ vmcurrent         long  0       ' current selected cache line (same as vmline on
 line              long  0       ' current cache line index
 set_dirty_bit     long  0       ' DIRTY_BIT set on writes, clear on reads
 
-dstinc            long  1<<9    ' increment for the destination field of an instruction
-tag_mask          long  !(1<<DIRTY_BIT) ' includes EMPTY_BIT
 empty_mask        long  (1<<EMPTY_BIT)
 dirty_mask        long  (1<<DIRTY_BIT)
 

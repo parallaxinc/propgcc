@@ -115,7 +115,7 @@ _not_c3
 waitcmd mov     dira, #0                ' Release the pins for other SPI clients
 nlk_spi nop        
 
-        wrlong  zero, pvmcmd
+_wait0  wrlong  zero, pvmcmd
 _wait   rdlong  vmline, pvmcmd wz
   if_z  jmp     #_wait
 
@@ -152,10 +152,13 @@ dispatch
 '------------------------------------------------------------------------------
 
 lock_set_handler
+nlk_ini nop                     ' Unlock previous lock
         mov     lock_id, vmaddr
         mov     lck_spi, lock_set
         mov     nlk_spi, lock_clr
-        jmp     #waitcmd
+        mov     nlk_ini, lock_clr
+        mov     dira, #0        ' Go back to wait command, but skip bus unlock
+        jmp     #_wait0
 lock_set
         lockset lock_id wc
 lock_clr
