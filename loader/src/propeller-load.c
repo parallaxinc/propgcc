@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
     if ((value = GetConfigField(config, "reset")) != NULL) {
         if (strcasecmp(value, "dtr") == 0)
             useRtsForReset = FALSE;
-        else if (strcmp(value, "rts") == 0)
+        else if (strcasecmp(value, "rts") == 0)
             useRtsForReset = TRUE;
         else {
             fprintf(stderr, "error: no reset type '%s'\n", value);
