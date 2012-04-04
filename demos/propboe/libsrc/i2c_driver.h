@@ -1,4 +1,4 @@
-/* pause.c - pause for a specified number of milliseconds
+/* i2c_driver.h - i2c single master driver definitions
 
 Copyright (c) 2012 David Michael Betz
 
@@ -19,10 +19,42 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 */
 
-#include <unistd.h>
-#include "boe.h"
+#ifndef __I2C_DRIVER_H__
+#define __I2C_DRIVER_H__
 
-void pause(int milliseconds)
-{
-    usleep(milliseconds * 1000);
-}
+#include <stdint.h>
+
+typedef enum {
+    I2C_CMD_IDLE,
+    I2C_CMD_INIT,
+    I2C_CMD_SEND,
+    I2C_CMD_RECEIVE
+} I2C_CMD;
+
+typedef enum {
+    I2C_OK = 0,
+    I2C_ERR_UNKNOWN_CMD,
+    I2C_ERR_SEND_HDR,
+    I2C_ERR_SEND,
+    I2C_ERR_RECEIVE_HDR,
+    I2C_ERR_RECEIVE
+} I2C_RESULT;
+
+typedef struct {
+    uint32_t cmd;
+    uint32_t sts;
+    uint32_t hdr;
+    uint8_t *buffer;
+    uint32_t count;
+} I2C_MAILBOX;
+
+typedef struct {
+    uint32_t scl_mask;
+    uint32_t sda_mask;
+    volatile I2C_MAILBOX *mailbox;
+} I2C_INIT;
+
+#define I2C_READ        1
+#define I2C_WRITE       0
+
+#endif

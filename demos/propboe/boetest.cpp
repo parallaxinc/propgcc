@@ -3,8 +3,8 @@
 #include "Pin.h"
 #include "Term.h"
 
-#define C3
-//#define PROPBOE
+//#define C3
+#define PROPBOE
 
 /* pin definitions for C3 */
 #ifdef C3

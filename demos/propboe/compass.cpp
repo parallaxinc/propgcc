@@ -13,7 +13,7 @@ int main(void)
     I2C bus(1, 0);
     
     CompassInit(bus);
-
+    
     for (;;) {
         int x, y, z;
         
@@ -45,7 +45,6 @@ void CompassRead(I2C &bus, int &x, int &y, int &z)
 {
     uint8_t data[6];
     int16_t x16, y16, z16;
-    int i;
     
     /* select the data registers */
     bus.begin(COMPASS_ADDR);
