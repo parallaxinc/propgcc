@@ -2580,6 +2580,9 @@ get_jump_dest(rtx branch)
     return NULL;
 
   set = single_set (branch);
+  if (!set)
+    return NULL;
+
   src = SET_SRC (set);
 
   if (GET_CODE (SET_DEST (set)) != PC)
