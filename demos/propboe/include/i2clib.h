@@ -26,22 +26,23 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "i2c_driver.h"
 
 /* maximum size of an i2c data transfer */
 #define I2C_BUFFER_MAX  32
 
 /* i2c state information */
 typedef struct {
-    uint32_t scl_mask;
-    uint32_t sda_mask;
-    uint8_t address;
+    int cog;
+    volatile I2C_MAILBOX mailbox;
     uint8_t buffer[1 + I2C_BUFFER_MAX];
     int count;
     int index;
 } I2C_STATE;
 
 /* i2c functions */
-void i2cInit(I2C_STATE *dev, int scl, int sda);
+int i2cInit(I2C_STATE *dev, int scl, int sda);
+int i2cTerm(I2C_STATE *dev);
 int i2cBegin(I2C_STATE *dev, int address);
 int i2cSend(I2C_STATE *dev, int byte);
 int i2cEnd(I2C_STATE *dev);
