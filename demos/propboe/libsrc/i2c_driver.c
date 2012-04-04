@@ -33,9 +33,6 @@ static _COGMEM uint32_t scl_mask;
 static _COGMEM uint32_t sda_mask;
 static _COGMEM volatile I2C_MAILBOX *mailbox;
 
-static _NATIVE uint32_t i2cSend(void);
-static _NATIVE uint32_t i2cReceive(void);
-
 static _NATIVE void i2cStart(void);
 static _NATIVE void i2cStop(void);
 static _NATIVE int i2cSendByte( uint8_t byte);
@@ -45,20 +42,22 @@ _NAKED int main(void)
 {
     I2C_INIT *init = (I2C_INIT *)PAR;
     I2C_CMD cmd;
+    uint8_t *p;
+    uint32_t count;
     
     /* get the COG initialization parameters */
-    scl_mask = init->scl_mask;
-    sda_mask = init->sda_mask;
+    scl_mask = 1 << init->scl;
+    sda_mask = 1 << init->sda;
     mailbox = init->mailbox;
     
     /* tell the caller that we're done with initialization */
     mailbox->cmd = I2C_CMD_IDLE;
     
     /* initialize the i2c pins */
-    DIRA &= scl_mask;
-    DIRA &= sda_mask;
-    OUTA &= scl_mask;
-    OUTA &= sda_mask;
+    DIRA &= ~scl_mask;
+    DIRA &= ~sda_mask;
+    OUTA &= ~scl_mask;
+    OUTA &= ~sda_mask;
     
     /* handle requests */
     for (;;) {
@@ -71,10 +70,42 @@ _NAKED int main(void)
         /* dispatch on the command code */
         switch (cmd) {
         case I2C_CMD_SEND:
-            sts = i2cSend();
+            p = mailbox->buffer;
+            count = mailbox->count;
+            sts = I2C_OK;
+            i2cStart();
+            if (i2cSendByte(mailbox->hdr) != 0)
+                sts = I2C_ERR_SEND_HDR;
+            else {
+                while (count > 0) {
+                    if (i2cSendByte(*p++) != 0) {
+                        sts = I2C_ERR_SEND;
+                        break;
+                    }
+                    --count;
+                }
+            }
+            i2cStop();
             break;
         case I2C_CMD_RECEIVE:
-            sts = i2cReceive();
+            p = mailbox->buffer;
+            count = mailbox->count;
+            sts = I2C_OK;
+            i2cStart();
+            if (i2cSendByte(mailbox->hdr) != 0)
+                sts = I2C_ERR_RECEIVE_HDR;
+            else {
+                while (count > 0) {
+                    int byte = i2cReceiveByte(count != 1);
+                    if (byte < 0) {
+                        sts = I2C_ERR_RECEIVE;
+                        break;
+                    }
+                    *p++ = byte;
+                    --count;
+                }
+            }
+            i2cStop();
             break;
         default:
             sts = I2C_ERR_UNKNOWN_CMD;
@@ -86,50 +117,6 @@ _NAKED int main(void)
     }
     
     return 0;
-}
-
-static _NATIVE uint32_t i2cSend(void)
-{
-    uint8_t *p = mailbox->buffer;
-    uint32_t count = mailbox->count;
-
-    i2cStart();
-
-    if (i2cSendByte(mailbox->hdr) != 0)
-        return I2C_ERR_SEND_HDR;
-        
-    while (count > 0) {
-        if (i2cSendByte(*p++) != 0)
-            return I2C_ERR_SEND;
-        --count;
-    }
-
-    i2cStop();
-
-    return I2C_OK;
-}
-
-static _NATIVE uint32_t i2cReceive(void)
-{
-    uint8_t *p = mailbox->buffer;
-    uint32_t count = mailbox->count;
-
-    i2cStart();
-
-    if (i2cSendByte(mailbox->hdr) != 0)
-        return I2C_ERR_RECEIVE_HDR;
-    
-    while (count > 0) {
-        int byte = i2cReceiveByte(count != 1);
-        if (byte < 0)
-            return I2C_ERR_RECEIVE;
-        *p++ = byte;
-        --count;
-    }
-
-    i2cStop();
-
-    return I2C_OK;
 }
 
 static _NATIVE void i2cStart(void)

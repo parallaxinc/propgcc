@@ -49,8 +49,8 @@ typedef struct {
 } I2C_MAILBOX;
 
 typedef struct {
-    uint32_t scl_mask;
-    uint32_t sda_mask;
+    uint32_t scl;
+    uint32_t sda;
     volatile I2C_MAILBOX *mailbox;
 } I2C_INIT;
 
