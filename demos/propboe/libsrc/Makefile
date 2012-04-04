@@ -60,14 +60,14 @@ $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 
 # convert an ELF file to a .dat file
 %.dat:	%.elf
-	$(OBJCOPY) --output-target=binary --only-section=.text $< $@
+	$(OBJCOPY) -O binary -j .text $< $@
 	
 # convert a .dat to an object file
 %.o:	%.dat
-	$(OBJCOPY) -O elf32-propeller -I binary -B prop2 $< $@
+	$(OBJCOPY) -O elf32-propeller -I binary -B propeller $< $@
 
 $(LIBDIR):
 	$(MKDIR) $(LIBDIR)
 
 clean:
-	$(RM) *.o *.elf $(TARGET)
+	$(RM) *.dat *.o *.elf $(TARGET)
