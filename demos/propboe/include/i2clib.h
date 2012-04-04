@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+
 /* maximum size of an i2c data transfer */
 #define I2C_BUFFER_MAX  32
 
@@ -34,7 +35,7 @@ typedef struct {
     uint32_t scl_mask;
     uint32_t sda_mask;
     uint8_t address;
-    uint8_t buffer[I2C_BUFFER_MAX];
+    uint8_t buffer[1 + I2C_BUFFER_MAX];
     int count;
     int index;
 } I2C_STATE;

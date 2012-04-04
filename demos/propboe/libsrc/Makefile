@@ -5,6 +5,7 @@ CC=propeller-elf-gcc
 CXX=propeller-elf-gcc
 OBJCOPY=propeller-elf-objcopy
 AR=propeller-elf-ar
+LOAD=propeller-load
 BSTC=bstc
 MKDIR=mkdir -p
 RM=rm -f
@@ -13,7 +14,7 @@ OBJS = \
 getdir.o \
 getpin.o \
 high.o \
-i2c.o \
+i2c_interface.o \
 input.o \
 low.o \
 output.o \
@@ -35,10 +36,13 @@ toggle.o
 
 DRIVEROBJS = \
 VGA_firmware.o \
-TV_firmware.o
+TV_firmware.o \
+i2c_driver_image.o
 
-CFLAGS=-Os -I../include
+CFLAGS=-Os -Wall -I../include
 CPPFLAGS=$(CFLAGS)
+
+all:	$(TARGET) i2c_driver_image.elf i2c_interface.o
 
 $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 	$(AR) rs $(TARGET) $(OBJS) $(DRIVEROBJS)
@@ -49,9 +53,20 @@ $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 %_firmware.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 
-clean:
-	$(RM) *.o $(TARGET)
+# compile a COG driver
+%_image.elf:	%.c
+	$(CC) -Os -mcog -fomit-frame-pointer -o $@ $<
+
+# convert an ELF file to a Spin binary
+%.binary:	%.elf
+	$(LOAD) -s $<
+
+# convert a Spin binary to a C initialized array
+%.c:	%.binary
+	bin2c $< $@
 
 $(LIBDIR):
 	$(MKDIR) $(LIBDIR)
-	
+
+clean:
+	$(RM) *.o *.elf $(TARGET)
