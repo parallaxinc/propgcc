@@ -43,7 +43,7 @@ CFLAGS=-Os -Wall -I../include -mno-fcache
 CPPFLAGS=$(CFLAGS)
 DRVFLAGS=$(CFLAGS) -mcog -fomit-frame-pointer
 
-all:	$(TARGET) i2c_driver_image.elf i2c_interface.o i2c_driver_image.c
+all:	$(TARGET) # i2c_driver_image.elf
 
 $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 	$(AR) rs $(TARGET) $(OBJS) $(DRIVEROBJS)
@@ -62,9 +62,9 @@ $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 %.dat:	%.elf
 	$(OBJCOPY) --output-target=binary --only-section=.text $< $@
 	
-# convert a .dat to a C initialized array
-%.c:	%.dat
-	bin2c $< $@
+# convert a .dat to an object file
+%.o:	%.dat
+	$(OBJCOPY) -O elf32-propeller -I binary -B prop2 $< $@
 
 $(LIBDIR):
 	$(MKDIR) $(LIBDIR)
