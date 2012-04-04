@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 int i2cInit(I2C_STATE *dev, int scl, int sda)
 {
-    extern uint8_t i2c_driver_image_array[];
+    extern uint8_t binary_i2c_driver_image_dat_start[];
     I2C_INIT init;
     
     init.scl = scl;
@@ -33,7 +33,7 @@ int i2cInit(I2C_STATE *dev, int scl, int sda)
     
     dev->mailbox.cmd = I2C_CMD_INIT;
     
-    if ((dev->cog = cognew(i2c_driver_image_array, &init)) < 0)
+    if ((dev->cog = cognew(binary_i2c_driver_image_dat_start, &init)) < 0)
         return -1;
     
     while (dev->mailbox.cmd != I2C_CMD_IDLE)
