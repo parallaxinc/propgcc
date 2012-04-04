@@ -39,10 +39,11 @@ VGA_firmware.o \
 TV_firmware.o \
 i2c_driver_image.o
 
-CFLAGS=-Os -Wall -I../include
+CFLAGS=-Os -Wall -I../include -mno-fcache
 CPPFLAGS=$(CFLAGS)
+DRVFLAGS=$(CFLAGS) -mcog -fomit-frame-pointer
 
-all:	$(TARGET) i2c_driver_image.elf i2c_interface.o
+all:	$(TARGET) i2c_driver_image.elf i2c_interface.o i2c_driver_image.c
 
 $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 	$(AR) rs $(TARGET) $(OBJS) $(DRIVEROBJS)
@@ -55,14 +56,14 @@ $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 
 # compile a COG driver
 %_image.elf:	%.c
-	$(CC) -Os -mcog -fomit-frame-pointer -o $@ $<
+	$(CC) $(DRVFLAGS) -o $@ $<
 
-# convert an ELF file to a Spin binary
-%.binary:	%.elf
-	$(LOAD) -s $<
-
-# convert a Spin binary to a C initialized array
-%.c:	%.binary
+# convert an ELF file to a .dat file
+%.dat:	%.elf
+	$(OBJCOPY) --output-target=binary --only-section=.text $< $@
+	
+# convert a .dat to a C initialized array
+%.c:	%.dat
 	bin2c $< $@
 
 $(LIBDIR):

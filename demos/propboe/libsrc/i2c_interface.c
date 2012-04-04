@@ -20,19 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #include <propeller.h>
-#include "i2c_driver.h"
-
-/* maximum size of an i2c data transfer */
-#define I2C_BUFFER_MAX  32
-
-/* i2c state information */
-typedef struct {
-    int cog;
-    volatile I2C_MAILBOX mailbox;
-    uint8_t buffer[1 + I2C_BUFFER_MAX];
-    int count;
-    int index;
-} I2C_STATE;
+#include "i2clib.h"
 
 int i2cInit(I2C_STATE *dev, int scl, int sda)
 {
@@ -79,11 +67,11 @@ int i2cSend(I2C_STATE *dev, int byte)
 
 int i2cEnd(I2C_STATE *dev)
 {
-    dev->mailbox.cmd = I2C_CMD_SEND;
     dev->mailbox.buffer = dev->buffer;
     dev->mailbox.count = dev->count;
+    dev->mailbox.cmd = I2C_CMD_SEND;
     
-    while (dev->mailbox.cmd)
+    while (dev->mailbox.cmd != I2C_CMD_IDLE)
         ;
     
     return dev->mailbox.sts == I2C_OK ? 0 : -1;
@@ -94,8 +82,9 @@ int i2cRequestBuf(I2C_STATE *dev, int address, int count, uint8_t *buffer)
     dev->mailbox.hdr = (address << 1) | I2C_READ;
     dev->mailbox.buffer = buffer;
     dev->mailbox.count = count;
+    dev->mailbox.cmd = I2C_CMD_RECEIVE;
     
-    while (dev->mailbox.cmd)
+    while (dev->mailbox.cmd != I2C_CMD_IDLE)
         ;
 
     return dev->mailbox.sts == I2C_OK ? 0 : -1;
@@ -109,8 +98,9 @@ int i2cRequest(I2C_STATE *dev, int address, int count)
     dev->mailbox.hdr = (address << 1) | I2C_READ;
     dev->mailbox.buffer = dev->buffer;
     dev->mailbox.count = dev->count;
+    dev->mailbox.cmd = I2C_CMD_RECEIVE;
     
-    while (dev->mailbox.cmd)
+    while (dev->mailbox.cmd != I2C_CMD_IDLE)
         ;
 
     dev->count = count;
