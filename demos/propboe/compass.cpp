@@ -32,13 +32,12 @@ int main(void)
     return 0;
 }
 
+uint8_t continuous_mode[] = { 0x02, 0x00 };
+
 void CompassInit(I2C &bus)
 {
     /* set to continuous mode */
-    bus.begin(COMPASS_ADDR);
-    bus.send(0x02);
-    bus.send(0x00);
-    bus.end();
+    bus.send(COMPASS_ADDR, continuous_mode, sizeof(continuous_mode));
 }
 
 void CompassRead(I2C &bus, int &x, int &y, int &z)
@@ -52,7 +51,7 @@ void CompassRead(I2C &bus, int &x, int &y, int &z)
     bus.end();
     
     /* read the data registers */
-    bus.request(COMPASS_ADDR, 6, data);
+    bus.request(COMPASS_ADDR, data, sizeof(data));
 
     /* assemble the return values */
     x16 = (data[0] << 8) | data[1];
