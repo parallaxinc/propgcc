@@ -27,8 +27,8 @@ int i2cInit(I2C_STATE *dev, int scl, int sda)
     extern uint8_t i2c_driver_image_array[];
     I2C_INIT init;
     
-    init.scl_mask = 1 << scl;
-    init.sda_mask = 1 << sda;
+    init.scl = scl;
+    init.sda = sda;
     init.mailbox = &dev->mailbox;
     
     dev->mailbox.cmd = I2C_CMD_INIT;
