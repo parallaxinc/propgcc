@@ -50,6 +50,19 @@ int i2cTerm(I2C_STATE *dev)
     return 0;
 }
 
+int i2cSendBuf(I2C_STATE *dev, int address, uint8_t *buffer, int count)
+{
+    dev->mailbox.hdr = (address << 1) | I2C_WRITE;
+    dev->mailbox.buffer = buffer;
+    dev->mailbox.count = count;
+    dev->mailbox.cmd = I2C_CMD_SEND;
+    
+    while (dev->mailbox.cmd != I2C_CMD_IDLE)
+        ;
+
+    return dev->mailbox.sts == I2C_OK ? 0 : -1;
+}
+
 int i2cBegin(I2C_STATE *dev, int address)
 {
     dev->mailbox.hdr = (address << 1) | I2C_WRITE;
@@ -77,7 +90,7 @@ int i2cEnd(I2C_STATE *dev)
     return dev->mailbox.sts == I2C_OK ? 0 : -1;
 }
 
-int i2cRequestBuf(I2C_STATE *dev, int address, int count, uint8_t *buffer)
+int i2cRequestBuf(I2C_STATE *dev, int address, uint8_t *buffer, int count)
 {
     dev->mailbox.hdr = (address << 1) | I2C_READ;
     dev->mailbox.buffer = buffer;

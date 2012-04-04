@@ -29,10 +29,11 @@ class I2C {
   public:
   	I2C(int scl, int sda);
   	~I2C();
+  	int send(int address, uint8_t *buf, int count);
     int begin(int address);
     int send(int byte);
     int end();
-    int request(int address, int count, uint8_t *buf);
+    int request(int address, uint8_t *buf, int count);
     int request(int address, int count);
     int receive();
 };
@@ -44,6 +45,11 @@ inline I2C::I2C(int scl, int sda)
 
 inline I2C::~I2C()
 {
+}
+
+inline int I2C::send(int address, uint8_t *buf, int count)
+{
+    return i2cSendBuf(&m_dev, address, buf, count);
 }
 
 inline int I2C::begin(int address)
@@ -61,9 +67,9 @@ inline int I2C::end()
     return i2cEnd(&m_dev);
 }
 
-inline int I2C::request(int address, int count, uint8_t *buf)
+inline int I2C::request(int address, uint8_t *buf, int count)
 {
-    return i2cRequestBuf(&m_dev, address, count, buf);
+    return i2cRequestBuf(&m_dev, address, buf, count);
 }
 
 inline int I2C::request(int address, int count)
