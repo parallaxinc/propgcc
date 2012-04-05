@@ -51,6 +51,7 @@ typedef struct {
 typedef struct {
     uint32_t scl;
     uint32_t sda;
+    uint32_t ticks_per_cycle;
     volatile I2C_MAILBOX *mailbox;
 } I2C_INIT;
 

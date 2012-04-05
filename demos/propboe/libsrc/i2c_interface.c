@@ -22,13 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "i2clib.h"
 
-int i2cInit(I2C_STATE *dev, int scl, int sda)
+int i2cInit(I2C_STATE *dev, int scl, int sda, int freq)
 {
     extern uint8_t binary_i2c_driver_image_dat_start[];
     I2C_INIT init;
     
     init.scl = scl;
     init.sda = sda;
+    init.ticks_per_cycle = CLKFREQ / freq;
     init.mailbox = &dev->mailbox;
     
     dev->mailbox.cmd = I2C_CMD_INIT;

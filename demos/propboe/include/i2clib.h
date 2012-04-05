@@ -41,7 +41,7 @@ typedef struct {
 } I2C_STATE;
 
 /* i2c functions */
-int i2cInit(I2C_STATE *dev, int scl, int sda);
+int i2cInit(I2C_STATE *dev, int scl, int sda, int freq);
 int i2cTerm(I2C_STATE *dev);
 int i2cSendBuf(I2C_STATE *dev, int address, uint8_t *buffer, int count);
 int i2cBegin(I2C_STATE *dev, int address);

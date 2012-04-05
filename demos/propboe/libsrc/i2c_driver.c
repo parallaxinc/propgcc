@@ -31,6 +31,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 /* i2c state information */
 static _COGMEM uint32_t scl_mask;
 static _COGMEM uint32_t sda_mask;
+static _COGMEM uint32_t ticks_per_cycle;
 static _COGMEM volatile I2C_MAILBOX *mailbox;
 
 static _NATIVE void i2cStart(void);
@@ -48,6 +49,7 @@ _NAKED int main(void)
     /* get the COG initialization parameters */
     scl_mask = 1 << init->scl;
     sda_mask = 1 << init->sda;
+    ticks_per_cycle = init->ticks_per_cycle;
     mailbox = init->mailbox;
     
     /* tell the caller that we're done with initialization */
