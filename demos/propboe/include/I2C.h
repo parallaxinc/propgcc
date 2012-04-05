@@ -27,7 +27,7 @@ class I2C {
   private:
     I2C_STATE m_dev;
   public:
-  	I2C(int scl, int sda);
+  	I2C(int scl, int sda, int freq = 100000);
   	~I2C();
   	int send(int address, uint8_t *buf, int count);
     int begin(int address);
@@ -38,9 +38,9 @@ class I2C {
     int receive();
 };
 
-inline I2C::I2C(int scl, int sda)
+inline I2C::I2C(int scl, int sda, int freq)
 {
-    i2cInit(&m_dev, scl, sda);
+    i2cInit(&m_dev, scl, sda, freq);
 }
 
 inline I2C::~I2C()
