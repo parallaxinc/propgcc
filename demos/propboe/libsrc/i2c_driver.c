@@ -22,29 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "i2c_driver.h"
 
+/* minimum overhead per half cycle */
+#define MINIMUM_OVERHEAD    32
+
 /* set high by allowing the pin to float high, set low by forcing it low */
 #define i2c_float_scl_high() (DIRA &= ~scl_mask)
 #define i2c_set_scl_low()    (DIRA |= scl_mask)
 #define i2c_float_sda_high() (DIRA &= ~sda_mask)
 #define i2c_set_sda_low()    (DIRA |= sda_mask)
 
-/* a replacement for the waitcnt2 macro from propeller.h */
-/* get rid of this when the compiler bug is fixed */
-#if 0
-#define waitcnt_and_update(target, delta)               \
-            __asm__ volatile(                           \
-                        "waitcnt %[_target], %[_delta]" \
-                            : [_target] "+r" (target)   \
-                            : [_delta] "r" (delta))
-#else
-#define waitcnt_and_update(target, delta) ((target) = waitcnt2((target), (delta)))
-#endif
-
 /* i2c state information */
 static _COGMEM uint32_t scl_mask;
 static _COGMEM uint32_t sda_mask;
 static _COGMEM uint32_t half_cycle;
-static _COGMEM uint32_t next_half_cycle;
 static _COGMEM volatile I2C_MAILBOX *mailbox;
 
 static _NATIVE void i2cStart(void);
@@ -64,6 +54,10 @@ _NAKED int main(void)
     sda_mask = 1 << init->sda;
     half_cycle = init->ticks_per_cycle >> 1;
     mailbox = init->mailbox;
+    
+    /* make sure the delta doesn't get too small */
+    if (half_cycle > MINIMUM_OVERHEAD)
+        half_cycle -= MINIMUM_OVERHEAD;
     
     /* tell the caller that we're done with initialization */
     mailbox->cmd = I2C_CMD_IDLE;
@@ -137,16 +131,15 @@ _NAKED int main(void)
 static _NATIVE void i2cStart(void)
 {
     /* scl and sda should be high on entry */
-    next_half_cycle = CNT + half_cycle;
     i2c_set_sda_low();
-    waitcnt_and_update(next_half_cycle, half_cycle);
+    waitcnt(CNT + half_cycle);
     i2c_set_scl_low();
 }
 
 static _NATIVE void i2cStop(void)
 {
     /* scl and sda should be low on entry */
-    waitcnt_and_update(next_half_cycle, half_cycle);
+    waitcnt(CNT + half_cycle);
     i2c_float_scl_high();
     i2c_float_sda_high();
 }
@@ -161,19 +154,19 @@ static _NATIVE int i2cSendByte(uint8_t byte)
             i2c_float_sda_high();
         else
             i2c_set_sda_low();
-        waitcnt_and_update(next_half_cycle, half_cycle);
+        waitcnt(CNT + half_cycle);
         i2c_float_scl_high();
-        waitcnt_and_update(next_half_cycle, half_cycle);
+        waitcnt(CNT + half_cycle);
         i2c_set_scl_low();
         byte <<= 1;
     }
     
     /* receive the acknowledgement from the slave */
     i2c_float_sda_high();
-    waitcnt_and_update(next_half_cycle, half_cycle);
+    waitcnt(CNT + half_cycle);
     i2c_float_scl_high();
     result = (INA & sda_mask) != 0;
-    waitcnt_and_update(next_half_cycle, half_cycle);
+    waitcnt(CNT + half_cycle);
     i2c_set_scl_low();
     i2c_set_sda_low();
     
@@ -189,10 +182,10 @@ static _NATIVE uint8_t i2cReceiveByte(int acknowledge)
     
     for (count = 8; --count >= 0; ) {
         byte <<= 1;
-        waitcnt_and_update(next_half_cycle, half_cycle);
+        waitcnt(CNT + half_cycle);
         i2c_float_scl_high();
         byte |= (INA & sda_mask) ? 1 : 0;
-        waitcnt_and_update(next_half_cycle, half_cycle);
+        waitcnt(CNT + half_cycle);
         i2c_set_scl_low();
     }
     
@@ -201,9 +194,9 @@ static _NATIVE uint8_t i2cReceiveByte(int acknowledge)
         i2c_set_sda_low();
     else
         i2c_float_sda_high();
-    waitcnt_and_update(next_half_cycle, half_cycle);
+    waitcnt(CNT + half_cycle);
     i2c_float_scl_high();
-    waitcnt_and_update(next_half_cycle, half_cycle);
+    waitcnt(CNT + half_cycle);
     i2c_set_scl_low();
     i2c_set_sda_low();
     

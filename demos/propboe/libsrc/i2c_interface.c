@@ -27,9 +27,9 @@ int i2cInit(I2C_STATE *dev, int scl, int sda, int freq)
     extern uint8_t binary_i2c_driver_image_dat_start[];
     I2C_INIT init;
     
-    // the driver doesn't seem to be able to run faster than about 250khz
-    if (freq > 250000)
-        freq = 250000;
+    // only allow speeds up to 400khz for now
+    if (freq > 400000)
+        return -1;
     
     init.scl = scl;
     init.sda = sda;

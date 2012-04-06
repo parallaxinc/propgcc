@@ -43,7 +43,7 @@ CFLAGS=-Os -Wall -I../include -mno-fcache
 CPPFLAGS=$(CFLAGS)
 DRVFLAGS=$(CFLAGS) -mcog -fomit-frame-pointer
 
-all:	$(TARGET) # i2c_driver_image.elf
+all:	$(TARGET) i2c_driver_image.elf
 
 $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 	$(AR) rs $(TARGET) $(OBJS) $(DRIVEROBJS)
