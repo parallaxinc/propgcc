@@ -2495,11 +2495,30 @@
 )
 
 
+;;
+;; waitcnt
+;; we originally defined "waitcnt A,B" to say that it calculated
+;; A := A+B as well as waiting, but this proved to be problematic
+;; (GCSE wanted to merge the calculations but then crashed on the
+;; unspec_volatile)
+;;
+;;(define_insn "waitcnt"
+;;  [(set (match_operand:SI       0 "propeller_dst_operand" "=rC")
+;;        (plus:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+;;              (match_operand:SI 2 "propeller_src_operand" "rCI")))
+;;   (unspec_volatile [(match_dup 1)] UNSPEC_WAITCNT)]
+;;  ""
+;;  "waitcnt\t%0,%2"
+;;  [(set_attr "type" "wait")
+;;   (set_attr "predicable" "yes")]
+;;)
+
 (define_insn "waitcnt"
   [(set (match_operand:SI       0 "propeller_dst_operand" "=rC")
-        (plus:SI (match_operand:SI 1 "propeller_dst_operand" "0")
-              (match_operand:SI 2 "propeller_src_operand" "rCI")))
-   (unspec_volatile [(match_dup 1)] UNSPEC_WAITCNT)]
+        (unspec_volatile [
+	      (match_operand:SI 1 "propeller_dst_operand" "0")
+              (match_operand:SI 2 "propeller_src_operand" "rCI")]
+	      UNSPEC_WAITCNT))]
   ""
   "waitcnt\t%0,%2"
   [(set_attr "type" "wait")
