@@ -10,12 +10,12 @@ LDFLAGS=-mlmm -Llib
 
 LIBS=-lboe
 
-all:	$(TARGETS)
+all:	libboe $(TARGETS)
 
-%.elf:	%.cpp lib/libboe.a
+%.elf:	%.cpp
 	$(CC) $(CXXFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
 	
-lib/libboe.a:
+libboe:
 	$(MAKE) -C libsrc
 
 run:	$(TARGET).elf

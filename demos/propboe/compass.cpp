@@ -7,11 +7,15 @@
 void CompassInit(I2C &dev);
 void CompassRead(I2C &dev, int &x, int &y, int &z);
 
+SerialTerm *ser;
+
 int main(void)
 {
     SerialTerm serial(stdout);
-    I2C bus(1, 0);
+    I2C bus(1, 0, 250000);
 
+    ser = &serial;
+    
     CompassInit(bus);
     
     for (;;) {
@@ -37,7 +41,8 @@ uint8_t continuous_mode[] = { 0x02, 0x00 };
 void CompassInit(I2C &bus)
 {
     /* set to continuous mode */
-    bus.send(COMPASS_ADDR, continuous_mode, sizeof(continuous_mode));
+    if (bus.send(COMPASS_ADDR, continuous_mode, sizeof(continuous_mode)) != 0)
+        ser->str("Setting continuous mode failed\n");
 }
 
 void CompassRead(I2C &bus, int &x, int &y, int &z)
@@ -51,7 +56,8 @@ void CompassRead(I2C &bus, int &x, int &y, int &z)
     bus.end();
     
     /* read the data registers */
-    bus.request(COMPASS_ADDR, data, sizeof(data));
+    if (bus.request(COMPASS_ADDR, data, sizeof(data)) != 0)
+        ser->str("Read failed\n");
 
     /* assemble the return values */
     x16 = (data[0] << 8) | data[1];
