@@ -12,7 +12,7 @@ SerialTerm *ser;
 int main(void)
 {
     SerialTerm serial(stdout);
-    I2C bus(1, 0, 250000);
+    I2C bus(1, 0, 400000);
 
     ser = &serial;
     
