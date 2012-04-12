@@ -192,7 +192,7 @@ struct PVAL {
 };
 
 /* parse tree node types */
-enum {
+typedef enum {
     NodeTypeSymbolRef,
     NodeTypeStringLit,
     NodeTypeIntegerLit,
@@ -204,7 +204,7 @@ enum {
     NodeTypeFunctionCall,
     NodeTypeDisjunction,
     NodeTypeConjunction
-};
+} NodeType;
 
 /* expression list entry structure */
 struct ExprListEntry {
@@ -221,7 +221,8 @@ typedef struct {
 
 /* parse tree node structure */
 struct ParseTreeNode {
-    int nodeType;
+    VMHANDLE type;
+    NodeType nodeType;
     union {
         struct {
             VMHANDLE symbol;
@@ -268,7 +269,7 @@ ParseContext *InitCompiler(System *sys, int maxObjects);
 VMHANDLE Compile(ParseContext *c, int oneStatement);
 void StartCode(ParseContext *c, char *name, CodeType type);
 void StoreCode(ParseContext *c);
-void AddIntrinsic(ParseContext *c, char *name, int index);
+void AddIntrinsic(ParseContext *c, char *name, char *types, int index);
 void *LocalAlloc(ParseContext *c, size_t size);
 void Fatal(ParseContext *c, char *fmt, ...);
 

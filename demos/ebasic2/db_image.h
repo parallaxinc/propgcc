@@ -27,6 +27,14 @@
 enum {
     FN_ABS              = 0x00,
     FN_RND,
+    FN_LEFT,
+    FN_RIGHT,
+    FN_MID,
+    FN_CHR,
+    FN_STR,
+    FN_VAL,
+    FN_ASC,
+    FN_LEN,
     FN_printStr,
     FN_printInt,
     FN_printTab,
@@ -86,6 +94,7 @@ enum {
 #define OP_DROP         0x23    /* drop the top element of the stack */
 
 #define OP_LITH         0x40    /* literal handle */
+#define OP_CAT          0x41    /* concatenate two strings */
 
 void VM_printf(const char *fmt, ...);           /* fmt in FLASH_SPACE */
 void VM_vprintf(const char *fmt, va_list ap);   /* fmt in FLASH_SPACE */

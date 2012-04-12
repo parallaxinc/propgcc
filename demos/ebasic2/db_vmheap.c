@@ -146,6 +146,12 @@ VMHANDLE NewCode(ObjHeap *heap, size_t size)
     return ObjAlloc(heap, ObjTypeCode, size);
 }
 
+/* NewString - create a new string object */
+VMHANDLE NewString(ObjHeap *heap, size_t size)
+{
+    return ObjAlloc(heap, ObjTypeString, size);
+}
+
 /* StoreIntegerVector - store an integer vector object */
 VMHANDLE StoreIntegerVector(ObjHeap *heap, const VMVALUE *buf, size_t size)
 {
@@ -425,7 +431,7 @@ void DumpHeap(ObjHeap *heap)
             case ObjTypeString:
             {
                 size_t cnt = hdr->size;
-                char *p = GetStringPtr(hdr->handle);
+                uint8_t *p = GetStringPtr(hdr->handle);
                 VM_printf("    \"");
                 while (cnt > 0) {
                     VM_putchar(*p++);

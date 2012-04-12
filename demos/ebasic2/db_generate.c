@@ -49,6 +49,8 @@ static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
         putcword(c, expr->u.integerLit.value);
         pv->fcn = NULL;
         break;
+    case NodeTypeFloatLit:
+        break;
     case NodeTypeFunctionLit:
         putcbyte(c, OP_LIT);
         putcword(c, expr->u.functionLit.offset);

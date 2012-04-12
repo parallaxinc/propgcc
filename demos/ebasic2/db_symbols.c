@@ -21,19 +21,11 @@ void InitSymbolTable(SymbolTable *table)
 VMHANDLE AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, VMHANDLE type)
 {
     VMHANDLE symbol;
-    Symbol *sym;
     
     /* allocate the symbol object */
     if (!(symbol = NewSymbol(c->heap, name, storageClass, type)))
         return NULL;
         
-    /* initalize the symbol object */
-    sym = GetSymbolPtr(symbol);
-    memset(sym, 0, sizeof(Symbol));
-    strcpy(sym->name, name);
-    sym->storageClass = storageClass;
-    sym->next = NULL;
- 
     /* add it to the symbol table */
     if (c->globals.tail == NULL)
         c->globals.head = c->globals.tail = symbol;
@@ -65,17 +57,11 @@ VMHANDLE FindGlobal(ParseContext *c, const char *name)
 VMHANDLE AddLocal(ParseContext *c, const char *name, VMHANDLE type, VMVALUE offset)
 {
     VMHANDLE local;
-    Local *sym;
     
     /* allocate the local symbol object */
     if (!(local = NewLocal(c->heap, name, type, offset)))
         return NULL;
         
-    /* allocate the symbol structure */
-    sym = GetLocalPtr(local);
-    strcpy(sym->name, name);
-    sym->next = NULL;
-
     /* add it to the symbol table */
     if (c->locals.tail == NULL)
         c->locals.head = c->locals.tail = local;

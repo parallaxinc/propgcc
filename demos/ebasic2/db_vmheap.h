@@ -89,7 +89,7 @@ typedef struct {
             VMHANDLE returnType;
             SymbolTable arguments;
         } functionInfo;
-    };
+    } u;
 } Type;
 
 /* structure used to construct constant types */
@@ -105,8 +105,9 @@ typedef struct {
 #define GetStringVectorBase(h)  ((VMHANDLE *)GetHeapObjPtr(h))
 #define GetByteVectorBase(h)    ((uint8_t *)GetHeapObjPtr(h))
 #define GetSymbolPtr(h)         ((Symbol *)GetHeapObjPtr(h))
+#define GetTypePtr(h)           ((Type *)GetHeapObjPtr(h))
 #define GetLocalPtr(h)          ((Local *)GetHeapObjPtr(h))
-#define GetStringPtr(h)         ((char *)GetHeapObjPtr(h))
+#define GetStringPtr(h)         ((uint8_t *)GetHeapObjPtr(h))
 #define GetCodePtr(h)           ((uint8_t *)GetHeapObjPtr(h))
 
 /* macro to get a pointer to an object in the heap */
@@ -132,6 +133,7 @@ VMHANDLE NewSymbol(ObjHeap *heap, const char *name, StorageClass storageClass, V
 VMHANDLE NewLocal(ObjHeap *heap, const char *name, VMHANDLE type, VMVALUE offset);
 VMHANDLE NewType(ObjHeap *heap, TypeID id);
 VMHANDLE NewCode(ObjHeap *heap, size_t size);
+VMHANDLE NewString(ObjHeap *heap, size_t size);
 VMHANDLE StoreIntegerVector(ObjHeap *heap, const VMVALUE *buf, size_t size);
 VMHANDLE StoreFloatVector(ObjHeap *heap, const VMFLOAT *buf, size_t size);
 VMHANDLE StoreStringVector(ObjHeap *heap, const VMHANDLE *buf, size_t size);

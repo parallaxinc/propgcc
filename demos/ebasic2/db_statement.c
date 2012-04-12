@@ -743,14 +743,10 @@ static void ParsePrint(ParseContext *c)
             needNewline = VMTRUE;
             SaveToken(c, tkn);
             expr = ParseExpr(c);
-            switch (expr->nodeType) {
-            case NodeTypeStringLit:
+            if (expr->type == CommonType(c, stringType))
                 CallHandler(c, "printStr", expr);
-                break;
-            default:
+            else
                 CallHandler(c, "printInt", expr);
-                break;
-            }
             break;
         }
     }

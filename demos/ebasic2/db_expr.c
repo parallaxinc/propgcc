@@ -23,7 +23,7 @@ static ParseTreeNode *ParseArrayReference(ParseContext *c, ParseTreeNode *arrayN
 static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode);
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr);
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right);
-static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type);
+static ParseTreeNode *NewParseTreeNode(ParseContext *c, VMHANDLE type, int nodeType);
 static void AddExprToList(ParseContext *c, ExprList *list, ParseTreeNode *expr);
 
 /* ParseRValue - parse and generate code for an r-value */
@@ -41,7 +41,7 @@ ParseTreeNode *ParseExpr(ParseContext *c)
     Token tkn;
     node = ParseExpr2(c);
     if ((tkn = GetToken(c)) == T_OR) {
-        ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeDisjunction);
+        ParseTreeNode *node2 = NewParseTreeNode(c, NULL, NodeTypeDisjunction);
         ExprList *list = &node2->u.exprList.exprs;
         list->head = list->tail = NULL;
         AddExprToList(c, list, node);
@@ -61,7 +61,7 @@ static ParseTreeNode *ParseExpr2(ParseContext *c)
     Token tkn;
     node = ParseExpr3(c);
     if ((tkn = GetToken(c)) == T_AND) {
-        ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeConjunction);
+        ParseTreeNode *node2 = NewParseTreeNode(c, NULL, NodeTypeConjunction);
         ExprList *list = &node2->u.exprList.exprs;
         list->head = list->tail = NULL;
         AddExprToList(c, list, node);
@@ -252,7 +252,7 @@ static ParseTreeNode *ParseExpr9(ParseContext *c)
             int op;
             switch (tkn) {
             case '+':
-                op = OP_ADD;
+                op = expr->type == CommonType(c, stringType) ? OP_CAT : OP_ADD;
                 break;
             case '-':
                 op = OP_SUB;
@@ -365,7 +365,7 @@ ParseTreeNode *ParsePrimary(ParseContext *c)
     ParseTreeNode *node;
     int tkn;
     node = ParseSimplePrimary(c);
-    while ((tkn = GetToken(c)) == '(' || tkn == '[' || tkn == '.') {
+    while ((tkn = GetToken(c)) == '(' || tkn == '[') {
         switch (tkn) {
         case '[':
             node = ParseArrayReference(c, node);
@@ -382,7 +382,7 @@ ParseTreeNode *ParsePrimary(ParseContext *c)
 /* ParseArrayReference - parse an array reference */
 static ParseTreeNode *ParseArrayReference(ParseContext *c, ParseTreeNode *arrayNode)
 {
-    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeArrayRef);
+    ParseTreeNode *node = NewParseTreeNode(c, NULL, NodeTypeArrayRef);
 
     /* setup the array reference */
     node->u.arrayRef.array = arrayNode;
@@ -398,7 +398,8 @@ static ParseTreeNode *ParseArrayReference(ParseContext *c, ParseTreeNode *arrayN
 /* ParseCall - parse a function or subroutine call */
 static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
 {
-    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeFunctionCall);
+    Type *typ = GetTypePtr(functionNode->type);
+    ParseTreeNode *node = NewParseTreeNode(c, typ->u.functionInfo.returnType, NodeTypeFunctionCall);
     ExprList *list = &node->u.functionCall.args;
     Token tkn;
 
@@ -437,11 +438,11 @@ static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
         FRequire(c,')');
         break;
     case T_NUMBER:
-        node = NewParseTreeNode(c, NodeTypeIntegerLit);
+        node = NewParseTreeNode(c, CommonType(c, integerType), NodeTypeIntegerLit);
         node->u.integerLit.value = c->value;
         break;
     case T_STRING:
-        node = NewParseTreeNode(c, NodeTypeStringLit);
+        node = NewParseTreeNode(c, CommonType(c, stringType), NodeTypeStringLit);
         node->u.stringLit.string = StoreByteVector(c->heap, ObjTypeString, (uint8_t *)c->token, strlen(c->token));
         break;
     case T_IDENTIFIER:
@@ -458,9 +459,8 @@ static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
 /* GetSymbolRef - setup a symbol reference */
 ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
 {
-    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeSymbolRef);
+    ParseTreeNode *node = NewParseTreeNode(c, NULL, NodeTypeSymbolRef);
     VMHANDLE symbol;
-    Symbol *sym;
 
     /* handle local variables within a function */
     if (c->codeType != CODE_TYPE_MAIN && (symbol = FindLocal(c, name)) != NULL) {
@@ -470,7 +470,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
 
     /* handle global symbols */
     else if ((symbol = FindGlobal(c, c->token)) != NULL) {
-        sym = GetSymbolPtr(symbol);
+        Symbol *sym = GetSymbolPtr(symbol);
         if (IsConstant(sym)) {
             node->nodeType = NodeTypeIntegerLit;
             node->u.integerLit.value = sym->v.iValue;
@@ -484,10 +484,12 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
     /* handle undefined symbols */
     else {
         symbol = AddGlobal(c, name, SC_VARIABLE, DefaultType(c, name));
-        sym = GetSymbolPtr(symbol);
         node->u.symbolRef.symbol = symbol;
         node->u.symbolRef.fcn = code_global;
     }
+    
+    /* store the type */
+    node->type = GetSymbolPtr(symbol)->type;
 
     /* return the symbol reference node */
     return node;
@@ -496,7 +498,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
 /* MakeUnaryOpNode - allocate a unary operation parse tree node */
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr)
 {
-    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeUnaryOp);
+    ParseTreeNode *node = NewParseTreeNode(c, expr->type, NodeTypeUnaryOp);
     node->u.unaryOp.op = op;
     node->u.unaryOp.expr = expr;
     return node;
@@ -505,7 +507,7 @@ static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *ex
 /* MakeBinaryOpNode - allocate a binary operation parse tree node */
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right)
 {
-    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeBinaryOp);
+    ParseTreeNode *node = NewParseTreeNode(c, left->type, NodeTypeBinaryOp);
     node->u.binaryOp.op = op;
     node->u.binaryOp.left = left;
     node->u.binaryOp.right = right;
@@ -513,11 +515,12 @@ static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *l
 }
 
 /* NewParseTreeNode - allocate a new parse tree node */
-static ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
+static ParseTreeNode *NewParseTreeNode(ParseContext *c, VMHANDLE type, int nodeType)
 {
     ParseTreeNode *node = (ParseTreeNode *)LocalAlloc(c, sizeof(ParseTreeNode));
     memset(node, 0, sizeof(ParseTreeNode));
-    node->nodeType = type;
+    node->type = type;
+    node->nodeType = nodeType;
     return node;
 }
 
@@ -546,7 +549,8 @@ VMHANDLE DefaultType(ParseContext *c, const char *name)
         type = CommonType(c, integerType);
         break;
     default:
-        type = CommonType(c, floatType);
+        //type = CommonType(c, floatType);
+        type = CommonType(c, integerType);
         break;
     }
     return type;

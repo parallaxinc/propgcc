@@ -33,40 +33,48 @@ ParseContext *InitCompiler(System *sys, int maxObjects)
     /* initialize the common types */
     InitCommonType(c, integerType, TYPE_INTEGER);
     InitCommonType(c, integerArrayType, TYPE_ARRAY);
-    c->integerArrayType.type.arrayInfo.elementType = CommonType(c, integerType);
+    c->integerArrayType.type.u.arrayInfo.elementType = CommonType(c, integerType);
     InitCommonType(c, byteType, TYPE_BYTE);
     InitCommonType(c, byteArrayType, TYPE_ARRAY);
-    c->byteArrayType.type.arrayInfo.elementType = CommonType(c, byteType);
+    c->byteArrayType.type.u.arrayInfo.elementType = CommonType(c, byteType);
     InitCommonType(c, floatType, TYPE_FLOAT);
     InitCommonType(c, floatArrayType, TYPE_ARRAY);
-    c->floatArrayType.type.arrayInfo.elementType = CommonType(c, floatType);
+    c->floatArrayType.type.u.arrayInfo.elementType = CommonType(c, floatType);
     InitCommonType(c, stringType,TYPE_STRING);
     InitCommonType(c, stringArrayType, TYPE_ARRAY);
-    c->stringArrayType.type.arrayInfo.elementType = CommonType(c, stringType);
+    c->stringArrayType.type.u.arrayInfo.elementType = CommonType(c, stringType);
 
     /* initialize the global symbol table */
     InitSymbolTable(&c->globals);
 
     /* add the intrinsic functions */
-    AddIntrinsic(c, "ABS",              FN_ABS);
-    AddIntrinsic(c, "RND",              FN_RND);
-    AddIntrinsic(c, "printStr",         FN_printStr);
-    AddIntrinsic(c, "printInt",         FN_printInt);
-    AddIntrinsic(c, "printTab",         FN_printTab);
-    AddIntrinsic(c, "printNL",          FN_printNL);
-    AddIntrinsic(c, "printFlush",       FN_printFlush);
+    AddIntrinsic(c, "ABS",          "i",    FN_ABS);
+    AddIntrinsic(c, "RND",          "i",    FN_RND);
+    AddIntrinsic(c, "LEFT$",        "s",    FN_LEFT);
+    AddIntrinsic(c, "RIGHT$",       "s",    FN_RIGHT);
+    AddIntrinsic(c, "MID$",         "s",    FN_MID);
+    AddIntrinsic(c, "CHR$",         "s",    FN_CHR);
+    AddIntrinsic(c, "STR$",         "s",    FN_STR);
+    AddIntrinsic(c, "VAL",          "i",    FN_VAL);
+    AddIntrinsic(c, "ASC",          "i",    FN_ASC);
+    AddIntrinsic(c, "LEN",          "i",    FN_LEN);
+    AddIntrinsic(c, "printStr",     "i",    FN_printStr);
+    AddIntrinsic(c, "printInt",     "i",    FN_printInt);
+    AddIntrinsic(c, "printTab",     "i",    FN_printTab);
+    AddIntrinsic(c, "printNL",      "i",    FN_printNL);
+    AddIntrinsic(c, "printFlush",   "i",    FN_printFlush);
 #ifdef PROPELLER
-    AddIntrinsic(c, "IN",               FN_IN);
-    AddIntrinsic(c, "OUT",              FN_OUT);
-    AddIntrinsic(c, "HIGH",             FN_HIGH);
-    AddIntrinsic(c, "LOW",              FN_LOW);
-    AddIntrinsic(c, "TOGGLE",           FN_TOGGLE);
-    AddIntrinsic(c, "DIR",              FN_DIR);
-    AddIntrinsic(c, "GETDIR",           FN_GETDIR);
-    AddIntrinsic(c, "CNT",              FN_CNT);
-    AddIntrinsic(c, "PAUSE",            FN_PAUSE);
-    AddIntrinsic(c, "PULSEIN",          FN_PULSEIN);
-    AddIntrinsic(c, "PULSEOUT",         FN_PULSEOUT);
+    AddIntrinsic(c, "IN",           "i",    FN_IN);
+    AddIntrinsic(c, "OUT",          "i",    FN_OUT);
+    AddIntrinsic(c, "HIGH",         "i",    FN_HIGH);
+    AddIntrinsic(c, "LOW",          "i",    FN_LOW);
+    AddIntrinsic(c, "TOGGLE",       "i",    FN_TOGGLE);
+    AddIntrinsic(c, "DIR",          "i",    FN_DIR);
+    AddIntrinsic(c, "GETDIR",       "i",    FN_GETDIR);
+    AddIntrinsic(c, "CNT",          "i",    FN_CNT);
+    AddIntrinsic(c, "PAUSE",        "i",    FN_PAUSE);
+    AddIntrinsic(c, "PULSEIN",      "i",    FN_PULSEIN);
+    AddIntrinsic(c, "PULSEOUT",     "i",    FN_PULSEOUT);
 #endif
 
     /* return the new parse context */
@@ -218,9 +226,31 @@ void StoreCode(ParseContext *c)
 }
 
 /* AddIntrinsic - add an intrinsic function to the global symbol table */
-void AddIntrinsic(ParseContext *c, char *name, int index)
+void AddIntrinsic(ParseContext *c, char *name, char *types, int index)
 {
-    VMHANDLE symbol = AddGlobal(c, name, SC_CONSTANT, CommonType(c, integerType));
+    VMHANDLE symbol, type;
+    Type *typ;
+    
+    /* make the function type */
+    type = NewType(c->heap, TYPE_FUNCTION);
+    typ = GetTypePtr(type);
+    InitSymbolTable(&typ->u.functionInfo.arguments);
+    
+    /* set the return type */
+    switch (*types++) {
+    case 'i':
+        typ->u.functionInfo.returnType = CommonType(c, integerType);
+        break;
+    case 's':
+        typ->u.functionInfo.returnType = CommonType(c, stringType);
+        break;
+    default:
+        Fatal(c, "unknown return type: %c", types[-1]);
+        break;
+    }
+    
+    /* add a global symbol for the intrinsic function */
+    symbol = AddGlobal(c, name, SC_CONSTANT, type);
     GetSymbolPtr(symbol)->v.iValue = INTRINSIC_FLAG | index;
 }
 

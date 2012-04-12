@@ -39,6 +39,7 @@
 
 /* prototypes for local functions */
 static void StartCode(Interpreter *i, VMVALUE object);
+static void StringCat(Interpreter *i);
 
 /* InitInterpreter - initialize the interpreter */
 uint8_t *InitInterpreter(Interpreter *i, ObjHeap *heap, size_t stackSize)
@@ -124,6 +125,9 @@ int Execute(Interpreter *i, VMHANDLE main)
         case OP_REM:
             tmp = Pop(i);
             *i->sp = (tmp == 0 ? 0 : *i->sp % tmp);
+            break;
+        case OP_CAT:
+            StringCat(i);
             break;
         case OP_BNOT:
             *i->sp = ~*i->sp;
@@ -239,12 +243,14 @@ static void StartCode(Interpreter *i, VMVALUE object)
 {
     if (object & INTRINSIC_FLAG) {
         VMUVALUE index = object & ~INTRINSIC_FLAG;
-        if (index < IntrinsicCount)
+        if (index < IntrinsicCount) {
             (*VMINTRINSIC(index))(i);
+            Drop(i, i->argc);
+        }
         else
             Abort(i, str_not_code_object_err, object);
     }
-    else {
+    else if (object) {
         VMVALUE tmp;
         tmp = (VMVALUE)(i->fp - i->stack);
         i->fp = i->sp;
@@ -253,6 +259,32 @@ static void StartCode(Interpreter *i, VMVALUE object)
         i->fp[F_PC] = (VMVALUE)(i->pc - i->heap->data);
         i->pc = GetCodePtr((VMHANDLE)object);
     }
+    else
+        Abort(i, str_not_code_object_err, object);
+}
+
+static void StringCat(Interpreter *i)
+{
+    VMHANDLE hStr2 = (VMHANDLE)Pop(i);
+    VMHANDLE hStr1 = (VMHANDLE)i->sp[0];
+    uint8_t *str1, *str2, *str;
+    size_t len1, len2;
+
+    /* get the first string pointer and length */
+    str1 = GetStringPtr(hStr1);
+    len1 = GetHeapObjSize(hStr1);
+
+    /* get the second string pointer and length */
+    str2 = GetStringPtr(hStr2);
+    len2 = GetHeapObjSize(hStr2);
+
+    /* allocate the result string */
+    i->sp[0] = (VMVALUE)NewString(i->heap, len1 + len2);
+    str = GetStringPtr((VMHANDLE)i->sp[0]);
+
+    /* copy the source strings into the result string */
+    memcpy(str, str1, len1);
+    memcpy(str + len1, str2, len2);
 }
 
 void ShowStack(Interpreter *i)
