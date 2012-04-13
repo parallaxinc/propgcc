@@ -119,7 +119,7 @@ VMHANDLE Compile(ParseContext *c, int oneStatement)
         
         /* display a prompt on continuation lines for immediate mode */
         if (oneStatement && prompt)
-            VM_puts("  > ");
+            VM_printf("  > ");
             
         /* get the next line */
         if (!GetLine(c))
@@ -205,11 +205,10 @@ void StoreCode(ParseContext *c)
     codeSize = (int)(c->cptr - c->codeBuf);
 
 #if 0
-    VM_puts(c->codeName);
-    VM_puts(":\n");
+    VM_printf("%s:\n", c->codeName);
     DecodeFunction(0, c->codeBuf, codeSize);
     DumpLocals(c);
-    VM_puts("\n");
+    VM_putchar('\n');
 #endif
 
     /* store the vector object */
@@ -268,66 +267,29 @@ void *LocalAlloc(ParseContext *c, size_t size)
     return p;
 }
 
-/* VM_puts - print a string */
-void VM_puts(const char *str)
+/* VM_printf - formatted print */
+void VM_printf(const char *fmt, ...)
 {
-    while (*str)
-        VM_putchar(*str++);
-}
-
-/*
- * derived from:
- * very simple printf, adapted from one written by Eric Smith
- * for the MiNT OS long ago
- * placed in the public domain
- *   - Eric Smith
- * Propeller specific adaptations
- * Copyright (c) 2011 Parallax, Inc.
- * Written by Eric R. Smith, Total Spectrum Software Inc.
- * MIT licensed
- */
-
-static void putint(unsigned int value, int base, int width, int fill_char)
-{
-	char obuf[24]; /* 64 bits -> 22 digits maximum in octal */ 
-	char *t;
-
-	t = obuf;
-
-	do {
-		*t++ = "0123456789ABCDEF"[value % base];
-		value /= base;
-		width--;
-	} while (value > 0);
-
-	while (width-- > 0)
-        VM_putchar(fill_char);
-        
-	while (t != obuf)
-        VM_putchar(*--t);
-}
-
-/* VM_putdec - output a decimal number */
-void VM_putdec(int value)
-{
-    if (value < 0) {
-        VM_putchar('-');
-        value = -value;
-    }
-    putint((unsigned int)value, 10, 0, '\0');
-}
-
-/* VM_puthex - output a hex number */
-void VM_puthex(int value, int width)
-{
-    putint((unsigned int)value, 16, width, '0');
+    char buf[100], *p = buf;
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    while (*p != '\0')
+        VM_putchar(*p++);
+    va_end(ap);
 }
 
 /* Fatal - report a fatal error and exit */
-void Fatal(ParseContext *c, char *err)
+void Fatal(ParseContext *c, const char *fmt, ...)
 {
-    VM_puts("error: ");
-    VM_puts(err);
+    char buf[100], *p = buf;
+    va_list ap;
+    va_start(ap, fmt);
+    VM_printf("error: ");
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    while (*p != '\0')
+        VM_putchar(*p++);
     VM_putchar('\n');
+    va_end(ap);
     longjmp(c->errorTarget, 1);
 }

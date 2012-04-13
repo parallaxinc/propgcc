@@ -121,11 +121,8 @@ typedef struct VMDIRENT VMDIRENT;
 typedef struct VMDIR VMDIR;
 
 void VM_sysinit(int argc, char *argv[]);
-void VM_printf(const char *fmt, ...);           /* fmt in FLASH_SPACE */
-void VM_vprintf(const char *fmt, va_list ap);   /* fmt in FLASH_SPACE */
 void VM_flush(void);
 int VM_getchar(void);
-void VM_putchar(int ch);
 void VM_getline(char *buf, int size);
 int VM_opendir(const char *path, VMDIR *dir);
 int VM_readdir(VMDIR *dir, VMDIRENT *entry);
@@ -135,8 +132,5 @@ VMFILE *VM_fopen(const char *name, const char *mode);
 int VM_fclose(VMFILE *fp);
 char *VM_fgets(char *buf, int size, VMFILE *fp);
 int VM_fputs(const char *buf, VMFILE *fp);
-
-void LOG_printf(const char *fmt, ...);
-void putstr(char *str);
 
 #endif

@@ -182,6 +182,9 @@ struct VMDIRENT {
 #define VMCODEBYTE(p)           *(p)
 #define VMINTRINSIC(i)          Intrinsics[i]
 
+#define snprintf    __simple_snprintf
+#define vsnprintf   __simple_vsnprintf
+
 #endif  // PIC_COMMON
 
 /*********************/

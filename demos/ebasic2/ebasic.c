@@ -31,7 +31,7 @@ static void repl(System *sys)
     ParseContext *c;
     sys->freeNext = sys->freeSpace;
     if (!(c = InitCompiler(sys, MAXOBJECTS)))
-        VM_puts("insufficient memory\n");
+        VM_printf("insufficient memory\n");
     else {
         for (;;) {
             VMVALUE lineNumber = 0;
@@ -42,7 +42,7 @@ static void repl(System *sys)
                 Interpreter *i = (Interpreter *)sys->freeNext;
                 size_t stackSize = (sys->freeTop - sys->freeNext - sizeof(Interpreter)) / sizeof(VMVALUE);
                 if (stackSize <= 0)
-                    VM_puts("insufficient memory\n");
+                    VM_printf("insufficient memory\n");
                 else {
                     InitInterpreter(i, c->heap, stackSize);
                     Execute(i, main);

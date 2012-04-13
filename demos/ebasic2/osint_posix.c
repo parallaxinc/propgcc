@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <ctype.h>
 #include "db_vm.h"
 
@@ -47,14 +46,6 @@ void VM_getline(char *buf, int size)
 #else
     fgets(buf, size, stdin);
 #endif
-}
-
-void VM_vprintf(const char *fmt, va_list ap)
-{
-    char buf[100], *p = buf;
-    vsprintf(buf, fmt, ap);
-    while (*p != '\0')
-        VM_putchar(*p++);
 }
 
 void VM_flush(void)
