@@ -18,7 +18,6 @@ static void fcn_str(Interpreter *i);
 static void fcn_val(Interpreter *i);
 static void fcn_asc(Interpreter *i);
 static void fcn_len(Interpreter *i);
-static void fcn_printf(Interpreter *i);
 static void fcn_printStr(Interpreter *i);
 static void fcn_printInt(Interpreter *i);
 static void fcn_printTab(Interpreter *i);
@@ -304,7 +303,7 @@ static void fcn_printStr(Interpreter *i)
 static void fcn_printInt(Interpreter *i)
 {
     CheckArgCountEq(i, 1);
-    VM_printf("%d", i->sp[1]);
+    VM_putdec(i->sp[1]);
 }
 
 /* fcn_printTab - printTab(): print a tab */

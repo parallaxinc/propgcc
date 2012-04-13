@@ -284,12 +284,12 @@ static ParseTreeNode *ParseExpr10(ParseContext *c)
                 break;
             case '/':
                 if (node2->u.integerLit.value == 0)
-                    ParseError(c, "division by zero in constant expression");
+                    ParseError(c, "division by zero in constant expression", NULL);
                 node->u.integerLit.value = node->u.integerLit.value / node2->u.integerLit.value;
                 break;
             case T_MOD:
                 if (node2->u.integerLit.value == 0)
-                    ParseError(c, "division by zero in constant expression");
+                    ParseError(c, "division by zero in constant expression", NULL);
                 node->u.integerLit.value = node->u.integerLit.value % node2->u.integerLit.value;
                 break;
             default:
@@ -449,7 +449,7 @@ static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
         node = GetSymbolRef(c, c->token);
         break;
     default:
-        ParseError(c, "Expecting a primary expression");
+        ParseError(c, "Expecting a primary expression", NULL);
         node = NULL; /* not reached */
         break;
     }

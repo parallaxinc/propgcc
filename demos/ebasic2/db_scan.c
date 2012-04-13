@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
 #include <setjmp.h>
 #include <ctype.h>
@@ -83,7 +82,7 @@ void Require(ParseContext *c, Token token, Token requiredToken)
     char tknbuf[MAXTOKEN];
     if (token != requiredToken) {
         strcpy(tknbuf, TokenName(requiredToken));
-        ParseError(c, "Expecting '%s', found '%s'", tknbuf, TokenName(token));
+        ParseError(c, "Expecting", tknbuf);
     }
 }
 
@@ -363,7 +362,7 @@ static int IdentifierToken(ParseContext *c, int ch)
     p = c->token; *p++ = ch; len = 1;
     while ((ch = GetChar(c)) != EOF && IdentifierCharP(ch)) {
         if (++len > MAXTOKEN)
-            ParseError(c, "Identifier too long");
+            ParseError(c, "Identifier too long", NULL);
         *p++ = ch;
     }
     UngetC(c);
@@ -466,14 +465,14 @@ static int StringToken(ParseContext *c)
     p = c->token; len = 0;
     while ((ch = XGetC(c)) != EOF && ch != '"') {
         if (++len > MAXTOKEN)
-            ParseError(c, "String too long");
+            ParseError(c, "String too long", NULL);
         *p++ = (ch == '\\' ? LiteralChar(c) : ch);
     }
     *p = '\0';
 
     /* check for premature end of file */
     if (ch != '"')
-        ParseError(c, "unterminated string");
+        ParseError(c, "unterminated string", NULL);
 
     /* return the token */
     return T_STRING;
@@ -484,7 +483,7 @@ static int CharToken(ParseContext *c)
 {
     int ch = LiteralChar(c);
     if (XGetC(c) != '\'')
-        ParseError(c,"Expecting a closing single quote");
+        ParseError(c,"Expecting a closing single quote", NULL);
     c->token[0] = ch;
     c->token[1] = '\0';
     c->value = ch;
@@ -605,21 +604,23 @@ void UngetC(ParseContext *c)
 }
 
 /* ParseError - report a parsing error */
-void ParseError(ParseContext *c, char *fmt, ...)
+void ParseError(ParseContext *c, char *err, char *arg)
 {
-    va_list ap;
+    int cnt = c->tokenOffset;
 
     /* print the error message */
-    va_start(ap, fmt);
-    VM_printf("error: ");
-    VM_vprintf(fmt, ap);
+    VM_puts("error: ");
+    VM_puts(err);
+    if (arg) {
+        VM_puts(" - ");
+        VM_puts(arg);
+    }
     VM_putchar('\n');
-    va_end(ap);
 
     /* show the context */
-    VM_printf("  line %d\n", c->lineNumber);
-    VM_printf("    %s\n", c->sys->lineBuf);
-    VM_printf("    %*s\n", c->tokenOffset, "^");
+    VM_puts("  line "); VM_putdec(c->lineNumber); VM_putchar('\n');
+    VM_puts("    "); VM_puts(c->sys->lineBuf); VM_putchar('\n');
+    VM_puts("    "); while (--cnt >= 0) VM_putchar(' '); VM_puts("^\n");
 
     /* exit until we fix the compiler so it can recover from parse errors */
     longjmp(c->errorTarget, 1);

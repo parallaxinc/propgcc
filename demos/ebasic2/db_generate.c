@@ -148,7 +148,7 @@ void rvalue(ParseContext *c, PVAL *pv)
 void chklvalue(ParseContext *c, PVAL *pv)
 {
     if (pv->fcn == NULL)
-        ParseError(c,"Expecting an lvalue");
+        ParseError(c,"Expecting an lvalue", NULL);
 }
 
 /* code_global - compile a global variable reference */

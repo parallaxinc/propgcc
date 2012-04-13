@@ -96,8 +96,10 @@ enum {
 #define OP_LITH         0x40    /* literal handle */
 #define OP_CAT          0x41    /* concatenate two strings */
 
-void VM_printf(const char *fmt, ...);           /* fmt in FLASH_SPACE */
 void VM_vprintf(const char *fmt, va_list ap);   /* fmt in FLASH_SPACE */
+void VM_puts(const char *str);
+void VM_putdec(int value);
+void VM_puthex(int value, int width);
 void VM_putchar(int ch);
 
 #endif

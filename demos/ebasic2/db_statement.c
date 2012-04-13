@@ -182,7 +182,7 @@ static void ParseDef(ParseContext *c)
 static void ParseEndDef(ParseContext *c)
 {
     if (c->codeType != CODE_TYPE_FUNCTION)
-        ParseError(c, "not in a function definition");
+        ParseError(c, "not in a function definition", NULL);
     StoreCode(c);
 }
 
@@ -198,7 +198,7 @@ static void ParseConstantDef(ParseContext *c, char *name)
 
     /* make sure it's a constant */
     if (!IsIntegerLit(expr))
-        ParseError(c, "expecting a constant expression");
+        ParseError(c, "expecting a constant expression", NULL);
 
     /* add the symbol as a global */
     symbol = AddGlobal(c, name, SC_CONSTANT, DefaultType(c, name));
@@ -255,7 +255,7 @@ static void ParseDim(ParseContext *c)
         /* otherwise, add to the local symbol table */
         else {
             if (isArray)
-                ParseError(c, "local arrays are not supported");
+                ParseError(c, "local arrays are not supported", NULL);
             AddLocal(c, name, DefaultType(c, name), c->localOffset + F_SIZE + 1);
             ++c->localOffset;
         }
@@ -294,7 +294,7 @@ static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize)
 
             /* make sure it's a constant */
             if (!IsIntegerLit(expr) || expr->u.integerLit.value <= 0)
-                ParseError(c, "expecting a positive constant expression");
+                ParseError(c, "expecting a positive constant expression", NULL);
             size = expr->u.integerLit.value;
 
             /* only one dimension allowed for now */
@@ -319,7 +319,7 @@ static VMVALUE ParseScalarInitializer(ParseContext *c)
 {
     ParseTreeNode *expr = ParseExpr(c);
     if (!IsIntegerLit(expr))
-        ParseError(c, "expecting a constant expression");
+        ParseError(c, "expecting a constant expression", NULL);
     return expr->u.integerLit.value;
 }
 
@@ -340,7 +340,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
         /* look for the first non-blank line */
         while ((tkn = GetToken(c)) == T_EOL) {
             if (!GetLine(c))
-                ParseError(c, "unexpected end of file in initializers");
+                ParseError(c, "unexpected end of file in initializers", NULL);
         }
 
         /* check for the end of the initializers */
@@ -355,15 +355,15 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
             /* get a constant expression */
             expr = ParseExpr(c);
             if (!IsIntegerLit(expr))
-                ParseError(c, "expecting a constant expression");
+                ParseError(c, "expecting a constant expression", NULL);
 
             /* check for too many initializers */
             if (--size < 0)
-                ParseError(c, "too many initializers");
+                ParseError(c, "too many initializers", NULL);
 
             /* store the initial value */
             if (dataPtr >= dataTop)
-                ParseError(c, "insufficient object data space");
+                ParseError(c, "insufficient object data space", NULL);
             *dataPtr++ = expr->u.integerLit.value;
 
             switch (tkn = GetToken(c)) {
@@ -377,7 +377,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
             case ',':
                 break;
             default:
-                ParseError(c, "expecting a comma, right brace or end of line");
+                ParseError(c, "expecting a comma, right brace or end of line", NULL);
                 break;
             }
 
@@ -391,7 +391,7 @@ static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
     VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
     VMVALUE *dataTop = (VMVALUE *)c->ctop;
     if (dataPtr + size > dataTop)
-        ParseError(c, "insufficient object initializer space");
+        ParseError(c, "insufficient object initializer space", NULL);
     memset(dataPtr, 0, size * sizeof(VMVALUE));
 }
 
@@ -466,7 +466,7 @@ static void ParseElseIf(ParseContext *c)
         FRequire(c, T_EOL);
         break;
     default:
-        ParseError(c, "ELSE IF without a matching IF");
+        ParseError(c, "ELSE IF without a matching IF", NULL);
         break;
     }
 }
@@ -484,7 +484,7 @@ static void ParseElse(ParseContext *c)
         c->bptr->u.ElseBlock.end = end;
         break;
     default:
-        ParseError(c, "ELSE without a matching IF");
+        ParseError(c, "ELSE without a matching IF", NULL);
         break;
     }
     FRequire(c, T_EOL);
@@ -504,7 +504,7 @@ static void ParseEndIf(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "END IF without a matching IF/ELSE IF/ELSE");
+        ParseError(c, "END IF without a matching IF/ELSE IF/ELSE", NULL);
         break;
     }
     FRequire(c, T_EOL);
@@ -595,7 +595,7 @@ static void ParseNext(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "NEXT without a matching FOR");
+        ParseError(c, "NEXT without a matching FOR", NULL);
         break;
     }
     FRequire(c, T_EOL);
@@ -647,7 +647,7 @@ static void ParseLoop(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "LOOP without a matching DO");
+        ParseError(c, "LOOP without a matching DO", NULL);
         break;
     }
     FRequire(c, T_EOL);
@@ -666,7 +666,7 @@ static void ParseLoopWhile(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "LOOP without a matching DO");
+        ParseError(c, "LOOP without a matching DO", NULL);
         break;
     }
     FRequire(c, T_EOL);
@@ -685,7 +685,7 @@ static void ParseLoopUntil(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "LOOP without a matching DO");
+        ParseError(c, "LOOP without a matching DO", NULL);
         break;
     }
     FRequire(c, T_EOL);
@@ -791,7 +791,7 @@ static void DefineLabel(ParseContext *c, char *name, int offset)
     for (label = c->labels; label != NULL; label = label->next)
         if (strcasecmp(name, label->name) == 0) {
             if (!label->fixups)
-                ParseError(c, "duplicate label: %s", name);
+                ParseError(c, "duplicate label", name);
             else {
                 fixupbranch(c, label->fixups, offset);
                 label->offset = offset;
@@ -845,7 +845,7 @@ void CheckLabels(ParseContext *c)
     for (label = c->labels; label != NULL; label = next) {
         next = label->next;
         if (label->fixups)
-            Fatal(c, "undefined label: %s", label->name);
+            VM_puts("undefined label: "); VM_puts(label->name); VM_putchar('\n');
     }
     c->labels = NULL;
 }
