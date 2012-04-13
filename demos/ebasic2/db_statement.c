@@ -845,7 +845,7 @@ void CheckLabels(ParseContext *c)
     for (label = c->labels; label != NULL; label = next) {
         next = label->next;
         if (label->fixups)
-            VM_puts("undefined label: "); VM_puts(label->name); VM_putchar('\n');
+            Fatal(c, "undefined label: %s", label->name);
     }
     c->labels = NULL;
 }

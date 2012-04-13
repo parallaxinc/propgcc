@@ -100,10 +100,10 @@ void DumpGlobals(ParseContext *c)
 {
     VMHANDLE symbol = c->globals.head;
     if (symbol) {
-        VM_puts("Globals:\n");
+        VM_printf("Globals:\n");
         while (symbol) {
             Symbol *sym = GetSymbolPtr(symbol);
-            VM_puts("  "); VM_puts(sym->name); VM_putchar(' '); VM_puthex(sym->v.iValue, sizeof(VMVALUE) * 2);
+            VM_printf("  %s %04x\n", sym->name, sym->v.iValue);
             symbol = sym->next;
         }
     }
@@ -114,10 +114,10 @@ void DumpLocals(ParseContext *c)
 {
     VMHANDLE local = c->locals.head;
     if (local) {
-        VM_puts("Locals:\n");
+        VM_printf("Locals:\n");
         while (local) {
             Local *sym = GetLocalPtr(local);
-            VM_puts("  "); VM_puts(sym->name); VM_putchar(' '); VM_puthex(sym->offset, sizeof(VMVALUE) * 2);
+            VM_printf("  %s %d\n", sym->name, sym->offset);
             local = sym->next;
         }
     }

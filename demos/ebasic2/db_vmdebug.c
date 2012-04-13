@@ -13,9 +13,7 @@
 #define FMT_NONE        0
 #define FMT_BYTE        1
 #define FMT_WORD        2
-#define FMT_FLOAT       3
-#define FMT_HANDLE      4
-#define FMT_BR          5
+#define FMT_BR          3
 
 typedef struct {
     int code;
@@ -86,12 +84,7 @@ int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
 
     /* show the address */
     addr = (int)(base + lc - code);
-    VM_puthex((int)lc, sizeof(VMVALUE) * 2);
-    VM_putchar(' ');
-    VM_puthex(addr, 4);
-    VM_putchar(' ');
-    VM_puthex(opcode, 2);
-    VM_putchar(' ');
+    VM_printf("%08x %04x %02x ", lc, addr, opcode);
     n = 1;
 
     /* display the operands */
@@ -100,45 +93,38 @@ int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
             switch (op->fmt) {
             case FMT_NONE:
                 for (i = 0; i < sizeof(VMVALUE); ++i)
-                    VM_puts("   ");
-                VM_puts(op->name);
-                VM_putchar('\n');
+                    VM_printf("   ");
+                VM_printf("%s\n", op->name);
                 break;
             case FMT_BYTE:
                 bytes[0] = VMCODEBYTE(lc + 1);
-                VM_puthex(bytes[0], 2); VM_putchar(' ');
+                VM_printf("%02x ", bytes[0]);
                 for (i = 1; i < sizeof(VMVALUE); ++i)
-                    VM_puts("   ");
-                VM_puts(op->name); VM_putchar(' '); VM_puthex(bytes[0], 2); VM_putchar('\n');
+                    VM_printf("   ");
+                VM_printf("%s %02x\n", op->name, bytes[0]);
                 n += 1;
                 break;
             case FMT_WORD:
                 for (i = 0; i < sizeof(VMVALUE); ++i) {
                     bytes[i] = VMCODEBYTE(lc + i + 1);
-                    VM_puthex(bytes[i], 2); VM_putchar(' ');
+                    VM_printf("%02x ", bytes[i]);
                 }
-                VM_puts(op->name);
-                VM_putchar(' ');
+                VM_printf("%s ", op->name);
                 for (i = 0; i < sizeof(VMVALUE); ++i)
-                    VM_puthex(bytes[sizeof(VMVALUE) - i - 1], 2);
-                VM_putchar('\n');
+                    VM_printf("%02x", bytes[sizeof(VMVALUE) - i - 1]);
+                VM_printf("\n");
                 n += sizeof(VMVALUE);
-                break;
-            case FMT_FLOAT:
-                break;
-            case FMT_HANDLE:
                 break;
             case FMT_BR:
                 for (i = 0; i < sizeof(VMVALUE); ++i) {
                     bytes[i] = VMCODEBYTE(lc + i + 1);
                     offset = (offset << 8) | bytes[i];
-                    VM_puthex(bytes[i], 2); VM_putchar(' ');
+                    VM_printf("%02x ", bytes[i]);
                 }
-                VM_puts(op->name);
-                VM_putchar(' ');
+                VM_printf("%s ", op->name);
                 for (i = 0; i < sizeof(VMVALUE); ++i)
-                    VM_puthex(bytes[i], 2);
-                VM_puts(" # "); VM_puthex(addr + 1 + sizeof(VMVALUE) + offset, 4); VM_putchar('\n');
+                    VM_printf("%02x", bytes[i]);
+                VM_printf(" # %04x\n", addr + 1 + sizeof(VMVALUE) + offset);
                 n += sizeof(VMVALUE);
                 break;
             }
@@ -146,7 +132,7 @@ int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
         }
             
     /* unknown opcode */
-    VM_puts("      <UNKNOWN>\n");
+    VM_printf("      <UNKNOWN>\n");
     return 1;
 }
 

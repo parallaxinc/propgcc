@@ -155,9 +155,9 @@ static void fcn_chr(Interpreter *i)
 /* fcn_str - STR$(n): return n converted to a string */
 static void fcn_str(Interpreter *i)
 {
-    char buf[16];
+    char buf[32];
     CheckArgCountEq(i, 1);
-    sprintf(buf, "%d", i->sp[1]);
+    snprintf(buf, sizeof(buf), "%d", i->sp[1]);
     i->sp[1] = (VMVALUE)StoreByteVector(i->heap, ObjTypeString, (uint8_t *)buf, strlen(buf));
 }
 
@@ -303,7 +303,7 @@ static void fcn_printStr(Interpreter *i)
 static void fcn_printInt(Interpreter *i)
 {
     CheckArgCountEq(i, 1);
-    VM_putdec(i->sp[1]);
+    VM_printf("%d", i->sp[1]);
 }
 
 /* fcn_printTab - printTab(): print a tab */

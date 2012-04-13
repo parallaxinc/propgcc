@@ -390,12 +390,12 @@ void DumpHeap(ObjHeap *heap)
         ObjHdr *hdr = (ObjHdr *)data;
         size_t byteSize = hdr->size * elementSizes[hdr->type];
         size_t totalSize = sizeof(ObjHdr) + WORDSIZE(byteSize);
-        VM_puthex((int)hdr, sizeof(VMVALUE) * 2);
-        VM_puts(" h: "); VM_puthex((int)hdr->handle, sizeof(VMVALUE) * 2);
-        VM_puts(" c: "); VM_putdec(hdr->refCnt);
-        VM_puts(" t: "); VM_puts(typeNames[hdr->type]);
-        VM_puts(" s: "); VM_putdec(hdr->size);
-        VM_putchar('\n');
+        VM_printf("%p h: %p, c: %d, t: %s, s: %d\n",
+                  hdr,
+                  hdr->handle,
+                  hdr->refCnt,
+                  typeNames[hdr->type],
+                  hdr->size);
         if (hdr->handle) {
             switch (hdr->type) {
             case ObjTypeIntegerVector:
@@ -410,7 +410,7 @@ void DumpHeap(ObjHeap *heap)
             {
                 Symbol *sym = GetSymbolPtr(hdr->handle);
                 char *p = sym->name;
-                VM_puts("    ");
+                VM_printf("    ");
                 while (*p) 
                     VM_putchar(*p++);
                 VM_putchar('\n');
@@ -420,7 +420,7 @@ void DumpHeap(ObjHeap *heap)
             {
                 Local *sym = GetLocalPtr(hdr->handle);
                 char *p = sym->name;
-                VM_puts("    ");
+                VM_printf("    ");
                 while (*p) 
                     VM_putchar(*p++);
                 VM_putchar('\n');
@@ -432,12 +432,12 @@ void DumpHeap(ObjHeap *heap)
             {
                 size_t cnt = hdr->size;
                 uint8_t *p = GetStringPtr(hdr->handle);
-                VM_puts("    \"");
+                VM_printf("    \"");
                 while (cnt > 0) {
                     VM_putchar(*p++);
                     --cnt;
                 }
-                VM_puts("\"\n");
+                VM_printf("\"\n");
                 break;
             }
             case ObjTypeCode:
