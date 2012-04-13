@@ -292,8 +292,9 @@ void ShowStack(Interpreter *i)
     VMVALUE *p;
     for (p = i->sp; p < i->stackTop; ++p) {
         if (p == i->fp)
-            VM_printf(" <fp>");
-        VM_printf(" %d", *p);
+            VM_puts(" <fp>");
+        VM_putchar(' ');
+        VM_putdec(*p);
     }
     VM_putchar('\n');
 }
@@ -303,21 +304,11 @@ void StackOverflow(Interpreter *i)
     Abort(i, str_stack_overflow_err);
 }
 
-void Warn(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    VM_printf(str_warn_prefix);
-    VM_vprintf(fmt, ap);
-    VM_putchar('\n');
-    va_end(ap);
-}
-
 void Abort(Interpreter *i, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    VM_printf(str_abort_prefix);
+    VM_puts(str_abort_prefix);
     VM_vprintf(fmt, ap);
     VM_putchar('\n');
     va_end(ap);

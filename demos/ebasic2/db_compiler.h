@@ -271,7 +271,7 @@ void StartCode(ParseContext *c, char *name, CodeType type);
 void StoreCode(ParseContext *c);
 void AddIntrinsic(ParseContext *c, char *name, char *types, int index);
 void *LocalAlloc(ParseContext *c, size_t size);
-void Fatal(ParseContext *c, char *fmt, ...);
+void Fatal(ParseContext *c, char *err);
 
 /* db_statement.c */
 void ParseStatement(ParseContext *c, Token tkn);
@@ -297,7 +297,7 @@ char *TokenName(Token token);
 int SkipSpaces(ParseContext *c);
 int GetChar(ParseContext *c);
 void UngetC(ParseContext *c);
-void ParseError(ParseContext *c, char *fmt, ...);
+void ParseError(ParseContext *c, char *err, char *arg);
 
 /* db_symbols.c */
 void InitSymbolTable(SymbolTable *table);

@@ -93,14 +93,6 @@ void VM_closedir(VMDIR *dir)
     closedir(dir->dirp);
 }
 
-void LOG_printf(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    VM_vprintf(fmt, ap);
-    va_end(ap);
-}
-
 int strcasecmp(const char *s1, const char *s2)
 {
     while (*s1 != '\0' && (tolower(*s1) == tolower(*s2))) {

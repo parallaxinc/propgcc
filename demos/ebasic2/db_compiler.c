@@ -14,7 +14,7 @@
 #include "db_vmdebug.h"
 #include "db_vm.h"
 
-static uint8_t heap_space[8192];
+static DATA_SPACE uint8_t heap_space[4096];
 
 /* InitCompiler - initialize the compiler and create a parse context */
 ParseContext *InitCompiler(System *sys, int maxObjects)
@@ -23,7 +23,7 @@ ParseContext *InitCompiler(System *sys, int maxObjects)
 
     /* allocate and initialize the parse context */
     if (!(c = (ParseContext *)AllocateFreeSpace(sys, sizeof(ParseContext))))
-        ParseError(c, "insufficient space for parse context\n");
+        return NULL;
     memset(c, 0, sizeof(ParseContext));
     c->sys = sys;
     c->freeMark = sys->freeNext;
@@ -119,7 +119,7 @@ VMHANDLE Compile(ParseContext *c, int oneStatement)
         
         /* display a prompt on continuation lines for immediate mode */
         if (oneStatement && prompt)
-            VM_printf("  > ");
+            VM_puts("  > ");
             
         /* get the next line */
         if (!GetLine(c))
@@ -153,11 +153,11 @@ void StartCode(ParseContext *c, char *name, CodeType type)
 {
     /* all methods must precede the main code */
     if (type != CODE_TYPE_MAIN && c->cptr > c->codeBuf)
-        ParseError(c, "subroutines and functions must precede the main code");
+        ParseError(c, "subroutines and functions must precede the main code", NULL);
 
     /* don't allow nested functions or subroutines (for now anyway) */
     if (type != CODE_TYPE_MAIN && c->codeType != CODE_TYPE_MAIN)
-        ParseError(c, "nested subroutines and functions are not supported");
+        ParseError(c, "nested subroutines and functions are not supported", NULL);
 
     /* initialize the code object under construction */
     c->codeName = name;
@@ -183,11 +183,11 @@ void StoreCode(ParseContext *c)
     switch (CurrentBlockType(c)) {
     case BLOCK_IF:
     case BLOCK_ELSE:
-        ParseError(c, "expecting END IF");
+        ParseError(c, "expecting END IF", NULL);
     case BLOCK_FOR:
-        ParseError(c, "expecting NEXT");
+        ParseError(c, "expecting NEXT", NULL);
     case BLOCK_DO:
-        ParseError(c, "expecting LOOP");
+        ParseError(c, "expecting LOOP", NULL);
     case BLOCK_NONE:
         break;
     }
@@ -205,10 +205,11 @@ void StoreCode(ParseContext *c)
     codeSize = (int)(c->cptr - c->codeBuf);
 
 #if 0
-    VM_printf("%s:\n", c->codeName);
+    VM_puts(c->codeName);
+    VM_puts(":\n");
     DecodeFunction(0, c->codeBuf, codeSize);
     DumpLocals(c);
-    VM_printf("\n");
+    VM_puts("\n");
 #endif
 
     /* store the vector object */
@@ -245,7 +246,7 @@ void AddIntrinsic(ParseContext *c, char *name, char *types, int index)
         typ->u.functionInfo.returnType = CommonType(c, stringType);
         break;
     default:
-        Fatal(c, "unknown return type: %c", types[-1]);
+        Fatal(c, "unknown return type");
         break;
     }
     
@@ -267,23 +268,66 @@ void *LocalAlloc(ParseContext *c, size_t size)
     return p;
 }
 
-/* VM_printf - formatted print */
-void VM_printf(const char *fmt, ...)
+/* VM_puts - print a string */
+void VM_puts(const char *str)
 {
-    va_list ap;
-    va_start(ap, fmt);
-    VM_vprintf(fmt, ap);
-    va_end(ap);
+    while (*str)
+        VM_putchar(*str++);
+}
+
+/*
+ * derived from:
+ * very simple printf, adapted from one written by Eric Smith
+ * for the MiNT OS long ago
+ * placed in the public domain
+ *   - Eric Smith
+ * Propeller specific adaptations
+ * Copyright (c) 2011 Parallax, Inc.
+ * Written by Eric R. Smith, Total Spectrum Software Inc.
+ * MIT licensed
+ */
+
+static void putint(unsigned int value, int base, int width, int fill_char)
+{
+	char obuf[24]; /* 64 bits -> 22 digits maximum in octal */ 
+	char *t;
+
+	t = obuf;
+
+	do {
+		*t++ = "0123456789ABCDEF"[value % base];
+		value /= base;
+		width--;
+	} while (value > 0);
+
+	while (width-- > 0)
+        VM_putchar(fill_char);
+        
+	while (t != obuf)
+        VM_putchar(*--t);
+}
+
+/* VM_putdec - output a decimal number */
+void VM_putdec(int value)
+{
+    if (value < 0) {
+        VM_putchar('-');
+        value = -value;
+    }
+    putint((unsigned int)value, 10, 0, '\0');
+}
+
+/* VM_puthex - output a hex number */
+void VM_puthex(int value, int width)
+{
+    putint((unsigned int)value, 16, width, '0');
 }
 
 /* Fatal - report a fatal error and exit */
-void Fatal(ParseContext *c, char *fmt, ...)
+void Fatal(ParseContext *c, char *err)
 {
-    va_list ap;
-    va_start(ap, fmt);
-    VM_printf("error: ");
-    VM_vprintf(fmt, ap);
+    VM_puts("error: ");
+    VM_puts(err);
     VM_putchar('\n');
-    va_end(ap);
     longjmp(c->errorTarget, 1);
 }
