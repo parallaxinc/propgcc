@@ -42,14 +42,6 @@ void VM_getline(char *buf, int size)
     fgets(buf, size, stdin);
 }
 
-void VM_vprintf(const char *fmt, va_list ap)
-{
-    char buf[80], *p = buf;
-    vsprintf(buf, fmt, ap);
-    while (*p != '\0')
-        VM_putchar(*p++);
-}
-
 void VM_flush(void)
 {
     fflush(stdout);
