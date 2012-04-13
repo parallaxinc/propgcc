@@ -1,7 +1,7 @@
 /*
  * very simple vsnprintf
  * adapted by David Betz from:
- * very simple printf, adapted from one written by me
+ * very simple printf, adapted from one written by Eric Smith
  * for the MiNT OS long ago
  * placed in the public domain
  *   - Eric Smith
