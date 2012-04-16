@@ -42,8 +42,8 @@ CON
   SIO3_PIN              = 3
   MOSI_PIN              = SIO0_PIN
   MISO_PIN              = SIO1_PIN
-  CE_PIN                = 4
-  SCK_PIN               = 5
+  SCK_PIN               = 4
+  CE_PIN                = 5
  
   ' default cache dimensions
   DEFAULT_INDEX_WIDTH   = 7
