@@ -1,4 +1,4 @@
-TARGETS=boetest.elf compass.elf
+TARGETS=boetest.elf compass.elf xbee.elf
 
 CC=propeller-elf-gcc
 CXX=propeller-elf-gcc

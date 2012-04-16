@@ -151,7 +151,8 @@ $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \
 $(DRVDIR)/sdram_cache.dat \
 $(DRVDIR)/eeprom_cache.dat \
-$(DRVDIR)/sd_cache.dat
+$(DRVDIR)/sd_cache.dat \
+$(DRVDIR)/sqi_flash_cache.dat
 
 #################
 # OTHER DRIVERS #
