@@ -118,7 +118,7 @@ skip_pins
 
         ' get the jedec id (cache-param2)
         rdlong  t2, t1 wz
-  if_z  mov     jedec_id, t2
+  if_nz mov     jedec_id, t2
 
         mov     index_count, #1
         shl     index_count, index_width
@@ -287,9 +287,9 @@ read_jedec_id_ret
 #ifdef SST
 
 flash_init
-        call    #sst_read_jedec_id
-        cmp     t1, jedec_id wz
-  if_z  jmp     #:check
+'        call    #sst_read_jedec_id
+'        cmp     t1, jedec_id wz
+'  if_z  jmp     #:check
         call    #read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
@@ -436,7 +436,7 @@ start_write
         call    #winbond_write_enable
         mov     cmd, vmaddr
         and     cmd, flashmask
-        mov     cmd, winbond_program
+        or      cmd, winbond_program
         call    #winbond_start_quad_spi_cmd_1
         rol     cmd, #8
         mov     data, cmd
@@ -466,6 +466,7 @@ start_read_ret
 wait_until_done
         mov     cmd, frdstatus
         call    #winbond_start_quad_spi_cmd_1
+        andn    dira, sio_mask
 :wait   call    #spiRecvByte
         test    data, #1 wz
   if_nz jmp     #:wait
@@ -491,6 +492,7 @@ winbond_start_quad_spi_cmd
   if_z  jmp     winbond_start_quad_spi_cmd_ret
         or      dira, sio_mask
 :loop   rol     cmd, #8
+        mov     data, cmd
         call    #sqiSendByte
         djnz    bytes, #:loop
 winbond_start_quad_spi_cmd_1_ret
@@ -508,7 +510,7 @@ ferase4kblk         long    $20000000    ' flash erase a 4k block
 frdstatus           long    $05000000    ' flash read status
 fwrenable           long    $06000000    ' flash write enable
         
-jedec_id            long    $001440ef    ' value of t1 after read_jedec_id routine (W25Q80BV)
+jedec_id            long    $000126bf    ' value of t1 after read_jedec_id routine (SST26VF016)
 
 ' pointers to mailbox entries
 pvmcmd          long    0       ' on call this is the virtual address and read/write bit
