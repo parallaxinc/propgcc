@@ -1,4 +1,4 @@
-/* pinlib.h - definitions for the pin library
+/* pin.h - definitions for the pin library
 
 Copyright (c) 2012 David Michael Betz
 
@@ -19,13 +19,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 */
 
-#ifndef __BOE_H__
+#ifndef __PIN_H__
+#define __PIN_H__
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 #include <stdint.h>
+
 /* pin directions */
 #define IN      0
 #define OUT     1
