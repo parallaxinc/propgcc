@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #include <propeller.h>
-#include "i2clib.h"
+#include "i2c.h"
 
 int i2cInit(I2C_STATE *dev, int scl, int sda, int freq)
 {

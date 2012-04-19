@@ -1,8 +1,7 @@
 LIBDIR=../lib
-TARGET=$(LIBDIR)/libboe.a
+TARGET=$(LIBDIR)/libprop.a
 
 CC=propeller-elf-gcc
-CXX=propeller-elf-gcc
 OBJCOPY=propeller-elf-objcopy
 AR=propeller-elf-ar
 LOAD=propeller-load
@@ -19,11 +18,6 @@ input.o \
 low.o \
 output.o \
 pause.o \
-pin_pulsein.o \
-pin_pulseout.o \
-pingroup_get.o \
-pingroup_pingroup.o \
-pingroup_set.o \
 pulsein.o \
 pulseout.o \
 setdir.o \

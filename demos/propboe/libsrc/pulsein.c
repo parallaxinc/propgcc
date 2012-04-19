@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #include <propeller.h>
-#include "boe.h"
+#include "pin.h"
 
 HUBTEXT int pulseIn(int pin, int state)
 {

@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #include <propeller.h>
-#include "boe.h"
+#include "pin.h"
 
 #define I2C_READ        1
 #define I2C_WRITE       0
