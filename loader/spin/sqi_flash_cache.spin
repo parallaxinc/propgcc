@@ -384,6 +384,8 @@ sst_start_quad_spi_cmd_1_ret
 sst_start_quad_spi_cmd_ret
         ret
         
+jedec_id            long    $000126bf    ' value of t1 after read_jedec_id routine (SST26VF016)
+
 sst_rdjedecid       long    $af000000    ' read the manufacturers id, device type and device id
 sst_quadmode        long    $38          ' enable quad mode
 sst_program         long    $02000000    ' flash program byte/page
@@ -498,6 +500,8 @@ winbond_start_quad_spi_cmd_1_ret
 winbond_start_quad_spi_cmd_ret
         ret
         
+jedec_id            long    $001440ef    ' value of t1 after read_jedec_id routine (W25Q80BV)
+
 winbond_wrstatus    long    $01000000    ' write status
 winbond_program     long    $32000000    ' flash program byte/page
 winbond_read        long    $e3000000    ' flash read command
@@ -508,9 +512,6 @@ frdjedecid          long    $9f          ' read the manufacturers id, device typ
 ferase4kblk         long    $20000000    ' flash erase a 4k block
 frdstatus           long    $05000000    ' flash read status
 fwrenable           long    $06000000    ' flash write enable
-        
-'jedec_id            long    $000126bf    ' value of t1 after read_jedec_id routine (SST26VF016)
-jedec_id            long    $001440ef    ' value of t1 after read_jedec_id routine (W25Q80BV)
 
 ' pointers to mailbox entries
 pvmcmd          long    0       ' on call this is the virtual address and read/write bit
@@ -550,15 +551,12 @@ dirty_mask      long    (1<<DIRTY_BIT)
 
 BREAD
         call    #start_read
-
         mov     ptr, hubaddr      ' hubaddr = hub page address
         mov     count, line_size
-
-read0   call    #sqiRecvByte
+:loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1
-        djnz    count, #read0
-
+        djnz    count, #:loop
         call    #deselect
 BREAD_RET
         ret
