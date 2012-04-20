@@ -613,8 +613,8 @@ select_ret
         ret
 
 release                             ' Single-SPI and Parallel-DeMUX
-        or      outa, cs_clr
-        andn    outa, mask_inc
+        mov     outa, spiout
+        mov     dira, spidir
 release_ret
         ret
 
@@ -634,7 +634,8 @@ c3_select                           ' Serial-DeMUX
 
 c3_release                          ' Serial-DeMUX
         andn    outa, cs_clr
-        or      outa, cs_clr
+        mov     outa, spiout
+        mov     dira, spidir
         jmp     release_ret
 
 c3tmp   long    0
