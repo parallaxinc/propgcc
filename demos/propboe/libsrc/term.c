@@ -1,4 +1,4 @@
-#include "term_common.h"
+#include "term.h"
 
 static void printc(TERM *term, int c);
 static void newline(TERM *term);
