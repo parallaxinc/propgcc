@@ -59,8 +59,8 @@ DAT
 ' initialization structure offsets
 ' $0: pointer to a two word mailbox
 ' $4: pointer to where to store the cache lines in hub ram
-' $8: number of bits in the cache line index if non-zero (default is DEFAULT_INDEX_WIDTH)
-' $a: number of bits in the cache line offset if non-zero (default is DEFAULT_OFFSET_WIDTH)
+' $8: 0xooiiccee - ss=mosi ii=miso cc=sck pp=protocol
+' $a: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' note that $4 must be at least 2^($8+$a)*2 bytes in size
 ' the cache line mask is returned in $0
 

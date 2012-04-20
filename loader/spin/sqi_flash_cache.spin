@@ -31,15 +31,12 @@
 
 CON
 
-  ' default pins
-  SIO0_PIN              = 6
-  SIO1_PIN              = 7
-  SIO2_PIN              = 8
-  SIO3_PIN              = 9
-  MOSI_PIN              = SIO0_PIN
-  MISO_PIN              = SIO1_PIN
-  SCK_PIN               = 10
-  CE_PIN                = 11
+  ' extra pin masks
+  CS_CLR_PIN_MASK       = $01
+  INC_PIN_MASK          = $02   ' for C3-style CS
+  MUX_START_BIT_MASK    = $04   ' low order bit of mux field
+  MUX_WIDTH_MASK        = $08   ' width of mux field
+  ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
  
   ' default cache dimensions
   DEFAULT_INDEX_WIDTH   = 7
@@ -62,8 +59,8 @@ DAT
 ' initialization structure offsets
 ' $0: pointer to a two word mailbox
 ' $4: pointer to where to store the cache lines in hub ram
-' $8: 0xooiiccee - oo=mosi ii=miso cc=sck ee-ce
-' $a: 0x00iittmm - ii=device-id tt=device-type mm=manufacturer-id
+' $8: 0xssxxccee - ss=sio0 xx=unused cc=sck pp=protocol
+' $a: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' note that $4 must be at least 2^(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH) bytes in size
 ' the cache line mask is returned in $0
 
@@ -76,9 +73,8 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         add     t1, #4
 
         ' get the pin definitions (cache-param1)
-        rdlong  t2, t1 wz
+        rdlong  t2, t1
         add     t1, #4
-  if_z  jmp     #skip_pins
 
         ' get the sio_shift and build the mosi, miso, and sio masks
         mov     sio_shift, t2
@@ -89,6 +85,8 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         shl     miso_mask, #1
         mov     sio_mask, #$f
         shl     sio_mask, sio_shift
+        or      spidir, mosi_mask
+        or      spiout, mosi_mask
         
         ' build the sck mask
         mov     t3, t2
@@ -96,30 +94,53 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         and     t3, #$ff
         mov     sck_mask, #1
         shl     sck_mask, t3
-        
-        ' build the ce mask
-        and     t2, #$ff
-        mov     ce_mask, #1
-        shl     ce_mask, t2
-
-        ' build the outa and dira masks
-        mov     spiout, ce_mask
-        or      spiout, mosi_mask
-        mov     t2, miso_mask
-        shl     t2, #1
-        or      spiout, t2
-        shl     t2, #1
-        or      spiout, t2
-        mov     spidir, spiout
         or      spidir, sck_mask
+        
+        ' get the cs protocol selector bits (cache-param2)
+        rdlong  t3, t1
+        
+        ' handle the CS or C3-style CLR pins
+        test    t2, #CS_CLR_PIN_MASK wz
+  if_nz mov     t4, t3
+  if_nz shr     t4, #24
+  if_nz mov     cs_clr, #1
+  if_nz shl     cs_clr, t4
+  if_nz or      spidir, cs_clr
+  if_nz or      spiout, cs_clr
+  
+        ' handle the mux width
+        test    t2, #MUX_WIDTH_MASK wz
+  if_nz mov     t4, t3
+  if_nz shr     t4, #8
+  if_nz and     t4, #$ff
+  if_nz mov     mask_inc, #1
+  if_nz shl     mask_inc, t4
+  if_nz sub     mask_inc, #1
+  if_nz or      spidir, mask_inc
+  
+        ' handle the C3-style address or mux value
+        test    t2, #ADDR_MASK wz
+  if_nz mov     select_addr, t3
+  if_nz and     select_addr, #$ff
 
-skip_pins
+        ' handle the C3-style INC pin
+        mov     t4, t3
+        shr     t4, #16
+        and     t4, #$ff
+        test    t2, #INC_PIN_MASK wz
+  if_nz mov     mask_inc, #1
+  if_nz shl     mask_inc, t4
+  if_nz mov     select, c3_select_jmp       ' We're in C3 mode, so replace select/release
+  if_nz mov     release, c3_release_jmp     ' with the C3-aware routines
+  if_nz or      spidir, mask_inc
+ 
+        ' handle the mux start bit (must follow setting of select_addr and mask_inc)
+        test    t2, #MUX_START_BIT_MASK wz
+  if_nz shl     select_addr, t4
+  if_nz shl     mask_inc, t4
+  if_nz or      spidir, mask_inc
         
         or      spidir, ledmask ' BUG: debugging code
-
-        ' get the jedec id (cache-param2)
-        rdlong  t2, t1 wz
-  if_nz mov     jedec_id, t2
 
         mov     index_count, #1
         shl     index_count, index_width
@@ -133,7 +154,9 @@ skip_pins
         wrlong  t1, par
 
         ' set the pin directions
-        call    #deselect
+        mov     outa, spiout
+        mov     dira, spidir
+        call    #release
                 
         call    #flash_init
                 
@@ -250,7 +273,7 @@ write_data_handler
 
 :loop   test    vmaddr, #$ff wz
   if_nz jmp     #:data
-        call    #deselect
+        call    #release
         call    #wait_until_done
 :addr   call    #start_write
 :data   rdbyte  data, ptr
@@ -258,7 +281,7 @@ write_data_handler
         add     ptr, #1
         add     vmaddr, #1
         djnz    count, #:loop
-        call    #deselect
+        call    #release
 
 :done   call    #wait_until_done
         wrlong  data, pvmaddr
@@ -279,7 +302,7 @@ read_jedec_id
         call    #spiRecvByte       ' device capacity
         movs    t1, data           ' save dev type
         rol     t1, #16            ' data 00ccttmm c=capacity, t=type, m=mfgid
-        call    #deselect
+        call    #release
 read_jedec_id_ret
         ret
 
@@ -297,7 +320,7 @@ flash_init
         call    #select
         mov     data, sst_quadmode
         call    #spiSendByte
-        call    #deselect
+        call    #release
 :check  call    #sst_read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
@@ -311,7 +334,7 @@ erase_4k_block
         or      cmd, ferase4kblk
         mov     bytes, #4
         call    #sst_start_quad_spi_cmd
-        call    #deselect
+        call    #release
         call    #wait_until_done
 erase_4k_block_ret
         ret
@@ -343,7 +366,7 @@ wait_until_done
 :wait   call    #sqiRecvByte
         test    data, #$80 wz
   if_nz jmp     #:wait
-        call    #deselect
+        call    #release
 wait_until_done_ret
         ret
 
@@ -360,14 +383,14 @@ sst_read_jedec_id
         call    #sqiRecvByte       ' device capacity
         movs    t1, data           ' save dev type
         rol     t1, #16            ' data 00ccttmm c=capacity, t=type, m=mfgid
-        call    #deselect
+        call    #release
 sst_read_jedec_id_ret
         ret
         
 sst_write_enable
         mov     cmd, fwrenable
         call    #sst_start_quad_spi_cmd_1
-        call    #deselect
+        call    #release
 sst_write_enable_ret
         ret
 
@@ -408,7 +431,7 @@ flash_init
         call    #spiSendByte
         mov     data, #$02
         call    #spiSendByte
-        call    #deselect
+        call    #release
         call    #wait_until_done
 flash_init_ret
         ret
@@ -428,7 +451,7 @@ erase_4k_block
         rol     cmd, #8
         mov     data, cmd
         call    #spiSendByte
-        call    #deselect
+        call    #release
         call    #wait_until_done
 erase_4k_block_ret
         ret
@@ -471,14 +494,14 @@ wait_until_done
 :wait   call    #spiRecvByte
         test    data, #1 wz
   if_nz jmp     #:wait
-        call    #deselect
+        call    #release
 wait_until_done_ret
         ret
 
 winbond_write_enable
         mov     cmd, fwrenable
         call    #winbond_start_quad_spi_cmd_1
-        call    #deselect
+        call    #release
 winbond_write_enable_ret
         ret
         
@@ -528,6 +551,7 @@ dstinc          long    1<<9    ' increment for the destination field of an inst
 t1              long    0       ' temporary variable
 t2              long    0       ' temporary variable
 t3              long    0       ' temporary variable
+t4              long    0       ' temporary variable
 
 tag_mask        long    (1<<DIRTY_BIT)-1        ' includes EMPTY_BIT
 index_width     long    DEFAULT_INDEX_WIDTH
@@ -557,7 +581,7 @@ BREAD
         wrbyte  data, ptr
         add     ptr, #1
         djnz    count, #:loop
-        call    #deselect
+        call    #release
 BREAD_RET
         ret
 
@@ -581,16 +605,39 @@ BWRITE_RET
 ' SPI routines
 '----------------------------------------------------------------------------------------------------
 
-select
-        andn    outa, ce_mask
+select                              ' Single-SPI and Parallel-DeMUX
+        andn    outa, mask_inc
+        or      outa, select_addr
+        andn    outa, cs_clr
 select_ret
         ret
 
-deselect
-        mov     outa, spiout
-        mov     dira, spidir
-deselect_ret
+release                             ' Single-SPI and Parallel-DeMUX
+        or      outa, cs_clr
+        andn    outa, mask_inc
+release_ret
         ret
+
+c3_select_jmp                       ' Serial-DeMUX Jumps
+        jmp     #c3_select          ' Initialization copies these jumps
+c3_release_jmp                      '   over the select and release
+        jmp     #c3_release         '   when in C3 mode.
+
+c3_select                           ' Serial-DeMUX
+        andn    outa, cs_clr
+        or      outa, cs_clr
+        mov     c3tmp, select_addr
+:loop   or      outa, mask_inc
+        andn    outa, mask_inc
+        djnz    c3tmp, #:loop
+        jmp     select_ret
+
+c3_release                          ' Serial-DeMUX
+        andn    outa, cs_clr
+        or      outa, cs_clr
+        jmp     release_ret
+
+c3tmp   long    0
         
 spiSendByte
         shl     data, #24
@@ -648,15 +695,18 @@ sqiRecvByte
 sqiRecvByte_ret
         ret
 
-spidir      long    (1<<CE_PIN)|(1<<SCK_PIN)|(1<<MOSI_PIN)
-spiout      long    (1<<CE_PIN)|(0<<SCK_PIN)|(1<<MOSI_PIN)
+spidir          long    0
+spiout          long    0
 
-mosi_mask   long    1<<MOSI_PIN
-miso_mask   long    1<<MISO_PIN
-sck_mask    long    1<<SCK_PIN
-ce_mask     long    1<<CE_MASK
-sio_mask    long    $f<<SIO0_PIN
-sio_shift   long    SIO0_PIN
+mosi_mask       long    0
+miso_mask       long    0
+sck_mask        long    0
+sio_shift       long    0
+sio_mask        long    0
+
+cs_clr          long    0
+mask_inc        long    0
+select_addr     long    0
 
 ' variables used by the spi send/receive functions
 cmd         long    0
