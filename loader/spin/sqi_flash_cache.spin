@@ -1,5 +1,5 @@
 {
-  SPI flash JCACHE driver
+  Quad SPI flash JCACHE driver
   Copyright (c) April 17, 2012 by David Betz
 
   Based on code from VMCOG - virtual memory server for the Propeller
@@ -62,9 +62,9 @@ DAT
 ' initialization structure offsets
 ' $0: pointer to a two word mailbox
 ' $4: pointer to where to store the cache lines in hub ram
-' $8: number of bits in the cache line index if non-zero (default is DEFAULT_INDEX_WIDTH)
-' $a: number of bits in the cache line offset if non-zero (default is DEFAULT_OFFSET_WIDTH)
-' note that $4 must be at least 2^($8+$a)*2 bytes in size
+' $8: 0xooiiccee - oo=mosi ii=miso cc=sck ee-ce
+' $a: 0x00iittmm - ii=device-id tt=device-type mm=manufacturer-id
+' note that $4 must be at least 2^(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH) bytes in size
 ' the cache line mask is returned in $0
 
 init_vm mov     t1, par             ' get the address of the initialization structure
@@ -77,6 +77,7 @@ init_vm mov     t1, par             ' get the address of the initialization stru
 
         ' get the pin definitions (cache-param1)
         rdlong  t2, t1 wz
+        add     t1, #4
   if_z  jmp     #skip_pins
 
         ' get the sio_shift and build the mosi, miso, and sio masks
@@ -133,7 +134,7 @@ skip_pins
 
         ' set the pin directions
         call    #deselect
-        
+                
         call    #flash_init
                 
         jmp     #vmflush
@@ -287,14 +288,12 @@ read_jedec_id_ret
 #ifdef SST
 
 flash_init
-'        call    #sst_read_jedec_id
-'        cmp     t1, jedec_id wz
-'  if_z  jmp     #:check
+        call    #sst_read_jedec_id
+        cmp     t1, jedec_id wz
+  if_z  jmp     #:check
         call    #read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
-        or      outa, ledmask
-        jmp     #halt
         call    #select
         mov     data, sst_quadmode
         call    #spiSendByte
@@ -510,7 +509,8 @@ ferase4kblk         long    $20000000    ' flash erase a 4k block
 frdstatus           long    $05000000    ' flash read status
 fwrenable           long    $06000000    ' flash write enable
         
-jedec_id            long    $000126bf    ' value of t1 after read_jedec_id routine (SST26VF016)
+'jedec_id            long    $000126bf    ' value of t1 after read_jedec_id routine (SST26VF016)
+jedec_id            long    $001440ef    ' value of t1 after read_jedec_id routine (W25Q80BV)
 
 ' pointers to mailbox entries
 pvmcmd          long    0       ' on call this is the virtual address and read/write bit
@@ -597,21 +597,21 @@ deselect_ret
 spiSendByte
         shl     data, #24
         mov     bits, #8
-:loop   andn    outa, sck_mask
-        rol     data, #1 wc
+:loop   rol     data, #1 wc
         muxc    outa, mosi_mask
         or      outa, sck_mask
-        djnz    bits, #:loop
         andn    outa, sck_mask
+        djnz    bits, #:loop
+        or      outa, mosi_mask
 spiSendByte_ret
         ret
 
 spiRecvByte
         mov     data, #0
         mov     bits, #8
-:loop   test    miso_mask, ina wc
+:loop   or      outa, sck_mask
+        test    miso_mask, ina wc
         rcl     data, #1
-        or      outa, sck_mask
         andn    outa, sck_mask
         djnz    bits, #:loop
 spiRecvByte_ret

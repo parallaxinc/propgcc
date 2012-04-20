@@ -421,33 +421,24 @@ deselect_ret
 spiSendByte
         shl     data, #24
         mov     bits, #8
-        jmp     #send
-
-send0   andn    outa, sck_mask
-
-' CLK should be low coming into this function
-send    rol     data, #1 wc
+:loop   rol     data, #1 wc
         muxc    outa, mosi_mask
         or      outa, sck_mask
-        djnz    bits, #send0
         andn    outa, sck_mask
+        djnz    bits, #:loop
         or      outa, mosi_mask
 spiSendByte_ret
-send_ret
         ret
 
 spiRecvByte
         mov     data, #0
         mov     bits, #8
-        
-' CLK was set H-L and data should be ready before this function starts
-receive or      outa, sck_mask
+:loop   or      outa, sck_mask
         test    miso_mask, ina wc
         rcl     data, #1
         andn    outa, sck_mask
-        djnz    bits, #receive
+        djnz    bits, #:loop
 spiRecvByte_ret
-receive_ret
         ret
 
 spidir      long    (1<<CE_PIN)|(1<<SCK_PIN)|(1<<MOSI_PIN)
