@@ -97,6 +97,12 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         or      spidir, mosi_mask
         or      spiout, mosi_mask
         
+        ' make the sio2 and sio3 pins outputs in single spi mode to assert /WE and /HOLD
+        mov     t3, #$0c
+        shl     t3, sio_shift
+        or      spidir, t3
+        or      spiout, t3
+        
         ' build the sck mask
         mov     t3, t2
         shr     t3, #8
