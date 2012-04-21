@@ -31,7 +31,7 @@
 
 CON
 
-  ' extra pin masks
+  ' protocol bits
   CS_CLR_PIN_MASK       = $01
   INC_PIN_MASK          = $02   ' for C3-style CS
   MUX_START_BIT_MASK    = $04   ' low order bit of mux field
@@ -62,6 +62,15 @@ DAT
 ' $8: 0xssxxccee - ss=sio0 xx=unused cc=sck pp=protocol
 ' $a: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' note that $4 must be at least 2^(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH) bytes in size
+' the protocol byte is a bit mask with the bits defined above
+'   if CS_CLR_PIN_MASK ($01) is set, then byte aa contains the CS or C3-style CLR pin number
+'   if INC_PIN_MASK ($02) is set, then byte bb contains the C3-style INC pin number
+'   if MUX_START_BIT_MASK ($04) is set, then byte bb contains the starting bit number of the mux field
+'   if MUX_WIDTH_MASK ($08) is set, then byte cc contains the width of the mux field
+'   if ADDR_MASK ($10) is set, then byte dd contains either the C3-style address or the value to write to the mux field
+' example:
+'   for a simple single pin CS you should set the protocol byte to $01 and place the CS pin number in byte aa.
+'   for the C3 you should set the protocol byte to $13 and aa to $19, aa to $08, and dd to $03
 ' the cache line mask is returned in $0
 
 init_vm mov     t1, par             ' get the address of the initialization structure
