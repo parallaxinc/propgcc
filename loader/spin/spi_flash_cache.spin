@@ -37,6 +37,7 @@ CON
   MUX_START_BIT_MASK    = $04   ' low order bit of mux field
   MUX_WIDTH_MASK        = $08   ' width of mux field
   ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
+  QUAD_SPI_HACK_MASK    = $20   ' set /WE and /HOLD for testing on Quad SPI chips
  
   ' default cache dimensions
   DEFAULT_INDEX_WIDTH   = 7
@@ -62,6 +63,14 @@ DAT
 ' $8: 0xooiiccee - ss=mosi ii=miso cc=sck pp=protocol
 ' $a: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' note that $4 must be at least 2^($8+$a)*2 bytes in size
+' the protocol byte is a bit mask with the bits defined above
+'   if CS_CLR_PIN_MASK ($01) is set, then byte aa contains the CS or C3-style CLR pin number
+'   if INC_PIN_MASK ($02) is set, then byte bb contains the C3-style INC pin number
+'   if MUX_START_BIT_MASK ($04) is set, then byte bb contains the starting bit number of the mux field
+'   if MUX_WIDTH_MASK ($08) is set, then byte cc contains the width of the mux field
+'   if ADDR_MASK ($10) is set, then byte dd contains either the C3-style address or the value to write to the mux field
+' example:
+'   for a simple single pin CS you should set the protocol byte to $01 and place the CS pin number in byte aa.
 ' the cache line mask is returned in $0
 
 init_vm mov     t1, par             ' get the address of the initialization structure
@@ -89,6 +98,13 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         and     t3, #$ff
         mov     miso_mask, #1
         shl     miso_mask, t3
+        
+        ' make the sio2 and sio3 pins outputs in single spi mode to assert /WP and /HOLD
+        test    t2, #QUAD_SPI_HACK_MASK wz
+  if_nz mov     t4, #$06
+  if_nz shl     t4, t3
+  if_nz or      spidir, t4
+  if_nz or      spiout, t4
         
         ' build the sck mask
         mov     t3, t2
