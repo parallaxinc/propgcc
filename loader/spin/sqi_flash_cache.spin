@@ -648,7 +648,6 @@ spiSendByte
         or      outa, sck_mask
         andn    outa, sck_mask
         djnz    bits, #:loop
-        or      outa, mosi_mask
 spiSendByte_ret
         ret
 
