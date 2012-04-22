@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-#include "term_common.h"
+#include "term.h"
 
 /**
  * TV_Text column count

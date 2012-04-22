@@ -22,12 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "pin.h"
 
-HUBTEXT void pulseOut(int pin, int duration)
+HUBTEXT void pinPulseOut(int pin, int duration)
 {
     uint32_t mask = 1 << pin;
-    uint32_t ticks = duration * (CLKFREQ / 1000000);
     OUTA ^= mask;
-    DIRA |= mask;
-    waitcnt(CNT + ticks);
+    waitcnt(CNT + duration);
     OUTA ^= mask;
 }

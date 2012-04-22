@@ -45,11 +45,11 @@ int i2cInit(I2C_STATE *dev, int scl, int sda, int freq);
 int i2cTerm(I2C_STATE *dev);
 int i2cSendBuf(I2C_STATE *dev, int address, uint8_t *buffer, int count);
 int i2cBegin(I2C_STATE *dev, int address);
-int i2cSend(I2C_STATE *dev, int byte);
-int i2cEnd(I2C_STATE *dev);
+int i2cAddByte(I2C_STATE *dev, int byte);
+int i2cSend(I2C_STATE *dev);
 int i2cRequestBuf(I2C_STATE *dev, int address, uint8_t *buf, int count);
 int i2cRequest(I2C_STATE *dev, int address, int count);
-int i2cReceive(I2C_STATE *dev);
+int i2cGetByte(I2C_STATE *dev);
 
 #if defined(__cplusplus)
 }

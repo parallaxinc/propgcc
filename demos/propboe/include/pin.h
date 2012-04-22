@@ -37,19 +37,24 @@ extern "C" {
 #define LOW     0
 
 /* set pin direction */
-void input(int pin);
-void output(int pin);
+void pinInput(int pin);
+void pinOutput(int pin);
+void pinReverse(int pin);
+int pinGetDirection(int pin);
+void pinSetDirection(int pin, int direction);
 
 /* get/set pin state */
-int getPin(int pin);
-void setPin(int pin, int value);
-void high(int pin);
-void low(int pin);
-void toggle(int pin);
+int pinGet(int pin);
+int pinGetField(int high, int low);
+void pinSet(int pin, int value);
+void pinSetField(int high, int low, int value);
+void pinHigh(int pin);
+void pinLow(int pin);
+void pinToggle(int pin);
 
 /* pulse input/output */
-int pulseIn(int pin, int state);
-void pulseOut(int pin, int duration);
+int pinPulseIn(int pin, int state);
+void pinPulseOut(int pin, int duration);
 
 #if defined(__cplusplus)
 }

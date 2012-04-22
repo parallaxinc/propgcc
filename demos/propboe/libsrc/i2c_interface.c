@@ -75,7 +75,7 @@ int i2cBegin(I2C_STATE *dev, int address)
     return 0;
 }
 
-int i2cSend(I2C_STATE *dev, int byte)
+int i2cAddByte(I2C_STATE *dev, int byte)
 {
     if (dev->count > I2C_BUFFER_MAX)
         return -1;
@@ -83,7 +83,7 @@ int i2cSend(I2C_STATE *dev, int byte)
     return 0;
 }
 
-int i2cEnd(I2C_STATE *dev)
+int i2cSend(I2C_STATE *dev)
 {
     dev->mailbox.buffer = dev->buffer;
     dev->mailbox.count = dev->count;
@@ -127,7 +127,7 @@ int i2cRequest(I2C_STATE *dev, int address, int count)
     return dev->mailbox.sts == I2C_OK ? 0 : -1;
 }
 
-int i2cReceive(I2C_STATE *dev)
+int i2cGetByte(I2C_STATE *dev)
 {
     if (dev->index >= dev->count)
         return -1;
