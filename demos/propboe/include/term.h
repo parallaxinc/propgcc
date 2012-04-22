@@ -1,5 +1,5 @@
-#ifndef __TERM_H__
-#define __TERM_H__
+#ifndef __termH__
+#define __termH__
 
 #ifdef __cplusplus
 extern "C" 
@@ -34,39 +34,39 @@ struct TERM {
 #define TERM_COLORTABLE_SIZE	(TERM_COLORS*2)
 
 /*
- * Term clearScreen function clears the screen.
+ * termClearScreen function clears the screen.
  * See header file for more details.
  */
-void Term_clearScreen(TERM *term);
+void termClearScreen(TERM *term);
 
 /**
- * Term str function prints a string at current position
+ * termStr function prints a string at current position
  * @param sptr is string to print
  */
-void Term_str(TERM *term, const char* sptr);
+void termStr(TERM *term, const char* sptr);
 
 /**
- * Term dec function prints a decimal number at current position
+ * Term Dec function prints a decimal number at current position
  * @param value is number to print
  */
-void Term_dec(TERM *term, int value);
+void termDec(TERM *term, int value);
 
 /**
- * Term hex function prints a hexadecimal number at current position
- * @param value is number to print
- * @param digits is number of digits in value to print
- */
-void Term_hex(TERM *term, int value, int digits);
-
-/**
- * Term bin function prints a binary number at current position
+ * Term Hex function prints a hexadecimal number at current position
  * @param value is number to print
  * @param digits is number of digits in value to print
  */
-void Term_bin(TERM *term, int value, int digits);
+void termHex(TERM *term, int value, int digits);
 
 /**
- * Term out function prints a character at current position or performs
+ * Term Bin function prints a binary number at current position
+ * @param value is number to print
+ * @param digits is number of digits in value to print
+ */
+void termBin(TERM *term, int value, int digits);
+
+/**
+ * Term Out function prints a character at current position or performs
  * a screen function based on the following table:
  *
  *    $00 = clear screen
@@ -82,10 +82,10 @@ void Term_bin(TERM *term, int value, int digits);
  * @param value is number to print
  * @param digits is number of digits in value to print
  */
-int Term_out(TERM *term, int c);
+int termOut(TERM *term, int c);
 
 /**
- * Term setcolors function sets the palette to that defined by pointer.
+ * Term Setcolors function sets the palette to that defined by pointer.
  *
  * Override default color palette
  * palette must point to a list of up to 8 colors
@@ -100,103 +100,108 @@ int Term_out(TERM *term, int c);
  *
  * @param palette is a char array[16].
  */
-void Term_setColorPalette(TERM *term, const char* palette);
+void termSetColorPalette(TERM *term, const char* palette);
 
 /**
- * Term setTileColor sets tile data color at x,y position
+ * Term SetTileColor sets tile data color at x,y position
  * @param x is current x screen position
  * @param y is current y screen position
  */
-int Term_getTileColor(TERM *term, int x, int y);
+int termGetTileColor(TERM *term, int x, int y);
 
 /**
- * Term setTileColor sets tile data color at x,y position
+ * Term SetTileColor sets tile data color at x,y position
  * @param x is current x screen position
  * @param y is current y screen position
  * @param color is color to set
  */
-void Term_setTileColor(TERM *term, int x, int y, int color);
+void termSetTileColor(TERM *term, int x, int y, int color);
 
 /**
- * Term setCurPositon function sets position to x,y.
+ * Term SetCurPositon function sets position to x,y.
  * @param x is column counted from left.
  * @param y is row counted from top.
  */
-void Term_setCurPosition(TERM *term, int x, int y);
+void termSetCurPosition(TERM *term, int x, int y);
 
 /**
- * Term setCoordPosition function sets position to cartesian x,y.
+ * Term SetCoordPosition function sets position to cartesian x,y.
  * @param x is column counted from left.
  * @param y is row counted from bottom.
  */
-void Term_setCoordPosition(TERM *term, int x, int y);
+void termSetCoordPosition(TERM *term, int x, int y);
 
 /**
- * Term setXY function sets position to x,y.
+ * Term SetXY function sets position to x,y.
  * @param x is column counted from left.
  * @param y is row counted from top.
  */
-void Term_setXY(TERM *term, int x, int y);
+void termSetXY(TERM *term, int x, int y);
 
 /**
- * Term setX function sets column position value
+ * Term SetX function sets column position value
  * @param value is new column position
  */
-void Term_setX(TERM *term, int value);
+void termSetX(TERM *term, int value);
 
 /**
- * Term setY function sets row position value
+ * Term SetY function sets row position value
  * @param value is new row position
  */
-void Term_setY(TERM *term, int value);
+void termSetY(TERM *term, int value);
 
 /**
- * Term getX function gets column position
+ * Term GetX function gets column position
  * @returns column position
  */
-int Term_getX(TERM *term);
+int termGetX(TERM *term);
 
 /**
- * Term getY function gets row position
+ * Term GetY function gets row position
  * @returns row position
  */
-int Term_getY(TERM *term);
+int termGetY(TERM *term);
 
 /**
- * Term setColors function sets palette color set index
+ * Term SetColors function sets palette color set index
  * @param value is a color set index number 0 .. 7
  */
-void Term_setColors(TERM *term, int value);
+void termSetColors(TERM *term, int value);
 
 /**
- * Term getColors function gets palette color set index
+ * Term GetColors function gets palette color set index
  * @returns number representing color set index
  */
-int Term_getColors(TERM *term);
+int termGetColors(TERM *term);
 
 /**
- * Term getWidth function gets screen width.
+ * Term GetColumns function gets screen width.
  * @returns screen column count.
  */
-int Term_getColumns(TERM *term);
+int termGetColumns(TERM *term);
 
 /**
- * Term getHeight function gets screen height.
+ * Term GetRows function gets screen height.
  * @returns screen row count.
  */
-int Term_getRows(TERM *term);
+int termGetRows(TERM *term);
 
 /**
- * Term print null terminated char* to screen with normal stdio definitions
+ * Term Print null terminated char* to screen with normal stdio definitions
  * @param s is null terminated string to print using putchar
  */
-void Term_print(TERM *term, const char* s);
+void termPrint(TERM *term, const char* s);
 
 /**
- * Term putchar print char to screen with normal stdio definitions
+ * Term PutChar print char to screen with normal stdio definitions
  * @param c is character to print
  */
-int Term_putchar(TERM *term, int c);
+int termPutChar(TERM *term, int c);
+
+/**
+ * Term NewLine go to the start of a new line
+ */
+void termNewLine(TERM *term);
 
 #ifdef __cplusplus
 }
