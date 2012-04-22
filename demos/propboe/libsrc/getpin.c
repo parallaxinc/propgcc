@@ -22,9 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "pin.h"
 
-int getPin(int pin)
+int pinGet(int pin)
 {
     uint32_t mask = 1 << pin;
-    DIRA &= ~mask;
     return (INA & mask) ? 1 : 0;
 }

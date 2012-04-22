@@ -1,4 +1,4 @@
-/* setdir.h - set the direction of a pin
+/* setdir.c - set the direction of a pin
 
 Copyright (c) 2012 David Michael Betz
 
@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "pin.h"
 
-void setDir(int pin, int dir)
+void pinSetDirection(int pin, int dir)
 {
     uint32_t mask = 1 << pin;
     uint32_t data = (dir & 1) << pin;

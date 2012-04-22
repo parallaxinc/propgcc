@@ -1,4 +1,4 @@
-/* pinreversedir.c - implementation of the pinReverseDirection function
+/* reversedir.c - implementation of the pinReverseDirection function
 
 Copyright (c) 2012 David Michael Betz
 

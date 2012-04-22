@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "pin.h"
 
-int getDir(int pin)
+int pinGetDirection(int pin)
 {
     uint32_t mask = 1 << pin;
     return (DIRA & mask) ? 1 : 0;
