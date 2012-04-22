@@ -9,7 +9,7 @@ static TERM_OPS ops = {
 	NULL
 };
 
-TERM *serialTerm_start(TERM_SERIAL *serialTerm, FILE *fp)
+TERM *serialTermStart(TERM_SERIAL *serialTerm, FILE *fp)
 {
     TERM *term = &serialTerm->term;
     term->ops = &ops;
@@ -17,7 +17,7 @@ TERM *serialTerm_start(TERM_SERIAL *serialTerm, FILE *fp)
     return term;
 }
 
-void serialTerm_stop(TERM *term)
+void serialTermStop(TERM *term)
 {
 	TERM_SERIAL *serialTerm = (TERM_SERIAL *)term;
 	fflush(serialTerm->fp);

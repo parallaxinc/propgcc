@@ -18,7 +18,7 @@ static char default_palette[TERM_COLORTABLE_SIZE] =
 static int vblank(TERM *term);
 
 static TERM_OPS ops = {
-	Term_out,
+	termOut,
 	vblank
 };
 
@@ -26,7 +26,7 @@ static TERM_OPS ops = {
  * VGA_Text start function starts VGA on a cog
  * See header file for more details.
  */
-TERM *vgaTerm_start(TERM_VGA *vgaTerm, int basepin)
+TERM *vgaTermStart(TERM_VGA *vgaTerm, int basepin)
 {
     TERM *term = &vgaTerm->term;
     vgaText_t *vgaText = &vgaTerm->control;
@@ -69,10 +69,10 @@ TERM *vgaTerm_start(TERM_VGA *vgaTerm, int basepin)
     vgaTerm->cogid = LAUNCHCOG(VGA, (void*)vgaText);
     
     // set main fg/bg color here
-    Term_setColorPalette(term, default_palette);
+    termSetColorPalette(term, default_palette);
 
     // blank the screen
-    Term_clearScreen(term);
+    termClearScreen(term);
     
     return term;
 }
@@ -81,7 +81,7 @@ TERM *vgaTerm_start(TERM_VGA *vgaTerm, int basepin)
  * VGA_Text stop function stops VGA cog
  * See header file for more details.
  */
-void vgaTerm_stop(TERM *term)
+void vgaTermStop(TERM *term)
 {
 	TERM_VGA *vgaTerm = (TERM_VGA *)term;
     if(vgaTerm->cogid) {

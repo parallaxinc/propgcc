@@ -14,8 +14,8 @@ typedef struct {
 	FILE *fp;
 } TERM_SERIAL;
 
-TERM *serialTerm_start(TERM_SERIAL *serialTerm, FILE *fp);
-void serialTerm_stop(TERM *term);
+TERM *serialTermStart(TERM_SERIAL *serialTerm, FILE *fp);
+void serialTermStop(TERM *term);
 
 #ifdef __cplusplus
 }

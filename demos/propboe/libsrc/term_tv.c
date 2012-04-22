@@ -20,7 +20,7 @@ static char default_palette[TERM_COLORTABLE_SIZE] =
 static int vblank(TERM *term);
 
 static TERM_OPS ops = {
-	Term_out,
+	termOut,
 	vblank
 };
 
@@ -65,10 +65,10 @@ TERM *tvTerm_start(TERM_TV *tvTerm, int basepin)
     tvTerm->cogid = LAUNCHCOG(TV, (void *)tvText) + 1;
 
     // set main fg/bg color
-    Term_setColorPalette(term, default_palette);
+    termSetColorPalette(term, default_palette);
 
     // blank the screen
-    Term_clearScreen(term);
+    termClearScreen(term);
 
     return term;
 }

@@ -61,8 +61,8 @@ typedef struct {
 	int cogid;
 } TERM_TV;
 
-TERM *tvTerm_start(TERM_TV *tvTerm, int basepin);
-void tvTerm_stop(TERM *term);
+TERM *tvTermStart(TERM_TV *tvTerm, int basepin);
+void tvTermStop(TERM *term);
 
 #ifdef __cplusplus
 }

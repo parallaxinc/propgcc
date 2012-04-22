@@ -1,24 +1,24 @@
 #include "term.h"
 
 static void printc(TERM *term, int c);
-static void newline(TERM *term);
+static void termNewLine(TERM *term);
 static void wordfill(uint16_t *dst, uint16_t val, int len);
 static void wordmove(uint16_t *dst, uint16_t *src, int len);
 
 /*
- * Term clearScreen function clears the screen.
+ * Term ClearScreen function clears the screen.
  * See header file for more details.
  */
-void Term_clearScreen(TERM *term)
+void termClearScreen(TERM *term)
 {
     wordfill(term->screen, TERM_BLANK, term->screensize);
 }
 
 /*
- * Term setcolors function sets the palette to that defined by pointer.
+ * Term Setcolors function sets the palette to that defined by pointer.
  * See header file for more details.
  */
-void Term_setColorPalette(TERM *term, const char* ptr)
+void termSetColorPalette(TERM *term, const char* ptr)
 {
     int  ii = 0;
     uint8_t  fg = 0;
@@ -34,10 +34,10 @@ void Term_setColorPalette(TERM *term, const char* ptr)
 }
 
 /*
- * Term getTile gets tile data from x,y position
+ * Term GetTile gets tile data from x,y position
  * See header file for more details.
  */
-int Term_getTile(TERM *term, int x, int y)
+int termGetTile(TERM *term, int x, int y)
 {
     if(x >= term->cols)
         return 0; 
@@ -47,10 +47,10 @@ int Term_getTile(TERM *term, int x, int y)
 }
 
 /*
- * Term setTileColor sets tile data color at x,y position
+ * Term GetTileColor gets tile data color at x,y position
  * See header file for more details.
  */
-int Term_getTileColor(TERM *term, int x, int y)
+int termGetTileColor(TERM *term, int x, int y)
 {
     int shift  = 11;
     int   mask = ((TERM_COLORS-1) << shift);
@@ -68,10 +68,10 @@ int Term_getTileColor(TERM *term, int x, int y)
 
 
 /*
- * Term setTile sets tile data at x,y position
+ * Term SetTile sets tile data at x,y position
  * See header file for more details.
  */
-void Term_setTile(TERM *term, int x, int y, int tile)
+void termSetTile(TERM *term, int x, int y, int tile)
 {
     if(x >= term->cols)
         return; 
@@ -81,10 +81,10 @@ void Term_setTile(TERM *term, int x, int y, int tile)
 }
 
 /*
- * Term setTileColor sets tile data color at x,y position
+ * Term SetTileColor sets tile data color at x,y position
  * See header file for more details.
  */
-void Term_setTileColor(TERM *term, int x, int y, int color)
+void termSetTileColor(TERM *term, int x, int y, int color)
 {
     uint16_t tile = 0;
     int shift  = 11;
@@ -107,10 +107,10 @@ void Term_setTileColor(TERM *term, int x, int y, int color)
 }
 
 /*
- * Term str function prints a string at current position
+ * Term Str function prints a string at current position
  * See header file for more details.
  */
-void Term_str(TERM *term, const char* sptr)
+void termStr(TERM *term, const char* sptr)
 {
     while(*sptr) {
         (*term->ops->putch)(term, *(sptr++));
@@ -118,10 +118,10 @@ void Term_str(TERM *term, const char* sptr)
 }
 
 /*
- * Term dec function prints a decimal number at current position
+ * Term Dec function prints a decimal number at current position
  * See header file for more details.
  */
-void Term_dec(TERM *term, int value)
+void termDec(TERM *term, int value)
 {
     int n = value;
     int len = 10;
@@ -148,10 +148,10 @@ void Term_dec(TERM *term, int value)
 }
 
 /*
- * Term hex function prints a hexadecimal number at current position
+ * Term Hex function prints a hexadecimal number at current position
  * See header file for more details.
  */
-void Term_hex(TERM *term, int value, int digits)
+void termHex(TERM *term, int value, int digits)
 {
     int ndx;
     char hexlookup[] =
@@ -167,10 +167,10 @@ void Term_hex(TERM *term, int value, int digits)
 
 
 /*
- * Term bin function prints a binary number at current position
+ * Term Bin function prints a binary number at current position
  * See header file for more details.
  */
-void Term_bin(TERM *term, int value, int digits)
+void termBin(TERM *term, int value, int digits)
 {
     int bit = 0;
     while(digits-- > 0) {
@@ -180,11 +180,11 @@ void Term_bin(TERM *term, int value, int digits)
 }
 
 /*
- * Term out function prints a character at current position or performs
+ * Term Out function prints a character at current position or performs
  * a screen function.
  * See header file for more details.
  */
-int Term_out(TERM *term, int c)
+int termOut(TERM *term, int c)
 {
 if(term->flag == 0)
     {
@@ -214,7 +214,7 @@ if(term->flag == 0)
                 term->flag = c;
                 return c;
             case 0xD:
-                newline(term);
+                termNewLine(term);
                 break;
             default:
                 printc(term, c);
@@ -238,21 +238,21 @@ if(term->flag == 0)
 }
 
 /*
- * Term Term_print null terminated char* to screen with normal stdio definitions
+ * Term termPrint null terminated char* to screen with normal stdio definitions
  * See header file for more details.
  */
-void Term_print(TERM *term, const char* s)
+void termPrint(TERM *term, const char* s)
 {
     while(*s) {
-        Term_putchar(term, *(s++));
+        termPutChar(term, *(s++));
     }
 }
 
 /*
- * Term Term_putchar print char to screen with normal stdio definitions
+ * Term termPutChar print char to screen with normal stdio definitions
  * See header file for more details.
  */
-int Term_putchar(TERM *term, int c)
+int termPutChar(TERM *term, int c)
 {
     switch(c)
     {
@@ -266,7 +266,7 @@ int Term_putchar(TERM *term, int c)
             } while(term->col & 7);
             break;
         case '\n':
-            newline(term);
+            termNewLine(term);
             break;
         case '\r':
             term->col = 0;
@@ -279,103 +279,103 @@ int Term_putchar(TERM *term, int c)
 }
 
 /*
- * Term setCurPosition function sets position to x,y.
+ * Term SetCurPosition function sets position to x,y.
  * See header file for more details.
  */
-void Term_setCurPosition(TERM *term, int x, int y)
+void termSetCurPosition(TERM *term, int x, int y)
 {
     term->col = x;
     term->row = y;
 }
 
 /*
- * Term setCoordPosition function sets position to Cartesian x,y.
+ * Term SetCoordPosition function sets position to Cartesian x,y.
  * See header file for more details.
  */
-void Term_setCoordPosition(TERM *term, int x, int y)
+void termSetCoordPosition(TERM *term, int x, int y)
 {
     term->col = x;
     term->row = term->rows-y-1;
 }
 
 /*
- * Term setXY function sets position to x,y.
+ * Term SetXY function sets position to x,y.
  * See header file for more details.
  */
-void Term_setXY(TERM *term, int x, int y)
+void termSetXY(TERM *term, int x, int y)
 {
     term->col = x;
     term->row = y;
 }
 
 /*
- * Term setX function sets column position value
+ * Term SetX function sets column position value
  * See header file for more details.
  */
-void Term_setX(TERM *term, int value)
+void termSetX(TERM *term, int value)
 {
     term->col = value;
 }
 
 /*
- * Term setY function sets row position value
+ * Term SetY function sets row position value
  * See header file for more details.
  */
-void Term_setY(TERM *term, int value)
+void termSetY(TERM *term, int value)
 {
     term->row = value;
 }
 
 /*
- * Term getX function gets column position
+ * Term GetX function gets column position
  * See header file for more details.
  */
-int Term_getX(TERM *term)
+int termGetX(TERM *term)
 {
     return term->col;
 }
 
 /*
- * Term getY function gets row position
+ * Term GetY function gets row position
  * See header file for more details.
  */
-int Term_getY(TERM *term)
+int termGetY(TERM *term)
 {
     return term->row;
 }
 
 /*
- * Term setColors function sets palette color set index
+ * Term SetColors function sets palette color set index
  * See header file for more details.
  */
-void Term_setColors(TERM *term, int value)
+void termSetColors(TERM *term, int value)
 {
     term->color = value % TERM_COLORS;
 }
 
 /*
- * Term getColors function gets palette color set index
+ * Term GetColors function gets palette color set index
  * See header file for more details.
  */
-int Term_getColors(TERM *term)
+int termGetColors(TERM *term)
 {
     return term->color % TERM_COLORS;
 }
 
 /*
- * Term getWidth function gets screen width.
+ * Term GetColumns function gets screen width.
  * See header file for more details.
  */
-int Term_getColumns(TERM *term)
+int termGetColumns(TERM *term)
 {
     return term->cols;
 }
 
 /*
- * Term getHeight function gets screen height.
+ * Term getRows function gets screen height.
  * See header file for more details.
  */
-int Term_getRows(TERM *term)
+int termGetRows(TERM *term)
 {
     return term->rows;
 }
@@ -405,14 +405,14 @@ static void printc(TERM *term, int c)
     //term->screen[term->row * term->cols + term->col] = val; // fails ... don't know why
 
     if (++term->col == term->cols) {
-        newline(term);
+        termNewLine(term);
     }
 }
 
 /*
  * print a new line
  */
-static void newline(TERM *term)
+void termNewLine(TERM *term)
 {
     uint16_t* sp = term->screen;
     term->col = 0;

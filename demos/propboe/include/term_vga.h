@@ -68,8 +68,8 @@ typedef struct {
 	int cogid;
 } TERM_VGA;
 
-TERM *vgaTerm_start(TERM_VGA *vgaTerm, int basepin);
-void vgaTerm_stop(TERM *term);
+TERM *vgaTermStart(TERM_VGA *vgaTerm, int basepin);
+void vgaTermStop(TERM *term);
 
 #ifdef __cplusplus
 }

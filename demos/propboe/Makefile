@@ -1,19 +1,18 @@
-TARGETS=boetest.elf compass.elf xbee.elf
+TARGETS=boetest.elf
 
 CC=propeller-elf-gcc
 CXX=propeller-elf-gcc
 RM=rm -f
 
 CFLAGS=-Os -Wall -mlmm -Iinclude
-CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti
 LDFLAGS=-mlmm -Llib
 
-LIBS=-lboe
+LIBS=-lprop
 
 all:	libboe $(TARGETS)
 
-%.elf:	%.cpp
-	$(CC) $(CXXFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
+%.elf:	%.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
 	
 libboe:
 	$(MAKE) -C libsrc
