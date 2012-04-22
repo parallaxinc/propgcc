@@ -313,15 +313,14 @@ read_jedec_id
         ror     t1, #8             ' save mfg id
         call    #spiRecvByte       ' memory type
         movs    t1, data
-        ror     t1, #8             ' save dev type
-        call    #spiRecvByte       ' device capacity
-        movs    t1, data           ' save dev type
-        rol     t1, #16            ' data 00ccttmm c=capacity, t=type, m=mfgid
+        rol     t1, #8             ' shift to the correct bits
         call    #release
 read_jedec_id_ret
         ret
-
-' sst spi functions
+        
+' ****************************
+' SST SST26VF016 SPI FUNCTIONS
+' ****************************
 
 #ifdef SST
 
@@ -394,10 +393,7 @@ sst_read_jedec_id
         ror     t1, #8             ' save mfg id
         call    #sqiRecvByte       ' memory type
         movs    t1, data
-        ror     t1, #8             ' save dev type
-        call    #sqiRecvByte       ' device capacity
-        movs    t1, data           ' save dev type
-        rol     t1, #16            ' data 00ccttmm c=capacity, t=type, m=mfgid
+        rol     t1, #8             ' merge with mfg id
         call    #release
 sst_read_jedec_id_ret
         ret
@@ -422,7 +418,7 @@ sst_start_quad_spi_cmd_1_ret
 sst_start_quad_spi_cmd_ret
         ret
         
-jedec_id            long    $000126bf    ' value of t1 after read_jedec_id routine (SST26VF016)
+jedec_id            long    $000026bf    ' value of t1 after read_jedec_id routine (SST26VF016)
 
 sst_rdjedecid       long    $af000000    ' read the manufacturers id, device type and device id
 sst_quadmode        long    $38          ' enable quad mode
@@ -431,7 +427,9 @@ sst_read            long    $0b000000    ' flash read command
 
 #endif
 
-' winbond spi functions
+' ******************************
+' WINBOND W25Q80BV SPI FUNCTIONS
+' ******************************
 
 #ifdef WINBOND
 
@@ -538,13 +536,17 @@ winbond_start_quad_spi_cmd_1_ret
 winbond_start_quad_spi_cmd_ret
         ret
         
-jedec_id            long    $001440ef    ' value of t1 after read_jedec_id routine (W25Q80BV)
+jedec_id            long    $000040ef    ' value of t1 after read_jedec_id routine (W25Q80BV)
 
 winbond_wrstatus    long    $01000000    ' write status
 winbond_program     long    $32000000    ' flash program byte/page
 winbond_read        long    $e3000000    ' flash read command
 
 #endif
+
+' **********************************
+' END OF CHIP SPECIFIC SPI FUNCTIONS
+' **********************************
 
 frdjedecid          long    $9f          ' read the manufacturers id, device type and device id
 ferase4kblk         long    $20000000    ' flash erase a 4k block
@@ -738,7 +740,5 @@ ptr         long    0
 count       long    0
 
 flashmask   long    $00ffffff       ' mask to isolate the flash offset bits
-
-ledmask     long    1<<15           ' BUG: for debugging
 
             FIT     496             ' out of 496
