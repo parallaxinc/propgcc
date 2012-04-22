@@ -1,4 +1,4 @@
-/* toggle.h - toggle a pin
+/* toggle.c - toggle a pin
 
 Copyright (c) 2012 David Michael Betz
 
@@ -26,5 +26,4 @@ void pinToggle(int pin)
 {
     uint32_t mask = 1 << pin;
     OUTA ^= mask;
-    DIRA |= mask;
 }

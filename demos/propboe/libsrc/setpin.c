@@ -1,4 +1,4 @@
-/* setpin.h - set the value of a pin
+/* setpin.c - set the value of a pin
 
 Copyright (c) 2012 David Michael Betz
 
@@ -22,10 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "pin.h"
 
-void setPin(int pin, int value)
+void pinSet(int pin, int value)
 {
     uint32_t mask = 1 << pin;
     uint32_t data = (value & 1) << pin;
     OUTA = (OUTA & ~mask) | data;
-    DIRA |= mask;
 }

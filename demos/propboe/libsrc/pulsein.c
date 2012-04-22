@@ -1,4 +1,4 @@
-/* pulsein.h - measure an incoming pulse
+/* pulsein.c - measure an incoming pulse
 
 Copyright (c) 2012 David Michael Betz
 

@@ -1,4 +1,4 @@
-/* pulseout.h - generate a timed pulse
+/* pulseout.c - generate a timed pulse
 
 Copyright (c) 2012 David Michael Betz
 

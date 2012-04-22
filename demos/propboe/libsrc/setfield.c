@@ -1,4 +1,4 @@
-/* pinsetfield.c - implementation of the pinSetField function
+/* setfield.c - implementation of the pinSetField function
 
 Copyright (c) 2012 David Michael Betz
 

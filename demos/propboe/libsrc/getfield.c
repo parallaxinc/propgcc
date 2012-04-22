@@ -1,4 +1,4 @@
-/* pingetfield.c - implementation of the pinGetField function
+/* getfield.c - implementation of the pinGetField function
 
 Copyright (c) 2012 David Michael Betz
 
