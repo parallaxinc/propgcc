@@ -189,7 +189,7 @@ vmflush movd    :flush, #0
         djnz    t1, #:flush
 
         ' start the command loop
-waitcmd 'mov     dira, #0                ' release the pins for other SPI clients
+waitcmd mov     dira, #0                ' release the pins for other SPI clients
         wrlong  zero, pvmcmd
 :wait   rdlong  vmpage, pvmcmd wz
   if_z  jmp     #:wait
@@ -223,7 +223,7 @@ miss    movd    mtest, line
         movd    mst, line
 lck_spi test    $, #0 wc                ' lock no-op: clear the carry bit
    if_c jmp     #lck_spi
-        'mov     dira, spidir            ' set the pins back so we can use them
+        mov     dira, spidir            ' set the pins back so we can use them
 mtest   test    0-0, dirty_mask wz
   if_z  jmp     #:rd                    ' current page is clean, just read new page
         mov     vmaddr, vmcurrent
@@ -232,7 +232,7 @@ mtest   test    0-0, dirty_mask wz
 :rd     mov     vmaddr, vmpage
         shl     vmaddr, offset_width
         call    #BREAD                  ' read new page
-        'mov     dira, #0                ' release the pins for other SPI clients
+        mov     dira, #0                ' release the pins for other SPI clients
 nlk_spi nop        
 mst     mov     0-0, vmpage
 miss_ret ret
@@ -244,7 +244,7 @@ extend  mov     vmaddr, vmpage
         shr     vmpage, #2
         and     vmpage, #7
         add     vmpage, #dispatch
-        'mov     dira, spidir            ' set the pins back so we can use them
+        mov     dira, spidir            ' set the pins back so we can use them
         jmp     vmpage
 
 dispatch
