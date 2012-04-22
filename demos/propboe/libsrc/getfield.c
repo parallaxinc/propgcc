@@ -1,4 +1,4 @@
-/* toggle.h - toggle a pin
+/* pingetfield.c - implementation of the pinGetField function
 
 Copyright (c) 2012 David Michael Betz
 
@@ -22,9 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "pin.h"
 
-void pinToggle(int pin)
+int pinGetField(int high, int low)
 {
-    uint32_t mask = 1 << pin;
-    OUTA ^= mask;
-    DIRA |= mask;
+    uint32_t mask;
+    
+    if (high < low) {
+        int swap = high;
+        high = low;
+        low = swap;
+    }
+    
+    mask = ((1 << (high - low + 1)) - 1) << low;
+
+    return (INA & mask) >> low;
 }

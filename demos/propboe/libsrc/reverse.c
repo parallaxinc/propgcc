@@ -1,4 +1,4 @@
-/* toggle.h - toggle a pin
+/* pinreversedir.c - implementation of the pinReverseDirection function
 
 Copyright (c) 2012 David Michael Betz
 
@@ -22,9 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "pin.h"
 
-void pinToggle(int pin)
+void pinReverseDirection(int pin)
 {
     uint32_t mask = 1 << pin;
-    OUTA ^= mask;
-    DIRA |= mask;
+    DIRA ^= mask;
 }

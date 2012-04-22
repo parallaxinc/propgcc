@@ -11,6 +11,7 @@ RM=rm -f
 
 OBJS = \
 getdir.o \
+getfield.o \
 getpin.o \
 high.o \
 i2c_interface.o \
@@ -21,6 +22,7 @@ pause.o \
 pulsein.o \
 pulseout.o \
 setdir.o \
+setfield.o \
 setpin.o \
 term.o \
 term_vga.o \

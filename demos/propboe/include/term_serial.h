@@ -7,7 +7,7 @@ extern "C"
 #endif
 
 #include <stdio.h>
-#include "term_common.h"
+#include "term.h"
 
 typedef struct {
 	TERM term;
