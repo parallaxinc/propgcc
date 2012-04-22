@@ -31,7 +31,7 @@
 
 CON
 
-  ' extra pin masks
+  ' protocol bits
   CS_CLR_PIN_MASK       = $01
   INC_PIN_MASK          = $02   ' for C3-style CS
   MUX_START_BIT_MASK    = $04   ' low order bit of mux field

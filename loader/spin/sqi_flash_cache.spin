@@ -29,6 +29,8 @@
   THE SOFTWARE.
 }
 
+'#define WINBOND
+
 CON
 
   ' protocol bits
@@ -155,8 +157,6 @@ init_vm mov     t1, par             ' get the address of the initialization stru
   if_nz shl     mask_inc, t4
   if_nz or      spidir, mask_inc
         
-        or      spidir, ledmask ' BUG: debugging code
-
         mov     index_count, #1
         shl     index_count, index_width
         mov     index_mask, index_count
