@@ -363,7 +363,6 @@ wait_until_done
         mov     cmd, frdstatus
         call    #start_spi_cmd_1
 :wait   call    #spiRecvByte
-'        test    data, #$80 wz
         test    data, #1 wz
   if_nz jmp     #:wait
         call    #release
