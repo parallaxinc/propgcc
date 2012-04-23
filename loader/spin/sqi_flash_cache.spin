@@ -30,6 +30,7 @@
 }
 
 '#define WINBOND
+'#define SST
 
 CON
 
@@ -281,11 +282,11 @@ write_data_handler
         rdlong  ptr, vmaddr     ' get the buffer pointer
         add     vmaddr, #4
         rdlong  count, vmaddr wz' get the byte count
+  if_z  mov     data, #0
   if_z  jmp     #:done
         add     vmaddr, #4
         rdlong  vmaddr, vmaddr  ' get the flash address (zero based)
         jmp     #:addr
-
 :loop   test    vmaddr, #$ff wz
   if_nz jmp     #:data
         call    #release
@@ -297,9 +298,8 @@ write_data_handler
         add     vmaddr, #1
         djnz    count, #:loop
         call    #release
-
-:done   call    #wait_until_done
-        wrlong  data, pvmaddr
+        call    #wait_until_done
+:done   wrlong  data, pvmaddr
         jmp     #waitcmd
 
 ' spi commands
@@ -327,7 +327,7 @@ read_jedec_id_ret
 flash_init
         call    #sst_read_jedec_id
         cmp     t1, jedec_id wz
-  if_z  jmp     #:check
+  if_z  jmp     #:unprot
         call    #read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
@@ -335,9 +335,19 @@ flash_init
         mov     data, sst_quadmode
         call    #spiSendByte
         call    #release
-:check  call    #sst_read_jedec_id
+        call    #sst_read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
+:unprot call    #sst_write_enable
+        mov     cmd, sst_wrblkprot
+        mov     bytes, #4
+        call    #sst_start_quad_spi_cmd
+        mov     data, #0
+        call    #sqiSendByte    ' byte 4
+        call    #sqiSendByte    ' byte 5
+        call    #sqiSendByte    ' byte 6
+        ' BUG: 4 more bytes are necessary for the SST26VF032 chip
+        call    #release
 flash_init_ret
         ret
 
@@ -367,8 +377,10 @@ start_read
         mov     cmd, vmaddr
         and     cmd, flashmask
         or      cmd, sst_read
-        mov     bytes, #5
+        mov     bytes, #4
         call    #sst_start_quad_spi_cmd
+        mov     data, #0
+        call    #sqiSendByte
         andn    dira, sio_mask
 start_read_ret
         ret
@@ -422,6 +434,7 @@ jedec_id            long    $000026bf    ' value of t1 after read_jedec_id routi
 
 sst_rdjedecid       long    $af000000    ' read the manufacturers id, device type and device id
 sst_quadmode        long    $38          ' enable quad mode
+sst_wrblkprot       long    $42000000    ' write block protect register
 sst_program         long    $02000000    ' flash program byte/page
 sst_read            long    $0b000000    ' flash read command
 
