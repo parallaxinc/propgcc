@@ -21,13 +21,16 @@
 	.global __LMM_entry
 __LMM_entry
 r0	mov	sp, PAR
-r1	mov	r0, sp
-r2	cmp	sp,r14	wz	' see if stack is at top of memory
-r3 IF_NE jmp    #r7		' if not, skip some stuff
+r1	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
+r2  IF_NE    jmp    #not_first_cog	' if not, skip some stuff
+	
 	'' initialization for first time run
-r4      locknew	__TMP0 wc	' allocate a lock
-r5 IF_NC wrlong __TMP0, __C_LOCK_PTR	' save it to ram if successful
+r3      locknew	__TMP0 wc	' allocate a lock
+r4	or	__TMP0, #256	' in case lock is 0, make the 32 bit value nonzero
+r5      wrlong __TMP0, __C_LOCK_PTR	' save it to ram
 r6      jmp    #__LMM_loop
+
+not_first_cog
 	'' initialization for non-primary cogs
 r7      rdlong pc,sp		' if user stack, pop the pc
 r8      add	sp,#4
@@ -36,7 +39,8 @@ r10     add	sp,#4
 r11     rdlong __TLS,sp	' and the _TLS variable
 r12     add	sp,#4
 r13	jmp	#__LMM_loop
-r14	long	0x00008000
+r14	nop
+	
 r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
@@ -291,7 +295,7 @@ __C_LOCK_PTR
 	.global __CMPSWAPSI_ret
 __CMPSWAPSI
 	'' get the C_LOCK
-	rdlong	__TMP1,__C_LOCK_PTR
+	rdbyte	__TMP1,__C_LOCK_PTR
 	mov	__TMP0,r0	'' save value to set
 .swaplp
 	lockset	__TMP1 wc
@@ -377,4 +381,7 @@ __LMM_FCACHE_START
 	''
 	'' global variables
 	''
-	.comm __C_LOCK,4,4
+	.data
+__C_LOCK
+	long	0
+
