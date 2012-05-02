@@ -69,6 +69,7 @@ DAT
 '   if MUX_START_BIT_MASK ($04) is set, then byte bb contains the starting bit number of the mux field
 '   if MUX_WIDTH_MASK ($08) is set, then byte cc contains the width of the mux field
 '   if ADDR_MASK ($10) is set, then byte dd contains either the C3-style address or the value to write to the mux field
+'   if QUAD_SPI_HACK_MASK ($20) is set, assume that pins miso+1 and miso+2 are /WP and /HOLD and assert them
 ' example:
 '   for a simple single pin CS you should set the protocol byte to $01 and place the CS pin number in byte aa.
 ' the cache line mask is returned in $0
