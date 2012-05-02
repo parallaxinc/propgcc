@@ -66,6 +66,16 @@ typedef struct {
     uint16_t numlocals;
 } SpinObj;
 
+/* variable patch table entry */
+typedef struct {
+    char *configName;
+    char *variableName;
+} VariablePatch;
+
+/* These are user variables that, if they exist in the elf file, will be patched
+   with the corresponding values from the board configuration file. */
+extern VariablePatch variablePatchTable[];
+
 /* loader.c */
 void ShowPorts(char *prefix);
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);

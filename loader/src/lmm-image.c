@@ -7,6 +7,8 @@
 #include "PLoadLib.h"
 #include "osint.h"
 
+static void PatchLmmImageVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start);
+
 uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize)
 {
     uint32_t start, imageSize;
@@ -35,7 +37,7 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     }
     
     /* patch the program with values from the config file */
-    PatchImageVariables(config, c, imagebuf, start);
+    PatchLmmImageVariables(config, c, imagebuf, start);
     
     /* fixup the header to point past the spin bytecodes and generated PASM code */
     hdr = (SpinHdr *)imagebuf;
@@ -54,6 +56,20 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     *pStart = start;
     *pImageSize = imageSize;
     return imagebuf;
+}
+
+static void PatchLmmImageVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start)
+{
+    VariablePatch *patch = variablePatchTable;
+    while (patch->configName) {
+        int value;
+        if (GetNumericConfigField(config, patch->configName, &value)) {
+            ElfSymbol symbol;
+            if (FindElfSymbol(c, patch->variableName, &symbol))
+                *(uint32_t *)(imagebuf + symbol.value) = value;
+        }
+        ++patch;
+    }
 }
 
 void UpdateChecksum(uint8_t *imagebuf, int imageSize)
