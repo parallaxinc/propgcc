@@ -785,7 +785,7 @@ static int WriteBuffer(uint8_t *buf, int size)
             cnt = PKTMAXLEN;
         printf("%d bytes remaining             \r", remaining); fflush(stdout);
         if (!SendPacket(TYPE_DATA, buf, cnt))
-            return Error("SendPacket DATA failed\n");
+            return Error("SendPacket DATA failed");
     }
     printf("%d bytes sent             \n", size);
 
@@ -831,7 +831,7 @@ int WriteFileToSDCard(BoardConfig *config, char *path, char *target)
         printf("%ld bytes remaining             \r", remaining); fflush(stdout);
         if (!SendPacket(TYPE_DATA, buf, cnt)) {
             fclose(fp);
-            return Error("SendPacket DATA failed\n");
+            return Error("SendPacket DATA failed");
         }
         remaining -= cnt;
     }
