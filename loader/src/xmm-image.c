@@ -54,7 +54,8 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
 {
     ElfProgramHdr program, program_kernel, program_header, program_hub;
     int dataSize, initTableSize, imageSize, ki, hi, si, i;
-    InitSection *initSection;
+    InitSection *initSectionTable, *initSection;
+    VariablePatch *patch = variablePatchTable;
     uint8_t *imagebuf, *buf;
     uint32_t endAddress;
     ImageHdr *image;
@@ -136,9 +137,6 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
         }
     }
     
-    /* patch the program with values from the config file */
-    //PatchImageVariables(config, c, imagebuf, program_header.paddr);
-    
     /* fill in the image header */
     image = (ImageHdr *)imagebuf;
     image->initCount = initTableSize;
@@ -148,7 +146,7 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
     printf("populate init table\n");
 #endif
-    initSection = (InitSection *)(imagebuf + dataSize);
+    initSectionTable = initSection = (InitSection *)(imagebuf + dataSize);
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program)) {
             free(imagebuf);
@@ -169,6 +167,27 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
         }
     }
     
+    /* patch user variables with values from the configuration file */
+    for (patch = variablePatchTable; patch->configName; ++patch) {
+        int value;
+        if (GetNumericConfigField(config, patch->configName, &value)) {
+            ElfSymbol symbol;
+            if (FindElfSymbol(c, patch->variableName, &symbol)) {
+                int cnt = image->initCount;
+                initSection = initSectionTable;
+                while (--cnt >= 0) {
+                    if (symbol.value >= initSection->vaddr && symbol.value < initSection->vaddr + initSection->size) {
+                        uint32_t offset = initSection->paddr - program_header.paddr;
+                        offset += symbol.value - initSection->vaddr;
+                        *(uint32_t *)(imagebuf + offset) = value;
+                        continue;
+                    }
+                    ++initSection;
+                }
+            }
+        }
+    }
+
     /* return the image */
     *pLoadAddress = program_header.paddr;
     *pImageSize = imageSize;

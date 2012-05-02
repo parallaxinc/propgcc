@@ -110,7 +110,6 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
-static void PatchVariable(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start, char *cname, char *vname);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 
@@ -767,28 +766,25 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     return TRUE;
 }
 
-void PatchImageVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start)
-{
-    PatchVariable(config, c, imagebuf, start, "baudrate",   "__baudrate");
-    PatchVariable(config, c, imagebuf, start, "sdspi-do",   "__sdspi_do");
-    PatchVariable(config, c, imagebuf, start, "sdspi-clk",  "__sdspi_clk");
-    PatchVariable(config, c, imagebuf, start, "sdspi-di",   "__sdspi_di");
-    PatchVariable(config, c, imagebuf, start, "sdspi-cs",   "__sdspi_cs");
-    PatchVariable(config, c, imagebuf, start, "sdspi-sel",  "__sdspi_sel");
-    PatchVariable(config, c, imagebuf, start, "sdspi-inc",  "__sdspi_inc");
-    PatchVariable(config, c, imagebuf, start, "sdspi-mask", "__sdspi_mask");
-    PatchVariable(config, c, imagebuf, start, "sdspi-addr", "__sdspi_addr");
-}
-
-static void PatchVariable(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start, char *cname, char *vname)
-{
-    int value;
-    if (GetNumericConfigField(config, cname, &value)) {
-        ElfSymbol symbol;
-        if (FindElfSymbol(c, vname, &symbol))
-            *(uint32_t *)(imagebuf + symbol.value) = value;
-    }
-}
+/* These are user variables that, if they exist in the elf file, will be patched
+   with the corresponding values from the board configuration file. */
+VariablePatch variablePatchTable[] = {
+/*      config entry    user variable           */
+{       "baudrate",     "__serial_baudrate"     },
+{       "rxpin",        "__serial_rxpin"        },
+{       "txpin",        "__serial_txpin"        },
+{       "tvpin",        "__tvpin"               },
+{       "vgapin",       "__vgapin"              },
+{       "sdspi-do",     "__sdspi_do"            },
+{       "sdspi-clk",    "__sdspi_clk"           },
+{       "sdspi-di",     "__sdspi_di"            },
+{       "sdspi-cs",     "__sdspi_cs"            },
+{       "sdspi-sel",    "__sdspi_sel"           },
+{       "sdspi-inc",    "__sdspi_inc"           },
+{       "sdspi-mask",   "__sdspi_mask"          },
+{       "sdspi-addr",   "__sdspi_addr"          },
+{       NULL,           NULL                    }
+};
 
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize)
 {
