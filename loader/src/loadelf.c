@@ -258,7 +258,7 @@ void ShowElfFile(ElfContext *c)
     for (i = 1; i < c->symbolCnt; ++i) {
         char name[ELFNAMEMAX];
         ElfSymbol symbol;
-        if (LoadElfSymbol(c, i, name, &symbol) == 0 && symbol.name)
+        if (LoadElfSymbol(c, i, name, &symbol) == 0 && symbol.name && INFO_BIND(symbol.info) == STB_GLOBAL)
             printf("  %08x %s: %08x\n", symbol.name, name, symbol.value);
     }
 }

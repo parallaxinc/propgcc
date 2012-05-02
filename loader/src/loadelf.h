@@ -93,6 +93,13 @@ typedef struct {
     uint16_t    shndx;
 } ElfSymbol;
 
+#define INFO_BIND(i)    ((i) >> 4)
+#define INFO_TYPE(i)    ((i) & 0x0f)
+
+#define STB_LOCAL   0
+#define STB_GLOBAL  1
+#define STB_WEAK    2
+
 typedef struct {
     ElfHdr hdr;
     uint32_t stringOff;
