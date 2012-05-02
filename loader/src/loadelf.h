@@ -125,6 +125,7 @@ int FindProgramSegment(ElfContext *c, const char *name, ElfProgramHdr *program);
 uint8_t *LoadProgramSegment(ElfContext *c, ElfProgramHdr *program);
 int LoadSectionTableEntry(ElfContext *c, int i, ElfSectionHdr *section);
 int LoadProgramTableEntry(ElfContext *c, int i, ElfProgramHdr *program);
+int FindElfSymbol(ElfContext *c, const char *name, ElfSymbol *symbol);
 int LoadElfSymbol(ElfContext *c, int i, char *name, ElfSymbol *symbol);
 void ShowElfFile(ElfContext *c);
 

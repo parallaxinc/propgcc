@@ -9,7 +9,7 @@
 #include "osint.h"
 #include "pex.h"
 
-int WriteExecutableFile(char *path, ElfContext *c, char *outfile)
+int WriteExecutableFile(char *path, BoardConfig *config, ElfContext *c, char *outfile)
 {
     ElfProgramHdr program_kernel;
     uint8_t *imagebuf, *buf;
@@ -19,7 +19,7 @@ int WriteExecutableFile(char *path, ElfContext *c, char *outfile)
     FILE *fp;
     
     /* build the external image */
-    if (!(imagebuf = BuildExternalImage(c, &loadAddress, &imageSize)))
+    if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
         return FALSE;
         
     /* find the .xmmkernel segment */

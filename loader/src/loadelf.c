@@ -185,6 +185,17 @@ int LoadProgramTableEntry(ElfContext *c, int i, ElfProgramHdr *program)
         && fread(program, 1, sizeof(ElfProgramHdr), c->fp) == sizeof(ElfProgramHdr);
 }
 
+int FindElfSymbol(ElfContext *c, const char *name, ElfSymbol *symbol)
+{
+    int i;
+    for (i = 1; i < c->symbolCnt; ++i) {
+        char thisName[ELFNAMEMAX];
+        if (LoadElfSymbol(c, i, thisName, symbol) == 0 && strcmp(name, thisName) == 0)
+            return TRUE;
+    }
+    return FALSE;
+}
+
 int LoadElfSymbol(ElfContext *c, int i, char *name, ElfSymbol *symbol)
 {
     char *p = name;

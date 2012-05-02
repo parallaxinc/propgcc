@@ -74,6 +74,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
 int WriteFileToSDCard(BoardConfig *config, char *path, char *target);
 int LoadSerialHelper(BoardConfig *config, int needsd);
+void PatchImageVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);
 int Error(char *fmt, ...);
@@ -83,9 +84,9 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
 void UpdateChecksum(uint8_t *imagebuf, int imageSize);
 
 /* xmm-image.c */
-uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
+uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 
 /* pex-image.c */
-int WriteExecutableFile(char *path, ElfContext *c, char *outfile);
+int WriteExecutableFile(char *path, BoardConfig *config, ElfContext *c, char *outfile);
 
 #endif
