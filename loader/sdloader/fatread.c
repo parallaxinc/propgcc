@@ -4,6 +4,8 @@
 #include "sdio.h"
 #include "debug.h"
 
+//#define FSDEBUG
+
 #define MBR_PARTITIONS              0x1be
 #define MBR_SIGNATURE               0x1fe
 #define MAX_PARTITIONS              4
