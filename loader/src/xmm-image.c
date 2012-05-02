@@ -50,7 +50,7 @@ typedef struct {
 
 //#define DEBUG_BUILD_EXTERNAL_IMAGE
 
-uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
+uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
 {
     ElfProgramHdr program, program_kernel, program_header, program_hub;
     int dataSize, initTableSize, imageSize, ki, hi, si, i;
@@ -135,6 +135,9 @@ uint8_t *BuildExternalImage(ElfContext *c, uint32_t *pLoadAddress, int *pImageSi
             }
         }
     }
+    
+    /* patch the program with values from the config file */
+    //PatchImageVariables(config, c, imagebuf, program_header.paddr);
     
     /* fill in the image header */
     image = (ImageHdr *)imagebuf;

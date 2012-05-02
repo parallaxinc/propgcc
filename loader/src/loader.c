@@ -110,6 +110,7 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
+static void PatchVariable(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start, char *cname, char *vname);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 
@@ -156,7 +157,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
                 return Error("can't use -e or -r with -x");
                 
             /* write an executable file */
-            if (!WriteExecutableFile(path, c, outfile)) {
+            if (!WriteExecutableFile(path, config, c, outfile)) {
                 CloseElfFile(c);
                 return FALSE;
             }
@@ -521,7 +522,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         return Error("no cache driver to load external image");
     
     /* build the external image */
-    if (!(imagebuf = BuildExternalImage(c, &loadAddress, &imageSize)))
+    if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
         return FALSE;
         
     /* get the target memory space */
@@ -764,6 +765,29 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     
     /* return successfully */
     return TRUE;
+}
+
+void PatchImageVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start)
+{
+    PatchVariable(config, c, imagebuf, start, "baudrate",   "__baudrate");
+    PatchVariable(config, c, imagebuf, start, "sdspi-do",   "__sdspi_do");
+    PatchVariable(config, c, imagebuf, start, "sdspi-clk",  "__sdspi_clk");
+    PatchVariable(config, c, imagebuf, start, "sdspi-di",   "__sdspi_di");
+    PatchVariable(config, c, imagebuf, start, "sdspi-cs",   "__sdspi_cs");
+    PatchVariable(config, c, imagebuf, start, "sdspi-sel",  "__sdspi_sel");
+    PatchVariable(config, c, imagebuf, start, "sdspi-inc",  "__sdspi_inc");
+    PatchVariable(config, c, imagebuf, start, "sdspi-mask", "__sdspi_mask");
+    PatchVariable(config, c, imagebuf, start, "sdspi-addr", "__sdspi_addr");
+}
+
+static void PatchVariable(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start, char *cname, char *vname)
+{
+    int value;
+    if (GetNumericConfigField(config, cname, &value)) {
+        ElfSymbol symbol;
+        if (FindElfSymbol(c, vname, &symbol))
+            *(uint32_t *)(imagebuf + symbol.value) = value;
+    }
 }
 
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize)

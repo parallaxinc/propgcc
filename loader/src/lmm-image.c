@@ -34,6 +34,9 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
         memcpy(&imagebuf[program.paddr - start], buf, program.filesz);
     }
     
+    /* patch the program with values from the config file */
+    PatchImageVariables(config, c, imagebuf, start);
+    
     /* fixup the header to point past the spin bytecodes and generated PASM code */
     hdr = (SpinHdr *)imagebuf;
     GetNumericConfigField(config, "clkfreq", &ivalue);
