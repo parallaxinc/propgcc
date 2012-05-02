@@ -41,6 +41,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define SF_ALLOC    2
 #define SF_EXECUTE  4
 
+#define ELFNAMEMAX  128
+
 typedef struct {
     uint8_t     ident[16];
     uint16_t    type;
@@ -83,8 +85,20 @@ typedef struct {
 } ElfProgramHdr;
 
 typedef struct {
+    uint32_t    name;
+    uint32_t    value;
+    uint32_t    size;
+    uint8_t     info;
+    uint8_t     other;
+    uint16_t    shndx;
+} ElfSymbol;
+
+typedef struct {
     ElfHdr hdr;
     uint32_t stringOff;
+    uint32_t symbolOff;
+    uint32_t symbolStringOff;
+    uint32_t symbolCnt;
     FILE *fp;
 } ElfContext;
 
@@ -104,6 +118,7 @@ int FindProgramSegment(ElfContext *c, const char *name, ElfProgramHdr *program);
 uint8_t *LoadProgramSegment(ElfContext *c, ElfProgramHdr *program);
 int LoadSectionTableEntry(ElfContext *c, int i, ElfSectionHdr *section);
 int LoadProgramTableEntry(ElfContext *c, int i, ElfProgramHdr *program);
+int LoadElfSymbol(ElfContext *c, int i, char *name, ElfSymbol *symbol);
 void ShowElfFile(ElfContext *c);
 
 #endif

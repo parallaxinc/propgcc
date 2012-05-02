@@ -61,6 +61,7 @@ ElfContext *OpenElfFile(FILE *fp, ElfHdr *hdr)
     /* allocate and initialize a context structure */
     if (!(c = (ElfContext *)malloc(sizeof(ElfContext))))
         return NULL;
+    memset(c, 0, sizeof(ElfContext));
     c->hdr = *hdr;
     c->fp = fp;
         
@@ -70,6 +71,18 @@ ElfContext *OpenElfFile(FILE *fp, ElfHdr *hdr)
         return NULL;
     }
     c->stringOff = section.offset;
+    
+    /* get the symbol table section offset */
+    if (FindSectionTableEntry(c, ".symtab", &section)) {
+        c->symbolOff = section.offset;
+        c->symbolCnt = section.size / sizeof(ElfSymbol);
+        if (FindSectionTableEntry(c, ".strtab", &section))
+            c->symbolStringOff = section.offset;
+        else {
+            c->symbolOff = 0;
+            c->symbolCnt = 0;
+        }
+    }
     
     /* return the context */
     return c;
@@ -130,14 +143,14 @@ int FindSectionTableEntry(ElfContext *c, const char *name, ElfSectionHdr *sectio
 {
     int i;
     for (i = 0; i < c->hdr.shnum; ++i) {
-        char thisName[1024], *p = thisName;
-        int ch;
+        char thisName[ELFNAMEMAX], *p = thisName;
+        int cnt, ch;
         if (!LoadSectionTableEntry(c, i, section)) {
             fprintf(stderr, "error: can't read section header %d\n", i);
             return 1;
         }
         fseek(c->fp, c->stringOff + section->name, SEEK_SET);
-        while ((ch = getc(c->fp)) != '\0')
+        for (cnt = 0; ++cnt < ELFNAMEMAX && (ch = getc(c->fp)) != '\0'; )
             *p++ = ch;
         *p = '\0';
         if (strcmp(name, thisName) == 0)
@@ -172,6 +185,22 @@ int LoadProgramTableEntry(ElfContext *c, int i, ElfProgramHdr *program)
         && fread(program, 1, sizeof(ElfProgramHdr), c->fp) == sizeof(ElfProgramHdr);
 }
 
+int LoadElfSymbol(ElfContext *c, int i, char *name, ElfSymbol *symbol)
+{
+    char *p = name;
+    if (fseek(c->fp, c->symbolOff + i * sizeof(ElfSymbol), SEEK_SET) != 0
+    ||  fread(symbol, 1, sizeof(ElfSymbol), c->fp) != sizeof(ElfSymbol))
+        return -1;
+    if (symbol->name) {
+        int cnt, ch;
+        fseek(c->fp, c->symbolStringOff + symbol->name, SEEK_SET);
+        for (cnt = 0; ++cnt < ELFNAMEMAX && (ch = getc(c->fp)) != '\0'; )
+            *p++ = ch;
+    }
+    *p = '\0';
+    return 0;
+}
+
 void ShowElfFile(ElfContext *c)
 {
     ElfSectionHdr section;
@@ -200,14 +229,14 @@ void ShowElfFile(ElfContext *c)
     
     /* show the section table */
     for (i = 0; i < c->hdr.shnum; ++i) {
-        char name[1024], *p = name;
-        int ch;
+        char name[ELFNAMEMAX], *p = name;
+        int cnt, ch;
         if (!LoadSectionTableEntry(c, i, &section)) {
             fprintf(stderr, "error: can't read section header %d\n", i);
             return;
         }
         fseek(c->fp, c->stringOff + section.name, SEEK_SET);
-        while ((ch = getc(c->fp)) != '\0')
+        for (cnt = 0; ++cnt < ELFNAMEMAX && (ch = getc(c->fp)) != '\0'; )
             *p++ = ch;
         *p = '\0';
         printf("SectionHdr %d:\n", i);
@@ -223,6 +252,14 @@ void ShowElfFile(ElfContext *c)
         }
         printf("ProgramHdr %d:\n", i);
         ShowProgramHdr(&program);
+    }
+    
+    /* show the symbol table */
+    for (i = 1; i < c->symbolCnt; ++i) {
+        char name[ELFNAMEMAX];
+        ElfSymbol symbol;
+        if (LoadElfSymbol(c, i, name, &symbol) == 0 && symbol.name)
+            printf("  %08x %s: %08x\n", symbol.name, name, symbol.value);
     }
 }
 
