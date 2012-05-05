@@ -197,6 +197,9 @@ SECTIONS
   PROVIDE(vcfg = VCFG) ;
   PROVIDE(vscl = VSCL) ;
   PROVIDE(__hub_end = ADDR(.hub) + SIZEOF(.hub)) ;
+  
+  /* default initial stack pointer */
+  PROVIDE(__stack_end = 0x8000) ;
 
 }
 EOF
