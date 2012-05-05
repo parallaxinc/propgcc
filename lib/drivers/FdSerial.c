@@ -177,13 +177,13 @@ fdserial_fopen(FILE *fp, const char *name, const char *mode)
 
   if (!data)
     {
-      data = malloc(sizeof(FdSerial_t));
+      data = hubmalloc(sizeof(FdSerial_t));
       if (!data)
 	return -1;
       r = _FdSerial_start(data, rxpin, txpin, 0, baud);
       if (r <= 0)
 	{
-	  free(data);
+	  hubfree(data);
 	  return -1;
 	}
 
@@ -230,7 +230,7 @@ fdserial_fclose(FILE *fp)
     }
 
   /* release memory */
-  free(data);
+  hubfree(data);
   return 0;
 }
 

@@ -15,11 +15,42 @@
 #include <sys/thread.h>
 #include "malloc.h"
 
-static MemHeader *freelist;
+/* we only need the external memory heap if we're in xmm mode (not lmm or xmmc) */
+MemHeap _malloc_heap = {
+    .sbrk = _sbrk,
+    .free = NULL
+};
+
+#if !defined(__PROPELLER_LMM__) && !defined(__PROPELLER_XMMC__)
+MemHeap _hub_malloc_heap = {
+    .sbrk = _hubsbrk,
+    .free = NULL
+};
+#endif
+
 static atomic_t malloc_lock;
+
+/* local functions */
+static void common_free(MemHeap *heap, void *ptr);
 
 void *
 malloc(size_t n)
+{
+    return _common_malloc(&_malloc_heap, n);
+}
+
+void *
+hubmalloc(size_t n)
+{
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
+    return _common_malloc(&_malloc_heap, n);
+#else
+    return _common_malloc(&_hub_malloc_heap, n);
+#endif
+}
+
+void *
+_common_malloc(MemHeap *heap, size_t n)
 {
   MemHeader *p;
   MemHeader **prevp;
@@ -28,7 +59,7 @@ malloc(size_t n)
   numunits = (n + sizeof(MemHeader)-1)/sizeof(MemHeader) + 1;
 
   __lock(&malloc_lock);
-  prevp = &freelist;
+  prevp = &heap->free;
 
   for (p = (*prevp); p; prevp = &p->next, p = p->next)
     {
@@ -53,7 +84,7 @@ malloc(size_t n)
 
   if (!p)
     {
-      p = _sbrk(numunits * sizeof(MemHeader));
+      p = (*heap->sbrk)(numunits * sizeof(MemHeader));
     }
   __unlock(&malloc_lock);
   if (!p)
@@ -65,6 +96,22 @@ malloc(size_t n)
 
 void
 free(void *ptr)
+{
+    common_free(&_malloc_heap, ptr);
+}
+
+void
+hubfree(void *ptr)
+{
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
+    common_free(&_malloc_heap, ptr);
+#else
+    common_free(&_hub_malloc_heap, ptr);
+#endif
+}
+
+static void
+common_free(MemHeap *heap, void *ptr)
 {
   struct MemHeader *thisp, *p, **prev;
 
@@ -79,15 +126,15 @@ free(void *ptr)
 
   __lock(&malloc_lock);
   /* see if we can merge this into a block on the free list */
-  if (!freelist)
+  if (!heap->free)
     {
       /* no freelist, so just release this right away */
-      freelist = thisp;
+      heap->free = thisp;
       __unlock(&malloc_lock);
       return;
     }
 
-  prev = &freelist;
+  prev = &heap->free;
   p = *prev;
   while (p)
     {

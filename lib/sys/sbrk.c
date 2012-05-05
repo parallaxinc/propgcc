@@ -6,8 +6,14 @@
  */
 
 extern char __heap_start[];
+extern char __hub_heap_start[];
 
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
+char *_heap_base = __hub_heap_start;
+#else
 char *_heap_base = __heap_start;
+char *_hub_heap_base = __hub_heap_start;
+#endif
 
 #define MIN_STACK 128
 
@@ -22,3 +28,17 @@ _sbrk(unsigned long n)
   _heap_base = r + n;
   return r;
 }
+
+#if !defined(__PROPELLER_LMM__) && !defined(__PROPELLER_XMMC__)
+char *
+_hubsbrk(unsigned long n)
+{
+  //char c;
+  //char *here = &c;
+  char *r = _hub_heap_base;
+
+  /* allocate and return */
+  _hub_heap_base = r + n;
+  return r;
+}
+#endif
