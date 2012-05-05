@@ -11,6 +11,8 @@ DATA_BSS_MEMORY=">hub AT>hub"
 HUBTEXT_MEMORY=">hub AT>rom"
 DRIVER_MEMORY=">coguser AT>rom"
 
+HUB_HEAP=1
+
 KERNEL="
   /* the LMM kernel that is loaded into the cog */
   .xmmkernel ${RELOCATING-0} :

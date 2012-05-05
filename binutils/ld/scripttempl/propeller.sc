@@ -78,8 +78,10 @@ SECTIONS
     ${RELOCATING+ PROVIDE (__bss_end = .) ; }
   } ${RELOCATING+ ${DATA_MEMORY}}
 
-  ${RELOCATING+ ".heap : \{ LONG(0) \} >hub AT>hub"}
-  ${RELOCATING+ ___heap_start = ADDR(.heap) ;}
+  ${RELOCATING+ ${DATA_HEAP+ ".heap : \{ . += 4; \} ${DATA_MEMORY}"}}
+  ${RELOCATING+ ${DATA_HEAP+ ___heap_start = ADDR(.heap) ;}}
+  ${RELOCATING+ ${HUB_HEAP+ ".hub_heap : \{ . += 4; \} >hub AT>hub"}}
+  ${RELOCATING+ ${HUB_HEAP+ ___hub_heap_start = ADDR(.hub_heap) ;}}
 
   ${RELOCATING+ ${KERNEL_NAME+ __load_start_kernel = LOADADDR (${KERNEL_NAME}) ;}}
   ${RELOCATING+ ___CTOR_LIST__ = ADDR(.ctors) ;}

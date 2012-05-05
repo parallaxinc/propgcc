@@ -26,6 +26,19 @@ calloc(size_t nmemb, size_t len)
   return ptr;
 }
 
+void *
+hubcalloc(size_t nmemb, size_t len)
+{
+  void *ptr;
+  len = nmemb*len;
+  ptr = hubmalloc(len);
+  if (ptr)
+    {
+      memset(ptr, 0, len);
+    }
+  return ptr;
+}
+
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------
