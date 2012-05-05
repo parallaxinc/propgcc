@@ -1,5 +1,5 @@
 /*
- * @malloc.c
+ * @realloc.c
  * Implementation of memory allocation functions
  *
  * This is an extremely simple memory allocator, vaguely inspired
@@ -15,6 +15,9 @@
 #include <sys/thread.h>
 #include "malloc.h"
 
+/* local functions */
+static void *common_realloc(MemHeap *heap, void *ptr, size_t n);
+
 /*
  * realloc: expand or shrink a block
  * ideally when expanding we would look for a free block just after this one and
@@ -23,6 +26,18 @@
  */
 void *
 realloc(void *ptr, size_t n)
+{
+    return common_realloc(&_malloc_heap, ptr, n);
+}
+
+void *
+hubrealloc(void *ptr, size_t n)
+{
+    return common_realloc(&_hub_malloc_heap, ptr, n);
+}
+
+static void *
+common_realloc(MemHeap *heap, void *ptr, size_t n)
 {
   MemHeader *thisp, *newp;
   void *newptr;
@@ -61,7 +76,7 @@ realloc(void *ptr, size_t n)
     }
 
   /* OK, the tricky case: allocate a new block and copy the memory into it */
-  newptr = malloc(n);
+  newptr = _common_malloc(heap, n);
   if (!newptr)
     return NULL;
   memcpy(newptr, ptr, (thisp->len-1)*sizeof(MemHeader));

@@ -14,13 +14,24 @@ typedef struct MemHeader {
   size_t len;
 } MemHeader;
 
+typedef struct MemHeap {
+    void *(*sbrk)(unsigned long n);
+    MemHeader *free;
+} MemHeap;
+
 /* magic number to indicate allocated memory */
 #define MAGIC ((MemHeader *)0xa110c)
 
-/* function to request memory from the OS */
-extern void *_sbrk(unsigned bytes);
+/* normal and hub heaps */
+extern MemHeap _malloc_heap;
+extern MemHeap _hub_malloc_heap;
 
-MemHeader *__freelist;
+/* internal malloc function that can allocate from either heap */
+void *_common_malloc(MemHeap *heap, size_t n);
+
+/* function to request memory from the OS */
+extern void *_sbrk(unsigned long n);
+extern void *_hubsbrk(unsigned long n);
 
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
