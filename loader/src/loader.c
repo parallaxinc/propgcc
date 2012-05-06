@@ -780,6 +780,7 @@ VariablePatch variablePatchTable[] = {
 {       "sdspi-di",     "__sdspi_di"            },
 {       "sdspi-cs",     "__sdspi_cs"            },
 {       "sdspi-sel",    "__sdspi_sel"           },
+{       "sdspi-clr",    "__sdspi_clr"           },
 {       "sdspi-inc",    "__sdspi_inc"           },
 {       "sdspi-mask",   "__sdspi_mask"          },
 {       "sdspi-addr",   "__sdspi_addr"          },
