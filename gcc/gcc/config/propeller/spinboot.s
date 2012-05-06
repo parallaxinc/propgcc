@@ -13,6 +13,7 @@
 	.global __clkfreq
 	.global __clkmode
 	.extern __hub_end
+	.extern __stack_end
 start
 __clkfreq
 	.long __clkfreqval	' clock frequency
@@ -36,7 +37,7 @@ pbase
 	.byte 0x02		' number of methods ?
 	.byte 0x00		' number of objects ?
 	.word 0x0008		' pcurr - 0x10?
-	.word 0			' ??
+	.word __stack_end
 
 	'' here is the spin code to switch to pasm mode
 	'' removed a load of the constant 0 and replaced it with cogid
@@ -44,8 +45,8 @@ pbase
 	.byte 0x89
 	.byte 0xc7		' memory op: push PBASE + next byte
 	.byte 0x10
-	.byte 0x37		' constant mask Y= 14 0x00008000
-	.byte 14
+	.byte 0xA4		' load PAR with Stack address
+	.byte 6
 	.byte 0x2C		' CogInit(Id, Addr, Ptr)
 	.byte 0x32		' Return (unused)
 
