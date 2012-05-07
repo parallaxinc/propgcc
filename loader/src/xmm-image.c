@@ -173,19 +173,22 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
         if (GetNumericConfigField(config, patch->configName, &value)) {
             ElfSymbol symbol;
             if (FindElfSymbol(c, patch->variableName, &symbol)) {
-                int cnt = image->initCount;
-                initSection = initSectionTable;
-                while (--cnt >= 0) {
-                    if (symbol.value >= initSection->vaddr && symbol.value < initSection->vaddr + initSection->size) {
-                        uint32_t offset = initSection->paddr - program_header.paddr;
-                        offset += symbol.value - initSection->vaddr;
-                        *(uint32_t *)(imagebuf + offset) = value;
-                        continue;
+                for (i = 0; i < c->hdr.phnum; ++i) {
+                    if (!LoadProgramTableEntry(c, i, &program)) {
+                        free(imagebuf);
+                        return NullError("can't load program table entry %d", i);
                     }
-                    ++initSection;
+                    if (symbol.value >= program.vaddr && symbol.value < program.vaddr + program.filesz) {
+                        uint32_t offset = symbol.value - program.vaddr + program.paddr - program_header.paddr;
+                        *(uint32_t *)(imagebuf + offset) = value;
+                        goto found;
+                    }
                 }
+                printf("Unable to patch \"%s\"\n", patch->variableName);
             }
         }
+found:
+        continue;
     }
 
     /* return the image */
