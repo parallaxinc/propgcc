@@ -66,16 +66,6 @@ typedef struct {
     uint16_t numlocals;
 } SpinObj;
 
-/* variable patch table entry */
-typedef struct {
-    char *configName;
-    char *variableName;
-} VariablePatch;
-
-/* These are user variables that, if they exist in the elf file, will be patched
-   with the corresponding values from the board configuration file. */
-extern VariablePatch variablePatchTable[];
-
 /* loader.c */
 void ShowPorts(char *prefix);
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
@@ -84,7 +74,8 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
 int WriteFileToSDCard(BoardConfig *config, char *path, char *target);
 int LoadSerialHelper(BoardConfig *config, int needsd);
-void PatchImageVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start);
+char *GetVariableToPatch(int i);
+int GetVariableValue(BoardConfig *config, int i, int *pValue);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);
 int Error(char *fmt, ...);

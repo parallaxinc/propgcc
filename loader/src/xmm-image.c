@@ -53,11 +53,11 @@ typedef struct {
 uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
 {
     ElfProgramHdr program, program_kernel, program_header, program_hub;
-    int dataSize, initTableSize, imageSize, ki, hi, si, i;
+    int dataSize, initTableSize, imageSize, ki, hi, si, i, j;
     InitSection *initSectionTable, *initSection;
-    VariablePatch *patch = variablePatchTable;
     uint8_t *imagebuf, *buf;
     uint32_t endAddress;
+    char *variableName;
     ImageHdr *image;
     
     /* find the .xmmkernel segment */
@@ -168,11 +168,11 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
     }
     
     /* patch user variables with values from the configuration file */
-    for (patch = variablePatchTable; patch->configName; ++patch) {
-        int value;
-        if (GetNumericConfigField(config, patch->configName, &value)) {
-            ElfSymbol symbol;
-            if (FindElfSymbol(c, patch->variableName, &symbol)) {
+    for (j = 0; (variableName = GetVariableToPatch(j)) != NULL; ++j) {
+        ElfSymbol symbol;
+        if (FindElfSymbol(c, variableName, &symbol)) {
+            int value;
+            if (GetVariableValue(config, j, &value)) {
                 for (i = 0; i < c->hdr.phnum; ++i) {
                     if (!LoadProgramTableEntry(c, i, &program)) {
                         free(imagebuf);
@@ -184,7 +184,7 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
                         goto found;
                     }
                 }
-                printf("Unable to patch \"%s\"\n", patch->variableName);
+                printf("Unable to patch \"%s\"\n", variableName);
             }
         }
 found:
