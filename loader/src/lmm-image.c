@@ -60,15 +60,15 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
 
 static void PatchLmmImageVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t start)
 {
-    VariablePatch *patch = variablePatchTable;
-    while (patch->configName) {
-        int value;
-        if (GetNumericConfigField(config, patch->configName, &value)) {
-            ElfSymbol symbol;
-            if (FindElfSymbol(c, patch->variableName, &symbol))
+    char *variableName;
+    int i;
+    for (i = 0; (variableName = GetVariableToPatch(i)) != NULL; ++i) {
+        ElfSymbol symbol;
+        if (FindElfSymbol(c, variableName, &symbol)) {
+            int value;
+            if (GetVariableValue(config, i, &value))
                 *(uint32_t *)(imagebuf + symbol.value) = value;
         }
-        ++patch;
     }
 }
 
