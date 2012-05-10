@@ -20,11 +20,8 @@
 #include <compiler.h>
 #include <errno.h>
 #include <propeller.h>
-#include "../drivers/dosfs.h"
-
-VOLINFO dfs_volinfo;
-int dfs_mountflag;
-extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
+#include <sys/sd.h>
+#include "../drivers/sd_internal.h"
 
 void dfs_resolve_path(const char *fname, char *path);
 
@@ -37,7 +34,7 @@ int rmdir(const char *path1)
     int dirsector, diroffset;
     char path[MAX_PATH];
 
-    if (!dfs_mountflag)
+    if (!dfs_mountflag && dfs_mount_defaults() != DFS_OK)
     {
         errno = EIO;
         return -1;
