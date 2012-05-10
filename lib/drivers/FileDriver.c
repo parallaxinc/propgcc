@@ -34,10 +34,11 @@ char dfs_currdir[MAX_PATH];
 __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
 
 // Function prototypes
-extern void LoadSDDriver();
+extern void LoadSDDriver(uint32_t configwords[2]);
 int DFS_InitFileIO(void);
 int dfs_stdio_errno(int errnum);
 void dfs_resolve_path(const char *fname, char *path);
+uint32_t mount_complete(void);
 
 // Define the the file prefix
 static const char File_prefix[] = "";
@@ -49,7 +50,7 @@ static int File_fopen(FILE *fp, const char *fname1, const char *mode)
     PFILEINFO fileinfo;
     char fname[MAX_PATH];
 
-    if (!dfs_mountflag)
+    if (!dfs_mountflag && dfs_mount_defaults() != DFS_OK)
     {
         errno = EIO;
         return -1;
@@ -217,14 +218,20 @@ int dfs_stdio_errno(int errnum)
     return errnum;
 }
 
-uint32_t dfs_mount(_SD_Params* params)
+/* these variables are patched by the loader */
+int _sdspi_config1 = -1;
+int _sdspi_config2 = -1;
+
+uint32_t dfs_mount_defaults(void)
+{
+    uint32_t configwords[2] = { _sdspi_config1, _sdspi_config2 };
+    LoadSDDriver(configwords);
+    return mount_complete();
+}
+
+uint32_t mount_complete(void)
 {
     int retval, sector;
-
-    if (dfs_mountflag) return 0;
-
-    if (params)
-        LoadSDDriver(params);
 
     strcpy(dfs_currdir, "/");
 
@@ -233,7 +240,8 @@ uint32_t dfs_mount(_SD_Params* params)
         return retval;
 
     // Find the first sector of the volume
-    DFS_ReadSector(0, dfs_scratch, 0, 1);
+    if ((retval = DFS_ReadSector(0, dfs_scratch, 0, 1)) != DFS_OK)
+        return retval;
     if (!strncmp((char *)dfs_scratch+0x36, "FAT16", 5) ||
         !strncmp((char *)dfs_scratch+0x52, "FAT32", 5))
         sector = 0;

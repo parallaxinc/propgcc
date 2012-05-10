@@ -34,6 +34,8 @@ uint32_t DFS_WriteSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_
 #define DFS_NOTFOUND	3			// path or file not found
 #define DFS_PATHLEN		4			// path too long
 #define DFS_ALLOCNEW	5			// must allocate new directory cluster
+#define DFS_IOERR	    6			// i/o error
+#define DFS_INVAL       7           // invalid argument
 #define DFS_ERRMISC		0xffffffff	// generic error
 
 //===================================================================

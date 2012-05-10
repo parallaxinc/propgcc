@@ -818,10 +818,10 @@ int GetVariableValue(BoardConfig *config, int i, int *pValue)
     else {
         if (strcmp(patch->variableName, "__sdspi_config1") == 0) {
             if (!GetNumericConfigField(config, "sdspi-config1", pValue)) {
-                int dout = 0, clk = 0, din = 0, protocol = 0, value;
-                GetNumericConfigField(config, "sdspi-do", &dout);
-                GetNumericConfigField(config, "sdspi-clk", &clk);
+                int din = 0, clk = 0, dout = 0, protocol = 0, value;
                 GetNumericConfigField(config, "sdspi-di", &din);
+                GetNumericConfigField(config, "sdspi-clk", &clk);
+                GetNumericConfigField(config, "sdspi-do", &dout);
                 if (GetNumericConfigField(config, "sdspi-cs", &value)
                 ||  GetNumericConfigField(config, "sdspi-clr", &value))
                     protocol |= CS_CLR_PIN_MASK;
@@ -833,7 +833,7 @@ int GetVariableValue(BoardConfig *config, int i, int *pValue)
                     protocol |= MUX_WIDTH_MASK;
                 if (GetNumericConfigField(config, "sdspi-addr", &value))
                     protocol |= ADDR_MASK;
-                *pValue = (dout << 24) | (clk << 16) | (din << 8) | protocol;
+                *pValue = (din << 24) | (dout << 16) | (clk << 8) | protocol;
             }
             sts = TRUE;
         }
