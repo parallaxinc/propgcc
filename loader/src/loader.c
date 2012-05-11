@@ -839,7 +839,7 @@ int GetVariableValue(BoardConfig *config, int i, int *pValue)
         }
         else if (strcmp(patch->variableName, "__sdspi_config2") == 0) {
             if (!GetNumericConfigField(config, "sdspi-config2", pValue)) {
-                int aa, bb, cc, dd;
+                int aa = 0, bb = 0, cc = 0, dd = 0;
                 if (GetNumericConfigField(config, "sdspi-cs", &value))
                     aa = value;
                 if (GetNumericConfigField(config, "sdspi-clr", &value))
