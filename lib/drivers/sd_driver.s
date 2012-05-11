@@ -280,7 +280,7 @@ _type2  mov     sdParam1, ccsbit        ' CMD41 is necessary for both type 1 and
         call    #_cmd41                 ' it's in a subroutine.
 
 _cmd58  mov     sdOp, #CMD58_READ_OCR
-        mov     sdParam, 0
+        mov     sdParam, #0
         mov     sdCRC, #$FD
         call    #sdSendCmd
         cmp     data, #0 wz
@@ -292,7 +292,7 @@ _cmd58  mov     sdOp, #CMD58_READ_OCR
   if_nz mov     adrShift, #0
         jmp     #_ifini
 
-_type1  mov     sdParam1, 0
+_type1  mov     sdParam1, #0
         mov     sdCRC, #$E5
         call    #_cmd41i
 
@@ -320,7 +320,7 @@ _cmd41_ret
 
 _cmd41i call    #check_time              ' This routine does not wait until idle -
         mov     sdOp, #CMD55_APP_CMD     ' it just does one ACMD41, then returns.
-        mov     sdParam, 0
+        mov     sdParam, #0
         mov     sdCRC, #$65
         call    #sdSendCmd
         cmp     data, #1 wc,wz
@@ -342,7 +342,7 @@ check_time_ret
         ret
 
 _ifini  mov     sdOp, #CMD59_CRC_ON_OFF ' Sad, but we don't have the code space nor
-        mov     sdParam, 0              ' bandwidth to protect read/writes with CRCs.
+        mov     sdParam, #0             ' bandwidth to protect read/writes with CRCs.
         mov     sdCRC, #$91
         call    #sdSendCmd
 
@@ -584,3 +584,6 @@ count           long    0       ' The block count
 ' Temporaries used by send/recv
 bits            long    0       ' # bits to send/receive
 data            long    0       ' Current data being sent/received
+
+                fit     496
+
