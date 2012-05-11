@@ -859,6 +859,7 @@ int GetVariableValue(BoardConfig *config, int i, int *pValue)
         else
             sts = FALSE;
     }
+    if (sts) printf("Patching %s with %08x\n", patch->variableName, *pValue);
     return sts;
 }
 
