@@ -160,7 +160,7 @@ init2   mov     pvmcmd, par             ' Get the address of the mailbox
         
         ' set the pin directions
         mov     outa, cs_clr
-        or      outa, mosi_mask
+        or      outa, mosi_mask                ' Need to set output high so reads work correctly
         mov     dira, spidir
         call    #sd_release
 
