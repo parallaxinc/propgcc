@@ -732,70 +732,61 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     return TRUE;
 }
 
-/* variable patch table entry */
-typedef struct {
-    char *configName;
-    char *variableName;
-} VariablePatch;
+/* PatchVariables - patch user variables based on config file values */
+void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, PatchFcn *patch)
+{
+    int i;
+    for (i = 1; i < c->symbolCnt; ++i) {
+        char cname[ELFNAMEMAX], vname[ELFNAMEMAX], *p;
+        ElfSymbol symbol;
+        if (LoadElfSymbol(c, i, vname, &symbol) == 0 && strncmp(vname, "__cfg_", 6) == 0) {
+            int value;
+            
+            /* remove the '__cfg_' prefix */
+            strcpy(cname, &vname[6]);
+            
+            /* translate underscores to dashes */
+            for (p = cname; *p != '\0'; ++p) {
+                if (*p == '_')
+                    *p = '-';
+            }
+            
+            /* get the variable value */
+            if (GetVariableValue(config, cname, &value)) {
+                printf("Patching %s with %08x\n", vname, value);
+                if (!(*patch)(c, imagebuf, imagebase, symbol.value, value))
+                    printf("Unable to patch \"%s\"\n", vname);
+            }
+            
+            /* can't find variable to patch */
+            else
+                printf("Can't patch %s\n", vname);
+        }
+    }    
+}
 
-/* These are user variables that, if they exist in the elf file, will be patched
-   with the corresponding values from the board configuration file. */
-VariablePatch variablePatchTable[] = {
-/*      config entry    user variable           */
-{       "baudrate",     "__cfg_baudrate"        },
-{       "rxpin",        "__cfg_rxpin"           },
-{       "txpin",        "__cfg_txpin"           },
-{       "tvpin",        "__cfg_tvpin"           },
-{       "vgapin",       "__cfg_vgapin"          },
-{       "sdspi-do",     "__cfg_sdspi_do"        },
-{       "sdspi-clk",    "__cfg_sdspi_clk"       },
-{       "sdspi-di",     "__cfg_sdspi_di"        },
-{       "sdspi-cs",     "__cfg_sdspi_cs"        },
-{       "sdspi-sel",    "__cfg_sdspi_sel"       },
-{       "sdspi-clr",    "__cfg_sdspi_clr"       },
-{       "sdspi-inc",    "__cfg_sdspi_inc"       },
-{       "sdspi-mask",   "__cfg_sdspi_mask"      },
-{       "sdspi-addr",   "__cfg_sdspi_addr"      },
-{       NULL,           "__cfg_sdspi_config1"   },
-{       NULL,           "__cfg_sdspi_config2"   }
-};
+/* GetVariableValue - get the value of a variable to patch */
+int GetVariableValue(BoardConfig *config, const char *name, int *pValue)
+{
+    int sts;
+    if (strcmp(name, "sdspi-config1") == 0) {
+        *pValue = Get_sdspi_config1(config);
+        sts = TRUE;
+    }
+    else if (strcmp(name, "sdspi-config2") == 0) {
+        *pValue = Get_sdspi_config2(config);
+        sts = TRUE;
+    }
+    else
+        sts = GetNumericConfigField(config, name, pValue);
+    return sts;
+}
 
 #define  CS_CLR_PIN_MASK       0x01   // either CS or CLR
 #define  INC_PIN_MASK          0x02   // for C3-style CS
 #define  MUX_START_BIT_MASK    0x04   // low order bit of mux field
 #define  MUX_WIDTH_MASK        0x08   // width of mux field
 #define  ADDR_MASK             0x10   // device number for C3-style CS or value to write to the mux
-
-/* GetVariableToPatch - get the name of a variable that the loader can patch */
-char *GetVariableToPatch(int i)
-{
-    if (i < 0 || i > sizeof(variablePatchTable) / sizeof(VariablePatch))
-        return NULL;
-    return variablePatchTable[i].variableName;
-}
-
-/* GetVariableValue - get the value of a variable to patch */
-int GetVariableValue(BoardConfig *config, int i, int *pValue)
-{
-    VariablePatch *patch = &variablePatchTable[i];
-    int sts;
-    if (patch->configName)
-        sts = GetNumericConfigField(config, patch->configName, pValue);
-    else {
-        if (strcmp(patch->variableName, "__cfg_sdspi_config1") == 0) {
-            *pValue = Get_sdspi_config1(config);
-            sts = TRUE;
-        }
-        else if (strcmp(patch->variableName, "__cfg_sdspi_config2") == 0) {
-            *pValue = Get_sdspi_config2(config);
-            sts = TRUE;
-        }
-        else
-            sts = FALSE;
-    }
-    if (sts) printf("Patching %s with %08x\n", patch->variableName, *pValue);
-    return sts;
-}
 
 static uint32_t Get_sdspi_config1(BoardConfig *config)
 {

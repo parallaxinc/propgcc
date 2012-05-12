@@ -50,14 +50,29 @@ typedef struct {
 
 //#define DEBUG_BUILD_EXTERNAL_IMAGE
 
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value)
+{
+    ElfProgramHdr program;
+    int i;
+    for (i = 0; i < c->hdr.phnum; ++i) {
+        if (LoadProgramTableEntry(c, i, &program)) {
+            if (addr >= program.vaddr && addr < program.vaddr + program.filesz) {
+                uint32_t offset = addr - program.vaddr + program.paddr - imagebase;
+                *(uint32_t *)(imagebuf + offset) = value;
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
 uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
 {
     ElfProgramHdr program, program_kernel, program_header, program_hub;
-    int dataSize, initTableSize, imageSize, ki, hi, si, i, j;
+    int dataSize, initTableSize, imageSize, ki, hi, si, i;
     InitSection *initSectionTable, *initSection;
     uint8_t *imagebuf, *buf;
     uint32_t endAddress;
-    char *variableName;
     ImageHdr *image;
     
     /* find the .xmmkernel segment */
@@ -168,28 +183,7 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
     }
     
     /* patch user variables with values from the configuration file */
-    for (j = 0; (variableName = GetVariableToPatch(j)) != NULL; ++j) {
-        ElfSymbol symbol;
-        if (FindElfSymbol(c, variableName, &symbol)) {
-            int value;
-            if (GetVariableValue(config, j, &value)) {
-                for (i = 0; i < c->hdr.phnum; ++i) {
-                    if (!LoadProgramTableEntry(c, i, &program)) {
-                        free(imagebuf);
-                        return NullError("can't load program table entry %d", i);
-                    }
-                    if (symbol.value >= program.vaddr && symbol.value < program.vaddr + program.filesz) {
-                        uint32_t offset = symbol.value - program.vaddr + program.paddr - program_header.paddr;
-                        *(uint32_t *)(imagebuf + offset) = value;
-                        goto found;
-                    }
-                }
-                printf("Unable to patch \"%s\"\n", variableName);
-            }
-        }
-found:
-        continue;
-    }
+    PatchVariables(config, c, imagebuf, program_header.paddr, PatchVariable);
 
     /* return the image */
     *pLoadAddress = program_header.paddr;
