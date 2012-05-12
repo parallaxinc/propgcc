@@ -219,12 +219,12 @@ int dfs_stdio_errno(int errnum)
 }
 
 /* these variables are patched by the loader */
-int _sdspi_config1 = -1;
-int _sdspi_config2 = -1;
+int _cfg_sdspi_config1 = -1;
+int _cfg_sdspi_config2 = -1;
 
 uint32_t dfs_mount_defaults(void)
 {
-    uint32_t configwords[2] = { _sdspi_config1, _sdspi_config2 };
+    uint32_t configwords[2] = { _cfg_sdspi_config1, _cfg_sdspi_config2 };
     LoadSDDriver(configwords);
     return mount_complete();
 }

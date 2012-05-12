@@ -742,22 +742,22 @@ typedef struct {
    with the corresponding values from the board configuration file. */
 VariablePatch variablePatchTable[] = {
 /*      config entry    user variable           */
-{       "baudrate",     "__serial_baudrate"     },
-{       "rxpin",        "__serial_rxpin"        },
-{       "txpin",        "__serial_txpin"        },
-{       "tvpin",        "__tvpin"               },
-{       "vgapin",       "__vgapin"              },
-{       "sdspi-do",     "__sdspi_do"            },
-{       "sdspi-clk",    "__sdspi_clk"           },
-{       "sdspi-di",     "__sdspi_di"            },
-{       "sdspi-cs",     "__sdspi_cs"            },
-{       "sdspi-sel",    "__sdspi_sel"           },
-{       "sdspi-clr",    "__sdspi_clr"           },
-{       "sdspi-inc",    "__sdspi_inc"           },
-{       "sdspi-mask",   "__sdspi_mask"          },
-{       "sdspi-addr",   "__sdspi_addr"          },
-{       NULL,           "__sdspi_config1"       },
-{       NULL,           "__sdspi_config2"       }
+{       "baudrate",     "__cfg_baudrate"        },
+{       "rxpin",        "__cfg_rxpin"           },
+{       "txpin",        "__cfg_txpin"           },
+{       "tvpin",        "__cfg_tvpin"           },
+{       "vgapin",       "__cfg_vgapin"          },
+{       "sdspi-do",     "__cfg_sdspi_do"        },
+{       "sdspi-clk",    "__cfg_sdspi_clk"       },
+{       "sdspi-di",     "__cfg_sdspi_di"        },
+{       "sdspi-cs",     "__cfg_sdspi_cs"        },
+{       "sdspi-sel",    "__cfg_sdspi_sel"       },
+{       "sdspi-clr",    "__cfg_sdspi_clr"       },
+{       "sdspi-inc",    "__cfg_sdspi_inc"       },
+{       "sdspi-mask",   "__cfg_sdspi_mask"      },
+{       "sdspi-addr",   "__cfg_sdspi_addr"      },
+{       NULL,           "__cfg_sdspi_config1"   },
+{       NULL,           "__cfg_sdspi_config2"   }
 };
 
 #define  CS_CLR_PIN_MASK       0x01   // either CS or CLR
@@ -782,11 +782,11 @@ int GetVariableValue(BoardConfig *config, int i, int *pValue)
     if (patch->configName)
         sts = GetNumericConfigField(config, patch->configName, pValue);
     else {
-        if (strcmp(patch->variableName, "__sdspi_config1") == 0) {
+        if (strcmp(patch->variableName, "__cfg_sdspi_config1") == 0) {
             *pValue = Get_sdspi_config1(config);
             sts = TRUE;
         }
-        else if (strcmp(patch->variableName, "__sdspi_config2") == 0) {
+        else if (strcmp(patch->variableName, "__cfg_sdspi_config2") == 0) {
             *pValue = Get_sdspi_config2(config);
             sts = TRUE;
         }
