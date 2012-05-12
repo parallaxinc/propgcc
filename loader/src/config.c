@@ -97,7 +97,7 @@ static ConfigSymbol configSymbols[] = {
 static BoardConfig *GetDefaultConfiguration(void);
 static int SkipSpaces(LineBuf *buf);
 static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm);
-static int ParseNumericExpr(char *token, int *pValue);
+static int ParseNumericExpr(const char *token, int *pValue);
 static int DoOp(int *pValue, int op, int left, int right);
 static void ParseError(LineBuf *buf, const char *fmt, ...);
 static int Error(const char *fmt, ...);
@@ -229,7 +229,7 @@ BoardConfig *GetConfigSubtype(BoardConfig *config, const char *name)
     return strcasecmp(name, DEF_SUBTYPE) == 0 ? config : NULL;
 }
 
-void SetConfigField(BoardConfig *config, char *tag, char *value)
+void SetConfigField(BoardConfig *config, const char *tag, const char *value)
 {
     Field **pNext, *field;
     int taglen;
@@ -250,7 +250,7 @@ void SetConfigField(BoardConfig *config, char *tag, char *value)
     *pNext = field;
 }
 
-char *GetConfigField(BoardConfig *config, char *tag)
+char *GetConfigField(BoardConfig *config, const char *tag)
 {
     while (config != NULL) {
         Field *field;
@@ -262,7 +262,7 @@ char *GetConfigField(BoardConfig *config, char *tag)
     return NULL;
 }
 
-int GetNumericConfigField(BoardConfig *config, char *tag, int *pValue)
+int GetNumericConfigField(BoardConfig *config, const char *tag, int *pValue)
 {
     char *value;
     if (!(value = GetConfigField(config, tag)))
@@ -336,9 +336,9 @@ static int SkipSpacesStr(char **pp)
     return *p;
 }
 
-static int ParseNumericExpr(char *token, int *pValue)
+static int ParseNumericExpr(const char *token, int *pValue)
 {
-    char *p = token;
+    char *p = (char *)token;
     int value = 0;
     int op = -1;
     *pValue = 0; // makes unary + and - work

@@ -66,6 +66,8 @@ typedef struct {
     uint16_t numlocals;
 } SpinObj;
 
+typedef int PatchFcn(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
+
 /* loader.c */
 void ShowPorts(char *prefix);
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
@@ -74,8 +76,8 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
 int WriteFileToSDCard(BoardConfig *config, char *path, char *target);
 int LoadSerialHelper(BoardConfig *config, int needsd);
-char *GetVariableToPatch(int i);
-int GetVariableValue(BoardConfig *config, int i, int *pValue);
+void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, PatchFcn *patch);
+int GetVariableValue(BoardConfig *config, const char *name, int *pValue);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);
 int Error(char *fmt, ...);
