@@ -27,10 +27,8 @@ extern uint32_t __attribute__ ((section(".hub"))) _hub_buffer[496];
 #endif
 
 // This routine starts the SD driver cog
-void LoadSDDriver(_SD_Params *params)
+void LoadSDDriver(uint32_t configwords[2])
 {
-    uint32_t pinmask[7];
-    uint32_t* pins = (uint32_t*)&params->pins;
     use_cog_driver(cogsys1);
     extern void *sd_driver_array;
 #ifdef __PROPELLER_LMM__
@@ -42,24 +40,8 @@ void LoadSDDriver(_SD_Params *params)
     void* driver_array = _hub_buffer;
     memcpy(driver_array, sd_driver_array, (_load_stop_cogsys1 - _load_start_cogsys1) * 4);
 #endif
-
-    memset(pinmask, 0, sizeof(pinmask));
-    pinmask[0] = 1 << pins[0];  // SD MISO
-    pinmask[1] = 1 << pins[1];  // SD CLK
-    pinmask[2] = 1 << pins[2];  // SD MOSI
-    pinmask[3] = 1 << pins[3];  // SD CS
-
-    if (params->AttachmentType == _SDA_SerialDeMUX)
-    {
-        pinmask[4] = 1 << pins[4];
-        pinmask[6] = pins[5];
-    }
-    else if (params->AttachmentType == _SDA_ParallelDeMUX)
-    {
-        pinmask[4] = pins[4];
-        pinmask[5] = pins[5];
-    }
-    memcpy(driver_array + 4, pinmask, sizeof(pinmask));
+    
+    memcpy(driver_array + 4, configwords, sizeof(uint32_t) * 2);
 
     _sd_mbox_p = (uint32_t *)sd_mbox;
     sd_mbox[0] = 1;

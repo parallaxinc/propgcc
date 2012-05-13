@@ -65,7 +65,7 @@
 
 #include <time.h>  /* for struct tm */
 
-typedef enum { _SDA_SingleSPI, _SDA_SerialDeMUX, _SDA_ParallelDeMUX } _SDAttachType;
+typedef enum { _SDA_SingleSPI, _SDA_SerialDeMUX, _SDA_ParallelDeMUX, _SDA_ConfigWords } _SDAttachType;
 
 typedef struct 
 {
@@ -91,9 +91,16 @@ typedef struct
     uint32_t  CLK;     // The pin attached to the SD card's CLK or SCLK input
     uint32_t  MOSI;    // The pin attached to the SD card's MOSI or DI input
     uint32_t  CS;      // The pin attached to the inverting deMUX's active-low enable
-    uint32_t  SEL;     // The pin mask to set when selecting the SD card's deMUX address
-    uint32_t  MSK;     // The pin mask for all pins attached to the deMUX address
+    uint32_t  START;   // The starting pin of the mask for selecting the SD card's deMUX address
+    uint32_t  WIDTH;   // The width of the mask for selecting the SD card's deMUX address
+    uint32_t  ADDR;    // The SD card's demux address
 } _SD_ParallelDeMUX;
+
+typedef struct 
+{
+    uint32_t  CONFIG1; // The value of the loader patched variable _sdspi_config1
+    uint32_t  CONFIG2; // The value of the loader patched variable _sdspi_config2
+} _SD_ConfigWords;
 
 typedef struct
 {
@@ -104,10 +111,12 @@ typedef struct
         _SD_SingleSPI     SingleSPI;
         _SD_SerialDeMUX   SerialDeMUX;
         _SD_ParallelDeMUX ParallelDeMUX;
+        _SD_ConfigWords   ConfigWords;
     } pins;
 } _SD_Params;
 
 uint32_t dfs_mount(_SD_Params* params);
+uint32_t dfs_mount_defaults(void);
 void dfs_use_lock(uint32_t lockId);
 void dfs_setDefaultFileDateTime(struct tm* tm);
 

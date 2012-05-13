@@ -59,8 +59,8 @@ BoardConfig *NewBoardConfig(BoardConfig *parent, const char *name);
 BoardConfig *ParseConfigurationFile(System *sys, const char *path);
 BoardConfig *GetConfigSubtype(BoardConfig *config, const char *name);
 BoardConfig *MergeConfigs(BoardConfig *parent, BoardConfig *child);
-void SetConfigField(BoardConfig *config, char *tag, char *value);
-char *GetConfigField(BoardConfig *config, char *tag);
-int GetNumericConfigField(BoardConfig *config, char *tag, int *pValue);
+void SetConfigField(BoardConfig *config, const char *tag, const char *value);
+char *GetConfigField(BoardConfig *config, const char *tag);
+int GetNumericConfigField(BoardConfig *config, const char *tag, int *pValue);
 
 #endif
