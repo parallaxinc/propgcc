@@ -13,16 +13,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/driver.h>
+#include <sys/sd.h>
 #include <compiler.h>
 #include <errno.h>
 #include <propeller.h>
 #include <unistd.h>
-#include "../drivers/dosfs.h"
-
-VOLINFO dfs_volinfo;
-int dfs_mountflag;
-extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
-char dfs_currdir[MAX_PATH];
+#include "../drivers/sd_internal.h"
 
 int dfs_stdio_errno(int errnum);
 void dfs_resolve_path(const char *fname, char *path);
@@ -34,7 +30,7 @@ int chdir(const char *path1)
     char path[MAX_PATH];
     DIRINFO dirinfo;
 
-    if (!dfs_mountflag)
+    if (!dfs_mountflag && dfs_mount_defaults() != DFS_OK)
     {
         errno = EIO;
         return -1;
