@@ -105,6 +105,7 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
 static uint32_t Get_sdspi_config1(BoardConfig *config);
 static uint32_t Get_sdspi_config2(BoardConfig *config);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
@@ -733,7 +734,7 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
 }
 
 /* PatchVariables - patch user variables based on config file values */
-void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, PatchFcn *patch)
+void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase)
 {
     int i;
     for (i = 1; i < c->symbolCnt; ++i) {
@@ -754,7 +755,7 @@ void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint3
             /* get the variable value */
             if (GetVariableValue(config, cname, &value)) {
                 printf("Patching %s with %08x\n", vname, value);
-                if (!(*patch)(c, imagebuf, imagebase, symbol.value, value))
+                if (!PatchVariable(c, imagebuf, imagebase, symbol.value, value))
                     printf("Unable to patch \"%s\"\n", vname);
             }
             
@@ -763,6 +764,23 @@ void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint3
                 printf("Can't patch %s\n", vname);
         }
     }    
+}
+
+/* PatchVariable - patch a single variable */
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value)
+{
+    ElfProgramHdr program;
+    int i;
+    for (i = 0; i < c->hdr.phnum; ++i) {
+        if (LoadProgramTableEntry(c, i, &program)) {
+            if (addr >= program.vaddr && addr < program.vaddr + program.filesz) {
+                uint32_t offset = addr - program.vaddr + program.paddr - imagebase;
+                *(uint32_t *)(imagebuf + offset) = value;
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
 }
 
 /* GetVariableValue - get the value of a variable to patch */

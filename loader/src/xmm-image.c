@@ -50,22 +50,6 @@ typedef struct {
 
 //#define DEBUG_BUILD_EXTERNAL_IMAGE
 
-static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value)
-{
-    ElfProgramHdr program;
-    int i;
-    for (i = 0; i < c->hdr.phnum; ++i) {
-        if (LoadProgramTableEntry(c, i, &program)) {
-            if (addr >= program.vaddr && addr < program.vaddr + program.filesz) {
-                uint32_t offset = addr - program.vaddr + program.paddr - imagebase;
-                *(uint32_t *)(imagebuf + offset) = value;
-                return TRUE;
-            }
-        }
-    }
-    return FALSE;
-}
-
 uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
 {
     ElfProgramHdr program, program_kernel, program_header, program_hub;
@@ -183,7 +167,7 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
     }
     
     /* patch user variables with values from the configuration file */
-    PatchVariables(config, c, imagebuf, program_header.paddr, PatchVariable);
+    PatchVariables(config, c, imagebuf, program_header.paddr);
 
     /* return the image */
     *pLoadAddress = program_header.paddr;

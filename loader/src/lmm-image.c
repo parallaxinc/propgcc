@@ -7,12 +7,6 @@
 #include "PLoadLib.h"
 #include "osint.h"
 
-static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value)
-{
-    *(uint32_t *)(imagebuf + addr) = value;
-    return TRUE;
-}
-
 uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize)
 {
     uint32_t start, imageSize;
@@ -41,7 +35,7 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     }
     
     /* patch the program with values from the config file */
-    PatchVariables(config, c, imagebuf, 0, PatchVariable);
+    PatchVariables(config, c, imagebuf, 0);
     
     /* fixup the header to point past the spin bytecodes and generated PASM code */
     hdr = (SpinHdr *)imagebuf;
