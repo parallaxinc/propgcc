@@ -1,11 +1,8 @@
 '
-' SPI SRAM and flash JCACHE driver for the Parallax C3
+' SPI SD card driver
 ' by David Betz
 '
-' Based on code from VMCOG - virtual memory server for the Propeller
-' Copyright (c) February 3, 2010 by William Henning
-'
-' and on code from SdramCache
+' Based on code from SdramCache
 ' Copyright (c) 2010 by John Steven Denson (jazzed)
 '
 ' Modified to interface to the SD card on the C3 or other boards that use
@@ -41,12 +38,6 @@
 ' Constants
 '----------------------------------------------------------------------------------------------------
 
-        .equ CS_CLR_PIN,              25
-        .equ CLK_PIN,                 11
-        .equ MOSI_PIN,                9
-        .equ MISO_PIN,                10
-        .equ INC_PIN,                 8
-
         .equ EXTEND_MASK,             %10
   
         ' address of CLKFREQ in hub RAM
@@ -64,6 +55,13 @@
         .equ CMD58_READ_OCR,          $40 | 58
         .equ CMD59_CRC_ON_OFF,        $40 | 59
   
+        ' protocol bits
+        .equ CS_CLR_PIN_MASK,         $01
+        .equ INC_PIN_MASK,            $02   ' for C3-style CS
+        .equ MUX_START_BIT_MASK,      $04   ' low order bit of mux field
+        .equ MUX_WIDTH_MASK,          $08   ' width of mux field
+        .equ ADDR_MASK,               $10   ' device number for C3-style CS or value to write to the mux
+
         .section .data
         .global  _sd_driver_array
 _sd_driver_array
@@ -79,38 +77,92 @@ _sd_driver_array
 
 init    jmp     #init2
 
-' These seven values get patched by the loader, defaulting to the C3:
-tmiso         long    1<<MISO_PIN
-tclk          long    1<<CLK_PIN
-tmosi         long    1<<MOSI_PIN
-tcs_clr       long    1<<CS_CLR_PIN
-tselect_inc   long    1<<INC_PIN
-tselect_mask  long    0
-tselect_addr  long    5
+' sdspi_config1: 0xiiooccpp - ii=mosi oo=miso cc=sck pp=protocol
+' sdspi_config2: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
+' the protocol byte is a bit mask with the bits defined above
+'   if CS_CLR_PIN_MASK ($01) is set, then byte aa contains the CS or C3-style CLR pin number
+'   if INC_PIN_MASK ($02) is set, then byte bb contains the C3-style INC pin number
+'   if MUX_START_BIT_MASK ($04) is set, then byte bb contains the starting bit number of the mux field
+'   if MUX_WIDTH_MASK ($08) is set, then byte cc contains the width of the mux field
+'   if ADDR_MASK ($10) is set, then byte dd contains either the C3-style address or the value to write to the mux field
+
+' These two values get patched by the loader
+sdspi_config1 long    $090a0b13 ' for the c3 (di=9, do=10, clk=11, protocol=CS_CLR_PIN_MASK|INC_PIN_MASK|ADDR_MASK)
+sdspi_config2 long    $19080005 ' for the c3 (clr=25, inc=8, addr=5)
 
 init2   mov     pvmcmd, par             ' Get the address of the mailbox
         mov     pvmaddr, pvmcmd         ' pvmaddr is the error return code (in cache drivers it is a pointer into the cache line on return)
         add     pvmaddr, #4
 
-        ' Check if C3 mode or normal CS mode
-        tjz     tselect_inc,  #_not_c3
-        tjnz    tselect_mask, #_not_c3
-        mov     sd_select, c3_sd_select_jmp    ' We're in C3 mode, so replace select/deselect
-        mov     sd_release, c3_sd_release_jmp  ' with the C3-aware routines
-        or      spidir, tselect_inc
-_not_c3
+        ' build the mosi mask
+        mov     t1, sdspi_config1
+        shr     t1, #24
+        mov     mosi_mask, #1
+        shl     mosi_mask, t1
+        or      spidir, mosi_mask
+        
+        ' build the miso mask
+        mov     t1, sdspi_config1
+        shr     t1, #16
+        and     t1, #$ff
+        mov     miso_mask, #1
+        shl     miso_mask, t1
+        
+        ' build the sck mask
+        mov     t1, sdspi_config1
+        shr     t1, #8
+        and     t1, #$ff
+        mov     sck_mask, #1
+        shl     sck_mask, t1
+        or      spidir, sck_mask
+        
+        ' handle the CS or C3-style CLR pins
+        test    sdspi_config1, #CS_CLR_PIN_MASK wz
+  if_nz mov     t1, sdspi_config2
+  if_nz shr     t1, #24
+  if_nz mov     cs_clr, #1
+  if_nz shl     cs_clr, t1
+  if_nz or      spidir, cs_clr
+  
+        ' handle the mux width
+        test    sdspi_config1, #MUX_WIDTH_MASK wz
+  if_nz mov     t1, sdspi_config2
+  if_nz shr     t1, #8
+  if_nz and     t1, #$ff
+  if_nz mov     mask_inc, #1
+  if_nz shl     mask_inc, t1
+  if_nz sub     mask_inc, #1
+  if_nz or      spidir, mask_inc
+  
+        ' handle the C3-style address or mux value
+        test    sdspi_config1, #ADDR_MASK wz
+  if_nz mov     select_addr, sdspi_config2
+  if_nz and     select_addr, #$ff
 
-        ' build composite masks
-        or      spidir, tcs_clr
-        or      spidir, tselect_mask
-        or      spidir, tclk
-        or      spidir, tmosi
+        ' get the INC pin or the mux start bit
+        mov     t1, sdspi_config2
+        shr     t1, #16
+        and     t1, #$ff
 
-        mov     outa, tcs_clr
-        or      outa, tmosi             ' Need to set output high so reads work correctly
-
-        mov     dira, #0                ' Don't bother messing with the SPI bus now - wait until SD_INIT
-        call    #sd_release             ' Disable the chip select - this sets up OUTA so we're cool when we next set DIRA
+        ' handle the C3-style INC pin
+        test    sdspi_config1, #INC_PIN_MASK wz
+  if_nz mov     mask_inc, #1
+  if_nz shl     mask_inc, t1
+  if_nz mov     sd_select, c3_sd_select_jmp     ' We're in C3 mode, so replace sd_select/sd_release
+  if_nz mov     sd_release, c3_sd_release_jmp   ' with the C3-aware routines
+  if_nz or      spidir, mask_inc
+ 
+        ' handle the mux start bit (must follow setting of select_addr and mask_inc)
+        test    sdspi_config1, #MUX_START_BIT_MASK wz
+  if_nz shl     select_addr, t1
+  if_nz shl     mask_inc, t1
+  if_nz or      spidir, mask_inc
+        
+        ' set the pin directions
+        mov     outa, cs_clr
+        or      outa, mosi_mask                ' Need to set output high so reads work correctly
+        mov     dira, spidir
+        call    #sd_release
 
         rdlong  sdFreq, #CLKFREQ_ADDR   ' Get the clock frequency
 
@@ -228,7 +280,7 @@ _type2  mov     sdParam1, ccsbit        ' CMD41 is necessary for both type 1 and
         call    #_cmd41                 ' it's in a subroutine.
 
 _cmd58  mov     sdOp, #CMD58_READ_OCR
-        mov     sdParam, 0
+        mov     sdParam, #0
         mov     sdCRC, #$FD
         call    #sdSendCmd
         cmp     data, #0 wz
@@ -240,7 +292,7 @@ _cmd58  mov     sdOp, #CMD58_READ_OCR
   if_nz mov     adrShift, #0
         jmp     #_ifini
 
-_type1  mov     sdParam1, 0
+_type1  mov     sdParam1, #0
         mov     sdCRC, #$E5
         call    #_cmd41i
 
@@ -268,7 +320,7 @@ _cmd41_ret
 
 _cmd41i call    #check_time              ' This routine does not wait until idle -
         mov     sdOp, #CMD55_APP_CMD     ' it just does one ACMD41, then returns.
-        mov     sdParam, 0
+        mov     sdParam, #0
         mov     sdCRC, #$65
         call    #sdSendCmd
         cmp     data, #1 wc,wz
@@ -290,7 +342,7 @@ check_time_ret
         ret
 
 _ifini  mov     sdOp, #CMD59_CRC_ON_OFF ' Sad, but we don't have the code space nor
-        mov     sdParam, 0              ' bandwidth to protect read/writes with CRCs.
+        mov     sdParam, #0             ' bandwidth to protect read/writes with CRCs.
         mov     sdCRC, #$91
         call    #sdSendCmd
 
@@ -414,37 +466,37 @@ sdWaitBusy_ret
 ' SPI Bus Access
 '----------------------------------------------------------------------------------------------------
 
-sd_select                               ' Single-SPI and Parallel-DeMUX
-        andn    outa, tselect_mask
-        or      outa, tselect_inc
-        andn    outa, tcs_clr
+sd_select                           ' Single-SPI and Parallel-DeMUX
+        andn    outa, mask_inc
+        or      outa, select_addr
+        andn    outa, cs_clr
 sd_select_ret
         ret
 
-sd_release                              ' Single-SPI and Parallel-DeMUX
-        or      outa, tcs_clr
-        andn    outa, tselect_mask
+sd_release                          ' Single-SPI and Parallel-DeMUX
+        or      outa, cs_clr
+        andn    outa, mask_inc
 sd_release_ret
         ret
 
-c3_sd_select_jmp                        ' Serial-DeMUX Jumps
-        jmp     #c3_sd_select           ' Initialization copies these jumps
-c3_sd_release_jmp                       '   over the sd_select and sd_relase
-        jmp     #c3_sd_release          '   when in C3 mode.
+c3_sd_select_jmp                    ' Serial-DeMUX Jumps
+        jmp     #c3_sd_select       ' Initialization copies these jumps
+c3_sd_release_jmp                   '   over sd_select and sd_release
+        jmp     #c3_sd_release      '   when in C3 mode.
 
-c3_sd_select                            ' Serial-DeMUX
-        mov     t1, tselect_addr
-        andn    outa, tcs_clr
-        or      outa, tcs_clr
-_loop   or      outa, tselect_inc
-        andn    outa, tselect_inc
+c3_sd_select                        ' Serial-DeMUX
+        mov     t1, select_addr
+        andn    outa, cs_clr
+        or      outa, cs_clr
+_loop   or      outa, mask_inc
+        andn    outa, mask_inc
         djnz    t1, #_loop
-        jmp     #sd_select_ret
+        jmp     sd_select_ret
 
-c3_sd_release                           ' Serial-DeMUX
-        andn    outa, tcs_clr
-        or      outa, tcs_clr
-        jmp     #sd_release_ret
+c3_sd_release                       ' Serial-DeMUX
+        andn    outa, cs_clr
+        or      outa, cs_clr
+        jmp     sd_release_ret
 
 '----------------------------------------------------------------------------------------------------
 ' Low-level SPI routines
@@ -456,13 +508,13 @@ spiSendLong
 spiSendByte
         shl     data, #24
         mov     bits, #8
-spiSend andn    outa, tclk
+spiSend andn    outa, sck_mask
         rol     data, #1 wc
-        muxc    outa, tmosi
-        or      outa, tclk
+        muxc    outa, mosi_mask
+        or      outa, sck_mask
         djnz    bits, #spiSend
-        andn    outa, tclk
-        or      outa, tmosi
+        andn    outa, sck_mask
+        or      outa, mosi_mask
 spiSendLong_ret
 spiSendByte_ret
         ret
@@ -473,10 +525,10 @@ spiRecvLong
 spiRecvByte
         mov     bits, #8
 spiRecv mov     data, #0
-_rloop  or      outa, tclk
-        test    tmiso, ina wc
+_rloop  or      outa, sck_mask
+        test    miso_mask, ina wc
         rcl     data, #1
-        andn    outa, tclk
+        andn    outa, sck_mask
         djnz    bits, #_rloop
 spiRecvLong_ret
 spiRecvByte_ret
@@ -512,7 +564,15 @@ vmline          long    0       ' line containing the virtual address, or the ex
 zero            long    0       ' zero constant
 t1              long    0       ' Temporary variable
 
-spidir          long    0       ' Saved DIRA for the SPI bus
+spidir          long    0
+
+mosi_mask       long    0
+miso_mask       long    0
+sck_mask        long    0
+
+cs_clr          long    0
+mask_inc        long    0
+select_addr     long    0
 
 ' Input parameters to block read/write
 vmaddr          long    0       ' Pointer to the read/write parameters: buffer, count, sector, then during the reads the sector
@@ -524,3 +584,6 @@ count           long    0       ' The block count
 ' Temporaries used by send/recv
 bits            long    0       ' # bits to send/receive
 data            long    0       ' Current data being sent/received
+
+                fit     496
+

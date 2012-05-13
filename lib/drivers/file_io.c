@@ -20,7 +20,7 @@
 #include <compiler.h>
 #include <errno.h>
 #include <propeller.h>
-#include "dosfs.h"
+#include "sd_internal.h"
 
 #define SD_INIT_CMD  0x0d
 #define SD_READ_CMD  0x11
@@ -29,7 +29,6 @@
 
 static volatile uint32_t __attribute__((section(".hub"))) sd_lock = -1;
 static volatile uint32_t __attribute__((section(".hub"))) *sd_mbox;
-extern __attribute__((section(".hub"))) uint8_t dfs_scratch[512];
 
 #ifndef __PROPELLER_LMM__
 extern uint16_t _xmm_mbox_p;
@@ -58,12 +57,11 @@ void dfs_use_lock(uint32_t lockId)
 int DFS_InitFileIO(void)
 {
     int retries = 5;
-    int32_t result = DFS_OK;
 
 #ifdef __PROPELLER_LMM__
     sd_mbox = _sd_mbox_p;
     if (!_sd_mbox_p)
-        return -1;
+        return DFS_INVAL;
 #else
     if (_sd_mbox_p)
         sd_mbox = _sd_mbox_p;
@@ -80,12 +78,11 @@ int DFS_InitFileIO(void)
 
     while (retries-- > 0)
     {
-        result = do_cmd(SD_INIT_CMD);
-        if (result == 0)
+        if (do_cmd(SD_INIT_CMD) == 0)
             return DFS_OK;
     }
 
-    return result;
+    return DFS_IOERR;
 }
 
 // This routine reads 512-byte sectors into a buffer.  If the buffer is
@@ -103,7 +100,7 @@ uint32_t DFS_ReadSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_t
         params[2] = sector;
         result = do_cmd(SD_READ_CMD | ((uint32_t)params << 8));
         if (result != 0) {
-            return -1;
+            return DFS_IOERR;
         }
         if (((uint32_t)buffer) & 0xffff0000)
             memcpy(buffer, dfs_scratch, SECTOR_SIZE);
@@ -133,7 +130,7 @@ uint32_t DFS_WriteSector(uint8_t unit, uint8_t *buffer, uint32_t sector, uint32_
         params[2] = sector;
         result = do_cmd(SD_WRITE_CMD | ((uint32_t)params << 8));
         if (result != 0) {
-            return -1;
+            return DFS_IOERR;
         }
         buffer += SECTOR_SIZE;
         ++sector;
