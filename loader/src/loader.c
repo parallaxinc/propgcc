@@ -754,14 +754,15 @@ void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint3
             
             /* get the variable value */
             if (GetVariableValue(config, cname, &value)) {
-                printf("Patching %s with %08x\n", vname, value);
-                if (!PatchVariable(c, imagebuf, imagebase, symbol.value, value))
-                    printf("Unable to patch \"%s\"\n", vname);
+                if (PatchVariable(c, imagebuf, imagebase, symbol.value, value))
+                    printf("Patching %s with %08x\n", vname, value);
+                else
+                    printf("Unable to patch %s\n", vname);
             }
             
             /* can't find variable to patch */
             else
-                printf("Can't patch %s\n", vname);
+                printf("No value for %s in the configuration file\n", vname);
         }
     }    
 }
