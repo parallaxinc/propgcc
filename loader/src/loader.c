@@ -37,13 +37,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 /* SD parameters */
 typedef struct {
-    uint32_t do_mask;
-    uint32_t clk_mask;
-    uint32_t di_mask;
-    uint32_t cs_clr_mask;
-    uint32_t select_inc_mask;
-    uint32_t select_mask;
-    uint32_t select_address;
+    uint32_t sdspi_config1;
+    uint32_t sdspi_config2;
 } SDParams;
 
 /* DAT header in serial_helper.spin */
@@ -110,6 +105,9 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
+static uint32_t Get_sdspi_config1(BoardConfig *config);
+static uint32_t Get_sdspi_config2(BoardConfig *config);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static int WriteBuffer(uint8_t *buf, int size);
 
@@ -270,39 +268,10 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
     return TRUE;
 }
 
-static int SetSDParams(BoardConfig *config, SDParams *params)
+static void SetSDParams(BoardConfig *config, SDParams *params)
 {
-    int value;
-    
-    if (!GetNumericConfigField(config, "sdspi-do", &value))
-        return Error("missing configuration parameter: sdspi-do");
-    params->do_mask = 1 << value;
-
-    if (!GetNumericConfigField(config, "sdspi-clk", &value))
-        return Error("missing configuration parameter: sdspi-clk");
-    params->clk_mask = 1 << value;
-    
-    if (!GetNumericConfigField(config, "sdspi-di", &value))
-        return Error("missing configuration parameter: sdspi-di");
-    params->di_mask = 1 << value;
-
-    if (GetNumericConfigField(config, "sdspi-cs", &value))
-        params->cs_clr_mask = 1 << value;
-    else if (GetNumericConfigField(config, "sdspi-clr", &value))
-        params->cs_clr_mask = 1 << value;
-        
-    if (GetNumericConfigField(config, "sdspi-sel", &value))
-        params->select_inc_mask = value;
-    else if (GetNumericConfigField(config, "sdspi-inc", &value))
-        params->select_inc_mask = 1 << value;
-        
-    if (GetNumericConfigField(config, "sdspi-msk", &value))
-        params->select_mask = value;
-
-    if (GetNumericConfigField(config, "sdspi-addr", &value))
-        params->select_address = value;
-        
-    return TRUE;
+    params->sdspi_config1 = Get_sdspi_config1(config);
+    params->sdspi_config2 = Get_sdspi_config2(config);
 }
 
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
@@ -373,8 +342,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
     if (!ReadCogImage(sys, value, driverImage, &driverSize))
         return Error("reading sd driver image failed: %s", value);
-    if (!SetSDParams(config, &dat->sd_params))
-        return FALSE;
+    SetSDParams(config, &dat->sd_params);
     memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
             
     /* update the checksum */
@@ -451,8 +419,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     dat = (SDCacheDatHdr *)driverImage;
     params = (SDCacheParams *)(driverImage + dat->params_off);
     memset(params, 0, sizeof(SDCacheParams));
-    if (!SetSDParams(config, &params->sd_params))
-        return FALSE;
+    SetSDParams(config, &params->sd_params);
     memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
             
     /* update the checksum */
@@ -766,33 +733,73 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     return TRUE;
 }
 
-/* variable patch table entry */
-typedef struct {
-    char *configName;
-    char *variableName;
-} VariablePatch;
+/* PatchVariables - patch user variables based on config file values */
+void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase)
+{
+    int i;
+    for (i = 1; i < c->symbolCnt; ++i) {
+        char cname[ELFNAMEMAX], vname[ELFNAMEMAX], *p;
+        ElfSymbol symbol;
+        if (LoadElfSymbol(c, i, vname, &symbol) == 0 && strncmp(vname, "__cfg_", 6) == 0) {
+            int value;
+            
+            /* remove the '__cfg_' prefix */
+            strcpy(cname, &vname[6]);
+            
+            /* translate underscores to dashes */
+            for (p = cname; *p != '\0'; ++p) {
+                if (*p == '_')
+                    *p = '-';
+            }
+            
+            /* get the variable value */
+            if (GetVariableValue(config, cname, &value)) {
+                if (PatchVariable(c, imagebuf, imagebase, symbol.value, value))
+                    printf("Patching %s with %08x\n", vname, value);
+                else
+                    printf("Unable to patch %s\n", vname);
+            }
+            
+            /* can't find variable to patch */
+            else
+                printf("No value for %s in the configuration file\n", vname);
+        }
+    }    
+}
 
-/* These are user variables that, if they exist in the elf file, will be patched
-   with the corresponding values from the board configuration file. */
-VariablePatch variablePatchTable[] = {
-/*      config entry    user variable           */
-{       "baudrate",     "__serial_baudrate"     },
-{       "rxpin",        "__serial_rxpin"        },
-{       "txpin",        "__serial_txpin"        },
-{       "tvpin",        "__tvpin"               },
-{       "vgapin",       "__vgapin"              },
-{       "sdspi-do",     "__sdspi_do"            },
-{       "sdspi-clk",    "__sdspi_clk"           },
-{       "sdspi-di",     "__sdspi_di"            },
-{       "sdspi-cs",     "__sdspi_cs"            },
-{       "sdspi-sel",    "__sdspi_sel"           },
-{       "sdspi-clr",    "__sdspi_clr"           },
-{       "sdspi-inc",    "__sdspi_inc"           },
-{       "sdspi-mask",   "__sdspi_mask"          },
-{       "sdspi-addr",   "__sdspi_addr"          },
-{       NULL,           "__sdspi_config1"       },
-{       NULL,           "__sdspi_config2"       }
-};
+/* PatchVariable - patch a single variable */
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value)
+{
+    ElfProgramHdr program;
+    int i;
+    for (i = 0; i < c->hdr.phnum; ++i) {
+        if (LoadProgramTableEntry(c, i, &program)) {
+            if (addr >= program.vaddr && addr < program.vaddr + program.filesz) {
+                uint32_t offset = addr - program.vaddr + program.paddr - imagebase;
+                *(uint32_t *)(imagebuf + offset) = value;
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
+/* GetVariableValue - get the value of a variable to patch */
+int GetVariableValue(BoardConfig *config, const char *name, int *pValue)
+{
+    int sts;
+    if (strcmp(name, "sdspi-config1") == 0) {
+        *pValue = Get_sdspi_config1(config);
+        sts = TRUE;
+    }
+    else if (strcmp(name, "sdspi-config2") == 0) {
+        *pValue = Get_sdspi_config2(config);
+        sts = TRUE;
+    }
+    else
+        sts = GetNumericConfigField(config, name, pValue);
+    return sts;
+}
 
 #define  CS_CLR_PIN_MASK       0x01   // either CS or CLR
 #define  INC_PIN_MASK          0x02   // for C3-style CS
@@ -800,66 +807,50 @@ VariablePatch variablePatchTable[] = {
 #define  MUX_WIDTH_MASK        0x08   // width of mux field
 #define  ADDR_MASK             0x10   // device number for C3-style CS or value to write to the mux
 
-/* GetVariableToPatch - get the name of a variable that the loader can patch */
-char *GetVariableToPatch(int i)
+static uint32_t Get_sdspi_config1(BoardConfig *config)
 {
-    if (i < 0 || i > sizeof(variablePatchTable) / sizeof(VariablePatch))
-        return NULL;
-    return variablePatchTable[i].variableName;
+    int value;
+    if (!GetNumericConfigField(config, "sdspi-config1", &value)) {
+        int din = 0, clk = 0, dout = 0, protocol = 0;
+        GetNumericConfigField(config, "sdspi-di", &din);
+        GetNumericConfigField(config, "sdspi-clk", &clk);
+        GetNumericConfigField(config, "sdspi-do", &dout);
+        if (GetNumericConfigField(config, "sdspi-cs", &value)
+        ||  GetNumericConfigField(config, "sdspi-clr", &value))
+            protocol |= CS_CLR_PIN_MASK;
+        if (GetNumericConfigField(config, "sdspi-inc", &value))
+            protocol |= INC_PIN_MASK;
+        if (GetNumericConfigField(config, "sdspi-start", &value))
+            protocol |= MUX_START_BIT_MASK;
+        if (GetNumericConfigField(config, "sdspi-width", &value))
+            protocol |= MUX_WIDTH_MASK;
+        if (GetNumericConfigField(config, "sdspi-addr", &value))
+            protocol |= ADDR_MASK;
+        value = (din << 24) | (dout << 16) | (clk << 8) | protocol;
+    }
+    return (uint32_t)value;
 }
 
-/* GetVariableValue - get the value of a variable to patch */
-int GetVariableValue(BoardConfig *config, int i, int *pValue)
+static uint32_t Get_sdspi_config2(BoardConfig *config)
 {
-    VariablePatch *patch = &variablePatchTable[i];
-    int value, sts;
-    if (patch->configName)
-        sts = GetNumericConfigField(config, patch->configName, pValue);
-    else {
-        if (strcmp(patch->variableName, "__sdspi_config1") == 0) {
-            if (!GetNumericConfigField(config, "sdspi-config1", pValue)) {
-                int dout = 0, clk = 0, din = 0, protocol = 0, value;
-                GetNumericConfigField(config, "sdspi-do", &dout);
-                GetNumericConfigField(config, "sdspi-clk", &clk);
-                GetNumericConfigField(config, "sdspi-di", &din);
-                if (GetNumericConfigField(config, "sdspi-cs", &value)
-                ||  GetNumericConfigField(config, "sdspi-clr", &value))
-                    protocol |= CS_CLR_PIN_MASK;
-                if (GetNumericConfigField(config, "sdspi-inc", &value))
-                    protocol |= INC_PIN_MASK;
-                if (GetNumericConfigField(config, "sdspi-start", &value))
-                    protocol |= MUX_START_BIT_MASK;
-                if (GetNumericConfigField(config, "sdspi-width", &value))
-                    protocol |= MUX_WIDTH_MASK;
-                if (GetNumericConfigField(config, "sdspi-addr", &value))
-                    protocol |= ADDR_MASK;
-                *pValue = (dout << 24) | (clk << 16) | (din << 8) | protocol;
-            }
-            sts = TRUE;
-        }
-        else if (strcmp(patch->variableName, "__sdspi_config2") == 0) {
-            if (!GetNumericConfigField(config, "sdspi-config2", pValue)) {
-                int aa, bb, cc, dd;
-                if (GetNumericConfigField(config, "sdspi-cs", &value))
-                    aa = value;
-                if (GetNumericConfigField(config, "sdspi-clr", &value))
-                    aa = value;
-                if (GetNumericConfigField(config, "sdspi-inc", &value))
-                    bb = value;
-                if (GetNumericConfigField(config, "sdspi-start", &value))
-                    bb = value;
-                if (GetNumericConfigField(config, "sdspi-width", &value))
-                    cc = value;
-                if (GetNumericConfigField(config, "sdspi-addr", &value))
-                    dd = value;
-                *pValue = (aa << 24) | (bb << 16) | (cc << 8) | dd;
-            }
-            sts = TRUE;
-        }
-        else
-            sts = FALSE;
+    int value;
+    if (!GetNumericConfigField(config, "sdspi-config2", &value)) {
+        int aa = 0, bb = 0, cc = 0, dd = 0;
+        if (GetNumericConfigField(config, "sdspi-cs", &value))
+            aa = value;
+        if (GetNumericConfigField(config, "sdspi-clr", &value))
+            aa = value;
+        if (GetNumericConfigField(config, "sdspi-inc", &value))
+            bb = value;
+        if (GetNumericConfigField(config, "sdspi-start", &value))
+            bb = value;
+        if (GetNumericConfigField(config, "sdspi-width", &value))
+            cc = value;
+        if (GetNumericConfigField(config, "sdspi-addr", &value))
+            dd = value;
+        value = (aa << 24) | (bb << 16) | (cc << 8) | dd;
     }
-    return sts;
+    return (uint32_t)value;
 }
 
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize)
