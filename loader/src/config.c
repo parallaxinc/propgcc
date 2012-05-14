@@ -451,11 +451,11 @@ static void ParseError(LineBuf *buf, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stderr, "error: ");
-    vfprintf(stderr, fmt, ap);
-    putc('\n', stderr);
+    printf("error: ");
+    vprintf(fmt, ap);
+    putchar('\n');
     if (buf)
-        fprintf(stderr, "  on line number %d\n", buf->lineNumber);
+        printf("  on line number %d\n", buf->lineNumber);
     va_end(ap);
     exit(1);
 }
@@ -464,9 +464,9 @@ static int Error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stderr, "error: ");
-    vfprintf(stderr, fmt, ap);
-    putc('\n', stderr);
+    printf("error: ");
+    vprintf(fmt, ap);
+    putchar('\n');
     va_end(ap);
     return FALSE;
 }
@@ -475,9 +475,9 @@ static void Fatal(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    fprintf(stderr, "error: ");
-    vfprintf(stderr, fmt, ap);
-    putc('\n', stderr);
+    printf("error: ");
+    vprintf(fmt, ap);
+    putchar('\n');
     va_end(ap);
     exit(1);
 }

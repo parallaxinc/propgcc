@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
     
     /* make sure an input file was specified if needed */
     if (infile && !flags) {
-        fprintf(stderr, "error: must specify -e, -r, or -s when an image file is specified\n");
+        printf("error: must specify -e, -r, or -s when an image file is specified\n");
         return 1;
     }
 
@@ -238,14 +238,14 @@ int main(int argc, char *argv[])
 
     /* setup for the selected board */
     if (!(config = ParseConfigurationFile(&sys, board))) {
-        fprintf(stderr, "error: can't find board configuration '%s'\n", board);
+        printf("error: can't find board configuration '%s'\n", board);
         return 1;
     }
     
     /* select the subtype */
     if (subtype) {
         if (!(config = GetConfigSubtype(config, subtype))) {
-            fprintf(stderr, "error: can't find board configuration subtype '%s'\n", subtype);
+            printf("error: can't find board configuration subtype '%s'\n", subtype);
             return 1;
         }
     }
@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
         else if (strcasecmp(value, "rts") == 0)
             useRtsForReset = TRUE;
         else {
-            fprintf(stderr, "error: no reset type '%s'\n", value);
+            printf("error: no reset type '%s'\n", value);
             return 1;
         }
     }
@@ -276,14 +276,14 @@ int main(int argc, char *argv[])
             // port initialized successfully
             break;
         case PLOAD_STATUS_OPEN_FAILED:
-            fprintf(stderr, "error: opening serial port '%s'\n", port);
+            printf("error: opening serial port '%s'\n", port);
 	    perror("Error is ");
             return 1;
         case PLOAD_STATUS_NO_PROPELLER:
             if (port)
-                fprintf(stderr, "error: no propeller chip on port '%s'\n", port);
+                printf("error: no propeller chip on port '%s'\n", port);
             else
-                fprintf(stderr, "error: can't find a port with a propeller chip\n");
+                printf("error: can't find a port with a propeller chip\n");
             return 1;
         }
     }
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
             WriteFileToSDCard(config, infile, NULL);
         else {
             if (!LoadImage(&sys, config, infile, flags)) {
-                fprintf(stderr, "error: load failed\n");
+                printf("error: load failed\n");
                 return 1;
             }
         }
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
     /* check for loading the sd loader */
     else if (flags & LFLAG_WRITE_SDLOADER) {
         if (!LoadSDLoader(&sys, config, "sd_loader.elf", flags)) {
-            fprintf(stderr, "error: load failed\n");
+            printf("error: load failed\n");
             return 1;
         }
     }
@@ -311,7 +311,7 @@ int main(int argc, char *argv[])
     /* check for loading the sd cache loader */
     else if (flags & LFLAG_WRITE_SDCACHELOADER) {
         if (!LoadSDCacheLoader(&sys, config, "sd_cache_loader.elf", flags)) {
-            fprintf(stderr, "error: load failed\n");
+            printf("error: load failed\n");
             return 1;
         }
     }
@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
 /* Usage - display a usage message and exit */
 static void Usage(void)
 {
-fprintf(stderr, "\
+printf("\
 usage: propeller-load\n\
          [ -b <type> ]     select target board (default is 'default:default')\n\
          [ -p <port> ]     serial port (default is to auto-detect the port)\n\
@@ -390,5 +390,5 @@ static void MyInfo(System *sys, const char *fmt, va_list ap)
 
 static void MyError(System *sys, const char *fmt, va_list ap)
 {
-    vfprintf(stderr, fmt, ap);
+    vprintf(fmt, ap);
 }

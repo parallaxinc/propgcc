@@ -228,7 +228,7 @@ static int findprop(const char* port)
     version = hwfind();
     if(version && port) {
         if (pload_verbose)
-            fprintf(stderr, "Propeller Version %d on %s\n", version, port);
+            printf("Propeller Version %d on %s\n", version, port);
     }
     return version != 0 ? 0 : 1;
 }
@@ -284,53 +284,53 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
     // send type
     if(sendlong(type) == 0) {
         if (pload_verbose)
-            fprintf(stderr, "sendlong type failed\n");
+            printf("sendlong type failed\n");
         return 1;
     }
 
     // send count
     if(sendlong(longcount) == 0) {
         if (pload_verbose)
-            fprintf(stderr, "sendlong count failed\n");
+            printf("sendlong count failed\n");
         return 1;
     }
 
     if((type == 0) || (type >= DOWNLOAD_SHUTDOWN)) {
         if (pload_verbose)
-            fprintf(stderr, "Shutdown type %d sent\n", type);
+            printf("Shutdown type %d sent\n", type);
         return 1;
     }
 
     if (pload_verbose) {
         if (file)
-            fprintf(stderr, "Loading %s",file);
+            printf("Loading %s",file);
         else
-            fprintf(stderr, "Loading");
+            printf("Loading");
 
         if(type == DOWNLOAD_RUN_BINARY)
-            fprintf(stderr, " to hub memory\n");
+            printf(" to hub memory\n");
         else
-            fprintf(stderr, " to EEPROM via hub memory\n");
+            printf(" to EEPROM via hub memory\n");
     }
 
     remaining = count;
     for(n = 0; n < count; n+=4) {
         if(n % 1024 == 0) {
-            fprintf(stderr,"%d bytes remaining             \r", remaining);
-            fflush(stderr);
+            printf("%d bytes remaining             \r", remaining);
+            fflush(stdout);
             remaining -= 1024;
         }
         data = dlbuf[n] | (dlbuf[n+1] << 8) | (dlbuf[n+2] << 16) | (dlbuf[n+3] << 24) ;
         if(sendlong(data) == 0) {
             if (pload_verbose)
-                fprintf(stderr, "sendlong error");
+                printf("sendlong error");
             return 1;
         }
     }
 
-    fprintf(stderr,"                               \r");
-    fprintf(stderr,"%d bytes sent\n", count);
-    fflush(stderr);
+    printf("                               \r");
+    printf("%d bytes sent\n", count);
+    fflush(stdout);
 
     msleep(50);                 // give propeller time to calculate checksum match 32K/12M sec = 32ms
     buf[0] = 0xF9;              // need to send this to make Propeller send the ack
@@ -339,8 +339,8 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
      * Check for a RAM program complete signal
      */
     if (pload_verbose) {
-        fprintf(stderr, "Verifying RAM ... ");
-        fflush(stderr);
+        printf("Verifying RAM ... ");
+        fflush(stdout);
     }
     for(n = 0; n < wv; n++) {
         if(tx(buf, 1) == 0) return 1;
@@ -353,17 +353,17 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
      */
     if(n >= wv) {
         if(pload_verbose)
-            fprintf(stderr, "Timeout Error!\n");
+            printf("Timeout Error!\n");
         return 1;
     }
 
     if(rc == 0) {
         if(pload_verbose)
-            fprintf(stderr, "OK\n");
+            printf("OK\n");
     }
     else {
         if(pload_verbose)
-            fprintf(stderr, "Checksum Error!\n");
+            printf("Checksum Error!\n");
         return 1;
     }
 
@@ -379,8 +379,8 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         buf[0] = 0xF9;
 
         if (pload_verbose) {
-            fprintf(stderr, "Programming EEPROM ... ");
-            fflush(stderr);
+            printf("Programming EEPROM ... ");
+            fflush(stdout);
         }
         /* Check for EEPROM program finished
          */
@@ -391,7 +391,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             if(ack) {
                 if(rc != 0) {
                     if(pload_verbose)
-                        fprintf(stderr,"failed\n");
+                        printf("failed\n");
                     return 1;
                 }
                 break;
@@ -399,18 +399,18 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         }
         if(n >= wv) {
             if(pload_verbose)
-                fprintf(stderr,"EEPROM programming timeout\n");
+                printf("EEPROM programming timeout\n");
             return 1;
         }
 
         if (pload_verbose) {
             if(rc == 0)
-                fprintf(stderr, "OK\n");
+                printf("OK\n");
         }
 
         if (pload_verbose) {
-            fprintf(stderr, "Verifying EEPROM ... ");
-            fflush(stderr);
+            printf("Verifying EEPROM ... ");
+            fflush(stdout);
         }
         /* Check for EEPROM program verify
          */
@@ -421,7 +421,7 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
             if(ack) {
                 if(rc != 0) {
                     if(pload_verbose)
-                        fprintf(stderr,"failed\n");
+                        printf("failed\n");
                     return 1;
                 }
                 break;
@@ -429,13 +429,13 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
         }
         if(n >= wv) {
             if(pload_verbose)
-                fprintf(stderr,"EEPROM verify timeout\n");
+                printf("EEPROM verify timeout\n");
             return 1;
         }
 
         if (pload_verbose) {
             if(rc == 0)
-                fprintf(stderr, "OK\n");
+                printf("OK\n");
         }
     }
 
@@ -481,14 +481,14 @@ int pload(const char* file, int type)
     FILE* fp = fopen(file, "rb");
     if(!fp) {
         if (pload_verbose)
-            fprintf(stderr, "Can't open '%s' for download\n", file);
+            printf("Can't open '%s' for download\n", file);
         return 4;
     }
     else {
         count = (int)fread(dlbuf, 1, 0x8000, fp);
         if (pload_verbose)
             if((type != 0) && (type < DOWNLOAD_SHUTDOWN))
-                fprintf(stderr, "Downloading %d bytes of '%s'\n", count, file);
+                printf("Downloading %d bytes of '%s'\n", count, file);
         fclose(fp);
     }
 
@@ -515,7 +515,7 @@ int ploadfp(const char* file, FILE *fp, int type)
     //
     count = (int)fread(dlbuf, 1, 0x8000, fp);
     if (pload_verbose)
-        fprintf(stderr, "Downloading %d bytes of '%s'\n", count, file);
+        printf("Downloading %d bytes of '%s'\n", count, file);
 
     // if found and file, upload file
     //
@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
 {
     int operation = DOWNLOAD_RUN_BINARY;
     if (argc < 3) {
-        fprintf(stderr, "usage: pload <port> <filename> [-pN]\n");
+        printf("usage: pload <port> <filename> [-pN]\n");
         return 1;
     }
 
@@ -554,11 +554,11 @@ int main(int argc, char *argv[])
         }
     }
     if (popenport(argv[1], 115200)) {
-        fprintf(stderr, "Error opening port\n");
+        printf("Error opening port\n");
         return 1;
     }
     if (pload(argv[2], operation) != 0) {
-        fprintf(stderr, "Load failed\n");
+        printf("Load failed\n");
         return 1;
     }
     return 0;

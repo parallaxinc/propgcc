@@ -49,7 +49,7 @@ static int CheckPort(const char* port, void* data)
     CheckPortInfo* info = (CheckPortInfo*)data;
     int rc;
     if (info->verbose)
-        fprintf(stderr, "Trying %s                    \r", port); fflush(stdout);
+        printf("Trying %s                    \r", port); fflush(stdout);
     if ((rc = popenport(port, info->baud)) != PLOAD_STATUS_OK)
         return rc;
     if (info->actualport) {

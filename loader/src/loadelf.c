@@ -102,7 +102,7 @@ int GetProgramSize(ElfContext *c, uint32_t *pStart, uint32_t *pSize)
     int i;
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program)) {
-            fprintf(stderr, "error: can't read program header %d\n", i);
+            printf("error: can't read program header %d\n", i);
             return FALSE;
         }
         if (program.paddr < start)
@@ -146,7 +146,7 @@ int FindSectionTableEntry(ElfContext *c, const char *name, ElfSectionHdr *sectio
         char thisName[ELFNAMEMAX], *p = thisName;
         int cnt, ch;
         if (!LoadSectionTableEntry(c, i, section)) {
-            fprintf(stderr, "error: can't read section header %d\n", i);
+            printf("error: can't read section header %d\n", i);
             return 1;
         }
         fseek(c->fp, c->stringOff + section->name, SEEK_SET);
@@ -170,7 +170,7 @@ static int FindProgramTableEntry(ElfContext *c, ElfSectionHdr *section, ElfProgr
     int i;
     for (i = 0; i < c->hdr.shnum; ++i) {
         if (!LoadProgramTableEntry(c, i, program)) {
-            fprintf(stderr, "error: can't read program header %d\n", i);
+            printf("error: can't read program header %d\n", i);
             return -1;
         }
         if (SectionInProgramSegment(section, program))
@@ -243,7 +243,7 @@ void ShowElfFile(ElfContext *c)
         char name[ELFNAMEMAX], *p = name;
         int cnt, ch;
         if (!LoadSectionTableEntry(c, i, &section)) {
-            fprintf(stderr, "error: can't read section header %d\n", i);
+            printf("error: can't read section header %d\n", i);
             return;
         }
         fseek(c->fp, c->stringOff + section.name, SEEK_SET);
@@ -258,7 +258,7 @@ void ShowElfFile(ElfContext *c)
     /* show the program table */
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program)) {
-            fprintf(stderr, "error: can't read program header %d\n", i);
+            printf("error: can't read program header %d\n", i);
             return;
         }
         printf("ProgramHdr %d:\n", i);
@@ -309,25 +309,25 @@ int main(int argc, char *argv[])
 
     /* check the arguments */
     if (argc != 2) {
-        fprintf(stderr, "usage: loadelf <file>\n");
+        printf("usage: loadelf <file>\n");
         return 1;
     }
     
     /* open the image file */
     if (!(fp = fopen(argv[1], "rb"))) {
-        fprintf(stderr, "error: opening '%s'\n", argv[1]);
+        printf("error: opening '%s'\n", argv[1]);
         return 1;
     }
     
     /* make sure it's an elf file */
     if (!ReadAndCheckElfHdr(fp, &hdr)) {
-        fprintf(stderr, "error: not an elf file");
+        printf("error: not an elf file");
         return 1;
     }
     
     /* open the elf file */
     if (!(c = OpenElfFile(fp, &hdr))) {
-        fprintf(stderr, "error: opening elf file\n");
+        printf("error: opening elf file\n");
         return 1;
     }
     

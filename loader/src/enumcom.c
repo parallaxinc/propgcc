@@ -73,7 +73,7 @@ int serial_find(const char* prefix, int (*check)(const char* port, void* data), 
 		);
 
 	if(hDevInfo == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "error: SetupDiGetClassDevs failed. (err=%lx)\n", GetLastError());
+		printf("error: SetupDiGetClassDevs failed. (err=%lx)\n", GetLastError());
 		goto done;
 	}
 
@@ -118,14 +118,14 @@ int serial_find(const char* prefix, int (*check)(const char* port, void* data), 
 
 			}
 			else {
-				fprintf(stderr, "error: SetupDiGetDeviceInterfaceDetail failed. (err=%lx)\n", GetLastError());
+				printf("error: SetupDiGetDeviceInterfaceDetail failed. (err=%lx)\n", GetLastError());
 				return 1;
 			}
 		}
 		else {
 			DWORD err = GetLastError();
 			if (err != ERROR_NO_MORE_ITEMS) {
-				fprintf(stderr, "error: SetupDiEnumDeviceInterfaces failed. (err=%lx)\n", err);
+				printf("error: SetupDiEnumDeviceInterfaces failed. (err=%lx)\n", err);
 				goto done;
 			}
 		}
