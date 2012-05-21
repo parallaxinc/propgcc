@@ -1,8 +1,8 @@
 /**
- * @file propeller.h
+ * @file include/propeller.h
  * @brief Provides Propeller specific functions.
  *
- * Copyright (c) 2011 by Parallax, Inc.
+ * Copyright (c) 2011-2012 by Parallax, Inc.
  * MIT Licensed
  */
 

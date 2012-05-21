@@ -1,6 +1,6 @@
 /**
  * @file cog.h
- * @brief Inludes common definitions for COG programming.
+ * @brief Inludes common API definitions for COG programming.
  *
  * @details  Each COG includes 16 32 bit special purpose registers.
  * The purposes of the registers are to provide control over user I/O
@@ -17,22 +17,27 @@
  *
  * The per COG special purpose register summary:
  *
- * @li PAR   @c Parameter register is used for sharing HUB RAM address info with the COG.
- * @li CNT   @c The system clock count
- * @li INA   @c Use to read the pins when corresponding DIRA bits are 0.
- * @li INB   @c Unused in P8X32A
- * @li OUTA  @c Use to set pin states when corresponding DIRA bits are 1.
- * @li OUTB  @c Unused in P8X32A
- * @li DIRA  @c Use to set pins to input (0) or output (1).
- * @li DIRB  @c Unused in P8X32A
- * @li CTRA  @c Counter A control register.
- * @li CTRB  @c Counter B control register.
- * @li FRQA  @c Counter A frequency register.
- * @li FRQB  @c Counter B frequency register.
- * @li PHSA  @c Counter A phase accumulation register.
- * @li PHSB  @c Counter B phase accumulation register.
- * @li VCFG  @c Video Configuration register can be used for other special output.
- * @li VSCL  @c Video Scale register for setting pixel and frame clocks.
+ * @verbatim
+
+ Register Description
+
+ PAR      Parameter register is used for sharing HUB RAM address info with the COG.
+ CNT      The system clock count
+ INA      Use to read the pins when corresponding DIRA bits are 0.
+ INB      Unused in P8X32A
+ OUTA     Use to set pin states when corresponding DIRA bits are 1.
+ OUTB     Unused in P8X32A
+ DIRA     Use to set pins to input (0) or output (1).
+ DIRB     Unused in P8X32A
+ CTRA     Counter A control register.
+ CTRB     Counter B control register.
+ FRQA     Counter A frequency register.
+ FRQB     Counter B frequency register.
+ PHSA     Counter A phase accumulation register.
+ PHSB     Counter B phase accumulation register.
+ VCFG     Video Configuration register can be used for other special output.
+ VSCL     Video Scale register for setting pixel and frame clocks.
+ @endverbatim
  */
 #ifndef PROPELLER_COG_H_
 #define PROPELLER_COG_H_
