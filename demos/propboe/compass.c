@@ -3,6 +3,8 @@
 #include "i2c.h"
 #include "misc.h"
 
+#define USE_SIMPLE_I2C_DRIVER
+
 #define COMPASS_ADDR    0x1e
 
 void CompassInit(I2C *dev);
@@ -13,12 +15,20 @@ TERM *term;
 int main(void)
 {
     TERM_SERIAL serial;
+#ifdef USE_SIMPLE_I2C_DRIVER
+    I2C_SIMPLE i2c;
+#else
     I2C_COGDRIVER i2c;
+#endif
     I2C *bus;
     
     term = serialTermStart(&serial, stdout);
     
+#ifdef USE_SIMPLE_I2C_DRIVER
+    bus = simple_i2cInit(&i2c, 1, 0);
+#else
     bus = i2cInit(&i2c, 1, 0, 400000);
+#endif
 
     CompassInit(bus);
     
