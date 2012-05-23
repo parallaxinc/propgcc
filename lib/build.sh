@@ -22,4 +22,25 @@ then
   cd ..
   exit 1
 fi
+doxygen
+if test $? != 0
+then
+  echo "doxygen failed. installed?"
+  cd ..
+  exit 1
+fi
+mkdir -p /opt/parallax/share/lib
+if test $? != 0
+then
+  echo "mkdir /opt/parallax/share/lib failed"
+  cd ..
+  exit 1
+fi
+cp -r html /opt/parallax/share/lib
+if test $? != 0
+then
+  echo "cp -r html /opt/parallax/share/lib failed"
+  cd ..
+  exit 1
+fi
 
