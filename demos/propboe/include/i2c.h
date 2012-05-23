@@ -31,25 +31,48 @@ extern "C" {
 /* maximum size of an i2c data transfer */
 #define I2C_BUFFER_MAX  32
 
-/* i2c state information */
+/* forward type declarations */
+typedef struct I2C I2C;
+
+/* i2c operations */
 typedef struct {
-    int cog;
-    volatile I2C_MAILBOX mailbox;
+	int (*term)(I2C *dev);
+	int (*read)(I2C *dev, int address, uint8_t *buffer, int count);
+	int (*write)(I2C *dev, int address, uint8_t *buffer, int count);
+} I2C_OPS;
+
+/* i2c state information */
+struct I2C {
+    I2C_OPS *ops;
+    int address;
     uint8_t buffer[1 + I2C_BUFFER_MAX];
     int count;
     int index;
-} I2C_STATE;
+};
+
+typedef struct {
+    I2C i2c;
+    int cog;
+    volatile I2C_MAILBOX mailbox;
+} I2C_COGDRIVER;
+
+typedef struct {
+    I2C i2c;
+    uint32_t scl_mask;
+    uint32_t sda_mask;
+} I2C_SIMPLE;
 
 /* i2c functions */
-int i2cInit(I2C_STATE *dev, int scl, int sda, int freq);
-int i2cTerm(I2C_STATE *dev);
-int i2cSendBuf(I2C_STATE *dev, int address, uint8_t *buffer, int count);
-int i2cBegin(I2C_STATE *dev, int address);
-int i2cAddByte(I2C_STATE *dev, int byte);
-int i2cSend(I2C_STATE *dev);
-int i2cRequestBuf(I2C_STATE *dev, int address, uint8_t *buf, int count);
-int i2cRequest(I2C_STATE *dev, int address, int count);
-int i2cGetByte(I2C_STATE *dev);
+I2C *i2cInit(I2C_COGDRIVER *dev, int scl, int sda, int freq);
+I2C *simple_i2cInit(I2C_SIMPLE *dev, int scl, int sda);
+int i2cTerm(I2C *dev);
+int i2cSendBuf(I2C *dev, int address, uint8_t *buffer, int count);
+int i2cBegin(I2C *dev, int address);
+int i2cAddByte(I2C *dev, int byte);
+int i2cSend(I2C *dev);
+int i2cRequestBuf(I2C *dev, int address, uint8_t *buf, int count);
+int i2cRequest(I2C *dev, int address, int count);
+int i2cGetByte(I2C *dev);
 
 #if defined(__cplusplus)
 }

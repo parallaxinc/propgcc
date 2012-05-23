@@ -20,92 +20,49 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #include <propeller.h>
-#include "pin.h"
+#include "i2c.h"
 
-#define I2C_READ        1
-#define I2C_WRITE       0
-
-/* set high by allowing the pin to float high, set low by forcing it low */
-#define i2c_float_scl_high(dev) (DIRA &= ~(dev)->scl_mask)
-#define i2c_set_scl_low(dev)    (DIRA |= (dev)->scl_mask)
-#define i2c_float_sda_high(dev) (DIRA &= ~(dev)->sda_mask)
-#define i2c_set_sda_low(dev)    (DIRA |= (dev)->sda_mask)
-
-/* local functions */
-static void i2cStart(I2C_STATE *dev);
-static void i2cStop(I2C_STATE *dev);
-static int i2cSendByte(I2C_STATE *dev, uint8_t byte);
-static uint8_t i2cReceiveByte(I2C_STATE *dev, int acknowledge);
-
-void i2cInit(I2C_STATE *dev, int scl, int sda)
+int i2cTerm(I2C *dev)
 {
-    uint32_t both_mask;
-    dev->scl_mask = 1 << scl;
-    dev->sda_mask = 1 << sda;
-    both_mask = ~(dev->scl_mask | dev->sda_mask);
-    DIRA &= both_mask;
-    OUTA &= both_mask;
+    return (*dev->ops->term)(dev);
 }
 
-int i2cBegin(I2C_STATE *dev, int address)
+int i2cSendBuf(I2C *dev, int address, uint8_t *buffer, int count)
+{
+    return (*dev->ops->write)(dev, address, buffer, count);
+}
+
+int i2cBegin(I2C *dev, int address)
 {
     dev->address = address;
     dev->count = 0;
+    return 0;
 }
 
-int i2cSend(I2C_STATE *dev, int byte)
+int i2cAddByte(I2C *dev, int byte)
 {
-    if (dev->count >= I2C_BUFFER_MAX)
+    if (dev->count > I2C_BUFFER_MAX)
         return -1;
     dev->buffer[dev->count++] = byte;
     return 0;
 }
 
-int i2cEnd(I2C_STATE *dev)
+int i2cSend(I2C *dev)
 {
-    int i;
-    
-    i2cStart(dev);
-    
-    if (i2cSendByte(dev, (dev->address << 1) | I2C_WRITE) != 0)
-        return -1;
-    
-    for (i = 0; i < dev->count; ++i)
-        if (i2cSendByte(dev, dev->buffer[i]) != 0)
-            return -1;
-    
-    i2cStop(dev);
-    
-    return 0;
+    return (*dev->ops->write)(dev, dev->address, dev->buffer, dev->count);
 }
 
-int i2cRequestBuf(I2C_STATE *dev, int address, int count, uint8_t *buf)
+int i2cRequestBuf(I2C *dev, int address, uint8_t *buffer, int count)
 {
-    int i;
-    
-    i2cStart(dev);
-        
-    if (i2cSendByte(dev, (address << 1) | I2C_READ) != 0)
-        return -1;
-    
-    for (i = 0; --count >= 0; ++i) {
-        int byte = i2cReceiveByte(dev, count != 0);
-        if (byte < 0)
-            return -1;
-        buf[i] = byte;
-    }
-    
-    i2cStop(dev);
-    
-    return 0;
+    return (*dev->ops->read)(dev, address, buffer, count);
 }
 
-int i2cRequest(I2C_STATE *dev, int address, int count)
+int i2cRequest(I2C *dev, int address, int count)
 {
-    if (count >= I2C_BUFFER_MAX)
+    if (count > I2C_BUFFER_MAX)
         return -1;
         
-    if (i2cRequestBuf(dev, address, count, dev->buffer) != 0)
+    if ((*dev->ops->read)(dev, address, dev->buffer, count) != 0)
         return -1;
 
     dev->count = count;
@@ -114,73 +71,9 @@ int i2cRequest(I2C_STATE *dev, int address, int count)
     return 0;
 }
 
-int i2cReceive(I2C_STATE *dev)
+int i2cGetByte(I2C *dev)
 {
     if (dev->index >= dev->count)
         return -1;
     return dev->buffer[dev->index++];
 }
-
-static void i2cStart(I2C_STATE *dev)
-{
-    i2c_set_sda_low(dev);
-    i2c_set_scl_low(dev);
-}
-
-static void i2cStop(I2C_STATE *dev)
-{
-    i2c_float_scl_high(dev);
-    i2c_float_sda_high(dev);
-}
-
-static int i2cSendByte(I2C_STATE *dev, uint8_t byte)
-{
-    int count, result;
-    
-    /* send the byte, high bit first */
-    for (count = 8; --count >= 0; ) {
-        if (byte & 0x80)
-            i2c_float_sda_high(dev);
-        else
-            i2c_set_sda_low(dev);
-        i2c_float_scl_high(dev);
-        i2c_set_scl_low(dev);
-        byte <<= 1;
-    }
-    
-    /* receive the acknowledgement from the slave */
-    i2c_float_sda_high(dev);
-    i2c_float_scl_high(dev);
-    result = (INA & dev->sda_mask) != 0;
-    i2c_set_scl_low(dev);
-    i2c_set_sda_low(dev);
-    
-    return result;
-}
-
-static uint8_t i2cReceiveByte(I2C_STATE *dev, int acknowledge)
-{
-    uint8_t byte = 0;
-    int count;
-    
-    i2c_float_sda_high(dev);
-    
-    for (count = 8; --count >= 0; ) {
-        byte <<= 1;
-        i2c_float_scl_high(dev);
-        byte |= (INA & dev->sda_mask) ? 1 : 0;
-        i2c_set_scl_low(dev);
-    }
-    
-    // acknowledge
-    if (acknowledge)
-        i2c_set_sda_low(dev);
-    else
-        i2c_float_sda_high(dev);
-    i2c_float_scl_high(dev);
-    i2c_set_scl_low(dev);
-    i2c_set_sda_low(dev);
-    
-    return byte;
-}
-
