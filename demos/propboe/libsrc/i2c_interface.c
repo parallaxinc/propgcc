@@ -22,14 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "i2c.h"
 
-int i2cInit(I2C_STATE *dev, int scl, int sda, int freq)
+static int cog_i2cTerm(I2C *dev);
+static int cog_i2cRead(I2C *dev, int address, uint8_t *buffer, int count);
+static int cog_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count);
+
+static I2C_OPS cog_i2c_ops = {
+    cog_i2cTerm,
+    cog_i2cRead,
+    cog_i2cWrite
+};
+
+I2C *i2cInit(I2C_COGDRIVER *dev, int scl, int sda, int freq)
 {
     extern uint8_t binary_i2c_driver_image_dat_start[];
     I2C_INIT init;
     
     // only allow speeds up to 400khz for now
     if (freq > 400000)
-        return -1;
+        return NULL;
     
     init.scl = scl;
     init.sda = sda;
@@ -39,97 +49,53 @@ int i2cInit(I2C_STATE *dev, int scl, int sda, int freq)
     dev->mailbox.cmd = I2C_CMD_INIT;
     
     if ((dev->cog = cognew(binary_i2c_driver_image_dat_start, &init)) < 0)
-        return -1;
+        return NULL;
     
     while (dev->mailbox.cmd != I2C_CMD_IDLE)
         ;
         
+    dev->i2c.ops = &cog_i2c_ops;
+
+    return (I2C *)dev;
+}
+
+static int cog_i2cTerm(I2C *dev)
+{
+    I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
+
+    if (cdev->cog < 0)
+        return -1;
+    cogstop(cdev->cog);
+
     return 0;
 }
 
-int i2cTerm(I2C_STATE *dev)
+static int cog_i2cRead(I2C *dev, int address, uint8_t *buffer, int count)
 {
-    if (dev->cog < 0)
-        return -1;
-    cogstop(dev->cog);
-    return 0;
-}
+    I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
 
-int i2cSendBuf(I2C_STATE *dev, int address, uint8_t *buffer, int count)
-{
-    dev->mailbox.hdr = (address << 1) | I2C_WRITE;
-    dev->mailbox.buffer = buffer;
-    dev->mailbox.count = count;
-    dev->mailbox.cmd = I2C_CMD_SEND;
+    cdev->mailbox.hdr = (address << 1) | I2C_READ;
+    cdev->mailbox.buffer = buffer;
+    cdev->mailbox.count = count;
+    cdev->mailbox.cmd = I2C_CMD_RECEIVE;
     
-    while (dev->mailbox.cmd != I2C_CMD_IDLE)
+    while (cdev->mailbox.cmd != I2C_CMD_IDLE)
         ;
 
-    return dev->mailbox.sts == I2C_OK ? 0 : -1;
+    return cdev->mailbox.sts == I2C_OK ? 0 : -1;
 }
 
-int i2cBegin(I2C_STATE *dev, int address)
+static int cog_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count)
 {
-    dev->mailbox.hdr = (address << 1) | I2C_WRITE;
-    dev->count = 0;
-    return 0;
-}
-
-int i2cAddByte(I2C_STATE *dev, int byte)
-{
-    if (dev->count > I2C_BUFFER_MAX)
-        return -1;
-    dev->buffer[dev->count++] = byte;
-    return 0;
-}
-
-int i2cSend(I2C_STATE *dev)
-{
-    dev->mailbox.buffer = dev->buffer;
-    dev->mailbox.count = dev->count;
-    dev->mailbox.cmd = I2C_CMD_SEND;
+    I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
     
-    while (dev->mailbox.cmd != I2C_CMD_IDLE)
-        ;
+    cdev->mailbox.hdr = (address << 1) | I2C_WRITE;
+    cdev->mailbox.buffer = buffer;
+    cdev->mailbox.count = count;
+    cdev->mailbox.cmd = I2C_CMD_SEND;
     
-    return dev->mailbox.sts == I2C_OK ? 0 : -1;
-}
-
-int i2cRequestBuf(I2C_STATE *dev, int address, uint8_t *buffer, int count)
-{
-    dev->mailbox.hdr = (address << 1) | I2C_READ;
-    dev->mailbox.buffer = buffer;
-    dev->mailbox.count = count;
-    dev->mailbox.cmd = I2C_CMD_RECEIVE;
-    
-    while (dev->mailbox.cmd != I2C_CMD_IDLE)
+    while (cdev->mailbox.cmd != I2C_CMD_IDLE)
         ;
 
-    return dev->mailbox.sts == I2C_OK ? 0 : -1;
-}
-
-int i2cRequest(I2C_STATE *dev, int address, int count)
-{
-    if (count > I2C_BUFFER_MAX)
-        return -1;
-        
-    dev->mailbox.hdr = (address << 1) | I2C_READ;
-    dev->mailbox.buffer = dev->buffer;
-    dev->mailbox.count = dev->count;
-    dev->mailbox.cmd = I2C_CMD_RECEIVE;
-    
-    while (dev->mailbox.cmd != I2C_CMD_IDLE)
-        ;
-
-    dev->count = count;
-    dev->index = 0;
-    
-    return dev->mailbox.sts == I2C_OK ? 0 : -1;
-}
-
-int i2cGetByte(I2C_STATE *dev)
-{
-    if (dev->index >= dev->count)
-        return -1;
-    return dev->buffer[dev->index++];
+    return cdev->mailbox.sts == I2C_OK ? 0 : -1;
 }

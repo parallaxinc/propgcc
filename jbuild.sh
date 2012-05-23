@@ -10,6 +10,21 @@ echo Prefix is ${PREFIX=/opt/parallax}
 export PREFIX
 
 #
+# note that the propgcc version string does not deal well with
+# spaces due to how it is used below
+#
+echo Propgcc version is ${PROPGCC_VERSION='propgcc_v0.3.1'}
+export PROPGCC_VERSION
+
+echo BUGURL is ${BUGURL="http://code.google.com/p/propgcc/issues"}
+export BUGURL
+
+#
+# configure options for propgcc
+#
+CONFIG_OPTIONS="--with-pkgversion=${PROPGCC_VERSION} --with-bugurl=${BUGURL}"
+
+#
 # ADD build target bin directory to PATH
 #
 PATH=$PREFIX/bin:$PATH
@@ -111,7 +126,7 @@ mkdir -p ../build/binutils/etc
 cp gnu-oids.texi ../build/binutils/etc
 
 cd ../build/binutils
-../../propgcc/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls
+../../propgcc/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls ${CONFIG_OPTIONS}
 if test $? != 0
 then
    echo "binutils configure failed."
@@ -139,7 +154,7 @@ cd ../../propgcc
 #
 mkdir -p ../build/gcc
 cd ../build/gcc
-../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto
+../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto ${CONFIG_OPTIONS}
 if test $? != 0
 then
    echo "gcc configure failed."

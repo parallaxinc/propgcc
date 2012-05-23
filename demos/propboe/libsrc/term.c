@@ -1,7 +1,6 @@
 #include "term.h"
 
 static void printc(TERM *term, int c);
-static void termNewLine(TERM *term);
 static void wordfill(uint16_t *dst, uint16_t val, int len);
 static void wordmove(uint16_t *dst, uint16_t *src, int len);
 
