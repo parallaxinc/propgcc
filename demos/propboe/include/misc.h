@@ -26,7 +26,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 extern "C" {
 #endif
 
-/* pause for a specified number of millisecons */
+/* pause for a specified number of milliseconds */
 void pause(int milliseconds);
 
 #if defined(__cplusplus)

@@ -14,6 +14,8 @@ getdir.o \
 getfield.o \
 getpin.o \
 high.o \
+i2c.o \
+i2c_simple.o \
 i2c_interface.o \
 input.o \
 low.o \

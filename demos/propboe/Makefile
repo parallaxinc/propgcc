@@ -1,4 +1,4 @@
-TARGETS=boetest.elf
+TARGET=compass.elf
 
 CC=propeller-elf-gcc
 CXX=propeller-elf-gcc
@@ -9,7 +9,7 @@ LDFLAGS=-mlmm -Llib
 
 LIBS=-lprop
 
-all:	libboe $(TARGETS)
+all:	libboe $(TARGET)
 
 %.elf:	%.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
@@ -17,11 +17,11 @@ all:	libboe $(TARGETS)
 libboe:
 	$(MAKE) -C libsrc
 
-run:	$(TARGET).elf
+run:	$(TARGET)
 	propeller-load -b propboe $< -r -t
 
 clean:
-	$(RM) $(TARGETS)
+	$(RM) $(TARGET)
 
 clean-all:	clean
 	$(MAKE) -C libsrc clean

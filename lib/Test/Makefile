@@ -40,7 +40,7 @@ scanf.elf: scanf.o $(LIB)
 
 
 %.run: %.elf
-	propeller-load -bc3 -p1 $^ -r -t -q
+	propeller-load -bc3 $^ -r -t -q
 
 clean:
 	rm -rf *.o *.elf

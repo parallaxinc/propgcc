@@ -1,3 +1,12 @@
+/**
+ * @file include/sys/ctype.h
+ * @brief Defines macros and types used by include/ctype.h
+ */
+/*
+ * doxygen note.
+ * \@file uses include/sys/ctype.h to differentiate from include/ctype.h
+ */
+
 #ifndef _SYS_CTYPE_H
 #define _SYS_CTYPE_H
 
