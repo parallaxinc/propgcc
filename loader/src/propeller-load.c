@@ -362,8 +362,8 @@ Variables that can be set with -D are:\n\
   clkfreq clkmode baudrate reset rxpin txpin tvpin\n\
   cache-driver cache-size cache-param1 cache-param2\n\
   sd-driver sdspi-do sdspi-clk sdspi-di sdspi-cs\n\
-  sdspi-clr sdspi-inc sdspi-sel sdspi-msk spdspi-addr\n\
-  eeprom-first\n\
+  sdspi-clr sdspi-inc sdspi-start sdspi-width spdspi-addr\n\
+  sdspi-config1 sdspi-config2 eeprom-first\n\
 \n\
 Value expressions for -D can include:\n\
   rcfast rcslow xinput xtal1 xtal2 xtal3 pll1x pll2x pll4x pll8x pll16x k m mhz true false\n\
