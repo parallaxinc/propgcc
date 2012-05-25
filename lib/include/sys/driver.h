@@ -13,6 +13,10 @@
 /**
  * Typedef for the _Driver struct
  * 
+ * This struct is used by stdio. It lets a program define custom devices.
+ *
+ * @see __driver for more information on custom devices.
+ *
  * @note This structure is included by <stdio.h>, so we cannot
  * pollute the namespace with definitions; use underscores in
  * front of names
@@ -20,64 +24,13 @@
 typedef struct __driver _Driver;
 
 /**
- * @brief Generic driver struct for devices.
- * This struct is used by stdio.
+ * @brief Generic and customizable driver struct for stdio devices.
  *
+ * @details
  * The purpose is to allow replacing the stdio functions.
  * Any device can be attached to stdio functions with this struct.
- */
-struct __driver {
-  /** file prefix for fopen */
-  const char *prefix;
-
-  /**
-   * Prototype for opening files.
-   * @param[in,out] fp This is the file pointer for the driver.
-   * @param[in] name This is the device name string.
-   * @param[in] mode This is the device open mode string.
-   * @returns 0 on success, nonzero on failure
-   */
-  int (*fopen)(FILE *fp, const char *name, const char *mode);
-
-  /**
-   * hook for closing files
-   * returns 0 on success, nonzero on failure
-   */
-  int (*fclose)(FILE *fp);
-
-  /** multi byte I/O read from a device */
-  int (*read)(FILE *fp, unsigned char *buf, int size);
-  /** multi byte I/O write to a device */
-  int (*write)(FILE *fp, unsigned char *buf, int size);
-
-  /** seek to a position in the file */
-  int (*seek)(FILE *fp, long offset, int whence);
-
-  /** hook for deleting files */
-  int (*remove)(const char *name);
-
-  /**
-   * Optional hook for single character input.
-   * It is needed for using the generic terminal driver for read.
-   * @param fp The file pointer.
-   * @returns character read by the function.
-   */
-  int (*getbyte)(FILE *fp);
-
-  /**
-   * Optional hook for single character output.
-   * It is needed for using the generic terminal driver for write.
-   * @param c The character to write.
-   * @param fp The file pointer.
-   * @returns character read by the function.
-   */
-  int (*putbyte)(int c, FILE *fp);
-};
-
-/**
- * @brief Device driver array of __driver structs
  *
- * Typically this array can be defined by users for setting up
+ * Typically the __driver array is defined by users for setting up
  * stdin, stdout, stderr FILE drivers, SD card FILE drivers, and others.
  *
  * The _Driver list is a list of all drivers we can use in the program.
@@ -85,7 +38,7 @@ struct __driver {
  * on the first driver in the list (typically the serial driver).
  * The serial driver could be replaced by a TV/Keyboard driver.
  * 
- * When defined by the user, the struct may look like this:
+ * When defined by the user, the array of structs may look like this:
  * @verbatim
 
 extern _Driver _SimpleSerialDriver;
@@ -99,6 +52,129 @@ _Driver *_driverlist[] = {
 
  @endverbatim
  * The NULL driver ends the _Driver list.
+ *
+ * The device driver interface is the __driver struct.
+ * By defining the struct in the device driver, one connects driver
+ * functions to the _Driver.
+ *
+ * In a TV output device driver for example, we need to define
+ * fopen() for the _InitIO() routine, fwrite(), and fclose().
+ *
+ * @verbatim
+
+_Driver TvDriver = {
+  TvPrefix,     // TvPrefix is the device driver name "TV"
+  Tv_fopen,     // fopen starts the TV COG (term for Propeller core).
+  Tv_fclose,    // fclose stops the TV COG if necessary, etc....
+  _null_read,   // use _null_read instead of defining Tv_fread
+  Tv_write,     // fwrite is used to send characters to the TV
+  NULL,         // seek; not applicable
+  NULL,         // remove; not applicable
+};
+
+ @endverbatim
+ *
+ * Of course it is not necessary to use a stdio method for TV output.
+ * There are some cases where the stdio infrastructure is not necessary.
+ * The standard stdio library is relatively big, but as small as possible.
+ * 
+ * The __driver mechanism gives the program flexibility in a standard way.
+ * The types of drivers are limited only by the programmer's imagination.
+ *
+ * Some VGA demo programs have been written entirely in C.
+ */
+struct __driver {
+  /**
+   * The file "device" prefix for fopen.
+   * @details
+   * This string allows users to name their devices an pass startup
+   * information to the driver if nessesary.
+   *
+   * Some library device names: "SSER", "FDS", "TV", etc....
+   *
+   * The default Propeller-GCC stdio console device name is "SSER".
+   * 
+   */
+  const char *prefix;
+
+  /**
+   * Prototype for opening files.
+   * @details A function for the user's device must be provided by the user's driver.
+   * @param[out] fp This is the file pointer for the driver.
+   * @param[in] name This is the device name string.
+   * @param[in] mode This is the device open mode string.
+   * @returns 0 on success, nonzero on failure
+   */
+  int (*fopen)(FILE *fp, const char *name, const char *mode);
+
+  /**
+   * Prototype for closing files to be filled in by user's driver.
+   * @param[in,out] fp FILE pointer set by previous fopen() call.
+   * @returns 0 on success, nonzero on failure
+   */
+  int (*fclose)(FILE *fp);
+
+  /**
+   * Prototype for reading multi byte I/O.
+   * @details A function for the user's device must be provided by the user's driver.
+   * @param[in,out] fp FILE pointer set by previous fopen() call.
+   * @param[out] buf A char buffer of at least size length where data is put after read.
+   * @param[in] size The size of the buf parameter.
+   * @returns The number of bytes read.  If an error occurs, or the
+   * end-of-file is reached, the return value is a short object count (or zero).
+   */
+  int (*read)(FILE *fp, unsigned char *buf, int size);
+
+  /**
+   * Prototype for writing multi byte I/O.
+   * @details A function for the user's device must be provided by the user's driver.
+   * @param[in,out] fp FILE pointer set by previous fopen() call.
+   * @param[in] buf A char buffer of at least size length where data is put befoe write.
+   * @param size The size of the buf to write.
+   * @returns The number of bytes read.  If an error occurs, or the
+   * end-of-file is reached, the return value is a short object count (or zero).
+   */
+  int (*write)(FILE *fp, unsigned char *buf, int size);
+
+  /**
+   * Prototype for seek to a position in the file.
+   * @details A function for the user's device must be provided by the user's driver.
+   * @param[in,out] fp FILE pointer set by previous fopen() call.
+   * @param[in] offset The offset to add to the file position specified by whence.
+   * @param[in] whence The start position specifier: SEEK_SET, SEEK_CUR, or SEEK_END.
+   * @returns Zero on success, or -1 on error with errno set to indicate error.
+   */
+  int (*seek)(FILE *fp, long offset, int whence);
+
+  /**
+   * Prototype for removing a file or directory from the file system.
+   * @param name The name of the file to remove.
+   * @returns Zero on success, or -1 on error with errno set to indicate error.
+   */
+  int (*remove)(const char *name);
+
+  /**
+   * Optional prototype for single character input.
+   * @details Function getbyte is needed for reading the generic terminal driver.
+   * @param[in] fp The file pointer.
+   * @returns character read by the function.
+   */
+  int (*getbyte)(FILE *fp);
+
+  /**
+   * Optional prototype for single character output.
+   * @details Function putbyte is needed for writing to the generic terminal driver.
+   * @param c The character to write.
+   * @param[in] fp The file pointer.
+   * @returns character read by the function.
+   */
+  int (*putbyte)(int c, FILE *fp);
+};
+
+/**
+ * @brief Device driver array of __driver structs
+ *
+ * @see Detailed Description in include/sys/driver.h
  *
  */
 extern _Driver *_driverlist[];

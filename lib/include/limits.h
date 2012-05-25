@@ -1,3 +1,16 @@
+/**
+ * @file include/limits.h
+ * @brief Defines macros for limits and parameters of the standard integer types.
+ *
+ * The compiler supports data with the following characteristics:
+ * @li 8 bit char
+ * @li 16 bit short
+ * @li 32 bit int
+ * @li 32 bit long
+ * @li 64 bit long long
+ *
+ * The compiler supports UTF-8, but does not support multi-byte characters.
+ */
 #ifndef _LIMITS_H
 #define _LIMITS_H
 
@@ -40,8 +53,7 @@
 
 /* maximum length of a multibyte character
  * at present we do not support multibyte
- * characters, but some day we may support
- * UTF-8
+ * characters, but we support UTF-8
  */
 #define MB_LEN_MAX 4
 

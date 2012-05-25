@@ -1,3 +1,11 @@
+/**
+ * @file include/float.h
+ *
+ * @brief Provides characteristics of floating types.
+ * 
+ * @details Please see source for comments.
+ */
+
 /* Copyright (C) 2002, 2007, 2008, 2009, 2010 Free Software Foundation, Inc.
 
 This file is part of GCC.
