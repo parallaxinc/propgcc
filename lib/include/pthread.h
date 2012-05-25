@@ -1,10 +1,31 @@
-/*
- * @pthread.h
- * Implementation of pthread functions
+/**
+ * @file include/pthread.h
+ * @brief Provides API for implementation of pthread functions.
+ *
+ * POSIX threads are a set of functions that support applications
+ * with requirements for multiple flows of control, called threads,
+ * within a process.  Multithreading is used to improve the
+ * performance of a program.
+ *
+ * The pthread module provides a subset of the POSIX standard
+ * pthread library for allowing multiple threads to run on
+ * multiple COG instances of the PropellerGCC LMM interpreter.
+ * Multiple threads can also run on an XMM interpreter, but
+ * only one XMM interpreter can run at any given time.
+ *
+ * @pre It is very important to understand that pthreads provide
+ * a cooperative non-preemptive multithreading system.
+ * The consequences are that certain rules will apply. I.E.
+ * @li The Propeller waitcnt() function can not be used.
+ * @li Delays can only be introduced with usleep() and its variations.
+ * @li Standard printf() and friends must be used.
+ * @li Do not use -Dprintf=__simple_printf with pthreads.
+ * @li Threads must not hog the LMM COG kernel; they must yield.
+ * @li Gobal data must be protected by mutex/semaphore.
  *
  * Copyright (c) 2011 Parallax, Inc.
  * Written by Eric R. Smith, Total Spectrum Software Inc.
- * MIT licensed (see terms at end of file)
+ * MIT licensed.
  */
 
 #ifndef _PTHREAD_H
@@ -14,12 +35,14 @@
 #include <sys/size_t.h>
 #include <setjmp.h>
 
-/* minimum stack size */
+/** @brief Minimum stack size for a thread. */
 #define PTHREAD_STACK_MIN 64
+/** @brief Default stack size for a thread. */
 #define _PTHREAD_STACK_DEFAULT 512
 
-/* flags for the pthread "flags" field */
+/** @brief Detached flag for the pthread "flags" field */
 #define _PTHREAD_DETACHED   0x0001
+/** @brief Terminated flag for the pthread "flags" field */
 #define _PTHREAD_TERMINATED 0x8000
 
 #define PTHREAD_CREATE_JOINABLE 0
@@ -29,14 +52,26 @@
 typedef _thread_state_t _pthread_state_t;
 typedef _thread_queue_t _pthread_queue_t;
 
+/**
+ * @brief The pthread_t typedef is used as the "handle" for threads and functions.
+ */
 typedef _pthread_state_t *pthread_t;
 
+/**
+ * @brief The pthread_attr_t struct TODO
+ */
 typedef struct pthread_attr_t {
+/** @brief stack size */
   size_t stksiz;       /* stack size */
+/** @brief pointer to base of stack, NULL to allocate one */
   void *stack;        /* pointer to base of stack, NULL to allocate one */
+/** @brief flags to start with */
   unsigned int flags; /* flags to start with */
 } pthread_attr_t;
 
+/**
+ * @brief The pthread_mutex_t TODO
+ */
 /* a mutex is just an integer with an associated queue */
 typedef struct pthread_mutex_t {
   atomic_t cnt;
@@ -45,10 +80,10 @@ typedef struct pthread_mutex_t {
 
 #define PTHREAD_MUTEX_INITIALIZER { 0, 0 }
 
-/* mutex attributes are not implemented right now */
+/** @brief Mutex attributes are not implemented. */
 typedef int pthread_mutexattr_t;
 
-/* a lock for pthreads data structures */
+/** @brief Lock for pthreads data structures */
 extern atomic_t __pthreads_lock;
 #define __lock_pthreads() __lock(&__pthreads_lock)
 #define __unlock_pthreads() __unlock(&__pthreads_lock)

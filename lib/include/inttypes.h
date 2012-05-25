@@ -1,3 +1,15 @@
+/**
+ * @file include/inttypes.h
+ * @brief Provides API for format conversion of integer types.
+ *
+ * It declares four functions for converting numeric character
+ * strings to greatest-width integers and, for each type declared in
+ * <stdint.h>, it defines corresponding macros for conversion
+ * specifiers for use with the formatted input/output functions.
+ *
+ * These macros are provided mainly in support of fprintf and fscanf.
+ *
+ */
 #ifndef _INTTYPES_H
 #define _INTTYPES_H
 
@@ -216,11 +228,44 @@ extern "C" {
   /* function defintions */
   intmax_t imaxabs(intmax_t);
   imaxdiv_t imaxdiv(intmax_t, intmax_t);
-  intmax_t strtoimax(const char *__restrict, char **__restrict, int);
-  uintmax_t strtouimax(const char *__restrict, char **__restrict, int);
 
-  intmax_t wcstoimax(const _WCHAR_T_TYPE *__restrict, _WCHAR_T_TYPE **__restrict, int);
-  uintmax_t wcstouimax(const _WCHAR_T_TYPE *__restrict, _WCHAR_T_TYPE **__restrict, int);
+/**
+ * The strtoimax and strtoumax functions are equivalent to the strtol,
+ * strtoll, strtoul, and strtoull functions, except that the initial
+ * portion of the string is converted to intmax_t and uintmax_t
+ * representation, respectively.
+ *
+ * @returns
+ * The strtoimax and strtoumax functions return the converted value,
+ * if any. If no conversion could be performed, zero is returned.
+ * If the correct value is outside the range of representable values,
+ * INTMAX_MAX, INTMAX_MIN, or UINTMAX_MAX is returned (according to
+ * the return type and sign of the value, if any), and the value of
+ * the macro ERANGE is stored in errno.
+ */
+intmax_t strtoimax(const char *__restrict, char **__restrict, int);
+
+/** see strtoimax */
+uintmax_t strtouimax(const char *__restrict, char **__restrict, int);
+
+/**
+ * The wcstoimax and wcstoumax functions are equivalent to the wcstol,
+ * wcstoll, wcstoul, and wcstoull functions except that the initial
+ * portion of the wide string is converted to intmax_t and uintmax_t
+ * representation, respectively.
+ *
+ * @returns
+ * The wcstoimax function returns the converted value, if any. If no
+ * conversion could be performed, zero is returned. If the correct
+ * value is outside the range of representable values, INTMAX_MAX,
+ * INTMAX_MIN, or UINTMAX_MAX is returned (according to the return
+ * type and sign of the value, if any), and the value of the macro
+ * ERANGE is stored in errno.
+ */
+intmax_t wcstoimax(const _WCHAR_T_TYPE *__restrict, _WCHAR_T_TYPE **__restrict, int);
+
+/** see wcstrtoimax */
+uintmax_t wcstouimax(const _WCHAR_T_TYPE *__restrict, _WCHAR_T_TYPE **__restrict, int);
 
 #ifdef __cplusplus
 }
