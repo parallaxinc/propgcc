@@ -167,6 +167,8 @@ hubaddr         long    0       ' hub memory address
 ' vmaddr is the external memory address to read
 ' hubaddr is the hub memory address to write
 ' line_size is the number of bytes to read
+' 
+' this function can modify vmaddr but most not modify hubaddr or line_size
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -181,6 +183,8 @@ rd_cache_line_ret
 ' vmaddr is the external memory address to write
 ' hubaddr is the hub memory address to read
 ' line_size is the number of bytes to write
+' 
+' this function can modify vmaddr but most not modify hubaddr or line_size
 '
 '----------------------------------------------------------------------------------------------------
 
