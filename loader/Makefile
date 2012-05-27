@@ -101,6 +101,7 @@ $(OBJDIR)/loadelf.o \
 $(OBJDIR)/packet.o \
 $(OBJDIR)/PLoadLib.o \
 $(OBJDIR)/config.o \
+$(OBJDIR)/expr.o \
 $(OBJDIR)/system.o \
 $(OBJDIR)/port.o \
 $(OBJDIR)/serial_helper.o \

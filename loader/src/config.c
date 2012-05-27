@@ -28,6 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include "config.h"
 #include "system.h"
+#include "expr.h"
 
 #ifdef NEED_STRCASECMP
 int strcasecmp(const char *s1, const char *s2);
@@ -94,13 +95,12 @@ static ConfigSymbol configSymbols[] = {
 {   NULL,           0           }
 };
 
+static void DumpFields(BoardConfig *config, Field *fields, int indent);
 static BoardConfig *GetDefaultConfiguration(void);
 static int SkipSpaces(LineBuf *buf);
 static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm);
-static int ParseNumericExpr(const char *token, int *pValue);
-static int DoOp(int *pValue, int op, int left, int right);
+static int FindSymbol(void *cookie, const char *name, int *pValue);
 static void ParseError(LineBuf *buf, const char *fmt, ...);
-static int Error(const char *fmt, ...);
 static void Fatal(const char *fmt, ...);
 
 BoardConfig *NewBoardConfig(BoardConfig *parent, const char *name)
@@ -124,8 +124,8 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
 {
     char path[PATH_MAX];
     BoardConfig *baseConfig, *config;
-    char *tag, *value, *dst;
     const char *src;
+    char *tag, *dst;
     LineBuf buf;
     FILE *fp;
     int ch;
@@ -151,7 +151,19 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
         
     /* process each line in the configuration file */
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {
+        char *p;
+        int len;
+        
+        /* check for a comment at the end of the line */
+        if ((p = strchr(buf.lineBuf, '#')) != NULL)
+            *p = '\0';
     
+        /* trim any trailing newline and spaces */
+        for (len = strlen(buf.lineBuf); len > 0; --len)
+            if (!isspace(buf.lineBuf[len-1]))
+                break;
+        buf.lineBuf[len] = '\0';
+        
         /* initialize token parser */
         buf.linePtr = buf.lineBuf;
         ++buf.lineNumber;
@@ -159,7 +171,7 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
         /* look for the first token on the line */
         switch (SkipSpaces(&buf)) {
         
-        case '\n':  /* blank line */
+        case '\0':  /* blank line */
         case '#':   /* comment */
             // ignore blank lines and comments
             break;
@@ -175,7 +187,7 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
                     ParseError(&buf, "missing close bracket after configuration tag");
                 ++buf.linePtr;
             }
-            if (SkipSpaces(&buf) != '\n')
+            if (SkipSpaces(&buf) != '\0')
                 ParseError(&buf, "missing end of line");
                 
             /* add a new board configuration */
@@ -195,19 +207,11 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
                 ++buf.linePtr;
             }
             
-            /* get the value */
-            if (!(value = NextToken(&buf, "", &ch)))
-                ParseError(&buf, "missing value");
+            /* skip leading spaces before the value */
+            SkipSpaces(&buf);
                 
-            /* make sure this is the end of line */
-            if (ch != '\n') {
-                if ((ch = SkipSpaces(&buf) != '\n') && ch != '#')
-                    ParseError(&buf, "missing end of line");
-                ++buf.linePtr;
-            }
-            
             /* set the configuration value */
-            SetConfigField(config, tag, value);
+            SetConfigField(config, tag, buf.linePtr);
             break;
         }
     }
@@ -215,8 +219,41 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
     /* close the board configuration file */
     fclose(fp);
     
+    //DumpBoardConfiguration(baseConfig);
+    
     /* return the board configuration */
-    return config;
+    return baseConfig;
+}
+
+/* DumpBoardConfiguration - dump a board configuration */
+void DumpBoardConfiguration(BoardConfig *config)
+{
+    BoardConfig *subconfig;
+    DumpFields(config, config->fields, 0);
+    for (subconfig = config->child; subconfig != NULL; subconfig = subconfig->sibling) {
+        printf("%s\n", subconfig->name);
+        DumpFields(subconfig, subconfig->parent->fields, 2);
+        DumpFields(subconfig, subconfig->fields, 2);
+    }
+}
+
+/* DumpFields - dump the fields of a board configuration */
+static void DumpFields(BoardConfig *config, Field *fields, int indent)
+{
+    Field *field;
+    for (field = fields; field != NULL; field = field->next) {
+        char *value;
+        if ((value = GetConfigField(config, field->tag)) != NULL) {
+            ParseContext c;
+            int ivalue;
+            c.findSymbol = FindSymbol;
+            c.cookie = config;
+            if (TryParseNumericExpr(&c, value, &ivalue))
+                printf("%*s%s: '%s' (%d 0x%08x)\n", indent, "", field->tag, field->value, ivalue, ivalue);
+            else
+                printf("%*s%s: '%s'\n", indent, "", field->tag, field->value);
+        }
+    }
 }
 
 /* GetConfigSubtype - get a subtype of a board configuration */
@@ -264,10 +301,13 @@ char *GetConfigField(BoardConfig *config, const char *tag)
 
 int GetNumericConfigField(BoardConfig *config, const char *tag, int *pValue)
 {
+    ParseContext c;
     char *value;
     if (!(value = GetConfigField(config, tag)))
         return FALSE;
-    return ParseNumericExpr(value, pValue);
+    c.findSymbol = FindSymbol;
+    c.cookie = config;
+    return ParseNumericExpr(&c, value, pValue);
 }
 
 BoardConfig *MergeConfigs(BoardConfig *parent, BoardConfig *child)
@@ -293,12 +333,8 @@ static BoardConfig *GetDefaultConfiguration(void)
 static int SkipSpaces(LineBuf *buf)
 {
     int ch;
-    while ((ch = *buf->linePtr) != '\0' && ch != '#' && ch != '\n' && isspace(ch))
+    while ((ch = *buf->linePtr) != '\0' && isspace(ch))
          ++buf->linePtr;
-    if (ch == '#') {
-        while ((ch = *++buf->linePtr) != '\0' && ch != '\n')
-            ;
-    }
     return *buf->linePtr;
 }
 
@@ -327,124 +363,25 @@ static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm)
     return *token == '\0' ? NULL : token;
 }
 
-static int SkipSpacesStr(char **pp)
-{
-    char *p = *pp;
-    while (*p != '\0' && isspace(*p))
-        ++p;
-    *pp = p;
-    return *p;
-}
-
-static int ParseNumericExpr(const char *token, int *pValue)
-{
-    char *p = (char *)token;
-    int value = 0;
-    int op = -1;
-    *pValue = 0; // makes unary + and - work
-    while (SkipSpacesStr(&p)) {
-        if (isdigit(*p)) {
-            value = (int)strtol(p, &p, 0);
-            switch (*p) {
-            case 'k':
-            case 'K':
-                value *= 1024;
-                ++p;
-                break;
-            case 'm':
-            case 'M':
-                if (strcasecmp(p, "MHZ") == 0) {
-                    value *= 1000 * 1000;
-                    p += 3;
-                }
-                else {
-                    value *= 1024 * 1024;
-                    ++p;
-                }
-                break;
-            default:
-                // nothing to do
-                break;
-            }
-            if (!DoOp(pValue, op, *pValue, value))
-                return FALSE;
-            op = -1;
-        }
-        else if (isalpha(*p)) {
-            char id[32], *p2 = id;
-            ConfigSymbol *sym;
-            while (*p != '\0' && isalnum(*p)) {
-                if (p2 < id + sizeof(id) - 1)
-                    *p2++ = *p;
-                ++p;
-            }
-            *p2 = '\0';
-            for (sym = configSymbols; sym->name != NULL; ++sym)
-                if (strcasecmp(id, sym->name) == 0) {
-                    if (!DoOp(pValue, op, *pValue, sym->value))
-                        return FALSE;
-                    op = -1;
-                    break;
-                }
-            if (!sym->name) {
-                Error("undefined symbol: %s", id);
-                return FALSE;
-            }
-        }
-        else {
-            switch (*p) {
-            case '+':
-            case '-':
-            case '*':
-            case '/':
-            case '%':
-            case '&':
-            case '|':
-                op = *p;
-                break;
-            default:
-                Error("unknown operator: %c", *p);
-                return FALSE;
-            }
-            ++p;
+static int FindSymbol(void *cookie, const char *name, int *pValue)
+{    
+    BoardConfig *config = (BoardConfig *)cookie;
+    ConfigSymbol *sym;
+    
+    /* first check for a configuration variable with the specified name */
+    if (config && GetNumericConfigField(config, name, pValue))
+        return TRUE;
+        
+    /* check for a built-in symbol with the specified name */
+    for (sym = configSymbols; sym->name != NULL; ++sym) {
+        if (strcasecmp(name, sym->name) == 0) {
+            *pValue = sym->value;
+            return TRUE;
         }
     }
-    return *p == '\0';
-}
-
-static int DoOp(int *pValue, int op, int left, int right)
-{
-    switch (op) {
-    case -1:
-        left = right;
-        break;
-    case '+':
-        left += right;
-        break;
-    case '-':
-        left -= right;
-        break;
-    case '*':
-        left *= right;
-        break;
-    case '/':
-        left /= right;
-        break;
-    case '%':
-        left %= right;
-        break;
-    case '&':
-        left &= right;
-        break;
-    case '|':
-        left |= right;
-        break;
-    default:
-        Error("unknown operator: %c", op);
-        return FALSE;
-    }
-    *pValue = left;
-    return TRUE;
+    
+    /* symbol not found */
+    return FALSE;
 }
 
 static void ParseError(LineBuf *buf, const char *fmt, ...)
@@ -460,17 +397,6 @@ static void ParseError(LineBuf *buf, const char *fmt, ...)
     exit(1);
 }
 
-static int Error(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    printf("error: ");
-    vprintf(fmt, ap);
-    putchar('\n');
-    va_end(ap);
-    return FALSE;
-}
-
 static void Fatal(const char *fmt, ...)
 {
     va_list ap;
@@ -481,4 +407,3 @@ static void Fatal(const char *fmt, ...)
     va_end(ap);
     exit(1);
 }
-
