@@ -94,24 +94,37 @@ void CloseElfFile(ElfContext *c)
     free(c);
 }
 
-int GetProgramSize(ElfContext *c, uint32_t *pStart, uint32_t *pSize)
+int GetProgramSize(ElfContext *c, uint32_t *pStart, uint32_t *pSize, uint32_t *pCogImagesSize)
 {
     ElfProgramHdr program;
     uint32_t start = 0xffffffff;
     uint32_t end = 0;
+    uint32_t cogImagesStart = 0xffffffff;
+    uint32_t cogImagesEnd = 0;
+    int cogImagesFound = FALSE;
     int i;
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program)) {
             printf("error: can't read program header %d\n", i);
             return FALSE;
         }
-        if (program.paddr < start)
-            start = program.paddr;
-        if (program.paddr + program.filesz > end)
-            end = program.paddr + program.filesz;
+        if (program.paddr < COG_DRIVER_IMAGE_BASE) {
+            if (program.paddr < start)
+                start = program.paddr;
+            if (program.paddr + program.filesz > end)
+                end = program.paddr + program.filesz;
+        }
+        else {
+            if (program.paddr < cogImagesStart)
+                cogImagesStart = program.paddr;
+            if (program.paddr + program.filesz > cogImagesEnd)
+                cogImagesEnd = program.paddr + program.filesz;
+            cogImagesFound = TRUE;
+        }
     }
     *pStart = start;
     *pSize = end - start;
+    *pCogImagesSize = cogImagesFound ? cogImagesEnd - cogImagesStart : 0;
     return TRUE;
 }
 

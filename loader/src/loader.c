@@ -239,15 +239,67 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
 
 static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c)
 {
-    uint8_t *imagebuf;
     uint32_t start;
-    int imageSize;
+    uint8_t *imagebuf;
+    int imageSize, cogImagesSize;
     int mode;
     
     /* build the .binary image */
-    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, &cogImagesSize)))
         return FALSE;
     
+    /* load the eeprom cache driver if we need to write cog images to eeprom */
+    if (cogImagesSize > 0) {
+        char *cacheDriver = "eeprom_cache.dat";
+        uint8_t cacheDriverImage[COG_IMAGE_MAX];
+        int cacheDriverImageSize;
+        uint8_t *cogimagesbuf;
+        uint32_t params[3];
+        
+        /* get the cog images */
+        if (!(cogimagesbuf = GetCogImages(config, c))) {
+            free(imagebuf);
+            return Error("geting cog images failed");
+        }
+        
+        /* load the serial helper program */
+        if (!LoadSerialHelper(config, FALSE)) {
+            free(cogimagesbuf);
+            free(imagebuf);
+            return FALSE;
+        }
+        
+        /* load the cache driver */
+        if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &cacheDriverImageSize)) {
+            free(cogimagesbuf);
+            free(imagebuf);
+            return Error("reading cache driver image failed: %s", cacheDriver);
+        }
+        printf("Loading cache driver '%s'\n", cacheDriver);
+        params[0] = 8 * 1024;
+        params[1] = 0x8000; // write cog images eeprom above the LMM program
+        params[2] = 0;
+        if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
+        ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
+        ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
+            free(cogimagesbuf);
+            free(imagebuf);
+            return Error("Loading cache driver failed");
+        }
+        
+        /* write the cog images to eeprom */
+        printf("Writing cog images to eeprom\n");
+        if (!SendPacket(TYPE_FLASH_WRITE, (uint8_t *)"", 0)
+        ||  !WriteBuffer(cogimagesbuf, cogImagesSize)) {
+            free(cogimagesbuf);
+            free(imagebuf);
+            return Error("Writing cog images failed");
+        }
+        
+        /* free the image buffer */
+        free(cogimagesbuf);
+    }
+
     /* determine the download mode */
     if (flags & LFLAG_WRITE_EEPROM)
         mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
@@ -301,7 +353,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("failed to open elf file");
         
     /* build the .binary image */
-    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, NULL)))
         return FALSE;
     
     if (FindProgramSegment(c, ".coguser0", &program) < 0)
@@ -396,7 +448,7 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("failed to open elf file");
         
     /* build the .binary image */
-    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, NULL)))
         return FALSE;
     
     if (FindProgramSegment(c, ".coguser0", &program) < 0)
@@ -454,7 +506,7 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
     FILE *fp;
     
     /* build the .binary image */
-    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize)))
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, NULL)))
         return FALSE;
     
     /* write the spin .binary file */

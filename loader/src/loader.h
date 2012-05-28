@@ -83,7 +83,8 @@ void *NullError(char *fmt, ...);
 int Error(char *fmt, ...);
 
 /* lmm-image.c */
-uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize);
+uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize, int *pCogImagesSize);
+uint8_t *GetCogImages(BoardConfig *config, ElfContext *c);
 void UpdateChecksum(uint8_t *imagebuf, int imageSize);
 
 /* xmm-image.c */
