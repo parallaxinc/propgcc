@@ -33,7 +33,6 @@ ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)
 endif
 
-CFLAGS += -m$(MODEL)
 LDFLAGS += -m$(MODEL) -fno-exceptions -fno-rtti
 
 ifneq ($(LDSCRIPT),)
@@ -66,10 +65,10 @@ lib$(LIBNAME).a: $(OBJS)
 endif
 
 %.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) -m$(MODEL) $(CFLAGS) -o $@ -c $<
 
 %.o: %.cpp
-	$(CC) $(CXXFLAGS) -o $@ -c $<
+	$(CC) -m$(MODEL) $(CXXFLAGS) -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<
@@ -80,7 +79,14 @@ endif
 # driver
 #
 %.cog: %.c
-	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(CC) -mcog $(CFLAGS) -r -mcog -o $@ $<
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
+
+#
+# this is for an alternate scheme for loading COG drivers
+#
+%.cogdriver: %.c
+	$(CC) -mcog $(CFLAGS) -r -mcog -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
  
 %.binary: %.elf
@@ -93,7 +99,7 @@ endif
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 
 clean:
-	rm -f *.o *.elf *.a *.cog *.binary
+	rm -f *.o *.elf *.a *.cog *.cogdriver *.binary
 
 #
 # how to run
