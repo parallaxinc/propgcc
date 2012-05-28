@@ -2319,10 +2319,10 @@
 )
 
 ;;
-;; we split coginit up into 2 insns, one to set the lock and the
+;; we split coginit up into 2 insns, one to start the cog and the
 ;; second to update its state from the carry flag
 ;; the coginit raw sets the carry flag to mean that the locknew failed,
-;; which menas that the register is to be set to -1 (i.e. < 0)
+;; which means that the register is to be set to -1 (i.e. < 0)
 ;;
 (define_insn "*coginit_raw"
   [
@@ -2343,9 +2343,9 @@
 
 (define_insn_and_split "coginit"
   [(set (match_operand:SI 0 "propeller_dst_operand" "=&rC")
-        (unspec:SI [(match_operand:SI 1 "propeller_dst_operand" "0")]
+        (unspec_volatile:SI [(match_operand:SI 1 "propeller_dst_operand" "0")]
 	        UNSPEC_COGSTATE))
-   (unspec_volatile [(match_dup 1)] UNSPEC_COGINIT)]
+   ]
   ""
   "#"
   "reload_completed"
