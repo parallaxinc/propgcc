@@ -79,14 +79,14 @@ endif
 # driver
 #
 %.cog: %.c
-	$(CC) -mcog $(CFLAGS) -r -mcog -o $@ $<
+	$(CC) $(CFLAGS) -r -mcog -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 #
 # this is for an alternate scheme for loading COG drivers
 #
 %.cogdriver: %.c
-	$(CC) -mcog $(CFLAGS) -r -mcog -o $@ $<
+	$(CC) $(CFLAGS) -r -mcog -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
  
 %.binary: %.elf
