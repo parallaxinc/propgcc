@@ -58,7 +58,8 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     /* return the image */
     *pStart = start;
     *pImageSize = imageSize;
-    *pCogImagesSize = cogImagesSize;
+    if (pCogImagesSize)
+	*pCogImagesSize = cogImagesSize;
     return imagebuf;
 }
 
