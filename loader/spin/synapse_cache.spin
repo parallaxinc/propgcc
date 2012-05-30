@@ -1,6 +1,6 @@
 {
-  SPI SRAM JCACHE driver
-  Copyright (c) April 17, 2012 by David Betz
+  C3 Synapse SRAM JCACHE driver
+  Copyright (c) May 30, 2012 by David Betz
 
   Based on code from VMCOG - virtual memory server for the Propeller
   Copyright (c) February 3, 2010 by William Henning
@@ -40,7 +40,6 @@ CON
   EMPTY_BIT             = 30
   DIRTY_BIT             = 31
   
-  
   ' pin directions
   DIR_DATA              = $0ff
 
@@ -59,6 +58,7 @@ DAT
 ' $8: number of bits in the cache line index if non-zero (default is DEFAULT_INDEX_WIDTH)
 ' $a: number of bits in the cache line offset if non-zero (default is DEFAULT_OFFSET_WIDTH)
 ' note that $4 must be at least 2^($8+$a) bytes in size
+' note also that $8 cannot be more than 8 or the byte0 counter will wrap
 ' the cache line mask is returned in $0
 
 init_vm mov     t1, par             ' get the address of the initialization structure
@@ -232,23 +232,18 @@ dirty_mask      long    (1<<DIRTY_BIT)
 BSTART
         or      dira, data_mask         ' set data bus to output
         mov     data, vmaddr            ' load A7:0
-        and     data, data_mask
-        andn    outa, data_mask
-        or      outa, data
+        movs    outa, data
         or      outa, cmd_byte0_latch
         andn    outa, cmd_mask
         mov     data, vmaddr            ' load A15:8
         shr     data, #8
-        and     data, data_mask
-        andn    outa, data_mask
-        or      outa, data
+        movs    outa, data
         or      outa, cmd_byte1_latch
         andn    outa, cmd_mask
         mov     data, vmaddr            ' load A18:16
         shr     data, #16
         and     data, #$07
-        andn    outa, data_mask
-        or      outa, data
+        movs    outa, data
         or      outa, cmd_byte2_latch
         andn    outa, cmd_mask
 
@@ -276,7 +271,8 @@ BREAD
 
 :loop   or      outa, cmd_rd
         mov     data, ina
-        andn    outa, cmd_mask
+        mov     data, ina
+'       andn    outa, cmd_mask          ' this can be omitted since _rd = $01 and _count = $11 
         or      outa, cmd_byte0_count
         andn    outa, cmd_mask
         wrbyte  data, ptr
@@ -304,10 +300,9 @@ BWRITE
         or      dira, data_mask         ' set data bus to output
 
 :loop   rdbyte  data, ptr
-        andn    outa, data_mask
-        or      outa, data
+        movs    outa, data
         or      outa, cmd_wr
-        andn    outa, cmd_mask
+'       andn    outa, cmd_mask          ' this can be omitted since _rd = $01 and _count = $11 
         or      outa, cmd_byte0_count
         andn    outa, cmd_mask
         add     ptr, #1
