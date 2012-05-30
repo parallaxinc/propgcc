@@ -56,9 +56,9 @@ void main (int argc,  char* argv[])
 
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
-    par_1.m.wait_time = _clkfreq>>1;  /* start by waiting for 1/2 second */
-    par_2.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/4 second */
-    par_3.m.wait_time = _clkfreq>>3;  /* start by waiting for 1/8 second */
+    par_1.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/2 second */
+    par_2.m.wait_time = _clkfreq>>4;  /* start by waiting for 1/4 second */
+    par_3.m.wait_time = _clkfreq>>8;  /* start by waiting for 1/8 second */
     
     /* start the new cogs */
     cognewFromEeprom(i2c, _load_start_toggle_fw_0cogdriver, &par_0.m);
