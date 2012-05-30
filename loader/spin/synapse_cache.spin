@@ -225,25 +225,21 @@ dirty_mask      long    (1<<DIRTY_BIT)
 '   ptr is the hub address for the next read/write
 '   count is the number of bytes to transfer
 '
-' trashes t1
+' trashes vmaddr
 '
 '----------------------------------------------------------------------------------------------------
 
 BSTART
         or      dira, data_mask         ' set data bus to output
-        mov     data, vmaddr            ' load A7:0
-        movs    outa, data
+        movs    outa, vmaddr            ' load A7:0
         or      outa, cmd_byte0_latch
         andn    outa, cmd_mask
-        mov     data, vmaddr            ' load A15:8
-        shr     data, #8
-        movs    outa, data
+        shr     vmaddr, #8              ' load A15:8
+        movs    outa, vmaddr
         or      outa, cmd_byte1_latch
         andn    outa, cmd_mask
-        mov     data, vmaddr            ' load A18:16
-        shr     data, #16
-        and     data, #$07
-        movs    outa, data
+        shr     vmaddr, #8              ' load A18:16
+        movs    outa, vmaddr
         or      outa, cmd_byte2_latch
         andn    outa, cmd_mask
 
@@ -268,17 +264,16 @@ BSTART_RET
 BREAD
         call    #BSTART
         andn    dira, data_mask         ' set data bus to input
-
-:loop   or      outa, cmd_rd
-        mov     data, ina
-        mov     data, ina
-'       andn    outa, cmd_mask          ' this can be omitted since _rd = %010 and _count = %011 
-        or      outa, cmd_byte0_count
-        andn    outa, cmd_mask
+        mov     outa, cmd_rd
+        
+:loop   mov     data, ina
+        or      outa, cmd_rd_count
+        andn    outa, cmd_rd_count
         wrbyte  data, ptr
         add     ptr, #1
         djnz    count, #:loop
-
+        
+        andn    outa, cmd_mask
 BREAD_RET
         ret
 
@@ -299,11 +294,9 @@ BWRITE
         call    #BSTART
         or      dira, data_mask         ' set data bus to output
 
-:loop   rdbyte  data, ptr
-        movs    outa, data
+:loop   rdbyte  outa, ptr
         or      outa, cmd_wr
-'       andn    outa, cmd_mask          ' this can be omitted since _wr = %001 and _count = %011 
-        or      outa, cmd_byte0_count
+        or      outa, cmd_wr_count
         andn    outa, cmd_mask
         add     ptr, #1
         djnz    count, #:loop
@@ -323,7 +316,8 @@ data            long    0
 ' command codes
 cmd_wr          long    $00010000
 cmd_rd          long    $00020000
-cmd_byte0_count long    $00030000
+cmd_wr_count    long    $00020000
+cmd_rd_count    long    $00010000
 cmd_byte1_latch long    $00040000
 cmd_byte2_latch long    $00050000
 cmd_byte0_latch long    $00060000
