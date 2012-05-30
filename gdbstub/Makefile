@@ -47,7 +47,7 @@ endif
 
 TARGET=gdbstub$(EXT)
 
-OBJS=gdbstub.o config.o system.o port.o PLoadLib.o $(foreach x, $(OSINT), $(x).o) kernel_image.o
+OBJS=gdbstub.o config.o expr.o system.o port.o PLoadLib.o $(foreach x, $(OSINT), $(x).o) kernel_image.o
 
 all:	bin2c$(EXT) $(TARGET)
 
