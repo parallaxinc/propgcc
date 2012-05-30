@@ -156,7 +156,8 @@ $(DRVDIR)/sd_cache.dat \
 $(DRVDIR)/spi_flash_cache.dat \
 $(DRVDIR)/sst_sqi_flash_cache.dat \
 $(DRVDIR)/spi_sram_cache.dat \
-$(DRVDIR)/winbond_sqi_flash_cache.dat
+$(DRVDIR)/winbond_sqi_flash_cache.dat \
+$(DRVDIR)/synapse_cache.dat
 
 #################
 # OTHER DRIVERS #
