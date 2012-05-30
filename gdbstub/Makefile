@@ -1,6 +1,5 @@
 CC=gcc
 PROPCC=propeller-elf-gcc
-ECHO=echo
 RM=rm
 LOAD=propeller-load
 
@@ -69,24 +68,20 @@ kernel_image.elf:	kernel.c
 ###########################
 
 %_binary.elf:	%.c
-	@$(ECHO) $@
-	@$(PROPCC) -mlmm -g -o $@ $< 
+	$(PROPCC) -mlmm -g -o $@ $< 
 
 %.binary:	%.elf
-	@$(LOAD) -s $<
-	@$(ECHO) $@
+	$(LOAD) -s $<
 
 %.c:	%.binary
 	./bin2c$(EXT) $< $@
-	@$(ECHO) $@
 
 #########
 # TOOLS #
 #########
 
 bin2c$(EXT):	$(LOADERSRC)/tools/bin2c.c
-	@$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
-	@$(ECHO) $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
 
 .PHONY:	clean
 clean:
