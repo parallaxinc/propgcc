@@ -272,7 +272,7 @@ BREAD
 :loop   or      outa, cmd_rd
         mov     data, ina
         mov     data, ina
-'       andn    outa, cmd_mask          ' this can be omitted since _rd = $01 and _count = $11 
+'       andn    outa, cmd_mask          ' this can be omitted since _rd = %010 and _count = %011 
         or      outa, cmd_byte0_count
         andn    outa, cmd_mask
         wrbyte  data, ptr
@@ -302,7 +302,7 @@ BWRITE
 :loop   rdbyte  data, ptr
         movs    outa, data
         or      outa, cmd_wr
-'       andn    outa, cmd_mask          ' this can be omitted since _rd = $01 and _count = $11 
+'       andn    outa, cmd_mask          ' this can be omitted since _wr = %001 and _count = %011 
         or      outa, cmd_byte0_count
         andn    outa, cmd_mask
         add     ptr, #1
