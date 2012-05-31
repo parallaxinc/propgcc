@@ -163,6 +163,12 @@ static int hwfind(void)
     if(tx(mybuf, 250) == 0)
         return 0;   // tx should never return 0, return error if it does.
 
+    n = 0;
+    while((jj = rx_timeout(mybuf,10,50)) > -1)
+        n += jj;
+    if(n != 0)
+        printf("Ignored %d bytes. \n", n);
+
     /* Send 258 0xF9 for LFSR and Version ID
      * These bytes clock the LSFR bits and ID from propeller back to us.
      */
