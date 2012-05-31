@@ -297,10 +297,10 @@ BWRITE
 :loop   rdbyte  outa, ptr
         or      outa, cmd_wr
         or      outa, cmd_wr_count
-        andn    outa, cmd_mask
         add     ptr, #1
         djnz    count, #:loop
 
+        andn    outa, cmd_mask
 BWRITE_RET
         ret
 
