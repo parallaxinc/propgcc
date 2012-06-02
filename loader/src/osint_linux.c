@@ -274,17 +274,25 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
 }
 
 /**
- * hwreset ... resets Propeller hardware using DTR
+ * hwreset ... resets Propeller hardware using DTR or RTS
  * @param sparm - pointer to DCB serial control struct
  * @returns void
  */
 void hwreset(void)
 {
     int cmd = use_rts_for_reset ? TIOCM_RTS : TIOCM_DTR;
-    ioctl(hSerial, TIOCMBIS, &cmd); // assert DTR or RTS pin
+
+/* MAC OSX and linux seem to have opposite definitions */
+#ifdef MACOSX
+    ioctl(hSerial, TIOCMBIS, &cmd); /* assert bit */
     msleep(10);
-    ioctl(hSerial, TIOCMBIC, &cmd); // deassert DTR or RTS pin
-    msleep(80);
+    ioctl(hSerial, TIOCMBIC, &cmd); /* clear bit */
+#else
+    ioctl(hSerial, TIOCMBIC, &cmd); /* linux is opposite from MAC */
+    msleep(10);
+    ioctl(hSerial, TIOCMBIS, &cmd); /* linux is opposite from MAC */
+#endif
+    msleep(90);
     tcflush(hSerial, TCIFLUSH);
 }
 
