@@ -61,6 +61,9 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  { ".text",
 	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_CODE,
 	    0, 0, 0, 0 },
+	  { ".drivers",
+	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_CODE,
+	    0, 0, 0, 0 },
 	  { ".rodata",
 	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_DATA,
 	    0, 0, 0, 0 },
@@ -84,9 +87,20 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  lang_memory_region_type *cog_region;
 
 	  //fprintf (stderr, "orphaned section [%s]\n", secname);
-	  place = &hold[0];
+
+	  // hold[0] is for the ".text" section
+	  // hold[1] is for the ".drivers" section
+	  // if there is a .drivers, put the .cog stuff after it;
+	  // otherwise put it after .text
+	  place = &hold[1];
 	  if (place->os == NULL)
 	    place->os = lang_output_section_find (place->name);
+	  if (place->os == NULL) {
+	    // no .drivers found, use .text
+	    place = &hold[0];
+	    if (place->os == NULL)
+	      place->os = lang_output_section_find (place->name);
+	  }
 	  after = place->os;
 	  os = lang_insert_orphan (s, secname, constraint, after, place, NULL, NULL);
 	  cog_region = lang_memory_region_lookup ("coguser", FALSE);
