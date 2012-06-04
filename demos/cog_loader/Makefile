@@ -9,7 +9,6 @@
 PROPLIB = ../common
 
 CFLAGS = -Os -DPARALLAX_I2C_BUS
-LDFLAGS = -Tcogloader.ld
 
 #
 # objects for this program
