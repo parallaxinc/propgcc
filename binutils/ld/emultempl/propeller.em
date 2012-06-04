@@ -93,8 +93,6 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  place = &hold[0];
 	  if (place->os == NULL)
 	    place->os = lang_output_section_find (place->name);
-	  if (place->os == NULL)
-	    place->os = lang_output_section_find (place->name);
 	  after = place->os;
 	  os = lang_insert_orphan (s, secname, constraint, after, place, NULL, NULL);
 	  cog_region = lang_memory_region_lookup ("coguser", FALSE);
@@ -146,8 +144,6 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  // hold[1] is for the ".drivers" section
 	  // if there is a .drivers, put the .cog stuff after it;
 	  place = &hold[1];
-	  if (place->os == NULL)
-	    place->os = lang_output_section_find (place->name);
 	  if (place->os == NULL)
 	    place->os = lang_output_section_find (place->name);
 	  after = place->os;
