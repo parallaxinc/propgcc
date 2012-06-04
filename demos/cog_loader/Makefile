@@ -19,10 +19,10 @@ NAME = toggle
 
 OBJS = \
 toggle.o \
-toggle_fw_0.cogdriver \
-toggle_fw_1.cogdriver \
-toggle_fw_2.cogdriver \
-toggle_fw_3.cogdriver
+toggle_fw_0.drv \
+toggle_fw_1.drv	\
+toggle_fw_2.drv	\
+toggle_fw_3.drv
 
 all: $(NAME).elf
 

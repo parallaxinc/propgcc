@@ -89,18 +89,66 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  //fprintf (stderr, "orphaned section [%s]\n", secname);
 
 	  // hold[0] is for the ".text" section
+	  // if there is a .text, put the .cog stuff after it;
+	  place = &hold[0];
+	  if (place->os == NULL)
+	    place->os = lang_output_section_find (place->name);
+	  if (place->os == NULL)
+	    place->os = lang_output_section_find (place->name);
+	  after = place->os;
+	  os = lang_insert_orphan (s, secname, constraint, after, place, NULL, NULL);
+	  cog_region = lang_memory_region_lookup ("coguser", FALSE);
+	  if (cog_region)
+	    {
+	      os->region = cog_region;
+	      os->addr_tree = exp_intop (cog_region->origin);
+	      os->lma_region = after->lma_region;
+	      os->load_base = NULL;
+	    }
+	  os->sectype = overlay_section;
+
+	  /* now add the necessary overlay symbols */
+	  clean = (char *) xmalloc (strlen (secname) + 1);
+	  s2 = clean;
+	  for (s1 = secname; *s1 != '\0'; s1++)
+	    if (ISALNUM (*s1) || *s1 == '_')
+	      *s2++ = *s1;
+	  *s2 = '\0';
+
+	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_start_");
+	  sprintf (buf, "__load_start_%s", clean);
+	  lang_add_assignment (exp_provide (buf,
+					    exp_nameop (LOADADDR, secname),
+					    FALSE));
+
+	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_stop_");
+	  sprintf (buf, "__load_stop_%s", clean);
+	  lang_add_assignment (exp_provide (buf,
+					    exp_binop ('+',
+						       exp_nameop (LOADADDR, secname),
+						       exp_nameop (SIZEOF, secname)),
+					    FALSE));
+
+	  free (clean);
+	  return os;
+	}
+      else if (!strncmp (secname, ".drv", 4) || (last4 >= 0 && !strcmp (secname + last4, ".drv")))
+	{
+	  char *clean, *s2;
+	  const char *s1;
+	  char *buf;
+	  lang_output_section_statement_type *os;
+	  lang_memory_region_type *cog_region;
+
+	  //fprintf (stderr, "orphaned section [%s]\n", secname);
+
 	  // hold[1] is for the ".drivers" section
 	  // if there is a .drivers, put the .cog stuff after it;
-	  // otherwise put it after .text
 	  place = &hold[1];
 	  if (place->os == NULL)
 	    place->os = lang_output_section_find (place->name);
-	  if (place->os == NULL) {
-	    // no .drivers found, use .text
-	    place = &hold[0];
-	    if (place->os == NULL)
-	      place->os = lang_output_section_find (place->name);
-	  }
+	  if (place->os == NULL)
+	    place->os = lang_output_section_find (place->name);
 	  after = place->os;
 	  os = lang_insert_orphan (s, secname, constraint, after, place, NULL, NULL);
 	  cog_region = lang_memory_region_lookup ("coguser", FALSE);
