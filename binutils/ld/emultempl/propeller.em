@@ -71,14 +71,14 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_DATA,
 	    0, 0, 0, 0 },
 	};
-      int last4;
+      int lastn;
       struct orphan_save *place = NULL;
       lang_output_section_statement_type *after = NULL;
 
       // if either the first or last 4 characters are .cog, it's a cog
       // overlay
-      last4 = strlen (secname) - 4;
-      if (!strncmp (secname, ".cog", 4) || (last4 >= 0 && !strcmp (secname + last4, ".cog")))
+      lastn = strlen (secname) - 4;
+      if (!strncmp (secname, ".cog", 4) || (lastn >= 0 && !strcmp (secname + lastn, ".cog")))
 	{
 	  char *clean, *s2;
 	  const char *s1;
@@ -132,7 +132,8 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  free (clean);
 	  return os;
 	}
-      else if (!strncmp (secname, ".drv", 4) || (last4 >= 0 && !strcmp (secname + last4, ".drv")))
+        lastn = strlen (secname) - 6;
+	if (!strncmp (secname, ".eecog", 6) || (lastn >= 0 && !strcmp (secname + lastn, ".eecog")))
 	{
 	  char *clean, *s2;
 	  const char *s1;
@@ -165,8 +166,10 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  clean = (char *) xmalloc (strlen (secname) + 1);
 	  s2 = clean;
 	  for (s1 = secname; *s1 != '\0'; s1++)
-	    if (ISALNUM (*s1) || *s1 == '_')
+	    if (ISALNUM (*s1) || *s1 == '_' )
 	      *s2++ = *s1;
+	    else if (*s1 == '.')
+	      *s2++ = '_';
 	  *s2 = '\0';
 
 	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_start_");

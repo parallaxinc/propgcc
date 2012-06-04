@@ -24,12 +24,12 @@ struct par {
   struct toggle_mailbox m;
 };
 
-#define usefw(fw)           extern unsigned char _load_start_ ## fw ## drv[];        	\
-                            extern unsigned char _load_stop_ ## fw ## drv[]
+#define usefw(fw)           extern unsigned char _load_start_ ## fw ## _eecog[];        	\
+                            extern unsigned char _load_stop_ ## fw ## _eecog[]
 
-#define startcog(fw, arg)   cognewFromBootEeprom(                                       \
-                                _load_start_ ## fw ## drv,                              \
-                                _load_stop_ ## fw ## drv - _load_start_ ## fw ## drv,   \
+#define startcog(fw, arg)   cognewFromBootEeprom(                                       	\
+                                _load_start_ ## fw ## _eecog,                              	\
+                                _load_stop_ ## fw ## _eecog - _load_start_ ## fw ## _eecog,	\
                                 arg)
 
 usefw(toggle_fw_0);

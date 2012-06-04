@@ -83,12 +83,12 @@ endif
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 #
-# a .drv program is an object file that contains code intended to
+# a .eecog program is an object file that contains code intended to
 # run in a COG separate from the main program; i.e., it's a COG
 # driver that the linker will place in the .drivers section which
 # gets loaded to high EEPROM space above 0x8000.
 #
-%.drv: %.c
+%.eecog: %.c
 	$(CC) $(CFLAGS) -r -mcog -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
@@ -109,7 +109,7 @@ endif
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 
 clean:
-	rm -f *.o *.elf *.a *.cog *.cogdriver *.binary
+	rm -f *.o *.elf *.a *.cog *.eecog *.binary
 
 #
 # how to run
