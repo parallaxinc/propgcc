@@ -10,6 +10,7 @@ MEMORY
   ram     : ORIGIN = 0x20000000, LENGTH = 256M
   rom     : ORIGIN = 0x30000000, LENGTH = 256M
   /* some sections (like the .xmm kernel) are handled specially by the loader */
+  drivers : ORIGIN = 0xc0000000, LENGTH = 1M
   dummy   : ORIGIN = 0xe0000000, LENGTH = 1M
 }
 SECTIONS
@@ -71,14 +72,10 @@ SECTIONS
     *(COMMON)
      PROVIDE (__bss_end = .) ;
   }  >hub AT>hub
-    .hub_heap : { . += 4; } >hub AT>hub
-  OVERLAY 0x00000000 : AT(0xc0000000)
+  .hub_heap : { . += 4; } >hub AT>hub
+  .drivers	:
   {
-    .toggle_fw_0.cogdriver { *(toggle_fw_0.cogdriver) }
-    .toggle_fw_1.cogdriver { *(toggle_fw_1.cogdriver) }
-    .toggle_fw_2.cogdriver { *(toggle_fw_2.cogdriver) }
-    .toggle_fw_3.cogdriver { *(toggle_fw_3.cogdriver) }
-  }
+  } AT>drivers
     ___hub_heap_start = ADDR(.hub_heap) ;
     __load_start_kernel = LOADADDR (.lmmkernel) ;
    ___CTOR_LIST__ = ADDR(.ctors) ;

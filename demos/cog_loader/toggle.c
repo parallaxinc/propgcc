@@ -24,10 +24,18 @@ struct par {
   struct toggle_mailbox m;
 };
 
-extern unsigned int _load_start_toggle_fw_0cogdriver[];
-extern unsigned int _load_start_toggle_fw_1cogdriver[];
-extern unsigned int _load_start_toggle_fw_2cogdriver[];
-extern unsigned int _load_start_toggle_fw_3cogdriver[];
+#define usefw(fw)           extern unsigned char _load_start_ ## fw ## drv[];        	\
+                            extern unsigned char _load_stop_ ## fw ## drv[]
+
+#define startcog(fw, arg)   cognewFromBootEeprom(                                       \
+                                _load_start_ ## fw ## drv,                              \
+                                _load_stop_ ## fw ## drv - _load_start_ ## fw ## drv,   \
+                                arg)
+
+usefw(toggle_fw_0);
+usefw(toggle_fw_1);
+usefw(toggle_fw_2);
+usefw(toggle_fw_3);
 
 struct par par_0;
 struct par par_1;
@@ -49,11 +57,6 @@ volatile int togglecount = 0;
 
 void main (int argc,  char* argv[])
 {
-    I2C_COGDRIVER i2c_data;
-    I2C *i2c;
-
-    i2c = i2cOpen(&i2c_data, 28, 29, 100000);
-
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
     par_1.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/2 second */
@@ -61,10 +64,10 @@ void main (int argc,  char* argv[])
     par_3.m.wait_time = _clkfreq>>8;  /* start by waiting for 1/8 second */
     
     /* start the new cogs */
-    cognewFromEeprom(i2c, _load_start_toggle_fw_0cogdriver, &par_0.m);
-    cognewFromEeprom(i2c, _load_start_toggle_fw_1cogdriver, &par_1.m);
-    cognewFromEeprom(i2c, _load_start_toggle_fw_2cogdriver, &par_2.m);
-    cognewFromEeprom(i2c, _load_start_toggle_fw_3cogdriver, &par_3.m);
+    startcog(toggle_fw_0, &par_0.m);
+    startcog(toggle_fw_1, &par_1.m);
+    startcog(toggle_fw_2, &par_2.m);
+    startcog(toggle_fw_3, &par_3.m);
     printf("toggle cogs have started\n");
 
     /* every 2 seconds update the flashing frequency so the

@@ -76,9 +76,19 @@ endif
 #
 # a .cog program is an object file that contains code intended to
 # run in a COG separate from the main program; i.e., it's a COG
-# driver
+# driver that the linker will place in the .text section.
 #
 %.cog: %.c
+	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
+
+#
+# a .drv program is an object file that contains code intended to
+# run in a COG separate from the main program; i.e., it's a COG
+# driver that the linker will place in the .drivers section which
+# gets loaded to high EEPROM space above 0x8000.
+#
+%.drv: %.c
 	$(CC) $(CFLAGS) -r -mcog -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 

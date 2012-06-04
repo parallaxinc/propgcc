@@ -9,6 +9,9 @@
 #ifndef __COGLOAD_H__
 #define __COGLOAD_H__
 
+#include <stdint.h>
+#include <i2c.h>
+
 /**
  * @brief Start a new Propeller PASM COG from a COG image in EEPROM
  *
@@ -22,12 +25,17 @@
  * COG-C programs should not use any stack or variables in HUB memory that
  * are not accessed via PAR mailbox or pointers.
  *
- * @param i2c Interface to an I2C bus
  * @param code Address of PASM to load
+ * @param size of code in bytes
  * @param param Value of par parameter usually an address
  * @returns COG ID provided by the builtin function or -1 on failure.
  */
-int cognewFromEeprom(I2C *i2c, void *code, void *param);
+int cognewFromBootEeprom(void *code, size_t codeSize, void *param);
+
+I2C *i2cBootOpen(void);
+void *i2cBootBuffer(void);
+int readFromBootEeprom(uint32_t offset, void *buf, size_t size);
+int writeToBootEeprom(uint32_t offset, void *buf, size_t size);
 
 #endif
 
