@@ -1,5 +1,5 @@
 /*
- * osint_msys.c - serial i/o routines for win32api via mingw
+ * osint_mingw.c - serial i/o routines for win32api via mingw
  *
  * Copyright (c) 2011 by Steve Denson.
  *
@@ -32,7 +32,7 @@
 #include <stdarg.h>
 #include "osint.h"
 
-static HANDLE hSerial;
+static HANDLE hSerial = INVALID_HANDLE_VALUE;
 static COMMTIMEOUTS original_timeouts;
 static COMMTIMEOUTS timeouts;
 
@@ -107,19 +107,22 @@ int serial_init(const char *port, unsigned long baud)
     timeouts.ReadIntervalTimeout = MAXDWORD;
     timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
 
-	/* setup device buffers */
-	SetupComm(hSerial, 10000, 10000);
+    /* setup device buffers */
+    SetupComm(hSerial, 10000, 10000);
 
-	/* purge any information in the buffer */
-	PurgeComm(hSerial, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
+    /* purge any information in the buffer */
+    PurgeComm(hSerial, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
 
     return TRUE;
 }
 
 void serial_done(void)
 {
-	FlushFileBuffers(hSerial);
-    CloseHandle(hSerial);
+    if (hSerial != INVALID_HANDLE_VALUE) {
+        FlushFileBuffers(hSerial);
+        CloseHandle(hSerial);
+        hSerial = INVALID_HANDLE_VALUE;
+    }
 }
 
 /**
