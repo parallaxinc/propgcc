@@ -13,7 +13,12 @@ export PREFIX
 # note that the propgcc version string does not deal well with
 # spaces due to how it is used below
 #
-echo Propgcc version is ${PROPGCC_VERSION='propgcc_v0.3.1'}
+VERSION=`cat release/VERSION.txt | grep -v "^#"`
+HGVERSION=`hg tip | grep changeset | cut -d":" -f2 | sed 's/ //g'`
+
+PROPGCC_VERSION=`echo ${VERSION}_${HGVERSION}`
+
+echo Propgcc version is ${PROPGCC_VERSION}
 export PROPGCC_VERSION
 
 echo BUGURL is ${BUGURL="http://code.google.com/p/propgcc/issues"}
@@ -234,12 +239,12 @@ cd ..
 #
 # copy the linker scripts
 #
-cp -f ldscripts/* $PREFIX/propeller-elf/lib
-if test $? != 0
-then
-  echo "ldscripts install failed"
-  exit 1
-fi
+#cp -f ldscripts/* $PREFIX/propeller-elf/lib
+#if test $? != 0
+#then
+#  echo "ldscripts install failed"
+#  exit 1
+#fi
 
 #
 # copy Brad's Spin Tool
