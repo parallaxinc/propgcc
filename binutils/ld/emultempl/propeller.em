@@ -111,6 +111,8 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  for (s1 = secname; *s1 != '\0'; s1++)
 	    if (ISALNUM (*s1) || *s1 == '_')
 	      *s2++ = *s1;
+	    else if (*s1 == '.')
+	      *s2++ = '_';
 	  *s2 = '\0';
 
 	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_start_");
@@ -130,8 +132,8 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  free (clean);
 	  return os;
 	}
-        lastn = strlen (secname) - 6;
-	if (!strncmp (secname, ".eecog", 6) || (lastn >= 0 && !strcmp (secname + lastn, ".eecog")))
+        lastn = strlen (secname) - 5;
+	if (!strncmp (secname, ".ecog", 5) || (lastn >= 0 && !strcmp (secname + lastn, ".ecog")))
 	{
 	  char *clean, *s2;
 	  const char *s1;
