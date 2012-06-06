@@ -86,7 +86,7 @@ SECTIONS
 
   .drivers ${RELOCATING-0} :
   {
-    /* the linker will place .eecog sections after this section */
+    /* the linker will place .ecog sections after this section */
   } ${RELOCATING+ AT>drivers}
 
   ${RELOCATING+ ${KERNEL_NAME+ __load_start_kernel = LOADADDR (${KERNEL_NAME}) ;}}
