@@ -1,4 +1,5 @@
 #include <propeller.h>
+#include "cogload.h"
 #include "i2c.h"
 
 #ifndef TRUE
@@ -73,6 +74,11 @@ void *i2cBootBuffer(void)
 
 int cognewFromBootEeprom(void *code, size_t codeSize, void *param)
 {
+    return coginitFromBootEeprom(0x8, code, codeSize, param);
+}
+
+int coginitFromBootEeprom(int id, void *code, size_t codeSize, void *param)
+{
     uint16_t addr = (uint32_t)code - 0xc0000000 + 0x8000;
     uint8_t cmd[2] = { addr >> 8, addr };
     void *cogbuf;
@@ -93,6 +99,6 @@ int cognewFromBootEeprom(void *code, size_t codeSize, void *param)
     if (i2cRead(_boot_i2c, EEPROM_ADDR, cogbuf, codeSize, TRUE) != 0)
         return -1;
         
-    return cognew(cogbuf, param);
+    return coginit(id, cogbuf, param);
 }
 
