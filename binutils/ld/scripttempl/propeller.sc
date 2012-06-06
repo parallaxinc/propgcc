@@ -35,7 +35,7 @@ SECTIONS
   /* Internal text space or external memory.  */
   .text ${RELOCATING-0} :
   {
-    *(EXCLUDE_FILE (*.cog) .text*)
+    *(.text*)
     ${RELOCATING+ _etext = . ; }
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
@@ -86,6 +86,7 @@ SECTIONS
 
   .drivers ${RELOCATING-0} :
   {
+    *(.drivers)
     /* the linker will place .ecog sections after this section */
   } ${RELOCATING+ AT>drivers}
 
