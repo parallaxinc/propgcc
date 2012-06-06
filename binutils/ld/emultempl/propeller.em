@@ -111,7 +111,7 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  for (s1 = secname; *s1 != '\0'; s1++)
 	    if (ISALNUM (*s1) || *s1 == '_')
 	      *s2++ = *s1;
-	    else if (*s1 == '.')
+	    else if (s1 != secname && *s1 == '.')
 	      *s2++ = '_';
 	  *s2 = '\0';
 
@@ -166,7 +166,7 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  for (s1 = secname; *s1 != '\0'; s1++)
 	    if (ISALNUM (*s1) || *s1 == '_' )
 	      *s2++ = *s1;
-	    else if (*s1 == '.')
+	    else if (s1 != secname && *s1 == '.')
 	      *s2++ = '_';
 	  *s2 = '\0';
 
