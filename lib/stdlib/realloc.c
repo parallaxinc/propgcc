@@ -33,7 +33,11 @@ realloc(void *ptr, size_t n)
 void *
 hubrealloc(void *ptr, size_t n)
 {
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
+    return common_realloc(&_malloc_heap, ptr, n);
+#else
     return common_realloc(&_hub_malloc_heap, ptr, n);
+#endif
 }
 
 static void *
