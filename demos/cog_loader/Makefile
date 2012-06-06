@@ -18,10 +18,10 @@ NAME = toggle
 
 OBJS = \
 toggle.o \
-toggle_fw_0.eecog \
-toggle_fw_1.eecog \
-toggle_fw_2.eecog \
-toggle_fw_3.eecog
+toggle_fw_0.ecog \
+toggle_fw_1.ecog \
+toggle_fw_2.ecog \
+toggle_fw_3.ecog
 
 all: $(NAME).elf
 
