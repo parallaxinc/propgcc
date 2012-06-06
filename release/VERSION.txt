@@ -11,11 +11,5 @@
 # The build version is maintained separately and appended by the build tool.
 # The suffix is appended to the version by the build tool.
 #
-# Some version name examples:
 #
-# propgcc_V0_1
-# propgcc_V0_12
-# propgcc_V1_0
-# propgcc_V1_1
-#
-propgcc_v0_3
+propellergcc_v0_3_2
