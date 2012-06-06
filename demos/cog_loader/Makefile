@@ -21,7 +21,9 @@ toggle.o \
 toggle_fw_0.ecog \
 toggle_fw_1.ecog \
 toggle_fw_2.ecog \
-toggle_fw_3.ecog
+toggle_fw_3.ecog \
+toggle_fw_4.ecog \
+toggle_fw_5.ecog
 
 all: $(NAME).elf
 

@@ -36,11 +36,15 @@ usefw(toggle_fw_0);
 usefw(toggle_fw_1);
 usefw(toggle_fw_2);
 usefw(toggle_fw_3);
+usefw(toggle_fw_4);
+usefw(toggle_fw_5);
 
 struct par par_0;
 struct par par_1;
 struct par par_2;
 struct par par_3;
+struct par par_4;
+struct par par_5;
 
 /*
  * togglecount counts how many times the LED has been toggled
@@ -59,15 +63,19 @@ void main (int argc,  char* argv[])
 {
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
-    par_1.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/2 second */
-    par_2.m.wait_time = _clkfreq>>4;  /* start by waiting for 1/4 second */
-    par_3.m.wait_time = _clkfreq>>8;  /* start by waiting for 1/8 second */
+    par_1.m.wait_time = _clkfreq>>1;  /* start by waiting for 1/2 second */
+    par_2.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/4 second */
+    par_3.m.wait_time = _clkfreq>>3;  /* start by waiting for 1/8 second */
+    par_4.m.wait_time = _clkfreq>>4;  /* start by waiting for 1/16 second */
+    par_5.m.wait_time = _clkfreq>>5;  /* start by waiting for 1/32 second */
     
     /* start the new cogs */
     startcog(toggle_fw_0, &par_0.m);
     startcog(toggle_fw_1, &par_1.m);
     startcog(toggle_fw_2, &par_2.m);
     startcog(toggle_fw_3, &par_3.m);
+    startcog(toggle_fw_4, &par_4.m);
+    startcog(toggle_fw_5, &par_5.m);
     printf("toggle cogs have started\n");
 
     /* every 2 seconds update the flashing frequency so the
@@ -86,6 +94,10 @@ void main (int argc,  char* argv[])
       par_3.m.wait_time >>= 1;
       if (par_3.m.wait_time < MIN_GAP)
         par_3.m.wait_time = _clkfreq;
+      if (par_4.m.wait_time < MIN_GAP)
+        par_4.m.wait_time = _clkfreq;
+      if (par_5.m.wait_time < MIN_GAP)
+        par_5.m.wait_time = _clkfreq;
       printf("toggle count = %d\n", togglecount);
     }
 }
