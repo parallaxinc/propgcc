@@ -62,7 +62,7 @@ volatile int togglecount = 0;
 void main (int argc,  char* argv[])
 {
     /* set up the parameters for the C cogs */
-    par_0.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
+    par_0.m.wait_time = _clkfreq;     /* start by waiting for 1 second */
     par_1.m.wait_time = _clkfreq>>1;  /* start by waiting for 1/2 second */
     par_2.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/4 second */
     par_3.m.wait_time = _clkfreq>>3;  /* start by waiting for 1/8 second */
@@ -94,8 +94,10 @@ void main (int argc,  char* argv[])
       par_3.m.wait_time >>= 1;
       if (par_3.m.wait_time < MIN_GAP)
         par_3.m.wait_time = _clkfreq;
+      par_4.m.wait_time >>= 1;
       if (par_4.m.wait_time < MIN_GAP)
         par_4.m.wait_time = _clkfreq;
+      par_5.m.wait_time >>= 1;
       if (par_5.m.wait_time < MIN_GAP)
         par_5.m.wait_time = _clkfreq;
       printf("toggle count = %d\n", togglecount);
