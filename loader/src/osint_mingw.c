@@ -89,7 +89,7 @@ int serial_init(const char *port, unsigned long baud)
     state.Parity = NOPARITY;
     state.StopBits = ONESTOPBIT;
     state.fOutxDsrFlow = FALSE;
-    state.fDtrControl = DTR_CONTROL_ENABLE;
+    state.fDtrControl = DTR_CONTROL_DISABLE;
     state.fOutxCtsFlow = FALSE;
     state.fRtsControl = RTS_CONTROL_DISABLE;
     state.fInX = FALSE;
@@ -187,10 +187,10 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
 void hwreset(void)
 {
     EscapeCommFunction(hSerial, use_rts_for_reset ? SETRTS : SETDTR);
-    Sleep(10);
+    Sleep(25);
     EscapeCommFunction(hSerial, use_rts_for_reset ? CLRRTS : CLRDTR);
-    Sleep(100);
-    // Purge here after reset to get rid of buffered data. Prevents "Lost HW Contact 0 f9"
+    Sleep(90);
+    // Purge here after reset helps to get rid of buffered data.
     PurgeComm(hSerial, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
 }
 
