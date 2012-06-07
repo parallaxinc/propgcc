@@ -92,7 +92,7 @@ void main (int argc,  char* argv[])
     startcog_eeprom(toggle_fw_5, &par_5.m);
 
     buf = i2cBootBuffer();
-    off = _load_start_toggle_fw_6_ecog - 0xc0000000 + 0x8000;
+    off = COG_IMAGE_EEPROM_OFFSET(_load_start_toggle_fw_6_ecog);
     size = _load_stop_toggle_fw_6_ecog - _load_start_toggle_fw_6_ecog;
     readFromBootEeprom(off, buf, size);
     i2cClose(i2cBootOpen()); // close the boot i2c driver to free up a cog
