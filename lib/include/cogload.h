@@ -74,6 +74,16 @@ int coginitFromBootEeprom(int id, void *code, size_t codeSize, void *param);
 I2C *i2cBootOpen(void);
 
 /**
+ * @brief Close the boot i2c bus on Propeller pins 28/29
+ *
+ * @details Use this function to close the i2c bus on pins 28/29 used by the
+ * Propeller to boot from EEPROM.
+ *
+ * @returns 0 on success or -1 on failure.
+ */
+int i2cBootClose(void);
+
+/**
  * @brief Get the address of the boot i2c bus COG driver
  *
  * @details Once the boot i2c bus has been opened with i2cBootOpen,
