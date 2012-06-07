@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <i2c.h>
 
+#define COG_IMAGE_EEPROM_OFFSET(a)	((uint32_t)(a) - 0xc0000000 + 0x8000)
+
 /**
  * @brief Start a new Propeller COG from a COG image in EEPROM
  *
