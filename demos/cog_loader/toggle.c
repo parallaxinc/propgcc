@@ -95,7 +95,7 @@ void main (int argc,  char* argv[])
     off = _load_start_toggle_fw_6_ecog - 0xc0000000 + 0x8000;
     size = _load_stop_toggle_fw_6_ecog - _load_start_toggle_fw_6_ecog;
     readFromBootEeprom(off, buf, size);
-    i2cBootClose(); // close the boot i2c driver to free up a cog
+    i2cClose(i2cBootOpen()); // close the boot i2c driver to free up a cog
     cognew(buf, &par_6.m);
 
     printf("toggle cogs have started\n");

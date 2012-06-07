@@ -60,15 +60,10 @@ I2C *i2cBootOpen(void)
     return _boot_i2c;
 }
 
-int i2cBootClose(void)
+static int cog_i2cBootClose(I2C *dev)
 {
     cogstop(_boot_i2c_data.cog);
     return 0;
-}
-
-static int cog_i2cBootClose(I2C *dev)
-{
-    return i2cBootClose();
 }
 
 void *i2cBootBuffer(void)
