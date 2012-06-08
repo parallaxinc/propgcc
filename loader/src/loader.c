@@ -389,7 +389,7 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         return Error("can't find sd_driver (.coguser2) segment");
     
     if ((value = GetConfigField(config, "sd-driver")) == NULL)
-        return Error("no sd_driver found in the configuration");
+        return Error("no sd-driver found in the configuration");
 
     SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
     if (!ReadCogImage(sys, value, driverImage, &driverSize))
