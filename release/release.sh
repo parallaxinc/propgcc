@@ -3,13 +3,16 @@
 #
 # This script creates a propeller-gcc linux release tarball
 #
-# Copyright (c) 2011 by Parallax, Inc.
+# Copyright (c) 2011-2012 by Parallax, Inc.
 # Code by Steve Denson
 # MIT Licensed
 #
 
+#
+# We no longer use the propgcc_v* update system. June 2012
+#
+
 VERSION=`cat VERSION.txt | grep -v "^#"`
-VERFILE=${VERSION}.txt
 DATECMD=`date '+%Y-%m-%d-%H:%M:%S'`
 
 #
@@ -32,25 +35,11 @@ echo "OS '$UNAME' detected."
 #
 # SHOW VERSION INFO AND GET/SET NEW VERSION
 #
-echo ${VERFILE}
+echo ${VERSION}
 
-if [ -w ${VERFILE} ]; then
-  echo "Read Version File " ${VERFILE}
-  LINE=`tail -n 1 ${VERFILE}`
-  BUILDNUM=`echo ${LINE} | cut -d " " -f1`
-  BUILDNUM=`expr ${BUILDNUM} + 1`
-else
-  echo "New Version File " ${VERFILE}
-  LINE="0 ${DATECMD}"
-  BUILDNUM=0
-fi
-
-echo "${BUILDNUM} ${DATECMD}" >> ${VERFILE} 
-tail ${VERFILE}
-
-ARCHIVE=${VERSION}_${BUILDNUM}
+ARCHIVE=${VERSION}
 MACH=`uname -m`
-PACKAGE=${MACH}-${ARCHIVE}
+PACKAGE=${ARCHIVE}-${MACH}
 PACKROOT=./propgcc
 echo "Building ${PACKAGE}"
 
@@ -92,7 +81,7 @@ rm -r ${PACKROOT}/share
 #
 if test x$UNAME = xDarwin
 then
-  ARCHIVE=macosx-${PACKAGE}.tar
+  ARCHIVE=${PACKAGE}-macosx.tar
 
   cp bstc.osx ${PACKROOT}/bin
   cp bstc.osx ${PACKROOT}/bin/bstc
@@ -101,7 +90,7 @@ then
 
 elif test x$UNAME = xCygwin
 then
-  ARCHIVE=cygwin-${PACKAGE}.zip
+  ARCHIVE=${PACKAGE}-cygwin.zip
 
   cp bstc.exe ${PACKROOT}/bin
   cp INSTALL.txt ${PACKROOT}/
@@ -111,7 +100,7 @@ then
 
 elif test x$UNAME = xMsys
 then
-  ARCHIVE=windows-${PACKAGE}.zip
+  ARCHIVE=${PACKAGE}-windows.zip
 
   cp bstc.exe ${PACKROOT}/bin
   cp addpath.bat ${PACKROOT}
@@ -126,7 +115,7 @@ then
 
 elif test x$UNAME = xLinux
 then
-  ARCHIVE=linux-${PACKAGE}.tar
+  ARCHIVE=${PACKAGE}-linux.tar
 
   cp bstc.linux ${PACKROOT}/bin
   cp bstc.linux ${PACKROOT}/bin/bstc

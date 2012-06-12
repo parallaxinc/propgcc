@@ -28,8 +28,8 @@ struct {
  */
 void start(void *parptr)
 {
-    extern unsigned int _load_start_toggle_fwcog[];
-    cognew(_load_start_toggle_fwcog, parptr);
+    extern unsigned int _load_start_toggle_fw_cog[];
+    cognew(_load_start_toggle_fw_cog, parptr);
 }
 
 /*

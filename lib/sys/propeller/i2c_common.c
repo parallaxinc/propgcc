@@ -1,4 +1,4 @@
-/* i2c_interface.c - i2c functions
+/* i2c_common.c - common i2c functions between the i2c driver and the i2c boot driver
 
 Copyright (c) 2012 David Michael Betz
 
@@ -22,52 +22,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "i2c.h"
 
-/* we need to reference this symbol to get the driver linked */
-extern int _i2c_driver;
-int _i2c_driver_loaded = (int)&_i2c_driver;
-
-extern unsigned int _load_start_i2c_driver_cog[];
-
-static int cog_i2cClose(I2C *dev);
-
-static I2C_OPS cog_i2c_ops = {
-    cog_i2cClose,
-    cog_i2cRead,
-    cog_i2cWrite
-};
-
-I2C *i2cOpen(I2C_COGDRIVER *dev, int scl, int sda, int freq)
-{
-    I2C_INIT init;
-    int id;
-    
-    // only allow speeds up to 400khz for now
-    if (freq > 400000)
-        return NULL;
-    
-    init.scl = scl;
-    init.sda = sda;
-    init.ticks_per_cycle = CLKFREQ / freq;
-    init.mailbox = &dev->mailbox;
-    
-    dev->mailbox.cmd = I2C_CMD_INIT;
-    
-    if ((id = cognew(_load_start_i2c_driver_cog, &init)) < 0)
-        return NULL;
-    
-    dev->cog = id;
-    
-    while (dev->mailbox.cmd != I2C_CMD_IDLE)
-        ;
-        
-    dev->i2c.ops = &cog_i2c_ops;
-
-    return (I2C *)dev;
-}
-
-static int cog_i2cClose(I2C *dev)
+int cog_i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int stop)
 {
     I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
-    cogstop(cdev->cog);
-    return 0;
+
+    cdev->mailbox.hdr = address | I2C_READ;
+    cdev->mailbox.buffer = buffer;
+    cdev->mailbox.count = count;
+    cdev->mailbox.stop = stop;
+    cdev->mailbox.cmd = I2C_CMD_RECEIVE;
+    
+    while (cdev->mailbox.cmd != I2C_CMD_IDLE)
+        ;
+
+    return cdev->mailbox.sts == I2C_OK ? 0 : -1;
+}
+
+int cog_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, int stop)
+{
+    I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
+    
+    cdev->mailbox.hdr = address | I2C_WRITE;
+    cdev->mailbox.buffer = buffer;
+    cdev->mailbox.count = count;
+    cdev->mailbox.stop = stop;
+    cdev->mailbox.cmd = I2C_CMD_SEND;
+    
+    while (cdev->mailbox.cmd != I2C_CMD_IDLE)
+        ;
+
+    return cdev->mailbox.sts == I2C_OK ? 0 : -1;
 }

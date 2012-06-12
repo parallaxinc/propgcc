@@ -9,7 +9,6 @@
 PROPLIB = ../common
 
 CFLAGS = -Os -DPARALLAX_I2C_BUS
-LDFLAGS = -Wl,-Tcogloader.ld
 
 #
 # objects for this program
@@ -19,10 +18,13 @@ NAME = toggle
 
 OBJS = \
 toggle.o \
-toggle_fw_0.cogdriver \
-toggle_fw_1.cogdriver \
-toggle_fw_2.cogdriver \
-toggle_fw_3.cogdriver
+toggle_fw_0.ecog \
+toggle_fw_1.ecog \
+toggle_fw_2.ecog \
+toggle_fw_3.ecog \
+toggle_fw_4.ecog \
+toggle_fw_5.ecog \
+toggle_fw_6.ecog
 
 all: $(NAME).elf
 

@@ -63,6 +63,9 @@ int main(int argc, char *argv[])
     int terminalBaud = 0;
     int check_for_exit = 0; /* flag to terminal_mode to check for a certain sequence to indicate program exit */
     
+    /* make sure that the serial port gets closed on exit */
+    atexit(serial_done);
+    
     /* just display a usage message if no arguments are supplied */
     if (argc <= 1)
         Usage();
