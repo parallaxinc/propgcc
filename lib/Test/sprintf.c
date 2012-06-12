@@ -52,6 +52,8 @@ main()
   TEST1("%08x", -1, "ffffffff");
   TEST1("%-4o", 12, "14  ");
   TEST1("%4x", 12, "   c");
+  TEST1("%4llX", 0x123456789abcdefLL, "123456789ABCDEF");
+
   printf("ok\n");
 
   printf("testing wide characters: "); fflush(stdout);
@@ -70,5 +72,7 @@ main()
   TEST1("%lc", 0xFF, "\xc3\xbf");
   TEST1("%lc", 0x7FF, "\xdf\xbf");
   TEST1("%lc", 0x0000FFFD, "\xef\xbf\xbd");
+  printf("ok\n");
+
   return 0;
 }
