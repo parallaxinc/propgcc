@@ -611,17 +611,17 @@ this. Pthreads can run on other cogs or on the same cog.
   end with .cog. The linker also creates symbols telling where the code
   starts (and ends) in the file. For a section
   named <CODE>foo.cog</CODE>, it creates symbols
-  <CODE>__load_start_foocog</CODE> and <CODE>__load_stop_foocog</CODE>
+  <CODE>__load_start_foo_cog</CODE> and <CODE>__load_stop_foo_cog</CODE>
   (note that since period is not a valid character in a C identifier,
-  it is stripped out of the name). Similarly for a section
-  named <CODE>.cog.my.driver</CODE> it creates symbols
+  it is translated to underscore if it is in the middle of a name and stripped if it is at the start of the name).
+  Similarly for a section named <CODE>.cog.my.driver</CODE> it creates symbols
   <CODE>__load_start_cogmydriver</CODE> and <CODE>__load_stop_cogmydriver</CODE>.
   We can use these
   symbols to load the overlays into a cog. For example, to start the
   mydriver.cog code and pass it in a pointer to a mailbox, we would do:
   <PRE>
     #include &lt;propeller.h&gt;
-    cognew(__load_start_mydrivercog, &mailbox);
+    cognew(__load_start_mydriver_cog, &mailbox);
   </PRE>
 </P>
 

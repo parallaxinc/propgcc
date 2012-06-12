@@ -11,6 +11,7 @@ MEMORY
   ram     : ORIGIN = 0x20000000, LENGTH = 256M
   rom     : ORIGIN = 0x30000000, LENGTH = 256M
   /* some sections (like the .xmm kernel) are handled specially by the loader */
+  drivers : ORIGIN = 0xc0000000, LENGTH = 1M
   dummy   : ORIGIN = 0xe0000000, LENGTH = 1M
 }
 
@@ -34,7 +35,7 @@ SECTIONS
   /* Internal text space or external memory.  */
   .text ${RELOCATING-0} :
   {
-    *(EXCLUDE_FILE (*.cog) .text*)
+    *(.text*)
     ${RELOCATING+ _etext = . ; }
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
@@ -82,6 +83,12 @@ SECTIONS
   ${RELOCATING+ ${DATA_HEAP+ ___heap_start = ADDR(.heap) ;}}
   ${RELOCATING+ ${HUB_HEAP+ ".hub_heap : \{ . += 4; \} >hub AT>hub"}}
   ${RELOCATING+ ${HUB_HEAP+ ___hub_heap_start = ADDR(.hub_heap) ;}}
+
+  .drivers ${RELOCATING-0} :
+  {
+    *(.drivers)
+    /* the linker will place .ecog sections after this section */
+  } ${RELOCATING+ AT>drivers}
 
   ${RELOCATING+ ${KERNEL_NAME+ __load_start_kernel = LOADADDR (${KERNEL_NAME}) ;}}
   ${RELOCATING+ ___CTOR_LIST__ = ADDR(.ctors) ;}

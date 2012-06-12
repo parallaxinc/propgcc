@@ -20,6 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #ifndef __I2C_H__
+#define __I2C_H__
 
 #if defined(__cplusplus)
 extern "C" {
@@ -160,6 +161,10 @@ static inline int i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int
 {
     return (*dev->ops->read)(dev, address, buffer, count, stop);
 }
+
+/* internal functions */
+int cog_i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int stop);
+int cog_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, int stop);
 
 #if defined(__cplusplus)
 }

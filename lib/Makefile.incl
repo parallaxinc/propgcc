@@ -93,7 +93,9 @@ PTHREADS = pthread_create.o pthread_join.o pthread_detach.o \
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \
 	FileDriver.o mount.o dosfs.o file_io.o load_sd_driver.o sd_driver.o \
-	rtc_cog.o i2c_simple.o i2c_interface.o i2c_driver.cog
+	rtc_cog.o i2c_simple.o \
+	i2c_interface.o i2c_common.o i2c_driver.cog i2c_driver_boot.cog \
+	boot_read.o boot_write.o
 	
 LIBM = 	k_rem_pio2.o k_cos.o k_sin.o k_tan.o \
 	k_rem_pio2f.o k_cosf.o k_sinf.o k_tanf.o \
@@ -165,8 +167,20 @@ $(MODELDIR)/float_scanf.o: vfscanf.c
 $(MODELDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-$(MODELDIR)/%.cog: %.c
+# this is used to build the COG C EEPROM driver and is rounded up to 2K bytes so the space can be used as a buffer
+# for loading other COGs once the EEPROM driver has been loaded
+# size is 496*4=1984 bytes
+
+$(MODELDIR)/%_boot.cog: %.c
 	$(CC) $(BASEFLAGS) -DPARALLAX_I2C_BUS -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
+	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) --pad-to 1984 $@
+
+$(MODELDIR)/%.cog: %.c
+	$(CC) $(BASEFLAGS) -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
+	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) $@
+
+$(MODELDIR)/%.drv: %.c
+	$(CC) $(BASEFLAGS) -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
 	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) $@
 
 $(MODELDIR)/%.o: %.s

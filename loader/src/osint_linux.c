@@ -45,7 +45,7 @@
 #include "osint.h"
 
 typedef int HANDLE;
-static HANDLE hSerial;
+static HANDLE hSerial = -1;
 static struct termios old_sparm;
 
 /* normally we use DTR for reset but setting this variable to non-zero will use RTS instead */
@@ -201,9 +201,12 @@ int serial_init(const char* port, unsigned long baud)
  */
 void serial_done(void)
 {
-    tcsetattr(hSerial, TCSANOW, &old_sparm);
-    ioctl(hSerial, TIOCNXCL);
-    close(hSerial);
+    if (hSerial != -1) {
+    	tcsetattr(hSerial, TCSANOW, &old_sparm);
+    	ioctl(hSerial, TIOCNXCL);
+    	close(hSerial);
+    	hSerial = -1;
+    }
 }
 
 /**
