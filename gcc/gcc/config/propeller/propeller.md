@@ -354,7 +354,7 @@
 )
 
 ;; versions which just test the flags
-(define_insn "*addsi3_set_carry1"
+(define_insn "*addsi3_set_carry1only"
   [(set (reg:CC_C CC_REG)
         (compare:CC_C
           (plus:SI (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
@@ -368,7 +368,7 @@
    (set_attr "predicable" "yes")
   ]
 )
-(define_insn "*addsi3_set_carry2"
+(define_insn "*addsi3_set_carry2only"
   [(set (reg:CC_C CC_REG)
         (compare:CC_C
           (plus:SI (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
@@ -497,6 +497,17 @@
 		 (match_operand:SI 1 "propeller_dst_operand" "%0")))]
   ""
   "addx\\t%0, %2"
+  [(set_attr "conds" "use")
+   (set_attr "predicable" "yes")
+  ]
+)
+
+(define_insn "*addsi3_carryin2"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(plus:SI (ltu:SI (reg:CC_C CC_REG)(const_int 0))
+		 (match_operand:SI 1 "propeller_dst_operand" "0")))]
+  ""
+  "addx\\t%0, #0"
   [(set_attr "conds" "use")
    (set_attr "predicable" "yes")
   ]
@@ -2660,7 +2671,6 @@
         (match_op_dup 3 [(match_dup 0)(match_dup 1)]))]
   ""
 )
-
 
 ;;
 ;; needless move
