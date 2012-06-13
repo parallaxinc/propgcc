@@ -450,9 +450,21 @@ propeller_encode_section_info (tree decl, rtx r, int first)
 bool
 propeller_cogaddr_p (rtx x)
 {
-  if (GET_CODE (x) == LABEL_REF && !TARGET_LMM) {
-    return true;
-  }
+  enum rtx_code code = GET_CODE (x);
+
+#if 0
+  print_rtl_single (stdout, x);
+  printf("\n");
+#endif
+  if (!TARGET_LMM 
+      && ( code == LABEL_REF
+	   || (code == CONST
+	       && GET_CODE (XEXP (x, 0)) == PLUS
+	       && GET_CODE (XEXP (XEXP (x, 0), 1)) == CONST_INT
+	       && propeller_cogaddr_p (XEXP (XEXP (x, 0), 0)) ) ))
+    {
+      return true;
+    }
   if (GET_CODE (x) != SYMBOL_REF) {
     return false;
   }
@@ -999,6 +1011,7 @@ propeller_print_operand_address (FILE * file, rtx addr)
       break;
 
     case SYMBOL_REF:
+    case CONST:
       output_addr_const (file, addr);
       break;
 
