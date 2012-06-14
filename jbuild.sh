@@ -40,8 +40,8 @@ export PATH
 #
 if test ARG$1 = ARG
 then
-   echo "Usage: <number of jobs> [rm]"
-   echo "Building without rm or multiple jobs."
+   echo "Usage: <number of jobs> [rm] or [rm-all]"
+   echo "Building without rm, rm-all, or multiple jobs."
 #
 # if only one job requested, don't use J
 #
@@ -60,6 +60,16 @@ if test ARG$2 = ARGrm
 then
    echo "Removing old build."
    rm -rf ../build
+fi
+
+#
+# if we have an rm-all in $2, build from scratch
+#
+if test ARG$2 = ARGrm-all
+then
+   echo "Removing old build and $PREFIX/*."
+   rm -rf ../build
+   rm -rf $PREFIX/*
 fi
 
 export JOBS

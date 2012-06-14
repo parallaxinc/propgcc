@@ -94,9 +94,12 @@ DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \
 	FileDriver.o mount.o dosfs.o file_io.o load_sd_driver.o sd_driver.o \
 	rtc_cog.o i2c_simple.o \
-	i2c_interface.o i2c_common.o i2c_driver.cog i2c_driver_boot.cog \
+	i2c_interface.o i2c_common.o \
 	boot_read.o boot_write.o
 	
+#i2c_driver.cog \
+#i2c_driver_boot.cog \
+
 LIBM = 	k_rem_pio2.o k_cos.o k_sin.o k_tan.o \
 	k_rem_pio2f.o k_cosf.o k_sinf.o k_tanf.o \
 	e_acos.o e_acosh.o e_asin.o e_atan2.o \
