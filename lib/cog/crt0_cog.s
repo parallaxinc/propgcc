@@ -20,12 +20,12 @@
 r0	mov	sp, PAR
 r1	mov	r0, sp
 r2	sub	r12,r13 wz
-r3	IF_Z	jmp _start
+r3	IF_Z	jmp #_start
 __bss_clear
 r4	wrbyte	r14,r13
 r5	add	r13,#1
-r6	djnz	r12,__bss_clear
-r7	jmp	_start
+r6	djnz	r12,#__bss_clear
+r7	jmp	#_start
 r8	long	0
 r9	long	0
 r10	long	0
