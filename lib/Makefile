@@ -19,7 +19,7 @@ MKDIR = mkdir -p
 
 VPATH=.:cog:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:wchar
 
-all:	cog
+all:	$(OBJDIR) cog
 	make -f Makefile.incl MODEL=lmm OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=lmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR)
@@ -51,6 +51,8 @@ install: all
 	cp $(addprefix $(OBJDIR)/xmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmm/short-doubles/
 	cp LIB_LICENSE.txt $(DEST)/lib/
 	cp ../gcc/COPYING3 ../gcc/COPYING.RUNTIME $(DEST)/lib/
+	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
+	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
 
 clean:
 	rm -rf $(OBJDIR) *.a
