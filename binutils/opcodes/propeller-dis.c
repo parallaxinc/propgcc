@@ -134,6 +134,7 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 	    FPRINTF (F, OP.name);
 	    FPRINTF (F, AFTER_INSTRUCTION);
 	    {
+	      if (immediate) FPRINTF (F, "#");
 	      info->target = src<<2;
 	      (*info->print_address_func) (info->target, info);
 	    }
