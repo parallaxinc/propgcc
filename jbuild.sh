@@ -62,6 +62,16 @@ then
    rm -rf ../build
 fi
 
+#
+# if we have an rm-all in $2, build from scratch
+#
+if test ARG$2 = ARGrm-all
+then
+   echo "Removing old build and $PREFIX/*."
+   rm -rf ../build
+   rm -rf $PREFIX/*
+fi
+
 export JOBS
 
 #
