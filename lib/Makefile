@@ -19,7 +19,7 @@ MKDIR = mkdir -p
 
 VPATH=.:cog:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:wchar
 
-all:	$(OBJDIR)
+all:	cog
 	make -f Makefile.incl MODEL=lmm OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=lmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR)
@@ -27,6 +27,11 @@ all:	$(OBJDIR)
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.cog OBJDIR=$(OBJDIR)
+
+cog:	$(OBJDIR)
+	make -f Makefile.cog OBJDIR=$(OBJDIR)
+	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
+	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
 
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
@@ -44,8 +49,6 @@ install: all
 	cp $(addprefix $(OBJDIR)/xmmc/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmmc/short-doubles/
 	cp $(addprefix $(OBJDIR)/xmm/, $(SRCLIBS)) $(DEST)/lib/xmm/
 	cp $(addprefix $(OBJDIR)/xmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmm/short-doubles/
-	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
-	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
 	cp LIB_LICENSE.txt $(DEST)/lib/
 	cp ../gcc/COPYING3 ../gcc/COPYING.RUNTIME $(DEST)/lib/
 
