@@ -220,6 +220,48 @@ cd ../../propgcc
 #fi
 
 #
+# build cog code and includes
+#
+cd lib
+make clean
+if test $? != 0
+then
+  echo "cog library build failed - make clean"
+  cd ..
+  exit 1
+fi
+make PREFIX=$PREFIX ${JOBS} cog
+if test $? != 0
+then
+  echo "cog library build failed - make"
+  cd ..
+  exit 1
+fi
+cd ..
+
+#
+# build gcc libgcc
+# this must be done after the library build, since it depends on
+# library header files
+#
+cd ../build/gcc
+make ${JOBS} all-target-libgcc
+if test $? != 0
+then
+   echo "gcc make all failed"
+   cd ../../propgcc
+   exit 1
+fi
+make install-target-libgcc
+if test $? != 0
+then
+   echo "gcc make install failed."
+   cd ../../propgcc
+   exit 1
+fi
+cd ../../propgcc
+
+#
 # build library
 #
 cd lib
@@ -271,28 +313,6 @@ then
   echo "bstc chmod failed"
   exit 1
 fi
-
-#
-# build gcc libgcc
-# this must be done after the library build, since it depends on
-# library header files
-#
-cd ../build/gcc
-make ${JOBS} all-target-libgcc
-if test $? != 0
-then
-   echo "gcc make all failed"
-   cd ../../propgcc
-   exit 1
-fi
-make install-target-libgcc
-if test $? != 0
-then
-   echo "gcc make install failed."
-   cd ../../propgcc
-   exit 1
-fi
-cd ../../propgcc
 
 #
 # build gcc libstdc++
