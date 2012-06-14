@@ -40,8 +40,8 @@ export PATH
 #
 if test ARG$1 = ARG
 then
-   echo "Usage: <number of jobs> [rm]"
-   echo "Building without rm or multiple jobs."
+   echo "Usage: <number of jobs> [rm] or [rm-all]"
+   echo "Building without rm, rm-all, or multiple jobs."
 #
 # if only one job requested, don't use J
 #
