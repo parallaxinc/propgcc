@@ -140,10 +140,16 @@ static int sendlong(uint32_t data)
  * @param hSerial - file handle to serial port
  * @returns zero on failure
  */
-static int hwfind(void)
+static int hwfind(int retry)
 {
     int  n, ii, jj, rc, to;
     uint8_t mybuf[300];
+
+    /* hwfind is recursive if we get a failure on th first try.
+     * retry is set by caller and should never be more than one.
+     */
+    if(retry < 0)
+        return 0;
 
     /* Do not pause after reset.
      * Propeller can give up if it does not see a response in 100ms of reset.
@@ -196,8 +202,13 @@ static int hwfind(void)
         //fflush(stdout);
 
         if(ii != jj) {
-            //printf("Lost HW contact. %d %x\n", n, *mybuf & 0xff);
-            return 0;
+            /* if we get this far, we probably have a propeller chip
+             * but the serial port is in a funny state. just retry.
+             */
+            //printf("Lost HW contact. %d %x ... retry.\n", n, *mybuf & 0xff);
+            for(n = 0; (n < 300) && (rx_timeout(mybuf,1,10) > -1); n++);
+            hwreset();
+            return hwfind(--retry);
         }
         to = 0;
         do {
@@ -231,7 +242,7 @@ static int findprop(const char* port)
 {
     int version = 0;
     hwreset();
-    version = hwfind();
+    version = hwfind(1); // retry once
     if(version && port) {
         if (pload_verbose)
             printf("Propeller Version %d on %s\n", version, port);
@@ -259,7 +270,7 @@ static int pupload(const char* file, const uint8_t* dlbuf, int count, int type)
     int rc = -1;
     int version = 0;
     hwreset();
-    version = hwfind();
+    version = hwfind(1); // retry once
     if(version) {
         rc = upload(file, dlbuf, count, type);
     }

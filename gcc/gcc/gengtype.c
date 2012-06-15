@@ -3598,9 +3598,11 @@ write_field_root (outf_p f, pair_p v, type_p type, const char *name,
      subcomponent of V, we can mark any subarrays with a single stride.
      We're effectively treating the field as a global variable in its
      own right.  */
+
+  struct pair newv; // moved out of if because of scope problem
+
   if (v && type == v->type)
     {
-      struct pair newv;
 
       newv = *v;
       newv.type = field_type;
