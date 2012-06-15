@@ -52,6 +52,7 @@ SECTIONS
     *(.hubdata*)
     *(.hub)
     ${HUB_DATA}
+    ${RELOCATING+ PROVIDE(__C_LOCK = .); LONG(0); }
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
   ${TEXT_DYNAMIC+${DYNAMIC}}
 
