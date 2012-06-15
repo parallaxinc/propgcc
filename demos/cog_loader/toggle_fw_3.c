@@ -13,7 +13,7 @@
  * our local variables (placed in cog memory) for speed
  */
 static _COGMEM unsigned int waitdelay;
-static _COGMEM unsigned int pins = 1 << 3;
+static _COGMEM unsigned int pinmask = 3;	/* pin number */
 static _COGMEM unsigned int nextcnt;
 
 extern int togglecount;
@@ -21,8 +21,11 @@ extern int togglecount;
 _NATIVE
 void main (volatile struct toggle_mailbox *m)
 {
+  /* add the base pin number and make a mask */
+  pinmask = (1 << m->basepin + pinmask);
+  
   /* get a half second delay from parameters */
-  _DIRA = pins;
+  _DIRA = pinmask;
 
   /* figure out how long to wait the first time */
   nextcnt = _CNT + m->wait_time;
@@ -30,7 +33,7 @@ void main (volatile struct toggle_mailbox *m)
   /* loop forever, updating the wait time from the mailbox */
   for(;;) {
     waitdelay = m->wait_time;
-    _OUTA ^= pins;
+    _OUTA ^= pinmask;
     togglecount++;
     nextcnt = waitcnt2(nextcnt, waitdelay);
     //waitcnt(CNT+waitdelay);

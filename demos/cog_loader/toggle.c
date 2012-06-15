@@ -68,20 +68,33 @@ void update(struct par *par_n)
       par_n->m.wait_time = _clkfreq;
 }
 
+int _cfg_basepin = -1;
+
 void main (int argc,  char* argv[])
 {
     void *buf;
     uint32_t off;
     size_t size;
-    
+
+    /* default the base pin to 0 to indicate LEDs on P0-6 */
+    if (_cfg_basepin == -1)
+    	_cfg_basepin = 0;
+    	    
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;     /* start by waiting for 1 second */
+    par_0.m.basepin = _cfg_basepin;
     par_1.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/4 second */
+    par_1.m.basepin = _cfg_basepin;
     par_2.m.wait_time = _clkfreq>>4;  /* start by waiting for 1/16 second */
+    par_2.m.basepin = _cfg_basepin;
     par_3.m.wait_time = _clkfreq>>6;  /* start by waiting for 1/64 second */
+    par_3.m.basepin = _cfg_basepin;
     par_4.m.wait_time = _clkfreq>>5;  /* start by waiting for 1/32 second */
+    par_4.m.basepin = _cfg_basepin;
     par_5.m.wait_time = _clkfreq>>3;  /* start by waiting for 1/8 second */
+    par_5.m.basepin = _cfg_basepin;
     par_6.m.wait_time = _clkfreq>>1;  /* start by waiting for 1/2 second */
+    par_6.m.basepin = _cfg_basepin;
     
     /* start the new cogs */
     startcog_eeprom(toggle_fw_0, &par_0.m);
