@@ -11,7 +11,7 @@
 
 #define MIN_GAP 400000
 
-#define CLKFREQ_P	((volatile uint32_t *)0)
+#define CLKFREQ_P	((uint32_t *)0)
 /*
  * our local variables (placed in cog memory) for speed
  */
@@ -28,8 +28,8 @@ void main (volatile struct toggle_mailbox *m)
   /* get a half second delay from parameters */
   _DIRA = pinmask;
 
-  /* make the token delay 2 seconds */
-  tokendelay = *CLKFREQ_P + *CLKFREQ_P;
+  /* make the token delay 1 second */
+  tokendelay = *CLKFREQ_P;
   
   /* figure out how long to wait the first time */
   nextcnt = _CNT + m->wait_time;
