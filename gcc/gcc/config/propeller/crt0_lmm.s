@@ -280,7 +280,7 @@ __MULSI_ret	ret
 	''
 	'' code for atomic compare and swap
 	''
-	.global __C_LOCK
+	.global __C_LOCK_PTR
 __C_LOCK_PTR
 	long	__C_LOCK
 
@@ -379,10 +379,4 @@ Lmm_fcache_doit
 __LMM_FCACHE_START
 	res	256	'' reserve 256 longs = 1K
 
-	''
-	'' global variables
-	''
-	.data
-__C_LOCK
-	long	0
 

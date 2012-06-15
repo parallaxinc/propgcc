@@ -45,7 +45,7 @@ lr	long	0
 sp	long	0
 pc	long	0
 
-
+	.global __C_LOCK_PTR
 __C_LOCK_PTR long __C_LOCK
 
 	''
@@ -703,11 +703,4 @@ __CMPSWAPSI_ret
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
 	res	128	'' reserve 128 longs = 512 bytes
-
-	''
-	'' global variables
-	''
-	.section .hub
-__C_LOCK
-	long	0
 

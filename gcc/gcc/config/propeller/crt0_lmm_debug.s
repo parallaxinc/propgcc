@@ -543,6 +543,7 @@ __MULSI_ret	ret
 	''
 	'' code for atomic compare and swap
 	''
+	.global __C_LOCK_PTR
 __C_LOCK_PTR
 	long	__C_LOCK
 
@@ -644,7 +645,3 @@ __LMM_FCACHE_START
 _AFTER_CACHE
 	long	_AFTER_CACHE
 
-	''
-	'' global variables
-	''
-	.comm __C_LOCK,4,4

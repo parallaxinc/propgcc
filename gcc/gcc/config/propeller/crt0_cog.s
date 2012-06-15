@@ -16,7 +16,6 @@
 	.global r14
 	.global lr
 	.global sp
-	.weak	__C_LOCK
 	
 r0	mov	sp, PAR
 r1	mov	r0, sp
