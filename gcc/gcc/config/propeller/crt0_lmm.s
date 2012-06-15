@@ -280,6 +280,7 @@ __MULSI_ret	ret
 	''
 	'' code for atomic compare and swap
 	''
+	.global __C_LOCK
 __C_LOCK_PTR
 	long	__C_LOCK
 

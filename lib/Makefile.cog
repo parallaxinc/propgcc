@@ -27,7 +27,7 @@ MISC = 	ctype.o toupper.o tolower.o isprint.o isspace.o isalnum.o isdigit.o \
 	sbrk.o rdwr.o signal.o locale.o
 
 COG = cogregs.o div.o udiv.o mask.o mult.o miniprintf.o clock.o \
-    cogserial.o cogputs.o
+    cogserial.o cogputs.o lock.o
 
 OBJS = $(COG) $(MISC) $(STRING) $(STDLIB)
 

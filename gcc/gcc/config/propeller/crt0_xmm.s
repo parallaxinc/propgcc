@@ -45,7 +45,7 @@ lr	long	0
 sp	long	0
 pc	long	0
 
-
+	.global __C_LOCK
 __C_LOCK_PTR long __C_LOCK
 
 	''

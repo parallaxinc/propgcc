@@ -16,21 +16,34 @@
 	.global r14
 	.global lr
 	.global sp
-
+	.weak	__C_LOCK
+	
 r0	mov	sp, PAR
 r1	mov	r0, sp
-r2	jmp	#_main
-r3	long	0
-r4	long	0
-r5	long	0
-r6	long	0
-r7	long	0
-r8	long	0
-r9	long	0
-r10	long	0
-r11	long	0
-r12	long	0
-r13	long	0
-r14	long	0
-lr	long	0
+	
+	'' check for first time run
+r2	rdlong	r1, __C_LOCK_PTR wz
+r3  IF_NE jmp	#_start
+	'' allocate a lock, and clear the bss
+r4	locknew	r1
+r5	or	r1,#256
+r6	wrlong	r1, __C_LOCK_PTR
+r7	sub	lr,r13 wz
+r8  IF_Z  jmp #_start
+
+__bss_clear
+r9	wrbyte	r14,r13
+r10	add	r13,#1
+r11	djnz	lr,#__bss_clear
+r12	jmp	#_start
+
+r13	long	__bss_start
+r14	long	0		'' this must remain zero
+lr	long	__bss_end
 sp	long	0
+
+__C_LOCK_PTR
+	long	__C_LOCK
+_start
+	jmpret	lr,#_main
+	jmp	#__exit
