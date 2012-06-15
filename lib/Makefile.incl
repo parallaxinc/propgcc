@@ -175,15 +175,15 @@ $(MODELDIR)/%.o: %.c
 
 $(MODELDIR)/%_boot.cog: %.c
 	$(CC) $(BASEFLAGS) -DPARALLAX_I2C_BUS -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
-	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) --redefine-sym __bss_end=__bss_start --pad-to 1984 $@
+	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) --pad-to 1984 $@
 
 $(MODELDIR)/%.cog: %.c
 	$(CC) $(BASEFLAGS) -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
-	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) --redefine-sym __bss_end=__bss_start $@
+	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) $@
 
 $(MODELDIR)/%.ecog: %.c
 	$(CC) $(BASEFLAGS) -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
-	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) --redefine-sym __bss_end=__bss_start $@
+	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) --redefine-sym $@
 
 $(MODELDIR)/%.o: %.s
 	$(CC) $(CFLAGS) -o $@ -c $<
