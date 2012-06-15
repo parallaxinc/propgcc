@@ -9,14 +9,15 @@
 #include <propeller.h>
 #include "toggle.h"
 
+#define MIN_GAP 400000
+
+#define CLKFREQ_P	((volatile uint32_t *)0)
 /*
  * our local variables (placed in cog memory) for speed
  */
-static _COGMEM unsigned int waitdelay;
-static _COGMEM unsigned int pinmask = PIN;	/* pin number */
+static _COGMEM unsigned int tokendelay;
+static _COGMEM unsigned int pinmask = PIN;  /* pin number */
 static _COGMEM unsigned int nextcnt;
-
-extern int togglecount;
 
 _NATIVE
 void main (volatile struct toggle_mailbox *m)
@@ -27,15 +28,26 @@ void main (volatile struct toggle_mailbox *m)
   /* get a half second delay from parameters */
   _DIRA = pinmask;
 
+  /* make the token delay 2 seconds */
+  tokendelay = *CLKFREQ_P + *CLKFREQ_P;
+  
   /* figure out how long to wait the first time */
   nextcnt = _CNT + m->wait_time;
 
   /* loop forever, updating the wait time from the mailbox */
-  for(;;) {
-    waitdelay = m->wait_time;
-    _OUTA ^= pinmask;
-    togglecount++;
-    nextcnt = waitcnt2(nextcnt, waitdelay);
+  for (;;) {
+    if (m->token) {
+        m->wait_time >>= 1;
+        if (m->wait_time < MIN_GAP)
+            m->wait_time = *CLKFREQ_P;
+        nextcnt = waitcnt2(_CNT + tokendelay, m->wait_time);
+        m->next->token = 1;
+        m->token = 0;
+    }
+    else {
+        _OUTA ^= pinmask;
+        nextcnt = waitcnt2(nextcnt, m->wait_time);
+    }
   }
 }
 

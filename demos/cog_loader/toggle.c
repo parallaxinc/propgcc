@@ -39,6 +39,7 @@ usefw(toggle_fw_3);
 usefw(toggle_fw_4);
 usefw(toggle_fw_5);
 usefw(toggle_fw_6);
+usefw(toggle_fw_7);
 
 struct par par_0;
 struct par par_1;
@@ -47,31 +48,21 @@ struct par par_3;
 struct par par_4;
 struct par par_5;
 struct par par_6;
-
-/*
- * togglecount counts how many times the LED has been toggled
- */
-volatile int togglecount = 0;
+struct par par_7;
 
 /*
  * main code
  * This is the code running in the LMM cog (cog 0).
- * It launches another cog to actually run the 
- * toggling code
+ * It launches 7 more cogs to actually run the 
+ * toggling code and then overwrites itself
+ * with an 8th toggle program.
  */
-#define MIN_GAP 400000
-
-void update(struct par *par_n)
-{
-    par_n->m.wait_time >>= 1;
-    if (par_n->m.wait_time < MIN_GAP)
-      par_n->m.wait_time = _clkfreq;
-}
 
 int _cfg_basepin = -1;
 
 void main (int argc,  char* argv[])
 {
+    uint32_t cogimage[496];
     void *buf;
     uint32_t off;
     size_t size;
@@ -83,18 +74,43 @@ void main (int argc,  char* argv[])
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;     /* start by waiting for 1 second */
     par_0.m.basepin = _cfg_basepin;
+    par_0.m.token = 0;
+    par_0.m.next = &par_1.m;
+    
     par_1.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/4 second */
     par_1.m.basepin = _cfg_basepin;
+    par_1.m.token = 0;
+    par_1.m.next = &par_2.m;
+    
     par_2.m.wait_time = _clkfreq>>4;  /* start by waiting for 1/16 second */
     par_2.m.basepin = _cfg_basepin;
+    par_2.m.token = 0;
+    par_2.m.next = &par_3.m;
+    
     par_3.m.wait_time = _clkfreq>>6;  /* start by waiting for 1/64 second */
     par_3.m.basepin = _cfg_basepin;
+    par_3.m.token = 0;
+    par_3.m.next = &par_4.m;
+    
     par_4.m.wait_time = _clkfreq>>5;  /* start by waiting for 1/32 second */
     par_4.m.basepin = _cfg_basepin;
+    par_4.m.token = 0;
+    par_4.m.next = &par_5.m;
+    
     par_5.m.wait_time = _clkfreq>>3;  /* start by waiting for 1/8 second */
     par_5.m.basepin = _cfg_basepin;
+    par_5.m.token = 0;
+    par_5.m.next = &par_6.m;
+    
     par_6.m.wait_time = _clkfreq>>1;  /* start by waiting for 1/2 second */
     par_6.m.basepin = _cfg_basepin;
+    par_6.m.token = 0;
+    par_6.m.next = &par_7.m;
+    
+    par_7.m.wait_time = _clkfreq>>1;  /* start by waiting for 1/2 second */
+    par_7.m.basepin = _cfg_basepin;
+    par_7.m.token = 1;
+    par_7.m.next = &par_0.m;
     
     /* start the new cogs */
     startcog_eeprom(toggle_fw_0, &par_0.m);
@@ -108,27 +124,15 @@ void main (int argc,  char* argv[])
     off = COG_IMAGE_EEPROM_OFFSET(_load_start_toggle_fw_6_ecog);
     size = _load_stop_toggle_fw_6_ecog - _load_start_toggle_fw_6_ecog;
     readFromBootEeprom(off, buf, size);
+
+    off = COG_IMAGE_EEPROM_OFFSET(_load_start_toggle_fw_7_ecog);
+    size = _load_stop_toggle_fw_7_ecog - _load_start_toggle_fw_7_ecog;
+    readFromBootEeprom(off, cogimage, size);
+
     i2cClose(i2cBootOpen()); // close the boot i2c driver to free up a cog
-    cognew(buf, &par_6.m);
-
-    printf("toggle cogs have started\n");
-
-    /* every 2 seconds update the flashing frequency so the
-       light blinks faster and faster */
-    while(1) {
     
-      sleep(2);
-
-      update(&par_0);
-      update(&par_1);
-      update(&par_2);
-      update(&par_3);
-      update(&par_4);
-      update(&par_5);
-      update(&par_6);
-
-      printf("toggle count = %d\n", togglecount);
-    }
+    cognew(buf, &par_6.m);
+    coginit(cogid(), cogimage, &par_7.m);
 }
 
 /* +--------------------------------------------------------------------
