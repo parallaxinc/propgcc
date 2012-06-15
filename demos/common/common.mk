@@ -80,7 +80,7 @@ endif
 #
 %.cog: %.c
 	$(CC) $(CFLAGS) -r -mcog -o $@ $<
-	$(OBJCOPY) --localize-text --rename-section .text=$@ --redefine-sym __bss_end=__bss_start $@
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 #
 # a .ecog program is an object file that contains code intended to
@@ -90,7 +90,7 @@ endif
 #
 %.ecog: %.c
 	$(CC) $(CFLAGS) -r -mcog -o $@ $<
-	$(OBJCOPY) --localize-text --rename-section .text=$@ --redefine-sym __bss_end=__bss_start $@
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 %.binary: %.elf
 	$(LOADER) -s $<
