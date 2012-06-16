@@ -103,6 +103,14 @@ Copy the contents of propgcc/dejagnu to
 Set the environment variable DEJAGNU to
 /opt/parallax/share/dejagnu/site.exp.
 
+If you are not using a C3 board, edit
+/opt/parallax/share/dejagnu/board/propeller-sim.exp to reflect the
+actual board you are using. The propeller-load options are given in
+the line that reads:
+   set_board_info sim,options "-bc3 -r -t -q"
+Modify the command line to whatever you need to run XMM programs with
+propeller-load on your system.
+
 Make sure that your Propeller board is connected and turned on, then
 in build/gcc, do:
    make check-gcc RUNTESTFLAGS="--target_board=propeller-sim"
