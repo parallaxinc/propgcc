@@ -23,12 +23,12 @@ directory, which I assume is named "propgcc" on your system):
 
 (1) mkdir -p ../build/binutils
 (2) cd ../build/binutils
-(3) ../../propgcc/binutils/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls 
+(3) ../../propgcc/binutils/configure --target=propeller-elf --prefix=/opt/parallax --disable-nls 
 (4) make all
 
 This will build binutils. 
 
-To install it in /usr/local/propeller (make sure that directory exists
+To install it in /opt/parallax (make sure that directory exists
 on your system and is writable first!) do:
 
 (5) make install
@@ -43,7 +43,7 @@ directory, which I assume is named "propgcc" on your system):
 
 (1) mkdir -p ../build/gcc
 (2) cd ../build/gcc
-(3) ../../propgcc/gcc/configure --target=propeller-elf --prefix=/usr/local/propeller --disable-nls --disable-libssp
+(3) ../../propgcc/gcc/configure --target=propeller-elf --prefix=/opt/parallax --disable-nls --disable-libssp
 (4) make all-gcc
 (5) make install-gcc
 
@@ -62,12 +62,12 @@ directory, which I assume is named "propgcc" on your system):
 
 (1) mkdir -p ../build/newlib
 (2) cd ../build/newlib
-(3) ../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/usr/local/propeller --enable-target-optspace
+(3) ../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/opt/parallax --enable-target-optspace
 (4) make all
 
 This will build newlib. 
 
-To install it in /usr/local/propeller (make sure that directory exists
+To install it in /opt/parallax (make sure that directory exists
 on your system and is writable first!) do:
 
 (5) make install
@@ -98,11 +98,12 @@ fibo  - Generate Fibonacci numbers and print them, along with timings
 --------------------------- test suites ---------------------------------
 
 Copy the contents of propgcc/dejagnu to
-/usr/local/propeller/share/dejagnu.
+/opt/parallax/share/dejagnu.
 
 Set the environment variable DEJAGNU to
-/usr/local/propeller/share/dejagnu/site.exp.
+/opt/parallax/share/dejagnu/site.exp.
 
+Make sure that your Propeller board is connected and turned on, then
 in build/gcc, do:
    make check-gcc RUNTESTFLAGS="--target_board=propeller-sim"
 
@@ -112,7 +113,7 @@ in build/gcc do:
   make pdf
   make install-pdf
 
-This will copy various .pdf files to the /usr/local/propeller/share/doc
+This will copy various .pdf files to the /opt/parallax/share/doc
 directory. The ones in the root of that directory (gmp.pdf, libiberty.pdf,
 libquadmath.pdf, mpc.pdf, and mpfr.pdf) are not really interesting,
 since they are for libraries used in building the compiler.

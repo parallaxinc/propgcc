@@ -29,7 +29,7 @@ load_generic_config "sim"
 # We don't use basic-sim.exp and setup_sim because the simulator, called
 # "propeller-load", is external to the build tree.
 set_board_info sim propeller-load
-set_board_info sim,options "-bc3 -p1 -r -t -q"
+set_board_info sim,options "-r -t -q"
 #set_board_info sim spinsim
 #set_board_info sim,options "-b115200"
 set_board_info is_simulator 1
