@@ -30,7 +30,7 @@ all: $(NAME).elf
 # -DINTEGER_ONLY removes floating point
 
 DEFINES = -Dprintf=__simple_printf -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=5000
-CFLAGS = -O2 -mfcache $(DEFINES)
+CFLAGS = -O0 -mfcache $(DEFINES)
 
 #
 # include the fragment that defines most of everything
