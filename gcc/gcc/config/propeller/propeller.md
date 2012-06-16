@@ -1455,15 +1455,18 @@
 
 ;;
 ;; combinations that set the condition codes
-;;
+;; NOTE: for the "max A,B" instructions, the Z flag is set based
+;; on whether the second operand is 0, and C is set based on
+;;  A < B; similarly for min
 (define_insn "*<minmaxop:code>si3_compare0"
   [(set (reg:CC_Z CC_REG)
         (compare:CC_Z
-	  (minmaxop:SI (match_operand:SI 1 "propeller_dst_operand" "0")
-	               (match_operand:SI 2 "propeller_src_operand" "rCI"))
+	  (match_operand:SI 2 "propeller_src_operand" "rCI")
           (const_int 0)))
    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
-        (minmaxop:SI (match_dup 1)(match_dup 2)))
+        (minmaxop:SI 
+		     (match_operand:SI 1 "propeller_dst_operand" "0")
+		     (match_dup 2)))
   ]
   ""
   "<opcode>\t%0, %2 wz"
