@@ -12,4 +12,4 @@
 # The suffix is appended to the version by the build tool.
 #
 #
-propellergcc_v0_3_3
+propellergcc_v0_3_4
