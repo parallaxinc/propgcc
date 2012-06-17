@@ -242,7 +242,7 @@ void StoreCode(ParseContext *c)
     /* determine the code size */
     codeSize = (int)(c->cptr - c->codeBuf);
 
-#if 1
+#if 0
     VM_printf("%s:\n", c->codeName);
     DecodeFunction((c->image->objectDataSize + GetObjSizeInWords(sizeof(VectorObjectHdr))) * sizeof(VMVALUE), c->codeBuf, codeSize);
     DumpSymbols(&c->arguments, "arguments");
