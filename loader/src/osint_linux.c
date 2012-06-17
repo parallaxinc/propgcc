@@ -284,17 +284,9 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
 void hwreset(void)
 {
     int cmd = use_rts_for_reset ? TIOCM_RTS : TIOCM_DTR;
-
-/* MAC OSX and linux seem to have opposite definitions */
-#ifdef MACOSX
     ioctl(hSerial, TIOCMBIS, &cmd); /* assert bit */
     msleep(10);
     ioctl(hSerial, TIOCMBIC, &cmd); /* clear bit */
-#else
-    ioctl(hSerial, TIOCMBIC, &cmd); /* linux is opposite from MAC */
-    msleep(10);
-    ioctl(hSerial, TIOCMBIS, &cmd); /* linux is opposite from MAC */
-#endif
     msleep(90);
     tcflush(hSerial, TCIFLUSH);
 }
