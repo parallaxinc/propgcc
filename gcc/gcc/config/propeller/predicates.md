@@ -87,8 +87,11 @@
   (match_code "eq,ne,le,lt,ge,gt,geu,gtu,leu,ltu"))
 
 ;; true if this operator is a math operator with 2 arguments
+;; note that we skip smin,smax,umin,umax because
+;; they do not set flags the way the others do
+
 (define_special_predicate "propeller_math_op2"
-  (match_code "plus,minus,and,ior,xor,smin,smax,umin,umax"))
+  (match_code "plus,minus,and,ior,xor"))
 
 ;; true if this operator is a math operator with 1 arguments
 (define_special_predicate "propeller_math_op1"
