@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 
 #
 # This script creates a propeller-gcc linux release tarball
@@ -40,7 +40,7 @@ echo ${VERSION}
 ARCHIVE=${VERSION}
 MACH=`uname -m`
 PACKAGE=${ARCHIVE}-${MACH}
-PACKROOT=./propgcc
+PACKROOT=parallax
 echo "Building ${PACKAGE}"
 
 rm -rf ${PACKROOT}
@@ -81,12 +81,12 @@ rm -r ${PACKROOT}/share
 #
 if test x$UNAME = xDarwin
 then
-  ARCHIVE=${PACKAGE}-macosx.tar
+  ARCHIVE=${PACKAGE}-macosx.tar.bz2
 
   cp bstc.osx ${PACKROOT}/bin
   cp bstc.osx ${PACKROOT}/bin/bstc
-  tar -c ${PACKAGE} -f ${ARCHIVE}
-  gzip ${ARCHIVE}
+  cp INSTALL.txt ${PACKROOT}
+  tar -cjf ${ARCHIVE} ${PACKROOT}
 
 elif test x$UNAME = xCygwin
 then
