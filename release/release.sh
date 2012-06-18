@@ -43,6 +43,15 @@ PACKAGE=${ARCHIVE}-${MACH}
 PACKROOT=parallax
 echo "Building ${PACKAGE}"
 
+if test x$UNAME = xMsys
+then
+    PACKROOT=propgcc
+elif test x$UNAME = xCygwin
+then
+    PACKROOT=propgcc
+fi
+
+
 rm -rf ${PACKROOT}
 mkdir -p ${PACKROOT}
 
