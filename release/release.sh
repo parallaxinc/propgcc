@@ -115,13 +115,12 @@ then
 
 elif test x$UNAME = xLinux
 then
-  ARCHIVE=${PACKAGE}-linux.tar
+  ARCHIVE=${PACKAGE}-linux.tar.bz2
 
   cp bstc.linux ${PACKROOT}/bin
   cp bstc.linux ${PACKROOT}/bin/bstc
   cp INSTALL.txt ${PACKROOT}
-  tar -c ${PACKROOT} -f ${ARCHIVE}
-  gzip ${ARCHIVE}
+  tar -cj ${PACKROOT} -f ${ARCHIVE}
 
 else
   echo "Unknown system: " $UNAME
