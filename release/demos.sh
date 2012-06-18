@@ -21,8 +21,9 @@ then
 fi
 echo "OS '$UNAME' detected."
 
-NAME=propgcc-demos
-ARCHIVE=${NAME}_${DATECMD}
+NAME=demos
+VERSION=`cat VERSION.txt | grep -v "^#"`
+ARCHIVE=${VERSION}_${NAME}
 PACKAGE=../demos
 echo "Building ${PACKAGE}"
 
