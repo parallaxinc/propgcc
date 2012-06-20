@@ -58,6 +58,7 @@ extern bool propeller_match_ccmode (rtx, enum machine_mode);
 extern enum machine_mode propeller_select_cc_mode (enum rtx_code, rtx, rtx);
 extern rtx propeller_gen_compare_reg (enum rtx_code, rtx, rtx);
 extern RTX_CODE propeller_canonicalize_comparison (RTX_CODE, rtx *, rtx *);
+extern rtx propeller_return_addr (int, rtx);
 #endif
 
 extern bool propeller_expand_call (rtx, rtx, rtx);

@@ -188,6 +188,25 @@ propeller_init_machine_status (void)
   return ggc_alloc_cleared_machine_function ();
 }
 
+/* Return an RTX indicating where the return address to the
+   calling function can be found.  */
+
+#define RETURN_ADDRESS_OFFSET 0
+
+rtx
+propeller_return_addr (int count, rtx frame)
+{
+  if (count != 0)
+    {
+      rtx addr;
+      addr = plus_constant (frame, RETURN_ADDRESS_OFFSET);
+      addr = memory_address (Pmode, addr);
+      return gen_rtx_MEM (Pmode, addr);
+    }
+
+  return get_hard_reg_initial_val (Pmode, PROP_LR_REGNUM);
+}
+
 /* Validate and override various options, and do machine dependent
  * initialization
  */

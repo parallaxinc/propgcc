@@ -513,6 +513,12 @@ typedef unsigned int CUMULATIVE_ARGS;
    the prologue.  */
 #define INCOMING_RETURN_ADDR_RTX  gen_rtx_REG( SImode, PROP_LR_REGNUM)
 
+/* A C expression whose value is RTL representing the value of the return
+   address for the frame COUNT steps up from the current frame.  */
+
+#define RETURN_ADDR_RTX(COUNT, FRAME) \
+  propeller_return_addr (COUNT, FRAME)
+
 /* A C expression whose value is an integer giving the offset, in bytes,
 from the value of the stack pointer register to the top of the stack
 frame at the beginning of any function, before the prologue.  The top of
