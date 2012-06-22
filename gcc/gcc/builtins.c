@@ -5604,7 +5604,7 @@ expand_builtin_sync_operation (enum machine_mode mode, tree exp,
 	    break;
 
 	  fndecl = implicit_built_in_decls[BUILT_IN_FETCH_AND_NAND_N];
-	  inform (loc, "%qD changed semantics in GCC 4.4", fndecl);
+	  /*inform (loc, "%qD changed semantics in GCC 4.4", fndecl);*/
 	  warned_f_a_n = true;
 	  break;
 
@@ -5618,7 +5618,7 @@ expand_builtin_sync_operation (enum machine_mode mode, tree exp,
 	    break;
 
 	  fndecl = implicit_built_in_decls[BUILT_IN_NAND_AND_FETCH_N];
-	  inform (loc, "%qD changed semantics in GCC 4.4", fndecl);
+	  /*inform (loc, "%qD changed semantics in GCC 4.4", fndecl);*/
 	  warned_n_a_f = true;
 	  break;
 
