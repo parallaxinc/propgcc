@@ -45,6 +45,15 @@ SECTIONS
     *(.fini*)
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
+  .ctors ${RELOCATING-0} :
+  {
+    *(.ctors*)
+  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
+  .dtors ${RELOCATING-0} :
+  {
+    *(.dtors*)
+  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
+
   .hub ${RELOCATING-0} :
   {
     *(.hubstart)
@@ -55,15 +64,6 @@ SECTIONS
     ${RELOCATING+ PROVIDE(__C_LOCK = .); LONG(0); }
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
   ${TEXT_DYNAMIC+${DYNAMIC}}
-
-  .ctors ${RELOCATING-0} :
-  {
-    *(.ctors*)
-  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
-  .dtors ${RELOCATING-0} :
-  {
-    *(.dtors*)
-  } ${RELOCATING+ ${HUBTEXT_MEMORY}}
 
   .data	${RELOCATING-0} :
   {
@@ -204,7 +204,8 @@ SECTIONS
   PROVIDE(phsb = PHSB) ;
   PROVIDE(vcfg = VCFG) ;
   PROVIDE(vscl = VSCL) ;
-  PROVIDE(__hub_end = ADDR(.hub) + SIZEOF(.hub)) ;
+  /* this symbol is used to tell the spin boot code where the spin stack can go */
+  PROVIDE(__hub_end = ADDR(.hub_heap) + 16) ;
   
   /* default initial stack pointer */
   PROVIDE(__stack_end = 0x8000) ;
