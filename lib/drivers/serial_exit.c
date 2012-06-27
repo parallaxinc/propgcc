@@ -11,51 +11,29 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <cog.h>
 #include <errno.h>
 #include <sys/driver.h>
 
-/* globals that the loader may change; these represent the default
- * pins to use
- */
-extern unsigned int _rxpin;
-extern unsigned int _txpin;
-extern unsigned int _baud;
-
-__attribute__((section(".hubtext")))
-void _serial_tx(int value)
-{
-  unsigned int txmask = (1<<_txpin);
-  unsigned int bitcycles = _clkfreq / _baud;
-  unsigned int waitcycles;
-  int i;
-
-  /* set output */
-  _OUTA |= txmask;
-  _DIRA |= txmask;
-
-  value = (value | 256)<<1;
-  /* start with a nice long pulse of high bits */
-  waitcycles = _CNT + 10*bitcycles;
-  for (i = 0; i < 10; i++)
-    {
-      waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
-      if (value & 1)
-	_OUTA |= txmask;
-      else
-	_OUTA &= ~txmask;
-      value = value>>1;
-    }
-}
+#define _serial_tx(x) (f->_drv->putbyte((x), f))
+extern _Driver _SimpleSerialDriver;
 
 __attribute__((section(".hubtext")))
 void
 _serial_exit(int n)
 {
+  FILE fbase;
+  FILE *f = &fbase;
+
+  memset(f, 0, sizeof(*f));
+  __fopen_driver(f, &_SimpleSerialDriver, "", "w");
+
   _serial_tx(0xff);
   _serial_tx(0x00);
   _serial_tx(n & 0xff);
+  __builtin_propeller_cogstop(__builtin_propeller_cogid());
 }
 
 #ifdef __GNUC__
