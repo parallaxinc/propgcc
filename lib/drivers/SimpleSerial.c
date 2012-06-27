@@ -151,8 +151,8 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
 _DESTRUCTOR
 static void SimpleSerialExit(void)
 {
-  _DIRA |= (1<<_txpin);
   _OUTA |= (1<<_txpin);
+  _DIRA |= (1<<_txpin);
 }
 
 /*
