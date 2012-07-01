@@ -93,3 +93,7 @@ atanf(float x)
 	    return (hx<0)? -z:z;
 	}
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+__strong_alias(atan,atanf);
+#endif
