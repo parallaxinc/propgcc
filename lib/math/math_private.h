@@ -190,6 +190,7 @@ extern double __kernel_sin(double,double,int);
 extern double __kernel_cos(double,double);
 extern double __kernel_tan(double,double,int);
 extern int    __kernel_rem_pio2(double*,double*,int,int,int);
+extern void   __sincosl(double,double*,double*);
 
 /* float versions of fdlibm kernel functions */
 extern int   __ieee754_rem_pio2f(float,float*);
@@ -197,6 +198,7 @@ extern float __kernel_sinf(float,float,int);
 extern float __kernel_cosf(float,float);
 extern float __kernel_tanf(float,float,int);
 extern int   __kernel_rem_pio2f(float*,float*,int,int,int,const int*);
+extern void  __sincosf(float,float*,float*);
 
 #if !defined(__propeller__)
 /* long double precision kernel functions */
