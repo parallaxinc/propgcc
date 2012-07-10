@@ -13,15 +13,18 @@
  * our local variables (placed in cog memory) for speed
  */
 static _COGMEM unsigned int waitdelay;
-static _COGMEM unsigned int pins = 0x3fffffff;  /* all pins */
+//static _COGMEM unsigned int pins = 0x3fffffff;  /* all pins */
+static _COGMEM unsigned int pins = 0x8000;  /* just some pins -- avoid pins used by XMM drivers if you want to run in XMM mode! */
 static _COGMEM unsigned int nextcnt;
 
 extern int togglecount;
 
-_NATIVE
+_NAKED
 void main (volatile struct toggle_mailbox *m)
 {
-  /* get a half second delay from parameters */
+  /* get which pins to toggle from parameters */
+  pins = m->pins;
+  _OUTA = 0;
   _DIRA = pins;
 
   /* figure out how long to wait the first time */

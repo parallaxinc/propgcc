@@ -1,7 +1,8 @@
 /**
  * @file toggle.c
  * This program demonstrates starting COG code with C in it
- * from C. The cog makes all IO except 30/31 toggle.
+ * from C. The cog makes pin 15 toggle (adjust below for different
+ * pins)
  *
  * Copyright (c) 2011 Parallax, Inc.
  * MIT Licensed (see at end of file for exact terms)
@@ -20,7 +21,7 @@
 struct {
   unsigned stack[STACK_SIZE];
   struct toggle_mailbox m;
-} par;
+} par __attribute__((section(".hub")));
 
 /*
  * function to start up a new cog running the toggle
@@ -29,7 +30,11 @@ struct {
 void start(void *parptr)
 {
     extern unsigned int _load_start_toggle_fw_cog[];
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+    load_cog_driver_xmm(_load_start_toggle_fw_cog, 496, (uint32_t *)parptr);
+#else
     cognew(_load_start_toggle_fw_cog, parptr);
+#endif
 }
 
 /*
@@ -51,8 +56,13 @@ void main (int argc,  char* argv[])
 
     /* set up the parameters for the C cog */
     par.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
+
+    /* warning: in XMM mode we need to leave the pins that run the external
+       memory alone!
+    */
+    par.m.pins = 0x8000;   /* only toggle the C3 LED */
     /* start the new cog */
-        start(&par.m);
+    start(&par.m);
     printf("toggle cog has started\n");
 
     /* every 2 seconds update the flashing frequency so the
