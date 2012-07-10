@@ -36,9 +36,9 @@ r7	add	sp, #4
 r8	rdlong	pc, sp
 r9	add	sp, #4
 r10	locknew	r2 wc
-r11 IF_NC wrlong r2,__C_LOCK_PTR
-r12	jmp	#__LMM_loop
-r13	long	0
+r11	or	r2,#256
+r12 IF_NC wrlong r2,__C_LOCK_PTR
+r13	jmp	#__LMM_loop
 r14	long	0
 r15	'' alias for lr
 lr	long	0
