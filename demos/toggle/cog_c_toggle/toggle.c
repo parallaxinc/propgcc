@@ -57,10 +57,14 @@ void main (int argc,  char* argv[])
     /* set up the parameters for the C cog */
     par.m.wait_time = _clkfreq;  /* start by waiting for 1 second */
 
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
     /* warning: in XMM mode we need to leave the pins that run the external
        memory alone!
     */
     par.m.pins = 0x8000;   /* only toggle the C3 LED */
+#else
+    par.m.pins = 0x3fffffff;   /* toggle all pins except serial */
+#endif
     /* start the new cog */
     start(&par.m);
     printf("toggle cog has started\n");
