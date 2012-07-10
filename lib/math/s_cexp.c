@@ -66,11 +66,17 @@ cexp(double complex z)
 {
 	double complex w;
 	double r, x, y;
+	double c, s;
 
 	x = creal (z);
 	y = cimag (z);
-	r = exp (x);
-	w = r * cos (y) + r * sin (y) * I;
+	__sincosl(y, &s, &c);
+	if (x == 0.0) {
+	  w = c + s * I;
+	} else {
+	  r = exp (x);
+	  w = r * c + r * s * I;
+	}
 	return (w);
 }
 

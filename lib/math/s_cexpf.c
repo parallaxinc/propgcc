@@ -61,9 +61,19 @@ cexpf(float complex z)
 {
 	float complex w;
 	float r;
+	float x, y;
+	float s, c;
 
-	r = expf( crealf(z) );
-	w = r * cosf( cimagf(z) ) +  r * sinf( cimagf(z) ) * I;
+	x = crealf(z);
+	y = cimagf(z);
+	__sincosf(y, &s, &c);
+
+	if (x == 0.0) {
+	  w = c + s * I;
+	} else {
+	  r = expf( x );
+	  w = r * c +  r * s * I;
+	}
 	return (w);
 }
 
