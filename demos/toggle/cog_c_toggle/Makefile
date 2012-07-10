@@ -8,7 +8,8 @@
 # Propeller Demo include
 PROPLIB = ../../common
 
-CFLAGS = -Os -mlmm
+#CFLAGS = -Os -mlmm
+CFLAGS = -Os
 NM = propeller-elf-nm
 
 #
@@ -20,7 +21,7 @@ OBJS = toggle.o toggle_fw.cog
 
 all: $(NAME).elf
 
-include $(PROPLIB)/lmmdemo.mk
+include $(PROPLIB)/common.mk
 
 #
 # do a partial link of all driver code

@@ -4,6 +4,7 @@
 
 struct toggle_mailbox {
   unsigned int wait_time; /* time to sleep between toggles */
+  unsigned int pins;      /* pins to toggle */
 };
 
 /* probably don't need a stack, but provide a small one just in case */
