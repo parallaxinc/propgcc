@@ -220,7 +220,9 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
 
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp)
 {
-    int mode, sts;
+    uint8_t image[32768];
+    size_t size;
+    int mode;
     
     /* determine the download mode */
     if (flags & LFLAG_WRITE_EEPROM)
@@ -230,11 +232,37 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
     else
         mode = SHUTDOWN_CMD;
     
+    /* get the size of the image */
+    fseek(fp, 0, SEEK_END);
+    size = ftell(fp);
+    if (size > 32768)
+    	return Error(".binary file is larger than 32k");
+    	
+    /* read the image */
     fseek(fp, 0, SEEK_SET);
-    sts = ploadfp(path, fp, mode);
+    if (fread(image, 1, size, fp) != size)
+    	return Error("reading image file");
+    
+    /* close the image file */
     fclose(fp);
     
-    return sts == 0;
+    /* patch the clkfreq and clkmode files if we're not using the default configuration (no -b on the command line) */
+    if (!IsDefaultConfiguration(config)) {
+        SpinHdr *hdr = (SpinHdr *)image;
+        int ivalue;
+    
+        /* patch clkfreq and clkmode fields */
+        if (GetNumericConfigField(config, "clkfreq", &ivalue))
+            hdr->clkfreq = ivalue;
+        if (GetNumericConfigField(config, "clkmode", &ivalue))
+            hdr->clkmode = ivalue;
+            
+    	/* recompute the checksum */
+    	UpdateChecksum(image, size);
+    }
+
+    /* load the image */
+    return ploadbuf(path, image, size, mode) == 0;
 }
 
 static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c)
