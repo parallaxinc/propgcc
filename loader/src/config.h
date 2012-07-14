@@ -57,6 +57,7 @@ typedef struct BoardConfig BoardConfig;
 
 BoardConfig *NewBoardConfig(BoardConfig *parent, const char *name);
 BoardConfig *ParseConfigurationFile(System *sys, const char *path);
+int IsDefaultConfiguration(BoardConfig *config);
 void DumpBoardConfiguration(BoardConfig *config);
 BoardConfig *GetConfigSubtype(BoardConfig *config, const char *name);
 BoardConfig *MergeConfigs(BoardConfig *parent, BoardConfig *child);
