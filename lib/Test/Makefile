@@ -38,6 +38,9 @@ sprintf.elf: sprintf.o $(LIB)
 scanf.elf: scanf.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 
+tmpfile.elf: tmpfile.o $(LIB)
+	$(CC) $(CFLAGS) -o $@ $^
+
 
 %.run: %.elf
 	propeller-load -bc3 $^ -r -t -q
