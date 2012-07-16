@@ -27,6 +27,9 @@ extern "C" {
   unsigned int sleep(unsigned int seconds);
   int usleep(useconds_t usec);
 
+  char *_mktemp(char *template);
+  char *mktemp(char *);
+
 #if defined(__cplusplus)
 }
 #endif
