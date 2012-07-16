@@ -7,7 +7,19 @@
 #include <sys/wchar_t.h>
 #include <time.h> /* for time_t */
 
+#ifndef __OFF_T_DEFINED__
 typedef long off_t;
+#define __OFF_T_DEFINED__
+#endif
+#ifndef __SSIZE_T_DEFINED__
+typedef long ssize_t;
+#define __OFF_T_DEFINED__
+#endif
+
+typedef int dev_t;
+typedef int ino_t;
+typedef unsigned int mode_t;
+typedef int st_nlink;
 
 struct stat {
   int st_dev;  /* ID of device containing file */
