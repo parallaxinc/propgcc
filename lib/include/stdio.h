@@ -170,6 +170,13 @@ extern "C" {
   int fgetpos(FILE *fp, fpos_t *pos);
   int fsetpos(FILE *fp, fpos_t *pos);
 
+  /* prefix for temporary name */
+#define P_tmpdir ""
+  /* maximum length of temporary file returned by tmpnam */
+#define L_tmpnam 16
+  /* number of unique temporary names available */
+#define TMP_MAX 0xffffff
+
   FILE *tmpfile(void);
   char *tmpnam(char *s);
 

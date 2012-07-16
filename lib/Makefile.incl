@@ -49,7 +49,8 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	stringio.o vfprintf.o vfscanf.o \
 	$(PRINTF) $(SCANF) \
 	simple_printf.o \
-	default_io.o init_io.o remove.o fmemopen.o
+	default_io.o init_io.o remove.o fmemopen.o \
+	tmpnam.o
 
 STDLIB = malloc.o calloc.o realloc.o atoi.o atoll.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o strtof.o \
@@ -62,7 +63,8 @@ MISC = 	ctype.o toupper.o tolower.o \
         isblank.o isxdigit.o isupper.o islower.o isgraph.o ispunct.o \
 	sbrk.o signal.o assert.o locale.o \
 	chdir.o rmdir.o mkdir.o opendir.o rdwr.o lseek.o \
-	putenv.o fdopen.o
+	putenv.o fdopen.o open.o close.o unlink.o stat.o isatty.o \
+	mktemp.o
 
 WCHAR = wctype.o iswctype.o iswalnum.o iswalpha.o iswblank.o \
       iswcntrl.o iswdigit.o iswgraph.o iswlower.o iswprint.o \
