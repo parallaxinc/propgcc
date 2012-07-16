@@ -316,9 +316,10 @@ BoardConfig *MergeConfigs(BoardConfig *parent, BoardConfig *child)
     return child;
 }
 
+static BoardConfig *defaultConfig = NULL;
+
 static BoardConfig *GetDefaultConfiguration(void)
 {
-    static BoardConfig *defaultConfig = NULL;
     if (!defaultConfig) {
         defaultConfig = NewBoardConfig(NULL, DEF_BOARD);
         SetConfigField(defaultConfig, "clkfreq",  "80000000");
@@ -328,6 +329,11 @@ static BoardConfig *GetDefaultConfiguration(void)
         SetConfigField(defaultConfig, "txpin",    "30");
     }
     return defaultConfig;
+}
+
+int IsDefaultConfiguration(BoardConfig *config)
+{
+    return defaultConfig != NULL && config == defaultConfig;
 }
 
 static int SkipSpaces(LineBuf *buf)
