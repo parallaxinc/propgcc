@@ -50,7 +50,7 @@ STDIO = clearerr.o feof.o ferror.o fflush.o \
 	$(PRINTF) $(SCANF) \
 	simple_printf.o \
 	default_io.o init_io.o remove.o fmemopen.o \
-	tmpnam.o
+	tmpnam.o tmpfile.o
 
 STDLIB = malloc.o calloc.o realloc.o atoi.o atoll.o atof.o atexit.o abort.o \
 	qsort.o bsearch.o strtol.o strtoul.o strtod.o strtof.o \
