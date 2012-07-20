@@ -18,6 +18,8 @@ static void DoCat(System *sys);
 #endif
 static void DoList(System *sys);
 
+void DoEdit(System *sys);
+
 /* command table */
 static struct {
     char *name;
@@ -30,6 +32,7 @@ static struct {
 {   "CAT",      DoCat   },
 #endif
 {   "LIST",     DoList  },
+{   "EDIT",     DoEdit  },
 {   NULL,       NULL    }
 };
 
@@ -39,7 +42,6 @@ static DATA_SPACE char programName[MAX_PROG_NAME] = "";
 #endif
 
 /* prototypes */
-static int EditGetLine(void *cookie, char *buf, int len, int *pLineNumber);
 static char *NextToken(System *sys);
 static int ParseNumber(char *token, int *pValue);
 static int IsBlank(char *p);
@@ -125,7 +127,6 @@ static void DoLoad(System *sys)
         VM_printf("Loading '%s'\n", programName);
         BufInit();
         while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
-            int len = strlen(sys->lineBuf);
             int lineNumber;
             char *token;
             sys->linePtr = sys->lineBuf;
@@ -157,7 +158,7 @@ static void DoSave(System *sys)
         int lineNumber;
         VM_printf("Saving '%s'\n", programName);
         BufSeekN(0);
-        while (BufGetLine(&lineNumber, sys->lineBuf)) {
+        while (BufGetLineN(&lineNumber, sys->lineBuf)) {
             char buf[32];
             sprintf(buf, "%d ", lineNumber);
             VM_fputs(buf, fp);
@@ -187,13 +188,8 @@ static void DoList(System *sys)
 {
     int lineNumber;
     BufSeekN(0);
-    while (BufGetLine(&lineNumber, sys->lineBuf))
+    while (BufGetLineN(&lineNumber, sys->lineBuf))
         VM_printf("%d %s", lineNumber, sys->lineBuf);
-}
-
-static int EditGetLine(void *cookie, char *buf, int len, int *pLineNumber)
-{
-    return BufGetLine(pLineNumber, buf);
 }
 
 static char *NextToken(System *sys)

@@ -153,6 +153,12 @@ void    tvText_setColorPalette(char* palette);
  */
 void    print(char* s);
 
+void tvText_ClearScreen(void);
+int tvText_GetWidth(void);
+int tvText_GetHeight(void);
+void tvText_SetCursor(int col, int row);
+void tvText_Print(const char* s);
+
 #endif
 //__TV_TEXT__
 

@@ -14,6 +14,9 @@
 #define VMTRUE      1
 #define VMFALSE     0
 
+typedef struct VMDIR VMDIR;
+typedef struct VMDIRENT VMDIRENT;
+
 /*******/
 /* MAC */
 /*******/
@@ -112,14 +115,14 @@ typedef void VMFILE;
 #if 0
 typedef FSFILE VMFILE;
 
-typedef struct {
+struct VMDIR {
     SearchRec rec;
     int first;
-} VMDIR;
+};
 
-struct {
+struct VMDIRENT {
     char name[FILE_NAME_SIZE_8P3 + 2];
-} VMDIRENT;
+};
 #endif
 
 #ifdef PIC24
@@ -192,13 +195,13 @@ typedef FILE VMFILE;
 #define VM_fgets	fgets
 #define VM_fputs	fputs
 
-typedef struct {
+struct VMDIR {
     DIR *dirp;
-} VMDIR;
+};
 
-typedef struct {
+struct VMDIRENT {
     char name[FILENAME_MAX];
-} VMDIRENT;
+};
 
 #endif // ANSI_FILE_IO
 
