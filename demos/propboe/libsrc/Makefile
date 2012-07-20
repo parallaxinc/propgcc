@@ -5,7 +5,7 @@ CC=propeller-elf-gcc
 OBJCOPY=propeller-elf-objcopy
 AR=propeller-elf-ar
 LOAD=propeller-load
-BSTC=bstc
+BSTC=bstc.osx
 MKDIR=mkdir -p
 RM=rm -f
 
@@ -35,6 +35,7 @@ toggle.o
 DRIVEROBJS = \
 VGA_firmware.o \
 TV_firmware.o \
+Keyboard_firmware.o \
 i2c_driver_image.o
 
 CFLAGS=-Os -Wall -I../include -mno-fcache

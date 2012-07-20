@@ -7,10 +7,12 @@
  * the list (the serial driver, for us)
  */
 
+extern _Driver _SimpleSerialDriver;
 extern _Driver TvDriver;
 extern _Driver _FileDriver;
 
 _Driver *_driverlist[] = {
+    &_SimpleSerialDriver,
     &TvDriver,
     &_FileDriver,
     NULL
