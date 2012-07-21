@@ -3,6 +3,7 @@ NAME = tvedit
 OBJS = \
 tvedit.o \
 db_edit.o \
+db_vedit.o \
 db_system.o \
 osint_posix.o \
 editbuf.o \
@@ -17,6 +18,6 @@ ifndef MODEL
 MODEL = xmmc
 endif
 
-CFLAGS = -Os -DPROPELLER_GCC -DLOAD_SAVE
+CFLAGS = -Os -Wall -DPROPELLER_GCC -DLOAD_SAVE
 
 include ../common/common.mk

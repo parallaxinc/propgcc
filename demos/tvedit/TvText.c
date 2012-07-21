@@ -8,12 +8,6 @@
 #include <propeller.h>
 #include "TvText.h"
 
-// dprintf is defined only for debug output
-#ifndef dprintf
-#define dprintf
-//#define dprintf printf
-#endif
-
 #define TV_TEXT_OUT
 
 /**
@@ -115,22 +109,6 @@ int tvText_start(int basepin)
     tvPtr->broadcast = 0;
     tvPtr->auralcog  = 0;
 
-    dprintf("%08x\n", tvPtr);
-    dprintf("%08x\n", tvPtr->status );
-    dprintf("%08x\n", tvPtr->enable );
-    dprintf("%08x\n", tvPtr->pins   );
-    dprintf("%08x\n", tvPtr->mode   );
-    dprintf("%08x\n", tvPtr->colors );
-    dprintf("%08x\n", tvPtr->screen );
-    dprintf("%08x\n", tvPtr->ht );
-    dprintf("%08x\n", tvPtr->vt );
-    dprintf("%08x\n", tvPtr->hx );
-    dprintf("%08x\n", tvPtr->vx );
-    dprintf("%08x\n", tvPtr->ho );
-    dprintf("%08x\n", tvPtr->vo );
-    dprintf("%08x\n", tvPtr->broadcast );
-    dprintf("%08x\n\n", tvPtr->auralcog  );
-
     // set main fg/bg color
     tvText_setColorPalette(&gpalette[TV_TEXT_PAL_WHITE_BLUE]);
 
@@ -176,15 +154,12 @@ void tvText_setColorPalette(char* ptr)
 
     uint32_t* colors = tvPtr->colors;
 
-    dprintf("tvText_setColorPalette()\r\n");
-
     for(ii = 0; ii < TV_TEXT_COLORTABLE_SIZE; ii += 2)
     {
         fg = (uint8_t) ptr[ii];
         bg = (uint8_t) ptr[ii+1];
         colors[ii]     = fg << 24 | bg << 16 | fg << 8 | bg;
         colors[ii+1]   = fg << 24 | fg << 16 | bg << 8 | bg;
-        dprintf("%08x %08x\n",colors[ii],colors[ii+1]);
    }        
 }
 
@@ -253,6 +228,63 @@ int     tvText_outchar(char c)
     return (int)c;
 }
 
+/*
+ * tvText_ClearScreen function clears the screen.
+ * See header file for more details.
+ */
+void tvText_ClearScreen(void)
+{
+    wordfill(screen, blank, TV_TEXT_SCREENSIZE);
+}
+
+/*
+ * tvText_GetWidth function gets screen width.
+ * See header file for more details.
+ */
+int tvText_GetWidth(void)
+{
+    return TV_TEXT_COLS;
+}
+
+/*
+ * tvText_GetHeight function gets screen height.
+ * See header file for more details.
+ */
+int tvText_GetHeight(void)
+{
+    return TV_TEXT_ROWS;
+}
+
+/*
+ * tvText_SetCursor function sets position to x,y.
+ * See header file for more details.
+ */
+void tvText_SetCursor(int c, int r)
+{
+    col = c;
+    row = r;
+}
+
+/*
+ * tvText_GetCursor function gets the cursor position.
+ * See header file for more details.
+ */
+void tvText_GetCursor(int *pc, int *pr)
+{
+    *pc = col;
+    *pr = row;
+}
+
+/*
+ * tvText_Print null terminated char* to screen
+ * See header file for more details.
+ */
+void tvText_Print(const char* s)
+{
+    while(*s) {
+        printc(*(s++));
+    }
+}
 
 /*
 +--------------------------------------------------------------------
