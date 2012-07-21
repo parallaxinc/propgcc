@@ -245,21 +245,31 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
     
     /* close the image file */
     fclose(fp);
-    
+   
+/* This code doesn't work correctly because IsDefaultConfiguration was flawed.
+   It will need to be rewritten if we want this feature. The best approach would
+   be to provide a way to determine if a config variable has a default value or
+   a user-supplied value */ 
+#if 0
     /* patch the clkfreq and clkmode files if we're not using the default configuration (no -b on the command line) */
     if (!IsDefaultConfiguration(config)) {
         SpinHdr *hdr = (SpinHdr *)image;
         int ivalue;
     
         /* patch clkfreq and clkmode fields */
-        if (GetNumericConfigField(config, "clkfreq", &ivalue))
+        if (GetNumericConfigField(config, "clkfreq", &ivalue)) {
+            printf("patching clkfreq with %08x\n", ivalue);
             hdr->clkfreq = ivalue;
-        if (GetNumericConfigField(config, "clkmode", &ivalue))
+        }
+        if (GetNumericConfigField(config, "clkmode", &ivalue)) {
+            printf("patching clkmode with %02x\n", ivalue);
             hdr->clkmode = ivalue;
+        }
             
     	/* recompute the checksum */
     	UpdateChecksum(image, size);
     }
+#endif
 
     /* load the image */
     return ploadbuf(path, image, size, mode) == 0;

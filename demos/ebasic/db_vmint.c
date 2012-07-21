@@ -235,8 +235,10 @@ static void StartCode(Interpreter *i, VMVALUE object)
 {
     if (object & INTRINSIC_FLAG) {
         VMUVALUE index = object & ~INTRINSIC_FLAG;
-        if (index < IntrinsicCount)
+        if (index < IntrinsicCount) {
             (*VMINTRINSIC(index))(i);
+            Drop(i, i->argc);
+        }
         else
             Abort(i, str_not_code_object_err, object);
     }

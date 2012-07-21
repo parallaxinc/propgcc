@@ -32,7 +32,14 @@ uint8_t *AllocateFreeSpace(System *sys, size_t size);
 int GetLine(System *sys);
 void Abort(System *sys, const char *fmt, ...);
 
+int VM_getchar(void);
+void VM_getline(char *buf, int size);
+
 void VM_printf(const char *fmt, ...);
 void VM_putchar(int ch);
+
+int VM_opendir(const char *path, VMDIR *dir);
+int VM_readdir(VMDIR *dir, VMDIRENT *entry);
+void VM_closedir(VMDIR *dir);
 
 #endif
