@@ -66,31 +66,6 @@ int cognewFromBootEeprom(void *code, size_t codeSize, void *param);
 int coginitFromBootEeprom(int id, void *code, size_t codeSize, void *param);
 
 /**
- * @brief Open the boot i2c bus on Propeller pins 28/29
- *
- * @details Use this function to open the i2c bus on pins 28/29 used by the
- * Propeller to boot from EEPROM.
- *
- * @returns a pointer to an I2C structure for the bus or NULL on failure.
- */
-I2C *i2cBootOpen(void);
-
-/**
- * @brief Get the address of the boot i2c bus COG driver
- *
- * @details Once the boot i2c bus has been opened with i2cBootOpen,
- * by loading a COG using either cognewFromBootEeprom or coginitFromBootEeprom,
- * or calling readBootEeprom or writeBootEeprom,
- * it is possible to reuse the hub memory space used by the boot i2c driver.
- * However, once this is done it will no longer be possible to load the boot
- * i2c driver again so after closing the boot i2c buss, calls to i2cBootOpen,
- * cognewFromBootEeprom, or coginitFromBootEeprom will fail.
- *
- * @returns a pointer to the boot i2c driver COG image for use as a buffer.
- */
-void *i2cBootBuffer(void);
-
-/**
  * @brief Read from the boot EEPROM
  *
  * @details Use this function to read from the boot EEPROM. 
