@@ -14,7 +14,8 @@ export PREFIX
 # spaces due to how it is used below
 #
 VERSION=`cat release/VERSION.txt | grep -v "^#"`
-HGVERSION=`hg tip | grep "changeset: " | cut -d":" -f2 | sed 's/ //g'`
+# Thanks to yeti for suggesting this HGVERSION method.
+HGVERSION=`hg tip --template '{rev}\n'`
 
 PROPGCC_VERSION=`echo ${VERSION}_${HGVERSION}`
 

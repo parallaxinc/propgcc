@@ -18,7 +18,7 @@
  * mailbox which we use to communicate. See toggle.h
  * for the definition/
  */
-struct {
+volatile struct {
   unsigned stack[STACK_SIZE];
   struct toggle_mailbox m;
 } par __attribute__((section(".hub")));
@@ -27,7 +27,7 @@ struct {
  * function to start up a new cog running the toggle
  * code (which we've placed in the toggle_fw.cog section)
  */
-void start(void *parptr)
+void start(volatile void *parptr)
 {
     extern unsigned int _load_start_toggle_fw_cog[];
 #if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
@@ -61,9 +61,9 @@ void main (int argc,  char* argv[])
     /* warning: in XMM mode we need to leave the pins that run the external
        memory alone!
     */
-    par.m.pins = 0x8000;   /* only toggle the C3 LED */
+    par.m.pins = 0x18000;       /* only toggle the C3 LED + P16 for Quickstart */
 #else
-    par.m.pins = 0x3fffffff;   /* toggle all pins except serial */
+    par.m.pins = 0x3fffffff;    /* toggle all pins except serial */
 #endif
     /* start the new cog */
     start(&par.m);
@@ -75,7 +75,7 @@ void main (int argc,  char* argv[])
       sleep(2);
       par.m.wait_time =  par.m.wait_time >> 1;
       if (par.m.wait_time < MIN_GAP)
-	par.m.wait_time = _clkfreq;
+        par.m.wait_time = _clkfreq;
       printf("toggle count = %d\n", togglecount);
     }
 }
