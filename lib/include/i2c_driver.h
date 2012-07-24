@@ -1,5 +1,9 @@
-/* i2c_driver.h - i2c single master driver definitions
+/**
+ * @file include/i2c_driver.h - i2c single master driver definitions
+ * @brief Declarations here are not meant as public API.
+ */
 
+/*
 Copyright (c) 2012 David Michael Betz
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software

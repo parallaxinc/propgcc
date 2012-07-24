@@ -2,6 +2,9 @@
  * @file include/i2c.h
  * @brief Provides Propeller specific functions for I2C.
  *
+ */
+
+/*
  * Copyright (c) 2012 David Michael Betz
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -31,7 +34,7 @@ extern "C" {
 #include <stdint.h>
 #include "i2c_driver.h"
 
-/* forward type declarations */
+/** forward type declarations */
 typedef struct I2C I2C;
 
 /* i2c operations */
