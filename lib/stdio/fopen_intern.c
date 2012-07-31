@@ -65,6 +65,11 @@ __fopen_driver(FILE *fp, _Driver *d, const char *name, const char *mode)
       if (i < 0)
 	{
 	  /* driver unhappy, it should have set errno */
+	  fp->_base = NULL;
+	  fp->_ptr = NULL;
+	  fp->_bsiz = 0;
+	  fp->_flag = 0;
+	  fp->_drv = 0;
 	  return NULL;
 	}
     }
