@@ -67,6 +67,7 @@ void Pwd(int argc, char **argv)
 
 void Mkdir(int argc, char **argv)
 {
+#ifndef __PROPELLER_LMM__
     int i;
 
     for (i = 1; i < argc; i++)
@@ -74,10 +75,14 @@ void Mkdir(int argc, char **argv)
         if (mkdir(argv[i], 0))
             perror(argv[i]);
     }
+#else
+    printf("Not enough memory for mkdir in LMM mode\n");
+#endif
 }
 
 void Rmdir(int argc, char **argv)
 {
+#ifndef __PROPELLER_LMM__
     int i;
 
     for (i = 1; i < argc; i++)
@@ -85,6 +90,9 @@ void Rmdir(int argc, char **argv)
         if (rmdir(argv[i]))
             perror(argv[i]);
     }
+#else
+    printf("Not enough memory for rmdir in LMM mode\n");
+#endif
 }
 
 /* This routine implements the file cat function */

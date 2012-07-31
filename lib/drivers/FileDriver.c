@@ -49,6 +49,7 @@ static int File_fopen(FILE *fp, const char *fname1, const char *mode)
     int retval;
     PFILEINFO fileinfo;
     char fname[MAX_PATH];
+    uint8_t dfs_mode;
 
     if (!dfs_mountflag && dfs_mount_defaults() != DFS_OK)
     {
@@ -66,22 +67,35 @@ static int File_fopen(FILE *fp, const char *fname1, const char *mode)
         return -1;
     }
 
+    if (mode[1] == '+')
+        dfs_mode = DFS_READ | DFS_WRITE;
+    else if (mode[0] == 'r')
+        dfs_mode = DFS_READ;
+    else
+        dfs_mode = DFS_WRITE;
+
     if (mode[0] == 'w')
     {
         retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, DFS_READ, dfs_scratch, fileinfo);
         if (retval == DFS_OK)
             DFS_UnlinkFile(&dfs_volinfo, (uint8_t *)fname, dfs_scratch);
-        retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, DFS_WRITE | DFS_READ, dfs_scratch, fileinfo);
+        retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, dfs_mode, dfs_scratch, fileinfo);
     }
     else if (mode[0] == 'a')
     {
-        retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, DFS_WRITE | DFS_READ, dfs_scratch, fileinfo);
-        if (retval == DFS_OK)
-            DFS_Seek(fileinfo, 0xffffffff, dfs_scratch);
+        retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, dfs_mode, dfs_scratch, fileinfo);
+    }
+    else if (mode[0] == 'r')
+    {
+        retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, DFS_READ, dfs_scratch, fileinfo);
+        if (retval == DFS_OK && (dfs_mode & DFS_WRITE))
+            retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, dfs_mode, dfs_scratch, fileinfo);
     }
     else
     {
-        retval = DFS_OpenFile(&dfs_volinfo, (uint8_t *)fname, DFS_READ, dfs_scratch, fileinfo);
+        errno = EINVAL;
+        free(fileinfo);
+        return -1;
     }
 
     if (retval != DFS_OK)
@@ -166,15 +180,16 @@ static int File_remove(const char *fname)
 {
     int errnum;
     int retval = -1;
-    DIRINFO dirinfo;
+    //DIRINFO dirinfo;
     char path[MAX_PATH];
 
     dfs_resolve_path(fname, path);
 
     if (!(errnum = DFS_UnlinkFile(&dfs_volinfo, (uint8_t *)path, dfs_scratch)))
         retval = 0;
-    else if (!DFS_OpenDir(&dfs_volinfo, (uint8_t *)path, &dirinfo))
-        errno = EISDIR;
+    // OpenDir seems to be causing a problem, so it's commented out for now
+    //else if (!DFS_OpenDir(&dfs_volinfo, (uint8_t *)path, &dirinfo))
+    //    errno = EISDIR;
     else
         errno = dfs_stdio_errno(errnum);
     
