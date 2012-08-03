@@ -33,6 +33,10 @@ mlmm
 Target RejectNegative Mask(LMM) Report
 Generate for large memory model (LMM) (code and data in hub)
 
+mcmm
+Target RejectNegative Mask(CMM) Report
+Generate for compressed memory model (CMM) (code and data in hub)
+
 mxmmc
 Target RejectNegative Mask(XMM_CODE) Report
 Generate code to run in external memory (XMM); data is in hub. Implies -mlmm too.

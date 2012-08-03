@@ -63,18 +63,21 @@ static void pseudo_fit (int);
 static void pseudo_res (int);
 static void pseudo_hub_ram (int);
 static void pseudo_cog_ram (int);
+static void pseudo_compress (int);
 static char *skip_whitespace (char *str);
 static char *find_whitespace (char *str);
 static char *find_whitespace_or_separator (char *str);
 
 static int cog_ram = 0;		/* Use Cog ram if 1 */
 static int lmm = 0;             /* Enable LMM pseudo-instructions */
-
+static int compress = 0;        /* Enable compressed (16 bit) instructions */
+static int compress_default = 0; /* default compression mode from command line */
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
   {"res", pseudo_res, 0},
   {"hub_ram", pseudo_hub_ram, 0},
   {"cog_ram", pseudo_cog_ram, 0},
+  {"compress", pseudo_compress, 0},
   {0, 0, 0},
 };
 
@@ -86,6 +89,7 @@ const char *md_shortopts = "";
 
 struct option md_longopts[] = {
   {"lmm", no_argument, NULL, OPTION_MD_BASE},
+  {"cmm", no_argument, NULL, OPTION_MD_BASE+1},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -348,6 +352,42 @@ pseudo_fit (int c ATTRIBUTE_UNUSED)
   demand_empty_rest_of_line ();
 }
 
+/* turn compression on/off */
+static void
+pseudo_compress (int x ATTRIBUTE_UNUSED)
+{
+  char *opt;
+  char c;
+
+  opt = input_line_pointer;
+  c = get_symbol_end ();
+
+  if (strncmp (opt, "on", 2) == 0)
+    {
+      compress = 1;
+    }
+  else if (strncmp (opt, "off", 3) == 0)
+    {
+      compress = 0;
+    }
+  else if (strncmp (opt, "def", 3) == 0)
+    {
+      compress = compress_default;
+    }
+  else
+    {
+      as_bad (_("Unrecognized compress option \"%s\""), opt);
+    }
+  if (compress == 0)
+    {
+      /* compression is off, make sure code is aligned */
+      frag_align_code (2, 0);
+    }
+  *input_line_pointer = c;
+  demand_empty_rest_of_line ();
+}
+
+/* reserve space */
 static void
 pseudo_res (int c ATTRIBUTE_UNUSED)
 {
@@ -439,7 +479,7 @@ lc (char *str)
  * parse a register specification like r0 or lr
  */
 static char *
-parse_regspec (char *str, int *regnum, struct propeller_code *operand)
+parse_regspec (char *str, int *regnum, struct propeller_code *operand, int give_error)
 {
   int reg;
   str = skip_whitespace (str);
@@ -453,7 +493,8 @@ parse_regspec (char *str, int *regnum, struct propeller_code *operand)
     }
   if ( (*str != 'r' && *str != 'R') || !ISDIGIT(str[1]) )
     {
-      operand->error = _("expected register number");
+      if (give_error)
+	operand->error = _("expected register number");
       return str;
     }
   str++;
@@ -465,7 +506,9 @@ parse_regspec (char *str, int *regnum, struct propeller_code *operand)
     }
   if (reg > 15 || reg < 0)
     {
-      operand->error = _("illegal register number");
+      if (give_error)
+	operand->error = _("illegal register number");
+      return str;
     }
   *regnum = reg;
   return str;
@@ -486,7 +529,23 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
 	  integer_reloc = 1;
 	}
     }
-
+  else if (compress)
+    {
+      /* check for registers */
+      char *tmp;
+      int regnum = -1;
+      tmp = parse_regspec (str, &regnum, operand, 0);
+      if (regnum != -1)
+	{
+	  str = tmp;
+	  operand->reloc.type = BFD_RELOC_NONE;
+	  operand->reloc.pc_rel = 0;
+	  operand->reloc.exp.X_op = O_register;
+	  operand->reloc.exp.X_add_number = regnum;
+	  insn->code |= operand->reloc.exp.X_add_number;
+	  return str;
+	}
+    }
   if (format == PROPELLER_OPERAND_BRS)
     pcrel_reloc = 1;
 
@@ -584,7 +643,26 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
 
 static char *
 parse_dest(char *str, struct propeller_code *operand, struct propeller_code *insn){
+
   str = skip_whitespace (str);
+  if (compress)
+    {
+      /* check for registers */
+      char *tmp;
+      int regnum = -1;
+      tmp = parse_regspec (str, &regnum, operand, 0);
+      if (regnum != -1)
+	{
+	  str = tmp;
+	  operand->reloc.type = BFD_RELOC_NONE;
+	  operand->reloc.pc_rel = 0;
+	  operand->reloc.exp.X_op = O_register;
+	  operand->reloc.exp.X_add_number = regnum;
+	  insn->code |= (operand->reloc.exp.X_add_number << 9);
+	  return str;
+	}
+    }
+
   str = parse_expression (str, operand);
   if (operand->error)
     return str;
@@ -621,6 +699,10 @@ parse_dest(char *str, struct propeller_code *operand, struct propeller_code *ins
   return str;
 }
 
+#ifndef NATIVE_PREFIX
+#define NATIVE_PREFIX 0x0f
+#endif
+
 void
 md_assemble (char *instruction_string)
 {
@@ -633,7 +715,9 @@ md_assemble (char *instruction_string)
   char *err = NULL;
   char *str;
   char *p;
+  char *to;
   char c;
+  int insn_compressed = 0;
 
   if (ignore_input())
     {
@@ -721,6 +805,10 @@ md_assemble (char *instruction_string)
       /* special case for NOP instruction, since we need to 
        * suppress the condition. */
       insn.code = 0;
+      if (compress) { 
+	size = 1; 
+	insn_compressed = 1;
+      }
       break;
 
     case PROPELLER_OPERAND_NO_OPS:
@@ -870,7 +958,7 @@ md_assemble (char *instruction_string)
 	   break;
 	  }
 	regnum = 0;
-	str = parse_regspec (str, &regnum, &op2);
+	str = parse_regspec (str, &regnum, &op2, 1);
 	insn.code |= (1<<22);  // make it an immediate instruction
 	insn.code |= (regnum<<4);
 	str = parse_separator (str, &error);
@@ -879,7 +967,7 @@ md_assemble (char *instruction_string)
 	    op2.error = _("Missing ','");
 	    break;
 	  }
-	str = parse_regspec (str, &regnum, &op2);
+	str = parse_regspec (str, &regnum, &op2, 1);
 	insn.code |= (regnum);
 
 	// now set up the CALL instruction
@@ -1000,27 +1088,48 @@ md_assemble (char *instruction_string)
       as_bad ("%s", err);
       return;
     }
-  {
-    char *to = NULL;
 
+  {
+    int insn_size;
+
+    if (compress && !insn_compressed) {
+      /* we are in CMM mode, but failed to compress this instruction;
+	 add a NATIVE prefix
+      */
+      size += size/4;
+      insn_size = 4;
+    } else if (compress) {
+      insn_size = size;
+    } else {
+      insn_size = 4;
+    }
     to = frag_more (size);
 
-    md_number_to_chars (to, insn.code, 4);
+    if (compress && !insn_compressed) {
+      md_number_to_chars (to, NATIVE_PREFIX, 1);
+      to++;
+    }
+    md_number_to_chars (to, insn.code, insn_size);
     if (insn.reloc.type != BFD_RELOC_NONE)
-      fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+      fix_new_exp (frag_now, to - frag_now->fr_literal, insn_size,
 		   &insn.reloc.exp, insn.reloc.pc_rel, insn.reloc.type);
     if (op1.reloc.type != BFD_RELOC_NONE)
-      fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+      fix_new_exp (frag_now, to - frag_now->fr_literal, insn_size,
 		   &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
     if (op2.reloc.type != BFD_RELOC_NONE)
-      fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+      fix_new_exp (frag_now, to - frag_now->fr_literal, insn_size,
 		   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
-    to += 4;
+    to += insn_size;
 
     /* insn2 is never used for real instructions, but is useful */
     /* for some pseudoinstruction for LMM and such. */
+    /* note that we never have to do this for compressed instructions */
     if (insn2.reloc.type != BFD_RELOC_NONE || insn2.code)
       {
+	if (compress) {
+	  md_number_to_chars ( to, NATIVE_PREFIX, 1 );
+	  to++;
+	}
 	md_number_to_chars (to, insn2.code, 4);
 	if(insn2.reloc.type != BFD_RELOC_NONE){
 	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
@@ -1111,6 +1220,10 @@ md_parse_option (int c, char *arg)
     case OPTION_MD_BASE:
       lmm = 1;
       break;
+    case OPTION_MD_BASE+1:
+      compress = compress_default = 1;
+      lmm = 1; /* -cmm implies -lmm */
+      break;
     default:
       return 0;
     }
@@ -1123,6 +1236,7 @@ md_show_usage (FILE * stream)
   fprintf (stream, "\
 Propeller options\n\
   --lmm\t\tEnable LMM instructions.\n\
+  --cmm\t\tEnable compressed instructions.\n\
 ");
 }
 
