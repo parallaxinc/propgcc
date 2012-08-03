@@ -216,7 +216,7 @@ loop	movs    :ld, line		' get ready to check the current line address
   	add	line, index_count	' try the next way
   	djnz	t1, #loop
   	
-miss    and	line, offset_mask	' mask out the way bits
+miss    and	line, index_mask	' mask out the way bits
 	mov	t1, CNT			' use low bits of CNT to choose a random way
 	shl	t1, index_count
 	and	t1, way_mask
@@ -307,7 +307,6 @@ index_width     long    DEFAULT_INDEX_WIDTH
 index_mask      long    0
 index_count     long    0
 offset_width    long    DEFAULT_OFFSET_WIDTH
-offset_mask	long	(1<<DEFAULT_OFFSET_WIDTH)-1
 line_size       long    0                       ' line size in bytes
 way_width	long	DEFAULT_WAY_WIDTH
 way_count	long	(1<<DEFAULT_WAY_WIDTH)
