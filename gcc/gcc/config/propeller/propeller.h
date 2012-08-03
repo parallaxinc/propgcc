@@ -35,6 +35,7 @@
 #define ASM_SPEC "\
 %{!mpasm: \
   %{!mcog:-lmm} \
+  %{mcmm:-cmm}  \
   %{mrelax:-relax}} \
 "
 #undef LIB_SPEC
@@ -73,6 +74,8 @@
 	builtin_define ("__PROPELLER_XMM__");		     \
       else if (TARGET_XMM_CODE)				     \
 	builtin_define ("__PROPELLER_XMMC__");		     \
+      else if (TARGET_CMM)				     \
+	builtin_define ("__PROPELLER_CMM__");		     \
       else if (TARGET_LMM)				     \
 	builtin_define ("__PROPELLER_LMM__");		     \
       else						     \

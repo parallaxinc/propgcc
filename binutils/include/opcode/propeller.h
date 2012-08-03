@@ -39,6 +39,35 @@
 #define PROPELLER_OPERAND_BRS         11
 #define PROPELLER_OPERAND_XMMIO       12
 
+/* types of compressed instructions available */
+/* normally instructions take 32 bits each; however, we provide
+ * a compressed mode wherein they take fewer bits
+ * types of compressed formats available:
+ *
+ * macro: instruction with no register arguments (like NOP, BREAKPOINT)
+ * call:  a subroutine call
+ * mov:   a move instruction; we have various optimizations for this
+ * add:   an add instruction; ditto
+ * cmps:  a signed compare instruction
+ * brs:   a relative branch
+ * brl:   a long branch
+ * reg_or_imm: a generic instruction (not one of those above) which has
+ *         a compressed form
+ *
+ * there are many potential optimizations for mov, based on the immediate
+ * value (e.g. mov rN, #0 can be optimized to "clr r0")
+ *
+ */
+
+/* instruction cannot be compressed */
+#define NO_COMPRESSED (0)
+#define CAN_COMPRESS  (1)
+
+/* instruction can be compressed to a macro */
+#define COMPRESS_MACRO (0)
+#define COMPRESS_MOV   (1)
+#define COMPRESS_CALL  (2)
+
 struct propeller_opcode
 {
   const char *name;
@@ -47,6 +76,8 @@ struct propeller_opcode
   int format;
   int result;
   int hardware;
+  int can_compress;
+  int copc;  /* compressed opcode */
 };
 
 struct propeller_condition
