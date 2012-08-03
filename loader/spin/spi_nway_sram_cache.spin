@@ -39,9 +39,9 @@ CON
   ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
  
   ' default cache dimensions
-  DEFAULT_INDEX_WIDTH   = 7	' number of bits in the index offset (index size is 2^n)
+  DEFAULT_INDEX_WIDTH   = 6	' number of bits in the index offset (index size is 2^n)
   DEFAULT_OFFSET_WIDTH  = 6	' number of bits in the line offset (line size is 2^n)
-  DEFAULT_WAY_WIDTH	= 0	' number of bits in the way offset (way count is 2^n)
+  DEFAULT_WAY_WIDTH	= 1	' number of bits in the way offset (way count is 2^n)
   DEFAULT_CACHE_SIZE    = 1<<(DEFAULT_WAY_WIDTH+DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH)
 
   ' cache line tag flags
