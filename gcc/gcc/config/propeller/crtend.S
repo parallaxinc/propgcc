@@ -27,9 +27,6 @@ __exit
 	'' terminate by putting cog to sleep so QuickStart serial port stays quiet
 	'' (pins & 0) == nonzero will always be false, so cog
 	'' will sleep forever
-	'' the waitpeq instruction itself is nonzero, so it will
-	'' work nicely
-	'' waitpeq . , #0 ' this might work in pure ASM, but i get a linker error here.
 	waitpeq __MASK_FFFFFFFF, #0
 
 	'' this is a weak reference so the user can override it
