@@ -42,9 +42,9 @@ CON
   ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
  
   ' default cache dimensions
+  DEFAULT_WAY_WIDTH	= 1	' number of bits in the way offset (way count is 2^n)
   DEFAULT_INDEX_WIDTH   = 6	' number of bits in the index offset (index size is 2^n)
   DEFAULT_OFFSET_WIDTH  = 6	' number of bits in the line offset (line size is 2^n)
-  DEFAULT_WAY_WIDTH	= 1	' number of bits in the way offset (way count is 2^n)
   DEFAULT_CACHE_SIZE    = 1<<(DEFAULT_WAY_WIDTH+DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH)
 
   ' cache line tag flags
@@ -61,10 +61,12 @@ DAT
         org   $0
 
 ' initialization structure offsets
-' $0: pointer to a two word mailbox
-' $4: pointer to where to store the cache lines in hub ram
-' $8: 0xssxxccee - ss=sio0 xx=unused cc=sck pp=protocol
-' $a: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
+' $00: pointer to a two word mailbox
+' $04: pointer to where to store the cache lines in hub ram
+' $08: 0xssxxccee - ss=sio0 xx=unused cc=sck pp=protocol
+' $0c: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
+' $10: 0xwwiiooxx - ww=way-count ii=index-width oo=offset-width xx=unused
+' $14: pointer to debug area
 ' note that $4 must be at least 2^(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH) bytes in size
 ' sio0 must be the lowest pin number of a group of four adjacent pins to be used for sio0-3
 ' the protocol byte is a bit mask with the bits defined above
@@ -117,6 +119,7 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         
         ' get the cs protocol selector bits (cache-param2)
         rdlong  t3, t1
+        add	t1, #4
         
         ' handle the CS or C3-style CLR pins
         test    t2, #CS_CLR_PIN_MASK wz
@@ -158,6 +161,19 @@ init_vm mov     t1, par             ' get the address of the initialization stru
   if_nz shl     select_addr, t4
   if_nz shl     mask_inc, t4
   if_nz or      spidir, mask_inc
+  
+  	' get the cache geometry (cache-param3)
+  	rdlong	t2, t1 wz
+  if_z  jmp	#:next
+  	mov	way_width, t2
+  	shr	way_width, #24
+  	mov	index_width, t2
+  	shr	index_width, #16
+  	and	index_width, #$ff
+  	mov	offset_width, t2
+  	shr	offset_width, #8
+  	and	offset_width, #$ff
+:next
         
         mov     index_count, #1
         shl     index_count, index_width
@@ -169,6 +185,12 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         mov     t1, line_size
         sub     t1, #1
         wrlong  t1, par
+        
+        mov	way_count, #1
+        shl	way_count, way_width
+        mov	way_mask, way_count
+        sub	way_mask, #1
+        shl	way_mask, index_width
 
         ' set the pin directions
         mov     outa, spiout
@@ -309,8 +331,8 @@ index_count     long    0
 offset_width    long    DEFAULT_OFFSET_WIDTH
 line_size       long    0                       ' line size in bytes
 way_width	long	DEFAULT_WAY_WIDTH
-way_count	long	(1<<DEFAULT_WAY_WIDTH)
-way_mask	long	((1<<DEFAULT_WAY_WIDTH)-1)<<DEFAULT_INDEX_WIDTH
+way_count	long	0
+way_mask	long	0
 empty_mask      long    (1<<EMPTY_BIT)
 dirty_mask      long    (1<<DIRTY_BIT)
 

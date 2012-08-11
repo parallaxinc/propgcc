@@ -61,6 +61,8 @@ typedef struct {
     uint32_t cache_size;
     uint32_t cache_param1;
     uint32_t cache_param2;
+    uint32_t cache_param3;
+    uint32_t cache_param4;
     uint32_t vm_code_off;
     uint32_t cache_code_off;
 } FlashLoaderDatHdr;
@@ -406,6 +408,10 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         info->cache_param1 = ivalue;
     if (GetNumericConfigField(config, "cache-param2", &ivalue))
         info->cache_param2 = ivalue;
+    if (GetNumericConfigField(config, "cache-param3", &ivalue))
+        info->cache_param3 = ivalue;
+    if (GetNumericConfigField(config, "cache-param4", &ivalue))
+        info->cache_param4 = ivalue;
     if ((value = GetConfigField(config, "load-target")) != NULL) {
         if (strcasecmp(value, "ram") == 0)
             info->flags |= SD_LOAD_RAM;
@@ -499,6 +505,10 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
         info->cache_param1 = ivalue;
     if (GetNumericConfigField(config, "cache-param2", &ivalue))
         info->cache_param2 = ivalue;
+    if (GetNumericConfigField(config, "cache-param3", &ivalue))
+        info->cache_param3 = ivalue;
+    if (GetNumericConfigField(config, "cache-param4", &ivalue))
+        info->cache_param4 = ivalue;
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find cache driver (.coguser1) segment");
@@ -568,7 +578,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
 {
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf;
     int cacheDriverImageSize, imageSize, target, ivalue;
-    uint32_t loadAddress, params[3];
+    uint32_t loadAddress, params[5];
     ElfProgramHdr program_kernel;
     char *cacheDriver, *value;
     int eepromFirst = FALSE;
@@ -636,12 +646,17 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         return Error("reading cache driver image failed: %s", cacheDriver);
     }
     printf("Loading cache driver '%s'\n", cacheDriver);
+    memset(params, 0, sizeof(params));
     if (GetNumericConfigField(config, "cache-size", &ivalue))
         params[0] = ivalue;
     if (GetNumericConfigField(config, "cache-param1", &ivalue))
         params[1] = ivalue;
     if (GetNumericConfigField(config, "cache-param2", &ivalue))
         params[2] = ivalue;
+    if (GetNumericConfigField(config, "cache-param3", &ivalue))
+        params[3] = ivalue;
+    if (GetNumericConfigField(config, "cache-param4", &ivalue))
+        params[4] = ivalue;
     if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
     ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
     ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
@@ -815,6 +830,10 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
         dat->cache_param1 = ivalue;
     if (GetNumericConfigField(config, "cache-param2", &ivalue))
         dat->cache_param2 = ivalue;
+    if (GetNumericConfigField(config, "cache-param3", &ivalue))
+        dat->cache_param3 = ivalue;
+    if (GetNumericConfigField(config, "cache-param4", &ivalue))
+        dat->cache_param4 = ivalue;
     
     /* recompute the checksum */
     UpdateChecksum(flash_loader_array, flash_loader_size);
