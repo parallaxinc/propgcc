@@ -76,8 +76,8 @@ __LMM_loop
 jmptab_base
 	jmp	#macro	' instruction 0x
 	jmp	#regreg	' instruction 1d
-	jmp	#macro	' instruction 2d
-	jmp	#macro	' instruction 3d
+	jmp	#regimm4	' instruction 2d
+	jmp	#regimm12	' instruction 3d
 	jmp	#macro	' instruction 4d
 	jmp	#macro	' instruction 5d
 	jmp	#macro	' instruction 6d
@@ -227,16 +227,16 @@ __IMM_BIT	long 0b000000_0001_0000_000000000_000000000
 regimm12
 	rdbyte	itemp,pc
 	add	pc,#1
-	mov	.ins2,dfield
+	mov	.ins2,#(sfield-r0)/4
 	rdbyte	xfield,pc
-	movs	.ins2,#sfield
+	movd	.ins2,dfield
 	mov	sfield,xfield
 	shr	sfield,#4
 	shl	sfield,#8
-	or	sfield,itemp
 	and	xfield,#15
 	add	xfield,#(xtable-r0)/4
-	movd	.ins_ri,xfield
+	movs	.ins_ri,xfield
+	or	sfield,itemp
 .ins_ri	or	.ins2,0-0
 	add	pc,#1
 
