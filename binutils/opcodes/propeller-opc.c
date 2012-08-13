@@ -32,7 +32,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /*
    mnemonic  insn  zcri cond    dst       src */
 /* nop      ------ ---- cccc --------- --------- */
-  {"nop", 0x00000000, 0x003c0000, PROPELLER_OPERAND_IGNORE, NR, PROP_1, NO_COMPRESSED, 0},
+  {"nop", 0x00000000, 0x003c0000, PROPELLER_OPERAND_IGNORE, NR, PROP_1, COMPRESS_MACRO, 0x00},
 
   /* we put the pseudo-instructions here so the disassembler gets a first
      crack at them
@@ -58,17 +58,17 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, R, PROP_1_LMM, NO_COMPRESSED, 0},
 
 /* wrbyte   000000 zc0i cccc ddddddddd sssssssss */
-  {"wrbyte", 0x00000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
+  {"wrbyte", 0x00000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, COMPRESS_XOP, XOP_WRB},
 /* rdbyte   000000 zc1i cccc ddddddddd sssssssss */
-  {"rdbyte", 0x00800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"rdbyte", 0x00800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_RDB},
 /* wrword   000001 zc0i cccc ddddddddd sssssssss */
   {"wrword", 0x04000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
 /* rdword   000001 zc1i cccc ddddddddd sssssssss */
   {"rdword", 0x04800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* wrlong   000010 zc0i cccc ddddddddd sssssssss */
-  {"wrlong", 0x08000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
+  {"wrlong", 0x08000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, COMPRESS_XOP, XOP_WRL},
 /* rdlong   000010 zc1i cccc ddddddddd sssssssss */
-  {"rdlong", 0x08800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"rdlong", 0x08800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_RDL},
 /* clkset   000011 zc01 cccc ddddddddd ------000 */
   {"clkset", 0x0c400000, 0xfcc00007, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1, NO_COMPRESSED, 0},
 /* cogid    000011 zcr1 cccc ddddddddd ------001 */
@@ -92,15 +92,15 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* rol      001001 zcri cccc ddddddddd sssssssss */
   {"rol", 0x24000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* shr      001010 zcri cccc ddddddddd sssssssss */
-  {"shr", 0x28000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"shr", 0x28000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_SHR},
 /* shl      001011 zcri cccc ddddddddd sssssssss */
-  {"shl", 0x2c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"shl", 0x2c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_SHL},
 /* rcr      001100 zcri cccc ddddddddd sssssssss */
   {"rcr", 0x30000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* rcl      001101 zcri cccc ddddddddd sssssssss */
   {"rcl", 0x34000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* sar      001110 zcri cccc ddddddddd sssssssss */
-  {"sar", 0x38000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"sar", 0x38000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_SAR},
 /* rev      001111 zcri cccc ddddddddd sssssssss */
   {"rev", 0x3c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* mins     010000 zcri cccc ddddddddd sssssssss */
@@ -130,13 +130,13 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* test     011000 zcRi cccc ddddddddd sssssssss */
   {"test", 0x60000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
 /* and      011000 zcri cccc ddddddddd sssssssss */
-  {"and", 0x60000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"and", 0x60000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_AND},
 /* andn     011001 zcri cccc ddddddddd sssssssss */
-  {"andn", 0x64000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"andn", 0x64000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_ANDN},
 /* or       011010 zcri cccc ddddddddd sssssssss */
-  {"or", 0x68000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"or", 0x68000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_OR},
 /* xor      011011 zcri cccc ddddddddd sssssssss */
-  {"xor", 0x6c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"xor", 0x6c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_XOR},
 /* muxc     011100 zcri cccc ddddddddd sssssssss */
   {"muxc", 0x70000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* muxnc    011101 zcri cccc ddddddddd sssssssss */
@@ -146,11 +146,11 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* muxnz    011111 zcri cccc ddddddddd sssssssss */
   {"muxnz", 0x7c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* add      100000 zcri cccc ddddddddd sssssssss */
-  {"add", 0x80000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"add", 0x80000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_ADD},
 /* cmp      100001 zc0i cccc ddddddddd sssssssss */
   {"cmp", 0x84000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
 /* sub      100001 zc1i cccc ddddddddd sssssssss */
-  {"sub", 0x84800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"sub", 0x84800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_SUB},
 /* addabs   100010 zcri cccc ddddddddd sssssssss */
   {"addabs", 0x88000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* subabs   100011 zcri cccc ddddddddd sssssssss */
@@ -164,12 +164,12 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* sumnz    100111 zcri cccc ddddddddd sssssssss */
   {"sumnz", 0x9c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* mov      101000 zcri cccc ddddddddd sssssssss */
-  {"mov", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"mov", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_MOV},
 /* mova is like mov, but it assumes the immediate operand is a cog address */
 /* mova      101000 zcri cccc ddddddddd sssssssss */
   {"mova", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_MOVA, R, PROP_1, NO_COMPRESSED, 0},
 /* neg      101001 zcri cccc ddddddddd sssssssss */
-  {"neg", 0xa4000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
+  {"neg", 0xa4000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_NEG},
 /* abs      101010 zcri cccc ddddddddd sssssssss */
   {"abs", 0xa8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* absneg   101011 zcri cccc ddddddddd sssssssss */
@@ -183,7 +183,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* negnz    101111 zcri cccc ddddddddd sssssssss */
   {"negnz", 0xbc000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
 /* cmps     110000 zcRi cccc ddddddddd sssssssss */
-  {"cmps", 0xc0000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
+  {"cmps", 0xc0000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, COMPRESS_XOP, XOP_CMPS},
 /* cmpsx    110001 zcRi cccc ddddddddd sssssssss */
   {"cmpsx", 0xc4000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
 /* addx     110010 zcri cccc ddddddddd sssssssss */

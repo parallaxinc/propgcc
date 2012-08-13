@@ -203,7 +203,7 @@ doreg
 	add	pc,#1
 	and	xfield,#15
 	add	xfield,#(xtable-r0)/4
-	movd	.ins_rr,xfield
+	movs	.ins_rr,xfield
 	movd	sfield,dfield
 .ins_rr	or	sfield,0-0
 	jmp	#sfield
