@@ -1123,11 +1123,18 @@ md_assemble (char *instruction_string)
     if (op1.reloc.type != BFD_RELOC_NONE) goto skip_compress;
     immediate = (insn.code >> 22) & 0x1;
     srcval = insn.code & 0x1ff;
-    if (!immediate && (srcval > 15)) goto skip_compress;
     /* OK, we can compress now */
     if (immediate) {
-      goto skip_compress;
+      if (srcval > 15) {
+	goto skip_compress;
+      } else {
+	/* FIXME: could special case a few things here */
+	insn.code = (PREFIX_REGIMM4 | destval) | ( ((srcval<<4)|op->copc) << 8 );
+	size = 2;
+	insn_compressed = 1;
+      }
     } else {
+      if (srcval > 15) goto skip_compress;
       insn.code = (PREFIX_REGREG | destval) | ( ((srcval<<4)|op->copc) << 8);
       size = 2;
       insn_compressed = 1;
