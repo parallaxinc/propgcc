@@ -1126,7 +1126,11 @@ md_assemble (char *instruction_string)
     /* OK, we can compress now */
     if (immediate) {
       if (srcval > 15) {
-	goto skip_compress;
+	insn.code = (PREFIX_REGIMM12 | destval);
+	insn.code |= ((srcval & 0xff)) << 8;
+	insn.code |= (((srcval >> 8)&0xf) << 4) | op->copc;
+	size = 3;
+	insn_compressed = 1;
       } else {
 	/* FIXME: could special case a few things here */
 	insn.code = (PREFIX_REGIMM4 | destval) | ( ((srcval<<4)|op->copc) << 8 );
