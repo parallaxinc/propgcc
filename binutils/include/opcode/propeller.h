@@ -61,12 +61,32 @@
 
 /* instruction cannot be compressed */
 #define NO_COMPRESSED (0)
-#define CAN_COMPRESS  (1)
-
 /* instruction can be compressed to a macro */
-#define COMPRESS_MACRO (0)
-#define COMPRESS_MOV   (1)
-#define COMPRESS_CALL  (2)
+#define COMPRESS_MACRO  (1)
+/* instruction can be compressed to a 2 or 3 byte extended operation */
+#define COMPRESS_XOP   (2)
+
+#define PREFIX_REGREG (0x10)
+#define PREFIX_REGIMM4 (0x20)
+#define PREFIX_REGIMM12 (0x30)
+
+/* extended operations */
+#define XOP_MOV 0x0
+#define XOP_ADD 0x1
+#define XOP_SUB 0x2
+#define XOP_CMPS 0x3
+#define XOP_AND 0x4
+#define XOP_ANDN 0x5
+#define XOP_NEG 0x6
+#define XOP_OR  0x7
+#define XOP_XOR 0x8
+#define XOP_SHL 0x9
+#define XOP_SHR 0xa
+#define XOP_SAR 0xb
+#define XOP_RDB 0xc
+#define XOP_RDL 0xd
+#define XOP_WRB 0xe
+#define XOP_WRL 0xf
 
 struct propeller_opcode
 {

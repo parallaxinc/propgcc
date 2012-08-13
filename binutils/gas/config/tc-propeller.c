@@ -1089,12 +1089,59 @@ md_assemble (char *instruction_string)
       return;
     }
 
+
+  /* check for possible compression */
+  if (compress && op->can_compress) {
+    unsigned destval, srcval;
+    unsigned immediate;
+    unsigned effects, expectedeffects;
+    /* first, we cannot compress anything with a conditional prefix */
+    if ( 0xf != (0xf & (insn.code >> 18)) ) {
+      goto skip_compress;
+    }
+    /* make sure dest. is a legal register */
+    if (op2.reloc.type != BFD_RELOC_NONE) goto skip_compress;
+    destval = (insn.code >> 9) & 0x1ff;
+    if (destval > 15) goto skip_compress;
+    /* make sure the effect flags match */
+    effects = (insn.code >> 23) & 0x7;
+    switch (op->copc) {
+    case XOP_CMPS:
+      expectedeffects = 6;  /* wz,wc,nr */
+      break;
+    case XOP_WRB:
+    case XOP_WRL:
+      expectedeffects = 0;
+      break;
+    default:
+      expectedeffects = 1;  /* just the R field */
+      break;
+    }
+    if (effects != expectedeffects) goto skip_compress;
+
+    /* make sure srcval is legal (if a register) or immediate */
+    if (op1.reloc.type != BFD_RELOC_NONE) goto skip_compress;
+    immediate = (insn.code >> 22) & 0x1;
+    srcval = insn.code & 0x1ff;
+    if (!immediate && (srcval > 15)) goto skip_compress;
+    /* OK, we can compress now */
+    if (immediate) {
+      goto skip_compress;
+    } else {
+      insn.code = (PREFIX_REGREG | destval) | ( ((srcval<<4)|op->copc) << 8);
+      size = 2;
+      insn_compressed = 1;
+    }
+    
+  }
+ skip_compress:
+
   {
     int insn_size;
 
     if (compress && !insn_compressed) {
       /* we are in CMM mode, but failed to compress this instruction;
-	 add a NATIVE prefix
+	 we will have to add a NATIVE prefix
       */
       size += size/4;
       insn_size = 4;
