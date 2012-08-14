@@ -65,10 +65,15 @@
 #define COMPRESS_MACRO  (1)
 /* instruction can be compressed to a 2 or 3 byte extended operation */
 #define COMPRESS_XOP   (2)
+/* instruction can be compressed to a conditional branch */
+#define COMPRESS_BRL (3)
 
+/* instruction prefixes */
+#define PREFIX_MACRO  (0x00)
 #define PREFIX_REGREG (0x10)
 #define PREFIX_REGIMM4 (0x20)
 #define PREFIX_REGIMM12 (0x30)
+#define PREFIX_BRL (0x40)
 
 /* extended operations */
 #define XOP_MOV 0x0

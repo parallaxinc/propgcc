@@ -39,9 +39,9 @@ const struct propeller_opcode propeller_opcodes[] = {
   */
   /* brs is a fake instruction that expands to either add or sub of a pc relative offset */
 /* brs      100000 zcri cccc ddddddddd sssssssss */
-  {"brs", 0x80000000, 0xfc000000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM, NO_COMPRESSED, 0},
+  {"brs", 0x80000000, 0xfc000000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM, COMPRESS_BRL, 0},
   /* dummy entry for the disassembler only */
-  {"brs ", 0x84800000, 0xfc800000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM, NO_COMPRESSED, 0},
+  {"brs ", 0x84800000, 0xfc800000, PROPELLER_OPERAND_BRS, R, PROP_1_LMM, COMPRESS_BRL, 0},
 
 /* ldi is a fake instruction built from a rdlong and a constant that decodes as NOP */
 /* ldi      000010 zc1i cccc ddddddddd sssssssss */
