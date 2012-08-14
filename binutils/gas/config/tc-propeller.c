@@ -1262,7 +1262,7 @@ md_assemble (char *instruction_string)
       if (srcval > 15) {
 	insn.code = (PREFIX_REGIMM12 | destval);
 	insn.code |= ((srcval & 0xff)) << 8;
-	insn.code |= (((srcval >> 8)&0xf)) | (op->copc<<4);
+	insn.code |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 16;
 	size = 3;
 	insn_compressed = 1;
       } else {
