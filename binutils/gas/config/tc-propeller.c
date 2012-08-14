@@ -546,7 +546,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
 	  return str;
 	}
     }
-  if (format == PROPELLER_OPERAND_BRS)
+  if (format == PROPELLER_OPERAND_BRS && !compress)
     pcrel_reloc = 1;
 
   str = parse_expression (str, operand);
@@ -718,6 +718,7 @@ md_assemble (char *instruction_string)
   char *to;
   char c;
   int insn_compressed = 0;
+  unsigned int reloc_prefix = 0;  /* for a compressed instruction */
 
   if (ignore_input())
     {
@@ -884,6 +885,20 @@ md_assemble (char *instruction_string)
 	  }
         arg2 = parse_src (arg2, &op2, &insn, op->format);
 	free (arg);
+	/* here op1 contains pc, op2 contains address */
+	if (compress)
+	  {
+	    unsigned byte0;
+	    op1.reloc.type = BFD_RELOC_NONE;
+	    byte0 = PREFIX_BRL | ((insn.code >> 18) & 0xf);
+	    if (op2.reloc.type == BFD_RELOC_PROPELLER_SRC_IMM) {
+	      op2.reloc.type = BFD_RELOC_16;
+	      reloc_prefix = 1;
+	    }
+	    insn.code = byte0;
+	    size = 3;
+	    insn_compressed = 1;
+	  }
       }
       break;
     case PROPELLER_OPERAND_BRL:
@@ -922,7 +937,7 @@ md_assemble (char *instruction_string)
 	      xmmio rdbyte,r0,r2
 	   and gets translated into two instructions:
 	      mov     __TMP0,#(0<<16)+2
-	      jmpret  __LMM_RDLONGI_ret, #__LMM_RDLONGI
+	      jmpret  __LMM_RDBYTEI_ret, #__LMM_RDBYTEI
 	*/
         char *arg;
 	char *rdwrop;
@@ -1169,13 +1184,16 @@ md_assemble (char *instruction_string)
     }
     md_number_to_chars (to, insn.code, insn_size);
     if (insn.reloc.type != BFD_RELOC_NONE)
-      fix_new_exp (frag_now, to - frag_now->fr_literal, insn_size,
+      fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix, 
+		   insn_size - reloc_prefix,
 		   &insn.reloc.exp, insn.reloc.pc_rel, insn.reloc.type);
     if (op1.reloc.type != BFD_RELOC_NONE)
-      fix_new_exp (frag_now, to - frag_now->fr_literal, insn_size,
+      fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix,
+		   insn_size - reloc_prefix,
 		   &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
     if (op2.reloc.type != BFD_RELOC_NONE)
-      fix_new_exp (frag_now, to - frag_now->fr_literal, insn_size,
+      fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix,
+		   insn_size - reloc_prefix,
 		   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
     to += insn_size;
 
