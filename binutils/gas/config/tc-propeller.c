@@ -612,7 +612,7 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
     {
     case O_constant:
     case O_register:
-      if (operand->reloc.exp.X_add_number & ((1 << nbits)-1))
+      if ((nbits < 32) && (0 != (operand->reloc.exp.X_add_number & ~((1L << nbits)-1))))
 	{
 	  operand->error = _("value out of range");
 	  break;
@@ -994,6 +994,70 @@ md_assemble (char *instruction_string)
       }
       break;
 
+    case PROPELLER_OPERAND_FCACHE:
+      {
+	/* this looks like:
+	      fcache #n
+	   and gets translated into two instructions:
+	      jmp  #__LMM_FCACHE
+	      long n
+	*/
+        char *arg;
+	char *arg2;
+        int len = strlen(str);
+	arg = malloc(len+32);
+	if (arg == NULL)
+	  as_fatal (_("Virtual memory exhausted"));
+	sprintf(arg, "#__LMM_FCACHE_LOAD,%s", str);
+	str += len;
+        arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+        arg2 = parse_separator (arg2, &error);
+        if (error)
+	  {
+	   op2.error = _("Missing ','");
+	   break;
+	  }
+	arg2 = parse_src_n(arg2, &insn2, 23);
+	size = 8;
+	free(arg);
+      }
+      break;
+
+    case PROPELLER_OPERAND_MVI:
+      {
+	/* this looks like:
+	      mvi rN,#n
+	   and gets translated into two instructions:
+	      jmp  #__LMM_MVI_rN
+	      long n
+	*/
+        char *arg;
+	char *arg2;
+        int len = strlen(str);
+	int reg;
+	arg = malloc(len+32);
+	if (arg == NULL)
+	  as_fatal (_("Virtual memory exhausted"));
+
+	reg = 0;
+	str = parse_regspec (str, &reg, &op1, 1);
+	if (reg == 15)
+	  sprintf(arg, "#__LMM_MVI_lr");
+	else
+	  sprintf(arg, "#__LMM_MVI_r%d", reg);
+        arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+        str = parse_separator (str, &error);
+        if (error)
+	  {
+	   op2.error = _("Missing ','");
+	   break;
+	  }
+	str = parse_src_n(str, &insn2, 32);
+	size = 8;
+	free(arg);
+      }
+      break;
+
     case PROPELLER_OPERAND_SOURCE_ONLY:
     case PROPELLER_OPERAND_JMP:
       str = parse_src(str, &op2, &insn, op->format);
@@ -1143,7 +1207,7 @@ md_assemble (char *instruction_string)
       if (srcval > 15) {
 	insn.code = (PREFIX_REGIMM12 | destval);
 	insn.code |= ((srcval & 0xff)) << 8;
-	insn.code |= (((srcval >> 8)&0xf) << 4) | op->copc;
+	insn.code |= (((srcval >> 8)&0xf)) | (op->copc<<4);
 	size = 3;
 	insn_compressed = 1;
       } else {

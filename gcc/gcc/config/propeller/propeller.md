@@ -955,6 +955,7 @@
   [(set_attr "length" "8")
   ]
 )
+
 (define_insn "*movsi_imm_fcache"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(label_ref (match_operand 1 "" ""))
@@ -1831,6 +1832,20 @@
    (set_attr "predicable" "yes")]
 )
 
+(define_insn "call_std_cmm"
+  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r,U"))
+	         (match_operand 1 "" ""))
+   (clobber (reg:SI LINK_REG))
+  ]
+  "TARGET_CMM"
+  "@
+   lcall #%0
+   mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT
+   jmpret\tlr,#__LMM_FCACHE_START+8"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
+)
+
 (define_insn "call_std_lmm"
   [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r,U"))
 	         (match_operand 1 "" ""))
@@ -1985,8 +2000,16 @@
 (define_insn "fcache_done"
   [(unspec_volatile [(const_int 0)] UNSPEC_FCACHE_DONE)]
   ""
-  "jmp\t__LMM_RET"
+  "jmp\t__LMM_RET\n\t.compress default"
   [(set_attr "length" "4")]
+)
+
+;; version of fcache_done for recursive functions
+(define_insn "fcache_done_func"
+  [(unspec_volatile [(const_int 1)] UNSPEC_FCACHE_DONE)]
+  ""
+  ".compress default"
+  [(set_attr "length" "0")]
 )
 
 ;; -------------------------------------------------------------------------
@@ -2582,7 +2605,12 @@
      (label_ref (match_operand 1 "" ""))]
     UNSPEC_FCACHE_LOAD)]
   ""
-  "jmp\t#__LMM_FCACHE_LOAD\n\tlong\t%1-%0"
+  {
+	if (TARGET_CMM) {
+	  return "fcache #(%1-%0)\n\t.compress off\n";
+        }
+	return "jmp\t#__LMM_FCACHE_LOAD\n\tlong\t%1-%0";
+  }
   [(set_attr "type" "multi")
    (set_attr "length" "8")]
 )
