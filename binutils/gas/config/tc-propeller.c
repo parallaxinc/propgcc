@@ -881,8 +881,10 @@ md_assemble (char *instruction_string)
 	arg = malloc(len+16);
 	if (arg == NULL)
 	  as_fatal (_("Virtual memory exhausted"));
-	if (*str == '#')
+	if (*str == '#') {
 	  str++;  /* allow optional # in brs */
+	  len--;
+	}
 	sprintf(arg, "pc,#%s", str);
 	str += len;
 	arg2 = parse_dest (arg, &op1, &insn);
@@ -914,13 +916,17 @@ md_assemble (char *instruction_string)
       {
         char *arg;
 	char *arg2;
+	int len;
 	str = skip_whitespace(str);
-        int len = strlen(str);
+
+        len = strlen(str);
 	arg = malloc(len+16);
 	if (arg == NULL)
 	  as_fatal (_("Virtual memory exhausted"));
-	if (*str == '#')
+	if (*str == '#') {
 	  str++;
+	  len--;
+	}
 	sprintf(arg, "pc,pc,#%s", str);
 	str += len;
         arg2 = parse_dest(arg, &op1, &insn);
@@ -1077,21 +1083,10 @@ md_assemble (char *instruction_string)
 	      jmp  #__LMM_MVI_rN
 	      long n
 	*/
-        char *arg, *arg2;
-        int len = strlen(str);
 	int reg;
-	arg = malloc(len+32);
-	if (arg == NULL)
-	  as_fatal (_("Virtual memory exhausted"));
 
 	reg = -1;
 	str = parse_regspec (str, &reg, &op1, 1);
-	if (reg == 15)
-	  sprintf(arg, "#__LMM_MVI_lr");
-	else
-	  sprintf(arg, "#__LMM_MVI_r%d", reg);
-        arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	free(arg);
         str = parse_separator (str, &error);
         if (error)
 	  {
@@ -1099,7 +1094,7 @@ md_assemble (char *instruction_string)
 	   break;
 	  }
 	str = parse_src_n(str, &insn2, 32);
-	if (compress && !op1.error && !op2.error && !insn2.error)
+	if (compress && !op1.error && !insn2.error)
 	  {
 	    size = 5;
 	    insn.code = op->copc | reg;
@@ -1109,6 +1104,17 @@ md_assemble (char *instruction_string)
 	  }
 	else
 	  {
+	    char *arg, *arg2;
+	    arg = malloc(32);
+	    if (arg == NULL)
+	      as_fatal (_("Virtual memory exhausted"));
+	    if (reg == 15)
+	      sprintf(arg, "#__LMM_MVI_lr");
+	    else
+	      sprintf(arg, "#__LMM_MVI_r%d", reg);
+	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    free(arg);
+	    
 	    size = 8;
 	  }
       }
