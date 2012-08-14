@@ -40,6 +40,7 @@
 #define PROPELLER_OPERAND_XMMIO       12
 #define PROPELLER_OPERAND_FCACHE      13
 #define PROPELLER_OPERAND_MVI         14
+#define PROPELLER_OPERAND_LCALL       15
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
@@ -73,12 +74,12 @@
 #define COMPRESS_MVI (4)
 
 /* instruction prefixes */
-#define PREFIX_MACRO  (0x00)
-#define PREFIX_REGREG (0x10)
-#define PREFIX_REGIMM4 (0x20)
+#define PREFIX_MACRO    (0x00)
+#define PREFIX_REGREG   (0x10)
+#define PREFIX_REGIMM4  (0x20)
 #define PREFIX_REGIMM12 (0x30)
-#define PREFIX_BRL (0x40)
-#define PREFIX_MVI (0x50)
+#define PREFIX_BRL      (0x40)
+#define PREFIX_MVI      (0x50)
 
 /* extended operations */
 #define XOP_MOV 0x0
@@ -99,8 +100,12 @@
 #define XOP_WRL 0xf
 
 /* "macro" instructions (which need no destination register) */
-#define MACRO_NOP   0x00
-#define MACRO_BREAK 0x01
+#define MACRO_NOP    0x00
+#define MACRO_BREAK  0x01
+#define MACRO_RET    0x02
+#define MACRO_PUSHM  0x03
+#define MACRO_POPM   0x04
+#define MACRO_LCALL  0x05
 #define MACRO_FCACHE 0x0e
 #define MACRO_NATIVE 0x0f
 

@@ -598,6 +598,11 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
 static char *
 parse_src_n(char *str, struct propeller_code *operand, int nbits){
 
+  int default_reloc = BFD_RELOC_PROPELLER_23;
+
+  if (nbits == 32)
+    default_reloc = BFD_RELOC_32;
+
   str = skip_whitespace (str);
   if (*str++ != '#')
     {
@@ -622,7 +627,7 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
     case O_symbol:
     case O_add:
     case O_subtract:
-      operand->reloc.type = BFD_RELOC_PROPELLER_23;
+      operand->reloc.type = default_reloc;
       operand->reloc.pc_rel = 0;
       break;
     case O_illegal:
@@ -633,7 +638,7 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
 	operand->error = _("Source operand too complicated for .cog_ram");
       else
 	{
-	  operand->reloc.type = BFD_RELOC_PROPELLER_23;
+	  operand->reloc.type = default_reloc;
 	  operand->reloc.pc_rel = 0;
 	}
       break;
@@ -870,10 +875,14 @@ md_assemble (char *instruction_string)
 	char *arg;
 	char *arg2;
 	int len;
+
+	str = skip_whitespace(str);
 	len = strlen(str);
 	arg = malloc(len+16);
 	if (arg == NULL)
 	  as_fatal (_("Virtual memory exhausted"));
+	if (*str == '#')
+	  str++;  /* allow optional # in brs */
 	sprintf(arg, "pc,#%s", str);
 	str += len;
 	arg2 = parse_dest (arg, &op1, &insn);
@@ -905,10 +914,13 @@ md_assemble (char *instruction_string)
       {
         char *arg;
 	char *arg2;
+	str = skip_whitespace(str);
         int len = strlen(str);
 	arg = malloc(len+16);
 	if (arg == NULL)
 	  as_fatal (_("Virtual memory exhausted"));
+	if (*str == '#')
+	  str++;
 	sprintf(arg, "pc,pc,#%s", str);
 	str += len;
         arg2 = parse_dest(arg, &op1, &insn);
@@ -1017,9 +1029,43 @@ md_assemble (char *instruction_string)
 	   op2.error = _("Missing ','");
 	   break;
 	  }
-	arg2 = parse_src_n(arg2, &insn2, 23);
+	arg2 = parse_src_n(arg2, &insn2, 18);
 	size = 8;
 	free(arg);
+      }
+      break;
+
+    case PROPELLER_OPERAND_LCALL:
+      {
+	/* this looks like:
+	      lcall #n
+	   and gets translated into two instructions:
+	      jmp  #__LMM_CALL
+	      long n
+	*/
+        char *arg;
+	char *arg2;
+	if (compress)
+	  {
+	    str = parse_src_n(str, &op2, 16);
+	    insn.code = MACRO_LCALL | (op2.code << 8);
+	    if (op2.reloc.type == BFD_RELOC_PROPELLER_23)
+	      op2.reloc.type = BFD_RELOC_16;
+	    insn_compressed = 1;
+	    reloc_prefix = 1;
+	    size = 3;
+	  }
+	else
+	  {
+	    arg = malloc(32);
+	    if (arg == NULL)
+	      as_fatal (_("Virtual memory exhausted"));
+	    strcpy(arg, "#__LMM_CALL");
+	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    str = parse_src_n(str, &insn2, 18);
+	    size = 8;
+	    free(arg);
+	  }
       }
       break;
 
@@ -1059,7 +1105,6 @@ md_assemble (char *instruction_string)
 	    insn.code = op->copc | reg;
 	    insn_compressed = 1;
 	    insn.reloc.type = BFD_RELOC_NONE;
-	    insn2.reloc.type = BFD_RELOC_32;
 	    op2.reloc.type = BFD_RELOC_NONE;
 	  }
 	else
