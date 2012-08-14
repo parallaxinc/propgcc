@@ -623,6 +623,7 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
 	  break;
 	}
       operand->code = operand->reloc.exp.X_add_number;
+      operand->reloc.type = BFD_RELOC_NONE;
       break;
     case O_symbol:
     case O_add:
@@ -1022,20 +1023,12 @@ md_assemble (char *instruction_string)
 	*/
         char *arg;
 	char *arg2;
-        int len = strlen(str);
-	arg = malloc(len+32);
+	arg = malloc(32);
 	if (arg == NULL)
 	  as_fatal (_("Virtual memory exhausted"));
-	sprintf(arg, "#__LMM_FCACHE_LOAD,%s", str);
-	str += len;
+	strcpy(arg, "#__LMM_FCACHE_LOAD");
         arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-        arg2 = parse_separator (arg2, &error);
-        if (error)
-	  {
-	   op2.error = _("Missing ','");
-	   break;
-	  }
-	arg2 = parse_src_n(arg2, &insn2, 18);
+	str = parse_src_n(str, &insn2, 18);
 	size = 8;
 	free(arg);
       }
