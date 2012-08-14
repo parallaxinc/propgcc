@@ -38,6 +38,8 @@
 #define PROPELLER_OPERAND_BRL         10
 #define PROPELLER_OPERAND_BRS         11
 #define PROPELLER_OPERAND_XMMIO       12
+#define PROPELLER_OPERAND_FCACHE      13
+#define PROPELLER_OPERAND_MVI         14
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
@@ -67,6 +69,8 @@
 #define COMPRESS_XOP   (2)
 /* instruction can be compressed to a conditional branch */
 #define COMPRESS_BRL (3)
+/* instruction can be compressed to a mvi */
+#define COMPRESS_MVI (4)
 
 /* instruction prefixes */
 #define PREFIX_MACRO  (0x00)
@@ -74,6 +78,7 @@
 #define PREFIX_REGIMM4 (0x20)
 #define PREFIX_REGIMM12 (0x30)
 #define PREFIX_BRL (0x40)
+#define PREFIX_MVI (0x50)
 
 /* extended operations */
 #define XOP_MOV 0x0
@@ -93,6 +98,13 @@
 #define XOP_WRB 0xe
 #define XOP_WRL 0xf
 
+/* "macro" instructions (which need no destination register) */
+#define MACRO_NOP   0x00
+#define MACRO_BREAK 0x01
+#define MACRO_FCACHE 0x0e
+#define MACRO_NATIVE 0x0f
+
+/* opcode structure */
 struct propeller_opcode
 {
   const char *name;

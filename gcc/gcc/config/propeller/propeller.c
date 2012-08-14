@@ -3081,6 +3081,9 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
       insn = gen_fcache_func_start ();
       first = emit_insn_after (insn, first);
       INSN_ADDRESSES_NEW (first, -1);
+      insn = gen_fcache_done_func ();
+      last = emit_insn_after (insn, last);
+      INSN_ADDRESSES_NEW (last, -1);
     }
   /* if not a function, insert a return back to the fcache handler at the end */
   else

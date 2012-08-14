@@ -223,7 +223,7 @@ __IMM_BIT	long 0b000000_0001_0000_000000000_000000000
 	'''
 	''' register plus 12 bit immediate
 	'''
-	''' encoded as iiii dddd ssss ssss ssss xxxx
+	''' encoded as iiii_dddd ssss_ssss xxxx_ssss
 regimm12
 	rdbyte	itemp,pc
 	add	pc,#1
@@ -231,9 +231,9 @@ regimm12
 	rdbyte	xfield,pc
 	movd	.ins2,dfield
 	mov	sfield,xfield
-	shr	sfield,#4
+	and	sfield,#15
 	shl	sfield,#8
-	and	xfield,#15
+	shr	xfield,#4
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_ri,xfield
 	or	sfield,itemp
