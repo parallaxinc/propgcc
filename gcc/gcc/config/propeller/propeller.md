@@ -951,7 +951,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (match_operand:SI 1 "propeller_big_const" "i"))]
   "TARGET_LMM"
-  "jmp\t#__LMM_MVI_%0\n\tlong\t%c1"
+  "mvi\t%0,#%c1"
   [(set_attr "length" "8")
   ]
 )
@@ -1832,20 +1832,6 @@
    (set_attr "predicable" "yes")]
 )
 
-(define_insn "call_std_cmm"
-  [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r,U"))
-	         (match_operand 1 "" ""))
-   (clobber (reg:SI LINK_REG))
-  ]
-  "TARGET_CMM"
-  "@
-   lcall #%0
-   mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT
-   jmpret\tlr,#__LMM_FCACHE_START+8"
-  [(set_attr "type" "call")
-   (set_attr "length" "8")]
-)
-
 (define_insn "call_std_lmm"
   [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r,U"))
 	         (match_operand 1 "" ""))
@@ -1853,7 +1839,7 @@
   ]
   "TARGET_LMM"
   "@
-   jmp\t#__LMM_CALL\n\tlong\t%0
+   lcall\t#%0
    mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT
    jmpret\tlr,#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
@@ -1910,7 +1896,7 @@
   ]
   "TARGET_LMM"
   "@
-   jmp\t#__LMM_CALL\n\tlong\t%1
+   lcall\t#%1
    mov\t__TMP0,%1\n\tjmp\t#__LMM_CALL_INDIRECT
    jmpret\tlr,#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")

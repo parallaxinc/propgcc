@@ -46,11 +46,9 @@
 	
 entry
 start
-	jmp	#__LMM_CALL
-	.long	___init
+	lcall	#___init
 
-	jmp	#__LMM_MVI_r1
-	.long	__argv	' set argv
+	mvi	r1,#__argv  ' set argv
 	'' calculate argc by counting non-zero elements of argv
 	mov	r3,r1
 	mov	r0,#0
@@ -61,16 +59,14 @@ argc_cnt
   IF_NZ add	r0,#1
   IF_NZ sub	pc,#(.+4)-argc_cnt
 	
-	jmp	#__LMM_MVI_r2
-	.long	__environ	' set environment pointer
+	mvi	r2,#__environ   ' set environment pointer
 
 	mov	r14,#0		' set frame pointer to 0
-	jmp	#__LMM_CALL
-	.long	_main	' call main
+	
+	lcall	#_main	' call main
 
 	'' and call _exit with whatever main returns
-	jmp	#__LMM_CALL
-	.long	_exit
+	lcall	#_exit
 	
 	''
 	'' initialization function, responsible for calling all ctors
@@ -88,26 +84,22 @@ ___init
 	mov	r14,sp
 
 	'' zero out bss
-	jmp	#__LMM_MVI_r0
-	.long	__bss_start
-	jmp	#__LMM_MVI_r2
-	.long	__bss_end
+	mvi	r0,#__bss_start
+	mvi	r2,#__bss_end
 	sub	r2,r0
 	mov	r1,#0
-	jmp	#__LMM_CALL
-	.long	_memset
+	lcall	#_memset
 
 	'' call the constructors
-	jmp	#__LMM_MVI_r8
-	.long	___CTOR_LIST__
+	mvi	r8,#___CTOR_LIST__
 L_loop
 	LOAD	r0, r8
-	cmp	r0, #0 wz
-	IF_Z add pc,#(L_loopend - (.+4))
+	cmps	r0, #0 wz,wc
+	IF_Z 	brs #L_loopend
 	mov	__TMP0, r0
 	jmp	#__LMM_CALL_INDIRECT
 	add	r8,#4
-	sub	pc,#((.+4) - L_loop)
+	brs	#L_loop
 L_loopend
 	'' note -- the return is in crtend.s ; that is so
 	'' per-function initializers can be added here
@@ -115,15 +107,14 @@ L_loopend
 	.section .fini
 _exit
 	mov	r12,r0		' save exit status
-	jmp	#__LMM_MVI_r8
-	.long	___DTOR_LIST__
+	mvi	r8,#___DTOR_LIST__
 L_loopn
 	LOAD	r0,r8
-	cmp	r0, #0 wz
-	IF_Z add pc,#(L_loopnend - (.+4))
+	cmps	r0, #0 wz,wc
+	IF_Z	brs #L_loopnend
 	mov	__TMP0,r0
 	jmp	#__LMM_CALL_INDIRECT
 	add	r8,#4
-	sub	pc,#((.+4) - L_loopn)
+	brs	#L_loopn
 L_loopnend
 	
