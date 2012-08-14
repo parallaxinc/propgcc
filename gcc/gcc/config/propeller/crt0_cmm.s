@@ -234,7 +234,6 @@ regimm12
 	movs	.ins_ri,xfield
 	or	sfield,itemp
 .ins_ri	or	.ins2,0-0
-	or	.ins2,__IMM_BIT
 	add	pc,#1
 
 .ins2
