@@ -724,6 +724,7 @@ md_assemble (char *instruction_string)
   char *to;
   char c;
   int insn_compressed = 0;
+  int insn2_compressed = 0;
   unsigned int reloc_prefix = 0;  /* for a compressed instruction */
 
   if (ignore_input())
@@ -792,6 +793,7 @@ md_assemble (char *instruction_string)
   insn.code |= op->opcode;
   insn.reloc.type = BFD_RELOC_NONE;
   insn2.error = NULL;
+  insn2.reloc.type = BFD_RELOC_NONE;
   insn2.code = 0;
   insn2.reloc.type = BFD_RELOC_NONE;
   op1.error = NULL;
@@ -945,6 +947,7 @@ md_assemble (char *instruction_string)
 	   break;
 	  }
 	arg2 = parse_src_n(arg2, &insn2, 23);
+	insn2_compressed = 1;
 	size = 8;
 	free(arg);
       }
@@ -1028,8 +1031,9 @@ md_assemble (char *instruction_string)
 	  as_fatal (_("Virtual memory exhausted"));
 	strcpy(arg, "#__LMM_FCACHE_LOAD");
         arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	str = parse_src_n(str, &insn2, 18);
+	str = parse_src_n(str, &insn2, 32);
 	size = 8;
+	insn2_compressed = 1;  /* insn2 is not an instruction */
 	free(arg);
       }
       break;
@@ -1288,7 +1292,8 @@ md_assemble (char *instruction_string)
       /* we are in CMM mode, but failed to compress this instruction;
 	 we will have to add a NATIVE prefix
       */
-      size += size/4;
+      size += !insn_compressed;
+      size += !insn2_compressed;
       insn_size = 4;
     } else if (compress) {
       insn_size = size;
@@ -1331,7 +1336,7 @@ md_assemble (char *instruction_string)
     /* note that we never have to do this for compressed instructions */
     if (insn2.reloc.type != BFD_RELOC_NONE || insn2.code)
       {
-	if (compress) {
+	if (compress && !insn2_compressed) {
 	  md_number_to_chars ( to, NATIVE_PREFIX, 1 );
 	  to++;
 	}
