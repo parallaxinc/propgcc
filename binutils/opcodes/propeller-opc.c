@@ -60,7 +60,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 
 /* fcache is a jmp followed by a 32 bit constant */
   {"fcache", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_FCACHE, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_FCACHE},
-/* mvi is a jmp followed by a 32 bit constant, just like fcache */
+/* mvi expands to a jmp followed by a 32 bit constant, just like fcache */
   {"mvi", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_MVI, NR, PROP_1_LMM, COMPRESS_MVI, PREFIX_MVI},
 
 /* wrbyte   000000 zc0i cccc ddddddddd sssssssss */

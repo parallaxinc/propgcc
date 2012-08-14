@@ -79,7 +79,7 @@ jmptab_base
 	jmp	#regimm4	' instruction 2d
 	jmp	#regimm12	' instruction 3d
 	jmp	#brl	' instruction 4d
-	jmp	#macro	' instruction 5d
+	jmp	#mvi32	' instruction 5d
 	jmp	#macro	' instruction 6d
 	jmp	#macro	' instruction 7d
 	jmp	#macro	' instruction 8d
@@ -163,32 +163,16 @@ __macro_popm
 	'' LMM support functions
 	''
 
-	'' move immediate
-	.macro LMM_movi reg
-	.global __LMM_MVI_\reg
-__LMM_MVI_\reg
+
+	'''
+	''' move immediate of a 32 bit value
+	'''
+mvi32
+	movd	.domvi32,dfield
 	call	#get_long
-	mov	\reg,sfield
+.domvi32
+	mov	0-0,sfield
 	jmp	#__LMM_loop
-	.endm
-
-	LMM_movi r0
-	LMM_movi r1
-	LMM_movi r2
-	LMM_movi r3
-	LMM_movi r4
-	LMM_movi r5
-	LMM_movi r6
-	LMM_movi r7
-	LMM_movi r8
-	LMM_movi r9
-	LMM_movi r10
-	LMM_movi r11
-	LMM_movi r12
-	LMM_movi r13
-	LMM_movi r14
-	LMM_movi lr
-
 
 	'''
 	''' 16 bit compressed forms of instructions

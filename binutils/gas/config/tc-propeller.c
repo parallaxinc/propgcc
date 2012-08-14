@@ -1031,21 +1031,21 @@ md_assemble (char *instruction_string)
 	      jmp  #__LMM_MVI_rN
 	      long n
 	*/
-        char *arg;
-	char *arg2;
+        char *arg, *arg2;
         int len = strlen(str);
 	int reg;
 	arg = malloc(len+32);
 	if (arg == NULL)
 	  as_fatal (_("Virtual memory exhausted"));
 
-	reg = 0;
+	reg = -1;
 	str = parse_regspec (str, &reg, &op1, 1);
 	if (reg == 15)
 	  sprintf(arg, "#__LMM_MVI_lr");
 	else
 	  sprintf(arg, "#__LMM_MVI_r%d", reg);
         arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	free(arg);
         str = parse_separator (str, &error);
         if (error)
 	  {
@@ -1053,8 +1053,19 @@ md_assemble (char *instruction_string)
 	   break;
 	  }
 	str = parse_src_n(str, &insn2, 32);
-	size = 8;
-	free(arg);
+	if (compress && !op1.error && !op2.error && !insn2.error)
+	  {
+	    size = 5;
+	    insn.code = op->copc | reg;
+	    insn_compressed = 1;
+	    insn.reloc.type = BFD_RELOC_NONE;
+	    insn2.reloc.type = BFD_RELOC_32;
+	    op2.reloc.type = BFD_RELOC_NONE;
+	  }
+	else
+	  {
+	    size = 8;
+	  }
       }
       break;
 
@@ -1242,9 +1253,19 @@ md_assemble (char *instruction_string)
     }
     to = frag_more (size);
 
-    if (compress && !insn_compressed) {
-      md_number_to_chars (to, NATIVE_PREFIX, 1);
-      to++;
+    if (compress) {
+      if (!insn_compressed) {
+	md_number_to_chars (to, NATIVE_PREFIX, 1);
+	to++;
+      } else if (insn_size > 4) {
+	/* handle the rare long compressed forms like mvi */
+	md_number_to_chars (to, insn.code, insn_size-4);
+	to += (insn_size-4);
+	insn_size = size = 4;
+	insn = insn2;
+	insn2.code = 0;
+	insn2.reloc.type = BFD_RELOC_NONE;
+      }
     }
     md_number_to_chars (to, insn.code, insn_size);
     if (insn.reloc.type != BFD_RELOC_NONE)
