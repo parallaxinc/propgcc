@@ -1,4 +1,5 @@
 	.section .lmmkernel, "ax"
+	.compress off
 	.global r0
 	.global r1
 	.global r2
@@ -101,7 +102,7 @@ macro_tab_base
 	jmp	#__macro_ret	' macro 2 -- RET
 	jmp	#__macro_pushm	' macro 3 -- PUSHM
 	jmp	#__macro_popm	' macro 4 -- POPM
-	jmp	#__LMM_loop	' macro 5 -- NOP
+	jmp	#__macro_lcall	' macro 5 -- LCALL
 	jmp	#__LMM_loop	' macro 6 -- NOP
 	jmp	#__LMM_loop	' macro 7 -- NOP
 	jmp	#__LMM_loop	' macro 8 -- NOP
@@ -157,6 +158,17 @@ __macro_popm
 	rdbyte	__TMP0,pc
 	add	pc,#1
 	call	#__LMM_POPM
+	jmp	#__LMM_loop
+
+__macro_lcall
+	rdbyte	sfield,pc
+	add	pc,#1
+	rdbyte	xfield,pc
+	add	pc,#1
+	shl	xfield,#8
+	or	sfield,xfield
+	mov	lr,pc
+	mov	pc,sfield
 	jmp	#__LMM_loop
 
 	''
@@ -222,6 +234,7 @@ regimm12
 	movs	.ins_ri,xfield
 	or	sfield,itemp
 .ins_ri	or	.ins2,0-0
+	or	.ins2,__IMM_BIT
 	add	pc,#1
 
 .ins2
@@ -491,7 +504,7 @@ inc_dest4
 __LMM_RET
 	long 0
 __LMM_FCACHE_LOAD
-	call	get_long
+	call	#get_long
 	mov	__TMP0,sfield	'' read count of bytes for load
 __LMM_FCACHE_DO
 	add	pc,#3		'' round up to next longword boundary
