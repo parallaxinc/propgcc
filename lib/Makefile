@@ -22,6 +22,8 @@ VPATH=.:cog:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:wchar
 all:	$(OBJDIR) cog .FORCE
 	make -f Makefile.incl MODEL=lmm OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=lmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=cmm OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=cmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR)
@@ -40,10 +42,13 @@ SRCLIBS = libc.a libm.a libpthread.a
 
 install: all install-includes
 	mkdir -p $(DEST)/lib/short-doubles/
+	mkdir -p $(DEST)/lib/cmm/short-doubles/
 	mkdir -p $(DEST)/lib/xmm/short-doubles/
 	mkdir -p $(DEST)/lib/xmmc/short-doubles/
 	cp $(addprefix $(OBJDIR)/lmm/, $(SRCLIBS)) $(DEST)/lib/
 	cp $(addprefix $(OBJDIR)/lmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/short-doubles/
+	cp $(addprefix $(OBJDIR)/cmm/, $(SRCLIBS)) $(DEST)/lib/cmm/
+	cp $(addprefix $(OBJDIR)/cmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/cmm/short-doubles/
 	cp $(addprefix $(OBJDIR)/xmmc/, $(SRCLIBS)) $(DEST)/lib/xmmc/
 	cp $(addprefix $(OBJDIR)/xmmc/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmmc/short-doubles/
 	cp $(addprefix $(OBJDIR)/xmm/, $(SRCLIBS)) $(DEST)/lib/xmm/

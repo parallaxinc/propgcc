@@ -31,7 +31,7 @@ void LoadSDDriver(uint32_t configwords[2])
 {
     use_cog_driver(cogsys1);
     extern void *sd_driver_array;
-#ifdef __PROPELLER_LMM__
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__)
     void* driver_array = sd_driver_array;
 #else
     // The sd_driver_array is in the text segment.  We need a copy in the data
