@@ -411,7 +411,7 @@ propeller_set_cog_mode (int cog_p)
   if (cog_p)
     {
       /* switch to COG mode */
-      target_flags &= ~(MASK_LMM|MASK_XMM|MASK_XMM_CODE);
+      target_flags &= ~(MASK_LMM|MASK_XMM|MASK_XMM_CODE|MASK_CMM);
       if (!propeller_cog_globals)
 	propeller_cog_globals = save_target_globals ();
       else
