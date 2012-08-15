@@ -302,7 +302,7 @@ brl
 	.global	__LMM_CALL
 	.global __LMM_CALL_INDIRECT
 __LMM_CALL
-	call	get_long
+	call	#get_long
 	mov	__TMP0,sfield
 __LMM_CALL_INDIRECT
 	mov	lr,pc
@@ -314,7 +314,7 @@ __LMM_CALL_INDIRECT
 	''
 	.global __LMM_JMP
 __LMM_JMP
-	call	get_long
+	call	#get_long
 	mov	pc,sfield
 	jmp	#__LMM_loop
 

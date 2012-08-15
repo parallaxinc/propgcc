@@ -27,13 +27,10 @@ extern unsigned int _baud;
  */
 
 /*
- * We need _serial_putbyte to always be in HUB memory for speed.
- * Time critical functions like this can't live in external memory.
+ * We need _serial_putbyte to always be fcached so that the timing is
+ * OK.
  */
-__attribute__((section(".hubtext")))
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
-__attribute__((optimize("O3")))
-#endif
+__attribute__((fcache))
 static int
 _serial_putbyte(int c, FILE *fp)
 {
@@ -68,10 +65,7 @@ _serial_putbyte(int c, FILE *fp)
 
 /* and here is getbyte */
 /* we need to optimize with -O3 to get it to work in XMM mode */
-__attribute__((section(".hubtext")))
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
-__attribute__((optimize("O3")))
-#endif
+__attribute__((fcache))
 static int
 _serial_getbyte(FILE *fp)
 {

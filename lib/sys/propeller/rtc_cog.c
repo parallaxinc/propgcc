@@ -7,6 +7,7 @@
 
 __asm__(
 "    .section .cogrtcupdate,\"ax\"\n"
+"    .compress off\n"
 "L_main\n"
 
 "    rdlong oldlo, default_ticks_ptr\n"
@@ -32,6 +33,7 @@ __asm__(
 "newhi long 0\n"
 "oldlo long 0\n"
 "default_ticks_ptr long __default_ticks\n"
+"    .compress default\n"
 	);
 
 void

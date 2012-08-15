@@ -1726,16 +1726,45 @@
 ]
 )
 
+(define_insn "*condbranch_cmm"
+  [(set (pc)
+	(if_then_else (match_operator 1 "ordered_comparison_operator"
+	                [(reg CC_REG) (const_int 0)])
+		      (label_ref (match_operand 0 "" ""))
+		      (pc)))]
+  "TARGET_CMM"
+{
+  return "%p1\tbrs\t#%l0";
+}
+[(set_attr "conds" "use")
+]
+)
+
+(define_insn "*condbranch_reverse_cmm"
+  [(set (pc)
+	(if_then_else (match_operator 1 "ordered_comparison_operator"
+	                 [(reg CC_REG) (const_int 0)])
+		      (pc)
+		      (label_ref (match_operand 0 "" ""))
+        ))]	      
+  "TARGET_CMM"
+{
+  return "%P1\tbrs\t#%l0";
+}
+[(set_attr "conds" "use")
+]
+)
+
 (define_insn "*condbranch_lmm"
   [(set (pc)
 	(if_then_else (match_operator 1 "ordered_comparison_operator"
 	                [(reg CC_REG) (const_int 0)])
 		      (label_ref (match_operand 0 "" ""))
 		      (pc)))]
-  "TARGET_LMM"
+  "TARGET_LMM && !TARGET_CMM"
 {
   return (get_attr_length (insn) == 4) ?
-               "%p1\tbrs\t%l0" :
+               "%p1\tbrs\t#%l0" :
 	       "%P1\tadd\tpc,#8\n\tjmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")
@@ -1754,10 +1783,10 @@
 		      (pc)
 		      (label_ref (match_operand 0 "" ""))
 		      ))]
-  "TARGET_LMM"
+  "TARGET_LMM && !TARGET_CMM"
 {
   return (get_attr_length (insn) == 4) ?
-               "%P1\tbrs\t%l0" :
+               "%P1\tbrs\t#%l0" :
 	       "%p1\tadd\tpc,#8\n\tjmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [(set_attr "conds" "use")

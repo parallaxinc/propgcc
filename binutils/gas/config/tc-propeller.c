@@ -1411,7 +1411,8 @@ md_assemble (char *instruction_string)
 	 we will have to add a NATIVE prefix
       */
       size += !insn_compressed;
-      size += !insn2_compressed;
+      if (insn2.reloc.type != BFD_RELOC_NONE || insn2.code)
+	size += !insn2_compressed;
       insn_size = 4;
     } else if (compress) {
       insn_size = size;
