@@ -25,8 +25,8 @@
 	''
 	
 __getAtomic64
-	jmp	#__LMM_FCACHE_LOAD
-	long	.endfunc - .func
+	fcache	#.endfunc - .func
+	.compress off
 .func
 	mov	r2,r0
 	rdlong	r0,r2
@@ -34,8 +34,9 @@ __getAtomic64
 	rdlong	r1,r2
 	jmp	__LMM_RET
 .endfunc
+	.compress default
 	mov	pc,lr
-
+	
 	''
 	'' __putAtomic64
 	'' input: r0,r1 == high,low of 64 bit quantity
@@ -45,13 +46,13 @@ __getAtomic64
 	''
 	
 __putAtomic64
-	jmp	#__LMM_FCACHE_LOAD
-	long	.endputfunc - .putfunc
+	fcache	#.endputfunc - .putfunc
+	.compress off
 .putfunc
 	wrlong	r0,r2
 	add	r2,#4
 	wrlong	r1,r2
 	jmp	__LMM_RET
 .endputfunc
+	.compress default
 	mov	pc,lr
-
