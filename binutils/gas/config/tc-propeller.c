@@ -1089,7 +1089,7 @@ md_assemble (char *instruction_string)
 	    arg = malloc(64);
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
-	    strcpy(arg, "__TEMP0");
+	    strcpy(arg, "__TMP0");
 	    arg2 = parse_dest(arg, &op1, &insn);
 	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
 	    sprintf(arg, "__LMM_%s_ret", macroname);
@@ -1183,7 +1183,7 @@ md_assemble (char *instruction_string)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "#__LMM_CALL");
 	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	    str = parse_src_n(str, &insn2, 16);
+	    str = parse_src_n(str, &insn2, 32);
 	    size = 8;
 	    free(arg);
 	  }
