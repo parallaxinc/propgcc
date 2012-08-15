@@ -602,6 +602,10 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
 
   if (nbits == 32)
     default_reloc = BFD_RELOC_32;
+  else if (nbits == 16)
+    default_reloc = BFD_RELOC_16;
+  else if (nbits == 8)
+    default_reloc = BFD_RELOC_8;
 
   str = skip_whitespace (str);
   if (*str++ != '#')
@@ -1024,17 +1028,131 @@ md_assemble (char *instruction_string)
 	      jmp  #__LMM_FCACHE
 	      long n
 	*/
-        char *arg;
-	char *arg2;
-	arg = malloc(32);
-	if (arg == NULL)
-	  as_fatal (_("Virtual memory exhausted"));
-	strcpy(arg, "#__LMM_FCACHE_LOAD");
-        arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	str = parse_src_n(str, &insn2, 32);
-	size = 8;
-	insn2_compressed = 1;  /* insn2 is not an instruction */
-	free(arg);
+	if (compress)
+	  {
+	    size = 3;
+	    str = parse_src_n(str, &op2, 16);
+	    insn.code = MACRO_FCACHE | (op2.code << 8);
+	    insn_compressed = 1;
+	    reloc_prefix = 1;
+	  }
+	else
+	  {
+	    char *arg;
+	    char *arg2;
+	    arg = malloc(32);
+	    if (arg == NULL)
+	      as_fatal (_("Virtual memory exhausted"));
+	    strcpy(arg, "#__LMM_FCACHE_LOAD");
+	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    str = parse_src_n(str, &insn2, 32);
+	    size = 8;
+	    insn2_compressed = 1;  /* insn2 is not an instruction */
+	    free(arg);
+	  }
+      }
+      break;
+
+    case PROPELLER_OPERAND_MACRO_8:
+      {
+	/*
+	      lpushm #n
+	   and gets translated into two instructions:
+	      mov  __TMP0,#n
+	      jmpret __LMM_PUSHM_ret,#__LMM_PUSHM
+	*/
+	if (compress)
+	  {
+	    size = 2;
+	    str = parse_src_n(str, &op2, 8);
+	    insn.code = op->copc | (op2.code << 8);
+	    insn_compressed = 1;
+	    reloc_prefix = 1;
+	  }
+	else
+	  {
+	    char *arg;
+	    char *arg2;
+	    char *macroname = "dummy";
+
+	    switch (op->copc) {
+	    case MACRO_PUSHM:
+	      macroname = "PUSHM";
+	      break;
+	    case MACRO_POPM:
+	      macroname = "POPM";
+	      break;
+	    default:
+	      as_fatal (_("internal error, bad instruction"));
+	      break;
+	    }
+	    arg = malloc(64);
+	    if (arg == NULL)
+	      as_fatal (_("Virtual memory exhausted"));
+	    strcpy(arg, "__TEMP0");
+	    arg2 = parse_dest(arg, &op1, &insn);
+	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+	    sprintf(arg, "__LMM_%s_ret", macroname);
+	    // now set up the CALL instruction
+	    insn2.code = 0x5c800000 | (0xf << 18); 
+	    arg2 = parse_dest(arg, &op3, &insn2);
+	    sprintf(arg, "#__LMM_%s", macroname);
+	    arg2 = parse_src(arg, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
+	    free(arg);
+
+	    size = 8;
+	  }
+      }
+      break;
+
+    case PROPELLER_OPERAND_MACRO_0:
+      {
+	/*
+	   a single macro like
+	      lmul
+	   and gets translated into the instruction
+	      jmpret __MULSI_ret,#__MULSI
+	*/
+	if (compress)
+	  {
+	    size = 1;
+	    insn.code = op->copc;
+	    insn_compressed = 1;
+	  }
+	else
+	  {
+	    char *arg;
+	    char *arg2;
+	    char *macroname = "dummy";
+
+	    switch (op->copc) {
+	    case MACRO_RET:
+	      macroname = "__LMM_lret";
+	      break;
+	    case MACRO_MUL:
+	      macroname = "__MULSI";
+	      break;
+	    case MACRO_UDIV:
+	      macroname = "__UDIVSI";
+	      break;
+	    case MACRO_DIV:
+	      macroname = "__DIVSI";
+	      break;
+	    default:
+	      as_fatal (_("internal error, bad instruction"));
+	      break;
+	    }
+	    arg = malloc(64);
+	    if (arg == NULL)
+	      as_fatal (_("Virtual memory exhausted"));
+	    sprintf(arg, "%s_ret", macroname);
+	    arg2 = parse_dest(arg, &op1, &insn);
+	    sprintf(arg, "#%s", macroname);
+	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMPRET);
+	    free(arg);
+
+	    size = 4;
+	  }
       }
       break;
 
@@ -1065,7 +1183,7 @@ md_assemble (char *instruction_string)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "#__LMM_CALL");
 	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	    str = parse_src_n(str, &insn2, 18);
+	    str = parse_src_n(str, &insn2, 16);
 	    size = 8;
 	    free(arg);
 	  }
