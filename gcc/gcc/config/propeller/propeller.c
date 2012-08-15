@@ -157,13 +157,14 @@ static const struct default_options propeller_option_optimization_table[] =
  * select machine specific optimizations here
  */
 static void
-propeller_optimization_options (int level, int size ATTRIBUTE_UNUSED)
+propeller_optimization_options (int level, int size)
 {
   do_fcache = 0;
 
 #ifdef FCACHE_DEFAULT_OPTLEVEL
   /* this code turns on fcache with -O2 and higher */
-  if (level >= FCACHE_DEFAULT_OPTLEVEL)
+  /* it's also turned on in -Os, except with -mcmm */
+  if (level >= FCACHE_DEFAULT_OPTLEVEL && !(TARGET_CMM && size))
     {
       if (propeller_fcache_enable != 0)
 	do_fcache = 1;

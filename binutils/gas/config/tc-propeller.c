@@ -1208,14 +1208,29 @@ md_assemble (char *instruction_string)
 	   op2.error = _("Missing ','");
 	   break;
 	  }
-	str = parse_src_n(str, &insn2, 32);
-	if (compress && !op1.error && !insn2.error)
+	if (compress && op->copc == PREFIX_MVIW)
 	  {
-	    size = 5;
-	    insn.code = op->copc | reg;
+	    str = parse_src_n(str, &op2, 16);
+	  }
+	else
+	  {
+	    str = parse_src_n(str, &insn2, 32);
+	  }
+	if (compress && !op1.error && !op2.error && !insn2.error)
+	  {
+	    if (op->copc == PREFIX_MVIW)
+	      {
+		size = 3;
+		insn.code = op->copc | reg;
+		insn.code |= (op2.code << 8);
+		reloc_prefix = 1;
+	      }
+	    else
+	      {
+		size = 5;
+		insn.code = op->copc | reg;
+	      }
 	    insn_compressed = 1;
-	    insn.reloc.type = BFD_RELOC_NONE;
-	    op2.reloc.type = BFD_RELOC_NONE;
 	  }
 	else
 	  {

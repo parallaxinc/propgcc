@@ -74,6 +74,8 @@
 #define COMPRESS_BRL (3)
 /* instruction can be compressed to a mvi */
 #define COMPRESS_MVI (4)
+/* instruction can be compressed to a mviw */
+#define COMPRESS_MVIW (5)
 
 /* instruction prefixes */
 #define PREFIX_MACRO    (0x00)
@@ -82,6 +84,7 @@
 #define PREFIX_REGIMM12 (0x30)
 #define PREFIX_BRL      (0x40)
 #define PREFIX_MVI      (0x50)
+#define PREFIX_MVIW     (0x60)
 
 /* extended operations */
 #define XOP_MOV 0x0
