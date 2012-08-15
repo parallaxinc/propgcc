@@ -5,11 +5,14 @@
  * that is tricky if threads alloc their memory from the stack
  */
 
+#include <compiler.h>
+
 extern char __heap_start[];
 extern char __hub_heap_start[];
 
-#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__) || defined(__PROPELLER_CMM__)
 char *_heap_base = __hub_heap_start;
+#define NO_HUB_SBRK
 #else
 char *_heap_base = __heap_start;
 char *_hub_heap_base = __hub_heap_start;
@@ -29,7 +32,10 @@ _sbrk(unsigned long n)
   return r;
 }
 
-#if !defined(__PROPELLER_LMM__) && !defined(__PROPELLER_XMMC__)
+#if defined(NO_HUB_SBRK)
+/* hubsbrk is just the same as sbrk */
+__weak_alias(_hubsbrk, _sbrk);
+#else
 char *
 _hubsbrk(unsigned long n)
 {

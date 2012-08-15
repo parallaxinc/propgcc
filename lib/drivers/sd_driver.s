@@ -68,7 +68,7 @@ _sd_driver_array
         long __load_start_cogsys1
 
         .section .cogsys1, "ax"
-
+	.compress off
         org     0
 
 '----------------------------------------------------------------------------------------------------

@@ -15,6 +15,7 @@ __FullDuplexCogCode
 
 			.section .cogsys0, "ax"
                         org 0
+			.compress off
 '
 '
 ' Entry
