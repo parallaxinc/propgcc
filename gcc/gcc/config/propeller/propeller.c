@@ -1298,6 +1298,10 @@ propeller_asm_trampoline_template (FILE *f)
     {
       error ("nested functions not supported in cog mode\n");
     }
+  if (TARGET_CMM)
+    {
+      error ("nested functions not supported in CMM mode\n");
+    }
   fprintf (f, "\tjmp\t#__LMM_MVI_r%d\n", STATIC_CHAIN_REGNUM);
   fprintf (f, "\tlong\t0xdeadbeef\n"); /* static chain value goes here */
   fprintf (f, "\tjmp\t#__LMM_JMP\n");
