@@ -104,6 +104,16 @@
 	    (ior (match_test "mode == GET_MODE (op)")
 		 (match_test "mode == VOIDmode && GET_MODE_CLASS (GET_MODE (op)) == MODE_CC")))))
 
+;; check for a CMM mode 16 bit constant
+;; CMM is a subset of hub mode, so labels and symbols are assumed
+;; to fit in 16 bits
+
+(define_predicate "propeller_cmm_const16"
+  (and (match_operand 0 "immediate_operand")
+       (ior (match_code "symbol_ref,label_ref,const")
+            (and (match_code "const_int")
+		 (match_test "IN_RANGE (INTVAL (op), 16, 0xFFFF)")))))
+
 ;; Nonzero if OP is a 32 bit constant that needs to be placed specially
 
 (define_predicate "propeller_big_const"

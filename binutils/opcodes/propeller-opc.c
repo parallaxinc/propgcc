@@ -62,6 +62,8 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"fcache", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_FCACHE, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_FCACHE},
 /* mvi expands to a jmp followed by a 32 bit constant, just like fcache */
   {"mvi", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_MVI, NR, PROP_1_LMM, COMPRESS_MVI, PREFIX_MVI},
+/* mviw expands to a jmp followed by a 32 bit constant, just like fcache */
+  {"mviw", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_MVI, NR, PROP_1_LMM, COMPRESS_MVIW, PREFIX_MVIW},
 /* lcall expands to a jmp followed by a 32 bit constant, just like fcache */
   {"lcall", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_LCALL, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_LCALL},
 

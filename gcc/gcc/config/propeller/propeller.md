@@ -947,6 +947,15 @@
     }
 })
 
+(define_insn "*movsi_imm_cmm"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+        (match_operand:SI 1 "propeller_cmm_const16" "i"))]
+  "TARGET_CMM"
+  "mviw\t%0,#%c1"
+  [(set_attr "length" "8")
+  ]
+)
+
 (define_insn "*movsi_imm_lmm"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (match_operand:SI 1 "propeller_big_const" "i"))]
@@ -1981,10 +1990,19 @@
   "jmp\t#__LMM_FCACHE_START+(%0-%1)"
 )
 
+(define_insn "*jump_cmm"
+  [(set (pc)
+	(label_ref (match_operand 0 "" "")))]
+  "TARGET_CMM"
+{
+  return "brs\t#%l0";
+}
+)
+
 (define_insn "*jump_lmm"
   [(set (pc)
 	(label_ref (match_operand 0 "" "")))]
-  "TARGET_LMM"
+  "TARGET_LMM && !TARGET_CMM"
 {
   return (get_attr_length (insn) == 4) ?
                "brs\t%l0" :

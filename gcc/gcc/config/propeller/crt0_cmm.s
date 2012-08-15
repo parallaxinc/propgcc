@@ -81,7 +81,7 @@ jmptab_base
 	jmp	#regimm12	' instruction 3d
 	jmp	#brl	' instruction 4d
 	jmp	#mvi32	' instruction 5d
-	jmp	#macro	' instruction 6d
+	jmp	#mvi16	' instruction 6d
 	jmp	#macro	' instruction 7d
 	jmp	#macro	' instruction 8d
 	jmp	#macro	' instruction 9d
@@ -196,6 +196,21 @@ mvi32
 	movd	.domvi32,dfield
 	call	#get_long
 .domvi32
+	mov	0-0,sfield
+	jmp	#__LMM_loop
+
+	'''
+	''' move immediate of a 16 bit value
+	'''
+mvi16
+	rdbyte	sfield,pc
+	movd	.domvi16,dfield
+	add	pc,#1
+	rdbyte	xfield,pc
+	add	pc,#1
+	shl	xfield,#8
+	or	sfield,xfield
+.domvi16
 	mov	0-0,sfield
 	jmp	#__LMM_loop
 
