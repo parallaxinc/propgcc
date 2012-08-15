@@ -317,6 +317,12 @@ is_naked_function (tree decl)
   return has_func_attr (decl, "naked");
 }
 
+static inline bool
+is_fcache_function (tree decl)
+{
+  return has_func_attr (decl, "fcache");
+}
+
 /* Handle a "native" or "naked" attribute;
    arguments as in struct attribute_spec.handler.  */
 
@@ -381,6 +387,7 @@ static const struct attribute_spec propeller_attribute_table[] =
 {  /* name, min_len, max_len, decl_req, type_req, fn_type_req, handler.  */
   { "naked",   0, 0, true, false,  false,  propeller_handle_func_attribute },
   { "native",  0, 0, true, false,  false,  propeller_handle_func_attribute },
+  { "fcache",  0, 0, true, false,  false,  propeller_handle_func_attribute },
   { "cogmem",  0, 0, false, false, false, propeller_handle_cogmem_attribute },
   { NULL,  0, 0, false, false, false, NULL }
 };
@@ -2752,6 +2759,10 @@ propeller_unlikely_branch_p (rtx jump)
  * (2) if func_p is true, recursive calls are OK; 
  *     no other function calls may be made
  * (3) there must be no branches into or out of the block
+ * 
+ * if force_p is true then we always put the block in fcache (the
+ * user asked for it), otherwise we do so only if there are loops
+ * or recursive calls
  */
 
 #if 0
@@ -2761,13 +2772,13 @@ propeller_unlikely_branch_p (rtx jump)
 #endif
 
 static bool
-fcache_block_ok (rtx first, rtx last, bool func_p)
+fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 {
   rtx dest;
   rtx insn;
   rtx last_next;
   HOST_WIDE_INT total_len;
-  int loop_count = 0;
+  int loop_count = force_p ? 1 : 0;
 
   if (dump_file)
     fprintf (dump_file, "checking block, func_p = %s\n",
@@ -2918,7 +2929,7 @@ fcache_block_ok (rtx first, rtx last, bool func_p)
 }
 
 static bool
-fcache_func_ok (void)
+fcache_func_ok (bool force)
 {
   rtx first = get_insns ();
   rtx last = get_last_insn ();
@@ -2926,7 +2937,7 @@ fcache_func_ok (void)
   if (dump_file)
     fprintf(dump_file, "considering whole function %s for fcache\n", current_function_name ());
 
-  return fcache_block_ok (first, last, true);
+  return fcache_block_ok (first, last, true, force);
 }
 
 /*
@@ -3282,7 +3293,7 @@ try_convert_loop (rtx *first_ptr, rtx *last_ptr)
       fprintf (dump_file, "considering loop from jump: ");
       print_rtl_single (dump_file, last);
     }
-  if (! fcache_block_ok (first, last, false))
+  if (! fcache_block_ok (first, last, false, false))
     return false;
   if (dump_file)
     fprintf (dump_file, "converting loop\n");
@@ -3345,29 +3356,33 @@ fcache_convert_loops (void)
 static void
 propeller_reorg(void)
 {
-  bool done;
-  
-  if (TARGET_LMM && do_fcache)
-    {
-      if (dump_file)
-	fprintf (dump_file, " *** Checking fcache for jumps\n");
-      /* if the current function contains indirect jumps do not
-	 try to process it (too risky) */
-      done = current_func_has_indirect_jumps ();
+  bool done = 0;
+  bool fcache_func = is_fcache_function (current_function_decl);
 
-      /* scan to see if there are any loops in the current function
-	 that we can convert to fcache mode
-      */
-      if (!done)
+  if (TARGET_LMM && (do_fcache || fcache_func))
+    {
+      if (!fcache_func)
 	{
 	  if (dump_file)
-	    fprintf (dump_file, " *** Trying to convert loops to fcache\n");
-	  done = fcache_convert_loops();
+	    fprintf (dump_file, " *** Checking fcache for jumps\n");
+	  /* if the current function contains indirect jumps do not
+	     try to process it (too risky) */
+	  done = current_func_has_indirect_jumps ();
+
+	  /* scan to see if there are any loops in the current function
+	     that we can convert to fcache mode
+	  */
+	  if (!done)
+	    {
+	      if (dump_file)
+		fprintf (dump_file, " *** Trying to convert loops to fcache\n");
+	      done = fcache_convert_loops();
+	    }
 	}
 
       /* if we converted some loops, don't bother trying the whole
 	 function */
-      if (!done && fcache_func_ok ())
+      if (!done && fcache_func_ok (fcache_func))
 	{
 	  if (dump_file)
 	    fprintf (dump_file, " *** Trying to place whole function in fcache\n");
