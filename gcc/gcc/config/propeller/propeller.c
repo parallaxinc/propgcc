@@ -1593,9 +1593,18 @@ propeller_emit_stack_pushm (rtx * operands)
 
   start_reg = REGNO(first_push);
 
-  asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_PUSHM\n",
-	       (long)reg_count,
-	       (long)start_reg);
+  if (TARGET_CMM)
+    {
+      asm_fprintf (asm_out_file, "\tlpushm\t#(%ld<<4)+%ld\n",
+		   (long)reg_count,
+		   (long)start_reg);
+    }
+  else
+    {
+      asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_PUSHM\n",
+		   (long)reg_count,
+		   (long)start_reg);
+    }
 }
 
 void
@@ -1617,9 +1626,18 @@ propeller_emit_stack_popm (rtx * operands)
 
   start_reg = REGNO (first_push);
 
-  asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_POPM\n",
-	       (long)reg_count,
-	       (long)start_reg);
+  if (TARGET_CMM)
+    {
+      asm_fprintf (asm_out_file, "\tlpopm\t#(%ld<<4)+%ld\n",
+		   (long)reg_count,
+		   (long)start_reg);
+    }
+  else
+    {
+      asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_POPM\n",
+		   (long)reg_count,
+		   (long)start_reg);
+    }
 }
 
 /* Generate a PARALLEL that will pass the rx_store_multiple_vector predicate.  */

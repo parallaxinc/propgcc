@@ -1310,7 +1310,7 @@
 ""
 {
   propeller_need_mulsi = true;
-  return "call\t#__MULSI";
+  return TARGET_CMM ? "lmul" : "call\t#__MULSI";
 }
  [(set_attr "type" "multi")
   (set_attr "conds" "clob")
@@ -1346,7 +1346,7 @@
 ""
 {
   propeller_need_udivsi = true;
-  return "call\t#__UDIVSI";
+  return TARGET_CMM ? "ludiv" : "call\t#__UDIVSI";
 }
  [(set_attr "type" "multi")
   (set_attr "conds" "clob")
@@ -1376,7 +1376,7 @@
 ""
 {
   propeller_need_divsi = true;
-  return "call\t#__DIVSI";
+  return TARGET_CMM ? "ldiv" : "call\t#__DIVSI";
 }
  [(set_attr "type" "multi")
   (set_attr "conds" "clob")
@@ -1646,7 +1646,7 @@
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
-  "cmp\t%0, %1 wz"
+  "cmps\t%0, %1 wz,wc"
   [(set_attr "conds" "set")]
 )
 
@@ -2048,7 +2048,9 @@
    (use (match_operand:SI 0 "register_operand" "r"))
   ]
   ""
-{ if (TARGET_LMM)
+{ if (TARGET_CMM)
+    return "lret";
+  else if (TARGET_LMM)
     return "mov\tpc,%0";
   else
     return "jmp\t%0";

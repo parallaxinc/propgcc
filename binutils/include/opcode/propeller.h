@@ -41,6 +41,8 @@
 #define PROPELLER_OPERAND_FCACHE      13
 #define PROPELLER_OPERAND_MVI         14
 #define PROPELLER_OPERAND_LCALL       15
+#define PROPELLER_OPERAND_MACRO_8     16
+#define PROPELLER_OPERAND_MACRO_0     17
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
@@ -106,6 +108,9 @@
 #define MACRO_PUSHM  0x03
 #define MACRO_POPM   0x04
 #define MACRO_LCALL  0x05
+#define MACRO_MUL    0x06
+#define MACRO_UDIV   0x07
+#define MACRO_DIV    0x08
 #define MACRO_FCACHE 0x0e
 #define MACRO_NATIVE 0x0f
 

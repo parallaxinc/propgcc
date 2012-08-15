@@ -65,6 +65,17 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* lcall expands to a jmp followed by a 32 bit constant, just like fcache */
   {"lcall", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_LCALL, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_LCALL},
 
+/* lcall expands to a jmp followed by a 32 bit constant, just like fcache */
+  {"lret", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_RET},
+  {"lmul", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_MUL},
+  {"ludiv", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_UDIV},
+  {"ldiv", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_DIV},
+
+/* pushm and popm expand to a mov followed by a jmpret */
+/* push and pop      101000 zcri cccc ddddddddd sssssssss */
+  {"lpushm", 0xa0000000, 0xffffffff, PROPELLER_OPERAND_MACRO_8, R, PROP_1_LMM, COMPRESS_MACRO, MACRO_PUSHM},
+  {"lpopm", 0xa0000000, 0xffffffff, PROPELLER_OPERAND_MACRO_8, R, PROP_1_LMM, COMPRESS_MACRO, MACRO_POPM},
+
 /* wrbyte   000000 zc0i cccc ddddddddd sssssssss */
   {"wrbyte", 0x00000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, COMPRESS_XOP, XOP_WRB},
 /* rdbyte   000000 zc1i cccc ddddddddd sssssssss */

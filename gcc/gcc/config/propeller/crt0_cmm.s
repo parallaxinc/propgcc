@@ -103,9 +103,9 @@ macro_tab_base
 	jmp	#__macro_pushm	' macro 3 -- PUSHM
 	jmp	#__macro_popm	' macro 4 -- POPM
 	jmp	#__macro_lcall	' macro 5 -- LCALL
-	jmp	#__LMM_loop	' macro 6 -- NOP
-	jmp	#__LMM_loop	' macro 7 -- NOP
-	jmp	#__LMM_loop	' macro 8 -- NOP
+	jmp	#__macro_mul	' macro 6 -- multiply
+	jmp	#__macro_udiv	' macro 7 -- unsigned divide
+	jmp	#__macro_div	' macro 8 -- signed divide
 	jmp	#__LMM_loop	' macro 9 -- NOP
 	jmp	#__LMM_loop	' macro A -- NOP
 	jmp	#__LMM_loop	' macro B -- NOP
@@ -142,10 +142,23 @@ __macro_native
 __macro_fcache
 	rdbyte	__TMP0,pc
 	add	pc,#1
+	rdbyte  sfield,pc
+	shl	sfield,#8
+	or	__TMP0,sfield
 	jmp	#__LMM_FCACHE_DO
 	
 __macro_ret
 	mov	pc,lr
+	jmp	#__LMM_loop
+
+__macro_mul
+	call	#__MULSI
+	jmp	#__LMM_loop
+__macro_udiv
+	call	#__UDIVSI
+	jmp	#__LMM_loop
+__macro_div
+	call	#__DIVSI
 	jmp	#__LMM_loop
 
 __macro_pushm
