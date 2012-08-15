@@ -578,7 +578,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
 {
     uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf;
     int cacheDriverImageSize, imageSize, target, ivalue;
-    uint32_t loadAddress, params[5];
+    uint32_t loadAddress, params[6];
     ElfProgramHdr program_kernel;
     char *cacheDriver, *value;
     int eepromFirst = FALSE;
@@ -657,6 +657,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         params[3] = ivalue;
     if (GetNumericConfigField(config, "cache-param4", &ivalue))
         params[4] = ivalue;
+    if (GetNumericConfigField(config, "cache-extra", &ivalue))
+        params[5] = ivalue;
     if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
     ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
     ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {

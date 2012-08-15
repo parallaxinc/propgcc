@@ -31,6 +31,7 @@
 
 '#define WINBOND
 '#define SST
+#define DEBUG
 
 CON
 
@@ -65,7 +66,7 @@ DAT
 ' $04: pointer to where to store the cache lines in hub ram
 ' $08: 0xssxxccee - ss=sio0 xx=unused cc=sck pp=protocol
 ' $0c: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
-' $10: 0xwwiiooxx - ww=way-count ii=index-width oo=offset-width xx=unused
+' $10: 0xwwiiooxx - ww=way-width ii=index-width oo=offset-width xx=unused
 ' $14: pointer to debug area
 ' note that $4 must be at least 2^(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH) bytes in size
 ' sio0 must be the lowest pin number of a group of four adjacent pins to be used for sio0-3
@@ -191,7 +192,7 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         mov	way_mask, way_count
         sub	way_mask, #1
         shl	way_mask, index_width
-
+        
         ' set the pin directions
         mov     outa, spiout
         mov     dira, spidir
@@ -262,11 +263,34 @@ mtest   test    0-0, dirty_mask wz
         mov     dira, #0                ' release the pins for other SPI clients
 nlk_spi nop        
 mst     mov     0-0, vmpage
+
+#ifdef DEBUG
+	mov	t1, pvmcmd
+	add	t1, #(int#_MBOX_SIZE * 4 + 4)
+	rdlong	t2, t1
+	add	t2, #1
+	wrlong	t2, t1
+	add	t1, #4
+	shl	line, #2
+	add	t1, line
+	rdlong	t2, t1
+	add	t2, #1
+	wrlong	t2, t1
+#endif        
+
 	jmp	#done
 
 hit     mov     hubaddr, line       	' get the address of the cache line
         shl     hubaddr, offset_width
         add     hubaddr, cacheptr
+        
+#ifdef DEBUG
+	mov	t1, pvmcmd
+	add	t1, #(int#_MBOX_SIZE * 4)
+	rdlong	t2, t1
+	add	t2, #1
+	wrlong	t2, t1
+#endif        
 
 done    wrlong  hubaddr, pvmaddr        ' return the address of the cache line
 dset    or      0-0, set_dirty_bit      ' set the dirty bit on writes

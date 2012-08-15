@@ -36,6 +36,7 @@ CON
   ' mailbox offsets
   MBOX_CMD              = 0
   MBOX_ADDR             = 1
+  MBOX_EXTRA		= 2 	' extra space for debugging
   _MBOX_SIZE            = 2
 
   ' cache access commands
