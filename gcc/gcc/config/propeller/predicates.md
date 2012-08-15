@@ -112,7 +112,7 @@
   (and (match_operand 0 "immediate_operand")
        (ior (match_code "symbol_ref,label_ref,const")
             (and (match_code "const_int")
-		 (match_test "IN_RANGE (INTVAL (op), 16, 0xFFFF)")))))
+		 (match_test "IN_RANGE (INTVAL (op), 512, 0xFFFF)")))))
 
 ;; Nonzero if OP is a 32 bit constant that needs to be placed specially
 

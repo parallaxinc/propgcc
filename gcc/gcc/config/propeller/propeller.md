@@ -1092,10 +1092,18 @@
   ]
 )
 
+(define_insn "*movhi_cmm"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+        (match_operand:HI 1 "propeller_big_const" "i"))]
+  "TARGET_CMM"
+  "mviw\t%0,#%c1"
+  [(set_attr "length" "8")
+  ]
+)
 (define_insn "*movhi_lmm"
   [(set (match_operand:HI 0 "register_operand" "=r")
         (match_operand:HI 1 "propeller_big_const" "i"))]
-  "TARGET_LMM"
+  "TARGET_LMM && !TARGET_CMM"
   "jmp\t#__LMM_MVI_%0\n\tlong\t%c1"
   [(set_attr "length" "8")
   ]
