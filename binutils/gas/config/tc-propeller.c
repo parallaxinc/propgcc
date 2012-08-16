@@ -243,6 +243,19 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 0;
       rshift = 0;
       break;
+    case BFD_RELOC_8_PCREL:
+      mask = 0x0000007f;
+      shift = 0;
+      rshift = 0;
+      if ((val & 0x80000000)) {
+	/* negative */
+	//fprintf(stderr, "negative val=(%08lx)\n", val);
+	if ( (val & 0xFFFFFF80) == 0xFFFFFF80 ) {
+	  mask |= 0x80;
+	  val &= 0xFF;
+	}
+      }
+      break;
     case BFD_RELOC_PROPELLER_PCREL10:
       mask = 0x000001ff;
       shift = 0;
@@ -305,6 +318,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_32:
     case BFD_RELOC_16:
     case BFD_RELOC_8:
+    case BFD_RELOC_8_PCREL:
     case BFD_RELOC_PROPELLER_SRC:
     case BFD_RELOC_PROPELLER_SRC_IMM:
     case BFD_RELOC_PROPELLER_DST:
@@ -546,7 +560,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
 	  return str;
 	}
     }
-  if (format == PROPELLER_OPERAND_BRS && !compress)
+  if (format == PROPELLER_OPERAND_BRS)
     pcrel_reloc = 1;
 
   str = parse_expression (str, operand);
@@ -568,7 +582,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     case O_subtract:
       if (pcrel_reloc)
 	{
-	  operand->reloc.type = BFD_RELOC_PROPELLER_PCREL10;
+	  operand->reloc.type = compress ? BFD_RELOC_8_PCREL : BFD_RELOC_PROPELLER_PCREL10;
 	  operand->reloc.pc_rel = 1;
 	}
       else
@@ -908,52 +922,41 @@ md_assemble (char *instruction_string)
 	  {
 	    unsigned byte0;
 	    op1.reloc.type = BFD_RELOC_NONE;
-	    byte0 = PREFIX_BRL | ((insn.code >> 18) & 0xf);
-	    if (op2.reloc.type == BFD_RELOC_PROPELLER_SRC_IMM) {
-	      op2.reloc.type = BFD_RELOC_16;
-	      reloc_prefix = 1;
-	    }
+	    /* extract the condition code */
+	    byte0 = PREFIX_BRS | ((insn.code >> 18) & 0xf);
+	    reloc_prefix = 1;
 	    insn.code = byte0;
-	    size = 3;
+	    size = 2;
 	    insn_compressed = 1;
 	  }
       }
       break;
-    case PROPELLER_OPERAND_BRL:
+    case PROPELLER_OPERAND_BRW:
       {
-        char *arg;
-	char *arg2;
-	int len;
 	str = skip_whitespace(str);
 
-        len = strlen(str);
-	arg = malloc(len+16);
-	if (arg == NULL)
-	  as_fatal (_("Virtual memory exhausted"));
-	if (*str == '#') {
-	  str++;
-	  len--;
-	}
-	sprintf(arg, "pc,pc,#%s", str);
-	str += len;
-        arg2 = parse_dest(arg, &op1, &insn);
-        arg2 = parse_separator (arg2, &error);
-        if (error)
+	if (compress)
 	  {
-	   op2.error = _("Missing ','");
-	   break;
+	    unsigned byte0;
+	    str = parse_src_n(str, &op2, 16);
+	    byte0 = PREFIX_BRW | ((insn.code >> 18) & 0xf);
+	    reloc_prefix = 1;
+	    insn.code = byte0;
+	    size = 3;
+	    insn_compressed = 1;
 	  }
-        arg2 = parse_src(arg2, &op2, &insn, op->format);
-        arg2 = parse_separator (arg2, &error);
-        if (error)
+	else
 	  {
-	   op3.error = _("Missing ','");
-	   break;
+	    char arg[8];
+	    char *arg2;
+	    strcpy(arg, "pc");
+
+	    arg2 = parse_dest(arg, &op1, &insn);
+	    arg2 = parse_src(arg, &op2, &insn, op->format);
+	    str = parse_src_n(str, &insn2, 23);
+	    insn2_compressed = 1;
+	    size = 8;
 	  }
-	arg2 = parse_src_n(arg2, &insn2, 23);
-	insn2_compressed = 1;
-	size = 8;
-	free(arg);
       }
       break;
 
