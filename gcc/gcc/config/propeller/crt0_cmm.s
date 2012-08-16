@@ -83,14 +83,14 @@ jmptab_base
 	jmp	#mvi32	' instruction 5d
 	jmp	#mvi16	' instruction 6d
 	jmp	#brs	' instruction 7d
-	jmp	#macro	' instruction 8d
-	jmp	#macro	' instruction 9d
+	jmp	#skip2	' instruction 8d
+	jmp	#skip3	' instruction 9d
 	jmp	#macro	' instruction Ad
 	jmp	#macro	' instruction Bd
 	jmp	#macro	' instruction Cd
 	jmp	#macro	' instruction Dd
 	jmp	#macro	' instruction Ed
-	jmp	#macro	' instruction Fd
+	jmp	#pack_native	' instruction Fd
 
 macro
 	add	dfield,#(macro_tab_base-r0)/4
@@ -134,7 +134,7 @@ get_long
 	or	sfield,ifield
 get_long_ret
 	ret
-	
+
 __macro_native
 	call	#get_long
 	jmp	#sfield
@@ -322,6 +322,61 @@ brs
 	sar	sfield,#24
 .brsins	add	pc,sfield
 	jmp	#__LMM_loop
+
+skip2
+	andn	.skip2ins,cond_mask
+	shl	dfield,#18	'' get dfield into the cond field
+	or	.skip2ins,dfield
+	nop
+.skip2ins	add	pc,#2
+	jmp	#__LMM_loop
+
+skip3
+	andn	.skip3ins,cond_mask
+	shl	dfield,#18	'' get dfield into the cond field
+	or	.skip3ins,dfield
+	nop
+.skip3ins
+	add	pc,#3
+	jmp	#__LMM_loop
+
+	''
+	'' packed native instructions
+	''
+	'' native instructions are 32 bits like:
+	''
+	'' oooo_ooee eICC_CCdd dddd_ddds ssss_ssss
+	''
+	'' (o=opcode, e=effect, I=immediate, C=condition, d=dest, s=src)
+	''
+	'' if CCCC == 1111 (always execute), then we can efficiently store
+	'' this as
+	''
+	'' CCCC_eeeI + 24 bits:(little endian) oooo_oodd dddd_ddds ssss_ssss
+	'' and relocations will even work as long as they're offset by 1
+	''
+	'' on entry to this function eeeI is in dfield
+	''
+pack_native
+	rdbyte	sfield,pc
+	add	pc,#1
+	rdbyte	itemp,pc
+	add	pc,#1
+	shl	itemp,#8
+	rdbyte	xfield,pc
+	add	pc,#1
+	or	sfield,itemp
+	mov	itemp,xfield   '' get the opcodes
+	and	xfield,#3
+	or	xfield,#0x3C   '' set condition bits
+	shl	xfield,#16
+	or	sfield,xfield
+	andn	itemp,#3       '' just the 6 opcode bits, shifted left by 2
+	shl	itemp,#24
+	or	sfield,itemp
+	shl	dfield,#22
+	or	sfield,dfield
+	jmp	#sfield
 
 	''
 	'' call functions

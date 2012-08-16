@@ -186,7 +186,7 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
 	    goto done;
 	  case PROPELLER_OPERAND_XMMIO:
 	  case PROPELLER_OPERAND_LDI:
-	  case PROPELLER_OPERAND_BRL:
+	  case PROPELLER_OPERAND_BRW:
 	    /* disassembly not implemented yet */
 	    continue;
 	  default:
