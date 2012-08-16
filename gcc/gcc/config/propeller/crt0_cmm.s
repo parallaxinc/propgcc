@@ -79,10 +79,10 @@ jmptab_base
 	jmp	#regreg	' instruction 1d
 	jmp	#regimm4	' instruction 2d
 	jmp	#regimm12	' instruction 3d
-	jmp	#brl	' instruction 4d
+	jmp	#brw	' instruction 4d
 	jmp	#mvi32	' instruction 5d
 	jmp	#mvi16	' instruction 6d
-	jmp	#macro	' instruction 7d
+	jmp	#brs	' instruction 7d
 	jmp	#macro	' instruction 8d
 	jmp	#macro	' instruction 9d
 	jmp	#macro	' instruction Ad
@@ -293,23 +293,34 @@ xtable
 	''
 	'' conditional branches
 	'' the dfield gives the condition
-	'' for brl, the next 2 bytes give the address for the pc
-	'' for brsf, the next byte is an offset to add to the pc
-	'' for brsb, the next byte is an offset to subtract from the pc
+	'' for brw, the next 2 bytes give the address for the pc
+	'' for brs, the next byte is a signed offset to add to the pc
+	''
 	''
 cond_mask long (0xf<<18)
 	
-brl
+brw
 	rdbyte	sfield,pc
-	andn	.brlins,cond_mask
+	andn	.brwins,cond_mask
 	add	pc,#1
 	rdbyte	xfield,pc
 	shl	dfield,#18	'' get it into the cond field
-	or	.brlins,dfield
+	or	.brwins,dfield
 	add	pc,#1
 	shl	xfield,#8
 	or	sfield,xfield
-.brlins	mov	pc,sfield
+.brwins	mov	pc,sfield
+	jmp	#__LMM_loop
+
+brs
+	rdbyte	sfield,pc
+	andn	.brsins,cond_mask
+	add	pc,#1
+	shl	dfield,#18	'' get dfield into the cond field
+	or	.brsins,dfield
+	shl	sfield,#24
+	sar	sfield,#24
+.brsins	add	pc,sfield
 	jmp	#__LMM_loop
 
 	''

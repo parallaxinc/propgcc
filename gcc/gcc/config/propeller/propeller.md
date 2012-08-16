@@ -1751,9 +1751,17 @@
 		      (pc)))]
   "TARGET_CMM"
 {
-  return "%p1\tbrs\t#%l0";
+  return (get_attr_length (insn) == 2) ?
+               "%p1\tbrs\t#%l0" :
+	       "%p1\tbrw\t#%l0";
 }
 [(set_attr "conds" "use")
+ (set (attr "length")
+      (if_then_else 
+          (and (ge (minus (match_dup 0)(pc)) (const_int -126))
+	       (le (minus (match_dup 0)(pc)) (const_int 126)))
+	  (const_int 2)
+	  (const_int 4)))
 ]
 )
 
@@ -1766,9 +1774,17 @@
         ))]	      
   "TARGET_CMM"
 {
-  return "%P1\tbrs\t#%l0";
+  return (get_attr_length (insn) == 2) ?
+               "%P1\tbrs\t#%l0" :
+	       "%P1\tbrw\t#%l0";
 }
 [(set_attr "conds" "use")
+ (set (attr "length")
+      (if_then_else 
+          (and (ge (minus (match_dup 0)(pc)) (const_int -126))
+	       (le (minus (match_dup 0)(pc)) (const_int 126)))
+	  (const_int 2)
+	  (const_int 4)))
 ]
 )
 
@@ -2003,8 +2019,17 @@
 	(label_ref (match_operand 0 "" "")))]
   "TARGET_CMM"
 {
-  return "brs\t#%l0";
+  return (get_attr_length (insn) == 2) ?
+               "brs\t#%l0" :
+	       "brw\t#%l0";
 }
+[ (set (attr "length")
+      (if_then_else 
+          (and (ge (minus (match_dup 0)(pc)) (const_int -126))
+	       (le (minus (match_dup 0)(pc)) (const_int 126)))
+	  (const_int 2)
+	  (const_int 4)))
+]
 )
 
 (define_insn "*jump_lmm"
@@ -2013,7 +2038,7 @@
   "TARGET_LMM && !TARGET_CMM"
 {
   return (get_attr_length (insn) == 4) ?
-               "brs\t%l0" :
+               "brs\t#%l0" :
 	       "jmp\t#__LMM_JMP\n\tlong\t%l0";
 }
 [ (set (attr "length")

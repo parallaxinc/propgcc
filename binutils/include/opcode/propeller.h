@@ -35,7 +35,7 @@
 #define PROPELLER_OPERAND_JMPRET      7
 #define PROPELLER_OPERAND_MOVA        8
 #define PROPELLER_OPERAND_LDI         9
-#define PROPELLER_OPERAND_BRL         10
+#define PROPELLER_OPERAND_BRW         10
 #define PROPELLER_OPERAND_BRS         11
 #define PROPELLER_OPERAND_XMMIO       12
 #define PROPELLER_OPERAND_FCACHE      13
@@ -82,9 +82,10 @@
 #define PREFIX_REGREG   (0x10)
 #define PREFIX_REGIMM4  (0x20)
 #define PREFIX_REGIMM12 (0x30)
-#define PREFIX_BRL      (0x40)
+#define PREFIX_BRW      (0x40)
 #define PREFIX_MVI      (0x50)
 #define PREFIX_MVIW     (0x60)
+#define PREFIX_BRS      (0x70)
 
 /* extended operations */
 #define XOP_MOV 0x0
