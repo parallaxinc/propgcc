@@ -1094,7 +1094,7 @@
 
 (define_insn "*movhi_cmm"
   [(set (match_operand:HI 0 "register_operand" "=r")
-        (match_operand:HI 1 "propeller_big_const" "i"))]
+        (match_operand:HI 1 "propeller_cmm_const16" "i"))]
   "TARGET_CMM"
   "mviw\t%0,#%c1"
   [(set_attr "length" "8")
@@ -1103,8 +1103,8 @@
 (define_insn "*movhi_lmm"
   [(set (match_operand:HI 0 "register_operand" "=r")
         (match_operand:HI 1 "propeller_big_const" "i"))]
-  "TARGET_LMM && !TARGET_CMM"
-  "jmp\t#__LMM_MVI_%0\n\tlong\t%c1"
+  "TARGET_LMM"
+  "mvi\t%0,#%c1"
   [(set_attr "length" "8")
   ]
 )
@@ -2707,7 +2707,7 @@
         (match_operand:SI 1 "propeller_src_operand" ""))
    (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
   ]
-  ""
+  "!TARGET_CMM"
   [(parallel
      [(set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1)(const_int 0)))
       (set (match_dup 0)(match_dup 1))])]
@@ -2725,7 +2725,7 @@
 	   ]))
    (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 0) (const_int 0)))
   ]
-  ""
+  "!TARGET_CMM"
   [(parallel
      [(set (reg:CC_Z CC_REG)
              (compare:CC_Z (match_op_dup 2 [(match_dup 0)(match_dup 1)])

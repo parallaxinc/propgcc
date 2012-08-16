@@ -162,6 +162,8 @@ md_chars_to_number (con, nbytes)
       return con[0];
     case 2:
       return (con[1] << BITS_PER_CHAR) | con[0];
+    case 3:
+      return (con[2] << (2*BITS_PER_CHAR)) | (con[1] << BITS_PER_CHAR) | con[0];
     case 4:
       return
 	(((con[3] << BITS_PER_CHAR) | con[2]) << (2 * BITS_PER_CHAR))
@@ -186,6 +188,10 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
   int rshift;
   int size;
 
+  /* note whether this will delete the relocation */
+  if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0) {
+    fixP->fx_done = 1;
+  }
   buf = fixP->fx_where + fixP->fx_frag->fr_literal;
   size = fixP->fx_size;
   code = md_chars_to_number ((unsigned char *) buf, size);
@@ -278,6 +284,9 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
     val -= symbol_get_bfdsym (fixP->fx_subsy)->section->vma;
   }
 
+  if (!fixP->fx_done)
+    val = 0;
+
   if( (((val>>rshift) << shift) & 0xffffffff) & ~mask){
     as_bad_where (fixP->fx_file, fixP->fx_line,
 		  _("Relocation overflows"));
@@ -292,8 +301,6 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
 
   md_number_to_chars (buf, code, size);
 
-  if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
-    fixP->fx_done = 1;
 }
 
 /* Translate internal representation of relocation info to BFD target
@@ -723,9 +730,27 @@ parse_dest(char *str, struct propeller_code *operand, struct propeller_code *ins
   return str;
 }
 
-#ifndef NATIVE_PREFIX
-#define NATIVE_PREFIX 0x0f
-#endif
+/*
+  native instructions are 32 bits like:
+
+  oooo_ooee eICC_CCdd dddd_ddds ssss_ssss
+
+  if CCCC == 1111 (always execute), then store as:
+
+  CCCC_eeeI + 24 bits:(little endian) oooo_oodd dddd_ddds ssss_ssss
+*/
+
+static unsigned long
+pack_native(unsigned long code)
+{
+  unsigned long bottom = code & 0x3FFFF;
+  unsigned long top = (code >> 26) & 0x3F;
+  unsigned long eeeI = (code >> 22) & 0xF;
+
+  bottom = bottom | (top << 18);
+  return PREFIX_PACK_NATIVE | eeeI | (bottom << 8);
+}
+
 
 void
 md_assemble (char *instruction_string)
@@ -733,6 +758,7 @@ md_assemble (char *instruction_string)
   const struct propeller_opcode *op;
   const struct propeller_condition *cond;
   const struct propeller_effect *eff;
+  unsigned condmask = 0xf;
   struct propeller_code insn, op1, op2, insn2, op3, op4;
   int error;
   int size;
@@ -796,6 +822,7 @@ md_assemble (char *instruction_string)
     {
       insn.code = 0xf << 18;
     }
+  condmask = 0xf & (insn.code >> 18);
   c = *p;
   *p = '\0';
   lc (str);
@@ -1365,12 +1392,14 @@ md_assemble (char *instruction_string)
 
 
   /* check for possible compression */
-  if (compress && op->can_compress) {
+  if (compress && op->can_compress && !insn_compressed) {
     unsigned destval, srcval;
     unsigned immediate;
     unsigned effects, expectedeffects;
-    /* first, we cannot compress anything with a conditional prefix */
-    if ( 0xf != (0xf & (insn.code >> 18)) ) {
+    unsigned newcode;
+
+    /* first, we cannot compress big instructions with a conditional prefix */
+    if ( size > 4 && 0xf != condmask ) {
       goto skip_compress;
     }
     /* make sure dest. is a legal register */
@@ -1400,26 +1429,47 @@ md_assemble (char *instruction_string)
     /* OK, we can compress now */
     if (immediate) {
       if (srcval > 15) {
-	insn.code = (PREFIX_REGIMM12 | destval);
-	insn.code |= ((srcval & 0xff)) << 8;
-	insn.code |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 16;
+	newcode = (PREFIX_REGIMM12 | destval);
+	newcode |= ((srcval & 0xff)) << 8;
+	newcode |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 16;
 	size = 3;
-	insn_compressed = 1;
       } else {
 	/* FIXME: could special case a few things here */
-	insn.code = (PREFIX_REGIMM4 | destval) | ( ((srcval<<4)|op->copc) << 8 );
+	newcode = (PREFIX_REGIMM4 | destval) | ( ((srcval<<4)|op->copc) << 8 );
 	size = 2;
-	insn_compressed = 1;
       }
     } else {
       if (srcval > 15) goto skip_compress;
-      insn.code = (PREFIX_REGREG | destval) | ( ((srcval<<4)|op->copc) << 8);
+      newcode = (PREFIX_REGREG | destval) | ( ((srcval<<4)|op->copc) << 8);
       size = 2;
-      insn_compressed = 1;
     }
-    
+    if (condmask != 0xf) {
+      newcode = newcode << 8;
+      condmask = ~condmask & 0xf;
+      if (size == 3)
+	newcode |= (PREFIX_SKIP3 | condmask);
+      else
+	newcode |= (PREFIX_SKIP2 | condmask);
+      size++;
+    }
+    insn.code = newcode;
+    insn_compressed = 1;
+    /* no relocations required */
+    insn.reloc.type = BFD_RELOC_NONE;
+    op1.reloc.type = BFD_RELOC_NONE;
+    op2.reloc.type = BFD_RELOC_NONE;
   }
  skip_compress:
+
+  /* if the instruction still isn't compressed, we may be able
+     to pack it into 4 bytes anyway, so long as the condition
+     flags are 0xF
+  */
+  if (compress && !insn_compressed && size == 4 && condmask == 0xf) {
+    insn.code = pack_native(insn.code);
+    reloc_prefix = 1;
+    insn_compressed = 1;
+  }
 
   {
     int insn_size;
@@ -1441,7 +1491,7 @@ md_assemble (char *instruction_string)
 
     if (compress) {
       if (!insn_compressed) {
-	md_number_to_chars (to, NATIVE_PREFIX, 1);
+	md_number_to_chars (to, MACRO_NATIVE, 1);
 	to++;
       } else if (insn_size > 4) {
 	/* handle the rare long compressed forms like mvi */
@@ -1474,7 +1524,7 @@ md_assemble (char *instruction_string)
     if (insn2.reloc.type != BFD_RELOC_NONE || insn2.code)
       {
 	if (compress && !insn2_compressed) {
-	  md_number_to_chars ( to, NATIVE_PREFIX, 1 );
+	  md_number_to_chars ( to, MACRO_NATIVE, 1 );
 	  to++;
 	}
 	md_number_to_chars (to, insn2.code, 4);

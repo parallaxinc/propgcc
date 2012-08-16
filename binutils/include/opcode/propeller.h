@@ -86,6 +86,9 @@
 #define PREFIX_MVI      (0x50)
 #define PREFIX_MVIW     (0x60)
 #define PREFIX_BRS      (0x70)
+#define PREFIX_SKIP2    (0x80)
+#define PREFIX_SKIP3    (0x90)
+#define PREFIX_PACK_NATIVE (0xF0)
 
 /* extended operations */
 #define XOP_MOV 0x0
