@@ -145,6 +145,7 @@ __macro_fcache
 	rdbyte  sfield,pc
 	shl	sfield,#8
 	or	__TMP0,sfield
+	add	pc,#1
 	jmp	#__LMM_FCACHE_DO
 	
 __macro_ret
