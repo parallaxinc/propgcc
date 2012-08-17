@@ -76,6 +76,8 @@
 #define COMPRESS_MVI (4)
 /* instruction can be compressed to a mviw */
 #define COMPRESS_MVIW (5)
+/* instruction is a regular move instruction */
+#define COMPRESS_MOV (6)
 
 /* instruction prefixes */
 #define PREFIX_MACRO    (0x00)
@@ -88,6 +90,8 @@
 #define PREFIX_BRS      (0x70)
 #define PREFIX_SKIP2    (0x80)
 #define PREFIX_SKIP3    (0x90)
+#define PREFIX_MVIB     (0xA0)
+#define PREFIX_ZEROREG  (0xB0)
 #define PREFIX_PACK_NATIVE (0xF0)
 
 /* extended operations */
@@ -118,6 +122,7 @@
 #define MACRO_MUL    0x06
 #define MACRO_UDIV   0x07
 #define MACRO_DIV    0x08
+#define MACRO_MVREG  0x09
 #define MACRO_FCACHE 0x0e
 #define MACRO_NATIVE 0x0f
 
@@ -130,7 +135,7 @@ struct propeller_opcode
   int format;
   int result;
   int hardware;
-  int can_compress;
+  int compress_type;
   int copc;  /* compressed opcode */
 };
 
