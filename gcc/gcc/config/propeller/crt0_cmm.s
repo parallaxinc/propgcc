@@ -87,7 +87,7 @@ jmptab_base
 	jmp	#skip3	' instruction 9d
 	jmp	#mvi8	' instruction Ad
 	jmp	#mvi0	' instruction Bd
-	jmp	#macro	' instruction Cd
+	jmp	#leasp	' instruction Cd
 	jmp	#macro	' instruction Dd
 	jmp	#macro	' instruction Ed
 	jmp	#pack_native	' instruction Fd
@@ -135,6 +135,19 @@ get_long
 get_long_ret
 	ret
 
+	'' utility routine
+	'' read a word into sfield
+	'' trashes xfield
+get_word
+	rdbyte	sfield,pc
+	add	pc,#1
+	rdbyte	xfield,pc
+	add	pc,#1
+	shl	xfield,#8
+	or	sfield,xfield
+get_word_ret
+	ret
+
 __macro_native
 	call	#get_long
 	jmp	#sfield
@@ -175,12 +188,7 @@ __macro_popm
 	jmp	#__LMM_loop
 
 __macro_lcall
-	rdbyte	sfield,pc
-	add	pc,#1
-	rdbyte	xfield,pc
-	add	pc,#1
-	shl	xfield,#8
-	or	sfield,xfield
+	call	#get_word
 	mov	lr,pc
 	mov	pc,sfield
 	jmp	#__LMM_loop
@@ -252,6 +260,23 @@ mvi0
 .domvi0
 	mov	0-0,#0
 	jmp	#__LMM_loop
+
+
+	'''
+	''' leasp dst,#x
+	''' sets dst = sp + x
+	''' 
+leasp
+	rdbyte	sfield,pc
+	movd	.doleasp1,dfield
+	movd	.doleasp2,dfield
+	add	pc,#1
+.doleasp1
+	mov	0-0,sp
+.doleasp2
+	add	0-0,sfield
+	jmp	#__LMM_loop
+
 
 	'''
 	''' 16 bit compressed forms of instructions
