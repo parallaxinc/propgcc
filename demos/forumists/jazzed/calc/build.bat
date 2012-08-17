@@ -1,2 +1,2 @@
-propeller-elf-gcc -Wall -Os -m32bit-doubles calc.c -lm -s
-propeller-load -r -t a.out
+propeller-elf-gcc -Wall -Os -m32bit-doubles -o calc.elf calc.c -lm
+propeller-load -r -t calc.elf
