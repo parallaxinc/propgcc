@@ -1392,7 +1392,7 @@ md_assemble (char *instruction_string)
 
 
   /* check for possible compression */
-  if (compress && op->can_compress && !insn_compressed) {
+  if (compress && op->compress_type && !insn_compressed) {
     unsigned destval, srcval;
     unsigned immediate;
     unsigned effects, expectedeffects;
@@ -1406,43 +1406,83 @@ md_assemble (char *instruction_string)
     if (op2.reloc.type != BFD_RELOC_NONE) goto skip_compress;
     destval = (insn.code >> 9) & 0x1ff;
     if (destval > 15) goto skip_compress;
-    /* make sure the effect flags match */
-    effects = (insn.code >> 23) & 0x7;
-    switch (op->copc) {
-    case XOP_CMPS:
-      expectedeffects = 6;  /* wz,wc,nr */
-      break;
-    case XOP_WRB:
-    case XOP_WRL:
-      expectedeffects = 0;
-      break;
-    default:
-      expectedeffects = 1;  /* just the R field */
-      break;
-    }
-    if (effects != expectedeffects) goto skip_compress;
 
     /* make sure srcval is legal (if a register) or immediate */
     if (op1.reloc.type != BFD_RELOC_NONE) goto skip_compress;
     immediate = (insn.code >> 22) & 0x1;
     srcval = insn.code & 0x1ff;
-    /* OK, we can compress now */
-    if (immediate) {
-      if (srcval > 15) {
-	newcode = (PREFIX_REGIMM12 | destval);
-	newcode |= ((srcval & 0xff)) << 8;
-	newcode |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 16;
-	size = 3;
-      } else {
-	/* FIXME: could special case a few things here */
-	newcode = (PREFIX_REGIMM4 | destval) | ( ((srcval<<4)|op->copc) << 8 );
-	size = 2;
+
+    effects = (insn.code >> 23) & 0x7;
+    /* now compress based on type */
+    if (op->compress_type == COMPRESS_XOP)
+      {
+	/* make sure the effect flags match */
+	switch (op->copc) {
+	case XOP_CMPS:
+	  expectedeffects = 6;  /* wz,wc,nr */
+	  break;
+	case XOP_WRB:
+	case XOP_WRL:
+	  expectedeffects = 0;
+	  break;
+	default:
+	  expectedeffects = 1;  /* just the R field */
+	  break;
+	}
+	if (effects != expectedeffects) goto skip_compress;
+
+	/* OK, we can compress now */
+	if (immediate)
+	  {
+	    if (srcval > 15) {
+	      newcode = (PREFIX_REGIMM12 | destval);
+	      newcode |= ((srcval & 0xff)) << 8;
+	      newcode |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 16;
+	      size = 3;
+	    } else {
+	      /* FIXME: could special case a few things here */
+	      newcode = (PREFIX_REGIMM4 | destval) | ( ((srcval<<4)|op->copc) << 8 );
+	      size = 2;
+	    }
+	  }
+	else
+	  {
+	    if (srcval > 15) goto skip_compress;
+	    newcode = (PREFIX_REGREG | destval) | ( ((srcval<<4)|op->copc) << 8);
+	    size = 2;
+	  }
       }
-    } else {
-      if (srcval > 15) goto skip_compress;
-      newcode = (PREFIX_REGREG | destval) | ( ((srcval<<4)|op->copc) << 8);
-      size = 2;
-    }
+    else if (op->compress_type == COMPRESS_MOV)
+      {
+	/* for mov, only default wr effect can be compressed */
+	if (effects != 1) goto skip_compress;
+	if (immediate)
+	  {
+	    if (srcval == 0 && condmask == 0xf) {
+	      newcode = (PREFIX_ZEROREG | destval);
+	      size = 1;
+	    } else if (srcval <= 255) {
+	      newcode = (PREFIX_MVIB | destval) | (srcval << 8);
+	      size = 2;
+	    } else {
+	      newcode = (PREFIX_MVIW | destval) | (srcval << 8);
+	      size = 3;
+	    }
+	  }
+	else
+	  {
+	    if (srcval > 15)
+	      {
+		goto skip_compress;
+	      }
+	    newcode = MACRO_MVREG | (destval << 12) | (srcval << 8);
+	    size = 2;
+	  }
+      }
+    else
+      {
+	goto skip_compress;
+      }
     if (condmask != 0xf) {
       newcode = newcode << 8;
       condmask = ~condmask & 0xf;

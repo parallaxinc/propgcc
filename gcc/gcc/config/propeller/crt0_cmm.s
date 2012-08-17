@@ -85,8 +85,8 @@ jmptab_base
 	jmp	#brs	' instruction 7d
 	jmp	#skip2	' instruction 8d
 	jmp	#skip3	' instruction 9d
-	jmp	#macro	' instruction Ad
-	jmp	#macro	' instruction Bd
+	jmp	#mvi8	' instruction Ad
+	jmp	#mvi0	' instruction Bd
 	jmp	#macro	' instruction Cd
 	jmp	#macro	' instruction Dd
 	jmp	#macro	' instruction Ed
@@ -106,7 +106,7 @@ macro_tab_base
 	jmp	#__macro_mul	' macro 6 -- multiply
 	jmp	#__macro_udiv	' macro 7 -- unsigned divide
 	jmp	#__macro_div	' macro 8 -- signed divide
-	jmp	#__LMM_loop	' macro 9 -- NOP
+	jmp	#__macro_mvreg	' macro 9 -- register register move
 	jmp	#__LMM_loop	' macro A -- NOP
 	jmp	#__LMM_loop	' macro B -- NOP
 	jmp	#__LMM_loop	' macro C -- NOP
@@ -186,6 +186,23 @@ __macro_lcall
 	jmp	#__LMM_loop
 
 	''
+	'' register register move
+	'' second byte is (dest<<4) | src
+	''
+__macro_mvreg
+	rdbyte	sfield,pc
+	mov	dfield,sfield
+	add	pc,#1
+	and	sfield,#15
+	shr	dfield,#4
+	or	sfield,__mov_instruction
+	movd	sfield,dfield
+	jmp	#sfield
+
+__mov_instruction
+	mov	0-0,0-0
+
+	''
 	'' LMM support functions
 	''
 
@@ -213,6 +230,27 @@ mvi16
 	or	sfield,xfield
 .domvi16
 	mov	0-0,sfield
+	jmp	#__LMM_loop
+
+	'''
+	''' move immediate of an 8 bit value
+	'''
+mvi8
+	rdbyte	sfield,pc
+	movd	.domvi8,dfield
+	add	pc,#1
+.domvi8
+	mov	0-0,sfield
+	jmp	#__LMM_loop
+
+	'''
+	''' zero a register
+	'''
+mvi0
+	movd	.domvi0,dfield
+	nop
+.domvi0
+	mov	0-0,#0
 	jmp	#__LMM_loop
 
 	'''
@@ -594,12 +632,9 @@ inc_dest4
 	long (4<<9)
 	
 	.global	__LMM_RET
-	.global	__LMM_FCACHE_LOAD
 __LMM_RET
 	long 0
-__LMM_FCACHE_LOAD
-	call	#get_long
-	mov	__TMP0,sfield	'' read count of bytes for load
+
 __LMM_FCACHE_DO
 	add	pc,#3		'' round up to next longword boundary
 	andn	pc,#3
@@ -649,6 +684,6 @@ Lmm_fcache_doit
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	128	'' reserve 128 longs = 512 bytes
+	res	64	'' reserve 64 longs = 256 bytes
 
 
