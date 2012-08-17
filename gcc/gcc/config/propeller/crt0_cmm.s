@@ -306,7 +306,7 @@ regimm4
 	or	sfield,__IMM_BIT
 	jmp	#doreg
 
-__IMM_BIT	long 0b000000_0001_0000_000000000_000000000
+__IMM_BIT	long (1<<22)
 
 	'''
 	''' register plus 12 bit immediate
