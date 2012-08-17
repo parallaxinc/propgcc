@@ -57,6 +57,9 @@
 /* for functions with no epilogue or prologue: these should never return */
 #define _NAKED  __attribute__((naked))
 
+/** @brief Can be used in per-function declarations to tell compiler that function should be compiled to load into fcache; useful for guaranteeing timing of small functions */
+#define _FCACHE __attribute__((fcache))
+
 /* useful variables */
 
 extern _COGMEM volatile unsigned int _PAR __asm__("PAR");
