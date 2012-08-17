@@ -30,7 +30,8 @@
 static volatile uint32_t __attribute__((section(".hub"))) sd_lock = -1;
 static volatile uint32_t __attribute__((section(".hub"))) *sd_mbox;
 
-#ifndef __PROPELLER_LMM__
+#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+#define USE_XMM_MBOX
 extern uint16_t _xmm_mbox_p;
 #endif
 uint32_t *_sd_mbox_p = 0;
@@ -58,7 +59,7 @@ int DFS_InitFileIO(void)
 {
     int retries = 5;
 
-#ifdef __PROPELLER_LMM__
+#if !defined(USE_XMM_MBOX)
     sd_mbox = _sd_mbox_p;
     if (!_sd_mbox_p)
         return DFS_INVAL;
