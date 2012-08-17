@@ -226,6 +226,26 @@
 ;; Arithmetic instructions
 ;; -------------------------------------------------------------------------
 
+;;
+;; special case for CMM mode -- we have a leasp macro which will 
+;; add the sp to an 8 byte offset:
+;;    leasp rN, #x
+;; is the same as
+;;    addsi rN, sp, #x
+;;
+(define_insn "*leasp_cmm"
+  [(set (match_operand:SI        0 "propeller_gpr_operand" "=r")
+        (plus:SI
+              (reg:SI SP_REG)
+              (match_operand:SI  1 "immediate_byte" "n")))]
+  "TARGET_CMM && reload_completed"
+  "leasp %0,%1"
+ [(set_attr "length" "2")
+  (set_attr "type" "multi")
+ ]
+)
+
+;; normal add
 (define_insn "addsi3"
   [(set (match_operand:SI    0 "propeller_dst_operand" "=rC,rC")
 	  (plus:SI
@@ -438,6 +458,7 @@
    (set_attr "predicable" "yes")
   ]
 )
+
 
 ;;
 ;; special cases of add and sub
@@ -940,8 +961,8 @@
  	(match_operand:SI 1 "general_operand" ""))]
    ""
 {
-  if (!propeller_reg_operand (operands[0], SImode)
-      && !propeller_reg_operand (operands[1], SImode))
+  if (!propeller_cogreg_operand (operands[0], SImode)
+      && !propeller_cogreg_operand (operands[1], SImode))
     {
       operands[1] = force_reg (SImode, operands[1]);
     }
@@ -1075,8 +1096,8 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (!propeller_reg_operand (operands[0], HImode)
-      && !propeller_reg_operand (operands[1], HImode))
+  if (!propeller_cogreg_operand (operands[0], HImode)
+      && !propeller_cogreg_operand (operands[1], HImode))
     operands[1] = force_reg (HImode, operands[1]);
 }")
 
@@ -1146,8 +1167,8 @@
   "
 {
   /* If this is a store, force the value into a register.  */
-  if (!propeller_reg_operand (operands[0], QImode)
-      && !propeller_reg_operand (operands[1], QImode))
+  if (!propeller_cogreg_operand (operands[0], QImode)
+      && !propeller_cogreg_operand (operands[1], QImode))
     operands[1] = force_reg (QImode, operands[1]);
 }")
 
@@ -2700,6 +2721,39 @@
 ;; -------------------------------------------------------------------------
 
 ;;
+;; mov rn, sp / add rn,#X -> leasp rn, #X
+;; 
+(define_peephole2
+  [(set (match_operand:SI 0 "register_operand" "")
+        (reg:SI SP_REG))
+   (set (match_dup 0)
+        (plus:SI (match_dup 0)
+                  (match_operand:SI 1 "immediate_byte" "")))
+  ]
+  "TARGET_CMM"
+  [(set (match_dup 0) (plus:SI (reg:SI SP_REG) (match_dup 1)))
+  ]
+  ""
+)
+
+;;
+;; mov rn, #X / add rn,sp -> leasp rn, #X
+;; 
+
+(define_peephole2
+  [(set (match_operand:SI 0 "register_operand" "")
+        (match_operand:SI 1 "immediate_byte" ""))
+   (set (match_dup 0)
+        (plus:SI (match_dup 0)
+                  (reg:SI SP_REG)))
+  ]
+  "TARGET_CMM"
+  [(set (match_dup 0) (plus:SI (reg:SI SP_REG) (match_dup 1)))
+  ]
+  ""
+)
+
+;;
 ;; move followed by a redundant compare
 ;;
 (define_peephole2
@@ -2707,7 +2761,7 @@
         (match_operand:SI 1 "propeller_src_operand" ""))
    (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
   ]
-  "!TARGET_CMM"
+  ""
   [(parallel
      [(set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1)(const_int 0)))
       (set (match_dup 0)(match_dup 1))])]
@@ -2725,7 +2779,7 @@
 	   ]))
    (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 0) (const_int 0)))
   ]
-  "!TARGET_CMM"
+  ""
   [(parallel
      [(set (reg:CC_Z CC_REG)
              (compare:CC_Z (match_op_dup 2 [(match_dup 0)(match_dup 1)])
@@ -2790,3 +2844,43 @@
 ;; passes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; these don't come up terribly often, but are provided here just as
+;; examples of how peepholes can be defined
+
+;;
+;; sumz r0,r1:  r0 = (z flag set) ? r0 - r1 : r0 + r1
+;;
+
+(define_peephole
+ [
+  (cond_exec (eq (reg:CC_Z CC_REG) (const_int 0))
+    (set (match_operand:SI 0 "register_operand" "=r")
+         (minus:SI (match_dup 0)
+                  (match_operand:SI 1 "register_operand" "r"))))
+  (cond_exec (ne (reg:CC_Z CC_REG) (const_int 0))
+    (set (match_dup 0)
+         (plus:SI (match_dup 0)
+                  (match_dup 1))))
+  ]
+  ""
+  "sumz\t%0,%1"
+)
+
+;;
+;; sumz r0,r1:  r0 = (z flag set) ? r0 - r1 : r0 + r1
+;;
+
+(define_peephole
+ [
+  (cond_exec (ne (reg:CC_Z CC_REG) (const_int 0))
+    (set (match_operand:SI 0 "register_operand" "=r")
+         (minus:SI (match_dup 0)
+                  (match_operand:SI 1 "register_operand" "r"))))
+  (cond_exec (eq (reg:CC_Z CC_REG) (const_int 0))
+    (set (match_dup 0)
+         (plus:SI (match_dup 0)
+                  (match_dup 1))))
+  ]
+  ""
+  "sumnz\t%0,%1"
+)

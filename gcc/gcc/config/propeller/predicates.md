@@ -52,11 +52,18 @@
 ;; are not a suitable destination for
 ;; loads, otherwise this is the same as propeller_dst_operand
 
-(define_predicate "propeller_reg_operand"
+(define_predicate "propeller_cogreg_operand"
   (ior (and (match_operand 0 "register_operand")
             (match_test "!TARGET_XMM || REGNO (op) != PROP_SP_REGNUM"))
        (and (match_operand 0 "memory_operand")
             (match_test "!TARGET_XMM && propeller_cogmem_p (op)"))))
+
+;; True if OP is suitable as a register destination operand
+;; in CMM mode, i.e. if it is one of the 16 general purpose registers
+
+(define_predicate "propeller_gpr_operand"
+  (and (match_operand 0 "register_operand")
+       (match_test "REGNO (op) != PROP_SP_REGNUM")))
 
 
 ;; Nonzero if OP is suitable as a general propeller source operand
@@ -129,6 +136,10 @@
 (define_predicate "immediate_0_8"
   (and (match_code "const_int")
        (match_test "IN_RANGE (INTVAL (op), 0, 8)")))
+
+(define_predicate "immediate_byte"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 0, 255)")))
 
 ;;
 ;; true for an operand that we know is on the stack
