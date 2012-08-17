@@ -1186,6 +1186,75 @@ md_assemble (char *instruction_string)
       }
       break;
 
+    case PROPELLER_OPERAND_LEASP:
+      {
+	unsigned destval = 512;
+	/*
+	      leasp rN,#n
+	   and gets translated into two instructions:
+	      mov  rN,#n
+              add  rN,sp
+	*/
+	int can_compress = 0;
+	parse_dest(str, &op1, &insn);
+	str = parse_dest(str, &op3, &insn2);
+	str = parse_separator (str, &error);
+	if (error)
+	  {
+	    op1.error = _("Missing ','");
+	    break;
+	  }
+
+	if (compress && !op1.error)
+	  {
+	    if (op1.reloc.type == BFD_RELOC_NONE) {
+	      destval = ((insn.code >> 9) & 0x1f);
+	      if (destval <= 15) {
+		can_compress = 1;
+	      }
+	    }
+	  }
+
+	if (can_compress)
+	  {
+	    size = 2;
+	    str = parse_src_n(str, &op2, 8);
+	    insn.code = PREFIX_LEASP | destval | (op2.code << 8);
+	    reloc_prefix = 1;
+	    if (condmask != 0xf) {
+	      insn.code = insn.code << 8;
+	      condmask = ~condmask & 0xf;
+	      insn.code |= (PREFIX_SKIP2 | condmask);
+	      size++;
+	      reloc_prefix++;
+	    }
+	    insn_compressed = 1;
+	  }
+	else
+	  {
+	    char *arg;
+	    char *arg2;
+
+	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+	    if (!(insn.code & (1<<22)))
+	      {
+		op2.error = _("leasp only accepts 8 bit immediates");
+	      }
+
+	    arg = malloc(64);
+	    if (arg == NULL)
+	      as_fatal (_("Virtual memory exhausted"));
+	    strcpy(arg, "sp");
+	    arg2 = parse_dest(arg, &op4, &insn);
+	    // now set up the ADD instruction
+	    insn2.code = 0x80800000 | (0xf << 18); 
+	    free(arg);
+
+	    size = 8;
+	  }
+      }
+      break;
+
     case PROPELLER_OPERAND_LCALL:
       {
 	/* this looks like:

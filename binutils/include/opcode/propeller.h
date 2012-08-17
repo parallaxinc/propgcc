@@ -43,6 +43,7 @@
 #define PROPELLER_OPERAND_LCALL       15
 #define PROPELLER_OPERAND_MACRO_8     16
 #define PROPELLER_OPERAND_MACRO_0     17
+#define PROPELLER_OPERAND_LEASP       18
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
@@ -92,6 +93,7 @@
 #define PREFIX_SKIP3    (0x90)
 #define PREFIX_MVIB     (0xA0)
 #define PREFIX_ZEROREG  (0xB0)
+#define PREFIX_LEASP    (0xC0)
 #define PREFIX_PACK_NATIVE (0xF0)
 
 /* extended operations */
