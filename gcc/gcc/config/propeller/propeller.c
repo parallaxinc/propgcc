@@ -2770,11 +2770,7 @@ propeller_unlikely_branch_p (rtx jump)
  * or recursive calls
  */
 
-#if 0
-#define MAX_FCACHE_SIZE ( TARGET_LARGE_FCACHE : 1020 : 508 )
-#else
-#define MAX_FCACHE_SIZE (508)
-#endif
+#define MAX_FCACHE_SIZE ( TARGET_CMM ? 252 : 508 )
 
 static bool
 fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
