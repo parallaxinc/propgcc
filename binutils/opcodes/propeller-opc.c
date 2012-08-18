@@ -84,6 +84,12 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* leasp      101000 zcri cccc ddddddddd sssssssss */
   {"leasp", 0xa0000000, 0xffffffff, PROPELLER_OPERAND_LEASP, R, PROP_1_LMM, COMPRESS_MACRO, PREFIX_LEASP},
 
+/* xmov expands to a mov rA,rB followed by OP rC,rD */
+/* it's mainly intended for compressed mode, but we have to support the
+   expanded version for fcache */
+/* leasp      101000 zcri cccc ddddddddd sssssssss */
+  {"xmov", 0xa0800000, 0xffffffff, PROPELLER_OPERAND_XMOV, R, PROP_1_LMM, COMPRESS_XMOV, PREFIX_XMOVREG},
+
 /* wrbyte   000000 zc0i cccc ddddddddd sssssssss */
   {"wrbyte", 0x00000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, COMPRESS_XOP, XOP_WRB},
 /* rdbyte   000000 zc1i cccc ddddddddd sssssssss */

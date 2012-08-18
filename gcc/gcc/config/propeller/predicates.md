@@ -104,6 +104,10 @@
 (define_special_predicate "propeller_math_op1"
   (match_code "neg,not,abs"))
 
+;; true if this operator can be paired in CMM mode
+(define_special_predicate "propeller_pair_op2"
+  (match_code "plus,minus,and,ior,xor,ashift,ashiftrt,lshiftrt"))
+
 ;; match the cc register
 (define_special_predicate "cc_register"
   (and (match_code "reg")
@@ -140,6 +144,10 @@
 (define_predicate "immediate_byte"
   (and (match_code "const_int")
        (match_test "IN_RANGE (INTVAL (op), 0, 255)")))
+
+(define_predicate "immediate_nybble"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), 0, 15)")))
 
 ;;
 ;; true for an operand that we know is on the stack
