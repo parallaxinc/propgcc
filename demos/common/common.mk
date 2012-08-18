@@ -33,7 +33,7 @@ ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)
 endif
 
-LDFLAGS += -m$(MODEL) -fno-exceptions -fno-rtti
+LDFLAGS += -m$(MODEL) $(CFLAGS) -fno-exceptions -fno-rtti
 
 ifneq ($(LDSCRIPT),)
 LDFLAGS += -T $(LDSCRIPT)

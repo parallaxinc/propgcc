@@ -1,9 +1,12 @@
 #include <stdio.h>
+#include <i2c.h>
 #include "term_serial.h"
-#include "i2c.h"
 #include "misc.h"
 
-#define USE_SIMPLE_I2C_DRIVER
+#ifndef TRUE
+#define TRUE	1
+#define FALSE	0
+#endif
 
 #define COMPASS_ADDR    0x1e
 
@@ -25,9 +28,9 @@ int main(void)
     term = serialTermStart(&serial, stdout);
     
 #ifdef USE_SIMPLE_I2C_DRIVER
-    bus = simple_i2cInit(&i2c, 1, 0);
+    bus = simple_i2cOpen(&i2c, 1, 0);
 #else
-    bus = i2cInit(&i2c, 1, 0, 400000);
+    bus = i2cOpen(&i2c, 1, 0, 400000);
 #endif
 
     CompassInit(bus);
@@ -55,9 +58,11 @@ uint8_t continuous_mode[] = { 0x02, 0x00 };
 void CompassInit(I2C *bus)
 {
     /* set to continuous mode */
-    if (i2cSendBuf(bus, COMPASS_ADDR, continuous_mode, sizeof(continuous_mode)) != 0)
+    if (i2cWrite(bus, COMPASS_ADDR, continuous_mode, sizeof(continuous_mode), TRUE) != 0)
         termStr(term, "Setting continuous mode failed\n");
 }
+
+uint8_t read_data_registers[] = { 0x03 };
 
 void CompassRead(I2C *bus, int *px, int *py, int *pz)
 {
@@ -65,12 +70,11 @@ void CompassRead(I2C *bus, int *px, int *py, int *pz)
     uint8_t data[6];
     
     /* select the data registers */
-    i2cBegin(bus, COMPASS_ADDR);
-    i2cAddByte(bus, 0x03);
-    i2cSend(bus);
+    if (i2cWrite(bus, COMPASS_ADDR, read_data_registers, sizeof(read_data_registers), TRUE) != 0)
+    	termStr(term, "Write failed\n");
     
     /* read the data registers */
-    if (i2cRequestBuf(bus, COMPASS_ADDR, data, sizeof(data)) != 0)
+    if (i2cRead(bus, COMPASS_ADDR, data, sizeof(data), TRUE) != 0)
         termStr(term, "Read failed\n");
 
     /* assemble the return values */
