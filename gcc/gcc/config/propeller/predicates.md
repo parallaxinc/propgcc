@@ -149,6 +149,15 @@
   (and (match_code "const_int")
        (match_test "IN_RANGE (INTVAL (op), 0, 15)")))
 
+(define_predicate "negative_nybble"
+  (and (match_code "const_int")
+       (match_test "IN_RANGE (INTVAL (op), -15, -1)")))
+
+;; an operand that will fit in a CMM 4 bit slot
+(define_predicate "propeller_cmm_src_operand"
+  (ior (match_operand 0 "propeller_gpr_operand")
+       (match_operand 0 "immediate_nybble")))
+
 ;;
 ;; true for an operand that we know is on the stack
 ;;
