@@ -2902,10 +2902,23 @@
   (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
        (match_operator:SI 4 "propeller_pair_op2"
          [(match_dup 2)
-          (match_operand:SI 3 "propeller_gpr_operand" "r")]))
+          (match_operand:SI 3 "propeller_cmm_src_operand" "ri")]))
   ]
-  "TARGET_CMM && TARGET_EXPERIMENTAL"
+  "TARGET_CMM"
   "xmov\t%0,%1 %Q4 %2,%3"
+)
+
+;; we have to special case sub r0,#1, it gets turned into add r0,#-1
+(define_peephole
+ [
+  (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
+       (match_operand:SI 1 "propeller_gpr_operand" "r"))
+  (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
+       (plus:SI (match_dup 2)
+                (match_operand:SI 3 "negative_nybble" "n")))
+  ]
+  "TARGET_CMM"
+  "xmov\t%0,%1 sub %2,#%n3"
 )
 
 (define_peephole
@@ -2913,21 +2926,8 @@
   (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
        (match_operand:SI 1 "propeller_gpr_operand" "r"))
   (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
-       (match_operator:SI 4 "propeller_pair_op2"
-         [(match_dup 2)
-          (match_operand:SI 3 "immediate_nybble" "i")]))
+       (match_operand:SI 3 "propeller_cmm_src_operand" "ri"))
   ]
   "TARGET_CMM && TARGET_EXPERIMENTAL"
-  "xmov\t%0,%1 %Q4 %2,%3"
-)
-
-(define_peephole
- [
-  (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
-       (match_operand:SI 1 "propeller_gpr_operand" "r"))
-  (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
-       (const_int 0))
-  ]
-  "TARGET_CMM && TARGET_EXPERIMENTAL"
-  "xmov\t%0,%1 sub %2,%2"
+  "xmov\t%0,%1 mov %2,%3"
 )
