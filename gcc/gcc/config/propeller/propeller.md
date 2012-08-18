@@ -190,8 +190,14 @@
 (define_code_iterator minmaxop
 		      [(umax "")(umin "") (smax "")(smin "")])
 
+;; instructions that can pair together in CMM mode
+(define_code_iterator pair2op
+		      [(plus "") (minus "") (ior "") (xor "")
+		       (and "") (ashift "") (ashiftrt "") (lshiftrt "")]
+)
+
 (define_code_attr     opcode
-		        [(plus "add") (ior "or") (xor "xor")
+		        [(plus "add") (minus "sub") (ior "or") (xor "xor")
                       	 (ashift "shl") (ashiftrt "sar") (lshiftrt "shr")
 			 (rotate "rol") (rotatert "ror")
 			 ;; propeller has backwards max and min names
@@ -2720,6 +2726,7 @@
 ;; machine specific peepholes to catch things the combiner misses
 ;; -------------------------------------------------------------------------
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; mov rn, sp / add rn,#X -> leasp rn, #X
 ;; 
@@ -2883,4 +2890,44 @@
   ]
   ""
   "sumnz\t%0,%1"
+)
+
+;;
+;; instruction pairing
+;;
+(define_peephole
+ [
+  (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
+       (match_operand:SI 1 "propeller_gpr_operand" "r"))
+  (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
+       (match_operator:SI 4 "propeller_pair_op2"
+         [(match_dup 2)
+          (match_operand:SI 3 "propeller_gpr_operand" "r")]))
+  ]
+  "TARGET_CMM && TARGET_EXPERIMENTAL"
+  "lmov_op\t OPERATOR_GOES_HERE %0,%1,%2,%3"
+)
+
+(define_peephole
+ [
+  (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
+       (match_operand:SI 1 "propeller_gpr_operand" "r"))
+  (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
+       (match_operator:SI 4 "propeller_pair_op2"
+         [(match_dup 2)
+          (match_operand:SI 3 "immediate_nybble" "i")]))
+  ]
+  "TARGET_CMM && TARGET_EXPERIMENTAL"
+  "lmov_opimm\t OPERATOR_GOES_HERE %0,%1,%2,%3"
+)
+
+(define_peephole
+ [
+  (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
+       (match_operand:SI 1 "propeller_gpr_operand" "r"))
+  (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
+       (const_int 0))
+  ]
+  "TARGET_CMM && TARGET_EXPERIMENTAL"
+  "lmov_op\t sub %0,%1,%2,%2"
 )

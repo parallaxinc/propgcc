@@ -44,6 +44,7 @@
 #define PROPELLER_OPERAND_MACRO_8     16
 #define PROPELLER_OPERAND_MACRO_0     17
 #define PROPELLER_OPERAND_LEASP       18
+#define PROPELLER_OPERAND_XMOV        19
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
@@ -79,6 +80,8 @@
 #define COMPRESS_MVIW (5)
 /* instruction is a regular move instruction */
 #define COMPRESS_MOV (6)
+/* instruction is a mov followed by an extended op */
+#define COMPRESS_XMOV (7)
 
 /* instruction prefixes */
 #define PREFIX_MACRO    (0x00)
@@ -94,6 +97,8 @@
 #define PREFIX_MVIB     (0xA0)
 #define PREFIX_ZEROREG  (0xB0)
 #define PREFIX_LEASP    (0xC0)
+#define PREFIX_XMOVREG  (0xD0)
+#define PREFIX_XMOVIMM  (0xE0)
 #define PREFIX_PACK_NATIVE (0xF0)
 
 /* extended operations */

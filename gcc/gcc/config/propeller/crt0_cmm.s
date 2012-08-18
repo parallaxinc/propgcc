@@ -88,8 +88,8 @@ jmptab_base
 	jmp	#mvi8	' instruction Ad
 	jmp	#mvi0	' instruction Bd
 	jmp	#leasp	' instruction Cd
-	jmp	#macro	' instruction Dd
-	jmp	#macro	' instruction Ed
+	jmp	#xmov_reg	' instruction Dd
+	jmp	#xmov_imm	' instruction Ed
 	jmp	#pack_native	' instruction Fd
 
 macro
@@ -296,6 +296,36 @@ doreg
 .ins_rr	or	sfield,0-0
 	jmp	#sfield
 
+	'''
+	''' decode an embedded move instruction
+	''' dddd ssss
+xmov
+	rdbyte	xfield,pc
+	mov	sfield,xfield
+	shr	xfield,#4
+	and	sfield,#15
+	movs	.xmov,sfield
+	movd	.xmov,xfield
+	add	pc,#1
+.xmov	mov	0-0,0-0
+xmov_ret
+	ret
+	
+	'''
+	''' like regreg, but has an additional move instruction embedded
+	''' as the first byte after the opcode
+	'''
+
+xmov_reg
+	call	#xmov
+	jmp	#regreg
+
+	''' similarly for an immediate 4
+xmov_imm
+	call	#xmov
+
+	''' fall through to regimm4
+	
 	'''
 	''' register plus 4 bit immediate
 	'''

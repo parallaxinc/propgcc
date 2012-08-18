@@ -255,7 +255,6 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       rshift = 0;
       if ((val & 0x80000000)) {
 	/* negative */
-	//fprintf(stderr, "negative val=(%08lx)\n", val);
 	if ( (val & 0xFFFFFF80) == 0xFFFFFF80 ) {
 	  mask |= 0x80;
 	  val &= 0xFF;
@@ -770,6 +769,7 @@ md_assemble (char *instruction_string)
   int insn_compressed = 0;
   int insn2_compressed = 0;
   unsigned int reloc_prefix = 0;  /* for a compressed instruction */
+  int xmov_flag = 0;
 
   if (ignore_input())
     {
@@ -1255,6 +1255,56 @@ md_assemble (char *instruction_string)
       }
       break;
 
+    case PROPELLER_OPERAND_XMOV:
+      {
+	/*
+	      xmov rA,rB,op,rC,rD
+	   and gets translated into two instructions:
+	      mov  rA,rB
+              op   rC,rD
+	*/
+	str = parse_dest(str, &op1, &insn);
+	str = parse_separator (str, &error);
+	if (error)
+	  {
+	    op1.error = _("Missing ',' in xmov");
+	    break;
+	  }
+	str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+	str = skip_whitespace (str);
+	p = find_whitespace (str);
+	if (p - str == 0)
+	  {
+	    as_bad (_("No instruction found in xmov"));
+	    return;
+	  }
+	c = *p;
+	*p = '\0';
+	lc (str);
+	op = (struct propeller_opcode *) hash_find (insn_hash, str);
+	*p = c;
+	if (op == 0 || op->format != PROPELLER_OPERAND_TWO_OPS)
+	  {
+	    as_bad (_("Bad or missing instruction in xmov: '%s'"), str);
+	    return;
+	  }
+	insn2.code = op->opcode | (condmask << 18);
+
+	/* OK, second instruction now */
+	str = p;
+	str = parse_dest (str, &op3, &insn2);
+	str = parse_separator (str, &error);
+	if (error)
+	  {
+	    op3.error = _("Missing ',' in xmov op");
+	    break;
+	  }
+	str = parse_src (str, &op4, &insn2, PROPELLER_OPERAND_TWO_OPS);
+	size = 8;
+	xmov_flag = 1;
+      }
+      break;
+
     case PROPELLER_OPERAND_LCALL:
       {
 	/* this looks like:
@@ -1414,7 +1464,10 @@ md_assemble (char *instruction_string)
     }
 
   /* set the r bit to its default state for this insn */
-  insn.code |= op->result << 23;
+  if (xmov_flag)
+    insn2.code |= op->result << 23;
+  else
+    insn.code |= op->result << 23;
 
   /* Find and process any effect flags */
   do
@@ -1430,8 +1483,13 @@ md_assemble (char *instruction_string)
       if (!eff)
 	break;
       str = p;
-      insn.code |= eff->or;
-      insn.code &= eff->and;
+      if (xmov_flag) {
+	insn.code |= eff->or;
+	insn.code &= eff->and;
+      } else {
+	insn2.code |= eff->or;
+	insn2.code &= eff->and;
+      }
       str = parse_separator (str, &error);
     }
   while (eff && !error);
@@ -1466,11 +1524,15 @@ md_assemble (char *instruction_string)
     unsigned immediate;
     unsigned effects, expectedeffects;
     unsigned newcode;
+    unsigned movbyte = 0;
+    unsigned xopbyte = 0;
 
     /* first, we cannot compress big instructions with a conditional prefix */
-    if ( size > 4 && 0xf != condmask ) {
+    /* (except xmov) */
+    if ( size > 4 && 0xf != condmask && !xmov_flag) {
       goto skip_compress;
     }
+
     /* make sure dest. is a legal register */
     if (op2.reloc.type != BFD_RELOC_NONE) goto skip_compress;
     destval = (insn.code >> 9) & 0x1ff;
@@ -1482,6 +1544,23 @@ md_assemble (char *instruction_string)
     srcval = insn.code & 0x1ff;
 
     effects = (insn.code >> 23) & 0x7;
+    if (xmov_flag) {
+      if (immediate) {
+	as_bad (_("xmov may not have immediate argument for mov"));
+	return;
+      }
+      if (effects != 1) {
+	as_bad (_("No effects permitted in xmov"));
+	return;
+      }
+      effects = (insn2.code >> 23) & 0x7;
+      movbyte = (destval<<4) | srcval;
+
+      immediate = (insn2.code >> 22) & 1;
+      srcval = (insn2.code & 0x1ff);
+      destval = (insn2.code >> 9) & 0x1ff;
+    }
+
     /* now compress based on type */
     if (op->compress_type == COMPRESS_XOP)
       {
@@ -1498,27 +1577,49 @@ md_assemble (char *instruction_string)
 	  expectedeffects = 1;  /* just the R field */
 	  break;
 	}
-	if (effects != expectedeffects) goto skip_compress;
+	if (effects != expectedeffects) {
+	  goto skip_compress;
+	}
 
 	/* OK, we can compress now */
 	if (immediate)
 	  {
 	    if (srcval > 15) {
+	      if (xmov_flag) goto skip_compress;
 	      newcode = (PREFIX_REGIMM12 | destval);
-	      newcode |= ((srcval & 0xff)) << 8;
-	      newcode |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 16;
+	      xopbyte = ((srcval & 0xff));
+	      xopbyte |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 8;
 	      size = 3;
 	    } else {
 	      /* FIXME: could special case a few things here */
-	      newcode = (PREFIX_REGIMM4 | destval) | ( ((srcval<<4)|op->copc) << 8 );
+	      if (xmov_flag)
+		newcode = (PREFIX_XMOVIMM | destval);
+	      else
+		newcode = (PREFIX_REGIMM4 | destval);
+	      xopbyte = ( ((srcval<<4)|op->copc) );
 	      size = 2;
 	    }
 	  }
 	else
 	  {
 	    if (srcval > 15) goto skip_compress;
-	    newcode = (PREFIX_REGREG | destval) | ( ((srcval<<4)|op->copc) << 8);
+	    if (xmov_flag)
+	      newcode = (PREFIX_XMOVREG | destval);
+	    else
+	      newcode = (PREFIX_REGREG | destval);
+	    xopbyte = ( ((srcval<<4)|op->copc));
 	    size = 2;
+	  }
+
+	if (xmov_flag)
+	  {
+	    newcode |= movbyte << 8;
+	    newcode |= xopbyte << 16;
+	    size++;
+	  }
+	else
+	  {
+	    newcode |= xopbyte << 8;
 	  }
       }
     else if (op->compress_type == COMPRESS_MOV)
