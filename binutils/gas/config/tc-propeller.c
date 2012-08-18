@@ -1484,11 +1484,11 @@ md_assemble (char *instruction_string)
 	break;
       str = p;
       if (xmov_flag) {
-	insn.code |= eff->or;
-	insn.code &= eff->and;
-      } else {
 	insn2.code |= eff->or;
 	insn2.code &= eff->and;
+      } else {
+	insn.code |= eff->or;
+	insn.code &= eff->and;
       }
       str = parse_separator (str, &error);
     }

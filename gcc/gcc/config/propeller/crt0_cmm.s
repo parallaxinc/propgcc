@@ -23,7 +23,7 @@
 __LMM_entry
 r0	mov	sp, PAR
 r1	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
-r2  IF_NE    jmp    #not_first_cog	' if not, skip some stuff
+r2      IF_NE    jmp    #not_first_cog	' if not, skip some stuff
 	
 	'' initialization for first time run
 r3      locknew	__TMP0 wc	' allocate a lock
