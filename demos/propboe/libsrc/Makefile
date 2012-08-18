@@ -14,9 +14,6 @@ getdir.o \
 getfield.o \
 getpin.o \
 high.o \
-i2c.o \
-i2c_simple.o \
-i2c_interface.o \
 input.o \
 low.o \
 output.o \
@@ -35,14 +32,13 @@ toggle.o
 DRIVEROBJS = \
 VGA_firmware.o \
 TV_firmware.o \
-Keyboard_firmware.o \
-i2c_driver_image.o
+Keyboard_firmware.o
 
 CFLAGS=-Os -Wall -I../include -mno-fcache
 CPPFLAGS=$(CFLAGS)
 DRVFLAGS=$(CFLAGS) -mcog -fomit-frame-pointer
 
-all:	$(TARGET) i2c_driver_image.elf
+all:	$(TARGET)
 
 $(TARGET):	$(OBJS) $(DRIVEROBJS) $(LIBDIR)
 	$(AR) rs $(TARGET) $(OBJS) $(DRIVEROBJS)
