@@ -2905,7 +2905,7 @@
           (match_operand:SI 3 "propeller_gpr_operand" "r")]))
   ]
   "TARGET_CMM && TARGET_EXPERIMENTAL"
-  "lmov_op\t OPERATOR_GOES_HERE %0,%1,%2,%3"
+  "xmov\t%0,%1 %Q4 %2,%3"
 )
 
 (define_peephole
@@ -2918,7 +2918,7 @@
           (match_operand:SI 3 "immediate_nybble" "i")]))
   ]
   "TARGET_CMM && TARGET_EXPERIMENTAL"
-  "lmov_opimm\t OPERATOR_GOES_HERE %0,%1,%2,%3"
+  "xmov\t%0,%1 %Q4 %2,%3"
 )
 
 (define_peephole
@@ -2929,5 +2929,5 @@
        (const_int 0))
   ]
   "TARGET_CMM && TARGET_EXPERIMENTAL"
-  "lmov_op\t sub %0,%1,%2,%2"
+  "xmov\t%0,%1 sub %2,%2"
 )

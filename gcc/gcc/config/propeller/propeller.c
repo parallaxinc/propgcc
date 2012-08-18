@@ -940,6 +940,22 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       fprintf (file, "IF_%s", str);
       return;
   }
+  if (letter == 'Q') {
+    switch (code) {
+    case PLUS: str = "add"; break;
+    case MINUS: str = "sub"; break;
+    case AND: str = "and"; break;
+    case IOR: str = "or"; break;
+    case XOR: str = "xor"; break;
+    case ASHIFT: str = "shl"; break;
+    case ASHIFTRT: str = "sar"; break;
+    case LSHIFTRT: str = "shr"; break;
+    default:
+      gcc_unreachable ();
+    }
+    fprintf (file, "%s", str);
+    return;
+  }
   if (letter == 'M') {
       if (code != CONST_INT) {
           gcc_unreachable ();
