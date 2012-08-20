@@ -94,6 +94,10 @@ void StartPasmCog(PasmVarsT *pasmvars, int32_t par, int32_t addr, int32_t cogid)
     pasmvars->cflag = 0;
     pasmvars->zflag = 0;
     pasmvars->pc = 0;
+    pasmvars->pc1 = 512;
+    pasmvars->pc2 = 512;
+    pasmvars->instruct1 = 0;
+    pasmvars->instruct2 = 0;
     pasmvars->cogid = cogid;
     pasmvars->state = 5;
     pasmvars->mem[496] = par;
@@ -113,8 +117,7 @@ void DebugPasmInstruction(PasmVarsT *pasmvars)
     int32_t i;
     int32_t cflag = pasmvars->cflag;
     int32_t zflag = pasmvars->zflag;
-    int32_t instruct = pasmvars->mem[pasmvars->pc];
-    int32_t cond = (instruct >> 18) & 15;
+    int32_t instruct, cond, pc;
     int32_t opcode, value2, value1, zcri;
     int32_t srcaddr, dstaddr;
     char *wzstr;
@@ -123,8 +126,29 @@ void DebugPasmInstruction(PasmVarsT *pasmvars)
     char *ptr;
     char opstr[20];
     char *istr[2] = {" ", "#"};
-    char *xstr[3] = {"X", " ", "W"};
-    int32_t xflag = ((cond >> ((cflag << 1) | zflag)) & 1);
+    char *xstr[4] = {"X", " ", "W", "I"};
+    int32_t xflag;
+
+    // Fetch the instruction
+    if (pasmvars->waitflag)
+    {
+	pc = pasmvars->pc2;
+	instruct = pasmvars->instruct2;
+    }
+    else
+    {
+	pc = pasmvars->pc1;
+	instruct = pasmvars->instruct1;
+    }
+    cond = (instruct >> 18) & 15;
+    xflag = ((cond >> ((cflag << 1) | zflag)) & 1);
+
+    // Check if the instruction is invalidated in the pipeline
+    if (pc & 0xfffffe00)
+    {
+	pc &= 0x1ff;
+	xflag = 3;
+    }
 
     // Extract parameters from the instruction
     opcode = (instruct >> 26) & 63;
@@ -140,24 +164,17 @@ void DebugPasmInstruction(PasmVarsT *pasmvars)
         value2 = pasmvars->mem[srcaddr];
 
     // Check for wait cycles for djnz, tjnz, tjz or hubop
-    if (cycleaccurate && xflag)
+    if (cycleaccurate && xflag == 1)
     {
 	if (opcode <= 0x07)        // hubop
         {
 	    if (CheckWaitFlag(pasmvars, 3)) xflag = 2;
         }
-	else if (opcode == 0x39)   // djnz
-	{
-	    if (value1 == 1 && CheckWaitFlag(pasmvars, 2)) xflag = 2;
-	}
-	else if (opcode == 0x3a)   // tjnz
-	{
-	    if (value1 == 0 && CheckWaitFlag(pasmvars, 2)) xflag = 2;
-	}
-	else if (opcode == 0x3b)   // tjz
-	{
-	    if (value1 != 0 && CheckWaitFlag(pasmvars, 2)) xflag = 2;
-	}
+        else if (opcode == 0x3e)   // waitcnt
+        {
+            int32_t result = GetCnt() - value1;
+            if (result < 0 || result >= 4) xflag = 2;
+        }
     }
 
     if (zcri&8) wzstr = " wz";
@@ -190,7 +207,7 @@ void DebugPasmInstruction(PasmVarsT *pasmvars)
         instruct, zflag, cflag, xstr[xflag], condnames[cond], opstr, dstaddr,
 	istr[zcri & 1], srcaddr, value1, value2);
 #else
-    fprintf(tracefile, "%3.3x %8.8x %s %s %s %3.3x, %s%3.3x%s%s%s\n", pasmvars->pc,
+    fprintf(tracefile, "%6d %3.3x %8.8x %s %s %s %3.3x, %s%3.3x%s%s%s", loopcount * 4, pc,
         instruct, xstr[xflag], condnames[cond], opstr, dstaddr,
 	istr[zcri & 1], srcaddr, wzstr, wcstr, wrstr);
 #endif

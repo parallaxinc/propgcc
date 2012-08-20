@@ -20,6 +20,13 @@ extern int32_t pin_val;
 
 extern FILE *tracefile;
 
+void PrintResults(int32_t zcri, int32_t zflag, int32_t cflag, int32_t result)
+{
+    if (zcri & 8) printf(" Z=%d", zflag);
+    if (zcri & 4) printf(" C=%d", cflag);
+    if (zcri & 2) printf(" R=%8.8x", result);
+}
+
 static int32_t parity(int32_t val)
 {
     val ^= val >> 16;
@@ -62,29 +69,57 @@ int32_t CheckWaitFlag(PasmVarsT *pasmvars, int mode)
     }
     if (!debugmode)
     {
-        if (waitflag)
-            pasmvars->pc = (pasmvars->pc - 1) & 511;
+        //if (waitflag)
+            //pasmvars->pc = (pasmvars->pc - 1) & 511;
 	pasmvars->waitflag = waitflag;
     }
 
     return waitflag;
 }
 
+void AdjustPipeForJump(PasmVarsT *pasmvars, int32_t value, int32_t jump)
+{
+    int32_t pc = value & 0x1ff;
+    pasmvars->instruct1 = pasmvars->mem[pc];
+    if (jump)
+    {
+        pasmvars->pc = (pc + 1) & 511;
+        pasmvars->pc1 = pc;
+    }
+    else
+    {
+        pasmvars->pc = pasmvars->pc1;
+        pasmvars->pc1 = pc | 512;
+    }
+}
+
 int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
 {
     int32_t cflag = pasmvars->cflag;
     int32_t zflag = pasmvars->zflag;
-    int32_t instruct = pasmvars->mem[pasmvars->pc];
-    int32_t cond = (instruct >> 18) & 15;
+    int32_t instruct, cond, pc;
     int32_t opcode, value2, value1, zcri;
     int32_t srcaddr, dstaddr;
     int32_t result = 0;
 
-    // Increment the program counter
-    pasmvars->pc = (pasmvars->pc + 1) & 511;
+    // Fetch a new instruction and update the pipeline
+    if (!pasmvars->waitflag)
+    {
+	//printf("Fetch new instruction\n");
+        pasmvars->instruct2 = pasmvars->instruct1;
+        pasmvars->instruct1 = pasmvars->mem[pasmvars->pc];
+        pasmvars->pc2 = pasmvars->pc1;
+        pasmvars->pc1 = pasmvars->pc;
+        pasmvars->pc = (pasmvars->pc + 1) & 511;
+    }
+
+    // Get the instruction and pc at the end of the pipeline
+    instruct = pasmvars->instruct2;
+    pc = pasmvars->pc2;
+    cond = (instruct >> 18) & 15;
 
     // Return if not executed
-    if (!((cond >> ((cflag << 1) | zflag)) & 1))
+    if ((!((cond >> ((cflag << 1) | zflag)) & 1)) || (pc & 0xfffffe00))
     {
 	return 0;
     }
@@ -373,8 +408,9 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
 
 	    case 7: // ret, jmp, call, jmpret
 	    cflag = ((uint32_t)value1) < ((uint32_t)value2);
-	    result = (value1 & 0xfffffe00) | pasmvars->pc;
-	    pasmvars->pc = value2 & 0x1ff;
+	    result = (value1 & 0xfffffe00) | ((pc + 1) & 0x1ff);
+	    //pasmvars->pc = value2 & 0x1ff;
+            AdjustPipeForJump(pasmvars, value2, 1);
 	    zflag = (result == 0);
 	    break;
 	}
@@ -591,46 +627,35 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
 	    result = value1 - 1;
 	    zflag = (result == 0);
 	    cflag = (result == -1);
-	    if (!zflag) pasmvars->pc = srcaddr;
-	    else if (cycleaccurate)
-	    {
-	        if (CheckWaitFlag(pasmvars, 0)) return 0;
-	    }
+            AdjustPipeForJump(pasmvars, value2, !zflag);
 	    break;
 
 	    case 2: // tjnz
 	    result = value1;
 	    zflag = (result == 0);
 	    cflag = 0;
-	    if (!zflag) pasmvars->pc = srcaddr;
-	    else if (cycleaccurate)
-	    {
-	        if (CheckWaitFlag(pasmvars, 0)) return 0;
-	    }
+            AdjustPipeForJump(pasmvars, value2, !zflag);
 	    break;
 
 	    case 3: // tjz
 	    result = value1;
 	    zflag = (result == 0);
 	    cflag = 0;
-	    if (zflag) pasmvars->pc = srcaddr;
-	    else if (cycleaccurate)
-	    {
-	        if (CheckWaitFlag(pasmvars, 0)) return 0;
-	    }
+            AdjustPipeForJump(pasmvars, value2, zflag);
 	    break;
 
 	    case 4: // waitpeq - result, zflag and cflag not validated
             result = (pin_val & value2) ^ value1;
 	    if (result)
 	    {
-		pasmvars->state = 6;
-    		pasmvars->pc = (pasmvars->pc - 1) & 511;
+		//pasmvars->state = 6;
+    		//pasmvars->pc = (pasmvars->pc - 1) & 511;
+                pasmvars->waitflag = 1;
 		return 0;
 	    }
 	    else
 	    {
-		pasmvars->state = 5;
+		//pasmvars->state = 5;
 	        zflag = (result == 0);
 	        cflag = 0;
 	    }
@@ -640,13 +665,14 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
             result = (pin_val & value2) ^ value1;
 	    if (!result)
 	    {
-		pasmvars->state = 6;
-    		pasmvars->pc = (pasmvars->pc - 1) & 511;
+		//pasmvars->state = 6;
+    		//pasmvars->pc = (pasmvars->pc - 1) & 511;
+                pasmvars->waitflag = 1;
 		return 0;
 	    }
 	    else
 	    {
-		pasmvars->state = 5;
+		//pasmvars->state = 5;
 	        zflag = (result == 0);
 	        cflag = zflag;
 	    }
@@ -654,15 +680,17 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
 
 	    case 6: // waitcnt
 	    result = GetCnt() - value1;
-	    if (result < 0 || result > 20000000)
+	    if (result < 0 || result >= 4)
 	    {
-		pasmvars->state = 6;
-    		pasmvars->pc = (pasmvars->pc - 1) & 511;
+		//pasmvars->state = 6;
+    		//pasmvars->pc = (pasmvars->pc - 1) & 511;
+                pasmvars->waitflag = 1;
 		return 0;
 	    }
 	    else
 	    {
-		pasmvars->state = 5;
+		//pasmvars->state = 5;
+                pasmvars->waitflag = 0;
 	        result = value1 + value2;
 	        zflag = (result == 0);
 	        cflag = (((value1 & value2) | ((value1 | value2) & (~result))) >> 31) & 1;
@@ -691,6 +719,8 @@ int32_t ExecutePasmInstruction(PasmVarsT *pasmvars)
       fprintf(tracefile, "XXXXXXXXXX BAD XXXXXXXXXXXXXXX\n");
 	pasmvars->waitflag--;
     }
+    if ((LONG(SYS_DEBUG) & (1 << pasmvars->cogid))) 
+        PrintResults(zcri, zflag, cflag, result);
     return result;
 }
 /*
