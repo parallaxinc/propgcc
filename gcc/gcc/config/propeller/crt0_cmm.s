@@ -107,8 +107,8 @@ macro_tab_base
 	jmp	#__macro_udiv	' macro 7 -- unsigned divide
 	jmp	#__macro_div	' macro 8 -- signed divide
 	jmp	#__macro_mvreg	' macro 9 -- register register move
-	jmp	#__LMM_loop	' macro A -- NOP
-	jmp	#__LMM_loop	' macro B -- NOP
+	jmp	#__macro_xmvreg	' macro A -- two register register moves
+	jmp	#__macro_addsp	' macro B -- add a constant to SP
 	jmp	#__LMM_loop	' macro C -- NOP
 	jmp	#__LMM_loop	' macro D -- NOP
 	jmp	#__macro_fcache	' macro E -- FCACHE
@@ -194,21 +194,32 @@ __macro_lcall
 	jmp	#__LMM_loop
 
 	''
+	'' dual register-register move
+	''
+__macro_xmvreg
+	call	#xmov
+
+	'' fall through to mvreg
+	
+	''
 	'' register register move
 	'' second byte is (dest<<4) | src
 	''
 __macro_mvreg
-	rdbyte	sfield,pc
-	mov	dfield,sfield
-	add	pc,#1
-	and	sfield,#15
-	shr	dfield,#4
-	or	sfield,__mov_instruction
-	movd	sfield,dfield
-	jmp	#sfield
+	call	#xmov
+	jmp	#__LMM_loop
 
-__mov_instruction
-	mov	0-0,0-0
+
+	''
+	'' add a signed 8 bit constant to sp
+	''
+__macro_addsp
+	rdbyte	sfield,pc
+	add	pc,#1
+	shl	sfield,#24
+	sar	sfield,#24
+	add	sp,sfield
+	jmp	#__LMM_loop
 
 	''
 	'' LMM support functions
@@ -339,18 +350,25 @@ regimm4
 __IMM_BIT	long (1<<22)
 
 	'''
-	''' register plus 12 bit immediate
+	''' register plus 9 bit immediate
 	'''
 	''' encoded as iiii_dddd ssss_ssss xxxx_ssss
+	''' note that we actually make this a *signed* 12 bit
+	''' immediate. Normal instructions only need an
+	''' unsigned 9 bit, so making the whole field signed
+	''' lets us do tricks like generating an xor r0,#-1
+	''' instead of xor r0,__MASK_FFFFFFFF
+	'''
 regimm12
-	rdbyte	itemp,pc
+	rdbyte	itemp,pc		'' read low 8 bits
 	add	pc,#1
-	mov	.ins2,#(sfield-r0)/4
+	mov	.ins2,#(sfield-r0)/4	'' set the source to "sfield" register
 	rdbyte	xfield,pc
 	movd	.ins2,dfield
 	mov	sfield,xfield
-	and	sfield,#15
-	shl	sfield,#8
+	and	sfield,#15		'' get the high 4 bits of sfield
+	shl	sfield,#28
+	sar	sfield,#20		'' sign extend
 	shr	xfield,#4
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_ri,xfield
