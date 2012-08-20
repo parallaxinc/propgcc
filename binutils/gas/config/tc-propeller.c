@@ -1628,6 +1628,10 @@ md_assemble (char *instruction_string)
 	if (effects != 1) goto skip_compress;
 	if (immediate)
 	  {
+	    if (xmov_flag) {
+	      as_bad (_("mov immediate not supported in xmov"));
+	      return;
+	    }
 	    if (srcval == 0 && condmask == 0xf) {
 	      newcode = (PREFIX_ZEROREG | destval);
 	      size = 1;
@@ -1645,8 +1649,18 @@ md_assemble (char *instruction_string)
 	      {
 		goto skip_compress;
 	      }
-	    newcode = MACRO_MVREG | (destval << 12) | (srcval << 8);
-	    size = 2;
+	    if (xmov_flag)
+	      {
+		newcode = MACRO_XMVREG;
+		newcode |= (movbyte << 8) | (((destval << 4) | srcval) << 16);
+		size = 3;
+	      }
+	    else
+	      {
+		newcode = MACRO_MVREG;
+		newcode |= (((destval << 4) | srcval) << 8);
+		size = 2;
+	      }
 	  }
       }
     else

@@ -2926,7 +2926,7 @@
   (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
        (match_operand:SI 1 "propeller_gpr_operand" "r"))
   (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
-       (match_operand:SI 3 "propeller_cmm_src_operand" "ri"))
+       (match_operand:SI 3 "propeller_gpr_operand" "r"))
   ]
   "TARGET_CMM && TARGET_EXPERIMENTAL"
   "xmov\t%0,%1 mov %2,%3"

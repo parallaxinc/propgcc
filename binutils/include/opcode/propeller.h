@@ -130,6 +130,8 @@
 #define MACRO_UDIV   0x07
 #define MACRO_DIV    0x08
 #define MACRO_MVREG  0x09
+#define MACRO_XMVREG 0x0a
+#define MACRO_ADDSP  0x0b
 #define MACRO_FCACHE 0x0e
 #define MACRO_NATIVE 0x0f
 
