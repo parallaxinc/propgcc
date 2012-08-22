@@ -193,7 +193,7 @@ propeller_init_machine_status (void)
    calling function can be found.  */
 
 rtx
-propeller_return_addr (int count, rtx frame)
+propeller_return_addr (int count, rtx frame ATTRIBUTE_UNUSED)
 {
   if (count != 0)
     {
@@ -1636,11 +1636,12 @@ propeller_emit_stack_pushm (rtx * operands)
 }
 
 void
-propeller_emit_stack_popm (rtx * operands)
+propeller_emit_stack_popm (rtx * operands, int doret)
 {
   HOST_WIDE_INT reg_count;
   HOST_WIDE_INT start_reg;
   rtx first_push;
+  const char *popfunc;
 
   gcc_assert (CONST_INT_P (operands[0]));
   reg_count = INTVAL (operands[0]) / UNITS_PER_WORD;
@@ -1656,15 +1657,21 @@ propeller_emit_stack_popm (rtx * operands)
 
   if (TARGET_CMM)
     {
-      asm_fprintf (asm_out_file, "\tlpopm\t#(%ld<<4)+%ld\n",
+      popfunc = doret ? "lpopret" : "lpopm";
+      asm_fprintf (asm_out_file, "\t%s\t#(%ld<<4)+%ld\n",
+		   popfunc,
 		   (long)reg_count,
 		   (long)start_reg);
     }
   else
     {
-      asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_POPM\n",
+      popfunc = doret ? "POPRET" : "POPM";
+      asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_%s\n",
 		   (long)reg_count,
-		   (long)start_reg);
+		   (long)start_reg,
+		   popfunc);
+      if (doret)
+	asm_fprintf (asm_out_file, "\t'' never returns\n");
     }
 }
 
