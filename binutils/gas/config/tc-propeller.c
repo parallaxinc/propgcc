@@ -498,19 +498,58 @@ lc (char *str)
 /*
  * parse a register specification like r0 or lr
  */
+
+/* match a register name; if it matches, return the character after it */
+static char *matchregname(char *str, const char *match)
+{
+  int len = strlen(match);
+  if (!strncmp(str, match, len))
+    {
+      str += len;
+      if (ISDIGIT(*str) || ISALPHA(*str) || *str == '_')
+	return NULL;
+      return str;
+    }
+  return NULL;
+}
+
+#define SP_REGNUM 16
+#define PC_REGNUM 17
+#define FFFFFFFF_REGNUM 18
+
+static struct {
+  const char *name;
+  int regno;
+} lmm_regs[] = {
+  { "lr", 15 },
+  { "LR", 15 },
+  { "sp", SP_REGNUM },
+  { "pc", PC_REGNUM },
+  { "__MASK_FFFFFFFF", FFFFFFFF_REGNUM },
+};
+
+#define ARRAYSIZE(x) ((int)(sizeof(x)/sizeof(x[0])))
+
 static char *
 parse_regspec (char *str, int *regnum, struct propeller_code *operand, int give_error)
 {
   int reg;
+  char *newstr;
+  int i;
+
   str = skip_whitespace (str);
-  /* special case the link register (r15 or lr) */
-  if ( (*str == 'l' && str[1] == 'r')
-       || (*str == 'L' && str[1] == 'R'))
+  /* check for LMM register names */
+  for (i = 0; i < ARRAYSIZE(lmm_regs); i++)
     {
-      *regnum = 15;
-      str += 2;
-      return str;
+      newstr = matchregname(str, lmm_regs[i].name);
+      if (newstr)
+	{
+	  *regnum = lmm_regs[i].regno;
+	  str = newstr;
+	  return str;
+	}
     }
+
   if ( (*str != 'r' && *str != 'R') || !ISDIGIT(str[1]) )
     {
       if (give_error)
@@ -1028,8 +1067,12 @@ md_assemble (char *instruction_string)
 	   op2.error = _("Missing ','");
 	   break;
 	  }
-	regnum = 0;
+	regnum = -1;
 	str = parse_regspec (str, &regnum, &op2, 1);
+	if (regnum < 0 || regnum > 15)
+	  {
+	    op2.error = _("illegal register");
+	  }
 	insn.code |= (1<<22);  // make it an immediate instruction
 	insn.code |= (regnum<<4);
 	str = parse_separator (str, &error);
@@ -1038,7 +1081,12 @@ md_assemble (char *instruction_string)
 	    op2.error = _("Missing ','");
 	    break;
 	  }
+	regnum = -1;
 	str = parse_regspec (str, &regnum, &op2, 1);
+	if (regnum < 0 || regnum > 15)
+	  {
+	    op2.error = _("illegal register");
+	  }
 	insn.code |= (regnum);
 
 	// now set up the CALL instruction
@@ -1351,6 +1399,10 @@ md_assemble (char *instruction_string)
 
 	reg = -1;
 	str = parse_regspec (str, &reg, &op1, 1);
+	if (reg < 0 || reg > 15)
+	  {
+	    op1.error = _("illegal register");
+	  }
         str = parse_separator (str, &error);
         if (error)
 	  {
