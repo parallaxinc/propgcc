@@ -2976,6 +2976,8 @@
 ;;
 ;; stack optimizations
 ;;
+
+;; combine pop + ret
 (define_peephole
  [
   (match_parallel 1 "propeller_load_multiple_vector"
@@ -2992,4 +2994,34 @@
     propeller_emit_stack_popm (operands, 1);
     return "";
  }
+)
+
+;; use lpushm for single push
+
+(define_peephole
+  [(set (reg:SI SP_REG)
+        (plus:SI (reg:SI SP_REG) (const_int -4)))
+   (set (mem:SI (reg:SI SP_REG)) (match_operand:SI 0 "propeller_gpr_operand" "r"))
+  ]
+  "TARGET_CMM"
+  {
+    asm_fprintf (asm_out_file, "\tlpushm\t#16+%d\n", REGNO(operands[0]));
+    return "";
+  }
+)
+
+(define_peephole
+  [
+   (set (match_operand:SI 0 "propeller_gpr_operand" "=r")
+        (mem:SI (reg:SI SP_REG)))
+   (set (reg:SI SP_REG)
+        (plus:SI (reg:SI SP_REG) (const_int 4)))
+   (parallel [(return)
+              (use (reg:SI LINK_REG))])
+  ]
+  "TARGET_CMM"
+  {
+    asm_fprintf (asm_out_file, "\tlpopret\t#16+%d\n", REGNO(operands[0]));
+    return "";
+  }
 )
