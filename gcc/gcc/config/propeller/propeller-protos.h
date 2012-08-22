@@ -67,6 +67,8 @@ extern bool propeller_forward_branch_p (rtx);
 extern void propeller_emit_stack_popm (rtx *operands);
 extern void propeller_emit_stack_pushm (rtx *operands);
 
+extern int propeller_reg_dead_peep (rtx first, rtx reg);
+
 /* some variable declarations; we put them here rather than in propeller.h
  * so that the libgcc build doesn't see them
  */
