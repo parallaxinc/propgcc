@@ -64,8 +64,8 @@ extern rtx propeller_return_addr (int, rtx);
 extern bool propeller_expand_call (rtx, rtx, rtx);
 extern bool propeller_forward_branch_p (rtx);
 
-extern void propeller_emit_stack_popm (rtx *operands);
 extern void propeller_emit_stack_pushm (rtx *operands);
+extern void propeller_emit_stack_popm (rtx *operands, int doretaswell);
 
 extern int propeller_reg_dead_peep (rtx first, rtx reg);
 

@@ -949,7 +949,7 @@
 		    (match_operand:SI 0 "const_int_operand" "n")))])]
   "TARGET_LMM && reload_completed"
   {
-    propeller_emit_stack_popm (operands);
+    propeller_emit_stack_popm (operands, 0);
     return "";
   }
   [(set_attr "length" "8")
@@ -2971,4 +2971,25 @@
   ]
   "TARGET_CMM"
   "xmov\t%0,%1 mov %2,%3"
+)
+
+;;
+;; stack optimizations
+;;
+(define_peephole
+ [
+  (match_parallel 1 "propeller_load_multiple_vector"
+     [(set (reg:SI SP_REG)
+	   (plus:SI (reg:SI SP_REG)
+		    (match_operand:SI 0 "const_int_operand" "n")))]
+   )
+   (parallel [(return)
+              (use (reg:SI LINK_REG))]
+   )
+ ]
+ "TARGET_LMM"
+ {
+    propeller_emit_stack_popm (operands, 1);
+    return "";
+ }
 )
