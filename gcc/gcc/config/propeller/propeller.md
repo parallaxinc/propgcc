@@ -2805,6 +2805,13 @@
 ;; after which the register should be dead; this will normally be the
 ;; number of insns matched by the peephole (?)
 
+;; convert
+;;  (set r2 N)
+;;  (set r0 (OP r0 r2))
+;; into
+;;  (set r0 (OP r0 N))
+;; when r2 is dead
+
 (define_peephole2
   [(set (match_operand:SI 2 "register_operand" "")
         (match_operand:SI 1 "propeller_src_operand" ""))
@@ -2818,6 +2825,13 @@
         (match_op_dup 3 [(match_dup 0)(match_dup 1)]))]
   ""
 )
+
+;; convert
+;;  (set r2 N)
+;;  (set r0 (OP r2))
+;; into
+;;  (set r0 (OP N))
+;; when r2 is dead
 
 (define_peephole2
   [(set (match_operand:SI 2 "register_operand" "")
@@ -2893,7 +2907,30 @@
 )
 
 ;;
-;; instruction pairing
+;; optimize sequences like:
+;; (set r0 OUTA)
+;; (set r0 (XOR r0 1))
+;; (set OUTA r0)
+;; which happen because OUTA is volatile and hence not subject to
+;; combining
+;; make sure r0 is dead before doing this though!
+;;
+(define_peephole
+  [
+    (set (match_operand:SI 0 "propeller_dst_operand" "")
+         (match_operand:SI 1 "propeller_dst_operand" ""))
+    (set (match_dup 0)
+         (match_operator:SI 3 "propeller_pair_op2"
+          [(match_dup 0)
+           (match_operand:SI 2 "propeller_src_operand" "")]))
+    (set (match_dup 1)(match_dup 0))
+   ]
+  "propeller_reg_dead_peep (insn, operands[0])"
+  "%Q3 %1,%2"
+)
+
+;;
+;; instruction pairing for CMM mode
 ;;
 (define_peephole
  [
@@ -2928,6 +2965,6 @@
   (set (match_operand:SI 2 "propeller_gpr_operand" "=r")
        (match_operand:SI 3 "propeller_gpr_operand" "r"))
   ]
-  "TARGET_CMM && TARGET_EXPERIMENTAL"
+  "TARGET_CMM"
   "xmov\t%0,%1 mov %2,%3"
 )

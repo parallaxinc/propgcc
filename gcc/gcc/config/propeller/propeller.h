@@ -71,9 +71,15 @@
       builtin_assert ("cpu=propeller");                      \
       builtin_assert ("machine=propeller");                  \
       if (TARGET_XMM)					     \
-	builtin_define ("__PROPELLER_XMM__");		     \
+        {						     \
+	  builtin_define ("__PROPELLER_XMM__");		     \
+	  builtin_define ("__PROPELLER_USE_XMM__");	     \
+	}						     \
       else if (TARGET_XMM_CODE)				     \
-	builtin_define ("__PROPELLER_XMMC__");		     \
+	{						     \
+	  builtin_define ("__PROPELLER_XMMC__");	     \
+	  builtin_define ("__PROPELLER_USE_XMM__");	     \
+	}						     \
       else if (TARGET_CMM)				     \
 	builtin_define ("__PROPELLER_CMM__");		     \
       else if (TARGET_LMM)				     \
@@ -118,7 +124,7 @@ do {                                                    \
 
 #define BIGGEST_ALIGNMENT 32
 
-#define FUNCTION_BOUNDARY  32
+#define FUNCTION_BOUNDARY  (TARGET_CMM ? 8 : 32)
 
 #define EMPTY_FIELD_BOUNDARY 32
 

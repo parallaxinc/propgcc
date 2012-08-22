@@ -3364,6 +3364,60 @@ fcache_convert_loops (void)
 
   return done_some;
 }
+
+/*
+ * helper function -- check to see if a register is dead
+ * (used in peephole optimization, taken from mcore.c
+ */
+/* Check whether reg is dead at first.  This is done by searching ahead
+   for either the next use (i.e., reg is live), a death note, or a set of
+   reg.  Don't just use dead_or_set_p() since reload does not always mark 
+   deaths (especially if PRESERVE_DEATH_NOTES_REGNO_P is not defined). We
+   can ignore subregs by extracting the actual register.  BRC  */
+
+int
+propeller_reg_dead_peep (rtx first, rtx reg)
+{
+  rtx insn;
+
+  /* For mcore, subregs can't live independently of their parent regs.  */
+  if (GET_CODE (reg) == SUBREG)
+    reg = SUBREG_REG (reg);
+
+  /* Dies immediately.  */
+  if (dead_or_set_p (first, reg))
+    return 1;
+
+  /* Look for conclusive evidence of live/death, otherwise we have
+     to assume that it is live.  */
+  for (insn = NEXT_INSN (first); insn; insn = NEXT_INSN (insn))
+    {
+      if (GET_CODE (insn) == JUMP_INSN)
+	return 0;	/* We lose track, assume it is alive.  */
+
+      else if (GET_CODE(insn) == CALL_INSN)
+	{
+	  /* Call's might use it for target or register parms.  */
+	  if (reg_referenced_p (reg, PATTERN (insn))
+	      || find_reg_fusage (insn, USE, reg))
+	    return 0;
+	  else if (dead_or_set_p (insn, reg))
+            return 1;
+	}
+      else if (GET_CODE (insn) == INSN)
+	{
+	  if (reg_referenced_p (reg, PATTERN (insn)))
+            return 0;
+	  else if (dead_or_set_p (insn, reg))
+            return 1;
+	}
+    }
+
+  /* No conclusive evidence either way, we cannot take the chance
+     that control flow hid the use from us -- "I'm not dead yet".  */
+  return 0;
+}
+
 /*
  * a machine dependent pass over the rtl
  * this is a chance for us to do additional machine specific
@@ -3376,6 +3430,7 @@ propeller_reorg(void)
   bool done = 0;
   bool fcache_func = is_fcache_function (current_function_decl);
 
+  /* handle FCACHE */
   if (TARGET_LMM && (do_fcache || fcache_func))
     {
       if (!fcache_func)
