@@ -102,10 +102,10 @@
 #define PREFIX_PACK_NATIVE (0xF0)
 
 /* extended operations */
-#define XOP_MOV 0x0
-#define XOP_ADD 0x1
-#define XOP_SUB 0x2
-#define XOP_CMPS 0x3
+#define XOP_ADD 0x0
+#define XOP_SUB 0x1
+#define XOP_CMPS 0x2
+#define XOP_CMPU 0x3
 #define XOP_AND 0x4
 #define XOP_ANDN 0x5
 #define XOP_NEG 0x6
@@ -125,15 +125,16 @@
 #define MACRO_RET    0x02
 #define MACRO_PUSHM  0x03
 #define MACRO_POPM   0x04
-#define MACRO_LCALL  0x05
-#define MACRO_MUL    0x06
-#define MACRO_UDIV   0x07
-#define MACRO_DIV    0x08
-#define MACRO_MVREG  0x09
-#define MACRO_XMVREG 0x0a
-#define MACRO_ADDSP  0x0b
-#define MACRO_FCACHE 0x0e
-#define MACRO_NATIVE 0x0f
+#define MACRO_POPRET 0x05
+#define MACRO_LCALL  0x06
+#define MACRO_MUL    0x07
+#define MACRO_UDIV   0x08
+#define MACRO_DIV    0x09
+#define MACRO_MVREG  0x0A
+#define MACRO_XMVREG 0x0B
+#define MACRO_ADDSP  0x0C
+#define MACRO_FCACHE 0x0E
+#define MACRO_NATIVE 0x0F
 
 /* opcode structure */
 struct propeller_opcode

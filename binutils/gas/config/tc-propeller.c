@@ -544,6 +544,14 @@ parse_regspec (char *str, int *regnum, struct propeller_code *operand, int give_
       newstr = matchregname(str, lmm_regs[i].name);
       if (newstr)
 	{
+	  reg = lmm_regs[i].regno;
+	  if (!compress && reg > PC_REGNUM)
+	    {
+	      /* non CMM kernels may have stuff anywhere */
+	      if (give_error)
+		operand->error = _("bad register");
+	      return NULL;
+	    }
 	  *regnum = lmm_regs[i].regno;
 	  str = newstr;
 	  return str;
@@ -1160,6 +1168,9 @@ md_assemble (char *instruction_string)
 	    case MACRO_POPM:
 	      macroname = "POPM";
 	      break;
+	    case MACRO_POPRET:
+	      macroname = "POPRET";
+	      break;
 	    default:
 	      as_fatal (_("internal error, bad instruction"));
 	      break;
@@ -1588,7 +1599,6 @@ md_assemble (char *instruction_string)
     /* make sure dest. is a legal register */
     if (op2.reloc.type != BFD_RELOC_NONE) goto skip_compress;
     destval = (insn.code >> 9) & 0x1ff;
-    if (destval > 15) goto skip_compress;
 
     /* make sure srcval is legal (if a register) or immediate */
     if (op1.reloc.type != BFD_RELOC_NONE) goto skip_compress;
@@ -1606,6 +1616,11 @@ md_assemble (char *instruction_string)
 	return;
       }
       effects = (insn2.code >> 23) & 0x7;
+      if (destval > 15 || srcval > 15)
+	{
+	  as_bad (_("Illegal register in xmov"));
+	  return;
+	}
       movbyte = (destval<<4) | srcval;
 
       immediate = (insn2.code >> 22) & 1;
@@ -1618,6 +1633,7 @@ md_assemble (char *instruction_string)
       {
 	/* make sure the effect flags match */
 	switch (op->copc) {
+	case XOP_CMPU:
 	case XOP_CMPS:
 	  expectedeffects = 6;  /* wz,wc,nr */
 	  break;
@@ -1632,6 +1648,40 @@ md_assemble (char *instruction_string)
 	if (effects != expectedeffects) {
 	  goto skip_compress;
 	}
+
+	/* handle special destination registers */
+	if (destval > 15)
+	  {
+	    /* only compression with a destination > 15 is
+	       add sp,#XXX
+	    */
+	    if (xmov_flag) goto skip_compress;
+	    if (destval == SP_REGNUM && immediate && srcval < 128)
+	      {
+		if (op->copc == XOP_ADD)
+		  {
+		    newcode = MACRO_ADDSP | (srcval << 8);
+		    size = 2;
+		    goto compress_done;
+		  }
+		if (op->copc == XOP_SUB)
+		  {
+		    srcval = (-srcval) & 0xff;
+		    newcode = MACRO_ADDSP | (srcval << 8);
+		    size = 2;
+		    goto compress_done;
+		  }
+		goto skip_compress;
+	      }
+	  }
+
+	/* special case -- a source of __MASK_FFFFFFFF can
+	   be changed to an immediate -1 */
+	if (!immediate && srcval == FFFFFFFF_REGNUM)
+	  {
+	    immediate = 1;
+	    srcval = (-1) & 0x00000FFF;
+	  }
 
 	/* OK, we can compress now */
 	if (immediate)
@@ -1676,6 +1726,10 @@ md_assemble (char *instruction_string)
       }
     else if (op->compress_type == COMPRESS_MOV)
       {
+	if (destval > 15)
+	  {
+	    goto skip_compress;
+	  }
 	/* for mov, only default wr effect can be compressed */
 	if (effects != 1) goto skip_compress;
 	if (immediate)
@@ -1719,6 +1773,7 @@ md_assemble (char *instruction_string)
       {
 	goto skip_compress;
       }
+  compress_done:
     if (condmask != 0xf) {
       newcode = newcode << 8;
       condmask = ~condmask & 0xf;

@@ -1694,13 +1694,17 @@
   [(set_attr "conds" "set")]
 )
 
+;;
+;; we set both Z and C flags to allow the instruction compresser to
+;; match this, but we only need C
+;;
 (define_insn "compare_carryonly"
   [(set (reg:CC_C CC_REG)
 	(compare:CC_C
 	 (match_operand:SI 0 "propeller_dst_operand" "rC")
 	 (match_operand:SI 1 "propeller_src_operand"	"rCI")))]
   ""
-  "cmp\t%0, %1 wc"
+  "cmp\t%0, %1 wz,wc"
   [(set_attr "conds" "set")]
 )
 
