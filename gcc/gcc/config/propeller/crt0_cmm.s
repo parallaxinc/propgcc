@@ -46,6 +46,9 @@ r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
+	'' constant FFFFFFFF should come after the pc
+	.global __MASK_FFFFFFFF
+__MASK_FFFFFFFF	long	0xFFFFFFFF
 
 	.global __TMP0
 __TMP0	long	0
@@ -102,14 +105,14 @@ macro_tab_base
 	jmp	#__macro_ret	' macro 2 -- RET
 	jmp	#__macro_pushm	' macro 3 -- PUSHM
 	jmp	#__macro_popm	' macro 4 -- POPM
-	jmp	#__macro_lcall	' macro 5 -- LCALL
-	jmp	#__macro_mul	' macro 6 -- multiply
-	jmp	#__macro_udiv	' macro 7 -- unsigned divide
-	jmp	#__macro_div	' macro 8 -- signed divide
-	jmp	#__macro_mvreg	' macro 9 -- register register move
-	jmp	#__macro_xmvreg	' macro A -- two register register moves
-	jmp	#__macro_addsp	' macro B -- add a constant to SP
-	jmp	#__LMM_loop	' macro C -- NOP
+	jmp	#__macro_popret ' macro 5 -- POPM and return
+	jmp	#__macro_lcall	' macro 6 -- LCALL
+	jmp	#__macro_mul	' macro 7 -- multiply
+	jmp	#__macro_udiv	' macro 8 -- unsigned divide
+	jmp	#__macro_div	' macro 9 -- signed divide
+	jmp	#__macro_mvreg	' macro A -- register register move
+	jmp	#__macro_xmvreg	' macro B -- two register register moves
+	jmp	#__macro_addsp	' macro C -- add a constant to SP
 	jmp	#__LMM_loop	' macro D -- NOP
 	jmp	#__macro_fcache	' macro E -- FCACHE
 	jmp	#__macro_native	' macro F -- NATIVE
@@ -179,6 +182,12 @@ __macro_pushm
 	rdbyte	__TMP0,pc
 	add	pc,#1
 	call	#__LMM_PUSHM
+	jmp	#__LMM_loop
+
+__macro_popret
+	rdbyte	__TMP0,pc
+	add	pc,#1
+	call	#__LMM_POPRET
 	jmp	#__LMM_loop
 
 __macro_popm
@@ -384,10 +393,10 @@ regimm12
 	'' table of operations
 	''
 xtable
-	mov	0-0,0-0		'' extended op 0
-	add	0-0,0-0		'' extended op 1
-	sub	0-0,0-0		'' extended op 2
-	cmps	0-0,0-0 wz,wc	'' extended op 3
+	add	0-0,0-0		'' extended op 0
+	sub	0-0,0-0		'' extended op 1
+	cmps	0-0,0-0 wz,wc	'' extended op 2
+	cmp	0-0,0-0 wz,wc	'' extended op 3
 	and	0-0,0-0		'' extended op 4
 	andn	0-0,0-0		'' extended op 5
 	neg	0-0,0-0		'' extended op 6
@@ -540,6 +549,10 @@ inc_dest1
 
 	.global __LMM_POPM
 	.global __LMM_POPM_ret
+	.global __LMM_POPRET
+	.global __LMM_POPRET_ret
+__LMM_POPRET
+	mov	pc,lr
 __LMM_POPM
 	mov	__TMP1,__TMP0
 	and	__TMP1,#0x0f
@@ -550,6 +563,7 @@ L_poploop
 	add	sp,#4
 	sub	L_poploop,inc_dest1
 	djnz	__TMP0,#L_poploop
+__LMM_POPRET_ret
 __LMM_POPM_ret
 	ret
 
@@ -559,10 +573,8 @@ __LMM_POPM_ret
 	''
 	
 	.global __MASK_0000FFFF
-	.global __MASK_FFFFFFFF
 
 __MASK_0000FFFF	long	0x0000FFFF
-__MASK_FFFFFFFF	long	0xFFFFFFFF
 
 	''
 	'' math support functions

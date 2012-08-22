@@ -434,6 +434,11 @@ inc_dest1
 
 	.global __LMM_POPM
 	.global __LMM_POPM_ret
+	.global __LMM_POPRET
+	.global __LMM_POPRET_ret
+__LMM_POPRET
+	mov	pc,lr
+	'' fall through
 __LMM_POPM
 	mov	__TMP1,__TMP0
 	and	__TMP1,#0x0f
@@ -445,6 +450,7 @@ L_poploop
 	sub	L_poploop,inc_dest1
 	djnz	__TMP0,#L_poploop
 __LMM_POPM_ret
+__LMM_POPRET_ret
 	ret
 
 	''

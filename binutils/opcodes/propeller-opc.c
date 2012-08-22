@@ -77,6 +77,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* push and pop      101000 zcri cccc ddddddddd sssssssss */
   {"lpushm", 0xa0000000, 0xffffffff, PROPELLER_OPERAND_MACRO_8, R, PROP_1_LMM, COMPRESS_MACRO, MACRO_PUSHM},
   {"lpopm", 0xa0000000, 0xffffffff, PROPELLER_OPERAND_MACRO_8, R, PROP_1_LMM, COMPRESS_MACRO, MACRO_POPM},
+  {"lpopret", 0xa0000000, 0xffffffff, PROPELLER_OPERAND_MACRO_8, R, PROP_1_LMM, COMPRESS_MACRO, MACRO_POPRET},
 
 /* leasp expands to a mov rN,sp followed by add rN,#x */
 /* it's mainly intended for compressed mode, but we have to support the
@@ -181,7 +182,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* add      100000 zcri cccc ddddddddd sssssssss */
   {"add", 0x80000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_ADD},
 /* cmp      100001 zc0i cccc ddddddddd sssssssss */
-  {"cmp", 0x84000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
+  {"cmp", 0x84000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, COMPRESS_XOP, XOP_CMPU},
 /* sub      100001 zc1i cccc ddddddddd sssssssss */
   {"sub", 0x84800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, COMPRESS_XOP, XOP_SUB},
 /* addabs   100010 zcri cccc ddddddddd sssssssss */
