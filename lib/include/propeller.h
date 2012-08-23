@@ -233,7 +233,7 @@ int cogstart(void (*func)(void *), void *par, void *stack, size_t stacksize);
 /*
  * Most of these are only used for __PROPELLER_XMM__
  */
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+#if defined(__PROPELLER_USE_XMM__)
 
 /**
  * @brief Copy longs from external memory to hub memory
