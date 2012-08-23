@@ -2,11 +2,13 @@
 /* revised by ERS */
 
 #include <string.h>
+#include <compiler.h>
 
 /*
  * strncmp - compare at most n characters of string s1 to s2
  */
 
+_CACHED
 int				/* <0 for <, 0 for ==, >0 for > */
 strncmp(const char *scan1, const char *scan2, size_t n)
 {

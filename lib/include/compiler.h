@@ -34,6 +34,11 @@
 #endif
 #define _CONSTRUCTOR __attribute__((constructor))
 #define _DESTRUCTOR __attribute__((destructor))
+#ifdef __PROPELLER_CMM__
+#define _CACHED     __attribute__((fcache))
+#else
+#define _CACHED
+#endif
 
 #define _NAN __builtin_nan("1")
 #define _NANL __builtin_nanl("1")

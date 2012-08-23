@@ -2,6 +2,7 @@
 /* modified by ERS */
 
 #include <string.h>
+#include <compiler.h>
 #ifdef __LATTICE__
 #undef strcmp
 #endif
@@ -10,6 +11,7 @@
  * strcmp - compare string s1 to s2
  */
 
+_CACHED
 int				/* <0 for <, 0 for ==, >0 for > */
 strcmp(scan1, scan2)
 register const char *scan1;
