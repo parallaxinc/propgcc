@@ -1,11 +1,13 @@
 /* from Henry Spencer's stringlib */
 
 #include <string.h>
+#include <compiler.h>
 #undef strcpy
 
 /*
  * strcpy - copy string src to dst
  */
+_CACHED
 char *				/* dst */
 strcpy(char * __restrict dst, const char * __restrict src)
 {

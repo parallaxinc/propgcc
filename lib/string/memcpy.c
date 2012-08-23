@@ -7,18 +7,22 @@
  * MIT licensed (see terms at end of file)
  */
 #include <string.h>
+#include <compiler.h>
 
 #define ALIGNED(a) ( 0 == ( ((unsigned)(a)) & (sizeof(long)-1) ) )
 #define HUBMEM(a)  ( 0 == ( ((unsigned)(a)) & 0xFFF00000 ) )
 
 #define MINBLOCKSIZE (2*(sizeof(long)))
 
+#if defined(__PROPELLER_CMM__)
+__attribute__((fcache))
+#endif
 void *
 memcpy(void *dest_p, const void *src_p, size_t n)
 {
   void *orig_dest = dest_p;
 
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+#if defined(__PROPELLER_USE_XMM__)
   extern void *_copy_from_xmm(void *dest, const void *src, size_t n);
   if (HUBMEM(dest_p) && !HUBMEM(src_p))
     return _copy_from_xmm(dest_p, src_p, n);
