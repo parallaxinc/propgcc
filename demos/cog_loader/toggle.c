@@ -24,12 +24,34 @@ struct par {
   struct toggle_mailbox m;
 };
 
+#if defined(__PROPELLER_CMM__)
+/* in CMM mode symbols are restricted to hub memory, so we have to do a little
+ * bit of juggling to pass the right values to cognewFromBootEeprom
+ * The linker still treats symbols as 32 bits, so we put the symbol value into
+ * a variable and then pass it in
+ */
+#define LOAD_START(fw)      _xmm_start_ ## fw ## _ecog
+#define LOAD_STOP(fw)       _xmm_stop_ ## fw ## _ecog
+
+#define usefw(fw)           extern unsigned char _load_start_ ## fw ## _ecog[];        			\
+                            extern unsigned char _load_stop_ ## fw ## _ecog[];			        \
+                            void *_xmm_start_ ## fw ## _ecog = _load_stop_ ## fw ## _ecog;       \
+                            void *_xmm_stop_ ## fw ## _ecog = _load_stop_ ## fw ## _ecog
+
+
+#else
 #define usefw(fw)           extern unsigned char _load_start_ ## fw ## _ecog[];        			\
                             extern unsigned char _load_stop_ ## fw ## _ecog[]
 
+#define LOAD_START(fw)      _load_start_ ## fw ## _ecog
+#define LOAD_STOP(fw)       _load_stop_ ## fw ## _ecog
+
+#endif
+
+#define LOAD_SIZE(fw)       LOAD_STOP(fw) - LOAD_START(fw)
 #define startcog_eeprom(fw, arg)	cognewFromBootEeprom(                                       	\
-                                	  _load_start_ ## fw ## _ecog,                              	\
-                                	  _load_stop_ ## fw ## _ecog - _load_start_ ## fw ## _ecog,	\
+					  LOAD_START(fw),                                               \
+					  LOAD_SIZE(fw),		                                \
                                 	  arg)
 
 usefw(toggle_fw_0);
@@ -121,12 +143,12 @@ void main (int argc,  char* argv[])
     startcog_eeprom(toggle_fw_5, &par_5.m);
 
     buf = i2cBootBuffer();
-    off = COG_IMAGE_EEPROM_OFFSET(_load_start_toggle_fw_6_ecog);
-    size = _load_stop_toggle_fw_6_ecog - _load_start_toggle_fw_6_ecog;
+    off = COG_IMAGE_EEPROM_OFFSET(LOAD_START(toggle_fw_6));
+    size = LOAD_SIZE(toggle_fw_6);
     readFromBootEeprom(off, buf, size);
 
-    off = COG_IMAGE_EEPROM_OFFSET(_load_start_toggle_fw_7_ecog);
-    size = _load_stop_toggle_fw_7_ecog - _load_start_toggle_fw_7_ecog;
+    off = COG_IMAGE_EEPROM_OFFSET(LOAD_START(toggle_fw_7));
+    size = LOAD_SIZE(toggle_fw_7);
     readFromBootEeprom(off, cogimage, size);
 
     i2cClose(i2cBootOpen()); // close the boot i2c driver to free up a cog
