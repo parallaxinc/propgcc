@@ -70,8 +70,8 @@ testtime(time_t t, const char *fmt, const char *expect, int local)
 
 #define CLOCKS_PER_USEC (CLOCKS_PER_SEC/1000000)
 /* function call overhead for usleep */
-#define OVERHEAD 1024
-
+//#define OVERHEAD 1024
+#define OVERHEAD 1100 /* bigger than it should be :-( */
 
 /* test of sleep functions */
 void
