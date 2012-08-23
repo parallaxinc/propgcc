@@ -16,7 +16,7 @@
 int
 cogstart(void (*func)(void *), void *arg, void *stack, size_t stack_size)
 {
-#if defined(__PROPELLER_LMM__)
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__)
   extern unsigned int _load_start_kernel[];
   _thread_state_t *tls;
   unsigned int *sp;
