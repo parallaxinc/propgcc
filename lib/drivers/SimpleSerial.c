@@ -64,7 +64,7 @@ _serial_putbyte(int c, FILE *fp)
 }
 
 /* and here is getbyte */
-/* we need to optimize with -O3 to get it to work in XMM mode */
+/* we need to put it in fcache to get it to work in XMM and CMM modes */
 __attribute__((fcache))
 static int
 _serial_getbyte(FILE *fp)
