@@ -1,4 +1,5 @@
 MODEL = xmmc
+
 CC = propeller-elf-gcc
 CFLAGS = -m$(MODEL) -std=c99 -Os -Wall -u __serial_exit
 LMMCFLAGS = -mlmm -std=c99 -Os -Wall -u __serial_exit

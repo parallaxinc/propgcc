@@ -1671,8 +1671,8 @@ md_assemble (char *instruction_string)
 		    size = 2;
 		    goto compress_done;
 		  }
-		goto skip_compress;
 	      }
+	    goto skip_compress;
 	  }
 
 	/* special case -- a source of __MASK_FFFFFFFF can
