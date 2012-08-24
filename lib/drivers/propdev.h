@@ -24,7 +24,7 @@ extern "C"
 
 #define waitcnt(a)                  __builtin_propeller_waitcnt((a), 0)
 
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+#if defined(__PROPELLER_USE_XMM__)
 
 #define use_cog_driver(id)      extern uint32_t _load_start_##id[], _load_stop_##id[]
 
