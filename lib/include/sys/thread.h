@@ -142,7 +142,8 @@ typedef _atomic_t atomic_t;
 
 #if !defined(__cplusplus)
   /* the GNU C++ library already has locks in it, so don't conflict */
-#if (defined(__PROPELLER_LMM__) || defined(__PROPELLER_COG__))
+#if (!defined(__PROPELLER_USE_XMM__))
+  /* we don't have the necessary primitives in the XMM kernel */
 #define __trylock(ptr) __sync_bool_compare_and_swap(ptr, 0, 1)
 #define __addlock(ptr, inc) __sync_add_and_fetch(ptr, inc)
 #else
