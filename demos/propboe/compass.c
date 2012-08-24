@@ -10,6 +10,8 @@
 
 #define COMPASS_ADDR    0x1e
 
+//#define USE_SIMPLE_I2C_DRIVER
+
 void CompassInit(I2C *dev);
 void CompassRead(I2C *dev, int *px, int *py, int *pz);
 
