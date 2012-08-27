@@ -546,7 +546,6 @@ __UDIV_BY_ZERO
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
-__MULSI
 	mov	__TMP0, r0
 	min	__TMP0, r1
 	max	r1, r0
