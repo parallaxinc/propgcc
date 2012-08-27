@@ -1672,6 +1672,9 @@ md_assemble (char *instruction_string)
 		    goto compress_done;
 		  }
 	      }
+
+	    /* any other operation with a destination other than 0-15 is
+	       bad news */
 	    goto skip_compress;
 	  }
 
