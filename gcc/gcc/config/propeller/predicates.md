@@ -30,6 +30,13 @@
   (ior (match_code "symbol_ref")
        (match_operand 0 "register_operand")))
 
+;;
+;; for sibcall operations we allow only symbolic addresses (for now)
+;;
+(define_predicate "sibcall_operand"
+  (match_code "symbol_ref")
+)
+
 ;; True if OP refers to any kind of symbol.
 ;; For roughly the same reasons that pmode_register_operand exists, this
 ;; predicate ignores its mode argument.
