@@ -318,6 +318,47 @@ __CMPSWAPSI
 	lockclr __TMP1
 __CMPSWAPSI_ret
 	ret
+
+	''
+	'' memcpy(r0, r1, r2)
+	'' copy from r1 to r0
+	'' trashes r3
+	''
+	.global __Memcpy
+	.global __Memcpy_ret
+__Memcpy
+	mov	r3,r0
+	or	r3,r1
+	andn	r3,#3 nr,wz	'' check alignment
+  if_nz jmp	#.slocpy
+
+	'' get number of longs to copy
+	mov	__TMP0,r2
+	shr	__TMP0,#2 wz
+  if_z  jmp	.slocpy
+
+.fastcopy
+	rdlong	r3,r1
+	add	r1,#4
+	sub	r2,#4
+	wrlong	r3,r0
+	add	r0,#4
+        djnz    __TMP0,#.fastcopy
+	
+.slocpy
+	cmps	r2,#0 wz
+  if_z  jmp	#__Memcpy_ret
+
+.slolp
+	rdbyte	r3,r1
+	add	r1,#1
+	wrbyte	r3,r0
+	add	r0,#1
+	djnz	r2,#.slolp
+
+__Memcpy_ret
+	ret
+
 	
 	''
 	'' FCACHE region
@@ -385,6 +426,6 @@ Lmm_fcache_doit
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	256	'' reserve 256 longs = 1K
+	res	128	'' reserve 128 longs = 512 bytes
 
 

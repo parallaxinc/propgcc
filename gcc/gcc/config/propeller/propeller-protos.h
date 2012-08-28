@@ -51,6 +51,7 @@ extern void propeller_asm_output_aligned_common (FILE *, tree, const char *,
 
 extern bool propeller_modes_tieable_p (enum machine_mode, enum machine_mode);
 extern bool propeller_hard_regno_mode_ok (unsigned int, enum machine_mode);
+extern bool propeller_epilogue_uses(int);
 
 extern bool propeller_match_ccmode (rtx, enum machine_mode);
 
@@ -61,7 +62,7 @@ extern RTX_CODE propeller_canonicalize_comparison (RTX_CODE, rtx *, rtx *);
 extern rtx propeller_return_addr (int, rtx);
 #endif
 
-extern bool propeller_expand_call (rtx, rtx, rtx);
+extern bool propeller_expand_call (rtx, rtx, rtx, bool is_sibcall);
 extern bool propeller_forward_branch_p (rtx);
 
 extern void propeller_emit_stack_pushm (rtx *operands);

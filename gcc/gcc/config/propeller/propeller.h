@@ -522,6 +522,10 @@ typedef unsigned int CUMULATIVE_ARGS;
    the prologue.  */
 #define INCOMING_RETURN_ADDR_RTX  gen_rtx_REG( SImode, PROP_LR_REGNUM)
 
+/* Define this macro as a C expression that is nonzero for registers used by
+   the epilogue or return pattern */
+#define EPILOGUE_USES(regno) propeller_epilogue_uses(regno)
+
 /* A C expression whose value is RTL representing the value of the return
    address for the frame COUNT steps up from the current frame.  */
 
