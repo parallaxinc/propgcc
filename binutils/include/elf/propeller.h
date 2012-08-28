@@ -22,7 +22,8 @@
 
 /* Flags for the st_other field. */
 #define PROPELLER_OTHER_COG_RAM 0x80
-#define PROPELLER_OTHER_FLAGS 0x80
+#define PROPELLER_OTHER_COMPRESSED 0x40
+#define PROPELLER_OTHER_FLAGS (0xC0)
 
 #include "elf/reloc-macros.h"
 

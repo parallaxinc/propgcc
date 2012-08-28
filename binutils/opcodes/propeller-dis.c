@@ -23,6 +23,9 @@
 #include "dis-asm.h"
 #include "opcode/propeller.h"
 
+#include "elf-bfd.h"
+#include "elf/internal.h"
+#include "elf/propeller.h"
 
 static int
 read_word (bfd_vma memaddr, int *word, disassemble_info * info)
@@ -35,6 +38,36 @@ read_word (bfd_vma memaddr, int *word, disassemble_info * info)
     return -1;
 
   *word = x[3] << 24 | x[2] << 16 | x[1] << 8 | x[0];
+  return 0;
+}
+
+#if 0
+static int
+read_halfword (bfd_vma memaddr, int *word, disassemble_info * info)
+{
+  int status;
+  bfd_byte x[4];
+
+  status = (*info->read_memory_func) (memaddr, x, 2, info);
+  if (status != 0)
+    return -1;
+
+  *word = x[1] << 8 | x[0];
+  return 0;
+}
+#endif
+
+static int
+read_byte (bfd_vma memaddr, int *word, disassemble_info * info)
+{
+  int status;
+  bfd_byte x[4];
+
+  status = (*info->read_memory_func) (memaddr, x, 1, info);
+  if (status != 0)
+    return -1;
+
+  *word = x[0];
   return 0;
 }
 
@@ -65,23 +98,13 @@ static const char *const flags[16] = {
   "wz, wc"
 };
 
-int
-print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
+static int
+print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opcode)
 {
-  bfd_vma start_memaddr = memaddr;
-  int opcode;
   int src, dst;
   int condition;
   int set, immediate;
   int i;
-
-  info->bytes_per_line = 4;
-  info->bytes_per_chunk = 4;
-  info->display_endian = BFD_ENDIAN_LITTLE;
-
-  if (read_word (memaddr, &opcode, info) != 0)
-    return -1;
-  memaddr += 4;
 
   src = (opcode >> 0) & 0x1ff;
   dst = (opcode >> 9) & 0x1ff;
@@ -206,5 +229,74 @@ done:
     }
 
 #undef OP
+  return 4;
+}
+
+/*
+ * try to figure out from the symbols whether this is compressed
+ * or uncompressed code
+ */
+
+static int
+is_compressed_code (bfd_vma pc, struct disassemble_info *info)
+{
+  int n, start;
+  bfd_vma addr;
+  elf_symbol_type *es;
+  unsigned int type = 0;
+
+  start = info->symtab_pos;
+  for (n = start; n < info->symtab_size; n++)
+    {
+      addr = bfd_asymbol_value (info->symtab[n]);
+      if (info->section != NULL && info->section != info->symtab[n]->section)
+	continue; /* ignore symbol */
+      if (addr > pc)
+	break;
+      es = *(elf_symbol_type **)(info->symtab + n);
+      type = es->internal_elf_sym.st_other;
+    }
+  return (type & PROPELLER_OTHER_COMPRESSED) != 0;
+}
+
+static int
+do_compressed_insn (bfd_vma memaddr, struct disassemble_info *info)
+{
+  int opcode;
+  bfd_vma start_memaddr = memaddr;
+
+  if (read_byte (memaddr, &opcode, info) != 0)
+    return -1;
+  memaddr++;
+  FPRINTF (F, "\t\t<compressed>");
+
   return memaddr - start_memaddr;
+}
+
+int
+print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
+{
+  int opcode;
+  int r;
+  int compress = 0;
+
+  info->bytes_per_line = 4;
+  info->display_endian = BFD_ENDIAN_LITTLE;
+
+  compress = is_compressed_code (memaddr, info);
+  if (compress) {
+    r = do_compressed_insn (memaddr, info);
+  } else {
+
+    if (read_word (memaddr, &opcode, info) != 0)
+      return -1;
+    r = print_insn_propeller32(memaddr, info, opcode);
+  }
+  if (r < 0) {
+    memaddr += (compress ? 1 : 4);
+    return r;
+  }
+  info->bytes_per_chunk = r;
+  memaddr += r;
+  return r;
 }
