@@ -40,9 +40,6 @@
 
 long md_chars_to_number (unsigned char *, int);
 
-#define tc_frob_symbol(s,p) propeller_frob_symbol(s,p)
-void propeller_frob_symbol (symbolS * s, int p);
-
 #define tc_frob_label(s) propeller_frob_label(s)
 void propeller_frob_label (symbolS * s);
 
