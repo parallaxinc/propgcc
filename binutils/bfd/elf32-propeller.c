@@ -499,6 +499,29 @@ propeller_elf_relocate_section (bfd * output_bfd,
   return TRUE;
 }
 
+/* Merge non-visibility st_other attributes. Ensure that our
+   architecture specific flags are copied into h->other even if this
+   is not a definition of the symbol
+*/
+static void
+propeller_elf_merge_symbol_attribute (struct elf_link_hash_entry *h,
+				      const Elf_Internal_Sym *isym,
+				      bfd_boolean definition,
+				      bfd_boolean dynamic ATTRIBUTE_UNUSED)
+{
+  if ((isym->st_other & ~ELF_ST_VISIBILITY (-1)) != 0)
+    {
+      unsigned char other;
+
+      other = (definition ? isym->st_other : h->other);
+      other &= ~ELF_ST_VISIBILITY (-1);
+      h->other = other | ELF_ST_VISIBILITY (h->other);
+    }
+  if (!definition && (isym->st_other & PROPELLER_OTHER_FLAGS))
+    h->other |= isym->st_other & PROPELLER_OTHER_FLAGS;
+}
+
+
 /* Return the section that should be marked against GC for a given
    relocation.  */
 
@@ -578,12 +601,14 @@ propeller_elf_is_local_label_name (bfd *abfd, const char *name)
 #define elf_backend_relocate_section		propeller_elf_relocate_section
 #define elf_backend_gc_mark_hook		propeller_elf_gc_mark_hook
 #define elf_backend_check_relocs                propeller_elf_check_relocs
+#define elf_backend_merge_symbol_attribute      propeller_elf_merge_symbol_attribute
 
 #define elf_backend_can_gc_sections		1
 #define elf_backend_rela_normal			1
 
 #define bfd_elf32_bfd_reloc_type_lookup		propeller_reloc_type_lookup
 #define bfd_elf32_bfd_reloc_name_lookup		propeller_reloc_name_lookup
+
 
 #define bfd_elf32_bfd_is_local_label_name \
 					propeller_elf_is_local_label_name

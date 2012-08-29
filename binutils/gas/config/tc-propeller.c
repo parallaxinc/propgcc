@@ -1893,7 +1893,8 @@ md_convert_frag (bfd * headers ATTRIBUTE_UNUSED,
 void
 propeller_frob_label (symbolS * sym)
 {
-  unsigned int flag = S_GET_OTHER(sym);
+  unsigned int flag = 0;
+  static const int null_flag = 0;
 
   if (cog_ram) {
     flag |= PROPELLER_OTHER_COG_RAM;
@@ -1901,7 +1902,11 @@ propeller_frob_label (symbolS * sym)
   if (compress) {
     flag |= PROPELLER_OTHER_COMPRESSED;
   }
-  S_SET_OTHER (sym, flag); 
+  /* reset the tc marker for all newly created symbols */
+  if (flag) {
+    symbol_set_tc (sym, (int *)&null_flag);
+    S_SET_OTHER (sym, S_GET_OTHER (sym) | flag); 
+  }
 }
 
 
@@ -1909,8 +1914,8 @@ valueT
 propeller_s_get_value (symbolS *s)
 {
   valueT val = S_GET_VALUE(s);
-  int *sy_tc = symbol_get_tc (s);
-  if(*sy_tc){
+  unsigned int flag = S_GET_OTHER(s);
+  if(flag & PROPELLER_OTHER_COG_RAM){
     val /= 4;
   }
   return val;
