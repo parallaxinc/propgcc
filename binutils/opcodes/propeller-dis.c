@@ -41,7 +41,6 @@ read_word (bfd_vma memaddr, int *word, disassemble_info * info)
   return 0;
 }
 
-#if 0
 static int
 read_halfword (bfd_vma memaddr, int *word, disassemble_info * info)
 {
@@ -55,7 +54,20 @@ read_halfword (bfd_vma memaddr, int *word, disassemble_info * info)
   *word = x[1] << 8 | x[0];
   return 0;
 }
-#endif
+
+static int
+read_threebyte (bfd_vma memaddr, int *word, disassemble_info * info)
+{
+  int status;
+  bfd_byte x[4];
+
+  status = (*info->read_memory_func) (memaddr, x, 3, info);
+  if (status != 0)
+    return -1;
+
+  *word = (x[2] << 16) | (x[1] << 8) | x[0];
+  return 0;
+}
 
 static int
 read_byte (bfd_vma memaddr, int *word, disassemble_info * info)
@@ -259,16 +271,302 @@ is_compressed_code (bfd_vma pc, struct disassemble_info *info)
   return (type & PROPELLER_OTHER_COMPRESSED) != 0;
 }
 
+static char *
+xop_table[] = {
+  "add\t%d, %s",
+  "sub\t%d, %s",
+  "cmps\t%d, %s wz, wc",
+  "cmp\t%d, %s wz, wc",
+
+  "and\t%d, %s",
+  "andn\t%d, %s",
+  "neg\t%d, %s",
+  "or\t%d, %s",
+
+  "xor\t%d, %s",
+  "shl\t%d, %s",
+  "shr\t%d, %s",
+  "sar\t%d, %s",
+
+  "rdbyte\t%d, %s",
+  "rdlong\t%d, %s",
+  "wrbyte\t%d, %s",
+  "wrlong\t%d, %s"
+};
+
+static char *regname(int reg)
+{
+  static char tmpbuf[8];
+  if (reg == 15)
+    return "lr";
+  sprintf(tmpbuf, "r%d", reg);
+  return tmpbuf;
+}
+
+const char *macroname[] = {
+  "nop",
+  "break",
+  "lret",
+  "lpushm",
+
+  "lpopm",
+  "lpopret",
+  "lcall",
+  "mul",
+
+  "udiv",
+  "div",
+  "mov",
+  "xmov",
+
+  "addsp",
+  "???",
+  "fcache"
+  "native"
+};
+
+static void
+print_opstring(struct disassemble_info *info,
+	       const char *str, int dest, int src, int imm)
+{
+  int c;
+  while ( (c = *str++) != 0 )
+    {
+      if (c == '%') {
+	c = *str++;
+	if (!c) return;
+	switch (c) {
+	case 'd':
+	  FPRINTF ( F, "%s", regname(dest) );
+	  break;
+	case 's':
+	  if (imm) {
+	    FPRINTF ( F, "#0x%x", src );
+	  } else {
+	    FPRINTF ( F, "%s", regname(src) );
+	  }
+	  break;
+	case 'm':
+	  FPRINTF (F, "%s", macroname[dest & 0xf]);
+	  break;
+	case 'a':
+	  if (imm) FPRINTF (F, "#");
+	  info->target = src;
+	  (*info->print_address_func) (info->target, info);
+	  break;
+	case 'A':
+	  if (imm) FPRINTF (F, "#");
+	  info->target = src << 2;
+	  (*info->print_address_func) (info->target, info);
+	  break;
+	default:
+	  FPRINTF ( F, "%c", c );
+	  break;
+	}
+      } else {
+	FPRINTF ( F, "%c", c );
+      }
+    }
+}
+
+static int
+print_macro (bfd_vma memaddr, struct disassemble_info *info, int which)
+{
+  int src, dst;
+  int xmov_byte;
+  int r = 0;
+  bfd_vma newpc;
+
+  switch (which)
+    {
+    case MACRO_NOP:
+    case MACRO_BREAK:
+    case MACRO_RET:
+    case MACRO_MUL:
+    case MACRO_DIV:
+    case MACRO_UDIV:
+      print_opstring (info, "\t\t%m", which, 0, 0);
+      break;
+
+    case MACRO_PUSHM:
+    case MACRO_POPM:
+    case MACRO_POPRET:
+      if (read_byte (memaddr, &src, info) != 0)
+	return -1;
+      r = 1;
+      print_opstring (info, "\t\t%m\t%s", which, src, 1);
+      break;
+    case MACRO_NATIVE:
+      if (read_word (memaddr, &src, info) != 0)
+	return -1;
+      print_insn_propeller32 (memaddr, info, src);
+      r = 4;
+      break;
+    case MACRO_XMVREG:
+      if (read_byte (memaddr, &xmov_byte, info) != 0) return -1;
+      src = xmov_byte & 0xf;
+      dst = (xmov_byte >> 4) & 0xf;
+      print_opstring (info, "\t\txmov\t%d,%s", dst, src, 0);
+      if (read_byte (memaddr, &xmov_byte, info) != 0) return -1;
+      src = xmov_byte & 0xf;
+      dst = (xmov_byte >> 4) & 0xf;
+      print_opstring (info, "\tmov\t%d,%s", dst, src, 0);
+      r = 2;
+      break;
+    case MACRO_MVREG:
+      if (read_byte (memaddr, &xmov_byte, info) != 0) return -1;
+      src = xmov_byte & 0xf;
+      dst = (xmov_byte >> 4) & 0xf;
+      print_opstring (info, "\t\tmov\t%d,%s", dst, src, 0);
+      r = 1;
+      break;
+    case MACRO_LCALL:
+      if (read_halfword (memaddr, &src, info) != 0) return -1;
+      print_opstring (info, "\t\tlcall\t%a", 0, src, 1);
+      r = 2;
+      break;
+    case MACRO_FCACHE:
+      if (read_word (memaddr, &src, info) != 0) return -1;
+      print_opstring (info, "\t\tfcache\t%s", 0, src, 1);
+      newpc = memaddr + 2;
+      newpc = (memaddr + 3) & ~3;
+      r = newpc - memaddr;
+      break;
+    case MACRO_ADDSP:
+      if (read_byte (memaddr, &src, info) != 0) return -1;
+      r = 1;
+      if (src > 0x80) {
+	src = 0x100 - src;
+	print_opstring (info, "\t\tsub\tsp, %s", 0, src, 1);
+      } else {
+	print_opstring (info, "\t\tadd\tsp, %s", 0, src, 1);
+      }
+      break;
+    default:
+      FPRINTF (F, "\t\t???");
+      break;
+    }
+  return r;
+}
+
 static int
 do_compressed_insn (bfd_vma memaddr, struct disassemble_info *info)
 {
   int opcode;
+  int opprefix;
+  int dst, src;
+  int xmov_flag = 0;
+  int xop;
+  int xmov_byte;
+  int imm;
   bfd_vma start_memaddr = memaddr;
+  int r;
 
   if (read_byte (memaddr, &opcode, info) != 0)
     return -1;
   memaddr++;
-  FPRINTF (F, "\t\t<compressed>");
+  opprefix = opcode & 0xf0;
+  dst = opcode & 0x0f;
+  src = 0;
+
+  switch (opprefix) {
+  case PREFIX_MACRO:
+    r = print_macro(memaddr, info, dst);
+    if (r < 0) return r;
+    memaddr += r;
+    break;
+  case PREFIX_XMOVREG:
+  case PREFIX_XMOVIMM:
+    xmov_flag = 1;
+    if (read_byte (memaddr, &xmov_byte, info) != 0) return -1;
+    src = xmov_byte & 0xf;
+    dst = (xmov_byte >> 4) & 0xf;
+    memaddr++;
+    /* fall through */
+  case PREFIX_REGREG:
+  case PREFIX_REGIMM4:
+  case PREFIX_REGIMM12:
+    FPRINTF (F, "\t\t");
+    if (xmov_flag)
+      print_opstring(info, "xmov\t%d, %s\t", dst, src, 0);
+
+    if (opprefix == PREFIX_REGIMM12) {
+      if (read_halfword (memaddr, &src, info) != 0) return -1;
+      memaddr += 2;
+    } else {
+      if (read_byte (memaddr, &src, info) != 0) return -1;
+      memaddr ++;
+    }
+    if (opprefix == PREFIX_XMOVREG || opprefix == PREFIX_REGREG)
+      imm = 0;
+    else
+      imm = 1;
+    xop = src & 0x0F;
+    src = src >> 4;
+    if (src > 0x7FF) {
+      src = src - 0x1000;
+    }
+    print_opstring (info, xop_table[xop], dst, src, imm);
+    break;
+  case PREFIX_MVI:
+    FPRINTF (F, "\t\t");
+    if (read_word (memaddr, &src, info) != 0) return -1;
+    memaddr += 4;
+    print_opstring (info, "mvi\t%d,%s", dst, src, 1);
+    break;
+  case PREFIX_MVIW:
+    FPRINTF (F, "\t\t");
+    if (read_halfword (memaddr, &src, info) != 0) return -1;
+    memaddr += 2;
+    print_opstring (info, "mviw\t%d,%s", dst, src, 1);
+    break;
+  case PREFIX_MVIB:
+    FPRINTF (F, "\t\t");
+    if (read_byte (memaddr, &src, info) != 0) return -1;
+    memaddr += 1;
+    print_opstring (info, "mov\t%d,%s", dst, src, 1);
+    break;
+  case PREFIX_ZEROREG:
+    FPRINTF (F, "\t\t");
+    print_opstring (info, "mov\t%d,%s", dst, 0, 1);
+    break;
+  case PREFIX_LEASP:
+    FPRINTF (F, "\t\t");
+    if (read_halfword (memaddr, &src, info) != 0) return -1;
+    memaddr += 2;
+    print_opstring (info, "leasp\t%d,%s", dst, src, 1);
+    break;
+  case PREFIX_PACK_NATIVE:
+    if (read_threebyte (memaddr, &src, info) != 0) return -1;
+    /* reconstruct the opcode */
+    opcode = src & 0x3FFFF;
+    xop = (src >> 18) & 0x3F;
+    opcode = opcode | (xop << 26) | (0xF << 18) | (dst << 22);
+    print_insn_propeller32(memaddr, info, opcode);
+    memaddr += 3;
+    break;
+  case PREFIX_SKIP2:
+  case PREFIX_SKIP3:
+    FPRINTF (F, "\t%s\tskip", flags[dst]);
+    break;
+  case PREFIX_BRW:
+    FPRINTF (F, "\t%s\t", flags[dst]);
+    if (read_halfword (memaddr, &src, info) != 0) return -1;
+    memaddr += 2;
+    print_opstring (info, "brw\t%a", 0, src, 1);
+    break;
+  case PREFIX_BRS:
+    FPRINTF (F, "\t%s\t", flags[dst]);
+    if (read_byte (memaddr, &src, info) != 0) return -1;
+    memaddr += 1;
+    if (src > 0x80) src = src - 0x100;
+    src += memaddr;
+    print_opstring (info, "brs\t%a", 0, src, 1);
+    break;
+  default:
+    FPRINTF (F, "\t\t<compressed>");
+    break;
+  }
 
   return memaddr - start_memaddr;
 }
@@ -279,9 +577,6 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
   int opcode;
   int r;
   int compress = 0;
-
-  info->bytes_per_line = 4;
-  info->display_endian = BFD_ENDIAN_LITTLE;
 
   compress = is_compressed_code (memaddr, info);
   if (compress) {
@@ -296,7 +591,10 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
     memaddr += (compress ? 1 : 4);
     return r;
   }
-  info->bytes_per_chunk = r;
+  info->bytes_per_line = 4;
+  info->bytes_per_chunk = compress ? 1 : 4;
+  info->display_endian = BFD_ENDIAN_BIG;
+
   memaddr += r;
   return r;
 }

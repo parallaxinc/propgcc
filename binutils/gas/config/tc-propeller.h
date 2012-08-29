@@ -41,6 +41,8 @@
 long md_chars_to_number (unsigned char *, int);
 
 #define tc_frob_label(s) propeller_frob_label(s)
+//#define tc_symbol_new_hook(s) propeller_frob_label(s)
+
 void propeller_frob_label (symbolS * s);
 
 #define TC_S_GET_VALUE propeller_s_get_value
