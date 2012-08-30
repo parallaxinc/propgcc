@@ -1951,6 +1951,21 @@ propeller_expand_prologue (void)
     }
 }
 
+/*
+ * output the assembly code for a function definition
+ */
+void
+propeller_declare_function_name (FILE *f, const char *fnname, tree decl)
+{
+  if (TREE_PUBLIC (decl))
+    {
+      fputs (GLOBAL_ASM_OP, f);
+      assemble_name (f, fnname);
+      fputs ("_ret\n", f);
+    }
+  ASM_OUTPUT_LABEL (f, fnname);
+}
+
 /* Create an emit instructions for a functions epilogue.  */
 void
 propeller_expand_epilogue (bool is_sibcall)
