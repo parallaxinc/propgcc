@@ -594,6 +594,8 @@ extern const char *propeller_bss_asm_op;
 
 #define TARGET_ASM_NAMED_SECTION default_elf_asm_named_section
 
+#define ASM_DECLARE_FUNCTION_NAME(FILE, NAME, DECL) propeller_declare_function_name ((FILE), (NAME), (DECL))
+
 /* Assembler Commands for Alignment */
 
 #define ASM_OUTPUT_ALIGN(STREAM,POWER)				\
