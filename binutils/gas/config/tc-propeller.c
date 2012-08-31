@@ -1124,12 +1124,11 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 	    arg = malloc(32);
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "#__LMM_FCACHE_LOAD");
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
 	    str = parse_src_n(str, &insn2, 32);
 	    size = 8;
 	    insn2_compressed = 1;  /* insn2 is not an instruction */
