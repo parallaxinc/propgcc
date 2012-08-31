@@ -1786,6 +1786,9 @@ md_assemble (char *instruction_string)
     insn.reloc.type = BFD_RELOC_NONE;
     op1.reloc.type = BFD_RELOC_NONE;
     op2.reloc.type = BFD_RELOC_NONE;
+    /* no second instruction needed */
+    insn2.code = 0;
+    insn2.reloc.type = BFD_RELOC_NONE;
   }
  skip_compress:
 
