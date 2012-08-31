@@ -82,6 +82,10 @@ endif
 	$(CC) $(CFLAGS) -r -mcog -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
+%.cog: %.cogc
+	$(CC) $(CFLAGS) -xc -r -mcog -o $@ $<
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
+
 #
 # a .ecog program is an object file that contains code intended to
 # run in a COG separate from the main program; i.e., it's a COG
@@ -90,6 +94,10 @@ endif
 #
 %.ecog: %.c
 	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
+
+%.ecog: %.ecogc
+	$(CC) $(CFLAGS) -xc -r -mcog -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 %.binary: %.elf
