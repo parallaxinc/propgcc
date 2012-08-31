@@ -1441,7 +1441,7 @@ md_assemble (char *instruction_string)
 	  }
 	else
 	  {
-	    char *arg, *arg2;
+	    char *arg;
 	    arg = malloc(32);
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
@@ -1449,7 +1449,7 @@ md_assemble (char *instruction_string)
 	      sprintf(arg, "#__LMM_MVI_lr");
 	    else
 	      sprintf(arg, "#__LMM_MVI_r%d", reg);
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
 	    free(arg);
 	    
 	    size = 8;
