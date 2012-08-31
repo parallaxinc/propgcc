@@ -91,7 +91,7 @@ void main (int argc,  char* argv[])
 
     /* default the base pin to 0 to indicate LEDs on P0-6 */
     if (_cfg_basepin == -1)
-    	_cfg_basepin = 0;
+    	_cfg_basepin = 16; //0;
     	    
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;     /* start by waiting for 1 second */
