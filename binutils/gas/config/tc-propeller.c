@@ -1022,11 +1022,10 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char arg[8];
-	    char *arg2;
 	    strcpy(arg, "pc");
 
-	    arg2 = parse_dest(arg, &op1, &insn);
-	    arg2 = parse_src(arg, &op2, &insn, op->format);
+	    parse_dest(arg, &op1, &insn);
+	    parse_src(arg, &op2, &insn, op->format);
 	    str = parse_src_n(str, &insn2, 23);
 	    insn2_compressed = 1;
 	    size = 8;
@@ -1158,7 +1157,6 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 	    char *macroname = "dummy";
 
 	    switch (op->copc) {
@@ -1179,14 +1177,14 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "__TMP0");
-	    arg2 = parse_dest(arg, &op1, &insn);
+	    parse_dest(arg, &op1, &insn);
 	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
 	    sprintf(arg, "__LMM_%s_ret", macroname);
 	    // now set up the CALL instruction
 	    insn2.code = 0x5c800000 | (0xf << 18); 
-	    arg2 = parse_dest(arg, &op3, &insn2);
+	    parse_dest(arg, &op3, &insn2);
 	    sprintf(arg, "#__LMM_%s", macroname);
-	    arg2 = parse_src(arg, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
+	    parse_src(arg, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
 	    free(arg);
 
 	    size = 8;
@@ -1211,7 +1209,6 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 	    char *macroname = "dummy";
 
 	    switch (op->copc) {
@@ -1235,9 +1232,9 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    sprintf(arg, "%s_ret", macroname);
-	    arg2 = parse_dest(arg, &op1, &insn);
+	    parse_dest(arg, &op1, &insn);
 	    sprintf(arg, "#%s", macroname);
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMPRET);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMPRET);
 	    free(arg);
 
 	    size = 4;
@@ -1292,7 +1289,6 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 
 	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
 	    if (!(insn.code & (1<<22)))
@@ -1304,7 +1300,7 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "sp");
-	    arg2 = parse_dest(arg, &op4, &insn);
+	    parse_dest(arg, &op4, &insn);
 	    // now set up the ADD instruction
 	    insn2.code = 0x80800000 | (0xf << 18); 
 	    free(arg);
@@ -1373,7 +1369,6 @@ md_assemble (char *instruction_string)
 	      long n
 	*/
         char *arg;
-	char *arg2;
 	if (compress)
 	  {
 	    str = parse_src_n(str, &op2, 16);
@@ -1390,7 +1385,7 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "#__LMM_CALL");
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
 	    str = parse_src_n(str, &insn2, 32);
 	    size = 8;
 	    free(arg);
