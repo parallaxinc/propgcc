@@ -1284,6 +1284,8 @@ md_assemble (char *instruction_string)
 	      reloc_prefix++;
 	    }
 	    insn_compressed = 1;
+	    insn2.code = 0;
+	    insn2.reloc.type = BFD_RELOC_NONE;
 	  }
 	else
 	  {
@@ -1804,6 +1806,9 @@ md_assemble (char *instruction_string)
 
   {
     int insn_size;
+    int alloc_size;
+    int bytes_written = 0;
+#define CHECK_WRITTEN(n) do { bytes_written += (n); if (bytes_written > alloc_size) abort(); } while (0)
 
     if (compress && !insn_compressed) {
       /* we are in CMM mode, but failed to compress this instruction;
@@ -1819,14 +1824,17 @@ md_assemble (char *instruction_string)
       insn_size = 4;
     }
     to = frag_more (size);
+    alloc_size = size;
 
     if (compress) {
       if (!insn_compressed) {
 	md_number_to_chars (to, MACRO_NATIVE, 1);
+	CHECK_WRITTEN(1);
 	to++;
       } else if (insn_size > 4) {
 	/* handle the rare long compressed forms like mvi */
 	md_number_to_chars (to, insn.code, insn_size-4);
+	CHECK_WRITTEN(insn_size-4);
 	to += (insn_size-4);
 	insn_size = size = 4;
 	insn = insn2;
@@ -1835,6 +1843,7 @@ md_assemble (char *instruction_string)
       }
     }
     md_number_to_chars (to, insn.code, insn_size);
+    CHECK_WRITTEN(insn_size);
     if (insn.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix, 
 		   insn_size - reloc_prefix,
@@ -1856,9 +1865,11 @@ md_assemble (char *instruction_string)
       {
 	if (compress && !insn2_compressed) {
 	  md_number_to_chars ( to, MACRO_NATIVE, 1 );
+	  CHECK_WRITTEN(1);
 	  to++;
 	}
 	md_number_to_chars (to, insn2.code, 4);
+	CHECK_WRITTEN(4);
 	if(insn2.reloc.type != BFD_RELOC_NONE){
 	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
 		       &insn2.reloc.exp, insn2.reloc.pc_rel, insn2.reloc.type);
