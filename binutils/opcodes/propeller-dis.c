@@ -260,6 +260,7 @@ is_compressed_code (bfd_vma pc, struct disassemble_info *info)
   start = info->symtab_pos;
   for (n = start; n < info->symtab_size; n++)
     {
+      if (n < 0) continue;
       addr = bfd_asymbol_value (info->symtab[n]);
       if (info->section != NULL && info->section != info->symtab[n]->section)
 	continue; /* ignore symbol */
@@ -426,7 +427,7 @@ print_macro (bfd_vma memaddr, struct disassemble_info *info, int which)
       r = 2;
       break;
     case MACRO_FCACHE:
-      if (read_word (memaddr, &src, info) != 0) return -1;
+      if (read_halfword (memaddr, &src, info) != 0) return -1;
       print_opstring (info, "\t\tfcache\t%s", 0, src, 1);
       newpc = memaddr + 2;
       newpc = (memaddr + 3) & ~3;
@@ -547,16 +548,16 @@ do_compressed_insn (bfd_vma memaddr, struct disassemble_info *info)
     break;
   case PREFIX_SKIP2:
   case PREFIX_SKIP3:
-    FPRINTF (F, "\t%s\tskip", flags[dst]);
+    FPRINTF (F, "\t%s\tskip", propeller_conditions[dst].name);
     break;
   case PREFIX_BRW:
-    FPRINTF (F, "\t%s\t", flags[dst]);
+    FPRINTF (F, "\t%s\t", propeller_conditions[dst].name);
     if (read_halfword (memaddr, &src, info) != 0) return -1;
     memaddr += 2;
     print_opstring (info, "brw\t%a", 0, src, 1);
     break;
   case PREFIX_BRS:
-    FPRINTF (F, "\t%s\t", flags[dst]);
+    FPRINTF (F, "\t%s\t", propeller_conditions[dst].name);
     if (read_byte (memaddr, &src, info) != 0) return -1;
     memaddr += 1;
     if (src > 0x80) src = src - 0x100;
