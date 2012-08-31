@@ -35,7 +35,7 @@ struct par {
 
 #define usefw(fw)           extern unsigned char _load_start_ ## fw ## _ecog[];        			\
                             extern unsigned char _load_stop_ ## fw ## _ecog[];			        \
-                            void *_xmm_start_ ## fw ## _ecog = _load_stop_ ## fw ## _ecog;       \
+                            void *_xmm_start_ ## fw ## _ecog = _load_start_ ## fw ## _ecog;       \
                             void *_xmm_stop_ ## fw ## _ecog = _load_stop_ ## fw ## _ecog
 
 
