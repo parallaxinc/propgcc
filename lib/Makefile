@@ -38,7 +38,7 @@ cog:	$(OBJDIR) install-includes
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
 
-SRCLIBS = libc.a libm.a libpthread.a
+SRCLIBS = libc.a libm.a libpthread.a libtiny.a
 
 install: all install-includes
 	mkdir -p $(DEST)/lib/short-doubles/
@@ -60,6 +60,7 @@ install: all install-includes
 
 install-includes:
 	cp -r include $(DEST)
+	cp -r tiny/tinyio.h tiny/tinystream.h tiny/siodev.h $(DEST)/include
 
 clean:
 	rm -rf $(OBJDIR) *.a

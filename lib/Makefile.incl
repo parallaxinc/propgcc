@@ -33,7 +33,7 @@ MKDIR = mkdir -p
 
 VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:math:pthreads:wchar
 
-all: $(MODELDIR) $(MATHDIR) $(MODELDIR)/libc.a $(MODELDIR)/libm.a $(MODELDIR)/libpthread.a
+all: $(MODELDIR) $(MATHDIR) $(MODELDIR)/libc.a $(MODELDIR)/libm.a $(MODELDIR)/libpthread.a $(MODELDIR)/libtiny.a
 
 # $(PRINTF) are the functions which depend on vfprintf;
 # we include floating point versions of these in the math library
@@ -158,6 +158,9 @@ $(MODELDIR)/libm.a: $(MODEL_MATH_OBJS)
 
 $(MODELDIR)/libpthread.a: $(MODEL_PTHREAD_OBJS)
 	$(AR) rs $@ $^
+
+$(MODELDIR)/libtiny.a:
+	$(MAKE) -C tiny MODEL=$(MODEL) MODELDIR=../$(MODELDIR) lib
 
 $(MODELDIR)/float_simple_printf.o: simple_printf.c
 	$(CC) $(CFLAGS) -o $@ -DFLOAT_SUPPORT -c $<
