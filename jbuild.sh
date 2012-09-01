@@ -338,6 +338,33 @@ fi
 cd ../../propgcc
 
 #
+# build tiny library
+#
+cd lib
+make clean
+if test $? != 0
+then
+  echo "tiny library build failed - make clean"
+  cd ..
+  exit 1
+fi
+make PREFIX=$PREFIX ${JOBS} tiny
+if test $? != 0
+then
+  echo "tiny library build failed - make"
+  cd ..
+  exit 1
+fi
+make PREFIX=$PREFIX install-tiny
+if test $? != 0
+then
+  echo "tiny library install failed"
+  cd ..
+  exit 1
+fi
+cd ..
+
+#
 # build propeller-load ... before gdb
 # gdbstub relies on a loader library
 #
