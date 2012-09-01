@@ -33,7 +33,8 @@ MKDIR = mkdir -p
 
 VPATH=.:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:math:pthreads:wchar
 
-all: $(MODELDIR) $(MATHDIR) $(MODELDIR)/libc.a $(MODELDIR)/libm.a $(MODELDIR)/libpthread.a $(MODELDIR)/libtiny.a
+all: $(MODELDIR) $(MATHDIR) $(MODELDIR)/libc.a $(MODELDIR)/libm.a $(MODELDIR)/libpthread.a
+tiny: $(MODELDIR)/libtiny.a
 
 # $(PRINTF) are the functions which depend on vfprintf;
 # we include floating point versions of these in the math library

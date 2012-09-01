@@ -35,16 +35,34 @@ cog:	$(OBJDIR) install-includes
 	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
 	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
 
+# libtiny.a needs to be built after the c++ library
+tiny:	$(OBJDIR)
+	make -f Makefile.incl MODEL=lmm OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=lmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=cmm OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=cmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	
+install-tiny:
+	cp $(OBJDIR)/lmm/libtiny.a $(DEST)/lib/
+	cp $(OBJDIR)/lmm/short-doubles/libtiny.a $(DEST)/lib/short-doubles/
+	cp $(OBJDIR)/cmm/libtiny.a $(DEST)/lib/cmm/
+	cp $(OBJDIR)/cmm/short-doubles/libtiny.a $(DEST)/lib/cmm/short-doubles/
+	cp $(OBJDIR)/xmmc/libtiny.a $(DEST)/lib/xmmc
+	cp $(OBJDIR)/xmmc/short-doubles/libtiny.a $(DEST)/lib/xmmc/short-doubles/
+	cp $(OBJDIR)/xmm/libtiny.a $(DEST)/lib/xmm/
+	cp $(OBJDIR)/xmm/short-doubles/libtiny.a $(DEST)/lib/xmm/short-doubles/
+	cp -r tiny/tinyio.h tiny/tinystream.h tiny/siodev.h $(DEST)/include
+
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
 
-SRCLIBS = libc.a libm.a libpthread.a libtiny.a
+SRCLIBS = libc.a libm.a libpthread.a
 
-install: all install-includes
-	mkdir -p $(DEST)/lib/short-doubles/
-	mkdir -p $(DEST)/lib/cmm/short-doubles/
-	mkdir -p $(DEST)/lib/xmm/short-doubles/
-	mkdir -p $(DEST)/lib/xmmc/short-doubles/
+install: all install-dirs install-includes
 	cp $(addprefix $(OBJDIR)/lmm/, $(SRCLIBS)) $(DEST)/lib/
 	cp $(addprefix $(OBJDIR)/lmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/short-doubles/
 	cp $(addprefix $(OBJDIR)/cmm/, $(SRCLIBS)) $(DEST)/lib/cmm/
@@ -58,9 +76,14 @@ install: all install-includes
 	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
 	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
 
+install-dirs:
+	mkdir -p $(DEST)/lib/short-doubles/
+	mkdir -p $(DEST)/lib/cmm/short-doubles/
+	mkdir -p $(DEST)/lib/xmm/short-doubles/
+	mkdir -p $(DEST)/lib/xmmc/short-doubles/
+
 install-includes:
 	cp -r include $(DEST)
-	cp -r tiny/tinyio.h tiny/tinystream.h tiny/siodev.h $(DEST)/include
 
 clean:
 	rm -rf $(OBJDIR) *.a

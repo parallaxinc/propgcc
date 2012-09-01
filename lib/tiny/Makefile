@@ -21,6 +21,10 @@ ifndef MODEL
 MODEL=lmm
 endif
 
+ifndef MODELDIR
+MODELDIR=obj
+endif
+
 #
 # Name and objects for this program
 #
