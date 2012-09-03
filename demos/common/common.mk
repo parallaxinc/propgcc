@@ -33,6 +33,8 @@ ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)
 endif
 
+CFLAGS += -m$(MODEL)
+CXXFLAGS += $(CFLAGS)
 LDFLAGS += -m$(MODEL) -fno-exceptions -fno-rtti
 
 ifneq ($(LDSCRIPT),)
@@ -47,8 +49,6 @@ AS = propeller-elf-as
 AR = propeller-elf-ar
 OBJCOPY = propeller-elf-objcopy
 LOADER = propeller-load
-
-CXXFLAGS += $(CFLAGS)
 
 # BSTC program
 BSTC=bstc
@@ -65,10 +65,10 @@ lib$(LIBNAME).a: $(OBJS)
 endif
 
 %.o: %.c
-	$(CC) -m$(MODEL) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 %.o: %.cpp
-	$(CC) -m$(MODEL) $(CXXFLAGS) -o $@ -c $<
+	$(CC) $(CXXFLAGS) -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<
