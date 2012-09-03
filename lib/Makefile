@@ -55,7 +55,7 @@ install-tiny:
 	cp $(OBJDIR)/xmmc/short-doubles/libtiny.a $(DEST)/lib/xmmc/short-doubles/
 	cp $(OBJDIR)/xmm/libtiny.a $(DEST)/lib/xmm/
 	cp $(OBJDIR)/xmm/short-doubles/libtiny.a $(DEST)/lib/xmm/short-doubles/
-	cp -r tiny/tinyio.h tiny/tinystream.h tiny/siodev.h $(DEST)/include
+	cp tiny/tinyio.h tiny/tinystream.h tiny/tinystream tiny/siodev.h $(DEST)/include
 
 hello.elf: hello.c
 	$(CC) -o hello.elf hello.c
