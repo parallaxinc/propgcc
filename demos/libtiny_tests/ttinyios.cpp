@@ -2,7 +2,7 @@
 // Test program for Tiny I/O iostream-replacement library
 //
 
-#include <tinystream.h>
+#include <tinystream>
 
 using namespace std;
 

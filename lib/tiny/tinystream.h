@@ -23,7 +23,7 @@
  *   and the Tiny I/O library.
  *
  * - However, this I/O class is not link-compatible.  In other words, you must
- *   #include "tinystream.h" instead of #include <iostream>
+ *   #include <tinystream.h> instead of #include <iostream>
  *
  * - operator new / operator delete without the exception overhead.  These
  *   "skinny" allocators do have the appropriate signatures and therefore
