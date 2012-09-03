@@ -85,8 +85,10 @@ __fopen_driver(FILE *fp, _Driver *d, const char *name, const char *mode)
   fp->_ptr = fp->_base;
   fp->_cnt = 0;
   fp->_drv = d;
-  if (flag & _IOAPPEND)
-    (*d->seek)(fp, 0L, SEEK_END);
+  if (flag & _IOAPPEND) {
+    if (d->seek)
+      (*d->seek)(fp, 0L, SEEK_END);
+  }
   return fp;
 }
 
