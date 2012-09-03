@@ -572,81 +572,61 @@ __MASK_0000FFFF	long	0x0000FFFF
 
 	''
 	'' math support functions
+	'' these call out to a kernel extension
 	''
+
+	.global __loadmath
+	.global	__load_extension
+	.global __loadmath_ret
+	.global	__load_extension_ret
+__loadmath
+	mov	__TMP1,__math_kernel_ptr
+__load_extension
+	cmp	__kernel_ext,__TMP1 wz
+   if_z jmp	__load_extension_ret
+	mov	__kernel_ext,__TMP1
+	rdlong	__TMP0, __TMP1		'' read the length
+	''add	__TMP1, #4		'' the length has to go in the kernel!!
+	mov	__COGA, #0x6C0/4
+	call	#loadbuf
+__load_extension_ret
+__loadmath_ret
+	ret
+
+__kernel_ext
+	long	0
+__math_kernel_ptr
+	long	__load_start_math_kerext
+
 	.global __DIVSI
 	.global __DIVSI_ret
+__DIVSI
+	call	#__loadmath
+	call	#__DIVSI_impl
+__DIVSI_ret
+	ret
+	
 	.global __UDIVSI
 	.global __UDIVSI_ret
-	.global __CLZSI
-	.global __CLZSI_ret
-	.global __CTZSI
-__MASK_00FF00FF	long	0x00FF00FF
-__MASK_0F0F0F0F	long	0x0F0F0F0F
-__MASK_33333333	long	0x33333333
-__MASK_55555555	long	0x55555555
-__CLZSI	rev	r0, #0
-__CTZSI	neg	__TMP0, r0
-	and	__TMP0, r0	wz
-	mov	r0, #0
- IF_Z	mov	r0, #1
-	test	__TMP0, __MASK_0000FFFF	wz
- IF_Z	add	r0, #16
-	test	__TMP0, __MASK_00FF00FF	wz
- IF_Z	add	r0, #8
-	test	__TMP0, __MASK_0F0F0F0F	wz
- IF_Z	add	r0, #4
-	test	__TMP0, __MASK_33333333	wz
- IF_Z	add	r0, #2
-	test	__TMP0, __MASK_55555555	wz
- IF_Z	add	r0, #1
-__CLZSI_ret	ret
-__DIVR	long	0
+__UDIVSI
+	call	#__loadmath
+	call	#__UDIVSI_impl
+__UDIVSI_ret
+	ret
+
 __TMP1
 __DIVCNT
 	long	0
-	''
-	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
-	''
-__UDIVSI
-	mov	__DIVR, r0
-	call	#__CLZSI
-	neg	__DIVCNT, r0
-	mov	r0, r1 wz
- IF_Z   jmp	#__UDIV_BY_ZERO
-	call	#__CLZSI
-	add	__DIVCNT, r0
-	mov	r0, #0
-	cmps	__DIVCNT, #0	wz, wc
- IF_C	jmp	#__UDIVSI_done
-	shl	r1, __DIVCNT
-	add	__DIVCNT, #1
-__UDIVSI_loop
-	cmpsub	__DIVR, r1	wz, wc
-	addx	r0, r0
-	shr	r1, #1
-	djnz	__DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-	mov	r1, __DIVR
-__UDIVSI_ret	ret
-__DIVSGN	long	0
-__DIVSI	mov	__DIVSGN, r0
-	xor	__DIVSGN, r1
-	abs	r0, r0 wc
-	muxc	__DIVSGN, #1	' save original sign of r0
-	abs	r1, r1
-	call	#__UDIVSI
-	cmps	__DIVSGN, #0	wz, wc
- IF_B	neg	r0, r0
-	test	__DIVSGN, #1 wz	' check original sign of r0
- IF_NZ	neg	r1, r1		' make the modulus result match
-__DIVSI_ret	ret
 
-	'' come here on divide by zero
-	'' we probably should raise a signal
-__UDIV_BY_ZERO
-	neg	r0,#1
-	mov	r1,#0
-	jmp	#__UDIVSI_ret
+	.global __CLZSI
+	.global __CLZSI_ret
+__CLZSI
+	rev	r0, #0
+__CTZSI
+	call	#__loadmath
+	call	#__CTZSI_impl
+__CLZSI_ret
+	ret
 	
 	.global __MULSI
 	.global __MULSI_ret
@@ -698,6 +678,28 @@ __CMPSWAPSI_ret
 	ret
 	
 	''
+	'' code to load a buffer from hub memory into cog memory
+	''
+	'' parameters: __TMP0 = count of bytes
+	''             __TMP1 = hub address
+	''             __COGA = COG address
+	''
+	''
+__COGA	long 0
+dst1	long 1 << 9
+	
+loadbuf
+	movd	.ldlp,__COGA
+	shr	__TMP0,#2	'' convert to longs
+.ldlp
+	rdlong	0-0,__TMP1
+	add	__TMP1,#4
+	add	.ldlp,dst1
+	djnz	__TMP0,#.ldlp
+
+loadbuf_ret
+	ret
+	''
 	'' FCACHE region
 	'' The FCACHE is an area where we can
 	'' execute small functions or loops entirely
@@ -714,6 +716,7 @@ inc_dest4
 __LMM_RET
 	long 0
 
+	
 __LMM_FCACHE_DO
 	add	pc,#3		'' round up to next longword boundary
 	andn	pc,#3
@@ -723,36 +726,8 @@ __LMM_FCACHE_DO
   IF_Z	jmp	#Lmm_fcache_doit
 
 	mov	__LMM_FCACHE_ADDR, __TMP1
-	
-	'' assembler awkwardness here
-	'' we would like to just write
-	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
-	'' but binutils doesn't work right with this now
-	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop2,#1+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop3,#2+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop4,#3+(__LMM_FCACHE_START-__LMM_entry)/4
-	add  __TMP0,#15		'' round up to next multiple of 16
-	shr  __TMP0,#4		'' we process 16 bytes per loop iteration
-Lmm_fcache_loop
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop,inc_dest4
-Lmm_fcache_loop2
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop2,inc_dest4
-Lmm_fcache_loop3
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop3,inc_dest4
-Lmm_fcache_loop4
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop4,inc_dest4
-
-	djnz	__TMP0,#Lmm_fcache_loop
-
+	mova	__COGA, #__LMM_FCACHE_START
+	call	#loadbuf
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
 	jmp	#__LMM_loop
@@ -766,3 +741,95 @@ __LMM_FCACHE_START
 	res	64	'' reserve 64 longs = 256 bytes
 
 
+
+	''
+	'' the math kernel extension
+	''
+	.section	.math.kerext, "ax"
+
+startmath
+
+	.long	endmath - startmath
+
+	
+__MASK_00FF00FF	long	0x00FF00FF
+__MASK_0F0F0F0F	long	0x0F0F0F0F
+__MASK_33333333	long	0x33333333
+__MASK_55555555	long	0x55555555
+	
+	.global	__CTZSI_impl
+	.global	__CLZSI_impl_ret
+
+__CLZSI_impl
+	rev	r0,#0
+__CTZSI_impl
+	neg	__TMP0, r0
+	and	__TMP0, r0	wz
+	mov	r0, #0
+ IF_Z	mov	r0, #1
+	test	__TMP0, __MASK_0000FFFF	wz
+ IF_Z	add	r0, #16
+	test	__TMP0, __MASK_00FF00FF	wz
+ IF_Z	add	r0, #8
+	test	__TMP0, __MASK_0F0F0F0F	wz
+ IF_Z	add	r0, #4
+	test	__TMP0, __MASK_33333333	wz
+ IF_Z	add	r0, #2
+	test	__TMP0, __MASK_55555555	wz
+ IF_Z	add	r0, #1
+__CLZSI_impl_ret
+__CTZSI_impl_ret
+	ret
+	
+__DIVR	long	0
+
+	''
+	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
+	''
+__UDIVSI_impl
+	mov	__DIVR, r0
+	call	#__CLZSI_impl
+	neg	__DIVCNT, r0
+	mov	r0, r1 wz
+ IF_Z   jmp	#__UDIV_BY_ZERO
+	call	#__CLZSI_impl
+	add	__DIVCNT, r0
+	mov	r0, #0
+	cmps	__DIVCNT, #0	wz, wc
+ IF_C	jmp	#__UDIVSI_done
+	shl	r1, __DIVCNT
+	add	__DIVCNT, #1
+__UDIVSI_loop
+	cmpsub	__DIVR, r1	wz, wc
+	addx	r0, r0
+	shr	r1, #1
+	djnz	__DIVCNT, #__UDIVSI_loop
+__UDIVSI_done
+	mov	r1, __DIVR
+__UDIVSI_impl_ret
+	ret
+__DIVSGN	long	0
+__DIVSI_impl
+	mov	__DIVSGN, r0
+	xor	__DIVSGN, r1
+	abs	r0, r0 wc
+	muxc	__DIVSGN, #1	' save original sign of r0
+	abs	r1, r1
+	call	#__UDIVSI_impl
+	cmps	__DIVSGN, #0	wz, wc
+ IF_B	neg	r0, r0
+	test	__DIVSGN, #1 wz	' check original sign of r0
+ IF_NZ	neg	r1, r1		' make the modulus result match
+__DIVSI_impl_ret
+	ret
+
+	'' come here on divide by zero
+	'' we probably should raise a signal
+__UDIV_BY_ZERO
+	neg	r0,#1
+	mov	r1,#0
+	jmp	#__UDIVSI_ret
+	
+
+endmath
+	

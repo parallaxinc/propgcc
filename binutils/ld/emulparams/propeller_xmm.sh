@@ -19,7 +19,7 @@ KERNEL="
   .xmmkernel ${RELOCATING-0} :
   {
     *(.xmmkernel) *(.kernel)
-  } >cog AT>dummy
+  } >kermem AT>dummy
 "
 KERNEL_NAME=.xmmkernel
 XMM_HEADER="

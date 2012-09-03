@@ -8,6 +8,9 @@ MEMORY
   cog	  : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
   /* coguser is just an alias for cog, but for overlays */
   coguser : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
+  /* kernel memory is where the .lmm or .xmm kernel goes */
+  kermem  : ORIGIN = 0, LENGTH = 0x6C0
+  kerextmem : ORIGIN = 0x6C0, LENGTH = 0x100
   ram     : ORIGIN = 0x20000000, LENGTH = 256M
   rom     : ORIGIN = 0x30000000, LENGTH = 256M
   /* some sections (like the .xmm kernel) are handled specially by the loader */

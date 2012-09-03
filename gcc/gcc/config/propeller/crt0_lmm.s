@@ -359,6 +359,58 @@ __Memcpy
 __Memcpy_ret
 	ret
 
+	''
+	'' code to load a buffer from hub memory into cog memory
+	'' the idea is from the fast code posted by Kuroneko in
+	'' the "Fastest possible memory transfer" thread on the
+	'' Parallax forums; modified slightly by Eric Smith
+        '' for multiple cog buffers
+	''
+	'' parameters: __TMP0 = count of bytes (will be rounded up to multiple
+	''                      of 8)
+	''             __TMP1 = hub address
+	''             __COGA = COG address
+	''
+	''
+__COGA	long 0
+	
+loadbuf
+	'' first, find the number of longs to transfer
+	'' round up to next 64 bit boundary (the loop processes 64 bits
+	'' at a time)
+	'' setup: 11 ins (vs. 6 ins)
+ 	'' loop:   6 ins, 1 transfer/hub windows (vs. 13 ins,  0.8 transfer/hub window)
+	add	__TMP0, #7
+	andn	__TMP0, #7	'' round TMP0 up
+	
+	'' point to last byte in HUB buffer
+	add	__TMP1, __TMP0
+	sub	__TMP1, #1
+	'' point to last longs in cog memory
+	shr	__TMP0, #2	'' convert to longs
+	sub	__COGA, #1
+	add	__COGA, __TMP0
+	movd	lbuf0, __COGA
+	sub	__COGA, #1
+	movd	lbuf1, __COGA
+	sub	__TMP0, #2
+	movi	__TMP1, __TMP0
+	
+lbuf0	rdlong	0-0, __TMP1
+	sub	lbuf0, dst2
+	sub	__TMP1, i2s7 wc
+lbuf1	rdlong	0-0, __TMP1
+	sub	lbuf1, dst2
+  if_nc	djnz	__TMP1, #lbuf0		'' sub #7/djnz
+
+loadbuf_ret
+	ret
+	
+	'' initialized data and presets
+dst2	long	2 << 9
+i2s7	long	(2<<23) | 7
+	
+	
 	
 	''
 	'' FCACHE region
@@ -386,36 +438,11 @@ __LMM_FCACHE_LOAD
   IF_Z	jmp	#Lmm_fcache_doit
 
 	mov	__LMM_FCACHE_ADDR, __TMP1
+
+	'' copy TMP0 bytes from TMP1 to LMM_FCACHE_START
+	mova	__COGA, #__LMM_FCACHE_START	'' mova because src is a cog address immediate
+	call	#loadbuf
 	
-	'' assembler awkwardness here
-	'' we would like to just write
-	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
-	'' but binutils doesn't work right with this now
-	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop2,#1+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop3,#2+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop4,#3+(__LMM_FCACHE_START-__LMM_entry)/4
-	add  __TMP0,#15		'' round up to next multiple of 16
-	shr  __TMP0,#4		'' we process 16 bytes per loop iteration
-Lmm_fcache_loop
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop,inc_dest4
-Lmm_fcache_loop2
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop2,inc_dest4
-Lmm_fcache_loop3
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop3,inc_dest4
-Lmm_fcache_loop4
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop4,inc_dest4
-
-	djnz	__TMP0,#Lmm_fcache_loop
-
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
 	jmp	#__LMM_loop
