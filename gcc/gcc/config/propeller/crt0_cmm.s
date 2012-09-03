@@ -249,13 +249,8 @@ mvi32
 	''' move immediate of a 16 bit value
 	'''
 mvi16
-	rdbyte	sfield,pc
 	movd	.domvi16,dfield
-	add	pc,#1
-	rdbyte	xfield,pc
-	add	pc,#1
-	shl	xfield,#8
-	or	sfield,xfield
+	call	#get_word
 .domvi16
 	mov	0-0,sfield
 	jmp	#__LMM_loop
@@ -420,15 +415,10 @@ xtable
 cond_mask long (0xf<<18)
 	
 brw
-	rdbyte	sfield,pc
 	andn	.brwins,cond_mask
-	add	pc,#1
-	rdbyte	xfield,pc
-	shl	dfield,#18	'' get it into the cond field
+	shl	dfield,#18	'' get dfield into the cond field
 	or	.brwins,dfield
-	add	pc,#1
-	shl	xfield,#8
-	or	sfield,xfield
+	call	#get_word
 .brwins	mov	pc,sfield
 	jmp	#__LMM_loop
 
