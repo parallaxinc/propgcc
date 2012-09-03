@@ -33,6 +33,7 @@ ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)
 endif
 
+CFLAGS_NO_MODEL := $(CFLAGS)
 CFLAGS += -m$(MODEL)
 CXXFLAGS += $(CFLAGS)
 LDFLAGS += -m$(MODEL) -fno-exceptions -fno-rtti
@@ -79,11 +80,11 @@ endif
 # driver that the linker will place in the .text section.
 #
 %.cog: %.c
-	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -r -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 %.cog: %.cogc
-	$(CC) $(CFLAGS) -xc -r -mcog -o $@ $<
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -xc -r -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 #
@@ -93,11 +94,11 @@ endif
 # gets loaded to high EEPROM space above 0x8000.
 #
 %.ecog: %.c
-	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -r -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 %.ecog: %.ecogc
-	$(CC) $(CFLAGS) -xc -r -mcog -o $@ $<
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -xc -r -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 %.binary: %.elf
