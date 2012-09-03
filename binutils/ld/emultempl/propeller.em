@@ -47,6 +47,7 @@ propeller_elf_create_output_section_statements (void)
 /*
  * orphan sections whose names start with .cog are actually overlays
  * handle them specially
+ * similarly orphan sections ending with .kerext are kernel overlays
  */
 
 static lang_output_section_statement_type *
@@ -64,6 +65,9 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  { ".drivers",
 	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_CODE,
 	    0, 0, 0, 0 },
+	  { ".hub",
+	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_DATA,
+	    0, 0, 0, 0 },
 	  { ".rodata",
 	    SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_READONLY | SEC_DATA,
 	    0, 0, 0, 0 },
@@ -72,13 +76,35 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	    0, 0, 0, 0 },
 	};
       int lastn;
+      int placeidx = 0;
       struct orphan_save *place = NULL;
       lang_output_section_statement_type *after = NULL;
+      const char *memregion_name = NULL;
 
       // if either the first or last 4 characters are .cog, it's a cog
-      // overlay
+      // overlay, placed after .text
       lastn = strlen (secname) - 4;
       if (!strncmp (secname, ".cog", 4) || (lastn >= 0 && !strcmp (secname + lastn, ".cog")))
+	{
+	  placeidx = 0;
+	  memregion_name = "coguser";
+	}
+      // similarly for .ecog overlays, which are placed after .drivers
+      lastn = strlen (secname) - 5;
+      if (!strncmp (secname, ".ecog", 5) || (lastn >= 0 && !strcmp (secname + lastn, ".ecog")))
+	{
+	  placeidx = 1;
+	  memregion_name = "coguser";
+	}
+      // .kerext sections get placed in HUB memory and linked to run from the kernel extension memory region
+      lastn = strlen (secname) - 7;
+      if ((lastn >= 0 && !strcmp (secname + lastn, ".kerext")))
+	{
+	  placeidx = 2;
+	  memregion_name = "kerextmem";
+	}
+
+      if (memregion_name)
 	{
 	  char *clean, *s2;
 	  const char *s1;
@@ -90,12 +116,12 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 
 	  // hold[0] is for the ".text" section
 	  // if there is a .text, put the .cog stuff after it;
-	  place = &hold[0];
+	  place = &hold[placeidx];
 	  if (place->os == NULL)
 	    place->os = lang_output_section_find (place->name);
 	  after = place->os;
 	  os = lang_insert_orphan (s, secname, constraint, after, place, NULL, NULL);
-	  cog_region = lang_memory_region_lookup ("coguser", FALSE);
+	  cog_region = lang_memory_region_lookup (memregion_name, FALSE);
 	  if (cog_region)
 	    {
 	      os->region = cog_region;
@@ -110,61 +136,6 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	  s2 = clean;
 	  for (s1 = secname; *s1 != '\0'; s1++)
 	    if (ISALNUM (*s1) || *s1 == '_')
-	      *s2++ = *s1;
-	    else if (s1 != secname && *s1 == '.')
-	      *s2++ = '_';
-	  *s2 = '\0';
-
-	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_start_");
-	  sprintf (buf, "__load_start_%s", clean);
-	  lang_add_assignment (exp_provide (buf,
-					    exp_nameop (LOADADDR, secname),
-					    FALSE));
-
-	  buf = (char *) xmalloc (strlen (clean) + sizeof "__load_stop_");
-	  sprintf (buf, "__load_stop_%s", clean);
-	  lang_add_assignment (exp_provide (buf,
-					    exp_binop ('+',
-						       exp_nameop (LOADADDR, secname),
-						       exp_nameop (SIZEOF, secname)),
-					    FALSE));
-
-	  free (clean);
-	  return os;
-	}
-        lastn = strlen (secname) - 5;
-	if (!strncmp (secname, ".ecog", 5) || (lastn >= 0 && !strcmp (secname + lastn, ".ecog")))
-	{
-	  char *clean, *s2;
-	  const char *s1;
-	  char *buf;
-	  lang_output_section_statement_type *os;
-	  lang_memory_region_type *cog_region;
-
-	  //fprintf (stderr, "orphaned section [%s]\n", secname);
-
-	  // hold[1] is for the ".drivers" section
-	  // if there is a .drivers, put the .cog stuff after it;
-	  place = &hold[1];
-	  if (place->os == NULL)
-	    place->os = lang_output_section_find (place->name);
-	  after = place->os;
-	  os = lang_insert_orphan (s, secname, constraint, after, place, NULL, NULL);
-	  cog_region = lang_memory_region_lookup ("coguser", FALSE);
-	  if (cog_region)
-	    {
-	      os->region = cog_region;
-	      os->addr_tree = exp_intop (cog_region->origin);
-	      os->lma_region = after->lma_region;
-	      os->load_base = NULL;
-	    }
-	  os->sectype = overlay_section;
-
-	  /* now add the necessary overlay symbols */
-	  clean = (char *) xmalloc (strlen (secname) + 1);
-	  s2 = clean;
-	  for (s1 = secname; *s1 != '\0'; s1++)
-	    if (ISALNUM (*s1) || *s1 == '_' )
 	      *s2++ = *s1;
 	    else if (s1 != secname && *s1 == '.')
 	      *s2++ = '_';
