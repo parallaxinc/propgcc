@@ -1950,7 +1950,6 @@
 (define_expand "sibcall"
   [(parallel [(call (match_operand:SI 0 "memory_operand" "")
 		    (match_operand 1 "general_operand" ""))
-              (use (reg:SI LINK_REG))
 	      (return)]
    )]
   ""
@@ -1975,7 +1974,6 @@
 (define_insn "sibcall_std"
   [(call (mem:SI (match_operand:SI 0 "sibcall_operand" "i"))
 	         (match_operand 1 "" ""))
-   (use (reg:SI LINK_REG))
    (return)
   ]
   "!TARGET_LMM"
@@ -2000,7 +1998,6 @@
 (define_insn "sibcall_std_lmm"
   [(call (mem:SI (match_operand:SI 0 "sibcall_operand" "i,U"))
 	         (match_operand 1 "" ""))
-   (use (reg:SI LINK_REG))
    (return)
   ]
   "TARGET_LMM"
@@ -2043,7 +2040,6 @@
   [(parallel [(set (match_operand 0 "" "")
 		     (call (match_operand:SI 1 "memory_operand" "")
 		           (match_operand 2 "" "")))
-              (use (reg:SI LINK_REG))
               (return)]
     )]
   ""
@@ -2070,7 +2066,6 @@
   [(set (match_operand 0 "propeller_dst_operand" "=rC")
 	(call (mem:SI (match_operand:SI 1 "sibcall_operand" "i"))
 	      (match_operand 2 "" "")))
-   (use (reg:SI LINK_REG))
    (return)
   ]
   "!TARGET_LMM"
@@ -2098,7 +2093,6 @@
   [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
 	(call (mem:SI (match_operand:SI 1 "sibcall_operand" "i,U"))
 	      (match_operand 2 "" "")))
-   (use (reg:SI LINK_REG))
    (return)
   ]
   "TARGET_LMM"
@@ -2486,8 +2480,9 @@
    (clobber (reg:SI 1))
    (clobber (reg:SI 2))
    (clobber (reg:SI 3))
+   (clobber (reg:CC CC_REG))
   ]
-"TARGET_EXPERIMENTAL"
+"TARGET_BUILTIN_STRINGS"
 {
     return "call\t#__Memcpy";
 }
@@ -2505,7 +2500,7 @@
      (unspec_volatile:BLK [(reg:SI 0) (reg:SI 1) (reg:SI 2)] UNSPEC_MOVMEM)
     ])
   ]
-"TARGET_EXPERIMENTAL"
+"TARGET_BUILTIN_STRINGS"
 {
   rtx dstaddr = gen_rtx_REG (SImode, 0);
   rtx srcaddr = gen_rtx_REG (SImode, 1);

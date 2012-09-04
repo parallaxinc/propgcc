@@ -97,6 +97,12 @@
 #undef TARGET_C99_FUNCTIONS
 #define TARGET_C99_FUNCTIONS 1
 
+/* some propeller specific flags */
+extern int propeller_flags;
+#define PROP_FLAG_BUILTIN_STRINGS (0x01)
+
+#define TARGET_BUILTIN_STRINGS (propeller_flags & PROP_FLAG_BUILTIN_STRINGS)
+
 /*---------------------------------*/
 /* Target machine storage layout.  */
 /*---------------------------------*/
@@ -310,11 +316,19 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 /* 1 for registers not available across function calls
  * these must include the FIXED_REGISTERS and also any registers
  * that can be used without being saved
+ *
+ * Note that we do not mark the link register lr as being
+ * call-clobbered. It's actually the call instruction itself
+ * which clobbers the register, and native calls (for example)
+ * do not do so.
+ *
+ * This approach makes it easier to implement sibcalls; unlike
+ * normal calls, sibcalls don't clobber lr.
  */
 #define CALL_USED_REGISTERS \
 {                       \
   1,1,1,1,1,1,1,1,      \
-  0,0,0,0,0,0,0,1,      \
+  0,0,0,0,0,0,0,0,      \
   1,1,1,1,1,        \
 }
 
