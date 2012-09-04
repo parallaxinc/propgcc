@@ -591,12 +591,19 @@ __load_extension
 	call	#loadbuf
 __load_extension_ret
 __loadmath_ret
+__loadmem_ret
 	ret
 
+__loadmem
+	mov	__TMP1,__mem_kernel_ptr
+	jmp	#__load_extension
+	
 __kernel_ext
 	long	0
 __math_kernel_ptr
 	long	__load_start_math_kerext
+__mem_kernel_ptr
+	long	__load_start_memory_kerext
 
 	.global __DIVSI
 	.global __DIVSI_ret
@@ -628,6 +635,15 @@ __CTZSI
 __CLZSI_ret
 	ret
 	
+	.global __Memcpy
+	.global __Memcpy_ret
+__Memcpy
+	call	#__loadmem
+	call	#__Memcpy_impl
+__Memcpy_ret
+	ret
+
+
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
@@ -832,4 +848,52 @@ __UDIV_BY_ZERO
 	
 
 endmath
+
+	''
+	'' memory related functions
+	''
+
+	.section .memory.kerext, "ax"
+startmem
+	long	endmem - startmem
+	''
+	'' memcpy(r0, r1, r2)
+	'' copy from r1 to r0
+	'' trashes r3
+	''
+	.global __Memcpy_impl
+	.global __Memcpy_impl_ret
+__Memcpy_impl
+	mov	r3,r0
+	or	r3,r1
+	andn	r3,#3 nr,wz	'' check alignment
+  if_nz jmp	#.slocpy
+
+	'' get number of longs to copy
+	mov	__TMP0,r2
+	shr	__TMP0,#2 wz
+  if_z  jmp	.slocpy
+
+.fastcopy
+	rdlong	r3,r1
+	add	r1,#4
+	sub	r2,#4
+	wrlong	r3,r0
+	add	r0,#4
+        djnz    __TMP0,#.fastcopy
 	
+.slocpy
+	cmps	r2,#0 wz
+  if_z  jmp	__Memcpy_impl_ret
+
+.slolp
+	rdbyte	r3,r1
+	add	r1,#1
+	wrbyte	r3,r0
+	add	r0,#1
+	djnz	r2,#.slolp
+
+__Memcpy_impl_ret
+	ret
+
+endmem
