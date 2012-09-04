@@ -711,5 +711,5 @@ __CMPSWAPSI_ret
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	128	'' reserve 128 longs = 512 bytes
+	res	64	'' reserve 64 longs = 256 bytes
 
