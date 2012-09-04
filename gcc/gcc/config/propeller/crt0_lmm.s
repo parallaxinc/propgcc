@@ -422,8 +422,6 @@ i2s7	long	(2<<23) | 7
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest4
-	long (4<<9)
 	
 	.global	__LMM_RET
 	.global	__LMM_FCACHE_LOAD
