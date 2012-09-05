@@ -480,7 +480,7 @@ void mount()
                 CS:   0,    // The pin attached to the counter's reset/clear pin
                 START: 2,   // The start bit of the pin mask to set when selecting the SD card's deMUX address
                 WIDTH: 3,   // The width of the pin mask for all pins attached to the deMUX address
-		ADDR: 5     // The value to write to the select field when selecting the SD card's deMUX address
+        ADDR: 5     // The value to write to the select field when selecting the SD card's deMUX address
             }
         }
     };

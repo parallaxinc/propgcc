@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#ifdef __PROPELLER_LMM__
+#ifndef __PROPELLER_USE_XMM__
 
 #define USEDRIVER(n)                                    \
     extern uint32_t binary_ ## n ## _dat_start[]; 

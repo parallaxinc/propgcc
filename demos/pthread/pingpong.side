@@ -1,0 +1,7 @@
+pingpong.c
+>compiler=C
+>memtype=lmm
+>optimize=-Os
+>-fno-exceptions
+>-lpthread
+>BOARD::HUB
