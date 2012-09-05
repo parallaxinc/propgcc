@@ -54,7 +54,7 @@ int keybd_startx(int dpin, int cpin, int locks, int autorep)
     gkb.keys[2] = locks;
     gkb.keys[3] = autorep;
 
-#if defined(__PROPELLER_XMM__)
+#if defined(__PROPELLER_USE_XMM__)
     // use the pasm array defined in TvText.c
     {
         extern uint32_t pasm[];

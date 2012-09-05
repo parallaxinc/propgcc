@@ -7,10 +7,10 @@ TvDriver.c
 TvText.c
 TvText.h
 >compiler=C
->memtype=lmm
+>memtype=cmm
 >optimize=-Os
 >-Wall
 >-fno-exceptions
 >-Dprintf=__simple_printf
 >defs::-Wno-unused-value
->BOARD::PROPBOE
+>BOARD::C3F

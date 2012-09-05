@@ -10,30 +10,30 @@
 
 int scan_pads(long int delay)
 {
-  	OUTA |= 0x000000ff;						// "charge" the pads - force them HIGH
-  	DIRA |= 0x000000ff;						// set them as output
-  	DIRA &= 0xffffff00;						// release touch pads back to input
-	waitcnt(delay+CNT); 					// delay for a "touch"
-											// a touched pad goes to LOW
-											// so if you invert the input bits you can mask them out
-											// and return the "touched" pads as HIGHS
-	return ((~INA) & 0x000000ff); 			// return the touched pads
+      OUTA |= 0x000000ff;                        // "charge" the pads - force them HIGH
+      DIRA |= 0x000000ff;                        // set them as output
+      DIRA &= 0xffffff00;                        // release touch pads back to input
+    waitcnt(delay+CNT);                     // delay for a "touch"
+                                            // a touched pad goes to LOW
+                                            // so if you invert the input bits you can mask them out
+                                            // and return the "touched" pads as HIGHS
+    return ((~INA) & 0x000000ff);             // return the touched pads
 }
 
 
 int main(void)
 {
-	int pads = 0;
-	DIRA |= 0x00ff0000;						// set LEDs for output and pads for input
-	DIRA &= 0xffffff00;
-	while (1)
-	{
-		pads = scan_pads(CLKFREQ / 100);	// scan the pads passing delay to wait for user touch
-		pads = pads << 16;					// shift the pad pins (0..7) to the LED pins (16..23)
-		OUTA &= 0xff00ffff;					// clear out the scanned pads from last time
-		OUTA |= pads;						// set the most recent scanned pads
-	}
-	return(0);
+    int pads = 0;
+    DIRA |= 0x00ff0000;                        // set LEDs for output and pads for input
+    DIRA &= 0xffffff00;
+    while (1)
+    {
+        pads = scan_pads(CLKFREQ / 100);    // scan the pads passing delay to wait for user touch
+        pads = pads << 16;                    // shift the pad pins (0..7) to the LED pins (16..23)
+        OUTA &= 0xff00ffff;                    // clear out the scanned pads from last time
+        OUTA |= pads;                        // set the most recent scanned pads
+    }
+    return(0);
 }
 
 /*
