@@ -194,82 +194,11 @@ __MASK_FFFFFFFF	long	0xFFFFFFFF
 	'' math support functions
 	''
 	.global __TMP0
-	.global __DIVSI
-	.global __DIVSI_ret
-	.global __UDIVSI
-	.global __UDIVSI_ret
-	.global __CLZSI
-	.global __CLZSI_ret
-	.global __CTZSI
+	.global __TMP1
 __TMP0	long	0
-__MASK_00FF00FF	long	0x00FF00FF
-__MASK_0F0F0F0F	long	0x0F0F0F0F
-__MASK_33333333	long	0x33333333
-__MASK_55555555	long	0x55555555
-__CLZSI	rev	r0, #0
-__CTZSI	neg	__TMP0, r0
-	and	__TMP0, r0	wz
-	mov	r0, #0
- IF_Z	mov	r0, #1
-	test	__TMP0, __MASK_0000FFFF	wz
- IF_Z	add	r0, #16
-	test	__TMP0, __MASK_00FF00FF	wz
- IF_Z	add	r0, #8
-	test	__TMP0, __MASK_0F0F0F0F	wz
- IF_Z	add	r0, #4
-	test	__TMP0, __MASK_33333333	wz
- IF_Z	add	r0, #2
-	test	__TMP0, __MASK_55555555	wz
- IF_Z	add	r0, #1
-__CLZSI_ret	ret
-__DIVR	long	0
 __TMP1
-__DIVCNT
 	long	0
-	''
-	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
-	''
-__UDIVSI
-	mov	__DIVR, r0
-	call	#__CLZSI
-	neg	__DIVCNT, r0
-	mov	r0, r1 wz
- IF_Z   jmp	#__UDIV_BY_ZERO
-	call	#__CLZSI
-	add	__DIVCNT, r0
-	mov	r0, #0
-	cmps	__DIVCNT, #0	wz, wc
- IF_C	jmp	#__UDIVSI_done
-	shl	r1, __DIVCNT
-	add	__DIVCNT, #1
-__UDIVSI_loop
-	cmpsub	__DIVR, r1	wz, wc
-	addx	r0, r0
-	shr	r1, #1
-	djnz	__DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-	mov	r1, __DIVR
-__UDIVSI_ret	ret
-__DIVSGN	long	0
-__DIVSI	mov	__DIVSGN, r0
-	xor	__DIVSGN, r1
-	abs	r0, r0 wc
-	muxc	__DIVSGN, #1	' save original sign of r0
-	abs	r1, r1
-	call	#__UDIVSI
-	cmps	__DIVSGN, #0	wz, wc
- IF_B	neg	r0, r0
-	test	__DIVSGN, #1 wz	' check original sign of r0
- IF_NZ	neg	r1, r1		' make the modulus result match
-__DIVSI_ret	ret
 
-	'' come here on divide by zero
-	'' we probably should raise a signal
-__UDIV_BY_ZERO
-	neg	r0,#1
-	mov	r1,#0
-	jmp	#__UDIVSI_ret
-	
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
@@ -317,46 +246,6 @@ __CMPSWAPSI
 	'' now release the C lock
 	lockclr __TMP1
 __CMPSWAPSI_ret
-	ret
-
-	''
-	'' memcpy(r0, r1, r2)
-	'' copy from r1 to r0
-	'' trashes r3
-	''
-	.global __Memcpy
-	.global __Memcpy_ret
-__Memcpy
-	mov	r3,r0
-	or	r3,r1
-	andn	r3,#3 nr,wz	'' check alignment
-  if_nz jmp	#.slocpy
-
-	'' get number of longs to copy
-	mov	__TMP0,r2
-	shr	__TMP0,#2 wz
-  if_z  jmp	.slocpy
-
-.fastcopy
-	rdlong	r3,r1
-	add	r1,#4
-	sub	r2,#4
-	wrlong	r3,r0
-	add	r0,#4
-        djnz    __TMP0,#.fastcopy
-	
-.slocpy
-	cmps	r2,#0 wz
-  if_z  jmp	#__Memcpy_ret
-
-.slolp
-	rdbyte	r3,r1
-	add	r1,#1
-	wrbyte	r3,r0
-	add	r0,#1
-	djnz	r2,#.slolp
-
-__Memcpy_ret
 	ret
 
 	''
@@ -454,3 +343,8 @@ __LMM_FCACHE_START
 	res	128	'' reserve 128 longs = 512 bytes
 
 
+	''
+	'' now include kernel extensions that we always want
+	''
+#include "kernel.ext"
+	

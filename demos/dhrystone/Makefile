@@ -29,8 +29,11 @@ all: $(NAME).elf
 # printf=__simple_printf makes sure we use the small printf
 # -DINTEGER_ONLY removes floating point
 
+OPT=-O0
+MODEL=lmm
+
 DEFINES = -Dprintf=__simple_printf -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=5000
-CFLAGS = -O0 -mfcache $(DEFINES)
+CFLAGS = $(OPT) -m$(MODEL) $(DEFINES)
 
 #
 # include the fragment that defines most of everything
