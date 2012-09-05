@@ -20,7 +20,7 @@
 
 static _atomic_t _txlock;
 
-int putchar(int origval)
+HUBTEXT int putchar(int origval)
 {
     if (origval == '\n')
         putchar('\r');

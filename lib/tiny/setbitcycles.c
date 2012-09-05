@@ -25,7 +25,7 @@ unsigned int _serialLock;
 
 FILE __files[1];
 
-int _setBitCycles()
+HUBTEXT int _setBitCycles()
 {
     int bitcycles = _bitcycles;
     if (bitcycles == 0)

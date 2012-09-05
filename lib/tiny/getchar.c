@@ -20,7 +20,7 @@
 
 static _atomic_t _rxlock;
 
-int getchar()
+HUBTEXT int getchar()
 {
     int rxlock = _serialLock;
     if (rxlock)
