@@ -33,6 +33,7 @@
 
 #include <sys/thread.h>
 #include <sys/size_t.h>
+#include <sys/null.h>
 #include <setjmp.h>
 
 /** @brief Minimum stack size for a thread. */
