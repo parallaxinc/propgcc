@@ -90,6 +90,9 @@ struct _thread {
   /* floating point environment; not used currently */
   /* _fenv_t fenv; */
 
+  /* thread specific data for users to store */
+#define _THREAD_KEYS_MAX 4
+  void *thread_data[_THREAD_KEYS_MAX];
 };
 
 /*
