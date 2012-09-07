@@ -1,0 +1,6 @@
+blink1.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>BOARD::QUICKSTART
