@@ -1,0 +1,7 @@
+FrequencySynth.cpp
+Synth.cpp
+>compiler=C
+>memtype=lmm
+>optimize=-Os
+>-fno-exceptions
+>BOARD::HUB

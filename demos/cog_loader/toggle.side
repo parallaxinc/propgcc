@@ -1,0 +1,16 @@
+toggle.c
+toggle_fw_0.ecogc
+toggle_fw_1.ecogc
+toggle_fw_2.ecogc
+toggle_fw_3.ecogc
+toggle_fw_4.ecogc
+toggle_fw_5.ecogc
+toggle_fw_6.ecogc
+toggle_fw_7.ecogc
+>compiler=C
+>memtype=lmm
+>optimize=-Os
+>-fno-exceptions
+>-Dprintf=__simple_printf
+>defs::-DPARALLAX_I2C_BUS -DEECOG
+>BOARD::HUB
