@@ -1,4 +1,4 @@
-	.section .lmmkernel, "ax"
+	.section .kernel, "ax"
 	.compress off
 	.global r0
 	.global r1
