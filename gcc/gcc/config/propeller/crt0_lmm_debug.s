@@ -2,7 +2,7 @@
 ' LMM debug kernel
 '--------------------------------------------------------------------
 
-	.section .lmmkernel, "ax"
+	.section .kernel, "ax"
 	.global r0
 	.global r1
 	.global r2

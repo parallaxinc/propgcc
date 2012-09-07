@@ -1,4 +1,4 @@
-	.section .xmmkernel, "ax"
+	.section .kernel, "ax"
 
 	.global r0
 	.global r1
