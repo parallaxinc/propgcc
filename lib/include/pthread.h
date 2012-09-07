@@ -89,6 +89,14 @@ extern atomic_t __pthreads_lock;
 #define __lock_pthreads() __lock(&__pthreads_lock)
 #define __unlock_pthreads() __unlock(&__pthreads_lock)
 
+/** @brief Condition variables */
+typedef struct pthread_cond_t {
+  _pthread_queue_t queue;
+} pthread_cond_t;
+
+/** @brief Condition variable attributes are not implemented. */
+typedef int pthread_condattr_t;
+
 /*
  * some internal functions
  */
@@ -129,6 +137,12 @@ int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
 int pthread_mutex_lock(pthread_mutex_t *mutex);
 int pthread_mutex_trylock(pthread_mutex_t *mutex);
 int pthread_mutex_unlock(pthread_mutex_t *mutex);
+
+int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
+int pthread_cond_destroy(pthread_cond_t *cond);
+int pthread_cond_signal(pthread_cond_t *cond);
+int pthread_cond_broadcast(pthread_cond_t *cond);
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
 
 void pthread_yield(void);
 pthread_t pthread_self(void);

@@ -90,7 +90,7 @@ TIME = clock.o sleep.o usleep.o time.o difftime.o strftime.o localtim.o asctime.
 THREADS = thread.o cogthread.o cogstart.o cogload.o nap.o atomic64.o
 
 PTHREADS = pthread_create.o pthread_join.o pthread_detach.o \
-	pthread_mutex.o pthread_attr.o pthread_io.o
+	pthread_mutex.o pthread_attr.o pthread_io.o pthread_cond.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \
