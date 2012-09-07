@@ -87,7 +87,7 @@ strtold(const char *str, char **endptr)
   if (c == 'I') {
     if (toupper(str[0]) == 'N' && toupper(str[1]) == 'F')
       {
-	str += 2;
+	str += 3;
 	v = HUGE_VALL;
 	if (minus) v = -v;
 	goto done;
@@ -103,6 +103,7 @@ strtold(const char *str, char **endptr)
 	    do {
 	      c = *str++;
 	    } while (c != ')');
+	    str++;
 	  }
 	v = _NANL;
 	if (minus) v = -v;
@@ -186,7 +187,7 @@ strtold(const char *str, char **endptr)
 
  done:
   if (endptr)
-    *endptr = (char *)str;
+    *endptr = (char *)(str-1);
   if (minus)
     v = -v;
   return v;
