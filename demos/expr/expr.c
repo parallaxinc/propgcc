@@ -24,292 +24,273 @@
 #define TKN_AND         -10
 #define TKN_OR          -11
 
-static void ParseExpr2(ParseContext *c, VALUE *pValue);
-static void ParseExpr3(ParseContext *c, VALUE *pValue);
-static void ParseExpr4(ParseContext *c, VALUE *pValue);
-static void ParseExpr5(ParseContext *c, VALUE *pValue);
-static void ParseExpr6(ParseContext *c, VALUE *pValue);
-static void ParseExpr7(ParseContext *c, VALUE *pValue);
-static void ParseExpr8(ParseContext *c, VALUE *pValue);
-static void ParseExpr9(ParseContext *c, VALUE *pValue);
-static void ParseExpr10(ParseContext *c, VALUE *pValue);
-static void ParseExpr11(ParseContext *c, VALUE *pValue);
-static void ParseExpr12(ParseContext *c, VALUE *pValue);
-static void ParseExpr13(ParseContext *c, VALUE *pValue);
-static void ParsePrimary(ParseContext *c, VALUE *pValue);
-static int GetToken(ParseContext *c, VALUE *pValue);
-static void ParseIdentifier(ParseContext *c, VALUE *pValue);
-static void ParseNumber(ParseContext *c, VALUE *pValue);
-static void Error(ParseContext *c, const char *fmt, ...);
+#define TYPE_NUMBER     1
+#define TYPE_VARIABLE   2
 
-/* ParseNumericExpr - parse a numeric expression */
-int ParseNumericExpr(ParseContext *c, const char *str, VALUE *pValue)
+typedef struct {
+    int type;
+    union {
+        VALUE value;
+        Variable *var;
+    } v;
+} PVAL;
+
+static void RValue(EvalState *c, PVAL *pval);
+static void EvalExpr1(EvalState *c, PVAL *pval);
+static void EvalExpr2(EvalState *c, PVAL *pval);
+static void EvalExpr3(EvalState *c, PVAL *pval);
+static void EvalExpr4(EvalState *c, PVAL *pval);
+static void EvalExpr5(EvalState *c, PVAL *pval);
+static void EvalExpr6(EvalState *c, PVAL *pval);
+static void EvalExpr7(EvalState *c, PVAL *pval);
+static void EvalExpr8(EvalState *c, PVAL *pval);
+static void EvalPrimary(EvalState *c, PVAL *pval);
+static int GetToken(EvalState *c, PVAL *pval);
+static void EvalIdentifier(EvalState *c, PVAL *pval);
+static void EvalNumber(EvalState *c, PVAL *pval);
+static int AddVariable(EvalState *c, char *id, PVAL *pval);
+static Variable *FindVariable(EvalState *c, char *id);
+static void Error(EvalState *c, const char *fmt, ...);
+
+/* InitEvalState - initialize the expression evaluator state */
+void InitEvalState(EvalState *c, uint8_t *heap, size_t heapSize)
 {
+    memset(c, 0, sizeof(EvalState));  
+    c->base = heap;
+    c->free = heap;
+    c->top = heap + heapSize;
+}
+
+/* EvalExpr - Eval and evaluate an expression */
+int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
+{
+    PVAL pval;
+    
+    /* setup an error target */
     if (setjmp(c->errorTarget))
         return FALSE;
+        
+    /* initialize the parser */
     c->linePtr = (char *)str;
-    c->savedTkn = TKN_NONE;
-    c->showErrors = TRUE;
-    ParseExpr2(c, pValue);
+    c->savedToken = TKN_NONE;
+    
+    /* evaluate an expression */
+    EvalExpr1(c, &pval);
+    
+    /* return the value */
+    RValue(c, &pval);
+    *pValue = pval.v.value;
+    
+    /* make sure there isn't any junk at the end of the line */
+    if (GetToken(c, &pval) != TKN_EOF)
+        Error(c, "invalid expression");
+        
+    /* return successfully */
     return TRUE;
 }
 
-/* TryParseNumericExpr - try to parse a numeric expression */
-int TryParseNumericExpr(ParseContext *c, const char *str, VALUE *pValue)
+static void RValue(EvalState *c, PVAL *pval)
 {
-    if (setjmp(c->errorTarget))
-        return FALSE;
-    c->linePtr = (char *)str;
-    c->savedTkn = TKN_NONE;
-    c->showErrors = FALSE;
-    ParseExpr2(c, pValue);
-    return TRUE;
-}
-
-/* ParseExpr2 - handle the '?:' operator */
-static void ParseExpr2(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2, value3;
-    int tkn;
-    ParseExpr3(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == '?') {
-        ParseExpr3(c, &value2);
-        if (GetToken(c, &value2) != ':')
-            Error(c, "expecting a colon");
-        ParseExpr3(c, &value3);
-        *pValue = *pValue ? value2 : value3;
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr3 - handle the '||' operator */
-static void ParseExpr3(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr4(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == TKN_OR) {
-        ParseExpr4(c, &value2);
-        *pValue = *pValue || value2;
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr4 - handle the '&&' operator */
-static void ParseExpr4(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr5(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == TKN_AND) {
-        ParseExpr5(c, &value2);
-        *pValue = *pValue && value2;
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr5 - handle the '|' operator */
-static void ParseExpr5(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr6(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == '|') {
-        ParseExpr6(c, &value2);
-        *pValue = (VALUE)((int)*pValue | (int)value2);
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr6 - handle the '^' operator */
-static void ParseExpr6(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr7(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == '^') {
-        ParseExpr7(c, &value2);
-        *pValue = (VALUE)((int)*pValue ^ (int)value2);
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr7 - handle the '&' operator */
-static void ParseExpr7(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr8(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == '&') {
-        ParseExpr8(c, &value2);
-        *pValue = (VALUE)((int)*pValue & (int)value2);
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr8 - handle the '==' and '!=' operators */
-static void ParseExpr8(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr9(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == TKN_EQ || tkn == TKN_NE) {
-        ParseExpr9(c, &value2);
-        switch (tkn) {
-        case TKN_EQ:
-            *pValue = *pValue == value2;
-            break;
-        case TKN_NE:
-            *pValue = *pValue != value2;
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr9 - handle the '<', '<=', '>', and '>=' operators */
-static void ParseExpr9(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr10(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == '<' || tkn == TKN_LE || tkn == TKN_GE || tkn == '>') {
-        ParseExpr10(c, &value2);
-        switch (tkn) {
-        case '<':
-            *pValue = *pValue < value2;
-            break;
-        case TKN_LE:
-            *pValue = *pValue <= value2;
-            break;
-        case TKN_GE:
-            *pValue = *pValue >= value2;
-            break;
-        case '>':
-            *pValue = *pValue > value2;
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr10 - handle the '<<' and '>>' operators */
-static void ParseExpr10(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr11(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == TKN_SHL || tkn == TKN_SHR) {
-        ParseExpr11(c, &value2);
-        switch (tkn) {
-        case TKN_SHL:
-            *pValue = (VALUE)((int)*pValue << (int)value2);
-            break;
-        case TKN_SHR:
-            *pValue = (VALUE)((int)*pValue >> (int)value2);
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr11 - handle the '+' and '-' operators */
-static void ParseExpr11(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr12(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == '+' || tkn == '-') {
-        ParseExpr12(c, &value2);
-        switch (tkn) {
-        case '+':
-            *pValue += value2;
-            break;
-        case '-':
-            *pValue -= value2;
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr12 - handle the '*', '/', and '%' operators */
-static void ParseExpr12(ParseContext *c, VALUE *pValue)
-{
-    VALUE value2;
-    int tkn;
-    ParseExpr13(c, pValue);
-    while ((tkn = GetToken(c, &value2)) == '*' || tkn == '/' || tkn == '%') {
-        ParseExpr13(c, &value2);
-        switch (tkn) {
-        case '*':
-            *pValue *= value2;
-            break;
-        case '/':
-            if (value2 == 0)
-                Error(c, "division by zero");
-            *pValue /= value2;
-            break;
-        case '%':
-            if (value2 == 0)
-                Error(c, "division by zero");
-            *pValue = (VALUE)((int)*pValue % (int)value2);
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedTkn = tkn;
-}
-
-/* ParseExpr13 - handle unary operators */
-static void ParseExpr13(ParseContext *c, VALUE *pValue)
-{
-    int tkn;
-    switch (tkn = GetToken(c, pValue)) {
-    case '+':
-        ParsePrimary(c, pValue);
+    switch (pval->type) {
+    case TYPE_NUMBER:
+        /* nothing to do */
         break;
-    case '-':
-        ParsePrimary(c, pValue);
-        *pValue = -*pValue;
-        break;
-    case '~':
-        ParsePrimary(c, pValue);
-        *pValue = (VALUE)~(int)*pValue;
-        break;
-    case '!':
-        ParsePrimary(c, pValue);
-        *pValue = !*pValue;
+    case TYPE_VARIABLE:
+        if (!pval->v.var->bound)
+            Error(c, "%s has no value", pval->v.var->name);
+        pval->type = TYPE_NUMBER;
+        pval->v.value = pval->v.var->value;
         break;
     default:
-        c->savedTkn = tkn;
-        ParsePrimary(c, pValue);
+        Error(c, "internal error");
+    }
+}
+
+/* EvalExpr1 - handle the '=' operator */
+static void EvalExpr1(EvalState *c, PVAL *pval)
+{
+    PVAL pval2;
+    int tkn;
+    EvalExpr2(c, pval);
+    while ((tkn = GetToken(c, &pval2)) == '=') {
+        if (pval->type != TYPE_VARIABLE)
+            Error(c, "expecting a variable to the left of '='");
+        EvalExpr1(c, &pval2);
+        RValue(c, &pval2);
+        pval->v.var->value = pval2.v.value;
+        pval->v.var->bound = TRUE;
+        pval->type = TYPE_NUMBER;
+        pval->v.value = pval2.v.value;
+    }
+    c->savedToken = tkn;
+}
+
+/* EvalExpr2 - handle the '|' operator */
+static void EvalExpr2(EvalState *c, PVAL *pval)
+{
+    PVAL pval2;
+    int tkn;
+    EvalExpr3(c, pval);
+    while ((tkn = GetToken(c, &pval2)) == '|') {
+        RValue(c, pval);
+        EvalExpr3(c, &pval2);
+        RValue(c, &pval2);
+        pval->v.value = (VALUE)((int)pval->v.value | (int)pval2.v.value);
+    }
+    c->savedToken = tkn;
+}
+
+/* EvalExpr3 - handle the '^' operator */
+static void EvalExpr3(EvalState *c, PVAL *pval)
+{
+    PVAL pval2;
+    int tkn;
+    EvalExpr4(c, pval);
+    while ((tkn = GetToken(c, &pval2)) == '^') {
+        RValue(c, pval);
+        EvalExpr4(c, &pval2);
+        RValue(c, &pval2);
+        pval->v.value = (VALUE)((int)pval->v.value ^ (int)pval2.v.value);
+    }
+    c->savedToken = tkn;
+}
+
+/* EvalExpr4 - handle the '&' operator */
+static void EvalExpr4(EvalState *c, PVAL *pval)
+{
+    PVAL pval2;
+    int tkn;
+    EvalExpr5(c, pval);
+    while ((tkn = GetToken(c, &pval2)) == '&') {
+        RValue(c, pval);
+        EvalExpr5(c, &pval2);
+        RValue(c, &pval2);
+        pval->v.value = (VALUE)((int)pval->v.value & (int)pval2.v.value);
+    }
+    c->savedToken = tkn;
+}
+
+/* EvalExpr5 - handle the '<<' and '>>' operators */
+static void EvalExpr5(EvalState *c, PVAL *pval)
+{
+    PVAL pval2;
+    int tkn;
+    EvalExpr6(c, pval);
+    while ((tkn = GetToken(c, &pval2)) == TKN_SHL || tkn == TKN_SHR) {
+        RValue(c, pval);
+        EvalExpr6(c, &pval2);
+        RValue(c, &pval2);
+        switch (tkn) {
+        case TKN_SHL:
+            pval->v.value = (VALUE)((int)pval->v.value << (int)pval2.v.value);
+            break;
+        case TKN_SHR:
+            pval->v.value = (VALUE)((int)pval->v.value >> (int)pval2.v.value);
+            break;
+        default:
+            /* never reached */
+            break;
+        }
+    }
+    c->savedToken = tkn;
+}
+
+/* EvalExpr6 - handle the '+' and '-' operators */
+static void EvalExpr6(EvalState *c, PVAL *pval)
+{
+    PVAL pval2;
+    int tkn;
+    EvalExpr7(c, pval);
+    while ((tkn = GetToken(c, &pval2)) == '+' || tkn == '-') {
+        RValue(c, pval);
+        EvalExpr7(c, &pval2);
+        RValue(c, &pval2);
+        switch (tkn) {
+        case '+':
+            pval->v.value += pval2.v.value;
+            break;
+        case '-':
+            pval->v.value -= pval2.v.value;
+            break;
+        default:
+            /* never reached */
+            break;
+        }
+    }
+    c->savedToken = tkn;
+}
+
+/* EvalExpr7 - handle the '*', '/', and '%' operators */
+static void EvalExpr7(EvalState *c, PVAL *pval)
+{
+    PVAL pval2;
+    int tkn;
+    EvalExpr8(c, pval);
+    while ((tkn = GetToken(c, &pval2)) == '*' || tkn == '/' || tkn == '%') {
+        RValue(c, pval);
+        EvalExpr8(c, &pval2);
+        RValue(c, &pval2);
+        switch (tkn) {
+        case '*':
+            pval->v.value *= pval2.v.value;
+            break;
+        case '/':
+            if (pval2.v.value == 0)
+                Error(c, "division by zero");
+            pval->v.value /= pval2.v.value;
+            break;
+        case '%':
+            if ((int)pval2.v.value == 0)
+                Error(c, "division by zero");
+            pval->v.value = (VALUE)((int)pval->v.value % (int)pval2.v.value);
+            break;
+        default:
+            /* never reached */
+            break;
+        }
+    }
+    c->savedToken = tkn;
+}
+
+/* EvalExpr8 - handle unary operators */
+static void EvalExpr8(EvalState *c, PVAL *pval)
+{
+    int tkn;
+    switch (tkn = GetToken(c, pval)) {
+    case '+':
+        EvalPrimary(c, pval);
+        RValue(c, pval);
+        break;
+    case '-':
+        EvalPrimary(c, pval);
+        RValue(c, pval);
+        pval->v.value = -pval->v.value;
+        break;
+    case '~':
+        EvalPrimary(c, pval);
+        RValue(c, pval);
+        pval->v.value = (VALUE)~(int)pval->v.value;
+        break;
+    case '!':
+        EvalPrimary(c, pval);
+        RValue(c, pval);
+        pval->v.value = !pval->v.value;
+        break;
+    default:
+        c->savedToken = tkn;
+        EvalPrimary(c, pval);
         break;
     }
 }
 
-/* ParsePrimary - parse a primary expression */
-static void ParsePrimary(ParseContext *c, VALUE *pValue)
+/* EvalPrimary - Eval a primary expression */
+static void EvalPrimary(EvalState *c, PVAL *pval)
 {
-    VALUE value2;
-    switch (GetToken(c, pValue)) {
+    PVAL pval2;
+    switch (GetToken(c, pval)) {
     case '(':
-        ParseExpr2(c, pValue);
-        if (GetToken(c, &value2) != ')')
+        EvalExpr2(c, pval);
+        if (GetToken(c, &pval2) != ')')
             Error(c, "expecting a right paren");
         break;
     case TKN_NUMBER:
@@ -322,12 +303,12 @@ static void ParsePrimary(ParseContext *c, VALUE *pValue)
     }
 }
 
-static int GetToken(ParseContext *c, VALUE *pValue)
+static int GetToken(EvalState *c, PVAL *pval)
 {
     int tkn;
     
-    if ((tkn = c->savedTkn) != TKN_NONE) {
-        c->savedTkn = TKN_NONE;
+    if ((tkn = c->savedToken) != TKN_NONE) {
+        c->savedToken = TKN_NONE;
         return tkn;
     }
     
@@ -341,13 +322,13 @@ static int GetToken(ParseContext *c, VALUE *pValue)
                     
     /* check for a number */
     if (*c->linePtr == '.' || isdigit(*c->linePtr)) {
-        ParseNumber(c, pValue);
+        EvalNumber(c, pval);
         tkn = TKN_NUMBER;
     }
     
     /* check for an identifier */
     else if (isalpha(*c->linePtr)) {
-        ParseIdentifier(c, pValue);
+        EvalIdentifier(c, pval);
         tkn = TKN_IDENTIFIER;
     }
     
@@ -408,50 +389,91 @@ static int GetToken(ParseContext *c, VALUE *pValue)
     return tkn;
 }
 
-static void ParseNumber(ParseContext *c, VALUE *pValue)
+static void EvalNumber(EvalState *c, PVAL *pval)
 {
-    *pValue = strtod(c->linePtr, (char **)&c->linePtr);
+    pval->type = TYPE_NUMBER;
+    pval->v.value = strtod(c->linePtr, (char **)&c->linePtr);
 }
 
-static void ParseIdentifier(ParseContext *c, VALUE *pValue)
+static void EvalIdentifier(EvalState *c, PVAL *pval)
 {
     char id[ID_MAX];
     char *p = id;
     
+    /* parse the identifier */
     while (*c->linePtr != '\0' && (isalnum(*c->linePtr) || *c->linePtr == '_')) {
         if (p < id + ID_MAX - 1)
             *p++ = *c->linePtr;
         ++c->linePtr;
     }
     *p = '\0';
-        
-    if (!(*c->findSymbol)(c->cookie, id, pValue))
-        Error(c, "undefined symbol: %s", id);
+    
+    /* check for an application symbol reference */
+    if ((*c->findSymbol)(c->cookie, id, &pval->v.value))
+        pval->type = TYPE_NUMBER;
+    
+    /* check for a variable reference */
+    else if (!AddVariable(c, id, pval))
+        Error(c, "insufficient variable space");
 }
 
-static void Error(ParseContext *c, const char *fmt, ...)
+static int AddVariable(EvalState *c, char *id, PVAL *pval)
 {
-    if (c->showErrors) {
-        va_list ap;
-        va_start(ap, fmt);
-        printf("error: ");
-        vprintf(fmt, ap);
-        putchar('\n');
-        va_end(ap);
+    Variable *var;
+    
+    /* find or add a variable */
+    if (!(var = FindVariable(c, id))) {
+        size_t size = sizeof(Variable) + strlen(id);
+        if (c->free + size > c->top)
+            return FALSE;
+        var = (Variable *)c->free;
+        c->free += size;
+        strcpy(var->name, id);
+        var->next = c->variables;
+        var->bound = FALSE;
+        c->variables = var;
     }
+
+    /* return the successfully */
+    pval->type = TYPE_VARIABLE;
+    pval->v.var = var;
+    return TRUE;
+}
+
+static Variable *FindVariable(EvalState *c, char *id)
+{
+    Variable *var;
+    for (var = c->variables; var != NULL; var = var->next)
+        if (strcmp(id, var->name) == 0)
+            return var;
+    return NULL;
+}
+
+static void Error(EvalState *c, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    printf("error: ");
+    vprintf(fmt, ap);
+    putchar('\n');
+    va_end(ap);
     longjmp(c->errorTarget, 1);
 }
+
+#ifdef MAIN
+
 typedef struct {
     char *name;
     VALUE value;
 } Symbol;
 
 static Symbol symbols[] = {
-{   "PI",           3.14159     },
-{   NULL,           0           }
+{   "PI",           3.141592653589      },
+{   "E",            2.718281828459      },
+{   NULL,           0                   }
 };
 
-int FindSymbol(void *cookie, const char *name, VALUE *pValue)
+static int FindSymbol(void *cookie, const char *name, VALUE *pValue)
 {    
     Symbol *sym;
     for (sym = symbols; sym->name != NULL; ++sym)
@@ -462,22 +484,22 @@ int FindSymbol(void *cookie, const char *name, VALUE *pValue)
     return FALSE;
 }
 
-#ifdef MAIN
-
 int main(int argc, char *argv[])
 {
-    ParseContext c;
+    EvalState c;
+    uint8_t heap[512];
     char buf[100];
     VALUE value;
 
+    InitEvalState(&c, heap, sizeof(heap));
     c.findSymbol = FindSymbol;
     c.cookie = NULL;
 
     for (;;) {
         printf("expr> ");
-	if (!gets(buf))
+        if (!gets(buf))
             break;
-        if (ParseNumericExpr(&c, buf, &value))
+        if (EvalExpr(&c, buf, &value))
             printf(" --> %g\n", value);
     }
     
