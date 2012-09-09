@@ -19,12 +19,6 @@
 #define TKN_NUMBER      -3
 #define TKN_SHL         -4
 #define TKN_SHR         -5
-#define TKN_LE          -6
-#define TKN_EQ          -7
-#define TKN_NE          -8
-#define TKN_GE          -9
-#define TKN_AND         -10
-#define TKN_OR          -11
 
 #define TYPE_NUMBER     1
 #define TYPE_VARIABLE   2
@@ -568,42 +562,10 @@ static int GetToken(EvalState *c, PVAL *pval)
                 tkn = TKN_SHL;
                 ++c->linePtr;
             }
-            else if (c->linePtr[1] == '=') {
-                tkn = TKN_LE;
-                ++c->linePtr;
-            }
             break;
         case '>':
             if (c->linePtr[1] == '>') {
                 tkn = TKN_SHR;
-                ++c->linePtr;
-            }
-            else if (c->linePtr[1] == '=') {
-                tkn = TKN_GE;
-                ++c->linePtr;
-            }
-            break;
-        case '!':
-            if (c->linePtr[1] == '=') {
-                tkn = TKN_NE;
-                ++c->linePtr;
-            }
-            break;
-        case '=':
-            if (c->linePtr[1] == '=') {
-                tkn = TKN_EQ;
-                ++c->linePtr;
-            }
-            break;
-        case '&':
-            if (c->linePtr[1] == '&') {
-                tkn = TKN_AND;
-                ++c->linePtr;
-            }
-            break;
-        case '|':
-            if (c->linePtr[1] == '|') {
-                tkn = TKN_OR;
                 ++c->linePtr;
             }
             break;
