@@ -2012,7 +2012,16 @@ propeller_compute_frame_info (void)
 bool
 propeller_epilogue_uses(int regno)
 {
-  return regno == PROP_LR_REGNUM;
+  /* We acutally lie about this and say that the epilogue does not
+     use lr (although it does). The reason is that the prologue will
+     arrange to push lr if it is ever live in the function, so the
+     epilogue will pop it and use the popped version.
+  */
+#if 0
+  if (regno == PROP_LR_REGNUM)
+    return true;
+#endif
+  return false;
 }
 
 /* set to 1 to keep scheduling from moving around stuff in the prologue
