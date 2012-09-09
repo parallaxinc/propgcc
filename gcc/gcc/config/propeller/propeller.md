@@ -69,6 +69,9 @@
    (UNSPEC_POPM         17)
    (UNSPEC_CLKSET       18)
    (UNSPEC_CAS          19)
+
+   (UNSPEC_MOVMEM       20)
+
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
    (UNSPEC_LOOP_START  103)
@@ -79,6 +82,7 @@
    (UNSPEC_FCACHE_CALL      123)
    (UNSPEC_FCACHE_FUNC_START  124)
    (UNSPEC_FCACHE_DONE      125)
+
   ])
 
 ; Most instructions are four bytes long.
@@ -523,7 +527,7 @@
 		   (match_operand:SI 2 "propeller_src_operand" "rCI"))
 		 (match_operand:SI 1 "propeller_dst_operand" "%0")))]
   ""
-  "addx\\t%0, %2"
+  "addx\t%0, %2"
   [(set_attr "conds" "use")
    (set_attr "predicable" "yes")
   ]
@@ -534,7 +538,7 @@
 	(plus:SI (ltu:SI (reg:CC_C CC_REG)(const_int 0))
 		 (match_operand:SI 1 "propeller_dst_operand" "0")))]
   ""
-  "addx\\t%0, #0"
+  "addx\t%0, #0"
   [(set_attr "conds" "use")
    (set_attr "predicable" "yes")
   ]
@@ -550,7 +554,7 @@
 	            (match_operand:SI 2 "propeller_src_operand" "rCI"))
           (ltu:SI (reg:CC_C CC_REG)(const_int 0))))]
   ""
-  "subx\\t%0, %2"
+  "subx\t%0, %2"
   [(set_attr "conds" "use")
    (set_attr "predicable" "yes")
   ]
@@ -568,7 +572,7 @@
 	  (match_operand:SI 2 "propeller_src_operand" "rCI")))
    ]
   ""
-  "subx\\t%0, %2"
+  "subx\t%0, %2"
   [(set_attr "conds" "use")
    (set_attr "predicable" "yes")
   ]
@@ -918,6 +922,38 @@
   "<opcode>\t%0, %1 wz,nr"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
+)
+
+;;
+;; rotate right with carry
+;;
+(define_insn "*rcr"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (ior:SI
+	   (lshiftrt:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+                        (const_int 1))
+           (ashift:SI   (ltu:SI (reg:CC_C CC_REG)(const_int 0))
+                        (const_int 31))))
+   ]
+   "TARGET_EXPERIMENTAL"
+   "rcr\t%0,#1"
+  [(set_attr "conds" "use")
+   (set_attr "predicable" "yes")
+  ]
+)
+
+(define_insn "*rcl"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+        (ior:SI
+	   (ashift:SI (match_operand:SI 1 "propeller_dst_operand" "0")
+                        (const_int 1))
+           (ltu:SI (reg:CC_C CC_REG)(const_int 0))))
+   ]
+   "TARGET_EXPERIMENTAL"
+   "rcl\t%0,#1"
+  [(set_attr "conds" "use")
+   (set_attr "predicable" "yes")
+  ]
 )
 
 ;; -------------------------------------------------------------------------
@@ -1907,10 +1943,20 @@
 	      (clobber (reg:SI LINK_REG))])]
   ""
 {
-  if (propeller_expand_call(NULL, operands[0], operands[1]))
+  if (propeller_expand_call(NULL, operands[0], operands[1], false))
     DONE;
 })
 
+(define_expand "sibcall"
+  [(parallel [(call (match_operand:SI 0 "memory_operand" "")
+		    (match_operand 1 "general_operand" ""))
+	      (return)]
+   )]
+  ""
+{
+  if (propeller_expand_call(NULL, operands[0], operands[1], true))
+    DONE;
+})
 
 (define_insn "call_std"
   [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
@@ -1925,6 +1971,17 @@
    (set_attr "predicable" "yes")]
 )
 
+(define_insn "sibcall_std"
+  [(call (mem:SI (match_operand:SI 0 "sibcall_operand" "i"))
+	         (match_operand 1 "" ""))
+   (return)
+  ]
+  "!TARGET_LMM"
+  "jmp\t#%0"
+  [(set_attr "type" "call")
+   (set_attr "predicable" "yes")]
+)
+
 (define_insn "call_std_lmm"
   [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r,U"))
 	         (match_operand 1 "" ""))
@@ -1935,6 +1992,18 @@
    lcall\t#%0
    mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT
    jmpret\tlr,#__LMM_FCACHE_START+8"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
+)
+(define_insn "sibcall_std_lmm"
+  [(call (mem:SI (match_operand:SI 0 "sibcall_operand" "i,U"))
+	         (match_operand 1 "" ""))
+   (return)
+  ]
+  "TARGET_LMM"
+  "@
+   brw\t#%0
+   jmp\t#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
 )
@@ -1963,7 +2032,19 @@
               (clobber (reg:SI LINK_REG))])]
   ""
 {
-  if (propeller_expand_call(operands[0], operands[1], operands[2]))
+  if (propeller_expand_call(operands[0], operands[1], operands[2], false))
+    DONE;
+})
+
+(define_expand "sibcall_value"
+  [(parallel [(set (match_operand 0 "" "")
+		     (call (match_operand:SI 1 "memory_operand" "")
+		           (match_operand 2 "" "")))
+              (return)]
+    )]
+  ""
+{
+  if (propeller_expand_call(operands[0], operands[1], operands[2], true))
     DONE;
 })
 
@@ -1981,6 +2062,18 @@
    (set_attr "predicable" "yes")]
  )
 
+(define_insn "*sibcall_value"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC")
+	(call (mem:SI (match_operand:SI 1 "sibcall_operand" "i"))
+	      (match_operand 2 "" "")))
+   (return)
+  ]
+  "!TARGET_LMM"
+  "jmp\t#%1"
+  [(set_attr "type" "call")
+   (set_attr "predicable" "yes")]
+ )
+
 (define_insn "*call_value_lmm"
   [(set (match_operand 0 "propeller_dst_operand" "=rC,rC,rC")
 	(call (mem:SI (match_operand:SI 1 "call_operand" "i,rC,U"))
@@ -1992,6 +2085,20 @@
    lcall\t#%1
    mov\t__TMP0,%1\n\tjmp\t#__LMM_CALL_INDIRECT
    jmpret\tlr,#__LMM_FCACHE_START+8"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
+ )
+
+(define_insn "*sibcall_value_lmm"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
+	(call (mem:SI (match_operand:SI 1 "sibcall_operand" "i,U"))
+	      (match_operand 2 "" "")))
+   (return)
+  ]
+  "TARGET_LMM"
+  "@
+   brw\t#%1
+   jmp\t#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
  )
@@ -2175,12 +2282,9 @@
   [(set_attr "length" "0")]
 )
 
-;; we pretend that "native return" uses the link register
-;; (even though it doesn't) to make sure it is saved/restored
 (define_insn "native_return"
   [(unspec_volatile [(return)] UNSPEC_NATIVE_RET)
    (use (match_operand:SI 0 "call_operand" ""))
-   (use (reg:SI LINK_REG))
   ]
   ""
   "'native return\n%0_ret\n\tret"
@@ -2361,6 +2465,66 @@
    ]
    ""
    ""
+)
+
+;;
+;; string operations
+;; these are still experimental!
+;;
+(define_insn "prop_movmem"
+  [(set (mem:BLK (reg:SI 0))
+        (mem:BLK (reg:SI 1)))
+   (use (reg:SI 2))
+   (unspec_volatile:BLK [(reg:SI 0) (reg:SI 1) (reg:SI 2)] UNSPEC_MOVMEM)
+   (clobber (reg:SI 0))
+   (clobber (reg:SI 1))
+   (clobber (reg:SI 2))
+   (clobber (reg:SI 3))
+   (clobber (reg:CC CC_REG))
+  ]
+"TARGET_BUILTIN_STRINGS"
+{
+    return "call\t#__Memcpy";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")
+ ]
+)
+
+(define_expand "movmemsi"
+  [(parallel
+    [(set (match_operand:BLK 0 "memory_operand")    ;; Dest
+          (match_operand:BLK 1 "memory_operand"))   ;; Source
+     (use (match_operand:SI 2 "register_operand"))  ;; length in bytes
+     (match_operand 3 "immediate_operand")          ;; align
+     (unspec_volatile:BLK [(reg:SI 0) (reg:SI 1) (reg:SI 2)] UNSPEC_MOVMEM)
+    ])
+  ]
+"TARGET_BUILTIN_STRINGS"
+{
+  rtx dstaddr = gen_rtx_REG (SImode, 0);
+  rtx srcaddr = gen_rtx_REG (SImode, 1);
+  rtx len = gen_rtx_REG(SImode, 2);
+
+  if (REG_P (operands[0]) && (REGNO (operands[0]) == 1 
+     	    		      || REGNO (operands[0]) == 2))
+     FAIL;
+  if (REG_P (operands[1]) && (REGNO (operands[1]) == 0 
+     	    		      || REGNO (operands[1]) == 2))
+     FAIL;
+  if (REG_P (operands[2]) && (REGNO (operands[2]) == 0 
+     	    		      || REGNO (operands[2]) == 1))
+     FAIL;
+
+  emit_move_insn (dstaddr, force_operand (XEXP (operands[0], 0), NULL_RTX));
+  emit_move_insn (srcaddr, force_operand (XEXP (operands[1], 0), NULL_RTX));
+  emit_move_insn (len, force_operand (operands[2], NULL_RTX));
+
+  operands[0] = replace_equiv_address_nv (operands[0], dstaddr);
+  operands[1] = replace_equiv_address_nv (operands[1], srcaddr);
+  emit_insn (gen_prop_movmem ());
+  DONE;
+}
 )
 
 

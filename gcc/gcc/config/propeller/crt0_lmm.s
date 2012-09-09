@@ -1,4 +1,4 @@
-	.section .lmmkernel, "ax"
+	.section .kernel, "ax"
 	.global r0
 	.global r1
 	.global r2
@@ -194,82 +194,11 @@ __MASK_FFFFFFFF	long	0xFFFFFFFF
 	'' math support functions
 	''
 	.global __TMP0
-	.global __DIVSI
-	.global __DIVSI_ret
-	.global __UDIVSI
-	.global __UDIVSI_ret
-	.global __CLZSI
-	.global __CLZSI_ret
-	.global __CTZSI
+	.global __TMP1
 __TMP0	long	0
-__MASK_00FF00FF	long	0x00FF00FF
-__MASK_0F0F0F0F	long	0x0F0F0F0F
-__MASK_33333333	long	0x33333333
-__MASK_55555555	long	0x55555555
-__CLZSI	rev	r0, #0
-__CTZSI	neg	__TMP0, r0
-	and	__TMP0, r0	wz
-	mov	r0, #0
- IF_Z	mov	r0, #1
-	test	__TMP0, __MASK_0000FFFF	wz
- IF_Z	add	r0, #16
-	test	__TMP0, __MASK_00FF00FF	wz
- IF_Z	add	r0, #8
-	test	__TMP0, __MASK_0F0F0F0F	wz
- IF_Z	add	r0, #4
-	test	__TMP0, __MASK_33333333	wz
- IF_Z	add	r0, #2
-	test	__TMP0, __MASK_55555555	wz
- IF_Z	add	r0, #1
-__CLZSI_ret	ret
-__DIVR	long	0
 __TMP1
-__DIVCNT
 	long	0
-	''
-	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
-	''
-__UDIVSI
-	mov	__DIVR, r0
-	call	#__CLZSI
-	neg	__DIVCNT, r0
-	mov	r0, r1 wz
- IF_Z   jmp	#__UDIV_BY_ZERO
-	call	#__CLZSI
-	add	__DIVCNT, r0
-	mov	r0, #0
-	cmps	__DIVCNT, #0	wz, wc
- IF_C	jmp	#__UDIVSI_done
-	shl	r1, __DIVCNT
-	add	__DIVCNT, #1
-__UDIVSI_loop
-	cmpsub	__DIVR, r1	wz, wc
-	addx	r0, r0
-	shr	r1, #1
-	djnz	__DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-	mov	r1, __DIVR
-__UDIVSI_ret	ret
-__DIVSGN	long	0
-__DIVSI	mov	__DIVSGN, r0
-	xor	__DIVSGN, r1
-	abs	r0, r0 wc
-	muxc	__DIVSGN, #1	' save original sign of r0
-	abs	r1, r1
-	call	#__UDIVSI
-	cmps	__DIVSGN, #0	wz, wc
- IF_B	neg	r0, r0
-	test	__DIVSGN, #1 wz	' check original sign of r0
- IF_NZ	neg	r1, r1		' make the modulus result match
-__DIVSI_ret	ret
 
-	'' come here on divide by zero
-	'' we probably should raise a signal
-__UDIV_BY_ZERO
-	neg	r0,#1
-	mov	r1,#0
-	jmp	#__UDIVSI_ret
-	
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
@@ -318,6 +247,59 @@ __CMPSWAPSI
 	lockclr __TMP1
 __CMPSWAPSI_ret
 	ret
+
+	''
+	'' code to load a buffer from hub memory into cog memory
+	'' the idea is from the fast code posted by Kuroneko in
+	'' the "Fastest possible memory transfer" thread on the
+	'' Parallax forums; modified slightly by Eric Smith
+        '' for multiple cog buffers
+	''
+	'' parameters: __TMP0 = count of bytes (will be rounded up to multiple
+	''                      of 8)
+	''             __TMP1 = hub address
+	''             __COGA = COG address
+	''
+	''
+__COGA	long 0
+	
+loadbuf
+	'' first, find the number of longs to transfer
+	'' round up to next 64 bit boundary (the loop processes 64 bits
+	'' at a time)
+	'' setup: 11 ins (vs. 6 ins)
+ 	'' loop:   6 ins, 1 transfer/hub windows (vs. 13 ins,  0.8 transfer/hub window)
+	add	__TMP0, #7
+	andn	__TMP0, #7	'' round TMP0 up
+	
+	'' point to last byte in HUB buffer
+	add	__TMP1, __TMP0
+	sub	__TMP1, #1
+	'' point to last longs in cog memory
+	shr	__TMP0, #2	'' convert to longs
+	sub	__COGA, #1
+	add	__COGA, __TMP0
+	movd	lbuf0, __COGA
+	sub	__COGA, #1
+	movd	lbuf1, __COGA
+	sub	__TMP0, #2
+	movi	__TMP1, __TMP0
+	
+lbuf0	rdlong	0-0, __TMP1
+	sub	lbuf0, dst2
+	sub	__TMP1, i2s7 wc
+lbuf1	rdlong	0-0, __TMP1
+	sub	lbuf1, dst2
+  if_nc	djnz	__TMP1, #lbuf0		'' sub #7/djnz
+
+loadbuf_ret
+	ret
+	
+	'' initialized data and presets
+dst2	long	2 << 9
+i2s7	long	(2<<23) | 7
+	
+	
 	
 	''
 	'' FCACHE region
@@ -329,8 +311,6 @@ __CMPSWAPSI_ret
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest4
-	long (4<<9)
 	
 	.global	__LMM_RET
 	.global	__LMM_FCACHE_LOAD
@@ -345,36 +325,11 @@ __LMM_FCACHE_LOAD
   IF_Z	jmp	#Lmm_fcache_doit
 
 	mov	__LMM_FCACHE_ADDR, __TMP1
+
+	'' copy TMP0 bytes from TMP1 to LMM_FCACHE_START
+	mova	__COGA, #__LMM_FCACHE_START	'' mova because src is a cog address immediate
+	call	#loadbuf
 	
-	'' assembler awkwardness here
-	'' we would like to just write
-	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
-	'' but binutils doesn't work right with this now
-	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop2,#1+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop3,#2+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop4,#3+(__LMM_FCACHE_START-__LMM_entry)/4
-	add  __TMP0,#15		'' round up to next multiple of 16
-	shr  __TMP0,#4		'' we process 16 bytes per loop iteration
-Lmm_fcache_loop
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop,inc_dest4
-Lmm_fcache_loop2
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop2,inc_dest4
-Lmm_fcache_loop3
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop3,inc_dest4
-Lmm_fcache_loop4
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop4,inc_dest4
-
-	djnz	__TMP0,#Lmm_fcache_loop
-
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
 	jmp	#__LMM_loop
@@ -385,6 +340,11 @@ Lmm_fcache_doit
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	256	'' reserve 256 longs = 1K
+	res	128	'' reserve 128 longs = 512 bytes
 
 
+	''
+	'' now include kernel extensions that we always want
+	''
+#include "kernel.ext"
+	

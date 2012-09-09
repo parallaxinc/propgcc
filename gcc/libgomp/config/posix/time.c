@@ -59,6 +59,14 @@ omp_get_wtime (void)
 #endif
 }
 
+#if defined(__propeller__)
+#include <propeller.h>
+double
+omp_get_wtick (void)
+{
+  return 1.0 / CLKFREQ;
+}
+#else
 double
 omp_get_wtick (void)
 {
@@ -73,6 +81,7 @@ omp_get_wtick (void)
   return 1.0 / sysconf(_SC_CLK_TCK);
 #endif
 }
+#endif
 
 ialias (omp_get_wtime)
 ialias (omp_get_wtick)

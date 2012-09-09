@@ -93,6 +93,8 @@ struct GTY(()) propeller_frame_info
 struct GTY(()) machine_function {
   /* the current frame information, calculated by propeller_compute_frame_info */
   struct propeller_frame_info frame;
+  /* a flag to indicate the save of the link register can be eliminated */
+  bool lr_save_eliminated;
 };
 
 static HOST_WIDE_INT propeller_compute_frame_info (void);
@@ -120,6 +122,8 @@ enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER] = {
  */
 static int do_fcache;
 
+int propeller_flags;
+
 /*
  * variables that save/restore cog processing state
  */
@@ -127,6 +131,8 @@ struct target_globals *propeller_cog_globals;
 
 /* target flags to use in non-LMM mode */
 static int propeller_base_target_flags;
+/* prop-specific flags to use in non-LMM mode */
+static int propeller_base_flags;
 
 /* true if -mcog is the default mode */
 bool propeller_base_cog;
@@ -237,7 +243,14 @@ propeller_option_override (void)
     flag_no_function_cse = 1;
 
     /*
-     * set up target specific flags
+     * check for which propeller specific flags make sense
+     */
+    if ( (TARGET_LMM || TARGET_CMM) && !TARGET_XMM_CODE)
+      {
+	propeller_flags |= PROP_FLAG_BUILTIN_STRINGS;
+      }
+    /*
+     * set up various output flags
      */
     if (TARGET_OUTPUT_SPINCODE)
       {
@@ -276,6 +289,8 @@ propeller_option_override (void)
 
     propeller_base_cog = !TARGET_LMM;
     propeller_base_target_flags = target_flags;
+    propeller_base_flags = propeller_flags;
+
 }
 
 
@@ -300,7 +315,9 @@ has_func_attr (tree decl, const char * func_attr)
 {
   tree attrs, a;
 
-  if (!decl) return false;
+  if (decl == NULL_TREE) {
+    decl = current_function_decl;
+  }
   attrs = DECL_ATTRIBUTES (decl);
   a = lookup_attribute (func_attr, attrs);
   return a != NULL_TREE;
@@ -407,6 +424,7 @@ propeller_set_cog_mode (int cog_p)
 
   /* restore base settings of various flags */
   target_flags = propeller_base_target_flags;
+  propeller_flags = propeller_base_flags;
 
   if (cog_p)
     {
@@ -734,7 +752,7 @@ pasm_divsi(FILE *f) {
   fprintf(f, "__DIVSI_ret\tret\n");
 }
 /*
- * implement signed division by using udivsi
+ * implement cmp and swap
  */
 static void
 pasm_cmpswapsi(FILE *f ATTRIBUTE_UNUSED)
@@ -1299,6 +1317,33 @@ propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 			   const_tree type, bool named ATTRIBUTE_UNUSED)
 {
   *cum += PROP_NUM_REGS (mode, type);
+}
+
+/*
+ * check to see if a function can be called as a "sibling" call
+ * "decl" is a function_decl or NULL if this is an indirect call
+ * (in which case "exp" is the expression for it)
+ */
+static bool
+propeller_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
+{
+  /* do not allow indirect tail calls; we don't know if the target
+   * is naked, native, or whatever
+   */
+  if (decl == NULL)
+    return false;
+
+  /* do not allow tail calls to/from native functions (the calling convention
+   * won't allow it) or from naked functions
+   */
+  if (is_naked_function (current_function_decl)
+      || is_native_function (current_function_decl)
+      || is_native_function (decl))
+    {
+      return false;
+    }
+
+  return true;
 }
 
 
@@ -1940,6 +1985,7 @@ propeller_compute_frame_info (void)
       reg_save_mask |= 1 << PROP_FP_REGNUM;
       callee_size += UNITS_PER_WORD;
     }
+
   if (df_regs_ever_live_p (PROP_LR_REGNUM))
     {
       reg_save_mask |= 1 << PROP_LR_REGNUM;
@@ -1963,10 +2009,25 @@ propeller_compute_frame_info (void)
   return total_size;
 }
 
+bool
+propeller_epilogue_uses(int regno)
+{
+  /* We acutally lie about this and say that the epilogue does not
+     use lr (although it does). The reason is that the prologue will
+     arrange to push lr if it is ever live in the function, so the
+     epilogue will pop it and use the popped version.
+  */
+#if 0
+  if (regno == PROP_LR_REGNUM)
+    return true;
+#endif
+  return false;
+}
+
 /* set to 1 to keep scheduling from moving around stuff in the prologue
  * and epilogue
  */
-#define PROLOGUE_BLOCKAGE 1
+#define PROLOGUE_BLOCKAGE (!TARGET_EXPERIMENTAL)
 
 /* Create and emit instructions for a functions prologue.  */
 void
@@ -2001,10 +2062,11 @@ propeller_expand_prologue (void)
       stack_adjust (-(cfun->machine->frame.total_size - pushed));
 
 
-#ifdef PROLOGUE_BLOCKAGE
-      /* Prevent prologue from being scheduled into function body.  */
-      emit_insn (gen_blockage ());
-#endif
+      if (PROLOGUE_BLOCKAGE)
+	{
+	  /* Prevent prologue from being scheduled into function body.  */
+	  emit_insn (gen_blockage ());
+	}
     }
 }
 
@@ -2043,10 +2105,11 @@ propeller_expand_epilogue (bool is_sibcall)
 
   if (cfun->machine->frame.total_size > 0)
     {
-#ifdef PROLOGUE_BLOCKAGE
-      /* Prevent stack code from being reordered.  */
-      emit_insn (gen_blockage ());
-#endif
+      if (PROLOGUE_BLOCKAGE)
+	{
+	  /* Prevent stack code from being reordered.  */
+	  emit_insn (gen_blockage ());
+	}
 
       /* Deallocate stack.  */
       if (propeller_use_frame_pointer ())
@@ -2073,7 +2136,7 @@ propeller_expand_epilogue (bool is_sibcall)
     rtx current_func_sym = XEXP (DECL_RTL (current_function_decl), 0);
     emit_jump_insn (gen_native_return (current_func_sym));
   }
-  else
+  else if (!is_sibcall)
   {
     emit_jump_insn (gen_return_internal (lr_rtx));
   }
@@ -2108,7 +2171,7 @@ propeller_can_use_return (void)
  * matching needs to be done
  */
 bool
-propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
+propeller_expand_call (rtx setreg, rtx dest, rtx numargs, bool sibcall)
 {
     rtx callee = XEXP (dest, 0);
     if (GET_CODE (callee) == SYMBOL_REF)
@@ -2121,7 +2184,10 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
             {
                 error("native function cannot be recursive");
             }
-            if (setreg == NULL_RTX) {
+	    if (sibcall) {
+	      return false;  /* no sibcalls from native functions */
+	    }
+	    if (setreg == NULL_RTX) {
                 pat = gen_call_native (callee, numargs);
             } else {
                 pat = gen_call_native_value (setreg, callee, numargs);
@@ -2197,6 +2263,11 @@ static section *
 propeller_select_rtx_section (enum machine_mode mode, rtx x,
 			      unsigned HOST_WIDE_INT align)
 {
+  if (is_native_function (current_function_decl) && !propeller_base_cog)
+    {
+      if (GET_MODE_SIZE (mode) <= BITS_PER_UNIT && mode != BLKmode)
+	return kernel_section;
+    }
   if (!TARGET_LMM)
     {
       if (GET_MODE_SIZE (mode) <= BITS_PER_UNIT
@@ -2808,8 +2879,6 @@ propeller_unlikely_branch_p (rtx jump)
  * or recursive calls
  */
 
-#define MAX_FCACHE_SIZE ( TARGET_CMM ? 252 : 508 )
-
 static bool
 fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 {
@@ -2818,16 +2887,22 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
   rtx last_next;
   HOST_WIDE_INT total_len;
   int loop_count = force_p ? 1 : 0;
+  int fcache_size;
 
   if (dump_file)
     fprintf (dump_file, "checking block, func_p = %s\n",
 	     func_p ? "TRUE" : "FALSE");
 
+  if (TARGET_CMM || TARGET_XMM_CODE)
+    fcache_size = 252;
+  else
+    fcache_size = 508;
+
   /* quick check for block too big */
   if (INSN_ADDRESSES_SET_P ())
     {
       total_len = INSN_ADDRESSES (INSN_UID (last)) - INSN_ADDRESSES (INSN_UID (first));
-      if (total_len > MAX_FCACHE_SIZE)
+      if (total_len > fcache_size)
 	{
 	  if (dump_file)
 	    {
@@ -2946,7 +3021,7 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 	    }
 	}
       total_len += get_attr_length (insn);
-      if (total_len > MAX_FCACHE_SIZE)
+      if (total_len > fcache_size)
 	{
 	  if (dump_file)
 	    {
@@ -3516,6 +3591,8 @@ propeller_reorg(void)
 #define TARGET_FUNCTION_ARG propeller_function_arg
 #undef TARGET_FUNCTION_ARG_ADVANCE
 #define TARGET_FUNCTION_ARG_ADVANCE propeller_function_arg_advance
+#undef TARGET_FUNCTION_OK_FOR_SIBCALL
+#define TARGET_FUNCTION_OK_FOR_SIBCALL propeller_function_ok_for_sibcall
 #undef TARGET_PROMOTE_PROTOTYPES
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_false
 #undef TARGET_LEGITIMATE_ADDRESS_P

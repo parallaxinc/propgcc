@@ -33,6 +33,7 @@
 
 #include <sys/thread.h>
 #include <sys/size_t.h>
+#include <sys/null.h>
 #include <setjmp.h>
 
 /** @brief Minimum stack size for a thread. */
@@ -88,6 +89,25 @@ extern atomic_t __pthreads_lock;
 #define __lock_pthreads() __lock(&__pthreads_lock)
 #define __unlock_pthreads() __unlock(&__pthreads_lock)
 
+/** @brief Condition variables */
+typedef struct pthread_cond_t {
+  _pthread_queue_t queue;
+} pthread_cond_t;
+
+/** @brief Condition variable attributes are not implemented. */
+typedef int pthread_condattr_t;
+
+/** @brief Destructor function associated with thread specific data */
+typedef void (*__pthread_destruct_func)(void *);
+
+/** @brief Maximum number of keys for per-thread data */
+#define PTHREAD_KEYS_MAX _THREAD_KEYS_MAX
+
+/** @brief Type for per-thread data keys */
+typedef unsigned char pthread_key_t;
+
+/** @brief Table of destructors for thread specific data */
+extern __pthread_destruct_func __pdestruct[PTHREAD_KEYS_MAX];
 /*
  * some internal functions
  */
@@ -110,6 +130,7 @@ _pthread_state_t *_pthread_self()
 int pthread_attr_init(pthread_attr_t *attr);
 int pthread_attr_destroy(pthread_attr_t *attr);
 int pthread_attr_getdetachstate(pthread_attr_t *attr, int *detachstate);
+int pthread_attr_getstacksize(pthread_attr_t *attr, size_t *stacksize);
 int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize);
 int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
 int pthread_attr_setstackaddr(pthread_attr_t *attr, void *stackaddr);
@@ -128,6 +149,16 @@ int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
 int pthread_mutex_lock(pthread_mutex_t *mutex);
 int pthread_mutex_trylock(pthread_mutex_t *mutex);
 int pthread_mutex_unlock(pthread_mutex_t *mutex);
+int pthread_mutex_destroy(pthread_mutex_t *mutex);
+
+int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
+int pthread_cond_destroy(pthread_cond_t *cond);
+int pthread_cond_signal(pthread_cond_t *cond);
+int pthread_cond_broadcast(pthread_cond_t *cond);
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
+
+int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
+int pthread_key_delete(pthread_key_t key);
 
 void pthread_yield(void);
 pthread_t pthread_self(void);
@@ -146,5 +177,8 @@ void pthread_set_affinity_thiscog_np(void);
   do { thread->affinity = ~(mask); } while (0)
 
 #define pthread_set_affinity_thiscog_np() pthread_set_cog_affinity_np(_TLS, __this_cpu_mask())
+
+#define pthread_getspecific(i) (_TLS->thread_data[i])
+#define pthread_setspecific(i, x) (_TLS->thread_data[i] = (x))
 
 #endif
