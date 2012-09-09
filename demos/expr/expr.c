@@ -17,8 +17,9 @@
 #define TKN_EOF         -1
 #define TKN_IDENTIFIER  -2
 #define TKN_NUMBER      -3
-#define TKN_SHL         -4
-#define TKN_SHR         -5
+#define TKN_UNARY_MINUS -4
+#define TKN_SHL         -5
+#define TKN_SHR         -6
 
 #define TYPE_NUMBER     1
 #define TYPE_VARIABLE   2
@@ -68,12 +69,16 @@ void InitEvalState(EvalState *c, uint8_t *heap, size_t heapSize)
 #define rStackDrop(c)       ((c)->rStackPtr--)
 
 static int Prec(EvalState *c, int op);
-static int Assoc(EvalState *c, int op);
-static void Apply(EvalState *c, int op, PVAL *left, PVAL *right);
+static int Assoc(int op);
+static int Unary(int op);
+static void Apply(EvalState *c, int op);
+static void ApplyUnary(EvalState *c, int op, PVAL *pval);
+static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right);
 
 /* EvalExpr - Eval and evaluate an expression using the shunting yard algorithm */
 int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
 {
+    int unaryPossible = TRUE;
     PVAL pval;
     int tkn;
     
@@ -96,39 +101,35 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         case TKN_IDENTIFIER:
         case TKN_NUMBER:
             rStackPush(c, pval);
+            unaryPossible = FALSE;
             break;
         case '(':
             oStackPush(c, tkn);
+            unaryPossible = TRUE;
             break;
         case ')':
             for (;;) {
-                PVAL *left, *right;
                 int op;
                 if (oStackIsEmpty(c))
                     Error(c, "mismatched parens");
                 if ((op = oStackPop(c)) == '(')
                     break;
-                left = &c->rStackPtr[-1];
-                right = &c->rStackPtr[0];
-                Apply(c, op, left, right);
-                rStackDrop(c);
+                Apply(c, op);
             }
+            unaryPossible = FALSE;
             break;
         default:
+            if (unaryPossible && tkn == '-')
+                tkn = TKN_UNARY_MINUS;
             prec = Prec(c, tkn);
             while (!oStackIsEmpty(c)) {
                 int stackPrec = Prec(c, oStackTop(c));
-                PVAL *left, *right;
-                int op;
-                if ((Assoc(c, tkn) == ASSOC_LEFT && prec > stackPrec) || prec >= stackPrec)
+                if ((Assoc(tkn) == ASSOC_LEFT && prec > stackPrec) || prec >= stackPrec)
                     break;
-                op = oStackPop(c);
-                left = &c->rStackPtr[-1];
-                right = &c->rStackPtr[0];
-                Apply(c, op, left, right);
-                rStackDrop(c);
+                Apply(c, oStackPop(c));
             }
             oStackPush(c, tkn);
+            unaryPossible = TRUE;
             break;
         }
     }
@@ -138,10 +139,7 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         int op = oStackPop(c);
         if (op == '(')
             Error(c, "mismatched parens");
-        PVAL *left = &c->rStackPtr[-1];
-        PVAL *right = &c->rStackPtr[0];
-        Apply(c, op, left, right);
-        rStackDrop(c);
+        Apply(c, op);
     }
     
     RValue(c, &c->rStackPtr[0]);
@@ -184,6 +182,10 @@ static int Prec(EvalState *c, int op)
     case '%':
         precedence = 7;
         break;
+    case TKN_UNARY_MINUS:
+    case '~':
+        precedence = 8;
+        break;
     default:
         Error(c, "unknown operator -- '%c'", op);
         break;
@@ -192,34 +194,70 @@ static int Prec(EvalState *c, int op)
 }
 
 /* Assoc - return the associativity of an operator */
-static int Assoc(EvalState *c, int op)
+static int Assoc(int op)
 {
     int associativity;
     switch (op) {
     case '=':
+    case TKN_UNARY_MINUS:
         associativity = ASSOC_RIGHT;
         break;
-    case '|':
-    case '^':
-    case '&':
-    case TKN_SHL:
-    case TKN_SHR:
-    case '+':
-    case '-':
-    case '*':
-    case '/':
-    case '%':
-        associativity = ASSOC_LEFT;
-        break;
     default:
-        Error(c, "unknown operator -- '%c'", op);
+        associativity = ASSOC_LEFT;
         break;
     }
     return associativity;
 }
 
+/* Unary - determine if a unary operator */
+static int Unary(int op)
+{
+    int unary;
+    switch (op) {
+    case TKN_UNARY_MINUS:
+    case '~':
+        unary = TRUE;
+        break;
+    default:
+        unary = FALSE;
+    }
+    return unary;
+}
+
 /* Apply - apply an operator to operands */
-static void Apply(EvalState *c, int op, PVAL *left, PVAL *right)
+static void Apply(EvalState *c, int op)
+{
+    if (Unary(op)) {
+        PVAL *pval = &c->rStackPtr[0];
+        ApplyUnary(c, op, pval);
+    }
+    else {
+        PVAL *left = &c->rStackPtr[-1];
+        PVAL *right = &c->rStackPtr[0];
+        ApplyBinary(c, op, left, right);
+        rStackDrop(c);
+    }
+}
+
+/* ApplyUnary - apply a unary operator to an operand */
+static void ApplyUnary(EvalState *c, int op, PVAL *pval)
+{
+    RValue(c, pval);
+    switch (op) {
+    case TKN_UNARY_MINUS:
+        pval->v.value = -pval->v.value;
+        break;
+    case '~':
+        pval->v.value = (VALUE)~((int)pval->v.value);
+        break;
+    default:
+        Error(c, "internal error");
+        break;
+    }
+}
+
+/* ApplyBinary - apply a binary operator to operands */
+static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right)
 {
     RValue(c, right);
     if (op == '=') {
@@ -465,10 +503,6 @@ static void EvalExpr8(EvalState *c, PVAL *pval)
 {
     int tkn;
     switch (tkn = GetToken(c, pval)) {
-    case '+':
-        EvalPrimary(c, pval);
-        RValue(c, pval);
-        break;
     case '-':
         EvalPrimary(c, pval);
         RValue(c, pval);
