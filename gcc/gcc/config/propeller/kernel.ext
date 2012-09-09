@@ -1,0 +1,216 @@
+	''
+	'' this file is intended to be #included into kernels
+	'' to define the extensions
+	''
+	''
+	'' math support functions
+	'' these call out to a kernel extension
+	''
+	.section .kernel
+	
+	.global __loadmath
+	.global	__load_extension
+	.global __loadmath_ret
+	.global	__load_extension_ret
+__loadmath
+	mov	__TMP1,__math_kernel_ptr
+__load_extension
+	cmp	__kernel_ext,__TMP1 wz
+   if_z jmp	__load_extension_ret
+	mov	__kernel_ext,__TMP1
+	rdlong	__TMP0, __TMP1		'' read the length
+	''add	__TMP1, #4		'' the length has to go in the kernel!!
+	mov	__COGA, #0x6C0/4
+	call	#loadbuf
+__load_extension_ret
+__loadmath_ret
+__loadmem_ret
+	ret
+
+__loadmem
+	mov	__TMP1,__mem_kernel_ptr
+	jmp	#__load_extension
+	
+__kernel_ext
+	long	0
+__math_kernel_ptr
+	long	__load_start_math_kerext
+__mem_kernel_ptr
+	long	__load_start_memory_kerext
+
+	.global __DIVSI
+	.global __DIVSI_ret
+__DIVSI
+	call	#__loadmath
+	call	#__DIVSI_impl
+__DIVSI_ret
+	ret
+	
+	.global __UDIVSI
+	.global __UDIVSI_ret
+__UDIVSI
+	call	#__loadmath
+	call	#__UDIVSI_impl
+__UDIVSI_ret
+	ret
+
+__DIVCNT
+	long	0
+
+	.global __CLZSI
+	.global __CLZSI_ret
+__CLZSI
+	rev	r0, #0
+__CTZSI
+	call	#__loadmath
+	call	#__CTZSI_impl
+__CLZSI_ret
+	ret
+	
+	.global __Memcpy
+	.global __Memcpy_ret
+__Memcpy
+	call	#__loadmem
+	call	#__Memcpy_impl
+__Memcpy_ret
+	ret
+
+	''
+	'' the math kernel extension
+	''
+	.section	.math.kerext, "ax"
+
+startmath
+
+	.long	endmath - startmath
+
+	
+__MASK_00FF00FF	long	0x00FF00FF
+__MASK_0F0F0F0F	long	0x0F0F0F0F
+__MASK_33333333	long	0x33333333
+__MASK_55555555	long	0x55555555
+	
+	.global	__CTZSI_impl
+	.global	__CLZSI_impl_ret
+
+__CLZSI_impl
+	rev	r0,#0
+__CTZSI_impl
+	neg	__TMP0, r0
+	and	__TMP0, r0	wz
+	mov	r0, #0
+ IF_Z	mov	r0, #1
+	test	__TMP0, __MASK_0000FFFF	wz
+ IF_Z	add	r0, #16
+	test	__TMP0, __MASK_00FF00FF	wz
+ IF_Z	add	r0, #8
+	test	__TMP0, __MASK_0F0F0F0F	wz
+ IF_Z	add	r0, #4
+	test	__TMP0, __MASK_33333333	wz
+ IF_Z	add	r0, #2
+	test	__TMP0, __MASK_55555555	wz
+ IF_Z	add	r0, #1
+__CLZSI_impl_ret
+__CTZSI_impl_ret
+	ret
+	
+__DIVR	long	0
+
+	''
+	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
+	''
+__UDIVSI_impl
+	mov	__DIVR, r0
+	call	#__CLZSI_impl
+	neg	__DIVCNT, r0
+	mov	r0, r1 wz
+ IF_Z   jmp	#__UDIV_BY_ZERO
+	call	#__CLZSI_impl
+	add	__DIVCNT, r0
+	mov	r0, #0
+	cmps	__DIVCNT, #0	wz, wc
+ IF_C	jmp	#__UDIVSI_done
+	shl	r1, __DIVCNT
+	add	__DIVCNT, #1
+__UDIVSI_loop
+	cmpsub	__DIVR, r1	wz, wc
+	addx	r0, r0
+	shr	r1, #1
+	djnz	__DIVCNT, #__UDIVSI_loop
+__UDIVSI_done
+	mov	r1, __DIVR
+__UDIVSI_impl_ret
+	ret
+__DIVSGN	long	0
+__DIVSI_impl
+	mov	__DIVSGN, r0
+	xor	__DIVSGN, r1
+	abs	r0, r0 wc
+	muxc	__DIVSGN, #1	' save original sign of r0
+	abs	r1, r1
+	call	#__UDIVSI_impl
+	cmps	__DIVSGN, #0	wz, wc
+ IF_B	neg	r0, r0
+	test	__DIVSGN, #1 wz	' check original sign of r0
+ IF_NZ	neg	r1, r1		' make the modulus result match
+__DIVSI_impl_ret
+	ret
+
+	'' come here on divide by zero
+	'' we probably should raise a signal
+__UDIV_BY_ZERO
+	neg	r0,#1
+	mov	r1,#0
+	jmp	#__UDIVSI_ret
+	
+
+endmath
+
+	''
+	'' memory related functions
+	''
+
+	.section .memory.kerext, "ax"
+startmem
+	long	endmem - startmem
+	''
+	'' memcpy(r0, r1, r2)
+	'' copy from r1 to r0
+	'' trashes r3
+	''
+	.global __Memcpy_impl
+	.global __Memcpy_impl_ret
+__Memcpy_impl
+	mov	r3,r0
+	or	r3,r1
+	andn	r3,#3 nr,wz	'' check alignment
+  if_nz jmp	#.slocpy
+
+	'' get number of longs to copy
+	mov	__TMP0,r2
+	shr	__TMP0,#2 wz
+  if_z  jmp	.slocpy
+
+.fastcopy
+	rdlong	r3,r1
+	add	r1,#4
+	sub	r2,#4
+	wrlong	r3,r0
+	add	r0,#4
+        djnz    __TMP0,#.fastcopy
+	
+.slocpy
+	cmps	r2,#0 wz
+  if_z  jmp	__Memcpy_impl_ret
+
+.slolp
+	rdbyte	r3,r1
+	add	r1,#1
+	wrbyte	r3,r0
+	add	r0,#1
+	djnz	r2,#.slolp
+
+__Memcpy_impl_ret
+	ret
+
+endmem
