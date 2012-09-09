@@ -35,7 +35,7 @@ struct par {
 
 #define usefw(fw)           extern unsigned char _load_start_ ## fw ## _ecog[];        			\
                             extern unsigned char _load_stop_ ## fw ## _ecog[];			        \
-                            void *_xmm_start_ ## fw ## _ecog = _load_stop_ ## fw ## _ecog;       \
+                            void *_xmm_start_ ## fw ## _ecog = _load_start_ ## fw ## _ecog;       \
                             void *_xmm_stop_ ## fw ## _ecog = _load_stop_ ## fw ## _ecog
 
 
@@ -89,9 +89,9 @@ void main (int argc,  char* argv[])
     uint32_t off;
     size_t size;
 
-    /* default the base pin to 0 to indicate LEDs on P0-6 */
+    /* default the base pin to 16 to indicate LEDs on P16-23 to match the QuickStart board */
     if (_cfg_basepin == -1)
-    	_cfg_basepin = 0;
+    	_cfg_basepin = 16;
     	    
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;     /* start by waiting for 1 second */

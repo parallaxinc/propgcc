@@ -170,7 +170,7 @@ cd ../../propgcc
 #
 mkdir -p ../build/gcc
 cd ../build/gcc
-../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto --disable-shared ${CONFIG_OPTIONS}
+../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto --disable-shared --enable-libgomp ${CONFIG_OPTIONS}
 if test $? != 0
 then
    echo "gcc configure failed."
@@ -336,6 +336,33 @@ then
    exit 1
 fi
 cd ../../propgcc
+
+#
+# build tiny library
+#
+cd lib
+make clean
+if test $? != 0
+then
+  echo "tiny library build failed - make clean"
+  cd ..
+  exit 1
+fi
+make PREFIX=$PREFIX ${JOBS} tiny
+if test $? != 0
+then
+  echo "tiny library build failed - make"
+  cd ..
+  exit 1
+fi
+make PREFIX=$PREFIX install-tiny
+if test $? != 0
+then
+  echo "tiny library install failed"
+  cd ..
+  exit 1
+fi
+cd ..
 
 #
 # build propeller-load ... before gdb

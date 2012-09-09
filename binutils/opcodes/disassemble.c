@@ -547,6 +547,11 @@ disassemble_init_for_target (struct disassemble_info * info)
 	}
       break;
 #endif
+#ifdef ARCH_propeller
+    case bfd_arch_propeller:
+      info->disassembler_needs_relocs = TRUE;
+      break;
+#endif
     default:
       break;
     }

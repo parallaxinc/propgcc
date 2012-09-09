@@ -1,3 +1,5 @@
+#ifdef __PROPELLER_USE_XMM__
+
 #include <propeller.h>
 #include "launch.h"
 
@@ -20,3 +22,5 @@ int launchcog(uint32_t *code, uint32_t *end, void *param)
     
     return id;
 }
+
+#endif

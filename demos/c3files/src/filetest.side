@@ -1,0 +1,7 @@
+filetest.c
+printf.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>BOARD::C3

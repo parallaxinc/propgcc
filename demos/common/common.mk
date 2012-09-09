@@ -33,6 +33,9 @@ ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)
 endif
 
+CFLAGS_NO_MODEL := $(CFLAGS)
+CFLAGS += -m$(MODEL)
+CXXFLAGS += $(CFLAGS)
 LDFLAGS += -m$(MODEL) -fno-exceptions -fno-rtti
 
 ifneq ($(LDSCRIPT),)
@@ -47,8 +50,6 @@ AS = propeller-elf-as
 AR = propeller-elf-ar
 OBJCOPY = propeller-elf-objcopy
 LOADER = propeller-load
-
-CXXFLAGS += $(CFLAGS)
 
 # BSTC program
 BSTC=bstc
@@ -65,10 +66,10 @@ lib$(LIBNAME).a: $(OBJS)
 endif
 
 %.o: %.c
-	$(CC) -m$(MODEL) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 %.o: %.cpp
-	$(CC) -m$(MODEL) $(CXXFLAGS) -o $@ -c $<
+	$(CC) $(CXXFLAGS) -o $@ -c $<
 
 %.o: %.s
 	$(CC) -o $@ -c $<
@@ -79,7 +80,11 @@ endif
 # driver that the linker will place in the .text section.
 #
 %.cog: %.c
-	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -r -o $@ $<
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
+
+%.cog: %.cogc
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -xc -r -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 #
@@ -89,7 +94,11 @@ endif
 # gets loaded to high EEPROM space above 0x8000.
 #
 %.ecog: %.c
-	$(CC) $(CFLAGS) -r -mcog -o $@ $<
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -r -o $@ $<
+	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
+
+%.ecog: %.ecogc
+	$(CC) $(CFLAGS_NO_MODEL) -mcog -xc -r -o $@ $<
 	$(OBJCOPY) --localize-text --rename-section .text=$@ $@
 
 %.binary: %.elf
