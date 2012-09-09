@@ -70,10 +70,10 @@ PROPDIR = $(srcdir)/config/propeller
 $(T)spinboot.o: $(PROPDIR)/spinboot.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
-$(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s $(PROPDIR)/crt0_cmm.s
+$(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s $(PROPDIR)/crt0_cmm.s $(PROPDIR)/kernel.ext
 	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
 
-$(T)_crt0_debug.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s
+$(T)_crt0_debug.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s $(PROPDIR)/kernel.ext
 	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -DDEBUG_KERNEL -o $@ -c $<
 
 $(T)_crtbegin.o: $(PROPDIR)/crtbegin.S

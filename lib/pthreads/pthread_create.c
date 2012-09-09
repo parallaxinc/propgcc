@@ -38,6 +38,9 @@ atomic_t __pthreads_lock;
 
 #define ASSERT_LOCKED() assert(__pthreads_lock != 0)
 
+/* destructors for thread specific data */
+__pthread_destruct_func __pdestruct[PTHREAD_KEYS_MAX];
+
 /* this should be called only if we already hold the _pthread_lock */
 static void
 _pthread_addqueue(_pthread_queue_t *queue, _pthread_state_t *thr)
@@ -370,7 +373,27 @@ void
 pthread_exit(void *result)
 {
   _pthread_state_t *self = _pthread_self();
+  void *val;
+  int i;
+  int calledone;
+
   self->arg = result;
+  /* call destructors */
+  /* we have to keep doing this until all key values are NULL;
+     destructors are allowed to set keys
+  */
+  do {
+    calledone = 0;
+    for (i = 0; i < PTHREAD_KEYS_MAX; i++) {
+      val = pthread_getspecific(i);
+      if (val && __pdestruct[i]) {
+	pthread_setspecific(i, NULL);
+	(*__pdestruct[i])(val);
+	calledone = 1;
+      }
+    }
+  } while (calledone > 0);
+
   __lock_pthreads();
   if (self->flags & _PTHREAD_DETACHED)
     {

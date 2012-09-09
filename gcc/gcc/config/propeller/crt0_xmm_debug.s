@@ -1,4 +1,4 @@
-	.section .xmmkernel, "ax"
+	.section .kernel, "ax"
 
 	.global r0
 	.global r1
@@ -36,9 +36,9 @@ r7	add	sp, #4
 r8	rdlong	pc, sp
 r9	add	sp, #4
 r10	locknew	r2 wc
-r11 IF_NC wrlong r2,__C_LOCK_PTR
-r12	jmp	#__LMM_loop
-r13	long	0
+r11	or	r2,#256
+r12 IF_NC wrlong r2,__C_LOCK_PTR
+r13	jmp	#__LMM_loop
 r14	long	0
 r15	'' alias for lr
 lr	long	0
@@ -436,7 +436,7 @@ inc_dest1
 	.global __LMM_POPM_ret
 	.global __LMM_POPRET
 	.global __LMM_POPRET_ret
-
+	
 __LMM_POPRET
 	call	#__LMM_POPM
 	mov	pc,lr
@@ -471,81 +471,11 @@ __MASK_FFFFFFFF	long	0xFFFFFFFF
 	''
 	.global __TMP0
 	.global __TMP1
-	.global __DIVSI
-	.global __DIVSI_ret
-	.global __UDIVSI
-	.global __UDIVSI_ret
-	.global __CLZSI
-	.global __CLZSI_ret
-	.global __CTZSI
 __TMP0	long	0
 __TMP1	long	0
-__MASK_00FF00FF	long	0x00FF00FF
-__MASK_0F0F0F0F	long	0x0F0F0F0F
-__MASK_33333333	long	0x33333333
-__MASK_55555555	long	0x55555555
-__CLZSI	rev	r0, #0
-__CTZSI	neg	__TMP0, r0
-	and	__TMP0, r0	wz
-	mov	r0, #0
- IF_Z	mov	r0, #1
-	test	__TMP0, __MASK_0000FFFF	wz
- IF_Z	add	r0, #16
-	test	__TMP0, __MASK_00FF00FF	wz
- IF_Z	add	r0, #8
-	test	__TMP0, __MASK_0F0F0F0F	wz
- IF_Z	add	r0, #4
-	test	__TMP0, __MASK_33333333	wz
- IF_Z	add	r0, #2
-	test	__TMP0, __MASK_55555555	wz
- IF_Z	add	r0, #1
-__CLZSI_ret	ret
-__DIVR	long	0
-__DIVCNT	long	0
-__UDIVSI
-	mov	__DIVR, r0
-	call	#__CLZSI
-	neg	__DIVCNT, r0
-	mov	r0, r1 wz
- IF_Z	jmp	#__UDIV_BY_ZERO
-	call	#__CLZSI
-	add	__DIVCNT, r0
-	mov	r0, #0
-	cmps	__DIVCNT, #0	wz, wc
- IF_C	jmp	#__UDIVSI_done
-	shl	r1, __DIVCNT
-	add	__DIVCNT, #1
-__UDIVSI_loop
-	cmpsub	__DIVR, r1	wz, wc
-	addx	r0, r0
-	shr	r1, #1
-	djnz	__DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-	mov	r1, __DIVR
-__UDIVSI_ret	ret
-__DIVSGN	long	0
-__DIVSI	mov	__DIVSGN, r0
-	xor	__DIVSGN, r1
-	abs	r0, r0 wc
-	muxc	__DIVSGN, #1	' save original sign of r0
-	abs	r1, r1
-	call	#__UDIVSI
-	cmps	__DIVSGN, #0	wz, wc
- IF_B	neg	r0, r0
-	test	__DIVSGN, #1 wz	' check original sign of r0
- IF_NZ  neg	r1, r1		' make the modulus result match
-__DIVSI_ret	ret
-
-	'' come here on divide by zero
-	'' we probably should raise a signal
-__UDIV_BY_ZERO
-	neg	r0,#1
-	mov	r1,#0
-	jmp	#__UDIVSI_ret
 
 	.global __MULSI
 	.global __MULSI_ret
-__MULSI
 __MULSI
 	mov	__TMP0, r0
 	min	__TMP0, r1
@@ -620,6 +550,49 @@ cacheaddr               long    0
 cacheptr                long    0
 
 external_start          long    EXTERNAL_MEMORY_START       'start of external memory access window
+
+	''
+	'' code to load a buffer from hub memory into cog memory
+	''
+	'' parameters: __TMP0 = count of bytes
+	''             __TMP1 = hub address
+	''             __COGA = COG address
+	''
+	''
+__COGA	long 0
+dst1	long 1 << 9
+dummy	long 0
+	
+loadbuf
+	shr	__TMP0,#2	'' convert to longs
+	movd	.ldhlp,__COGA
+	mov	dummy, extern_mem_mask
+	and	dummy, __TMP1
+	tjz	dummy, #loadbuf_hub
+loadbuf_xmm
+	mov	dummy,pc
+	mov	pc,__TMP1
+	movd	.ldxfetch,__COGA
+.ldxlp
+	call	#read_code
+.ldxfetch
+	mov	0-0, L_ins0
+	add	pc,#4
+	add	.ldxlp,dst1
+	djnz	__TMP0,#.ldxlp
+	mov	pc,dummy
+	jmp	loadbuf_ret
+
+loadbuf_hub
+.ldhlp
+	rdlong	0-0, __TMP1
+	add	__TMP1,#4
+	add	.ldhlp,dst1
+	djnz	__TMP0,#.ldhlp
+	jmp	loadbuf_ret
+	
+loadbuf_ret
+	ret
 
 	''
 	'' FCACHE region
@@ -713,3 +686,5 @@ __CMPSWAPSI_ret
 __LMM_FCACHE_START
 	res	128	'' reserve 128 longs = 512 bytes
 
+
+	#include "kernel.ext"
