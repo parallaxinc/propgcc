@@ -32,7 +32,7 @@ HUBDATA volatile TvText_t *tvPtr;
  * In the case of __PROPELLER_XMM__ we must copy the PASM to
  * a temporary HUB buffer for cog start. Define buffer here.
  */
-#if defined(__PROPELLER_XMM__)
+#if defined(__PROPELLER_USE_XMM__)
 #define PASMLEN 496
 HUBDATA uint32_t pasm[PASMLEN];
 #endif
@@ -137,7 +137,7 @@ int tvText_start(int basepin)
     // blank the screen
     wordfill(tvPtr->screen, blank, TV_TEXT_SCREENSIZE);
 
-#if defined(__PROPELLER_XMM__)
+#if defined(__PROPELLER_USE_XMM__)
     // start new cog from external memory using pasm and tvPtr
     memcpy((char*)pasm,(char*)binary_TV_dat_start,PASMLEN<<2);
     gTvTextCog = cognew(pasm, (uint32_t)tvPtr) + 1;

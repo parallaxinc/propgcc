@@ -87,8 +87,8 @@ strtof(const char *str, char **endptr)
   if (c == 'I') {
     if (toupper(str[0]) == 'N' && toupper(str[1]) == 'F')
       {
-	str += 2;
-	v = HUGE_VALL;
+	str += 3;
+	v = HUGE_VALF;
 	if (minus) v = -v;
 	goto done;
       }
@@ -104,7 +104,8 @@ strtof(const char *str, char **endptr)
 	      c = *str++;
 	    } while (c != ')');
 	  }
-	v = _NANL;
+	str++;
+	v = _NANF;
 	if (minus) v = -v;
 	goto done;
       }
@@ -187,7 +188,7 @@ strtof(const char *str, char **endptr)
 
  done:
   if (endptr)
-    *endptr = (char *)str;
+    *endptr = (char *)(str-1);
   if (minus)
     v = -v;
   return v;

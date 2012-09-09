@@ -3,53 +3,55 @@
 
 int sem_init(sem_t *sem, int pshared, unsigned int value)
 {
-  pthread_cond_init(&sem->cond, NULL);
-  pthread_mutex_init(&sem->mutex, NULL);
+  if ((int)value < 0)
+    return EINVAL;
   sem->counter = value;
   return 0;
 }
 
 int sem_destroy(sem_t *sem)
 {
-  pthread_cond_destroy(&sem->cond);
-  pthread_mutex_destroy(&sem->mutex);
   return 0;
 }
 
 int sem_post(sem_t *sem)
 {
-  int result = __addlock(&sem->counter, 1);
-  if (result == 0) {
-    pthread_cond_signal(&sem->cond);
-  } 
+  __lock_pthreads();
+  sem->counter += 1;
+  if (sem->counter <= 0) {
+    __unlock_pthreads();
+    _pthread_wake(&sem->queue);
+  } else {
+    __unlock_pthreads();
+  }
  return 0;
 }
 
 int sem_wait(sem_t *sem)
 {
-  int result;
-
-  result = __addlock(&sem->counter, -1);
-  if (result < 0) {
-    pthread_mutex_lock(&sem->mutex);
-    for(;;) {
-      if (sem->counter >= 0) break;
-      pthread_cond_wait(&sem->cond, &sem->mutex);
-    }
-    pthread_mutex_unlock(&sem->mutex);
+  __lock_pthreads();
+  sem->counter -= 1;
+  if (sem->counter < 0) {
+    _pthread_sleep_with_lock(&sem->queue);
   }
+  __unlock_pthreads();
   return 0;
 }
 
 int sem_trywait(sem_t *sem)
 {
   int result;
+  int ret;
 
-  result = __addlock(&sem->counter, -1);
-  if (result < 0) {
-    __addlock(&sem->counter, 1);
+  __lock_pthreads();
+  result = sem->counter-1;
+  if (result >= 0) {
+    sem->counter = result;
+    ret = 0;
+  } else {
     errno = EAGAIN;
-    return -1;
+    ret = -1;
   }
-  return 0;
+  __unlock_pthreads();
+  return ret;
 }

@@ -1022,11 +1022,10 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char arg[8];
-	    char *arg2;
 	    strcpy(arg, "pc");
 
-	    arg2 = parse_dest(arg, &op1, &insn);
-	    arg2 = parse_src(arg, &op2, &insn, op->format);
+	    parse_dest(arg, &op1, &insn);
+	    parse_src(arg, &op2, &insn, op->format);
 	    str = parse_src_n(str, &insn2, 23);
 	    insn2_compressed = 1;
 	    size = 8;
@@ -1125,12 +1124,11 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 	    arg = malloc(32);
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "#__LMM_FCACHE_LOAD");
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
 	    str = parse_src_n(str, &insn2, 32);
 	    size = 8;
 	    insn2_compressed = 1;  /* insn2 is not an instruction */
@@ -1158,7 +1156,6 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 	    char *macroname = "dummy";
 
 	    switch (op->copc) {
@@ -1179,14 +1176,14 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "__TMP0");
-	    arg2 = parse_dest(arg, &op1, &insn);
+	    parse_dest(arg, &op1, &insn);
 	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
 	    sprintf(arg, "__LMM_%s_ret", macroname);
 	    // now set up the CALL instruction
 	    insn2.code = 0x5c800000 | (0xf << 18); 
-	    arg2 = parse_dest(arg, &op3, &insn2);
+	    parse_dest(arg, &op3, &insn2);
 	    sprintf(arg, "#__LMM_%s", macroname);
-	    arg2 = parse_src(arg, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
+	    parse_src(arg, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
 	    free(arg);
 
 	    size = 8;
@@ -1211,7 +1208,6 @@ md_assemble (char *instruction_string)
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 	    char *macroname = "dummy";
 
 	    switch (op->copc) {
@@ -1235,9 +1231,9 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    sprintf(arg, "%s_ret", macroname);
-	    arg2 = parse_dest(arg, &op1, &insn);
+	    parse_dest(arg, &op1, &insn);
 	    sprintf(arg, "#%s", macroname);
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMPRET);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMPRET);
 	    free(arg);
 
 	    size = 4;
@@ -1288,11 +1284,12 @@ md_assemble (char *instruction_string)
 	      reloc_prefix++;
 	    }
 	    insn_compressed = 1;
+	    insn2.code = 0;
+	    insn2.reloc.type = BFD_RELOC_NONE;
 	  }
 	else
 	  {
 	    char *arg;
-	    char *arg2;
 
 	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
 	    if (!(insn.code & (1<<22)))
@@ -1304,7 +1301,7 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "sp");
-	    arg2 = parse_dest(arg, &op4, &insn);
+	    parse_dest(arg, &op4, &insn);
 	    // now set up the ADD instruction
 	    insn2.code = 0x80800000 | (0xf << 18); 
 	    free(arg);
@@ -1373,7 +1370,6 @@ md_assemble (char *instruction_string)
 	      long n
 	*/
         char *arg;
-	char *arg2;
 	if (compress)
 	  {
 	    str = parse_src_n(str, &op2, 16);
@@ -1390,7 +1386,7 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "#__LMM_CALL");
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
 	    str = parse_src_n(str, &insn2, 32);
 	    size = 8;
 	    free(arg);
@@ -1446,7 +1442,7 @@ md_assemble (char *instruction_string)
 	  }
 	else
 	  {
-	    char *arg, *arg2;
+	    char *arg;
 	    arg = malloc(32);
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
@@ -1454,7 +1450,7 @@ md_assemble (char *instruction_string)
 	      sprintf(arg, "#__LMM_MVI_lr");
 	    else
 	      sprintf(arg, "#__LMM_MVI_r%d", reg);
-	    arg2 = parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
 	    free(arg);
 	    
 	    size = 8;
@@ -1792,6 +1788,9 @@ md_assemble (char *instruction_string)
     insn.reloc.type = BFD_RELOC_NONE;
     op1.reloc.type = BFD_RELOC_NONE;
     op2.reloc.type = BFD_RELOC_NONE;
+    /* no second instruction needed */
+    insn2.code = 0;
+    insn2.reloc.type = BFD_RELOC_NONE;
   }
  skip_compress:
 
@@ -1807,6 +1806,9 @@ md_assemble (char *instruction_string)
 
   {
     int insn_size;
+    int alloc_size;
+    int bytes_written = 0;
+#define CHECK_WRITTEN(n) do { bytes_written += (n); if (bytes_written > alloc_size) abort(); } while (0)
 
     if (compress && !insn_compressed) {
       /* we are in CMM mode, but failed to compress this instruction;
@@ -1822,14 +1824,17 @@ md_assemble (char *instruction_string)
       insn_size = 4;
     }
     to = frag_more (size);
+    alloc_size = size;
 
     if (compress) {
       if (!insn_compressed) {
 	md_number_to_chars (to, MACRO_NATIVE, 1);
+	CHECK_WRITTEN(1);
 	to++;
       } else if (insn_size > 4) {
 	/* handle the rare long compressed forms like mvi */
 	md_number_to_chars (to, insn.code, insn_size-4);
+	CHECK_WRITTEN(insn_size-4);
 	to += (insn_size-4);
 	insn_size = size = 4;
 	insn = insn2;
@@ -1838,6 +1843,7 @@ md_assemble (char *instruction_string)
       }
     }
     md_number_to_chars (to, insn.code, insn_size);
+    CHECK_WRITTEN(insn_size);
     if (insn.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix, 
 		   insn_size - reloc_prefix,
@@ -1859,9 +1865,11 @@ md_assemble (char *instruction_string)
       {
 	if (compress && !insn2_compressed) {
 	  md_number_to_chars ( to, MACRO_NATIVE, 1 );
+	  CHECK_WRITTEN(1);
 	  to++;
 	}
 	md_number_to_chars (to, insn2.code, 4);
+	CHECK_WRITTEN(4);
 	if(insn2.reloc.type != BFD_RELOC_NONE){
 	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
 		       &insn2.reloc.exp, insn2.reloc.pc_rel, insn2.reloc.type);
@@ -1893,26 +1901,29 @@ md_convert_frag (bfd * headers ATTRIBUTE_UNUSED,
 void
 propeller_frob_label (symbolS * sym)
 {
-  symbol_set_tc (sym, &cog_ram);
+  unsigned int flag = 0;
+  static const int null_flag = 0;
+
+  if (cog_ram) {
+    flag |= PROPELLER_OTHER_COG_RAM;
+  }
+  if (compress) {
+    flag |= PROPELLER_OTHER_COMPRESSED;
+  }
+  /* reset the tc marker for all newly created symbols */
+  if (flag) {
+    symbol_set_tc (sym, (int *)&null_flag);
+    S_SET_OTHER (sym, S_GET_OTHER (sym) | flag); 
+  }
 }
 
-void
-propeller_frob_symbol (symbolS * sym, int punt ATTRIBUTE_UNUSED)
-{
-  int *sy_tc = symbol_get_tc (sym);
-  if (*sy_tc)
-    {
-      S_SET_OTHER (sym, PROPELLER_OTHER_COG_RAM
-		   | (S_GET_OTHER (sym) & ~PROPELLER_OTHER_FLAGS));
-    }
-}
 
 valueT
 propeller_s_get_value (symbolS *s)
 {
   valueT val = S_GET_VALUE(s);
-  int *sy_tc = symbol_get_tc (s);
-  if(*sy_tc){
+  unsigned int flag = S_GET_OTHER(s);
+  if(flag & PROPELLER_OTHER_COG_RAM){
     val /= 4;
   }
   return val;

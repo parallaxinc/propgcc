@@ -10,8 +10,7 @@ extern "C" {
 
 typedef struct sem_t {
   volatile int counter;
-  pthread_mutex_t mutex;
-  pthread_cond_t cond;
+  _pthread_queue_t queue;
 } sem_t;
 
 int sem_init(sem_t *sem, int pshared, unsigned int value);

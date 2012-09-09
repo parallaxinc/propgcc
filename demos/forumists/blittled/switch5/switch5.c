@@ -16,12 +16,12 @@
 *
 *    Port         Pin on Switch   Description
 *    --------------------------------------
-*   	          Pin 1           No Contact
+*                 Pin 1           No Contact
 *    basePin      Pin 2           Right
-*    basePin + 1  Pin 3	          Down
-*    basePin + 2  Pin 4	          Left
-*                 Pin 5	          3.25V
-*    basePin + 3  Pin 6	          Center
+*    basePin + 1  Pin 3              Down
+*    basePin + 2  Pin 4              Left
+*                 Pin 5              3.25V
+*    basePin + 3  Pin 6              Center
 *    basePin + 4  Pin 7           Up
 *                 Pin 8           Ground         
 *--------------------------------------------------------------------------------------------
@@ -30,47 +30,47 @@
 #include "stdio.h"
 #include <cog.h>
 
-const int basePin = 0;			// Base pin for the 5 pin grouping 
+const int basePin = 0;            // Base pin for the 5 pin grouping 
 
 void main (int argc,  char* argv[])
 {
-  int mask = 0x0000001f << basePin;	// This masks only the pins of the grouping through
+  int mask = 0x0000001f << basePin;    // This masks only the pins of the grouping through
   int xormask = 0xffffff1f << basePin;  // Since the input goes low (0) when a switch is on
                                         // it needs to be inverted to show high (1) so this
-					// mask is used to invert it
+                    // mask is used to invert it
   int temp[5];                          // This array holds the value of a certain direction
   int i;                                // Loop counter
-  int state = 0;			// Holds the last value from the switch contacts
-  int a = 0;				// Holds the computed value from the switch contacts
-  int b = 0;                    	// Holds the current value from the switch contacts        
+  int state = 0;            // Holds the last value from the switch contacts
+  int a = 0;                // Holds the computed value from the switch contacts
+  int b = 0;                        // Holds the current value from the switch contacts        
 
   printf("\r\n\r\n5-Position Switch Demo\r\n");
 
-  state = INA & mask;			// Read in the inputs and mask it for switch contacts
+  state = INA & mask;            // Read in the inputs and mask it for switch contacts
   
-  for(;;)				// Loop continously
+  for(;;)                // Loop continously
   {
-    b = INA & mask;	                // Read in inputs
+    b = INA & mask;                    // Read in inputs
     a = b ^ state;                      // Xor with last reading to see if there is a change 
     waitcnt(CLKFREQ/2000 + CNT);        // 200 mSec delay for debouncing the switch for next reading
     
-    if (a != 0)				// Reading will be non-zero if there is a change from
-	                                // the previous reating
+    if (a != 0)                // Reading will be non-zero if there is a change from
+                                    // the previous reating
     {
-      state = b;	        	// Set the last reading to be the current value
+      state = b;                // Set the last reading to be the current value
       a = (b ^ xormask) >> basePin;     // Invert the current reading so switch will read high
                                         // and shift so it can be read into an array
-      for(i = 0; i < 5; i++)		// Put each switch state into an array value
+      for(i = 0; i < 5; i++)        // Put each switch state into an array value
       {
         temp[i] = a & 0x00000001;       // Mask only one switch in the lsb of the current value
-                                        // and put in the array	
+                                        // and put in the array    
         a = a >> 1;                     // Shift current value so next switch is in lsb
       }
       
       if(temp[0] == 1)                  // If temp[0] (Right) is high then display Right
         printf("Right\r\n");
       
-      if(temp[1] == 1)			// If temp[1] (Down) is high then display Down
+      if(temp[1] == 1)            // If temp[1] (Down) is high then display Down
         printf("Down\r\n");
 
       if(temp[2] == 1)                  // If temp[2] (Left) is high then display Left
@@ -83,7 +83,7 @@ void main (int argc,  char* argv[])
         printf("Up\r\n");
 
     }
-  }	
+  }    
 }
 /*
 +--------------------------------------------------------------------

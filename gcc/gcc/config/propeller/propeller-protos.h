@@ -47,6 +47,7 @@ extern bool propeller_pad_reg_upward (enum machine_mode, tree, int);
 extern void propeller_asm_output_aligned_common (FILE *, tree, const char *,
 						 int, int, int);
 
+extern void propeller_declare_function_name (FILE *, const char *, tree);
 #endif
 
 extern bool propeller_modes_tieable_p (enum machine_mode, enum machine_mode);
