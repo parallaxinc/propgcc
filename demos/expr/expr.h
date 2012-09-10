@@ -26,7 +26,10 @@ struct Variable {
     char name[1];
 };
 
+/* operator stack size */
 #define OSTACK_SIZE 16
+
+/* operand stack size */
 #define RSTACK_SIZE 16
 
 /* parse context */

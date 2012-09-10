@@ -66,6 +66,7 @@ void InitEvalState(EvalState *c, uint8_t *heap, size_t heapSize)
                                     Error(c, "operand stack overflow");     \
                                 *++(c)->rStackPtr = (v);                    \
                             } while (0)
+#define rStackCount(c)      (((c)->rStackPtr - (c)->rStack) + 1)
 #define rStackDrop(c)       ((c)->rStackPtr--)
 
 static int Prec(EvalState *c, int op);
@@ -79,8 +80,8 @@ static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right);
 int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
 {
     int unaryPossible = TRUE;
+    int tkn, count;
     PVAL pval;
-    int tkn;
     
     /* setup an error target */
     if (setjmp(c->errorTarget))
@@ -142,6 +143,15 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         Apply(c, op);
     }
     
+    /* if the operand stack is empty then there was no expression to parse */
+    if ((count = rStackCount(c)) == 0)
+        return FALSE;
+        
+    /* otherwise, make sure there is only one entry left on the operand stack */
+    else if (count != 1)
+        Error(c, "syntax error");
+    
+    /* return the expression value */
     RValue(c, &c->rStackPtr[0]);
     *pValue = c->rStackPtr[0].v.value;
     
@@ -228,12 +238,18 @@ static int Unary(int op)
 static void Apply(EvalState *c, int op)
 {
     if (Unary(op)) {
-        PVAL *pval = &c->rStackPtr[0];
+        PVAL *pval;
+        if (rStackCount(c) < 1)
+            Error(c, "synax error");
+        pval = &c->rStackPtr[0];
         ApplyUnary(c, op, pval);
     }
     else {
-        PVAL *left = &c->rStackPtr[-1];
-        PVAL *right = &c->rStackPtr[0];
+        PVAL *left, *right;
+        if (rStackCount(c) < 2)
+            Error(c, "syntax error");
+        left = &c->rStackPtr[-1];
+        right = &c->rStackPtr[0];
         ApplyBinary(c, op, left, right);
         rStackDrop(c);
     }
@@ -251,7 +267,7 @@ static void ApplyUnary(EvalState *c, int op, PVAL *pval)
         pval->v.value = (VALUE)~((int)pval->v.value);
         break;
     default:
-        Error(c, "internal error");
+        Error(c, "internal error - UnaryApply");
         break;
     }
 }
@@ -306,7 +322,7 @@ static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right)
             left->v.value = (VALUE)((int)left->v.value % (int)right->v.value);
             break;
         default:
-            Error(c, "internal error");
+            Error(c, "internal error - ApplyBinary");
             break;
         }
     }
@@ -555,7 +571,7 @@ static void RValue(EvalState *c, PVAL *pval)
         pval->v.value = pval->v.var->value;
         break;
     default:
-        Error(c, "internal error");
+        Error(c, "internal error - RValue");
     }
 }
 
