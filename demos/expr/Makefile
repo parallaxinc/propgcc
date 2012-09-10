@@ -1,4 +1,4 @@
-MODEL = lmm
+MODEL = cmm
 
 expr.elf:	Makefile expr.c
 	propeller-elf-gcc -m$(MODEL) -Wall -Os -m32bit-doubles -DMAIN -o expr.elf expr.c -lm

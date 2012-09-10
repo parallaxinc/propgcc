@@ -6,6 +6,7 @@
 #include <setjmp.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 #include "expr.h"
 
 #define TRUE    1
@@ -20,13 +21,18 @@
 #define TKN_UNARY_MINUS -4
 #define TKN_SHL         -5
 #define TKN_SHR         -6
+#define TKN_SIN         -7
+#define TKN_COS         -8
+#define TKN_TAN         -9
+#define TKN_SQRT        -10
+#define TKN_EXP         -11
 
 #define TYPE_NUMBER     1
 #define TYPE_VARIABLE   2
 
 static void RValue(EvalState *c, PVAL *pval);
 static int GetToken(EvalState *c, PVAL *pval);
-static void ParseIdentifier(EvalState *c, PVAL *pval);
+static int ParseIdentifier(EvalState *c, PVAL *pval);
 static void ParseNumber(EvalState *c, PVAL *pval);
 static int AddVariable(EvalState *c, char *id, PVAL *pval);
 static Variable *FindVariable(EvalState *c, char *id);
@@ -196,6 +202,11 @@ static int Prec(EvalState *c, int op)
         break;
     case TKN_UNARY_MINUS:
     case '~':
+    case TKN_SIN:
+    case TKN_COS:
+    case TKN_TAN:
+    case TKN_SQRT:
+    case TKN_EXP:
         precedence = 8;
         break;
     default:
@@ -212,6 +223,12 @@ static int Assoc(int op)
     switch (op) {
     case '=':
     case TKN_UNARY_MINUS:
+    case '~':
+    case TKN_SIN:
+    case TKN_COS:
+    case TKN_TAN:
+    case TKN_SQRT:
+    case TKN_EXP:
         associativity = ASSOC_RIGHT;
         break;
     default:
@@ -228,6 +245,11 @@ static int Unary(int op)
     switch (op) {
     case TKN_UNARY_MINUS:
     case '~':
+    case TKN_SIN:
+    case TKN_COS:
+    case TKN_TAN:
+    case TKN_SQRT:
+    case TKN_EXP:
         unary = TRUE;
         break;
     default:
@@ -267,6 +289,21 @@ static void ApplyUnary(EvalState *c, int op, PVAL *pval)
         break;
     case '~':
         pval->v.value = (VALUE)~((int)pval->v.value);
+        break;
+    case TKN_SIN:
+        pval->v.value = sin(pval->v.value);
+        break;
+    case TKN_COS:
+        pval->v.value = cos(pval->v.value);
+        break;
+    case TKN_TAN:
+        pval->v.value = tan(pval->v.value);
+        break;
+    case TKN_SQRT:
+        pval->v.value = sqrt(pval->v.value);
+        break;
+    case TKN_EXP:
+        pval->v.value = exp(pval->v.value);
         break;
     default:
         Error(c, "internal error - UnaryApply");
@@ -577,6 +614,18 @@ static void RValue(EvalState *c, PVAL *pval)
     }
 }
 
+static struct {
+    char *name;
+    int tkn;
+} keywords[] = {
+{   "sin",      TKN_SIN     },
+{   "cos",      TKN_COS     },
+{   "tan",      TKN_TAN     },
+{   "sqrt",     TKN_SQRT    },
+{   "exp",      TKN_EXP     },
+{   NULL,       TKN_NONE    }
+};
+
 static int GetToken(EvalState *c, PVAL *pval)
 {
     int tkn;
@@ -593,7 +642,7 @@ static int GetToken(EvalState *c, PVAL *pval)
     /* check for end of file (string) */
     if (*c->linePtr == '\0')
         return TKN_EOF;
-                    
+        
     /* check for a number */
     if (*c->linePtr == '.' || isdigit(*c->linePtr)) {
         ParseNumber(c, pval);
@@ -601,10 +650,8 @@ static int GetToken(EvalState *c, PVAL *pval)
     }
     
     /* check for an identifier */
-    else if (isalpha(*c->linePtr)) {
-        ParseIdentifier(c, pval);
-        tkn = TKN_IDENTIFIER;
-    }
+    else if (isalpha(*c->linePtr))
+        tkn = ParseIdentifier(c, pval);
     
     /* handle operators */
     else {
@@ -637,10 +684,11 @@ static void ParseNumber(EvalState *c, PVAL *pval)
     pval->v.value = strtod(c->linePtr, (char **)&c->linePtr);
 }
 
-static void ParseIdentifier(EvalState *c, PVAL *pval)
+static int ParseIdentifier(EvalState *c, PVAL *pval)
 {
     char id[ID_MAX];
     char *p = id;
+    int i;
     
     /* parse the identifier */
     while (*c->linePtr != '\0' && (isalnum(*c->linePtr) || *c->linePtr == '_')) {
@@ -650,6 +698,11 @@ static void ParseIdentifier(EvalState *c, PVAL *pval)
     }
     *p = '\0';
     
+    /* check for a function keyword */
+    for (i = 0; keywords[i].name != NULL; ++i)
+        if (strcasecmp(id, keywords[i].name) == 0)
+             return keywords[i].tkn;
+        
     /* check for an application symbol reference */
     if ((*c->findSymbol)(c->cookie, id, &pval->v.value))
         pval->type = TYPE_NUMBER;
@@ -657,6 +710,9 @@ static void ParseIdentifier(EvalState *c, PVAL *pval)
     /* check for a variable reference */
     else if (!AddVariable(c, id, pval))
         Error(c, "insufficient variable space");
+        
+    /* return an identifier */
+    return TKN_IDENTIFIER;
 }
 
 static int AddVariable(EvalState *c, char *id, PVAL *pval)
