@@ -36,8 +36,10 @@ static void Error(EvalState *c, const char *fmt, ...);
 void InitEvalState(EvalState *c, uint8_t *heap, size_t heapSize)
 {
     memset(c, 0, sizeof(EvalState));
+#ifdef USE_SHUNTING_YARD_ALGORITHM
     c->oStackTop = (int *)((char *)c->oStack + sizeof(c->oStack));
     c->rStackTop = (PVAL *)((char *)c->rStack + sizeof(c->rStack));
+#endif
     c->base = heap;
     c->free = heap;
     c->top = heap + heapSize;
