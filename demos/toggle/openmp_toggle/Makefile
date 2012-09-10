@@ -1,3 +1,9 @@
+#
+# Makefile for OpenMP toggle demo program
+#
+# builds toggle.elf (single cog version) and toggle_omp.elf (multiple cog version)
+#
+
 MODEL=lmm
 CC=propeller-elf-gcc
 CFLAGS=-Os -m$(MODEL)

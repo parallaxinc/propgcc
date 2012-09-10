@@ -1,31 +1,53 @@
 /*
   OpenMP version of the toggle demo
+  Copyright (c) 2012 Total Spectrum Software Inc.
+  Terms of use: MIT license (see end of file)
 */
 
 #include <propeller.h>
 
+/* toggle all pins between FIRSTPIN and (LASTPIN-1) */
 #define FIRSTPIN 16
 #define LASTPIN  24
 
-void toggle(int pin, int delay)
+/* set up a pin for output, and turn it on */
+void on(int pin)
 {
   _DIRA |= (1<<pin);
+  _OUTA |= (1<<pin);
+}
+
+/* toggle a pin, then delay for "delay" cycles */
+void toggle(int pin, int delay)
+{
   _OUTA ^= (1<<pin);
   waitcnt(CNT+delay);
 }
 
 
+/* main loop; turn all the pins on, then toggle them */
 int
 main()
 {
   int i;
   int delay = CLKFREQ / 4;
   
+  /* omp parallel will initialize the multi-threaded code */
 #pragma omp parallel
-  for(;;) {
+  {
+    /* run this loop in parallel; this is necessary so that all of our
+       output cogs get set up with DIRA properly */
 #pragma omp for
-    for (i = FIRSTPIN; i < LASTPIN; i++) {
-      toggle(i, delay);
+    for (i = FIRSTPIN; i < LASTPIN; i++)
+      on(i);
+
+    for(;;) {
+
+      /* run this loop in parallel, so the pins all get toggled together */
+#pragma omp for
+      for (i = FIRSTPIN; i < LASTPIN; i++) {
+	toggle(i, delay);
+      }
     }
   }
 }
