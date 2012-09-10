@@ -45,7 +45,7 @@ tiny:	$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
-	
+
 install-tiny:
 	cp $(OBJDIR)/lmm/libtiny.a $(DEST)/lib/
 	cp $(OBJDIR)/lmm/short-doubles/libtiny.a $(DEST)/lib/short-doubles/
@@ -62,7 +62,7 @@ hello.elf: hello.c
 
 SRCLIBS = libc.a libm.a libpthread.a
 
-install: all install-dirs install-includes
+install: all install-dirs install-includes install-specs
 	cp $(addprefix $(OBJDIR)/lmm/, $(SRCLIBS)) $(DEST)/lib/
 	cp $(addprefix $(OBJDIR)/lmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/short-doubles/
 	cp $(addprefix $(OBJDIR)/cmm/, $(SRCLIBS)) $(DEST)/lib/cmm/
@@ -81,6 +81,18 @@ install-dirs:
 	mkdir -p $(DEST)/lib/cmm/short-doubles/
 	mkdir -p $(DEST)/lib/xmm/short-doubles/
 	mkdir -p $(DEST)/lib/xmmc/short-doubles/
+
+LIBSPECS = libgomp.spec
+
+install-specs:
+	cp $(LIBSPECS) $(DEST)/lib/
+	cp $(LIBSPECS) $(DEST)/lib/short-doubles/
+	cp $(LIBSPECS) $(DEST)/lib/cmm/
+	cp $(LIBSPECS) $(DEST)/lib/cmm/short-doubles/
+	cp $(LIBSPECS) $(DEST)/lib/xmm/
+	cp $(LIBSPECS) $(DEST)/lib/xmm/short-doubles/
+	cp $(LIBSPECS) $(DEST)/lib/xmmc/
+	cp $(LIBSPECS) $(DEST)/lib/xmmc/short-doubles/
 
 install-includes:
 	cp -r include $(DEST)
