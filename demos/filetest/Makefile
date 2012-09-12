@@ -1,16 +1,24 @@
 CC=propeller-elf-gcc
-MODEL=cmm
+MODEL?=cmm
 CFLAGS=-m$(MODEL) -Os -mfcache
 LDFLAGS=-m$(MODEL) -fno-exceptions -fno-rtti
 OBJDIR=./
-SRCDIR=../src
+SRCDIR=./
 BOARD=$(PROPELLER_LOAD_BOARD)
 
-OBJS = filetest.o printf.o
+OBJS = filetest.o
 HDRS =
 
 ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)
+endif
+
+ifeq ($(MODEL),cmm)
+OBJS += printf.o
+endif
+
+ifeq ($(MODEL),lmm)
+OBJS += printf.o
 endif
 
 filetest.elf:	$(OBJS)
