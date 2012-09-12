@@ -25,9 +25,10 @@ LIB2FUNCS_EXTRA =
 # compiled; these are pretty big anyway, and not often used
 # also, we do have a few assembly things as well
 
+FLOATASMFUNCS = _subsf3 _addsf3 _mulsf3 _divsf3 _floatsisf _loadfloat
 FAKEASMFUNCS = _multc3 _divtc3
-LIB1ASMFUNCS = $(FAKEASMFUNCS)
-LIB1ASMSRC = propeller/libgccExtras/fake_libgcc.asm
+LIB1ASMFUNCS = $(FAKEASMFUNCS) $(FLOATASMFUNCS)
+LIB1ASMSRC = propeller/lib1funcs.asm
 
 LIBGCC2_CFLAGS += -Os
 TARGET_LIBGCC2_CFLAGS = -Os -fomit-frame-pointer
