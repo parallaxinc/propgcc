@@ -6,7 +6,7 @@
 # The program starts up the file driver and then prompts for a command.
 #
 # Written by Dave Hein
-# Copyright (c) 2011 Parallax, Inc.
+# Copyright (c) 2011, 2012 Parallax, Inc.
 # MIT Licensed
 ############################################################################
 */
@@ -21,6 +21,19 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/sd.h>
+
+// The loader will automatically initialize the pin settings for the SD card
+// if the board CFG file contains the SD pin description, and the ELF file
+// contains the symbol table (i.e., the -s option was not specified).
+// Otherwise, the mount function can be called by defining CALL_MOUNT and one
+// one of the board types listed below.  You can also specify your own SD pin
+// configuration by editing one of the examples that most closely matches your
+// specific board.
+#undef  CALL_MOUNT
+#undef  SPINNERET_CARD
+#undef  PROP_BOE
+#undef  C3_CARD
+#undef  PARALLEL_SPI
 
 extern _Driver _SimpleSerialDriver;
 extern _Driver _FileDriver;
@@ -67,6 +80,7 @@ void Pwd(int argc, char **argv)
 
 void Mkdir(int argc, char **argv)
 {
+#if !defined(__PROPELLER_LMM__) || !defined(CALL_MOUNT)
     int i;
 
     for (i = 1; i < argc; i++)
@@ -74,10 +88,14 @@ void Mkdir(int argc, char **argv)
         if (mkdir(argv[i], 0))
             perror(argv[i]);
     }
+#else
+    printf("Not enough memory for mkdir\n");
+#endif
 }
 
 void Rmdir(int argc, char **argv)
 {
+#if !defined(__PROPELLER_LMM__) || !defined(CALL_MOUNT)
     int i;
 
     for (i = 1; i < argc; i++)
@@ -85,6 +103,9 @@ void Rmdir(int argc, char **argv)
         if (rmdir(argv[i]))
             perror(argv[i]);
     }
+#else
+    printf("Not enough memory for rmdir\n");
+#endif
 }
 
 /* This routine implements the file cat function */
@@ -392,6 +413,117 @@ void CloseRedirection()
     }
 }
 
+#ifdef CALL_MOUNT
+void mount()
+{
+    printf("Load and mount SD: ");
+    _SD_Params* mountParams = (_SD_Params*)-1;
+
+// Important: This code assumes you're using a C3 card.
+// If you're using different hardware, make sure you
+// change the following initialization to match your card!
+
+#ifdef SPINNERET_CARD
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_SingleSPI,
+        pins:
+        {
+            SingleSPI:
+            {
+                MISO: 16,   // The pin attached to the SD card's MISO or DO output
+                CLK:  21,   // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 20,   // The pin attached to the SD card's MOSI or DI input
+                CS:   19    // The pin attached to the SD card's CS input
+            }
+        }
+    };
+    mountParams = &params;
+#endif
+
+#ifdef PROP_BOE /* Board of Education */
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_SingleSPI,
+        pins:
+        {
+            SingleSPI:
+            {
+                MISO: 22,   // The pin attached to the SD card's MISO or DO output
+                CLK:  23,   // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 24,   // The pin attached to the SD card's MOSI or DI input
+                CS:   25    // The pin attached to the SD card's CS input
+            }
+        }
+    };
+    mountParams = &params;
+#endif
+
+#ifdef C3_CARD
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_SerialDeMUX,
+        pins:
+        {
+            SerialDeMUX:
+            {
+                MISO: 10,    // The pin attached to the SD card's MISO or DO output
+                CLK:  11,    // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 9,     // The pin attached to the SD card's MOSI or DI input
+                CLR:  25,    // The pin attached to the counter's reset/clear pin
+                INC:  8,     // The pin attached to the counter's clock/count pin
+                ADDR: 5,     // The SD card's demux address (the counter's count)
+            }
+        }
+    };
+    mountParams = &params;
+#endif
+
+#ifdef PARALLEL_SPI /* This is a hypothetical example - modify to suit your needs */
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_ParallelDeMUX,
+        pins:
+        {
+            ParallelDeMUX:
+            {
+                MISO: 4,    // The pin attached to the SD card's MISO or DO output
+                CLK:  5,    // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 6,    // The pin attached to the SD card's MOSI or DI input
+                CS:   0,    // The pin attached to the counter's reset/clear pin
+                START: 2,   // The start bit of the pin mask to set when selecting the SD card's deMUX address
+                WIDTH: 3,   // The width of the pin mask for all pins attached to the deMUX address
+        ADDR: 5     // The value to write to the select field when selecting the SD card's deMUX address
+            }
+        }
+    };
+    mountParams = &params;
+#endif
+
+#if defined(__PROPELLER_XMMC__) && defined(SD_IS_USING_SD_CACHE_DRIVER)
+    // Pass NULL as the params. In this case, we'll use the SD Cache driver.
+    // Beware: This only works if you're running your program
+    // cached off of the SD card (i.e. propeller-load -z).
+    mountParams = 0;
+#endif
+
+    if (mountParams == (_SD_Params*)-1)
+    {
+        printf("You must specify the SD paramters in the filetest.c\n");
+        exit(1);
+    }
+
+    uint32_t mountErr = dfs_mount(mountParams);
+    if (mountErr)
+    {
+        printf("Mount error: %d\n", mountErr);
+        exit(1);
+    }
+
+    printf("done.\n\n");
+}
+#endif
+
 /* The program starts the file system.  It then loops reading commands
    and calling the appropriate routine to process it. */
 int main()
@@ -405,6 +537,10 @@ int main()
 
     // Wait for the serial terminal to start
     waitcnt(CNT + CLKFREQ);
+
+#ifdef CALL_MOUNT
+    mount();
+#endif
 
     Help();
 
