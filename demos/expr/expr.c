@@ -106,8 +106,11 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
             unaryPossible = FALSE;
             break;
         case TKN_FCN:
-            oStackPushData(c, pval.v.fcn);
+            oStackPush(c, c->argc);
+            oStackPushData(c, c->fcn);
             oStackPush(c, tkn);
+            c->fcn = pval.v.fcn;
+            c->argc = 0;
             break;
         case '(':
             oStackPush(c, tkn);
@@ -124,6 +127,8 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
                 Apply(c, op);
             }
             RValue(c, c->rStackPtr);
+            if (c->fcn)
+                ++c->argc;
             unaryPossible = FALSE;
             break;
         case ')':
@@ -137,12 +142,23 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
                 Apply(c, op);
             }
             RValue(c, c->rStackPtr);
+            if (c->fcn)
+                ++c->argc;
             if (!oStackIsEmpty(c) && oStackTop(c) == TKN_FCN) {
                 Function *fcn;
+                int argc;
                 oStackDrop(c);
                 fcn = oStackTopData(c);
                 oStackDrop(c);
-                (*fcn->fcn)(c);
+                argc = oStackTop(c);
+                oStackDrop(c);
+                if (c->argc < c->fcn->argc)
+                    Error(c, "too few arguments");
+                else if (c->argc > c->fcn->argc)
+                    Error(c, "too many arguments");
+                (*c->fcn->fcn)(c);
+                c->fcn = fcn;
+                c->argc = argc;
             }
             unaryPossible = FALSE;
             break;
