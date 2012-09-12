@@ -137,7 +137,16 @@ GOMP_parallel_start( void (*fn)(void *), void *data, unsigned num_threads)
 void
 GOMP_parallel_end()
 {
+    int i;
+
+    /* make sure other cogs have finished */
     wait_others();
+
+    /* shut down other cogs and free their memory */
+    for (i = 1; i < team.numthreads; i++) {
+      __builtin_propeller_cogstop(team.threadmap[i]);
+      free(team.stacks[i]);
+    }
     team.started = 0;
 }
 
