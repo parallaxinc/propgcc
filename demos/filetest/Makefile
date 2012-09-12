@@ -1,33 +1,34 @@
-# #########################################################
-# This makefile builds the filetest/xmm program
-#   
-# Copyright (c) 2011 Parallax, Inc.
-# All rights MIT licensed
-# #########################################################
+CC=propeller-elf-gcc
+MODEL?=cmm
+CFLAGS=-m$(MODEL) -Os -mfcache
+LDFLAGS=-m$(MODEL) -fno-exceptions -fno-rtti
+OBJDIR=./
+SRCDIR=./
+BOARD=$(PROPELLER_LOAD_BOARD)
 
-# Path to shared demo library
-PROPLIB = ../common
-
-#
-# name and objects for this program
-#
-
-NAME = filetest
 OBJS = filetest.o
+HDRS =
 
-# memory model
-MODEL ?= xmmc
+ifneq ($(BOARD),)
+BOARDFLAG=-b$(BOARD)
+endif
 
-# flags to build with
-CFLAGS = -Os -mfcache
+ifeq ($(MODEL),cmm)
+OBJS += printf.o
+endif
 
-# where to find the source files
-vpath %.c ..
+ifeq ($(MODEL),lmm)
+OBJS += printf.o
+endif
 
-# default build target
-all: $(NAME).elf
+filetest.elf:	$(OBJS)
+	$(CC) $(LDFLAGS) $(OBJS) -o $@
 
-#
-# include the fragment that defines most of everything
-#
-include $(PROPLIB)/common.mk
+run:
+	propeller-load $(BOARDFLAG) filetest.elf -r -t
+
+clean:
+	rm -f *.o *.elf
+
+$(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS)
+	$(CC) $(CFLAGS) -c $< -o $@

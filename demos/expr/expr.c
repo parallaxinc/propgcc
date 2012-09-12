@@ -4,6 +4,7 @@
 #include <setjmp.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 #include "expr.h"
 
 #define TRUE    1
@@ -15,39 +16,53 @@
 #define TKN_EOF         -1
 #define TKN_IDENTIFIER  -2
 #define TKN_NUMBER      -3
-#define TKN_SHL         -4
-#define TKN_SHR         -5
-#define TKN_LE          -6
-#define TKN_EQ          -7
-#define TKN_NE          -8
-#define TKN_GE          -9
-#define TKN_AND         -10
-#define TKN_OR          -11
+#define TKN_UNARY_MINUS -4
+#define TKN_SHL         -5
+#define TKN_SHR         -6
+#define TKN_FCN         -7
 
-#define TYPE_NUMBER     1
-#define TYPE_VARIABLE   2
+/* operator associativities */
+#define ASSOC_LEFT      1
+#define ASSOC_RIGHT     2
 
-typedef struct {
-    int type;
-    union {
-        VALUE value;
-        Variable *var;
-    } v;
-} PVAL;
+/* operator stack macros */
+#define oStackIsEmpty(c)    ((c)->oStackPtr < (c)->oStack)
+#define oStackPush(c,v)     do {                                            \
+                                if ((c)->oStackPtr >= (c)->oStackTop)       \
+                                    Error(c, "operator stack overflow");    \
+                                ++(c)->oStackPtr;                           \
+                                (c)->oStackPtr->op = (v);                   \
+                            } while (0)
+#define oStackPushData(c,v) do {                                            \
+                                if ((c)->oStackPtr >= (c)->oStackTop)       \
+                                    Error(c, "operator stack overflow");    \
+                                ++(c)->oStackPtr;                           \
+                                (c)->oStackPtr->data = (v);                 \
+                            } while (0)
+#define oStackTop(c)        ((c)->oStackPtr->op)
+#define oStackTopData(c)    ((c)->oStackPtr->data)
+#define oStackDrop(c)       (--(c)->oStackPtr)
+                        
+/* operand stack macros */
+#define rStackIsEmpty(c)    ((c)->rStackPtr < (c)->rStack)
+#define rStackPush(c,v)     do {                                            \
+                                if ((c)->rStackPtr >= (c)->rStackTop)       \
+                                    Error(c, "operand stack overflow");     \
+                                *++(c)->rStackPtr = (v);                    \
+                            } while (0)
+#define rStackCount(c)      (((c)->rStackPtr - (c)->rStack) + 1)
+#define rStackDrop(c)       ((c)->rStackPtr--)
 
+static int Prec(EvalState *c, int op);
+static int Assoc(int op);
+static int Unary(int op);
+static void Apply(EvalState *c, int op);
+static void ApplyUnary(EvalState *c, int op, PVAL *pval);
+static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right);
 static void RValue(EvalState *c, PVAL *pval);
-static void EvalExpr1(EvalState *c, PVAL *pval);
-static void EvalExpr2(EvalState *c, PVAL *pval);
-static void EvalExpr3(EvalState *c, PVAL *pval);
-static void EvalExpr4(EvalState *c, PVAL *pval);
-static void EvalExpr5(EvalState *c, PVAL *pval);
-static void EvalExpr6(EvalState *c, PVAL *pval);
-static void EvalExpr7(EvalState *c, PVAL *pval);
-static void EvalExpr8(EvalState *c, PVAL *pval);
-static void EvalPrimary(EvalState *c, PVAL *pval);
 static int GetToken(EvalState *c, PVAL *pval);
-static void EvalIdentifier(EvalState *c, PVAL *pval);
-static void EvalNumber(EvalState *c, PVAL *pval);
+static int ParseIdentifier(EvalState *c, PVAL *pval);
+static void ParseNumber(EvalState *c, PVAL *pval);
 static int AddVariable(EvalState *c, char *id, PVAL *pval);
 static Variable *FindVariable(EvalState *c, char *id);
 static void Error(EvalState *c, const char *fmt, ...);
@@ -55,15 +70,19 @@ static void Error(EvalState *c, const char *fmt, ...);
 /* InitEvalState - initialize the expression evaluator state */
 void InitEvalState(EvalState *c, uint8_t *heap, size_t heapSize)
 {
-    memset(c, 0, sizeof(EvalState));  
+    memset(c, 0, sizeof(EvalState));
+    c->oStackTop = (oEntry *)((char *)c->oStack + sizeof(c->oStack));
+    c->rStackTop = (PVAL *)((char *)c->rStack + sizeof(c->rStack));
     c->base = heap;
     c->free = heap;
     c->top = heap + heapSize;
 }
 
-/* EvalExpr - Eval and evaluate an expression */
+/* EvalExpr - Eval and evaluate an expression using the shunting yard algorithm */
 int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
 {
+    int unaryPossible = TRUE;
+    int tkn, count, prec, op;
     PVAL pval;
     
     /* setup an error target */
@@ -74,19 +93,289 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
     c->linePtr = (char *)str;
     c->savedToken = TKN_NONE;
     
-    /* evaluate an expression */
-    EvalExpr1(c, &pval);
+    /* initialize the operator and operand stacks */
+    c->oStackPtr = c->oStack - 1;
+    c->rStackPtr = c->rStack - 1;
     
-    /* return the value */
-    RValue(c, &pval);
-    *pValue = pval.v.value;
+    /* handle each input token */
+    while ((tkn = GetToken(c, &pval)) != TKN_EOF) {
+        switch (tkn) {
+        case TKN_IDENTIFIER:
+        case TKN_NUMBER:
+            rStackPush(c, pval);
+            unaryPossible = FALSE;
+            break;
+        case TKN_FCN:
+            oStackPush(c, c->argc);
+            oStackPushData(c, c->fcn);
+            oStackPush(c, tkn);
+            c->fcn = pval.v.fcn;
+            c->argc = 0;
+            break;
+        case '(':
+            oStackPush(c, tkn);
+            unaryPossible = TRUE;
+            break;
+        case ',':
+            for (;;) {
+                if (oStackIsEmpty(c))
+                    Error(c, "mismatched parens");
+                op = oStackTop(c);
+                if (op == '(')
+                    break;
+                oStackDrop(c);
+                Apply(c, op);
+            }
+            RValue(c, c->rStackPtr);
+            if (c->fcn)
+                ++c->argc;
+            unaryPossible = FALSE;
+            break;
+        case ')':
+            for (;;) {
+                if (oStackIsEmpty(c))
+                    Error(c, "mismatched parens");
+                op = oStackTop(c);
+                oStackDrop(c);
+                if (op == '(')
+                    break;
+                Apply(c, op);
+            }
+            RValue(c, c->rStackPtr);
+            if (c->fcn)
+                ++c->argc;
+            if (!oStackIsEmpty(c) && oStackTop(c) == TKN_FCN) {
+                Function *fcn;
+                int argc;
+                oStackDrop(c);
+                fcn = oStackTopData(c);
+                oStackDrop(c);
+                argc = oStackTop(c);
+                oStackDrop(c);
+                if (c->argc < c->fcn->argc)
+                    Error(c, "too few arguments");
+                else if (c->argc > c->fcn->argc)
+                    Error(c, "too many arguments");
+                (*c->fcn->fcn)(c);
+                c->fcn = fcn;
+                c->argc = argc;
+            }
+            unaryPossible = FALSE;
+            break;
+        default:
+            if (unaryPossible && tkn == '-')
+                tkn = TKN_UNARY_MINUS;
+            prec = Prec(c, tkn);
+            while (!oStackIsEmpty(c)) {
+                int stackPrec = Prec(c, oStackTop(c));
+                if ((Assoc(tkn) == ASSOC_LEFT && prec > stackPrec) || prec >= stackPrec)
+                    break;
+                op = oStackTop(c);
+                oStackDrop(c);
+                Apply(c, op);
+            }
+            oStackPush(c, tkn);
+            unaryPossible = TRUE;
+            break;
+        }
+    }
     
-    /* make sure there isn't any junk at the end of the line */
-    if (GetToken(c, &pval) != TKN_EOF)
-        Error(c, "invalid expression");
+    /* apply all of the remaining operands on the operator stack */
+    while (!oStackIsEmpty(c)) {
+        int op = oStackTop(c);
+        oStackDrop(c);
+        if (op == '(')
+            Error(c, "mismatched parens");
+        Apply(c, op);
+    }
+    
+    /* if the operand stack is empty then there was no expression to parse */
+    if ((count = rStackCount(c)) == 0)
+        return FALSE;
         
+    /* otherwise, make sure there is only one entry left on the operand stack */
+    else if (count != 1)
+        Error(c, "syntax error");
+    
+    /* return the expression value */
+    RValue(c, &c->rStackPtr[0]);
+    *pValue = c->rStackPtr[0].v.value;
+    
     /* return successfully */
     return TRUE;
+}
+
+/* Prec - return the precedence of an operator */
+static int Prec(EvalState *c, int op)
+{
+    int precedence;
+    switch (op) {
+    case '(':
+        precedence = 0;
+        break;
+    case '=':
+        precedence = 1;
+        break;
+    case '|':
+        precedence = 2;
+        break;
+    case '^':
+        precedence = 3;
+        break;
+    case '&':
+        precedence = 4;
+        break;
+    case TKN_SHL:
+    case TKN_SHR:
+        precedence = 5;
+        break;
+    case '+':
+    case '-':
+        precedence = 6;
+        break;
+    case '*':
+    case '/':
+    case '%':
+        precedence = 7;
+        break;
+    case TKN_UNARY_MINUS:
+    case '~':
+    case TKN_FCN:
+        precedence = 8;
+        break;
+    default:
+        Error(c, "unknown operator -- '%c'", op);
+        break;
+    }
+    return precedence;
+}
+
+/* Assoc - return the associativity of an operator */
+static int Assoc(int op)
+{
+    int associativity;
+    switch (op) {
+    case '=':
+    case TKN_UNARY_MINUS:
+    case '~':
+    case TKN_FCN:
+        associativity = ASSOC_RIGHT;
+        break;
+    default:
+        associativity = ASSOC_LEFT;
+        break;
+    }
+    return associativity;
+}
+
+/* Unary - determine if a unary operator */
+static int Unary(int op)
+{
+    int unary;
+    switch (op) {
+    case TKN_UNARY_MINUS:
+    case '~':
+    case TKN_FCN:
+        unary = TRUE;
+        break;
+    default:
+        unary = FALSE;
+    }
+    return unary;
+}
+
+/* Apply - apply an operator to operands */
+static void Apply(EvalState *c, int op)
+{
+    if (Unary(op)) {
+        PVAL *pval;
+        if (rStackCount(c) < 1)
+            Error(c, "syntax error");
+        pval = &c->rStackPtr[0];
+        ApplyUnary(c, op, pval);
+    }
+    else {
+        PVAL *left, *right;
+        if (rStackCount(c) < 2)
+            Error(c, "syntax error");
+        left = &c->rStackPtr[-1];
+        right = &c->rStackPtr[0];
+        ApplyBinary(c, op, left, right);
+        rStackDrop(c);
+    }
+}
+
+/* ApplyUnary - apply a unary operator to an operand */
+static void ApplyUnary(EvalState *c, int op, PVAL *pval)
+{
+    RValue(c, pval);
+    switch (op) {
+    case TKN_UNARY_MINUS:
+        pval->v.value = -pval->v.value;
+        break;
+    case '~':
+        pval->v.value = (VALUE)~((int)pval->v.value);
+        break;
+    default:
+        Error(c, "internal error - UnaryApply");
+        break;
+    }
+}
+
+/* ApplyBinary - apply a binary operator to operands */
+static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right)
+{
+    RValue(c, right);
+    if (op == '=') {
+        if (left->type != TYPE_VARIABLE)
+            Error(c, "expecting a variable to the left of '='");
+        left->v.var->value = right->v.value;
+        left->v.var->bound = TRUE;
+        left->type = TYPE_NUMBER;
+        left->v.value = right->v.value;
+    }
+    else {
+        RValue(c, left);
+        switch (op) {
+        case '|':
+            left->v.value = (VALUE)((int)left->v.value | (int)right->v.value);
+            break;
+        case '^':
+            left->v.value = (VALUE)((int)left->v.value ^ (int)right->v.value);
+            break;
+        case '&':
+            left->v.value = (VALUE)((int)left->v.value & (int)right->v.value);
+            break;
+        case TKN_SHL:
+            left->v.value = (VALUE)((int)left->v.value << (int)right->v.value);
+            break;
+        case TKN_SHR:
+            left->v.value = (VALUE)((int)left->v.value >> (int)right->v.value);
+            break;
+        case '+':
+            left->v.value += right->v.value;
+            break;
+        case '-':
+            left->v.value -= right->v.value;
+            break;
+        case '*':
+            left->v.value *= right->v.value;
+            break;
+        case '/':
+            if ((int)right->v.value == 0)
+                Error(c, "division by zero");
+            left->v.value /= right->v.value;
+            break;
+        case '%':
+            if ((int)left->v.value == 0)
+                Error(c, "division by zero");
+            left->v.value = (VALUE)((int)left->v.value % (int)right->v.value);
+            break;
+        default:
+            Error(c, "internal error - ApplyFunction");
+            break;
+        }
+    }
 }
 
 static void RValue(EvalState *c, PVAL *pval)
@@ -102,204 +391,7 @@ static void RValue(EvalState *c, PVAL *pval)
         pval->v.value = pval->v.var->value;
         break;
     default:
-        Error(c, "internal error");
-    }
-}
-
-/* EvalExpr1 - handle the '=' operator */
-static void EvalExpr1(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    int tkn;
-    EvalExpr2(c, pval);
-    while ((tkn = GetToken(c, &pval2)) == '=') {
-        if (pval->type != TYPE_VARIABLE)
-            Error(c, "expecting a variable to the left of '='");
-        EvalExpr1(c, &pval2);
-        RValue(c, &pval2);
-        pval->v.var->value = pval2.v.value;
-        pval->v.var->bound = TRUE;
-        pval->type = TYPE_NUMBER;
-        pval->v.value = pval2.v.value;
-    }
-    c->savedToken = tkn;
-}
-
-/* EvalExpr2 - handle the '|' operator */
-static void EvalExpr2(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    int tkn;
-    EvalExpr3(c, pval);
-    while ((tkn = GetToken(c, &pval2)) == '|') {
-        RValue(c, pval);
-        EvalExpr3(c, &pval2);
-        RValue(c, &pval2);
-        pval->v.value = (VALUE)((int)pval->v.value | (int)pval2.v.value);
-    }
-    c->savedToken = tkn;
-}
-
-/* EvalExpr3 - handle the '^' operator */
-static void EvalExpr3(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    int tkn;
-    EvalExpr4(c, pval);
-    while ((tkn = GetToken(c, &pval2)) == '^') {
-        RValue(c, pval);
-        EvalExpr4(c, &pval2);
-        RValue(c, &pval2);
-        pval->v.value = (VALUE)((int)pval->v.value ^ (int)pval2.v.value);
-    }
-    c->savedToken = tkn;
-}
-
-/* EvalExpr4 - handle the '&' operator */
-static void EvalExpr4(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    int tkn;
-    EvalExpr5(c, pval);
-    while ((tkn = GetToken(c, &pval2)) == '&') {
-        RValue(c, pval);
-        EvalExpr5(c, &pval2);
-        RValue(c, &pval2);
-        pval->v.value = (VALUE)((int)pval->v.value & (int)pval2.v.value);
-    }
-    c->savedToken = tkn;
-}
-
-/* EvalExpr5 - handle the '<<' and '>>' operators */
-static void EvalExpr5(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    int tkn;
-    EvalExpr6(c, pval);
-    while ((tkn = GetToken(c, &pval2)) == TKN_SHL || tkn == TKN_SHR) {
-        RValue(c, pval);
-        EvalExpr6(c, &pval2);
-        RValue(c, &pval2);
-        switch (tkn) {
-        case TKN_SHL:
-            pval->v.value = (VALUE)((int)pval->v.value << (int)pval2.v.value);
-            break;
-        case TKN_SHR:
-            pval->v.value = (VALUE)((int)pval->v.value >> (int)pval2.v.value);
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedToken = tkn;
-}
-
-/* EvalExpr6 - handle the '+' and '-' operators */
-static void EvalExpr6(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    int tkn;
-    EvalExpr7(c, pval);
-    while ((tkn = GetToken(c, &pval2)) == '+' || tkn == '-') {
-        RValue(c, pval);
-        EvalExpr7(c, &pval2);
-        RValue(c, &pval2);
-        switch (tkn) {
-        case '+':
-            pval->v.value += pval2.v.value;
-            break;
-        case '-':
-            pval->v.value -= pval2.v.value;
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedToken = tkn;
-}
-
-/* EvalExpr7 - handle the '*', '/', and '%' operators */
-static void EvalExpr7(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    int tkn;
-    EvalExpr8(c, pval);
-    while ((tkn = GetToken(c, &pval2)) == '*' || tkn == '/' || tkn == '%') {
-        RValue(c, pval);
-        EvalExpr8(c, &pval2);
-        RValue(c, &pval2);
-        switch (tkn) {
-        case '*':
-            pval->v.value *= pval2.v.value;
-            break;
-        case '/':
-            if (pval2.v.value == 0)
-                Error(c, "division by zero");
-            pval->v.value /= pval2.v.value;
-            break;
-        case '%':
-            if ((int)pval2.v.value == 0)
-                Error(c, "division by zero");
-            pval->v.value = (VALUE)((int)pval->v.value % (int)pval2.v.value);
-            break;
-        default:
-            /* never reached */
-            break;
-        }
-    }
-    c->savedToken = tkn;
-}
-
-/* EvalExpr8 - handle unary operators */
-static void EvalExpr8(EvalState *c, PVAL *pval)
-{
-    int tkn;
-    switch (tkn = GetToken(c, pval)) {
-    case '+':
-        EvalPrimary(c, pval);
-        RValue(c, pval);
-        break;
-    case '-':
-        EvalPrimary(c, pval);
-        RValue(c, pval);
-        pval->v.value = -pval->v.value;
-        break;
-    case '~':
-        EvalPrimary(c, pval);
-        RValue(c, pval);
-        pval->v.value = (VALUE)~(int)pval->v.value;
-        break;
-    case '!':
-        EvalPrimary(c, pval);
-        RValue(c, pval);
-        pval->v.value = !pval->v.value;
-        break;
-    default:
-        c->savedToken = tkn;
-        EvalPrimary(c, pval);
-        break;
-    }
-}
-
-/* EvalPrimary - Eval a primary expression */
-static void EvalPrimary(EvalState *c, PVAL *pval)
-{
-    PVAL pval2;
-    switch (GetToken(c, pval)) {
-    case '(':
-        EvalExpr2(c, pval);
-        if (GetToken(c, &pval2) != ')')
-            Error(c, "expecting a right paren");
-        break;
-    case TKN_NUMBER:
-    case TKN_IDENTIFIER:
-        /* nothing else to do */
-        break;
-    default:
-        Error(c, "expecting a primary expression");
-        break;
+        Error(c, "internal error - RValue");
     }
 }
 
@@ -307,6 +399,7 @@ static int GetToken(EvalState *c, PVAL *pval)
 {
     int tkn;
     
+    /* check for a saved token */
     if ((tkn = c->savedToken) != TKN_NONE) {
         c->savedToken = TKN_NONE;
         return tkn;
@@ -319,18 +412,16 @@ static int GetToken(EvalState *c, PVAL *pval)
     /* check for end of file (string) */
     if (*c->linePtr == '\0')
         return TKN_EOF;
-                    
+        
     /* check for a number */
     if (*c->linePtr == '.' || isdigit(*c->linePtr)) {
-        EvalNumber(c, pval);
+        ParseNumber(c, pval);
         tkn = TKN_NUMBER;
     }
     
     /* check for an identifier */
-    else if (isalpha(*c->linePtr)) {
-        EvalIdentifier(c, pval);
-        tkn = TKN_IDENTIFIER;
-    }
+    else if (isalpha(*c->linePtr))
+        tkn = ParseIdentifier(c, pval);
     
     /* handle operators */
     else {
@@ -340,42 +431,10 @@ static int GetToken(EvalState *c, PVAL *pval)
                 tkn = TKN_SHL;
                 ++c->linePtr;
             }
-            else if (c->linePtr[1] == '=') {
-                tkn = TKN_LE;
-                ++c->linePtr;
-            }
             break;
         case '>':
             if (c->linePtr[1] == '>') {
                 tkn = TKN_SHR;
-                ++c->linePtr;
-            }
-            else if (c->linePtr[1] == '=') {
-                tkn = TKN_GE;
-                ++c->linePtr;
-            }
-            break;
-        case '!':
-            if (c->linePtr[1] == '=') {
-                tkn = TKN_NE;
-                ++c->linePtr;
-            }
-            break;
-        case '=':
-            if (c->linePtr[1] == '=') {
-                tkn = TKN_EQ;
-                ++c->linePtr;
-            }
-            break;
-        case '&':
-            if (c->linePtr[1] == '&') {
-                tkn = TKN_AND;
-                ++c->linePtr;
-            }
-            break;
-        case '|':
-            if (c->linePtr[1] == '|') {
-                tkn = TKN_OR;
                 ++c->linePtr;
             }
             break;
@@ -389,16 +448,75 @@ static int GetToken(EvalState *c, PVAL *pval)
     return tkn;
 }
 
-static void EvalNumber(EvalState *c, PVAL *pval)
+static void ParseNumber(EvalState *c, PVAL *pval)
 {
     pval->type = TYPE_NUMBER;
     pval->v.value = strtod(c->linePtr, (char **)&c->linePtr);
 }
 
-static void EvalIdentifier(EvalState *c, PVAL *pval)
+static void fcn_sin(EvalState *c)
+{
+    c->rStackPtr->v.value = sin(c->rStackPtr->v.value);
+}
+
+static void fcn_cos(EvalState *c)
+{
+    c->rStackPtr->v.value = cos(c->rStackPtr->v.value);
+}
+
+static void fcn_tan(EvalState *c)
+{
+    c->rStackPtr->v.value = tan(c->rStackPtr->v.value);
+}
+
+static void fcn_asin(EvalState *c)
+{
+    c->rStackPtr->v.value = asin(c->rStackPtr->v.value);
+}
+
+static void fcn_acos(EvalState *c)
+{
+    c->rStackPtr->v.value = acos(c->rStackPtr->v.value);
+}
+
+static void fcn_atan(EvalState *c)
+{
+    c->rStackPtr->v.value = atan(c->rStackPtr->v.value);
+}
+
+static void fcn_sqrt(EvalState *c)
+{
+    c->rStackPtr->v.value = sqrt(c->rStackPtr->v.value);
+}
+
+static void fcn_exp(EvalState *c)
+{
+    c->rStackPtr->v.value = exp(c->rStackPtr->v.value);
+}
+
+static void fcn_ln(EvalState *c)
+{
+    c->rStackPtr->v.value = log(c->rStackPtr->v.value);
+}
+
+static Function functions[] = {
+{   "sin",      1,  fcn_sin     },
+{   "cos",      1,  fcn_cos     },
+{   "tan",      1,  fcn_tan     },
+{   "asin",     1,  fcn_asin    },
+{   "acos",     1,  fcn_acos    },
+{   "atan",     1,  fcn_atan    },
+{   "sqrt",     1,  fcn_sqrt    },
+{   "exp",      1,  fcn_exp     },
+{   "ln",       1,  fcn_ln      },
+{   NULL,       0,  NULL        }
+};
+
+static int ParseIdentifier(EvalState *c, PVAL *pval)
 {
     char id[ID_MAX];
     char *p = id;
+    Function *fcn;
     
     /* parse the identifier */
     while (*c->linePtr != '\0' && (isalnum(*c->linePtr) || *c->linePtr == '_')) {
@@ -408,6 +526,14 @@ static void EvalIdentifier(EvalState *c, PVAL *pval)
     }
     *p = '\0';
     
+    /* check for a function name */
+    for (fcn = functions; fcn->name != NULL; ++fcn)
+        if (strcasecmp(id, fcn->name) == 0) {
+            pval->type = TYPE_FUNCTION;
+            pval->v.fcn = fcn;
+            return TKN_FCN;
+        }
+        
     /* check for an application symbol reference */
     if ((*c->findSymbol)(c->cookie, id, &pval->v.value))
         pval->type = TYPE_NUMBER;
@@ -415,6 +541,9 @@ static void EvalIdentifier(EvalState *c, PVAL *pval)
     /* check for a variable reference */
     else if (!AddVariable(c, id, pval))
         Error(c, "insufficient variable space");
+        
+    /* return an identifier */
+    return TKN_IDENTIFIER;
 }
 
 static int AddVariable(EvalState *c, char *id, PVAL *pval)
