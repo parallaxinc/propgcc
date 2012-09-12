@@ -453,6 +453,21 @@ static void fcn_tan(EvalState *c)
     c->rStackPtr->v.value = tan(c->rStackPtr->v.value);
 }
 
+static void fcn_asin(EvalState *c)
+{
+    c->rStackPtr->v.value = asin(c->rStackPtr->v.value);
+}
+
+static void fcn_acos(EvalState *c)
+{
+    c->rStackPtr->v.value = acos(c->rStackPtr->v.value);
+}
+
+static void fcn_atan(EvalState *c)
+{
+    c->rStackPtr->v.value = atan(c->rStackPtr->v.value);
+}
+
 static void fcn_sqrt(EvalState *c)
 {
     c->rStackPtr->v.value = sqrt(c->rStackPtr->v.value);
@@ -463,12 +478,21 @@ static void fcn_exp(EvalState *c)
     c->rStackPtr->v.value = exp(c->rStackPtr->v.value);
 }
 
+static void fcn_ln(EvalState *c)
+{
+    c->rStackPtr->v.value = log(c->rStackPtr->v.value);
+}
+
 static Function functions[] = {
 {   "sin",      1,  fcn_sin     },
 {   "cos",      1,  fcn_cos     },
 {   "tan",      1,  fcn_tan     },
+{   "asin",     1,  fcn_asin    },
+{   "acos",     1,  fcn_acos    },
+{   "atan",     1,  fcn_atan    },
 {   "sqrt",     1,  fcn_sqrt    },
 {   "exp",      1,  fcn_exp     },
+{   "ln",       1,  fcn_ln      },
 {   NULL,       0,  NULL        }
 };
 
