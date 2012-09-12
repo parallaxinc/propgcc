@@ -225,10 +225,16 @@ _doprnt( const char *fmt, va_list args )
 #else
        l_arg = va_arg(args, ULONG);
 #endif
-       if (c == 'd' && (((LONG)l_arg < 0))) {
+       if (c == 'd') {
+	 if (((LONG)l_arg) < 0
+#ifdef LONGLONG_SUPPORT
+	     || (!long_flag && ((int)l_arg) < 0)
+#endif
+	     ) {
            outbytes += PUTC('-', 1);
            width--;
            l_arg = (ULONG)(-((LONG)l_arg));
+         }
        }
        outbytes += PUTL(l_arg, base, width, fill_char);
        break;
