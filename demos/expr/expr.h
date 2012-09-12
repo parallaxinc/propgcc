@@ -5,16 +5,30 @@
 #include <setjmp.h>
 
 /* forward type definitions */
+typedef struct EvalState EvalState;
 typedef struct Variable Variable;
+typedef struct Function Function;
 
 /* value type */
 typedef double VALUE;
 
+/* operator stack entry */
+typedef union {
+    int op;
+    void *data;
+} oEntry;
+
+#define TYPE_NUMBER     1
+#define TYPE_VARIABLE   2
+#define TYPE_FUNCTION   3
+
+/* partial value structure */
 typedef struct {
     int type;
     union {
         VALUE value;
         Variable *var;
+        Function *fcn;
     } v;
 } PVAL;
 
@@ -26,6 +40,13 @@ struct Variable {
     char name[1];
 };
 
+/* function structure */
+struct Function {
+    char *name;
+    int argc;
+    void (*fcn)(EvalState *c);
+};
+
 /* operator stack size */
 #define OSTACK_SIZE 16
 
@@ -33,25 +54,23 @@ struct Variable {
 #define RSTACK_SIZE 16
 
 /* parse context */
-typedef struct {
+struct EvalState {
     int (*findSymbol)(void *cookie, const char *name, VALUE *pValue);
     void *cookie;
     jmp_buf errorTarget;
     char *linePtr;
     int savedToken;
-#ifdef USE_SHUNTING_YARD_ALGORITHM
-    int oStack[OSTACK_SIZE];
-    int *oStackPtr;
-    int *oStackTop;
+    oEntry oStack[OSTACK_SIZE];
+    oEntry *oStackPtr;
+    oEntry *oStackTop;
     PVAL rStack[RSTACK_SIZE];
     PVAL *rStackPtr;
     PVAL *rStackTop;
-#endif
     Variable *variables;
     uint8_t *base;      /* base of heap data */
     uint8_t *free;      /* next free heap location */
     uint8_t *top;       /* top of heap */
-} EvalState;
+};
 
 /* defined in expr.c */
 void InitEvalState(EvalState *c, uint8_t *heap, size_t heapSize);
