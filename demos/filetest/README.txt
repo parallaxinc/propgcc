@@ -1,11 +1,10 @@
-c3files is a test program that reads and writes files on an SD card using the
-Propeller C3 card.  The test program can be built as either an LMM, XMM or
-XMMC program.  This is done by entering the appropriate subdirectory and
-executing the make command.
+filetest is a test program that reads and writes files on an SD card.  The test
+program can be built as either a CMM, LMM, XMM or XMMC program.  This is done
+by entering the appropriate subdirectory and executing the make command.
 
 After the program is built it can be executed by entering a "make run"
 command.  The environmental variable, PROPELLER_LOAD_PORT must by set to the
-com port that the C3 card is attached to.
+com port that the card is attached to.
 
 The test program implements basic cat, echo, rm, ls, cd, pwd, mkdir and
 rmdir  commands.  It also implements file redirection by using the "<", ">"
@@ -35,7 +34,8 @@ cd testdir
 cd ..
 rmdir testdir
 
-Note, other SD cards can be used in the LMM mode by specifying the pins
-for data out, clock, data in and chip select.  The pin assignments for
-the Spinneret card are defined in filetest.c.  This can be modified to
-handle other pin assignments.
+Note, the file system is automatically initialized by the loader by using the
+appropriate CFG file.  The mount routine can also be used to define the SD card
+pin numbers and to mount the file system.  This is done by defining CALL_MOUNT
+in filetest.c and setting the pin numbers in the mount function.  See the mount
+function for examples of setting the pin numbers for various types of cards.
