@@ -1190,7 +1190,11 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
     case LABEL_REF:
     case SYMBOL_REF:
     case CONST_DOUBLE:
-        total = (speed ? COSTS_N_INSNS(1) : 1);
+        if (propeller_cogaddr_p(x)) {
+	  total = 0;
+	} else {
+	  total = (speed ? COSTS_N_INSNS(1) : 1);
+	}
         done = true;
         break;
     case PLUS:
@@ -1223,9 +1227,11 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
 
     case MEM:
         total = propeller_address_cost (XEXP (x, 0), speed);
-	total += COSTS_N_INSNS(4);
-	if (TARGET_XMM)
-	  total += COSTS_N_INSNS(20); /* memory is hideously expensive in XMM mode */
+	if (total) {
+	  total += COSTS_N_INSNS(4);
+	  if (TARGET_XMM)
+	    total += COSTS_N_INSNS(20); /* memory is hideously expensive in XMM mode */
+	}
         done = true;
         break;
 
@@ -1256,7 +1262,8 @@ propeller_address_cost (rtx addr, bool speed)
         total = 2;
     }
   }
-  return speed ? COSTS_N_INSNS(total) : total;
+  if (total == 0) return 0;
+  return speed ? total : COSTS_N_INSNS(total);
 }
 
 
@@ -2010,7 +2017,7 @@ propeller_compute_frame_info (void)
 }
 
 bool
-propeller_epilogue_uses(int regno)
+propeller_epilogue_uses(int regno ATTRIBUTE_UNUSED)
 {
   /* We acutally lie about this and say that the epilogue does not
      use lr (although it does). The reason is that the prologue will
