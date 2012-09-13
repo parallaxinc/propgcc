@@ -105,6 +105,8 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         switch (tkn) {
         case TKN_IDENTIFIER:
         case TKN_NUMBER:
+            if (!unaryPossible)
+                Error(c, "syntax error");
             rStackPush(c, pval);
             unaryPossible = FALSE;
             break;
@@ -137,6 +139,8 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         default:
             if (unaryPossible && tkn == '-')
                 tkn = TKN_UNARY_MINUS;
+            if (unaryPossible && !Unary(tkn))
+                Error(c, "syntax error");
             prec = Prec(c, tkn);
             while (!oStackIsEmpty(c)) {
                 int stackPrec = Prec(c, oStackTop(c));
