@@ -935,7 +935,7 @@
            (ashift:SI   (ltu:SI (reg:CC_C CC_REG)(const_int 0))
                         (const_int 31))))
    ]
-   "TARGET_EXPERIMENTAL"
+   ""
    "rcr\t%0,#1"
   [(set_attr "conds" "use")
    (set_attr "predicable" "yes")
@@ -949,7 +949,7 @@
                         (const_int 1))
            (ltu:SI (reg:CC_C CC_REG)(const_int 0))))
    ]
-   "TARGET_EXPERIMENTAL"
+   ""
    "rcl\t%0,#1"
   [(set_attr "conds" "use")
    (set_attr "predicable" "yes")
