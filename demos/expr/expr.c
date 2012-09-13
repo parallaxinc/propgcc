@@ -19,7 +19,8 @@
 #define TKN_UNARY_MINUS -4
 #define TKN_SHL         -5
 #define TKN_SHR         -6
-#define TKN_FCN         -7
+#define TKN_FCALL       -7
+#define TKN_FCALL_ARGS  -8
 
 /* operator associativities */
 #define ASSOC_LEFT      1
@@ -53,12 +54,14 @@
 #define rStackCount(c)      (((c)->rStackPtr - (c)->rStack) + 1)
 #define rStackDrop(c)       ((c)->rStackPtr--)
 
+static int PopAndEvaluate(EvalState *c);
 static int Prec(EvalState *c, int op);
 static int Assoc(int op);
 static int Unary(int op);
 static void Apply(EvalState *c, int op);
 static void ApplyUnary(EvalState *c, int op, PVAL *pval);
 static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right);
+static void CallFunction(EvalState *c);
 static void RValue(EvalState *c, PVAL *pval);
 static int GetToken(EvalState *c, PVAL *pval);
 static int ParseIdentifier(EvalState *c, PVAL *pval);
@@ -105,7 +108,7 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
             rStackPush(c, pval);
             unaryPossible = FALSE;
             break;
-        case TKN_FCN:
+        case TKN_FCALL:
             oStackPush(c, c->argc);
             oStackPushData(c, c->fcn);
             oStackPush(c, tkn);
@@ -113,53 +116,22 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
             c->argc = 0;
             break;
         case '(':
-            oStackPush(c, tkn);
+            if (oStackTop(c) == TKN_FCALL)
+                c->oStackPtr->op = TKN_FCALL_ARGS;
+            else
+                oStackPush(c, tkn);
             unaryPossible = TRUE;
             break;
         case ',':
-            for (;;) {
-                if (oStackIsEmpty(c))
-                    Error(c, "mismatched parens");
-                op = oStackTop(c);
-                if (op == '(')
-                    break;
-                oStackDrop(c);
-                Apply(c, op);
-            }
-            RValue(c, c->rStackPtr);
-            if (c->fcn)
-                ++c->argc;
+            if (PopAndEvaluate(c) != TKN_FCALL_ARGS)
+                Error(c, "argument list outside of a function call");
             unaryPossible = FALSE;
             break;
         case ')':
-            for (;;) {
-                if (oStackIsEmpty(c))
-                    Error(c, "mismatched parens");
-                op = oStackTop(c);
-                oStackDrop(c);
-                if (op == '(')
-                    break;
-                Apply(c, op);
-            }
-            RValue(c, c->rStackPtr);
-            if (c->fcn)
-                ++c->argc;
-            if (!oStackIsEmpty(c) && oStackTop(c) == TKN_FCN) {
-                Function *fcn;
-                int argc;
-                oStackDrop(c);
-                fcn = oStackTopData(c);
-                oStackDrop(c);
-                argc = oStackTop(c);
-                oStackDrop(c);
-                if (c->argc < c->fcn->argc)
-                    Error(c, "too few arguments");
-                else if (c->argc > c->fcn->argc)
-                    Error(c, "too many arguments");
-                (*c->fcn->fcn)(c);
-                c->fcn = fcn;
-                c->argc = argc;
-            }
+            tkn = PopAndEvaluate(c);
+            oStackDrop(c);
+            if (tkn == TKN_FCALL || tkn == TKN_FCALL_ARGS)
+                CallFunction(c);
             unaryPossible = FALSE;
             break;
         default:
@@ -172,7 +144,10 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
                     break;
                 op = oStackTop(c);
                 oStackDrop(c);
-                Apply(c, op);
+                if (op == TKN_FCALL)
+                    CallFunction(c);
+                else
+                    Apply(c, op);
             }
             oStackPush(c, tkn);
             unaryPossible = TRUE;
@@ -185,8 +160,11 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         int op = oStackTop(c);
         oStackDrop(c);
         if (op == '(')
-            Error(c, "mismatched parens");
-        Apply(c, op);
+            Error(c, "mismatched parens - 1");
+        if (op == TKN_FCALL)
+            CallFunction(c);
+        else
+            Apply(c, op);
     }
     
     /* if the operand stack is empty then there was no expression to parse */
@@ -195,7 +173,7 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         
     /* otherwise, make sure there is only one entry left on the operand stack */
     else if (count != 1)
-        Error(c, "syntax error");
+        Error(c, "syntax error - 1");
     
     /* return the expression value */
     RValue(c, &c->rStackPtr[0]);
@@ -205,46 +183,69 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
     return TRUE;
 }
 
+/* PopAndEvaluate - pop operators and apply them until a '(' or TKN_FCALL token is found */
+static int PopAndEvaluate(EvalState *c)
+{
+    int tkn;
+    for (;;) {
+        if (oStackIsEmpty(c))
+            Error(c, "mismatched parens - 2");
+        if ((tkn = oStackTop(c)) == '(' || tkn == TKN_FCALL_ARGS)
+            break;
+        oStackDrop(c);
+        Apply(c, tkn);
+    }
+    RValue(c, c->rStackPtr);
+    if (tkn == TKN_FCALL_ARGS)
+        ++c->argc;
+    return tkn;
+}
+
 /* Prec - return the precedence of an operator */
 static int Prec(EvalState *c, int op)
 {
     int precedence;
     switch (op) {
-    case '(':
+    case TKN_FCALL_ARGS:
         precedence = 0;
         break;
-    case '=':
+    case '(':
         precedence = 1;
         break;
-    case '|':
+    case '=':
         precedence = 2;
         break;
-    case '^':
+    case '|':
         precedence = 3;
         break;
-    case '&':
+    case '^':
         precedence = 4;
+        break;
+    case '&':
+        precedence = 5;
         break;
     case TKN_SHL:
     case TKN_SHR:
-        precedence = 5;
+        precedence = 6;
         break;
     case '+':
     case '-':
-        precedence = 6;
+        precedence = 7;
         break;
     case '*':
     case '/':
     case '%':
-        precedence = 7;
+        precedence = 8;
         break;
     case TKN_UNARY_MINUS:
     case '~':
-    case TKN_FCN:
-        precedence = 8;
+        precedence = 9;
+        break;
+    case TKN_FCALL:
+        precedence = 10;
         break;
     default:
-        Error(c, "unknown operator -- '%c'", op);
+        Error(c, "unknown operator -- '%c' (%d)", op, op);
         break;
     }
     return precedence;
@@ -258,7 +259,8 @@ static int Assoc(int op)
     case '=':
     case TKN_UNARY_MINUS:
     case '~':
-    case TKN_FCN:
+    case TKN_FCALL:
+    case TKN_FCALL_ARGS:
         associativity = ASSOC_RIGHT;
         break;
     default:
@@ -275,7 +277,8 @@ static int Unary(int op)
     switch (op) {
     case TKN_UNARY_MINUS:
     case '~':
-    case TKN_FCN:
+    case TKN_FCALL:
+    case TKN_FCALL_ARGS:
         unary = TRUE;
         break;
     default:
@@ -290,14 +293,14 @@ static void Apply(EvalState *c, int op)
     if (Unary(op)) {
         PVAL *pval;
         if (rStackCount(c) < 1)
-            Error(c, "syntax error");
+            Error(c, "syntax error - 2");
         pval = &c->rStackPtr[0];
         ApplyUnary(c, op, pval);
     }
     else {
         PVAL *left, *right;
         if (rStackCount(c) < 2)
-            Error(c, "syntax error");
+            Error(c, "syntax error - 3");
         left = &c->rStackPtr[-1];
         right = &c->rStackPtr[0];
         ApplyBinary(c, op, left, right);
@@ -316,8 +319,11 @@ static void ApplyUnary(EvalState *c, int op, PVAL *pval)
     case '~':
         pval->v.value = (VALUE)~((int)pval->v.value);
         break;
+    case TKN_FCALL:
+    case TKN_FCALL_ARGS:
+        break;
     default:
-        Error(c, "internal error - UnaryApply");
+        Error(c, "internal error in UnaryApply -- '%c' (%d)", op, op);
         break;
     }
 }
@@ -372,10 +378,28 @@ static void ApplyBinary(EvalState *c, int op, PVAL *left, PVAL *right)
             left->v.value = (VALUE)((int)left->v.value % (int)right->v.value);
             break;
         default:
-            Error(c, "internal error - ApplyFunction");
+            Error(c, "internal error in ApplyFunction -- '%c' (%d)", op, op);
             break;
         }
     }
+}
+
+/* CallFunction - call the function on the top of the operator stack */
+static void CallFunction(EvalState *c)
+{
+    Function *fcn;
+    int argc;
+    fcn = oStackTopData(c);
+    oStackDrop(c);
+    argc = oStackTop(c);
+    oStackDrop(c);
+    if (c->argc < c->fcn->argc)
+        Error(c, "too few arguments");
+    else if (c->argc > c->fcn->argc)
+        Error(c, "too many arguments");
+    (*c->fcn->fcn)(c);
+    c->fcn = fcn;
+    c->argc = argc;
 }
 
 static void RValue(EvalState *c, PVAL *pval)
@@ -499,6 +523,14 @@ static void fcn_ln(EvalState *c)
     c->rStackPtr->v.value = log(c->rStackPtr->v.value);
 }
 
+static void fcn_roll(EvalState *c)
+{
+    PVAL pval;
+    pval.type = TYPE_NUMBER;
+    pval.v.value = (double)(rand() % 6 + 1);
+    rStackPush(c, pval);
+}
+
 static Function functions[] = {
 {   "sin",      1,  fcn_sin     },
 {   "cos",      1,  fcn_cos     },
@@ -509,6 +541,7 @@ static Function functions[] = {
 {   "sqrt",     1,  fcn_sqrt    },
 {   "exp",      1,  fcn_exp     },
 {   "ln",       1,  fcn_ln      },
+{   "roll",     0,  fcn_roll    },
 {   NULL,       0,  NULL        }
 };
 
@@ -531,7 +564,7 @@ static int ParseIdentifier(EvalState *c, PVAL *pval)
         if (strcasecmp(id, fcn->name) == 0) {
             pval->type = TYPE_FUNCTION;
             pval->v.fcn = fcn;
-            return TKN_FCN;
+            return TKN_FCALL;
         }
         
     /* check for an application symbol reference */
