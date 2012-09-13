@@ -22,7 +22,7 @@
 
 extern uint32_t *_sd_mbox_p;
 static volatile uint32_t __attribute__((section(".hub"))) sd_mbox[2];
-#ifndef __PROPELLER_LMM__
+#ifdef __PROPELLER_USE_XMM__
 extern uint32_t __attribute__ ((section(".hub"))) _hub_buffer[496];
 #endif
 
