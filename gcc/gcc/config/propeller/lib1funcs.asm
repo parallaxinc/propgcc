@@ -62,7 +62,6 @@ __FUnpack
 .zeroSubnormal          or      manA, expA wz,nr        ' check for zero
           if_nz         jmp     #.subnorm
                         or      flagA, #ZeroFlag        ' yes, then set zero flag
-                        neg     expA, #150              ' set exponent and exit
                         jmp     #__FUnpack_ret
                                  
 .subnorm                shl     manA, #7                ' fix justification for subnormals  
@@ -76,7 +75,7 @@ __FUnpack
                         or      manA, Bit29             ' add leading one bit
                         
 .unpack_exit1           sub     expA, #127              ' remove bias from exponent
-__FUnpack_ret             ret       
+__FUnpack_ret           ret       
 
 
 '------------------------------------------------------------------------------
@@ -128,7 +127,6 @@ __FPack
 
                         addx    expA, #(380 + 127 + 2)  ' add bias to exponent, account for rounding (in flag C, above)
                         mins    expA, Minus23
-                        maxs    expA, #255
 
                         abs     expA, expA wc,wz        ' check for subnormals, and get the abs in case it is
           if_a          jmp     #.pack_exit1
@@ -139,7 +137,10 @@ __FPack
                         shr     manA, expA
                         mov     expA, #0                ' biased exponent = 0
 
-.pack_exit1             mov     r0, manA                ' bits 22:0 mantissa
+.pack_exit1
+			max	expA, #255 wc
+	  if_nc		mov	manA, #0
+        		mov     r0, manA                ' bits 22:0 mantissa
                         shr     r0, #9
                         movi    r0, expA                ' bits 23:30 exponent
                         shl     flagA, #31
