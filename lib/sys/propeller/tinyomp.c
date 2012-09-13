@@ -2,6 +2,7 @@
 #include <propeller.h>
 #include <sys/thread.h>
 #include <stdlib.h>
+#include <compiler.h>
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -25,7 +26,9 @@ static struct team {
     int numthreads;
     int started;
     volatile int hold;
-    volatile int barrier_arrived;
+    volatile unsigned barrier_arrived;
+    volatile unsigned section_num;
+    volatile unsigned total_sections;
 } team;
 
 static void
@@ -107,7 +110,7 @@ wait_others()
 }
 
 void
-GOMP_parallel_start( void (*fn)(void *), void *data, unsigned num_threads)
+GOMP_parallel_sections_start( void (*fn)(void *), void *data, unsigned num_threads, unsigned section_count)
 {
     int i;
     int run = 0;
@@ -125,13 +128,20 @@ GOMP_parallel_start( void (*fn)(void *), void *data, unsigned num_threads)
 #ifdef DEBUG
     printf("started %d threads\n", num_threads);
 #endif
-
+    team.total_sections = section_count;
+    team.section_num = 0;
     for (i = 1; i < num_threads; i++) {
         team.work[i].done = 0;
         team.work[i].arg = data;
         team.work[i].fn = fn;
         run++;
     }
+}
+
+void
+GOMP_parallel_start( void (*fn)(void *), void *data, unsigned num_threads)
+{
+  GOMP_parallel_sections_start(fn, data, num_threads, 0 );
 }
 
 void
@@ -149,6 +159,37 @@ GOMP_parallel_end()
     }
     team.started = 0;
 }
+
+/* this routine is called when the thread completes processing of the
+ * section currently assigned to it
+ * returns the 1 based section number to perform, or 0 if all work is
+ * already assigned
+ */
+unsigned
+GOMP_sections_next (void)
+{
+  unsigned result = __sync_add_and_fetch(&team.section_num, 1);
+
+  if (result > team.total_sections) {
+    return 0;
+  }
+  return result;
+}
+
+unsigned
+GOMP_sections_start (unsigned num_sections)
+{
+  __sync_val_compare_and_swap(&team.total_sections, 0, num_sections);
+  return GOMP_sections_next ();
+}
+
+void
+GOMP_sections_end_nowait (void)
+{
+  team.total_sections = 0;
+  team.section_num = 0;
+}
+
 
 static _atomic_t atomic;
 static _atomic_t critical;
