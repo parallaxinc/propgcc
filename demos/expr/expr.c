@@ -116,6 +116,7 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
             oStackPush(c, tkn);
             c->fcn = pval.v.fcn;
             c->argc = 0;
+            unaryPossible = FALSE;
             break;
         case '(':
             if (oStackTop(c) == TKN_FCALL)
