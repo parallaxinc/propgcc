@@ -160,7 +160,7 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         int op = oStackTop(c);
         oStackDrop(c);
         if (op == '(')
-            Error(c, "mismatched parens - 1");
+            Error(c, "mismatched parens");
         if (op == TKN_FCALL)
             CallFunction(c);
         else
@@ -173,7 +173,7 @@ int EvalExpr(EvalState *c, const char *str, VALUE *pValue)
         
     /* otherwise, make sure there is only one entry left on the operand stack */
     else if (count != 1)
-        Error(c, "syntax error - 1");
+        Error(c, "syntax error");
     
     /* return the expression value */
     RValue(c, &c->rStackPtr[0]);
@@ -189,7 +189,7 @@ static int PopAndEvaluate(EvalState *c)
     int tkn;
     for (;;) {
         if (oStackIsEmpty(c))
-            Error(c, "mismatched parens - 2");
+            Error(c, "mismatched parens");
         if ((tkn = oStackTop(c)) == '(' || tkn == TKN_FCALL_ARGS)
             break;
         oStackDrop(c);
@@ -293,14 +293,14 @@ static void Apply(EvalState *c, int op)
     if (Unary(op)) {
         PVAL *pval;
         if (rStackCount(c) < 1)
-            Error(c, "syntax error - 2");
+            Error(c, "syntax error");
         pval = &c->rStackPtr[0];
         ApplyUnary(c, op, pval);
     }
     else {
         PVAL *left, *right;
         if (rStackCount(c) < 2)
-            Error(c, "syntax error - 3");
+            Error(c, "syntax error");
         left = &c->rStackPtr[-1];
         right = &c->rStackPtr[0];
         ApplyBinary(c, op, left, right);
@@ -415,7 +415,7 @@ static void RValue(EvalState *c, PVAL *pval)
         pval->v.value = pval->v.var->value;
         break;
     default:
-        Error(c, "internal error - RValue");
+        Error(c, "internal error");
     }
 }
 
