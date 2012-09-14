@@ -150,6 +150,13 @@ cost of execution speed.
 provide some common functions which may be used by programs (and
 which the compiler takes advantage of).</P>
 
+<P>
+  Note that the GAS assembler has macros built in which provide a
+  "short form" of some of the calls below. In the compressed memory
+  model (if -mcmm is used) these short forms are actualy stored
+  compressed in the instruction stream.
+</P>
+
 <H2>Data movement</H2>
 
 <P>
@@ -160,6 +167,12 @@ which the compiler takes advantage of).</P>
 instruction to move the value “val” into compiler register <CODE>rn</CODE>
 (or the link register <CODE>lr</CODE>). After the
 instruction is complete the LMM interpreter resumes automatically.</P>
+<P>
+short form:
+<CODE>mvil rn, #val</CODE>
+<br>or <CODE>mviw rn, #val</CODE> if val is known to fit in 16 bits
+</P>
+<br>
 
 <P>
 <CODE>mov __TMP0,
@@ -175,11 +188,15 @@ should be less than or equal to 16. The registers count up, so if
 regnum is 12 and count is 3 then <CODE>r12</CODE>,
 <CODE>r13</CODE>, and <CODE>r14</CODE>
 will be pushed (in that order).</P>
+<P>short form:
+<CODE>pushm #(count&lt;&lt;4)|regnum</CODE><BR>
+</P>
+<br>
 
 <P>
 <CODE>mov __TMP0,
 #(count&lt;&lt;4)|regnum</CODE><BR>
-<CODE>call #__LMM_POPM</CODE><BR>
+<CODE>call #__LMM_POPM</CODE> or call #__LMM_POPRET<BR>
 </P>
 <P>Pop multiple compiler registers from
 the stack. “count” is the number of registers to pop, and
@@ -190,7 +207,15 @@ for <CODE>r1</CODE>, and so on). Note that
 count down, so if regnum is 14 and count is 3 then <CODE>r14</CODE>,
 <CODE>r13</CODE>, and <CODE>r12</CODE>
 will be popped (in that order).</P>
+<P>If <CODE>__LMM_POPRET</CODE> is used then a <CODE>mov pc,lr</CODE>
+  will be issued right after the pop
+</P>
 
+<P>short form:
+<CODE>popm #(count&lt;&lt;4)|regnum</CODE><BR>
+or <CODE>popret #(count&lt;&lt;4)|regnum</CODE><BR>
+</P>
+<br>
 
 <H2>Branches and calls</H2>
 
@@ -203,6 +228,11 @@ into the <CODE>pc</CODE> register (so the LMM
 interpreter will begin to execute at address <CODE>addr</CODE>,
 thus performing an unconditional jump).</P>
 </P>
+<P>short form:
+<CODE>brl #addr</CODE><BR>
+</P>
+<br>
+
 <P>
 <CODE>jmp #__LMM_CALL</CODE><BR>
 <CODE>long addr</CODE><BR>
@@ -213,6 +243,11 @@ moves <CODE>addr</CODE> into the <CODE>pc</CODE>
 register (so the LMM interpreter will begin execution at address
 <CODE>addr</CODE>, which is typically a subroutine).</P>
 <P>
+<P>short form:
+<CODE>lcall #addr</CODE><BR>
+</P>
+<br>
+
 <CODE>mov __TMP0,rn</CODE><BR>
 <CODE>jmp #__LMM_CALL_INDIRECT</CODE><BR>
 </P>
