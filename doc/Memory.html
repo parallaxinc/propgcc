@@ -13,7 +13,7 @@ Basically these models provide a trade off of speed for code space.
 By far the fastest model is the native “cog” model (<CODE>-mcog</CODE>)
 in which machine instructions are executed directly. However, in that
 model only the 2K of internal memory (actually slightly less) is
-available for code. In the other models (LMM, XMMC, and XMM) code is
+available for code. In the other models (LMM, CMM, XMMC, and XMM) code is
 stored in RAM external to the cog and is loaded in by a small kernel.
 This makes more space available for the code (and, in the XMM case,
 the data) but at the cost of having kernel overhead on each
@@ -53,7 +53,9 @@ instruction set is the same, although for convenience gas offers a
 that works just like <CODE>mov</CODE> but which
 divides any immediate source value by 4, thus converting it from a
 byte address to a word address. <CODE>mova</CODE> is
-not needed in .cog_ram mode, but is convenient in the default mode.</P>
+not needed in .cog_ram mode, but is convenient in the default
+mode.</P>
+
 <H2>LMM</H2>
 <P>In the Large Memory Model (LMM mode),
 the program code is stored in hub memory, which is 32K in size. The
@@ -130,9 +132,21 @@ into external memory must be done via the appropriate kernel
 functions instead of directly with <CODE>rdlong</CODE>
 and <CODE>wrlong</CODE> instructions.</P>
 
+<H2>CMM</H2>
+
+<P>
+There is a special memory model called the "compressed memory
+model" (CMM). This model is the same as the LMM model in that code
+and data are both stored in hub memory. The difference is that in CMM
+mode code is compressed in a special format that takes less space, and
+decompressed by the kernel at run time. This saves space, but at the
+cost of execution speed.
+</P>
+
+
 <H1>Kernel APIs</H1>
 
-<P>The LMM, XMM, and XMMC kernels all
+<P>The kernels all
 provide some common functions which may be used by programs (and
 which the compiler takes advantage of).</P>
 
