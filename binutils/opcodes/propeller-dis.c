@@ -494,16 +494,18 @@ do_compressed_insn (bfd_vma memaddr, struct disassemble_info *info)
     if (opprefix == PREFIX_REGIMM12) {
       if (read_halfword (memaddr, &src, info) != 0) return -1;
       memaddr += 2;
+      xop = (src >> 12) & 0x0F;
+      src = src & 0x0FFF;
     } else {
       if (read_byte (memaddr, &src, info) != 0) return -1;
       memaddr ++;
+      xop = (src & 0x0F);
+      src = (src >> 4) & 0x0F;
     }
     if (opprefix == PREFIX_XMOVREG || opprefix == PREFIX_REGREG)
       imm = 0;
     else
       imm = 1;
-    xop = src & 0x0F;
-    src = src >> 4;
     if (src > 0x7FF) {
       src = src - 0x1000;
     }
