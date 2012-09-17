@@ -151,9 +151,9 @@ __FPack_ret               ret
 '-------------------- constant values -----------------------------------------
 
 Minus23                 long    -23
-Mask23                  long    $007F_FFFF
-Bit29                   long    $2000_0000
-Bit31                   long    $8000_0000
+Mask23                  long    0x007FFFFF
+Bit29                   long    0x20000000
+Bit31                   long    0x80000000
 
 
 endfloat
