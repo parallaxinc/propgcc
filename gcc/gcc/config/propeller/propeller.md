@@ -193,12 +193,9 @@
 			])
 (define_code_iterator minmaxop
 		      [(umax "")(umin "") (smax "")(smin "")])
+(define_code_iterator oneop
+		       [(abs "")(neg "")])
 
-;; instructions that can pair together in CMM mode
-(define_code_iterator pair2op
-		      [(plus "") (minus "") (ior "") (xor "")
-		       (and "") (ashift "") (ashiftrt "") (lshiftrt "")]
-)
 
 (define_code_attr     opcode
 		        [(plus "add") (minus "sub") (ior "or") (xor "xor")
@@ -207,6 +204,8 @@
 			 ;; propeller has backwards max and min names
 			 (umax "min") (umin "max")
 			 (smax "mins") (smin "maxs")
+			 ;; abs and neg
+			 (abs "abs") (neg "neg")
 			 ])
 
 (define_code_iterator muxcond [ne eq lt ge ltu geu])
@@ -636,6 +635,36 @@
   [(set_attr "predicable" "yes")]
 )
 
+(define_insn "*<oneop:code>si2_comparesrc"
+  [
+    (set (reg:CC CC_REG)
+         (compare:CC 
+	    (match_operand:SI 1 "propeller_src_operand" "rCI")
+	    (const_int 0)))
+    (set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	     (oneop:SI (match_dup 1)))
+  ]
+  ""
+  "<opcode>\t%0, %1 wz, wc"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
+(define_insn "*<oneop:code>si2_compare0"
+  [
+    (set (reg:CC_Z CC_REG)
+         (compare:CC_Z 
+	    (oneop:SI (match_operand:SI 1 "propeller_src_operand" "rCI"))
+	    (const_int 0)))
+    (set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	     (oneop:SI (match_dup 1)))
+  ]
+  ""
+  "<opcode>\t%0, %1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
 ;;
 ;; the instruction set doesn't actually have a NOT instruction, so synthesize
 ;; it from XOR; we'll just put a handy 0xFFFFFFFF somewhere in cog memory
@@ -644,6 +673,19 @@
 (define_insn "one_cmplsi2"
   [ (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
          (not:SI (match_operand:SI 1 "propeller_src_operand" "0")))]
+  ""
+{
+  propeller_need_maskffffffff = true; /* make sure we generate the FFFFFFFF */
+  return "xor\t%0,__MASK_FFFFFFFF";
+})
+
+(define_insn "*one_cmplsi2_compare0"
+  [ (set (reg:CC_Z CC_REG)
+         (compare:CC_Z
+           (not:SI (match_operand:SI 1 "propeller_src_operand" "0"))
+	   (const_int 0)))
+    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+         (not:SI (match_dup 1)))]
   ""
 {
   propeller_need_maskffffffff = true; /* make sure we generate the FFFFFFFF */
@@ -1080,6 +1122,18 @@
 	(match_dup 1))]
   ""
   "mov\t%0,%1 wz,wc"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
+(define_insn "*movsi_comparesign_flip"
+  [(set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+	(match_operand:SI 1 "propeller_src_operand" "rCI"))
+   (set (reg:CC CC_REG)
+	(compare:CC (match_dup 1)
+		    (const_int 0)))]
+  ""
+  "mov\t%0,%1 wz"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -2942,6 +2996,17 @@
       (set (match_dup 0)(match_dup 1))])]
   ""
 )
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:CC CC_REG)(compare:CC (match_dup 0) (const_int 0)))
+  ]
+  ""
+  [(parallel
+     [(set (reg:CC CC_REG)(compare:CC (match_dup 1)(const_int 0)))
+      (set (match_dup 0)(match_dup 1))])]
+  ""
+)
 
 ;;
 ;; sometimes the combiner will miss redundant compares
@@ -2965,6 +3030,52 @@
   ""
 )
 
+;;
+;; abs and neg set their flags based on source input rather than
+;; on output; for 0 comparisons this actually works for the output
+;; too, since abs(0) = neg(0) = 0
+;;
+
+;; set flags based on source; note that we require that operands[1]
+;; become dead so as to avoid the case where operands[0] and operands[1]
+;; are the same
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operator:SI 2 "propeller_math_op1srcflags"
+	   [
+	    (match_operand:SI 1 "propeller_src_operand" "")
+	   ]))
+   (set (reg:CC CC_REG)(compare:CC (match_dup 1) (const_int 0)))
+  ]
+  "peep2_reg_dead_p (2, operands[1])"
+  [(parallel
+     [(set (reg:CC CC_REG)
+             (compare:CC   (match_dup 1)
+	                   (const_int 0)))
+      (set (match_dup 0)
+           (match_op_dup 2 [(match_dup 1)]))
+     ])]
+  ""
+)
+
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operator:SI 2 "propeller_math_op1"
+	   [
+	    (match_operand:SI 1 "propeller_src_operand" "")
+	   ]))
+   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
+  ]
+  ""
+  [(parallel
+     [(set (reg:CC_Z CC_REG)
+             (compare:CC_Z (match_op_dup 2 [(match_dup 1)])
+	                   (const_int 0)))
+      (set (match_dup 0)
+           (match_op_dup 2 [(match_dup 1)]))
+     ])]
+  ""
+)
 ;;
 ;; reload will generate constant pool addresses for a lot of things
 ;; if those fall in cog memory, we can optimize away the move to register
