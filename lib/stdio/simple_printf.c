@@ -233,6 +233,10 @@ _doprnt( const char *fmt, va_list args )
 	     ) {
            outbytes += PUTC('-', 1);
            width--;
+#ifdef LONGLONG_SUPPORT
+	   if (!long_flag)
+	     l_arg = (int)l_arg;
+#endif
            l_arg = (ULONG)(-((LONG)l_arg));
          }
        }
