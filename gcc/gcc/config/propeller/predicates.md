@@ -111,6 +111,11 @@
 (define_special_predicate "propeller_math_op1"
   (match_code "neg,not,abs"))
 
+;; true if this operator is a math operator with 1 argument that
+;; sets flags based on source
+(define_special_predicate "propeller_math_op1srcflags"
+  (match_code "neg,not,abs"))
+
 ;; true if this operator can be paired in CMM mode
 (define_special_predicate "propeller_pair_op2"
   (match_code "plus,minus,and,ior,xor,ashift,ashiftrt,lshiftrt"))
