@@ -2014,7 +2014,7 @@ propeller_expand_prologue (void)
 void
 propeller_declare_function_name (FILE *f, const char *fnname, tree decl)
 {
-  if (TREE_PUBLIC (decl))
+  if (TREE_PUBLIC (decl) && is_native_function (decl))
     {
       fputs (GLOBAL_ASM_OP, f);
       assemble_name (f, fnname);
