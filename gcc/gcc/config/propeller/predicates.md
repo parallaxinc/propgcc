@@ -133,9 +133,19 @@
 
 (define_predicate "propeller_cmm_const16"
   (and (match_operand 0 "immediate_operand")
-       (ior (match_code "symbol_ref,label_ref,const")
+       (ior (match_code "symbol_ref,label_ref")
             (and (match_code "const_int")
-		 (match_test "IN_RANGE (INTVAL (op), 512, 0xFFFF)")))))
+		 (match_test "IN_RANGE (INTVAL (op), 512, 0xFFFF)"))
+            (and (match_code "const")
+                 (match_test "GET_CODE (XEXP (op, 0)) == PLUS
+			 && (GET_CODE (XEXP (XEXP (op,0), 0)) == SYMBOL_REF
+			     || GET_CODE (XEXP (XEXP (op,0), 0)) == LABEL_REF)
+			 && CONST_INT_P (XEXP (XEXP (op,0), 1))
+			 && IN_RANGE (INTVAL (XEXP (XEXP (op,0), 1)), 0, 0x2000)
+			 "))
+        )
+))
+
 
 ;; Nonzero if OP is a 32 bit constant that needs to be placed specially
 

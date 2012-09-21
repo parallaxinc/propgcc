@@ -12,13 +12,6 @@ typedef struct Function Function;
 /* value type */
 typedef double VALUE;
 
-/* operator stack entry */
-typedef union {
-    int op;
-    int argc;
-    void *data;
-} oEntry;
-
 #define TYPE_NUMBER     1
 #define TYPE_VARIABLE   2
 #define TYPE_FUNCTION   3
@@ -61,14 +54,6 @@ struct EvalState {
     jmp_buf errorTarget;
     char *linePtr;
     int savedToken;
-    oEntry oStack[OSTACK_SIZE];
-    oEntry *oStackPtr;
-    oEntry *oStackTop;
-    PVAL rStack[RSTACK_SIZE];
-    PVAL *rStackPtr;
-    Function *fcn;
-    int argc;
-    PVAL *rStackTop;
     Variable *variables;
     uint8_t *base;      /* base of heap data */
     uint8_t *free;      /* next free heap location */
