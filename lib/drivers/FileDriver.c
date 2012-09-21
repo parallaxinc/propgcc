@@ -21,8 +21,8 @@
 #include <propeller.h>
 #include "dosfs.h"
 
-#ifdef __PROPELLER_LMM__
-#define FILE_BUFFER_SIZE 16     // Use a small file buffer for LMM
+#ifndef __PROPELLER_USE_XMM__
+#define FILE_BUFFER_SIZE 16     // Use a small file buffer for CMM/LMM
 #else
 #define FILE_BUFFER_SIZE 512    // Use a 512-byte file buffer for XMM/XMMC
 #endif
