@@ -29,11 +29,14 @@ CON
   INIT_CACHE            = 1
   INIT_CONFIG_1         = 2     ' driver specific configuration
   INIT_CONFIG_2         = 3     ' driver specific configuration
-  _INIT_SIZE            = 4
+  INIT_CONFIG_3		= 4
+  INIT_CONFIG_4		= 5
+  _INIT_SIZE            = 6
 
   ' mailbox offsets
   MBOX_CMD              = 0
   MBOX_ADDR             = 1
+  MBOX_EXTRA		= 2 	' extra space for debugging
   _MBOX_SIZE            = 2
 
   ' cache access commands
@@ -58,12 +61,14 @@ VAR
 
 'OBJ d : "BMAUtility"
 
-PUB start(code, mbox, cache, config1, config2) | params[_INIT_SIZE]
+PUB start(code, mbox, cache, config1, config2, config3, config4) | params[_INIT_SIZE]
     vm_mbox := mbox
     params[INIT_MBOX] := mbox
     params[INIT_CACHE] := cache
     params[INIT_CONFIG_1] := config1
     params[INIT_CONFIG_2] := config2
+    params[INIT_CONFIG_3] := config3
+    params[INIT_CONFIG_4] := config4
     long[vm_mbox] := $ffffffff
     'd.debug(code,@params)
     cognew(code, @params)

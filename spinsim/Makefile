@@ -1,6 +1,6 @@
 TARGET = spinsim
 
-SOURCES = spinsim.c spininterp.c spindebug.c pasmsim.c pasmdebug.c pasmsim2.c pasmdebug2.c
+SOURCES = spinsim.c spininterp.c spindebug.c pasmsim.c pasmdebug.c pasmsim2.c pasmdebug2.c eeprom.c debug.c gdb.c
 OBJECTS = $(SOURCES:.c=.o)
 
 ifneq ($(OS),msys)

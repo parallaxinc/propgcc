@@ -24,7 +24,7 @@ PUB start | cache
   ' initialize the cache driver
   cache := hub_memory_size - p_cache_size
   cache_mbox := cache - cache_mbox_size
-  cache_line_mask := cacheint.start(@cache_code, cache_mbox, cache, p_cache_param1, p_cache_param2)
+  cache_line_mask := cacheint.start(@cache_code, cache_mbox, cache, p_cache_param1, p_cache_param2, p_cache_param3, p_cache_param4)
   
   ' load the vm
   vm_mbox := cache_mbox - vm_mbox_size
@@ -42,6 +42,12 @@ PUB start | cache
   ser.crlf
   ser.str(STRING("p_cache_param2: "))
   ser.hex(p_cache_param2, 8)
+  ser.crlf
+  ser.str(STRING("p_cache_param3: "))
+  ser.hex(p_cache_param3, 8)
+  ser.crlf
+  ser.str(STRING("p_cache_param4: "))
+  ser.hex(p_cache_param4, 8)
   ser.crlf
   ser.str(STRING("cache: "))
   ser.hex(cache, 8)
@@ -90,6 +96,8 @@ DAT
 p_cache_size        long    0
 p_cache_param1      long    0
 p_cache_param2      long    0
+p_cache_param3      long    0
+p_cache_param4      long    0
 p_vm_code_off       long    @vm_code - @p_cache_size
 p_cache_code_off    long    @cache_code - @p_cache_size
 
