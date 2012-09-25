@@ -101,18 +101,21 @@ PRI VM_INIT_handler
   long[p_vm_mbox] := 0
   cognew(@mm_data, p_vm_mbox)
 
-PRI CACHE_INIT_handler(packet) | cache_size, param1, param2, cache_lines
+PRI CACHE_INIT_handler(packet) | cache_size, param1, param2, param3, param4, extra, cache_lines
   cache_size := long[packet]
   param1 := long[packet+4]
   param2 := long[packet+8]
+  param3 := long[packet+12]
+  param4 := long[packet+16]
+  extra := long[packet+20]
 #ifdef TV_DEBUG
   tv.str(string("CACHE_INIT: "))
   tv.dec(cache_size)
   crlf
 #endif
   cache_lines := hub_memory_size - cache_size
-  p_cache_mbox := cache_lines - cache_mbox_size
-  p_cache_line_mask := cache.start(@mm_data, p_cache_mbox, cache_lines, param1, param2)
+  p_cache_mbox := cache_lines - cache_mbox_size - extra * 4
+  p_cache_line_mask := cache.start(@mm_data, p_cache_mbox, cache_lines, param1, param2, param3, param4)
   p_vm_mbox := p_cache_mbox - vm_mbox_size
 
 PRI FILE_WRITE_handler(name) | err

@@ -1,6 +1,6 @@
 /*******************************************************************************
 ' Author: Dave Hein
-' Version 0.53
+' Version 0.54
 ' Copyright (c) 2010, 2011, 2012
 ' See end of file for terms of use.
 '******************************************************************************/
@@ -20,6 +20,7 @@
 #include "interp.h"
 #include "rom.h"
 #include "spindebug.h"
+#include "eeprom.h"
 
 // Define system I/O addresses and commands
 //#define SYS_COMMAND    0x12340000
@@ -73,22 +74,23 @@ int32_t proptwo = 0;
 int32_t baudrate = 0;
 int32_t pin_val = -1;
 int32_t gdbmode = 0;
+int32_t eeprom = 0;
 
 FILE *logfile = NULL;
 FILE *tracefile = NULL;
 FILE *cmdfile = NULL;
-
-char cmd[1028];
 
 PasmVarsT PasmVars[8];
 
 void PrintOp(SpinVarsT *spinvars);
 void ExecuteOp(SpinVarsT *spinvars);
 char *FindChar(char *str, int32_t val);
+void Debug(void);
+void gdb(void);
 
 void usage(void)
 {
-  fprintf(stderr, "SpinSim Version 0.53\n");
+  fprintf(stderr, "SpinSim Version 0.54\n");
   fprintf(stderr, "usage: spinsim [options] file\n");
   fprintf(stderr, "The options are as follows:\n");
   fprintf(stderr, "     -l  List executed instructions\n");
@@ -104,6 +106,7 @@ void usage(void)
   fprintf(stderr, "     -L <filename> Log GDB remote comm to <filename>\n");
   fprintf(stderr, "     -r <filename> Replay GDB session from <filename>\n");
   //fprintf(stderr, "     -x# Set the external memory size to # K-bytes\n");
+  fprintf(stderr, "     -e Use eeprom.dat\n");
   exit(1);
 }
 
@@ -150,7 +153,7 @@ char *FindExtMem(uint32_t addr, int32_t num)
 }
 
 // This routine prevents us from calling kbhit too often.  This improves
-// the performane of the simulator when calling kbhit in a tight loop.
+// the performance of the simulator when calling kbhit in a tight loop.
 int kbhit1(void)
 {
     static int last = 0;
@@ -445,7 +448,7 @@ void CheckCommand(void)
     WORD(SYS_COMMAND) = 0;
 }
 
-void CheckSerialIn(void)
+int CheckSerialIn(void)
 {
     static int state = 0;
     static int count = 0;
@@ -456,6 +459,7 @@ void CheckSerialIn(void)
 	if (kbhit1())
 	{
 	    val = getch();
+            if (val == 0x1d) return 1;
 	    val |= 0x300;
 	    count = LONG(0) / baudrate;
 	    if (!proptwo) count >>= 2;
@@ -477,6 +481,7 @@ void CheckSerialIn(void)
 	    if (!proptwo) count >>= 2;
 	}
     }
+    return 0;
 }
 
 void CheckSerialOut(void)
@@ -559,6 +564,9 @@ void RebootProp(void)
 
     chdir(rootdir);
 
+    if(!gdbmode && eeprom){
+      EEPromCopy(hubram);
+    } else
     if(!gdbmode){
       infile = fopen(bootfile, "rb");
       
@@ -609,7 +617,10 @@ void RebootProp(void)
 
     if(!gdbmode){
       strcpy(objname[0], "xxx");
-      strcpy(objname[1], bootfile);
+      if (bootfile)
+        strcpy(objname[1], bootfile);
+      else
+        strcpy(objname[1], "");
       ptr = FindChar(objname[1], '.');
       if (*ptr)
 	{
@@ -629,159 +640,15 @@ void RebootProp(void)
     //LONG(SYS_DEBUG) = printflag;
 }
 
-void reply(char *ptr, int len){
-  unsigned char cksum = 0;
+int step_chip(void){
   int i;
-
-  putc('$', stdout);
-  if(logfile) fprintf(logfile, "sim>$");
-  for(i = 0; i < len; i++){
-    putc(ptr[i], stdout);
-    if(logfile) putc(ptr[i], logfile);
-    cksum += ptr[i];
-  }
-  fprintf(stdout, "#%02x", cksum);
-  if(logfile) fprintf(logfile, "#%02x", cksum);
-  if(logfile) putc('\n', logfile);
-  fflush(stdout);
-  if(logfile) fflush(logfile);
-}
-
-char parse_byte(char *ch){
-  char s[3];
-  char val;
-  s[0] = ch[0];
-  s[1] = ch[1];
-  s[2] = 0;
-  val = 0xff & strtol(s, NULL, 16);
-  return val;
-}
-
-char get_byte(uint32_t addr){
-  if(addr & 0x80000000){
-    int cog = (addr >> 28) - 8;
-    uint32_t tmp;
-    tmp = PasmVars[cog].mem[(addr & 0x000007ff) >> 2];
-    return (tmp >> 8*(addr & 0x3)) & 0xff;
-  } else {
-    return BYTE(addr);
-  }
-}
-
-void put_byte(uint32_t addr, unsigned char val){
-  if(addr & 0x80000000){
-    int cog = (addr >> 28) - 8;
-    uint32_t tmp;
-    tmp = PasmVars[cog].mem[(addr & 0x000007ff) >> 2];
-    switch(addr & 3){
-    case 0:
-      tmp &= 0xffffff00;
-      tmp |= val;
-      break;
-    case 1:
-      tmp &= 0xffff00ff;
-      tmp |= val << 8;
-      break;
-    case 2:
-      tmp &= 0xff00ffff;
-      tmp |= val << 16;
-      break;
-    case 3:
-      tmp &= 0x00ffffff;
-      tmp |= val << 24;
-      break;
-    }
-    PasmVars[cog].mem[(addr & 0x000007ff) >> 2] = tmp;
-    return;
-  } else {
-    BYTE(addr) = val;
-    return;
-  }
-}
-
-void get_cmd(){
-  int i = 0;
-  int ch;
-
-  do{
-    ch = getc(cmdfile);
-  } while(ch != '$');
-
-  if(logfile) fprintf(logfile, "gdb>");
-  if(logfile) putc(ch, logfile);
-
-  for(i = 0; i < sizeof(cmd); i++){
-    ch = getc(cmdfile);
-    if(logfile) putc(ch, logfile);
-    if(ch == '#') break;
-    cmd[i] = ch;
-  }
-  cmd[i] = 0;
-  // eat the checksum
-  ch = getc(cmdfile);
-  if(logfile) putc(ch, logfile);
-  ch = getc(cmdfile);
-  if(logfile) putc(ch, logfile);
-  if(logfile) putc('\n', logfile);
-  // send an ACK
-  putchar('+');
-  fflush(stdout);
-  if(logfile) fflush(logfile);
-}
-
-int tohex(char x){
-  if(x >= '0' && x <= '9') return x - '0';
-  if(x >= 'a' && x <= 'f') return 10 + x - 'a';
-  if(x >= 'A' && x <= 'F') return 10 + x - 'A';
-  return 0;
-}
-
-int32_t get_addr(int *i){
-  int32_t reg;
-  reg  = tohex(cmd[(*i)++]) << 4;
-  reg |= tohex(cmd[(*i)++]) << 0;
-  reg |= tohex(cmd[(*i)++]) << 12;
-  reg |= tohex(cmd[(*i)++]) << 8;
-  reg |= tohex(cmd[(*i)++]) << 20;
-  reg |= tohex(cmd[(*i)++]) << 16;
-  reg |= tohex(cmd[(*i)++]) << 28;
-  reg |= tohex(cmd[(*i)++]) << 24;
-  return reg;
-}
-
-struct bkpt {
-  struct bkpt *next;
-  uint32_t addr;
-  uint32_t len;
-};
-
-struct bkpt *bkpt = 0;
-
-// Check the cog's PC to see if the LMM microcode is at an appropriate place
-// for a breakpoint to occur.  We don't want to break on LMM administrative
-// instructions.
-// FIXME we need a more general way to do this.  This is too dependent on special knowledge.
-int breakable_point(int i){
-  int32_t pc = PasmVars[i].pc;
-  if ((pc == 0x0000004c/4)
-   || (pc == 0x00000058/4)
-   || (pc == 0x00000064/4)
-   || (pc == 0x00000070/4)
-   || (pc == 0x0000007c/4)
-   || (pc == 0x00000088/4)
-   || (pc == 0x00000094/4)
-   || (pc == 0x000000a0/4))
-     return 1;
-   else
-     return 0;
-}
-
-void step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
-  int i;
+  int state;
+  int runflag = 0;
+  SpinVarsT *spinvars;
   for (i = 0; i < 8; i++) {
-    *state = PasmVars[i].state;
-    if (*state & 4) {
-      if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5)	      {
+    state = PasmVars[i].state;
+    if (state & 4) {
+      if ((LONG(SYS_DEBUG) & (1 << i)) && state == 5)	      {
 	fprintf(tracefile, "Cog %d:  ", i);
 	if (proptwo){
 	  DebugPasmInstruction2(&PasmVars[i]);
@@ -791,24 +658,25 @@ void step_chip(int32_t *state, SpinVarsT **spinvars, int32_t *runflag){
       }
       if (proptwo)	      {
 	ExecutePasmInstruction2(&PasmVars[i]);
-	if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 5) fprintf(tracefile, "\n");
+	if ((LONG(SYS_DEBUG) & (1 << i)) && state == 5) fprintf(tracefile, "\n");
       }	    else
 	ExecutePasmInstruction(&PasmVars[i]);
-      *runflag = 1;
-    }	else if (*state)	  {
-      *spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
-      if ((LONG(SYS_DEBUG) & (1 << i)) && *state == 1)	      {
-	int32_t dcurr = (*spinvars)->dcurr;
+      runflag = 1;
+      if ((LONG(SYS_DEBUG) & (1 << i)) && state == 5) printf("\n");
+    }	else if (state)	  {
+      spinvars = (SpinVarsT *)&PasmVars[i].mem[0x1e0];
+      if ((LONG(SYS_DEBUG) & (1 << i)) && state == 1)	      {
+	int32_t dcurr = spinvars->dcurr;
 	fprintf(tracefile, "Cog %d: %4.4x %8.8x - ", i, dcurr, LONG(dcurr - 4));
-	PrintOp(*spinvars);
+	PrintOp(spinvars);
       }
-      if (profile) CountOp(*spinvars);
-      ExecuteOp(*spinvars);
-      *runflag = 1;
+      if (profile) CountOp(spinvars);
+      ExecuteOp(spinvars);
+      runflag = 1;
     }
   }
   loopcount++;
-  return;
+  return runflag;
 }
 
 int main(int argc, char **argv)
@@ -818,8 +686,6 @@ int main(int argc, char **argv)
     int32_t i;
     int32_t maxloops = -1;
     int32_t runflag;
-    SpinVarsT *spinvars;
-    int32_t state;
 
     tracefile = stdout;
     ptr = getcwd(rootdir, 100);
@@ -884,6 +750,10 @@ int main(int argc, char **argv)
 	{
 	  cmdfile = fopen(argv[++i], "rt");
 	}
+	else if (strcmp(argv[i], "-e") == 0)
+	{
+          eeprom = 1;
+	}
 #if 0
 	else if (strncmp(argv[i], "-x", 2) == 0)
 	{
@@ -899,6 +769,9 @@ int main(int argc, char **argv)
 	else
 	    usage();
     }
+
+    if (eeprom)
+        EEPromInit(fname);
 
     if(!cmdfile) cmdfile = stdin;
 
@@ -948,245 +821,19 @@ int main(int argc, char **argv)
 
     bootfile = fname;
 
-    if (!fname && !gdbmode) usage();
+    if (!fname && !gdbmode && !eeprom) usage();
 
     runflag = 1;
+    RebootProp();
     if (gdbmode)
     {
-      int i;
-      int j;
-      char response[1024];
-      unsigned int addr;
-      int len;
-      char *end;
-      char val;
-      int32_t reg;
-      int cog = 0;
-      char *halt_code = "S05";
-
-      if(logfile) fprintf(logfile, "\n\nStarting log:\n");
-
-      RebootProp();
-
-      for(;;){
-	get_cmd();
-	i = 0;
-	switch(cmd[i++]){
-	case 'g':
-	  for(i = 0; i < 18; i++){
-	    reg = PasmVars[cog].mem[GCC_REG_BASE + i];
-	    sprintf(response+8*i,
-		    "%02x%02x%02x%02x",
-		    (unsigned char)(reg & 0xff),
-		    (unsigned char)((reg>>8) & 0xff),
-		    (unsigned char)((reg>>16) & 0xff),
-		    (unsigned char)((reg>>24) & 0xff));
-	  }
-	  reg = PasmVars[cog].pc * 4 + 0x80000000 + cog * 0x10000000;
-	  sprintf(response+8*i,
-		  "%02x%02x%02x%02x",
-		  (unsigned char)(reg & 0xff),
-		  (unsigned char)((reg>>8) & 0xff),
-		  (unsigned char)((reg>>16) & 0xff),
-		  (unsigned char)((reg>>24) & 0xff));
-	  reply(response, 8*18+8);
-	  break;
-
-	case 'G':
-	  for(j = 0; j < 18; j++){
-	    PasmVars[cog].mem[GCC_REG_BASE + j] = get_addr(&i);
-	  }
-	  // Ignore writes to cog pc.  Instead, reset it to be
-	  // ready for a fresh instruction.
-	  // This is too magical.  How do we fix it?
-	  PasmVars[cog].pc = 0x12;
-	  reply("OK",2);
-	  break;
-
-	case 'm':
-	  addr = strtol(&cmd[i], &end, 16);
-	  i = (size_t)end - (size_t)cmd;
-	  i++;
-	  len = strtol(&cmd[i], NULL, 16);
-	  if(len > 512) len = 512;
-	  j = 0;
-	  while(len--){
-	    val = get_byte(addr);
-	    addr++;
-	    sprintf(&response[j], "%02x", (unsigned char)val);
-	    j += 2;
-	  }
-	  reply(response, j);
-	  break;
-
-	case 'M':
-	  addr = strtol(&cmd[i], &end, 16);
-	  i = (size_t)end - (size_t)cmd;
-	  i++;
-	  len = strtol(&cmd[i], &end, 16);
-	  i = (size_t)end - (size_t)cmd;
-	  i++;
-	  while(len--){
-	    val = parse_byte(&cmd[i]);
-	    i += 2;
-	    put_byte(addr, val & 0xff);
-	    addr++;
-	  }
-	  reply("OK",2);
-	  break;
-
-	case 's':
-	  if(cmd[i]){
-	    // Get the new LMM PC, reset the microcode
-	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
-	    PasmVars[cog].pc = 0x12;
-	  }
-	  {
-	    int brk = 0;
-	    do {
-	      int i;
-	      // Step through a full LMM instruction
-	      step_chip(&state, &spinvars, &runflag);
-              for(i = 0; i < 8; i++){
-	        if(breakable_point(i)) brk = 1;
-	      }
-	    } while (!brk);
-	  }
-	  halt_code = "S05";
-	  reply(halt_code, 3);
-	  break;
-
-	case 'c':
-	  if(cmd[i]){
-	    PasmVars[cog].mem[GCC_REG_BASE + 17] = get_addr(&i);
-	    PasmVars[cog].pc = 0x12;
-	  }
-	  halt_code = "S02";
-	  do {
-	    int brk = 0;
-            struct bkpt *b;
-
-            for (i = 0; i < 8; i++) {
-              if(breakable_point(i)){
-                // Look to see if the cog's LMM PC is at a breakpoint
-                for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
-                  if((PasmVars[i].mem[GCC_REG_BASE + 17] >= b->next->addr)
-                     && (PasmVars[i].mem[GCC_REG_BASE + 17] <= b->next->addr + b->next->len)){
-                    brk = 1;
-                  }
-                }
-              }
-            }
-	    if(brk){
-	      halt_code = "S05";
-	      break;
-	    } else {
-	      step_chip(&state, &spinvars, &runflag);
-	    }
-	  } while(getch() != 0x03); // look for a CTRL-C
-	  reply(halt_code, 3);
-	  break;
-
-	case 'H':
-	  if((cmd[i] == 'g') && (cmd[i+1] == '0')){
-	    reply("OK", 2);
-	  } else {
-	    reply("", 0);
-	  }
-	  break;
-
-	case 'k':
-	  reply("OK", 2);
-	  goto out;
-
-	case 'z':
-	  /* Remove breakpoint */
-	  if(cmd[i++] == '0'){
-	    long addr;
-	    long len;
-	    struct bkpt *b;
-	    char *p = &cmd[i];
-
-	    p++;   /* Skip the comma */
-	    addr = strtol(p, &p, 16);
-	    p++;   /* Skip the other comma */
-	    len = strtol(p, NULL, 16);
-	    for(b = (struct bkpt *)&bkpt; b && b->next; b = b->next){
-	      if((b->next->addr == addr) && (b->next->len == len)){
-		struct bkpt *t = b->next;
-		b->next = t->next;
-		free(t);
-	      }
-	    }
-	    reply("OK", 2);
-	  } else {
-	    reply("", 0);
-	  }
-	  break;
-
-	case 'Z':
-	  /* Set breakpoint */
-	  if(cmd[i++] == '0'){
-	    long addr;
-	    long len;
-	    struct bkpt *b;
-	    char *p = &cmd[i];
-	    p++;   /* Skip the comma */
-	    addr = strtol(p, &p, 16);
-	    p++;   /* Skip the other comma */
-	    len = strtol(p, NULL, 16);
-	    for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
-	      if((b->addr == addr) && (b->len == len)){
-		/* Duplicate; bail out */
-		break;
-	      }
-	    }
-	    if(b->next){
-	      /* Was a duplicate, do nothing */
-	    } else {
-	      struct bkpt *t = (struct bkpt *)malloc(sizeof(struct bkpt));
-	      if(!t){
-		fprintf(stderr, "Failed to allocate a breakpoint structure\n");
-		exit(1);
-	      }
-	      t->addr = addr;
-	      t->len = len;
-	      t->next = bkpt;
-	      bkpt = t;
-	    }
-	    reply("OK", 2);
-	  } else {
-	    reply("", 0);
-	  }
-	  break;
-
-	case '?':
-	  reply(halt_code, 3);
-	  break;
-
-	default:
-	  reply("", 0);
-	  break;
-	}
-      }
-    out:
-      ;
+      gdb();
     }
     else
     {
-      RebootProp();
-      while (runflag && (maxloops < 0 || loopcount < maxloops))
-      {
-	  runflag = 0;
-	  step_chip(&state, &spinvars, &runflag);
-          CheckCommand();
-	  if (baudrate)
-	  {
-	      CheckSerialOut();
-	      CheckSerialIn();
-	  }
-      }
+      if (RunProp(maxloops)) Debug();
     }
+    if (eeprom) EEPromClose();
     if (profile) PrintStats();
     return 0;
 }
