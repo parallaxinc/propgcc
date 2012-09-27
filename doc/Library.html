@@ -13,6 +13,7 @@
 <A HREF="#stdio">Standard I/O</A><BR>
 <A HREF="#fopen">...fopen</A><BR>
 <A HREF="#cooked">...Raw vs. Cooked mode</A><BR>
+<A HREF="#nonblock">...Non-Blocking Reads</A><BR>
 <A HREF="#printf">...Printf and Code Size</A><BR>
 <A HREF="#time">Time Related Functions</A><BR>
 <A HREF="#TimeZones">...Time Zones</A><BR>
@@ -194,6 +195,25 @@ without processing, do something like:
 </PRE>
 This also causes stdin to effectively be unbuffered, since the
 terminal driver only processes 1 character at a time in raw mode.
+</P>
+
+<A NAME="nonblock"><H2>Non-blocking Reads</H2></A>
+<P>
+Terminal style drivers also support the ability to attempt to read a
+byte and return immediately if none is available. This is accomplished
+by setting the <CODE>_IONONBLOCK</CODE> bit in the <CODE>_flag</CODE>
+field of the <CODE>FILE</CODE> structure. For example, to check to see
+if a byte is available from stdin, you could do:
+<PRE>
+  stdin->_flag |= _IONONBLOCK;
+  c = getchar();
+</PRE>
+If a character is available then <CODE>c</CODE> will be set
+to that character, otherwise it will be set to <CODE>-1</CODE>. Note
+that this is the same as <CODE>EOF</CODE>; in non-blocking mode there
+is no way to distinguish between end of file and no character
+currently available (for terminals there never is really an end of
+file).
 </P>
 
 <A NAME="printf"><H2>Printf and Code Size</H2></A>
