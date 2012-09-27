@@ -15,9 +15,9 @@ _doio(int fd, void *buf, int count, int isread)
 
   fp = &__files[fd];
   if (isread)
-    return fread(buf, 1, count, fp);
+    return (fp->_drv->read)(fp, buf, count);
   else
-    return fwrite(buf, 1, count, fp);
+    return (fp->_drv->write)(fp, buf, count);
 }
 
 int
