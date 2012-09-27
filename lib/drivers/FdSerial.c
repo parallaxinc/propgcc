@@ -78,14 +78,16 @@ int _FdSerial_rxcheck(FdSerial_t *data)
 }
 
 /**
- * Wait for a byte from the receive queue. blocks until something is ready.
+ * Wait for a byte from the receive queue. blocks until something is ready
+ * (unless _IONONBLOCK is set in the flags, in which case it returns EOF
+ * immediately if no data is ready)
  * @returns received byte 
  */
 int _FdSerial_getbyte(FILE *fp)
 {
   FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
   int rc = _FdSerial_rxcheck(data);
-  while(rc < 0) {
+  while(rc < 0 && !(fp->_flag & _IONONBLOCK)) {
     (*__yield_ptr)();
     //(*__napuntil_ptr)(_CNT + 10000);
     rc = _FdSerial_rxcheck(data);
