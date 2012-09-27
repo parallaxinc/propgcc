@@ -52,6 +52,9 @@ _term_read(FILE *fp, unsigned char *buf, int size)
   while (count < size)
     {
       value = (*getbyte)(fp);
+      if (value == -1)
+	break;  /* EOF */
+
       /* convert cr to lf */
       if (cooked && value == '\r') {
 	putbyte(value, fp); /* echo CR+LF */

@@ -72,6 +72,12 @@ Tv_write(FILE *fp, unsigned char *buf, int count)
   return count;
 }
 
+int
+Tv_putbyte(FILE *fp, int c)
+{
+  tvText_outchar(c);
+}
+
 _Driver TvDriver =
   {
     TvPrefix,
@@ -81,6 +87,8 @@ _Driver TvDriver =
     Tv_write,
     NULL,  /* seek; not applicable */
     NULL,  /* remove; not applicable */
+    NULL,  /* getbyte; not applicable */
+    Tv_putbyte,
   };
 
 /*

@@ -70,6 +70,8 @@ _Driver TvDriver = {
   Tv_write,     // fwrite is used to send characters to the TV
   NULL,         // seek; not applicable
   NULL,         // remove; not applicable
+  NULL,         // getbyte; not applicable
+  Tv_putbyte,   // putbyte: write a single byte
 };
 
  @endverbatim
@@ -166,7 +168,7 @@ struct __driver {
    * @details Function putbyte is needed for writing to the generic terminal driver.
    * @param c The character to write.
    * @param[in] fp The file pointer.
-   * @returns character read by the function.
+   * @returns character written by the function.
    */
   int (*putbyte)(int c, FILE *fp);
 };
@@ -186,9 +188,9 @@ int _null_read(FILE *fp, unsigned char *buf, int size);
 /** Use this when no other write function is applicable */
 int _null_write(FILE *fp, unsigned char *buf, int size);
 
-/** Use as getbyte function to do cooked I/O input */
+/** Uses getbyte function to do cooked I/O input */
 int _term_read(FILE *fp, unsigned char *buf, int size);
-/** Use as putbyte function to do cooked I/O output */
+/** Uses putbyte function to do cooked I/O output */
 int _term_write(FILE *fp, unsigned char *buf, int size);
 
 #endif
