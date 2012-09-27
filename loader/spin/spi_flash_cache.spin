@@ -60,7 +60,7 @@ DAT
 ' initialization structure offsets
 ' $0: pointer to a two word mailbox
 ' $4: pointer to where to store the cache lines in hub ram
-' $8: 0xooiiccee - ss=mosi ii=miso cc=sck pp=protocol
+' $8: 0xooiiccee - oo=mosi ii=miso cc=sck pp=protocol
 ' $a: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' note that $4 must be at least 2^($8+$a)*2 bytes in size
 ' the protocol byte is a bit mask with the bits defined above
@@ -180,10 +180,10 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         call    #release
         
         ' check the jedec id
-'        call    #read_jedec_id
-'        cmp     t1, jedec_id wz
+'         call    #read_jedec_id
+'         cmp     t1, jedec_id wz
 'halt
-'  if_nz jmp     #halt
+'   if_nz jmp     #halt
         
         ' clear the status register
         call    #clear_status_reg
@@ -295,6 +295,35 @@ erase_4k_block_handler
         wrlong  data, pvmaddr
         jmp     #waitcmd
 
+#ifdef SST
+
+write_data_handler
+        rdlong  ptr, vmaddr     ' get the buffer pointer
+        add     vmaddr, #4
+        rdlong  count, vmaddr wz' get the byte count
+  if_z  jmp     #:done
+        add     vmaddr, #4
+        rdlong  vmaddr, vmaddr  ' get the flash address (zero based)
+        
+:loop   call    #write_enable
+        mov     cmd, vmaddr
+        and     cmd, flashmask
+        or      cmd, fprogram
+        mov     bytes, #4
+        call    #start_spi_cmd
+:data   rdbyte  data, ptr
+        call    #spiSendByte
+        call    #release
+        call    #wait_until_done
+        add     ptr, #1
+        add     vmaddr, #1
+        djnz    count, #:loop
+        
+:done   wrlong  data, pvmaddr
+        jmp     #waitcmd
+
+#else
+
 write_data_handler
         rdlong  ptr, vmaddr     ' get the buffer pointer
         add     vmaddr, #4
@@ -325,6 +354,8 @@ write_data_handler
         wrlong  data, pvmaddr
         jmp     #waitcmd
 
+#endif
+
 ' spi commands
 
 read_jedec_id
@@ -343,15 +374,31 @@ read_jedec_id
 read_jedec_id_ret
         ret
 
+#ifdef SST
+
+clear_status_reg
+        mov     cmd, fwrsenable
+        call    #start_spi_cmd_1
+        call    #release
+        mov     cmd, fwrstatus
+        mov     bytes, #2
+        call    #start_spi_cmd
+        call    #release
+clear_status_reg_ret
+        ret
+
+#else
+
 clear_status_reg
         call    #write_enable
         mov     cmd, fwrstatus
-        mov     bytes, #3
+        mov     bytes, #2
         call    #start_spi_cmd
         call    #release
-        call    #wait_until_done
 clear_status_reg_ret
         ret
+
+#endif
 
 write_enable
         mov     cmd, fwrenable
@@ -540,15 +587,22 @@ hubaddr     long    0       ' hub memory address to read from or write to
 ptr         long    0
 count       long    0
 
+#ifdef SST
+jedec_id    long    $004a25bf       ' value of t1 after read_jedec_id routine (SST25VF032B)
+#else
 jedec_id    long    $001440ef       ' value of t1 after read_jedec_id routine (W25Q80BV)
+#endif
 
 ' spi commands
 
-' quad spi commands
+' spi commands
 fprogram    long    $02000000       ' flash program byte/page
 fread       long    $0b000000       ' flash read command
 frdjedecid  long    $9f000000       ' read the manufacturers id, device type and device id
 ferase4kblk long    $20000000       ' flash erase a 4k block
+#ifdef SST
+fwrsenable  long    $50000000       ' SST write status register enable
+#endif
 frdstatus   long    $05000000       ' flash read status
 fwrstatus   long    $01000000       ' flash write status
 fwrenable   long    $06000000       ' flash write enable

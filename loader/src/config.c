@@ -34,7 +34,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 int strcasecmp(const char *s1, const char *s2);
 #endif
 
-#define MAXLINE 128
+#define MAXLINE 1024
 
 typedef struct Field Field;
 struct Field {
@@ -148,6 +148,9 @@ BoardConfig *ParseConfigurationFile(System *sys, const char *name)
 
     /* create a new board configuration */
     baseConfig = config = NewBoardConfig(GetDefaultConfiguration(), name);
+    
+    /* initialize the line number */
+    buf.lineNumber = 0;
         
     /* process each line in the configuration file */
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {
@@ -392,8 +395,10 @@ static void ParseError(LineBuf *buf, const char *fmt, ...)
     printf("error: ");
     vprintf(fmt, ap);
     putchar('\n');
-    if (buf)
+    if (buf) {
         printf("  on line number %d\n", buf->lineNumber);
+        printf("%s\n", buf->lineBuf);
+    }
     va_end(ap);
     exit(1);
 }

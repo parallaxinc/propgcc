@@ -154,6 +154,7 @@ $(DRVDIR)/sdram_cache.dat \
 $(DRVDIR)/eeprom_cache.dat \
 $(DRVDIR)/sd_cache.dat \
 $(DRVDIR)/spi_flash_cache.dat \
+$(DRVDIR)/sst_spi_flash_cache.dat \
 $(DRVDIR)/spi_nway_flash_cache.dat \
 $(DRVDIR)/sst_sqi_flash_cache.dat \
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat \
@@ -203,6 +204,10 @@ $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 
 $(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(ECHO) $@
+
+$(DRVDIR)/sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
+	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
