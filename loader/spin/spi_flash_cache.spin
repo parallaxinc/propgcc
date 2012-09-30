@@ -42,7 +42,6 @@ CON
   ' default cache dimensions
   DEFAULT_INDEX_WIDTH   = 7
   DEFAULT_OFFSET_WIDTH  = 6
-  DEFAULT_CACHE_SIZE    = 1<<(DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH)
 
   ' cache line tag flags
   EMPTY_BIT             = 30
@@ -87,32 +86,32 @@ init_vm mov     t1, par             ' get the address of the initialization stru
         add     t1, #4
 
         ' build the mosi mask
-        mov     t3, t2
-        shr     t3, #24
+        mov     mosi_pin, t2
+        shr     mosi_pin, #24
         mov     mosi_mask, #1
-        shl     mosi_mask, t3
+        shl     mosi_mask, mosi_pin
         or      spidir, mosi_mask
         
         ' build the miso mask
-        mov     t3, t2
-        shr     t3, #16
-        and     t3, #$ff
+        mov     miso_pin, t2
+        shr     miso_pin, #16
+        and     miso_pin, #$ff
         mov     miso_mask, #1
-        shl     miso_mask, t3
+        shl     miso_mask, miso_pin
         
         ' make the sio2 and sio3 pins outputs in single spi mode to assert /WP and /HOLD
         test    t2, #QUAD_SPI_HACK_MASK wz
-  if_nz mov     t4, #$06
-  if_nz shl     t4, t3
-  if_nz or      spidir, t4
-  if_nz or      spiout, t4
+  if_nz mov     t3, #$06
+  if_nz shl     t3, miso_pin
+  if_nz or      spidir, t3
+  if_nz or      spiout, t3
         
         ' build the sck mask
-        mov     t3, t2
-        shr     t3, #8
-        and     t3, #$ff
+        mov     sck_pin, t2
+        shr     sck_pin, #8
+        and     sck_pin, #$ff
         mov     sck_mask, #1
-        shl     sck_mask, t3
+        shl     sck_mask, sck_pin
         or      spidir, sck_mask
         
         ' get the cs protocol selector bits (cache-param2)
@@ -158,6 +157,8 @@ init_vm mov     t1, par             ' get the address of the initialization stru
   if_nz shl     select_addr, t4
   if_nz shl     mask_inc, t4
   if_nz or      spidir, mask_inc
+  
+        call    #spiInit
         
         ' get the jedec id
 '        rdlong  t2, t1 wz
@@ -539,6 +540,82 @@ c3_release                          ' Serial-DeMUX
 
 c3tmp   long    0
 
+#ifdef FAST
+
+{{
+  Counter-based SPI code based on code from:
+  
+  SPI interface routines for SD & SDHC & MMC cards
+
+  Jonathan "lonesock" Dummer
+  version 0.3.0  2009 July 19
+}}
+
+spiInit
+        or writeMode,mosi_pin
+        or clockLineMode,sck_pin
+        mov ctra,writeMode      ' Counter A drives data out
+        mov ctrb,clockLineMode  ' Counter B will always drive my clock line
+spiInit_ret
+        ret
+        
+clockLineMode   long    %00100 << 26
+writeMode       long    %00100 << 26
+        
+spiSendByte
+        mov phsa,data
+        shl phsa,#24
+        andn outa,mosi_mask 
+        'movi phsb,#%11_0000000
+        mov phsb,#0
+        movi frqb,#%01_0000000        
+        rol phsa,#1
+        rol phsa,#1
+        rol phsa,#1
+        rol phsa,#1
+        rol phsa,#1
+        rol phsa,#1
+        rol phsa,#1
+        mov frqb,#0
+        ' don't shift out the final bit...already sent, but be aware 
+        ' of this when sending consecutive bytes (send_cmd, for e.g.) 
+spiSendByte_ret
+        ret
+
+spiRecvByte
+        neg phsa,#1' DI high
+        mov data,#0
+        ' set up my clock, and start it
+        movi phsb,#%011_000000
+        movi frqb,#%001_000000
+        ' keep reading in my value
+        test miso_mask,ina wc
+        rcl data,#1
+        test miso_mask,ina wc
+        rcl data,#1
+        test miso_mask,ina wc
+        rcl data,#1
+        test miso_mask,ina wc
+        rcl data,#1
+        test miso_mask,ina wc
+        rcl data,#1
+        test miso_mask,ina wc
+        rcl data,#1
+        test miso_mask,ina wc
+        rcl data,#1
+        test miso_mask,ina wc
+        mov frqb,#0 ' stop the clock
+        rcl data,#1
+        mov phsa,#0 'DI low
+spiRecvByte_ret
+        ret
+
+#else
+
+spiInit
+spiInit_ret
+        ret
+
 spiSendByte
         shl     data, #24
         mov     bits, #8
@@ -562,11 +639,18 @@ spiRecvByte
 spiRecvByte_ret
         ret
 
+bits    long    0
+
+#endif
+
 spidir          long    0
 spiout          long    0
 
+mosi_pin        long    0
 mosi_mask       long    0
+miso_pin        long    0
 miso_mask       long    0
+sck_pin         long    0
 sck_mask        long    0
 
 cs_clr          long    0
@@ -577,7 +661,6 @@ select_addr     long    0
 cmd         long    0
 bytes       long    0
 data        long    0
-bits        long    0
 
 ' input parameters to BREAD and BWRITE
 vmaddr      long    0       ' virtual address
@@ -609,6 +692,4 @@ fwrenable   long    $06000000       ' flash write enable
 
 flashmask   long    $00ffffff       ' mask to isolate the flash offset bits
 
-ledmask     long    1<<15           ' for debugging
-
-            FIT     496             ' out of 496
+            fit     496             ' out of 496

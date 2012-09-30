@@ -40,10 +40,9 @@ CON
   QUAD_SPI_HACK_MASK    = $20   ' set /WE and /HOLD for testing on Quad SPI chips
  
   ' default cache dimensions
-  DEFAULT_INDEX_WIDTH   = 6	' number of bits in the index offset (index size is 2^n)
-  DEFAULT_OFFSET_WIDTH  = 6	' number of bits in the line offset (line size is 2^n)
-  DEFAULT_WAY_WIDTH	= 1	' number of bits in the way offset (way count is 2^n)
-  DEFAULT_CACHE_SIZE    = 1<<(DEFAULT_WAY_WIDTH+DEFAULT_INDEX_WIDTH+DEFAULT_OFFSET_WIDTH)
+  DEFAULT_INDEX_WIDTH   = 6 ' number of bits in the index offset (index size is 2^n)
+  DEFAULT_OFFSET_WIDTH  = 6 ' number of bits in the line offset (line size is 2^n)
+  DEFAULT_WAY_WIDTH     = 1 ' number of bits in the way offset (way count is 2^n)
 
   ' cache line tag flags
   EMPTY_BIT             = 30
@@ -198,7 +197,7 @@ fillme  long    0[128-fillme]           ' first 128 cog locations are used for a
         ' initialize the cache lines
 vmflush movd    :flush, #0
         mov     t1, index_count
-        shl	t1, way_width
+        shl t1, way_width
 :flush  mov     0-0, empty_mask
         add     :flush, dstinc
         djnz    t1, #:flush
@@ -218,22 +217,22 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
         mov     line, vmpage            ' get the cache line index
         and     line, index_mask
         
-        mov	t1, way_count		' try each way
-loop	movs    :ld, line		' get ready to check the current line address
-	movd	dset, line		' get ready to store the new line address
+        mov t1, way_count       ' try each way
+loop    movs    :ld, line       ' get ready to check the current line address
+        movd    dset, line      ' get ready to store the new line address
 :ld     mov     vmcurrent, 0-0          ' get the cache line tag
         and     vmcurrent, tag_mask
         cmp     vmcurrent, vmpage wz    ' z set means there was a cache hit
-  if_z  jmp	#hit			' handle a cache hit
-  	add	line, index_count	' try the next way
-  	djnz	t1, #loop
-  	
-miss    and	line, index_mask	' mask out the way bits
-	mov	t1, CNT			' use low bits of CNT to choose a random way
-	shl	t1, index_count
-	and	t1, way_mask
-	or	line, t1
-	mov     hubaddr, line       	' get the address of the cache line
+  if_z  jmp #hit            ' handle a cache hit
+        add line, index_count   ' try the next way
+        djnz    t1, #loop
+    
+miss    and line, index_mask    ' mask out the way bits
+        mov t1, CNT         ' use low bits of CNT to choose a random way
+        shl t1, index_count
+        and t1, way_mask
+        or  line, t1
+        mov     hubaddr, line           ' get the address of the cache line
         shl     hubaddr, offset_width
         add     hubaddr, cacheptr
         movd    mtest, line
@@ -252,9 +251,9 @@ mtest   test    0-0, dirty_mask wz
         mov     dira, #0                ' release the pins for other SPI clients
 nlk_spi nop        
 mst     mov     0-0, vmpage
-	jmp	#done
+    jmp #done
 
-hit     mov     hubaddr, line       	' get the address of the cache line
+hit     mov     hubaddr, line           ' get the address of the cache line
         shl     hubaddr, offset_width
         add     hubaddr, cacheptr
 
@@ -318,9 +317,9 @@ index_mask      long    0
 index_count     long    0
 offset_width    long    DEFAULT_OFFSET_WIDTH
 line_size       long    0                       ' line size in bytes
-way_width	long	DEFAULT_WAY_WIDTH
-way_count	long	(1<<DEFAULT_WAY_WIDTH)
-way_mask	long	((1<<DEFAULT_WAY_WIDTH)-1)<<DEFAULT_INDEX_WIDTH
+way_width       long    DEFAULT_WAY_WIDTH
+way_count       long    (1<<DEFAULT_WAY_WIDTH)
+way_mask        long    ((1<<DEFAULT_WAY_WIDTH)-1)<<DEFAULT_INDEX_WIDTH
 empty_mask      long    (1<<EMPTY_BIT)
 dirty_mask      long    (1<<DIRTY_BIT)
 
@@ -535,16 +534,16 @@ spiRecvByte
 spiRecvByte_ret
         ret
 
-spidir          long    0
-spiout          long    0
+spidir      long    0
+spiout      long    0
 
-mosi_mask       long    0
-miso_mask       long    0
-sck_mask        long    0
+mosi_mask   long    0
+miso_mask   long    0
+sck_mask    long    0
 
-cs_clr          long    0
-mask_inc        long    0
-select_addr     long    0
+cs_clr      long    0
+mask_inc    long    0
+select_addr long    0
 
 ' variables used by the spi send/receive functions
 cmd         long    0
@@ -558,8 +557,6 @@ ptr         long    0
 jedec_id    long    $001440ef       ' value of t1 after read_jedec_id routine (W25Q80BV)
 
 ' spi commands
-
-' quad spi commands
 fprogram    long    $02000000       ' flash program byte/page
 fread       long    $0b000000       ' flash read command
 frdjedecid  long    $9f000000       ' read the manufacturers id, device type and device id
@@ -570,6 +567,4 @@ fwrenable   long    $06000000       ' flash write enable
 
 flashmask   long    $00ffffff       ' mask to isolate the flash offset bits
 
-ledmask     long    1<<15           ' for debugging
-
-            FIT     496             ' out of 496
+            fit     496             ' out of 496
