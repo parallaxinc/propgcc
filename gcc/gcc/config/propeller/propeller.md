@@ -3205,7 +3205,20 @@
     (set (match_dup 1)(match_dup 0))
    ]
   "propeller_reg_dead_peep (insn, operands[0])"
-  "%Q3 %1,%2"
+  "%Q3\t%1,%2"
+)
+
+(define_peephole
+  [
+    (set (match_operand:SI 0 "propeller_dst_operand" "")
+         (match_operand:SI 1 "propeller_dst_operand" ""))
+    (set (match_dup 0)
+         (and:SI (not:SI match_operand: SI 2 "propeller_src_operand" "")
+                 (match_dup 0)))
+    (set (match_dup 1)(match_dup 0))
+   ]
+  "propeller_reg_dead_peep (insn, operands[0])"
+  "andn\t%1,%2"
 )
 
 ;;
