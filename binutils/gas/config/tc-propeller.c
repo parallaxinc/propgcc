@@ -1805,9 +1805,9 @@ md_assemble (char *instruction_string)
   }
 
   {
-    int insn_size;
-    int alloc_size;
-    int bytes_written = 0;
+    unsigned int insn_size;
+    unsigned int alloc_size;
+    unsigned int bytes_written = 0;
 #define CHECK_WRITTEN(n) do { bytes_written += (n); if (bytes_written > alloc_size) abort(); } while (0)
 
     if (compress && !insn_compressed) {
