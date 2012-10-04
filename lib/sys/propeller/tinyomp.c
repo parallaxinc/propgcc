@@ -3,15 +3,16 @@
 #include <sys/thread.h>
 #include <stdlib.h>
 #include <compiler.h>
+#include <omp.h>
 
 #ifdef DEBUG
 #include <stdio.h>
 #endif
 
 #define MAX_THREADS 8
-//#define MAX_THREADS 4
 #define STACKSIZE 512
 
+static int max_threads = MAX_THREADS; /* current limit on threads to use */
 struct workstruct {
     void (*fn)(void *);
     void *arg;
@@ -77,15 +78,23 @@ startthreads(int max)
 }
 
 int
-omp_get_num_threads()
+omp_get_num_threads(void)
 {
     if (!team.started)
-        return 1;
+        return max_threads;
     return team.numthreads;
 }
 
+void
+omp_set_num_threads(int max)
+{
+  if (max > MAX_THREADS || max <= 0)
+    max = MAX_THREADS;
+  max_threads = max;
+}
+
 int
-omp_get_thread_num()
+omp_get_thread_num(void)
 {
     int cog = __builtin_propeller_cogid();
     int i;
@@ -118,8 +127,8 @@ GOMP_parallel_sections_start( void (*fn)(void *), void *data, unsigned num_threa
     if (team.started)
       return;
 
-    if (num_threads == 0 || num_threads > MAX_THREADS)
-      num_threads = MAX_THREADS;
+    if (num_threads == 0 || num_threads > max_threads)
+      num_threads = max_threads;
 
 #ifdef DEBUG
     printf("parallel_start: requested %d threads ", num_threads);
