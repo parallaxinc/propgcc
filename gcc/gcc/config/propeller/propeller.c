@@ -2756,7 +2756,12 @@ get_jump_dest(rtx branch)
   if (extract_asm_operands (call) != NULL)
     return NULL;
 
-  set = single_set (branch);
+  if (GET_CODE (call) == SET)
+    {
+      set = call;
+    }
+  else
+    set = single_set (branch);
   if (!set)
     return NULL;
 
@@ -3100,6 +3105,38 @@ fcache_convert_call (rtx insn)
 }
 
 /*
+ * replace a label with an UNSPEC_FCACHE_LABEL
+ */
+static void
+fcache_replace_label(rtx pattern, rtx fcache_base)
+{
+  rtx src;
+  rtx addr;
+
+  src = SET_SRC (pattern);
+
+  if (GET_CODE (SET_DEST (pattern)) != PC)
+    abort ();
+  if (GET_CODE (src) == IF_THEN_ELSE)
+    {
+      if (GET_CODE (XEXP (src, 1)) != PC)
+	{
+	  addr = XEXP (src, 1);
+	  XEXP (src, 1) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	}
+      else
+	{
+	  addr = XEXP (src, 2);
+	  XEXP (src, 2) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	}
+    }
+  else
+    {
+      SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, src, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+    }
+}
+
+/*
  * convert a jump insn
  * this pretty much requires that we re-generate the insn
  * "fcache_base" is the label at the start of the fcache block
@@ -3133,6 +3170,12 @@ fcache_convert_jump(rtx orig_insn, rtx fcache_base)
 				 UNSPEC_FCACHE_RET);
 	  XVECEXP (pattern, 0, 0) = addr;
 	}
+      else if (GET_CODE (src) == SET)
+	{
+	  fcache_replace_label(src, fcache_base);
+	}
+      else
+	gcc_unreachable ();
     }
   else if (GET_CODE (pattern) == RETURN)
     {
@@ -3147,27 +3190,7 @@ fcache_convert_jump(rtx orig_insn, rtx fcache_base)
     }
   else
     {
-      src = SET_SRC (pattern);
-
-      if (GET_CODE (SET_DEST (pattern)) != PC)
-	abort ();
-      if (GET_CODE (src) == IF_THEN_ELSE)
-	{
-	  if (GET_CODE (XEXP (src, 1)) != PC)
-	    {
-	      addr = XEXP (src, 1);
-	      XEXP (src, 1) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-	    }
-	  else
-	    {
-	      addr = XEXP (src, 2);
-	      XEXP (src, 2) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-	    }
-	}
-      else
-	{
-	  SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, src, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-	}
+      fcache_replace_label(pattern, fcache_base);
     }
 
   /* generate a new insn with the given pattern */

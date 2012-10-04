@@ -887,6 +887,65 @@
 )
 
 ;; -------------------------------------------------------------------------
+;; single bit insert, and multiple bit inserts
+;; operand 1 is the width, operand 2 the starting position
+;; -------------------------------------------------------------------------
+(define_insn "insv_movs"
+  [(set (zero_extract:SI (match_operand:SI 0 "propeller_dst_operand" "+rC")
+                         (match_operand:SI 1 "const_int_operand" "i")
+                         (match_operand:SI 2 "const_int_operand" "i"))
+        (match_operand:SI 3 "propeller_src_operand" "rCI"))]
+  "INTVAL (operands[1]) == 9 && INTVAL (operands[2]) == 0"
+  "movs\\t%0, %3"
+  [(set_attr "predicable" "yes")]
+)
+(define_insn "insv_movd"
+  [(set (zero_extract:SI (match_operand:SI 0 "propeller_dst_operand" "+rC")
+                         (match_operand:SI 1 "const_int_operand" "i")
+                         (match_operand:SI 2 "const_int_operand" "i"))
+        (match_operand:SI 3 "propeller_src_operand" "rCI"))]
+  "INTVAL (operands[1]) == 9 && INTVAL (operands[2]) == 9"
+  "movd\\t%0, %3"
+  [(set_attr "predicable" "yes")]
+)
+(define_insn "insv_movi"
+  [(set (zero_extract:SI (match_operand:SI 0 "propeller_dst_operand" "+rC")
+                         (match_operand:SI 1 "const_int_operand" "i")
+                         (match_operand:SI 2 "const_int_operand" "i"))
+        (match_operand:SI 3 "propeller_src_operand" "rCI"))]
+  "INTVAL (operands[1]) == 9 && INTVAL (operands[2]) == 23"
+  "movi\\t%0, %3"
+  [(set_attr "predicable" "yes")]
+)
+
+(define_expand "insv"
+  [(set (zero_extract:SI (match_operand:SI 0 "propeller_dst_operand" "")
+                         (match_operand:SI 1 "const_int_operand" "")
+			 (match_operand:SI 2 "const_int_operand" ""))
+        (match_operand:SI 3 "propeller_src_operand" ""))]
+  ""
+{
+  int start_bit = INTVAL (operands[2]);
+  int width = INTVAL (operands[1]);
+
+  if (width == 9) {
+    if (start_bit == 0) {
+      emit_insn (gen_insv_movs (operands[0], operands[1], operands[2], operands[3]));
+      DONE;
+    } else if (start_bit == 9) {
+      emit_insn (gen_insv_movd (operands[0], operands[1], operands[2], operands[3]));
+      DONE;
+    } else if (start_bit == 23) {
+      emit_insn (gen_insv_movi (operands[0], operands[1], operands[2], operands[3]));
+      DONE;
+    }
+  }
+  FAIL;
+})
+
+
+;;
+;; -------------------------------------------------------------------------
 ;; Shifters
 ;; -------------------------------------------------------------------------
 
@@ -2366,7 +2425,7 @@
   ]
 ""
 {
-  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+  if (GET_MODE (operands[0]) == SImode && !TARGET_CMM)
     {
       if (INTVAL (operands[3]) > 1)
       	 FAIL;
@@ -2396,11 +2455,14 @@
    (use (match_operand 4 "" ""))]	; label
 ""
 {
-  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+  if (GET_MODE (operands[0]) == SImode && !TARGET_CMM)
     {
       if (INTVAL (operands[3]) > 1)
       	 FAIL;
-      emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+      if (TARGET_LMM)
+        emit_jump_insn (gen_djnz_lmm (operands[4], operands[0], operands[0]));
+      else
+        emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
     }
   else
     FAIL;
@@ -2427,7 +2489,7 @@
 {
  if (which_alternative != 0)
    return "#";
- return "djnz\t%1,#%l0";
+ return "djnz\\t%1,#%l0";
 }
  "&& reload_completed
   && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
@@ -2443,7 +2505,79 @@
                           (pc)))]
  ""
  [(set_attr "type" "core,multi,multi")
-  (set_attr "length" "4,8,8")
+  (set_attr "length" "4,16,16")
+ ]
+)
+
+(define_insn_and_split "djnz_lmm"
+  [(set (pc)
+        (if_then_else
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC,rC")
+	      (const_int 1))
+	  (label_ref (match_operand 0 "" ""))
+	  (pc)))
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,?X,?X")
+        (plus:SI (match_dup 1)(const_int -1)))
+   (clobber (match_scratch:SI 3 "=X,&1,&?r"))
+  ]
+"TARGET_LMM && !TARGET_CMM"
+{
+ if (which_alternative != 0)
+   return "#";
+ return "djnz\\t%1,#__LMM_JMP\\n\\tlong\\t%l0";
+}
+ "&& reload_completed
+  && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
+ [(set (match_dup 3)(match_dup 1))
+  (parallel
+    [(set (reg:CC_Z CC_REG)
+          (compare:CC_Z (plus:SI (match_dup 3)(const_int -1))
+	                (const_int 0)))
+      (set (match_dup 3)(plus:SI (match_dup 3)(const_int -1)))])
+  (set (match_dup 2)(match_dup 3))
+  (set (pc) (if_then_else (ne (reg:CC_Z CC_REG)(const_int 0))
+                          (label_ref (match_dup 0))
+                          (pc)))]
+ ""
+ [(set_attr "type" "multi,multi,multi")
+  (set_attr "length" "8,16,16")
+ ]
+)
+
+(define_insn_and_split "*djnz_fcache"
+  [(set (pc)
+        (if_then_else
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC,rC")
+	      (const_int 1))
+	  (unspec [(label_ref (match_operand 0 "" ""))
+                   (label_ref (match_operand 4 "" ""))]
+                  UNSPEC_FCACHE_LABEL_REF)
+	  (pc)))
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,?X,?X")
+        (plus:SI (match_dup 1)(const_int -1)))
+   (clobber (match_scratch:SI 3 "=X,&1,&?r"))
+  ]
+""
+{
+ if (which_alternative != 0)
+   return "#";
+ return "djnz\\t%1,#__LMM_FCACHE_START+(%l0-%l4)";
+}
+ "&& reload_completed
+  && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
+ [(set (match_dup 3)(match_dup 1))
+  (parallel
+    [(set (reg:CC_Z CC_REG)
+          (compare:CC_Z (plus:SI (match_dup 3)(const_int -1))
+	                (const_int 0)))
+      (set (match_dup 3)(plus:SI (match_dup 3)(const_int -1)))])
+  (set (match_dup 2)(match_dup 3))
+  (set (pc) (if_then_else (ne (reg:CC_Z CC_REG)(const_int 0))
+                          (label_ref (match_dup 0))
+                          (pc)))]
+ ""
+ [(set_attr "type" "core,multi,multi")
+  (set_attr "length" "4,16,16")
  ]
 )
 
@@ -3213,12 +3347,25 @@
     (set (match_operand:SI 0 "propeller_dst_operand" "")
          (match_operand:SI 1 "propeller_dst_operand" ""))
     (set (match_dup 0)
-         (and:SI (not:SI match_operand: SI 2 "propeller_src_operand" "")
-                 (match_dup 0)))
+         (and:SI (match_dup 0)
+	         (not:SI (match_operand:SI 2 "propeller_src_operand" ""))))
     (set (match_dup 1)(match_dup 0))
    ]
   "propeller_reg_dead_peep (insn, operands[0])"
   "andn\t%1,%2"
+)
+
+(define_peephole
+  [
+    (set (match_operand:SI 0 "propeller_dst_operand" "")
+         (match_operand:SI 1 "propeller_dst_operand" ""))
+    (set (match_dup 0)
+         (and:SI (match_dup 0)
+	         (match_operand:SI 2 "const_int_operand" "")))
+    (set (match_dup 1)(match_dup 0))
+   ]
+  "propeller_reg_dead_peep (insn, operands[0]) && propeller_const_ok_for_letter_p (INTVAL (operands[2]), 'M')"
+  "andn\t%1, %M2"
 )
 
 ;;
