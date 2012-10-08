@@ -2900,6 +2900,9 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
   HOST_WIDE_INT total_len;
   int loop_count = force_p ? 1 : 0;
   int fcache_size;
+  bool print_msgs;
+
+  print_msgs = is_fcache_function (current_function_decl) && func_p;
 
   if (dump_file)
     fprintf (dump_file, "checking block, func_p = %s\n",
@@ -2916,6 +2919,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
       total_len = INSN_ADDRESSES (INSN_UID (last)) - INSN_ADDRESSES (INSN_UID (first));
       if (total_len > fcache_size)
 	{
+	  if (print_msgs)
+	    {
+	      warning (0, "function %s is too large for fcache", current_function_name ());
+	    }
 	  if (dump_file)
 	    {
 	      fprintf (dump_file, "...block too long to fit in fcache\n");
@@ -2941,6 +2948,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 		  fprintf (dump_file, "...call not to a symbol:\n");
 		  print_rtl_single (dump_file, insn);
 		}
+	      if (print_msgs)
+		{
+		  warning (0, "could not place function %s in fcache: it contains unknown call", current_function_name ());
+		}
 	      return false;
 	    }
 	  /* allow recursive functions */
@@ -2948,11 +2959,15 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 	    {
 	      loop_count++;
 	    }
-	  else
+	  else if ( !is_native_function (SYMBOL_REF_DECL (dest)) )
 	    {	  
 	      if (dump_file)
 		{
 		  fprintf (dump_file, "...call inside block\n");
+		}
+	      if (print_msgs)
+		{
+		  warning (0, "could not place function %s in fcache: contains call to non-NATIVE function", current_function_name ());
 		}
 	      return false;
 	    }
@@ -2969,6 +2984,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 	      if (dump_file)
 		{
 		  fprintf (dump_file, "...jump not to a label\n");
+		}
+	      if (print_msgs)
+		{
+		  warning (0, "could not place function %s in fcache: it contains a jump not to a label", current_function_name ());
 		}
 	      return false;
 	    }
@@ -2995,6 +3014,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 			  fprintf (dump_file, "...jump outside block:\n");
 			  print_rtl_single (dump_file, insn);
 			}
+		      if (print_msgs)
+			{
+			  warning (0, "could not place function %s in fcache: contains a branch outside the function", current_function_name ());
+			}
 		      return false;
 		    }
 		}
@@ -3011,6 +3034,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 		{
 		  fprintf (dump_file, "...unable to find uses of label: ");
 		  print_rtl_single (dump_file, insn);
+		}
+	      if (print_msgs)
+		{
+		  warning (0, "could not place function in fcache: unable to resolve all uses of a label");
 		}
 	      return false;
 	    }
@@ -3029,6 +3056,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 		  fprintf (dump_file, "...label used outside block: ");
 		  print_rtl_single (dump_file, insn);
 		}
+	      if (print_msgs)
+		{
+		  warning (0, "could not place function in fcache: a label in the function is used outside of it", current_function_name ());
+		}
 	      return false;
 	    }
 	}
@@ -3039,6 +3070,11 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 	    {
 	      fprintf (dump_file, "...block too long to fit in fcache\n");
 	    }
+	  if (print_msgs)
+	    {
+	      warning (0, "function %s is too large for fcache", current_function_name ());
+	    }
+
 	  return false;
 	}
     } 
@@ -3074,6 +3110,7 @@ fcache_convert_call (rtx insn)
 {
   rtx pattern;
   rtx addr;
+  rtx dest;
 
   pattern = PATTERN (insn);
   /* look inside parallels if necessary (assume branches are at start) */
@@ -3086,7 +3123,6 @@ fcache_convert_call (rtx insn)
 
   if (GET_CODE (pattern) == CALL)
     {
-      if (dump_file) fprintf (dump_file, "replacing call\n");
       if (GET_CODE (pattern) == SET)
 	pattern = SET_SRC (pattern);
       if (GET_CODE (pattern) != CALL)
@@ -3094,9 +3130,16 @@ fcache_convert_call (rtx insn)
       pattern = XEXP (pattern, 0);
       if (GET_CODE (pattern) != MEM)
 	gcc_unreachable ();
-      addr = gen_rtx_UNSPEC ( Pmode, gen_rtvec (1, XEXP (pattern, 0)),
+      dest = XEXP (pattern, 0);
+      if (GET_CODE(dest) != SYMBOL_REF)
+	gcc_unreachable ();
+      if ( !is_native_function (SYMBOL_REF_DECL (dest)) )
+	{
+	  if (dump_file) fprintf (dump_file, "replacing call\n");
+	  addr = gen_rtx_UNSPEC ( Pmode, gen_rtvec (1, dest),
 			      UNSPEC_FCACHE_CALL );
-      XEXP (pattern, 0) = addr;
+	  XEXP (pattern, 0) = addr;
+	}
     }
   else
     {
