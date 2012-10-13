@@ -18,8 +18,16 @@ __load_extension
 	cmp	__kernel_ext,__TMP1 wz
    if_z jmp	__load_extension_ret
 	mov	__kernel_ext,__TMP1
+#if defined(__PROPELLER_USE_XMM__)
+	mov	dummy, pc
+	mov	pc,__TMP1
+	call	#read_code
+	mov	__TMP0, L_ins0
+	mov	pc, dummy
+#else
 	rdlong	__TMP0, __TMP1		'' read the length
-	''add	__TMP1, #4		'' the length has to go in the kernel!!
+#endif
+	''add	__TMP1, #4		'' the length byte has to be loaded too
 	mov	__COGA, #0x6C0/4
 	call	#loadbuf
 __load_extension_ret
