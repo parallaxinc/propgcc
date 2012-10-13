@@ -142,14 +142,14 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0xffffffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* A 23 bit absolute relocation. */
+  /* A 23 bit absolute relocation */
   HOWTO (R_PROPELLER_23,	/* type */
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 23,			/* bitsize */
 	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
-	 complain_overflow_dont,	/* complain_on_overflow */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
 	 bfd_elf_generic_reloc,	/* special_function */
 	 "R_PROPELLER_23",	/* name */
 	 FALSE,			/* partial_inplace */
