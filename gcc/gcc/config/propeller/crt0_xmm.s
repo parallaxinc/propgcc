@@ -38,12 +38,13 @@ r9	add	sp, #4
 r10	locknew	r2 wc
 r11	or	r2,#256
 r12 IF_NC wrlong r2,__C_LOCK_PTR
-r13	jmp	#__LMM_loop
+r13	jmp	#__LMM_start
 r14	long	0
 r15	'' alias for lr
 lr	long	0
 sp	long	0
 pc	long	0
+ccr	long	0
 
 	.global __C_LOCK_PTR
 __C_LOCK_PTR long __C_LOCK
@@ -52,6 +53,8 @@ __C_LOCK_PTR long __C_LOCK
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
 	''
+__LMM_start
+
 __LMM_loop
 	call	#read_code
 	add	pc,#4
@@ -578,7 +581,7 @@ loadbuf_xmm
 .ldxfetch
 	mov	0-0, L_ins0
 	add	pc,#4
-	add	.ldxlp,dst1
+	add	.ldxfetch,dst1
 	djnz	__TMP0,#.ldxlp
 	mov	pc,dummy
 	jmp	loadbuf_ret
@@ -684,7 +687,11 @@ __CMPSWAPSI_ret
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	128	'' reserve 128 longs = 512 bytes
-
+#ifdef HEXDEBUG
+	res	20	'' 
+#else
+	res	64	'' reserve 64 longs = 256 bytes
+#endif
 
 	#include "kernel.ext"
+
