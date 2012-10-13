@@ -1,3 +1,4 @@
+	''#define HEXDEBUG
 	.section .kernel, "ax"
 
 	.global r0
@@ -38,12 +39,14 @@ r9	add	sp, #4
 r10	locknew	r2 wc
 r11	or	r2,#256
 r12 IF_NC wrlong r2,__C_LOCK_PTR
-r13	jmp	#__LMM_loop
+r13	jmp	#__LMM_start
 r14	long	0
 r15	'' alias for lr
 lr	long	0
 sp	long	0
 pc	long	0
+ccr	long	0
+hwbkpt	long	entry
 
 	.global __C_LOCK_PTR
 __C_LOCK_PTR long __C_LOCK
@@ -52,9 +55,20 @@ __C_LOCK_PTR long __C_LOCK
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
 	''
+__LMM_start
+	mov	__TMP0, #1
+	shl	__TMP0, #24 '' wait about 16 million cycles
+	add	__TMP0, CNT
+	waitcnt	__TMP0, #0
+
 __LMM_loop
+	muxc	ccr, #1
+	muxnz	ccr, #2
+	cmp	pc,hwbkpt wz
+ if_e	jmpret	cogpc, #EnterDebugger
 	call	#read_code
 	add	pc,#4
+	shr	ccr, #1 wc,wz
 L_ins0	nop
 	jmp	#__LMM_loop
 
@@ -578,7 +592,7 @@ loadbuf_xmm
 .ldxfetch
 	mov	0-0, L_ins0
 	add	pc,#4
-	add	.ldxlp,dst1
+	add	.ldxfetch,dst1
 	djnz	__TMP0,#.ldxlp
 	mov	pc,dummy
 	jmp	loadbuf_ret
@@ -684,7 +698,38 @@ __CMPSWAPSI_ret
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	128	'' reserve 128 longs = 512 bytes
-
+#ifdef HEXDEBUG
+	res	20	'' 
+#else
+	res	64	'' reserve 64 longs = 256 bytes
+#endif
 
 	#include "kernel.ext"
+	#include "cogdebug.ext"
+
+#ifdef HEXDEBUG
+	.section .kernel
+hexcnt	long 0
+hexch	long 0
+	
+txhex
+	mov	hexcnt, #8
+hexlp
+	mov	ch, hexch
+	rol	hexch, #4
+	shr	ch,#28
+	cmp	ch,#0x09 wz,wc
+	add	ch,#0x30
+  if_a	add	ch,#(0x41-0x3A)  '' 3A -> 41
+	call	#txbyte
+	djnz	hexcnt, #hexlp
+
+	mov	ch,#10
+	call	#txbyte
+	mov	ch,#13
+	call	#txbyte
+
+txhex_ret
+	ret
+#endif
+
