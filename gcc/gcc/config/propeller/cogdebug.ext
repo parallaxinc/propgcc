@@ -91,8 +91,11 @@ onebit		long	694
 ' debugger control variables
 '--------------------------------------------------------------------
 
-EnterDebugger_ret
-EnterBreakpoint_ret
+	.global	__EnterDebugger
+	.global __EnterDebugger_ret
+__EnterDebugger_ret
+__EnterBreakpoint_ret
+__EnterDebugger_Quiet_ret
 cogpc
 	long 0
 cogflags
@@ -106,10 +109,16 @@ debugpc
 __debug_kernel_ptr
 	long	__load_start_debug_kerext
 
+#define DEBUG_FLAG_QUIET	0x100
 
-EnterBreakpoint
+__EnterDebugger_Quiet
+	or	cogflags, #DEBUG_FLAG_QUIET
+	jmp	#dbgstart
+__EnterBreakpoint
 	sub	cogpc, #1
-EnterDebugger
+__EnterDebugger
+	andn	cogflags, #DEBUG_FLAG_QUIET
+dbgstart
 	or	DIRA, txbit
 	or	OUTA, txbit
 
@@ -143,7 +152,7 @@ respond1
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
 Breakpoint
-	call	#EnterBreakpoint
+	call	#__EnterBreakpoint
 
 
 
@@ -261,6 +270,12 @@ enddebug
 hub_debug_start
   	muxnz	cogflags, #2
 	muxc	cogflags, #1
+
+	'' should we send our status?
+	'' if not, just go right to command reception
+	test	cogflags, #DEBUG_FLAG_QUIET wz
+  if_nz	rdlong	debugpc,debugpc
+  	long	hub_cmdloop
 
 	'' fall through to send the status command
 
