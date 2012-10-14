@@ -65,10 +65,10 @@ __LMM_loop
 	muxc	ccr, #1
 	muxnz	ccr, #2
 	cmp	pc,hwbkpt wz
- if_e	jmpret	cogpc, #EnterDebugger
+ if_e	call	#__EnterDebugger
 	call	#read_code
 	add	pc,#4
-	shr	ccr, #1 wc,wz
+	shr	ccr, #1 wc,wz,nr	'' restore flags
 L_ins0	nop
 	jmp	#__LMM_loop
 

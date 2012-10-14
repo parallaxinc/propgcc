@@ -1,3 +1,4 @@
+#ifndef DBG_CMD_STATUS
 /*
  * packets have the form:
  * byte 0: HOST_PACKET
@@ -40,3 +41,5 @@
 #define RESPOND_DATA   0xf9  /* same number of bytes as host requested */
 #define RESPOND_ACK    0xfa
 #define RESPOND_ERR    0xfe
+
+#endif
