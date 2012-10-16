@@ -46,7 +46,14 @@ lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
 ccr	long	0
+
 hwbkpt	long	entry
+	'' register 20 needs to be the breakpoint command
+	'' the instruction at "Breakpoint" should be whatever
+	'' the debugger should use as a breakpoint instruction
+Breakpoint
+	call	#__EnterBreakpoint
+
 
 
 	''

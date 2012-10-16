@@ -149,11 +149,6 @@ dbgcnt
 respond1
 	long 0
 
-	'' the instruction at "Breakpoint" should be whatever
-	'' the debugger should use as a breakpoint instruction
-Breakpoint
-	call	#__EnterBreakpoint
-
 
 
 DebugLMM
