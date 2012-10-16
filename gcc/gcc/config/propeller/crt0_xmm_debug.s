@@ -64,10 +64,6 @@ __C_LOCK_PTR long __C_LOCK
 	'' and executes them
 	''
 __LMM_start
-	mov	__TMP0, #1
-	shl	__TMP0, #24 '' wait about 16 million cycles
-	add	__TMP0, CNT
-	waitcnt	__TMP0, #0
 
 __LMM_loop
 	muxc	ccr, #1
@@ -577,7 +573,7 @@ cacheptr                long    0
 external_start          long    EXTERNAL_MEMORY_START       'start of external memory access window
 
 	''
-	'' code to load a buffer from hub memory into cog memory
+	'' code to load a buffer from hub or external memory into cog memory
 	''
 	'' parameters: __TMP0 = count of bytes
 	''             __TMP1 = hub address
@@ -629,8 +625,6 @@ loadbuf_ret
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest
-	long (1<<9)
 	
 	.global	__LMM_RET
 	.global	__LMM_FCACHE_LOAD
@@ -640,25 +634,18 @@ __LMM_FCACHE_LOAD
 	call	#read_code	'' read count of bytes for load
 	mov	__TMP0,L_ins0
 	add	pc,#4
+	mov	__TMP1,pc
 	cmp	__LMM_FCACHE_ADDR,pc wz	'' is this the same fcache block we loaded last?
-  IF_Z	add	pc,__TMP0	'' skip over data
+  	add	pc,__TMP0	'' skip over data
   IF_Z	jmp	#Lmm_fcache_doit
 
-	mov	__LMM_FCACHE_ADDR, pc
 	
-	'' assembler awkwardness here
-	'' we would like to just write
-	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
-	'' but binutils doesn't work right with this now
-	movd Lmm_fcache_fetch,#(__LMM_FCACHE_START-__LMM_entry)/4
-	shr  __TMP0,#2		'' we process 4 bytes per loop iteration
-Lmm_fcache_loop
-	call	#read_code
-Lmm_fcache_fetch
-	mov	0-0,L_ins0
-	add	pc,#4
-	add	Lmm_fcache_fetch,inc_dest
-	djnz	__TMP0,#Lmm_fcache_loop
+	mov	__LMM_FCACHE_ADDR, __TMP1
+	
+	'' copy TMP0 bytes from TMP1 to LMM_FCACHE_START
+	'' copy TMP0 bytes from TMP1 to LMM_FCACHE_START
+	mova	__COGA, #__LMM_FCACHE_START	'' mova because src is a cog address immediate
+	call	#loadbuf
 
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
