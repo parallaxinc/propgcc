@@ -54,23 +54,26 @@ hwbkpt	long	entry
 Breakpoint
 	call	#__EnterBreakpoint
 
-
-
+lmmdbgsteps
+	long	0
+	
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
 	''
+__LMM_start
 __LMM_loop
 	muxc	ccr, #1
 	muxnz	ccr, #2		'' save flags
 	and	rxbit,ina nr,wz	' check for low on RX
   if_z	call	#__EnterDebugger_Quiet
-''	cmp	pc,hwbkpt wz
-''  if_e	call	#__EnterDebugger
 	rdlong	L_ins0,pc
 	add	pc,#4
 	shr	ccr, #1 wc,wz,nr	'' restore flags
 L_ins0	nop
+	tjz	lmmdbgsteps,#__LMM_loop
+	djnz	lmmdbgsteps,#__LMM_loop
+  	call	#__EnterDebugger
 	jmp	#__LMM_loop
 
 	''
