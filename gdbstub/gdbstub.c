@@ -68,7 +68,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define INI_TIMEOUT 2000
 
 /* timeout waiting for packet data */
-#define PKT_TIMEOUT 10000
+//#define PKT_TIMEOUT 10000
+#define PKT_TIMEOUT 100000
 
 /* maximum amount of data in a READ or WRITE packet */
 #define MAX_DATA    128
@@ -337,21 +338,29 @@ rx_ack(int ackbyte, int timeout)
 {
   uint8_t byte;
 
-  if (rx_timeout(&byte, 1, timeout) != 1)
+  if (logfile) fprintf(logfile, "((rx_ack %02x called))\n", ackbyte);
+  if (rx_timeout(&byte, 1, timeout) != 1) {
+    if (logfile) fprintf(logfile, "((rx_ack: timeout on first byte %d))\n", timeout);
     return ERR_TIMEOUT;
+  }
   if (byte != ackbyte) {
     if (byte == RESPOND_ERR) {
       rx_timeout(&byte, 1, timeout);  /* eat COG number */
       rx_timeout(&byte, 1, timeout);  /* eat error code */
     }
-    return byte == 0 ? 0x01 : byte;
+    if (logfile) fprintf(logfile, "((rx_ack: unexpected byte 0x%02x))\n", byte);
+    return byte == 0 ? 0xff : byte;
   }
-  if (rx_timeout(&byte, 1, timeout) != 1) 
+  if (rx_timeout(&byte, 1, timeout) != 1) {
+    if (logfile) fprintf(logfile, "((rx_ack: timeout on second byte))\n");
     return ERR_TIMEOUT;
+  }
   /* the byte should be our cog */
   if (byte != DEFAULT_COG) {
+    if (logfile) fprintf(logfile, "((rx_ack: bad cog # 0x%02x))\n", byte);
     return ERR_CHKSUM;
   }
+  if (logfile) fprintf(logfile, "((rx_ack: OK))\n", byte);
   return ERR_NONE;
 }
 
@@ -482,6 +491,7 @@ static int write_registers(uint32_t addr, uint8_t *buf, int len)
 {
     uint8_t pkt[PKT_MAX];
     uint8_t pktlen, chksum, i, *p;
+    uint8_t rchksum;
     int err;
     
     /* write data in MAX_DATA sized chunks */
@@ -512,6 +522,8 @@ static int write_registers(uint32_t addr, uint8_t *buf, int len)
         /* wait for the debug kernel to acknowledge */
 	if ( 0 != (err = rx_ack(RESPOND_ACK, PKT_TIMEOUT)) )
 	  return err;
+	if (rx_timeout(&rchksum, 1, PKT_TIMEOUT) != 1)
+	  return ERR_TIMEOUT;
 
         /* move ahead to the next packet */
         addr += pktlen;
@@ -543,21 +555,24 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
 	*p++ = (addr >> 24) & 0xff;
         
         /* setup for a read command */
-        if ((err = debug_cmd(DBG_CMD_READHUB, 5)) != ERR_NONE)
+        if ((err = debug_cmd(DBG_CMD_READHUB, 5)) != ERR_NONE) {	  
+	    if (logfile) fprintf(logfile, "((error %d sending readhub cmd))\n", err);
             return err;
-        
+	}
         /* send the packet to the debug kernel */
         tx(pkt, p - pkt);
         
         /* get the read response */
-        if ( 0 != (err = rx_ack(RESPOND_DATA, PKT_TIMEOUT)) )
-	  return err;
-
+        if ( 0 != (err = rx_ack(RESPOND_DATA, PKT_TIMEOUT)) ) {
+	    if (logfile) fprintf(logfile, "((error %d in rx_ack))\n", err);
+	    return err;
+	}
         /* read the data */
         for (p = buf, remaining = pktlen; remaining > 0; p += cnt, remaining -= cnt)
-            if ((cnt = rx_timeout(p, remaining, PKT_TIMEOUT)) <= 0)
+	    if ((cnt = rx_timeout(p, remaining, PKT_TIMEOUT)) <= 0) {
+	        if (logfile) fprintf(logfile, "((error %d in rx_timeout))\n", err);
                 return ERR_TIMEOUT;
-                
+	    }
         /* move ahead to the next packet */
         addr += pktlen;
         len -= pktlen;
@@ -572,6 +587,7 @@ static int write_memory(uint32_t addr, uint8_t *buf, int len)
 {
     uint8_t pkt[PKT_MAX];
     uint8_t pktlen, chksum, i, *p;
+    uint8_t rchksum;
     int err;
     
     /* write data in MAX_DATA sized chunks */
@@ -604,6 +620,9 @@ static int write_memory(uint32_t addr, uint8_t *buf, int len)
         /* wait for the debug kernel to acknowledge */
 	if ( 0 != (err = rx_ack(RESPOND_ACK, PKT_TIMEOUT)) )
 	  return err;
+
+	if (rx_timeout(&rchksum, 1, PKT_TIMEOUT) != 1)
+	  return ERR_TIMEOUT;
 
         /* move ahead to the next packet */
         addr += pktlen;
