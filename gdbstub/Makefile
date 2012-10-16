@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc -g
 PROPCC=propeller-elf-gcc
 RM=rm
 LOAD=propeller-load

@@ -82,7 +82,7 @@ static const char *propeller_register_names[] = {
   "r15",
   "sp",
   "pc",
-  "cogpc"
+  "cc",
 };
 
 /* Return the GDB type object for the "standard" data type of data in
