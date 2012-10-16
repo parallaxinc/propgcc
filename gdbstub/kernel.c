@@ -98,6 +98,7 @@ static _NATIVE void get_addr(int addrsize)
 
 static _NATIVE void rx_packet(int addrsize)
 {
+    chksum = 0;
     get_addr(addrsize);
     len -= 4;
     for (; len > 0; --len) {
@@ -108,6 +109,7 @@ static _NATIVE void rx_packet(int addrsize)
     }
     txbyte(RESPOND_ACK);
     txbyte(cogid());
+    txbyte(chksum);
 }
 
 static _NATIVE void tx_packet(int addrsize)
