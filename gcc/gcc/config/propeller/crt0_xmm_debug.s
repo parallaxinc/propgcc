@@ -47,6 +47,14 @@ sp	long	0
 pc	long	0
 ccr	long	0
 hwbkpt	long	entry
+	'' register 20 needs to be the breakpoint command
+	'' the instruction at "Breakpoint" should be whatever
+	'' the debugger should use as a breakpoint instruction
+Breakpoint
+	call	#__EnterBreakpoint
+
+lmmdbgsteps
+	long	0
 
 	.global __C_LOCK_PTR
 __C_LOCK_PTR long __C_LOCK
@@ -70,6 +78,9 @@ __LMM_loop
 	add	pc,#4
 	shr	ccr, #1 wc,wz,nr	'' restore flags
 L_ins0	nop
+	tjz	lmmdbgsteps,#__LMM_loop
+	djnz	lmmdbgsteps,#__LMM_loop
+  	call	#__EnterDebugger
 	jmp	#__LMM_loop
 
 	''
