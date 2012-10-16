@@ -55,8 +55,10 @@ _NAKED int main(void)
         len = rxbyte();
 
         switch (cmd) {
-            case DBG_CMD_RESUME:
             case DBG_CMD_LMMSTEP:
+	        rxbyte();  // skip number of steps
+		break;
+            case DBG_CMD_RESUME:
                 coginit(cogid(), 0xf004, 0x4);
                 break;
             case DBG_CMD_READHUB:

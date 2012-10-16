@@ -354,6 +354,9 @@ hub_decode_cmd
   	cmp	cmd, #DBG_CMD_QUERYBP wz
   if_e  rdlong	debugpc,debugpc
 	long	hub_cmd_querybp
+	cmp	cmd, #DBG_CMD_LMMSTEP wz
+  if_e	rdlong	debugpc,debugpc
+  	long	hub_cmd_lmmstep
 
 	'' fall through to error if command not recognized
 hub_cmderr
@@ -499,3 +502,8 @@ hub_cmd_querybp
 	mov	tmp0, Breakpoint
 	call	#txlong
 	jmp	#cmdloop
+
+hub_cmd_lmmstep
+	call	#rxbyte
+	mov	lmmdbgsteps, ch
+	jmp	#__LMM_loop

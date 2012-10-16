@@ -115,6 +115,8 @@ static uint32_t read_long(uint32_t addr);
 static void write_long(uint32_t addr, uint32_t value);
 static int command_loop(void);
 static int rx_ack(int ackbyte, int timeout);
+static int rx_ack_chksum(int ackbyte, uint8_t *chksum, int timeout);
+void reply(char *ptr, int len);
 
 int main(int argc, char *argv[])
 {
@@ -360,7 +362,19 @@ rx_ack(int ackbyte, int timeout)
     if (logfile) fprintf(logfile, "((rx_ack: bad cog # 0x%02x))\n", byte);
     return ERR_CHKSUM;
   }
-  if (logfile) fprintf(logfile, "((rx_ack: OK))\n", byte);
+  if (logfile) fprintf(logfile, "((rx_ack: OK))\n");
+  return ERR_NONE;
+}
+
+static int
+rx_ack_chksum(int ackbyte, uint8_t *chksum_p, int timeout)
+{
+  int err;
+  err = rx_ack(ackbyte, timeout);
+  if (err != ERR_NONE)
+    return err;
+  if (rx(chksum_p, 1) != 1)
+    return ERR_TIMEOUT;
   return ERR_NONE;
 }
 
@@ -371,7 +385,6 @@ static uint8_t cogflags;
 #ifdef DEBUG_STUB
 static int start_debug_kernel(void)
 {
-    uint8_t byte;
     int err;
     
     if (logfile) {
@@ -411,11 +424,11 @@ static int wait_for_halt(void)
 	continue;
       }
       if (rx(&cog, 1) != 1) {
-	fprintf(stderr, "error: error waiting for cog id\n");
+	if (logfile) fprintf(logfile, "((error: error waiting for cog id))\n");
 	return ERR_TIMEOUT;
       }
       if (byte != RESPOND_STATUS) {
-	fprintf(stderr, "unexpected byte 0x%x\n", byte);
+	if (logfile) fprintf(logfile, "((error: unexpected byte 0x%x))\n", byte);
 	return ERR_INIT;
       }
       break;
@@ -520,10 +533,8 @@ static int write_registers(uint32_t addr, uint8_t *buf, int len)
         tx(pkt, p - pkt);
         
         /* wait for the debug kernel to acknowledge */
-	if ( 0 != (err = rx_ack(RESPOND_ACK, PKT_TIMEOUT)) )
+	if ( 0 != (err = rx_ack_chksum(RESPOND_ACK, &rchksum, PKT_TIMEOUT)) )
 	  return err;
-	if (rx_timeout(&rchksum, 1, PKT_TIMEOUT) != 1)
-	  return ERR_TIMEOUT;
 
         /* move ahead to the next packet */
         addr += pktlen;
@@ -618,11 +629,8 @@ static int write_memory(uint32_t addr, uint8_t *buf, int len)
         tx(pkt, p - pkt);
         
         /* wait for the debug kernel to acknowledge */
-	if ( 0 != (err = rx_ack(RESPOND_ACK, PKT_TIMEOUT)) )
+	if ( 0 != (err = rx_ack_chksum(RESPOND_ACK, &rchksum, PKT_TIMEOUT)) )
 	  return err;
-
-	if (rx_timeout(&rchksum, 1, PKT_TIMEOUT) != 1)
-	  return ERR_TIMEOUT;
 
         /* move ahead to the next packet */
         addr += pktlen;
@@ -885,7 +893,8 @@ char *cmd_s_step(int cog, int i)
 {
     char *halt_code;
     int err;
-    
+    uint8_t stepTimes;
+
 #ifdef DEBUG_STUB
     if (first_run) {
         if ((err = start_debug_kernel()) != ERR_NONE){
@@ -906,9 +915,13 @@ char *cmd_s_step(int cog, int i)
             return "E99"; // BUG: what should this be?
         }
     }
-    if ((err = debug_cmd(DBG_CMD_LMMSTEP, 0)) != ERR_NONE){
+    if ((err = debug_cmd(DBG_CMD_LMMSTEP, 1)) != ERR_NONE){
         error_reply(err);
         return "E99";   // BUG: what should this be?
+    }
+    stepTimes = 1;  // number of times to step
+    if (tx(&stepTimes, 1) != 1) {
+      error_reply(ERR_TIMEOUT);
     }
     if ((err = wait_for_halt()) != ERR_NONE){
         error_reply(err);

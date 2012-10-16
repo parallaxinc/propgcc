@@ -31,6 +31,9 @@
 /* requests the breakpoint command (4 bytes) */
 #define DBG_CMD_QUERYBP    0x60
 
+/* request to single step the LMM interpreter */
+#define DBG_CMD_LMMSTEP    0x70
+
 /* response packets */
 /* responses always have the form:
  *  byte 0: response type (0xf8-0xff)
