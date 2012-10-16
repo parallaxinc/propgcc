@@ -196,14 +196,11 @@ write_cog_loop
 	call	#rxlong
 wcdst
 	mov	0-0, ch
-	add	wcdst,dstinc
+	add	wcdst,inc_dest1
 	sub	cmdlen, #4 wz
  if_nz  jmp	#write_cog_loop
 write_cog_loop_ret
 	ret
-
-
-dstinc	long (1<<9)
 
 '--------------------------------------------------------------------
 ' transmit long word in tmp0
