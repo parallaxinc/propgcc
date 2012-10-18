@@ -44,6 +44,7 @@
 #define RESPOND_DATA   0xf9  /* same number of bytes as host requested */
 #define RESPOND_ACK    0xfa
 #define RESPOND_ERR    0xfe
+#define RESPOND_EXIT   0xff
 
 /* bits in the cogflags register */
 #define COGFLAGS_C      0x01

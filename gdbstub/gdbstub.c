@@ -439,6 +439,7 @@ static int wait_for_halt(void)
     uint8_t byte;
     uint8_t cog;
     int timeout = INI_TIMEOUT;
+    char buf[8];
 
 #ifdef VERBOSE_LOG
     if (logfile) {
@@ -469,7 +470,6 @@ static int wait_for_halt(void)
       }
       if (rx_timeout(&byte, 1, INI_TIMEOUT) == 1) {
 	if (byte <= 0xf7) {
-	  char buf[8];
 	  // print the character for the user to see
 	  // we have to ask GDB to do this, using an O format packet
 	  sprintf(buf, "O%02x", byte);
@@ -479,6 +479,15 @@ static int wait_for_halt(void)
 	if (rx(&cog, 1) != 1) {
 	  if (logfile) fprintf(logfile, "((error: error waiting for cog id))\n");
 	  return ERR_TIMEOUT;
+	}
+	if (byte == RESPOND_EXIT) {
+	  if (rx_timeout(&cogflags, 1, timeout) != 1) {
+	    if (logfile) fprintf(logfile, "((error: error waiting for exit status))\n");
+	    continue;
+	  }
+	  sprintf(buf, "W%02x", cogflags & 0xff);
+	  reply(buf, 3);
+	  return ERR_NONE;
 	}
 	if (byte != RESPOND_STATUS) {
 	  if (logfile) fprintf(logfile, "((error: unexpected byte 0x%x))\n", byte);
