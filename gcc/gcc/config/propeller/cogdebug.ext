@@ -1,5 +1,3 @@
-#include "cogdebug.h"
-
 	
 	''
 	'' debug stub
@@ -95,6 +93,7 @@ onebit		long	694
 	.global __EnterDebugger_ret
 __EnterDebugger_ret
 __EnterBreakpoint_ret
+__EnterLMMBreakpoint_ret
 __EnterDebugger_Quiet_ret
 cogpc
 	long 0
@@ -109,16 +108,18 @@ debugpc
 __debug_kernel_ptr
 	long	__load_start_debug_kerext
 
-#define DEBUG_FLAG_QUIET	0x100
-
 __EnterDebugger_Quiet
-	or	cogflags, #DEBUG_FLAG_QUIET
+	or	cogflags, #COGFLAGS_QUIET
 	jmp	#dbgstart
 __EnterBreakpoint
 	sub	cogpc, #1
+	jmp	#__EnterDebugger
+__EnterLMMBreakpoint
+	sub	pc, #4
 __EnterDebugger
-	andn	cogflags, #DEBUG_FLAG_QUIET
+	andn	cogflags, #COGFLAGS_QUIET
 dbgstart
+	andn	ccr, #COGFLAGS_STEP
 	or	DIRA, txbit
 	or	OUTA, txbit
 
@@ -265,7 +266,7 @@ hub_debug_start
 
 	'' should we send our status?
 	'' if not, just go right to command reception
-	test	cogflags, #DEBUG_FLAG_QUIET wz
+	test	cogflags, #COGFLAGS_QUIET wz
   if_nz	rdlong	debugpc,debugpc
   	long	hub_cmdloop
 
@@ -501,6 +502,6 @@ hub_cmd_querybp
 	jmp	#cmdloop
 
 hub_cmd_lmmstep
-	call	#rxbyte
-	mov	lmmdbgsteps, ch
-	jmp	#__LMM_loop
+	or	ccr, #COGFLAGS_STEP
+	jmp	#LeaveDebugger
+

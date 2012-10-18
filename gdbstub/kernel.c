@@ -23,6 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "propeller.h"
 #include "cogdebug.h"
 
+/* address of the condition code register should be register 18 */
+/* however, it has to be offset by the start of the LMM kernel */
+#define COGFLAGS ((uint32_t *)(0x20))[18]
+
 static unsigned int txmask = 1 << 30;
 static unsigned int rxmask = 1 << 31;
 static unsigned int bitcycles = 80000000 / 115200;
@@ -57,8 +61,11 @@ _NAKED int main(void)
         switch (cmd) {
             case DBG_CMD_LMMSTEP:
 	        rxbyte();  // skip number of steps
-		break;
+		/* fall through */
             case DBG_CMD_RESUME:
+	        /* modify memory so that the loaded kernel will step once */
+	        COGFLAGS = COGFLAGS_STEP;
+		/* restart the cog */
                 coginit(cogid(), 0xf004, 0x4);
                 break;
             case DBG_CMD_READHUB:

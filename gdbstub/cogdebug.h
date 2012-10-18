@@ -45,4 +45,10 @@
 #define RESPOND_ACK    0xfa
 #define RESPOND_ERR    0xfe
 
+/* bits in the cogflags register */
+#define COGFLAGS_C      0x01
+#define COGFLAGS_NZ     0x02
+
+#define COGFLAGS_STEP   0x80  /* break on next LMM loop */
+#define COGFLAGS_QUIET 0x100  /* tells the debug stub break but not to report pc */
 #endif
