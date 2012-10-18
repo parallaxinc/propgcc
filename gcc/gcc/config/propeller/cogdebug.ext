@@ -377,10 +377,9 @@ hub_donecmd
 
 	''
 	'' received a byte that was not a command
+	'' just ignore it and start the command loop
 	''
 hub_notcmd
-       	mov	ch, #0x40
-	call	#txbyte
 	jmp	#cmdloop
 
 

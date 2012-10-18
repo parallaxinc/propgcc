@@ -40,7 +40,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #endif
 
 /* verbose logging */
-//#define VERBOSE
+#define VERBOSE_LOG
 /* disable breakpoint support */
 #define NO_BKPT
 /* enable initial stub download */
@@ -92,6 +92,8 @@ char cmd[1028];
 */
 static int first_run = 1;
 #endif
+
+static int no_ack_mode = 0;
 
 static void MyInfo(System *sys, const char *fmt, va_list ap);
 static void MyError(System *sys, const char *fmt, va_list ap);
@@ -315,6 +317,34 @@ static void Usage(void)
     exit(1);
 }
 
+#if defined(LINUX) || defined(MACOSX) || defined(CYGWIN)
+#include <sys/select.h>
+static int
+data_ready_on_stdin()
+{
+  fd_set readfds;
+  struct timeval tv;
+  int r;
+
+  FD_ZERO(&readfds);
+  FD_SET(0, &readfds);
+  memset(&tv, 0, sizeof(tv));
+
+  r = select(1, &readfds, NULL, NULL, &tv);
+  if (r > 0)
+    return 1;
+  else
+    return 0;
+}
+#else
+static int
+data_ready_on_stdin()
+{
+  return 0;
+}
+#endif
+
+
 static int debug_cmd(int fcn, int len)
 {
     uint8_t byte;
@@ -416,54 +446,70 @@ static int wait_for_halt(void)
     }
 #endif
     for(;;) {
-      if (rx(&byte, 1) != 1) {
-	if (logfile) {
-	  fprintf(logfile, "((wait_for_halt: error: waiting for halt message__\n");
+      if (logfile) fflush(logfile);
+      if (data_ready_on_stdin()) {
+	// check for command from gdb
+	int ch;
+	if (logfile) fprintf(logfile, "gdb> ");
+	while (data_ready_on_stdin()) {
+	  ch = fgetc(stdin);
+	  if (ch < 0) return ERR_TIMEOUT;
+	  if (logfile) { fputc(ch, logfile); fflush(logfile); }
+	  msleep(10);
+	  if (ch == 3) {
+	    uint8_t byte;
+	    // use ^C to interrupt the device
+	    byte = 0x03;
+	    tx(&byte, 1);
+	    // and then ask for debug status
+	    debug_cmd(DBG_CMD_STATUS, 0);
+	  }
 	}
-        return ERR_TIMEOUT;
+	if (logfile) fputc('\n', logfile);
       }
-      if (byte <= 0xf7) {
-	char buf[8];
-	// print the character for the user to see
-	// we have to ask GDB to do this, using an O format packet
-	sprintf(buf, "O%02x", byte);
-	reply(buf, 3);
-	continue;
+      if (rx_timeout(&byte, 1, INI_TIMEOUT) == 1) {
+	if (byte <= 0xf7) {
+	  char buf[8];
+	  // print the character for the user to see
+	  // we have to ask GDB to do this, using an O format packet
+	  sprintf(buf, "O%02x", byte);
+	  reply(buf, 3);
+	  continue;
+	}
+	if (rx(&cog, 1) != 1) {
+	  if (logfile) fprintf(logfile, "((error: error waiting for cog id))\n");
+	  return ERR_TIMEOUT;
+	}
+	if (byte != RESPOND_STATUS) {
+	  if (logfile) fprintf(logfile, "((error: unexpected byte 0x%x))\n", byte);
+	  return ERR_INIT;
+	}
+	if (rx_timeout(&cogflags, 1, timeout) != 1) {
+	  if (logfile) {
+	    fprintf(logfile, "((wait_for_halt: timeout waiting for flags))\n");
+	  }
+	  return ERR_TIMEOUT;
+	}
+	if (rx_timeout(&byte, 1, timeout) != 1) {
+	  if (logfile) {
+	    fprintf(logfile, "((wait_for_halt: timeout waiting for cogpc))\n");
+	  }
+	  return ERR_TIMEOUT;
+	}
+	cogpc = byte;
+	if (rx_timeout(&byte, 1, timeout) != 1) {
+	  if (logfile) {
+	    fprintf(logfile, "((wait_for_halt: timeout waiting for cogpc))\n");
+	  }
+	  return ERR_TIMEOUT;
+	}
+	cogpc |= (byte<<8);
+	if (logfile) {
+	  fprintf(logfile, "((halt at cogpc=%x cogflags=%x))\n", cogpc, cogflags);
+	}
+	return ERR_NONE;
       }
-      if (rx(&cog, 1) != 1) {
-	if (logfile) fprintf(logfile, "((error: error waiting for cog id))\n");
-	return ERR_TIMEOUT;
-      }
-      if (byte != RESPOND_STATUS) {
-	if (logfile) fprintf(logfile, "((error: unexpected byte 0x%x))\n", byte);
-	return ERR_INIT;
-      }
-      break;
     }
-    if (rx_timeout(&cogflags, 1, timeout) != 1) {
-      if (logfile) {
-	fprintf(logfile, "((wait_for_halt: timeout waiting for flags))\n");
-      }
-      return ERR_TIMEOUT;
-    }
-    if (rx_timeout(&byte, 1, timeout) != 1) {
-      if (logfile) {
-	fprintf(logfile, "((wait_for_halt: timeout waiting for cogpc))\n");
-      }
-      return ERR_TIMEOUT;
-    }
-    cogpc = byte;
-    if (rx_timeout(&byte, 1, timeout) != 1) {
-      if (logfile) {
-	fprintf(logfile, "((wait_for_halt: timeout waiting for cogpc))\n");
-      }
-      return ERR_TIMEOUT;
-    }
-    cogpc |= (byte<<8);
-    if (logfile) {
-      fprintf(logfile, "((halt at cogpc=%x cogflags=%x))\n", cogpc, cogflags);
-    }
-    return ERR_NONE;
 }
 
 static int read_registers(uint32_t addr, uint8_t *buf, int len)
@@ -726,13 +772,12 @@ int get_cmd()
     int i = 0;
     int ch;
     
+    if(logfile) fprintf(logfile, "gdb>");
     do{
         if ((ch = getc(stdin)) < 0)
             return -1;
+	if(logfile) putc(ch, logfile);
     } while(ch != '$');
-    
-    if(logfile) fprintf(logfile, "gdb>");
-    if(logfile) putc(ch, logfile);
     
     for(i = 0; i < sizeof(cmd); i++){
         if ((ch = getc(stdin)) < 0)
@@ -793,7 +838,6 @@ void cmd_g_get_registers(int cog)
 {
     uint8_t buf[GCC_REG_COUNT * sizeof(uint32_t)];
     char response[1024];
-    int32_t reg;
     int j;
     int err;
     
@@ -804,18 +848,7 @@ void cmd_g_get_registers(int cog)
     for(j = 0; j < sizeof(buf); j++){
         sprintf(response+2*j, "%02x", buf[j]);
     }
-#if 0
-    reg = get_cog_pc(cog) * 4 + 0x80000000 + cog * 0x10000000;
-    sprintf(response+2*j,
-            "%02x%02x%02x%02x",
-            (unsigned char)(reg & 0xff),
-            (unsigned char)((reg>>8) & 0xff),
-            (unsigned char)((reg>>16) & 0xff),
-            (unsigned char)((reg>>24) & 0xff));
-    reply(response, sizeof(buf)*2+8);
-#else
     reply(response, sizeof(buf)*2);
-#endif
 }
 
 /* 'G' - set registers */
@@ -903,7 +936,6 @@ char *cmd_s_step(int cog, int i)
 {
     char *halt_code;
     int err;
-    uint8_t stepTimes;
 
 #ifdef DEBUG_STUB
     if (first_run) {
@@ -1018,6 +1050,30 @@ void cmd_H_set_thread(int i)
     }
 }
 
+/* 'q' - query features */
+void cmd_q_query(int i)
+{
+    if (!strncmp(&cmd[i], "Supported", 8)){
+      reply("QStartNoAckMode+", 16);
+    } else {
+        reply("", 0);
+    }
+}
+
+/* 'Q' - set features */
+void cmd_Q_set(int i)
+{
+    if (!strncmp(&cmd[i], "StartNoAckMode-", 15)) {
+      reply("OK", 2);
+      no_ack_mode = 0;
+    } else if (!strncmp(&cmd[i], "StartNoAckMode", 14)) {
+      reply("OK", 2);
+      no_ack_mode = 1;
+    } else {
+      reply("", 0);
+    }
+}
+
 /* 'z' - remove breakpoint */
 void cmd_z_remove_breakpoint(int i)
 {
@@ -1112,6 +1168,8 @@ static int command_loop(void)
             case 'c':   halt_code = cmd_c_continue(cog, i); break;
             case 'H':   cmd_H_set_thread(i);                break;
             case 'k':   reply("OK", 2); goto out;           break;
+	    case 'q':   cmd_q_query(i);                     break;
+	    case 'Q':   cmd_Q_set(i);                       break;
             case 'z':   cmd_z_remove_breakpoint(i);         break;
             case 'Z':   cmd_Z_set_breakpoint(i);            break;
             case '?':   reply(halt_code, 3);                break;
