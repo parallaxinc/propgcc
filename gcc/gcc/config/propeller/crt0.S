@@ -20,3 +20,17 @@
 #else
 #error "unknown propeller configuration"
 #endif
+
+#if defined(DEBUG_KERNEL)
+	/* on exit send a message to the debugger */
+	.text
+	.global __ExitHook
+__ExitHook
+	mov	ch, #0xff
+	call	#txbyte
+	mov	ch, #0
+	call	#txbyte
+	mov	ch, r0
+	call	#txbyte
+	mov	lr, pc
+#endif
