@@ -53,9 +53,6 @@ hwbkpt	long	entry
 Breakpoint
 	call	#__EnterBreakpoint
 
-lmmdbgsteps
-	long	0
-
 	.global __C_LOCK_PTR
 __C_LOCK_PTR long __C_LOCK
 
@@ -70,13 +67,12 @@ __LMM_loop
 	muxnz	ccr, #2
 	cmp	pc,hwbkpt wz
  if_e	call	#__EnterDebugger
+	test	ccr, #COGFLAGS_STEP wz
+ if_nz  call	#__EnterDebugger
 	call	#read_code
 	add	pc,#4
 	shr	ccr, #1 wc,wz,nr	'' restore flags
 L_ins0	nop
-	tjz	lmmdbgsteps,#__LMM_loop
-	djnz	lmmdbgsteps,#__LMM_loop
-  	call	#__EnterDebugger
 	jmp	#__LMM_loop
 
 	''

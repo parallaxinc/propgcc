@@ -52,6 +52,7 @@
 #define PROPELLER_NUM_REGS 19
 #define PROPELLER_PC_REGNUM 17
 #define PROPELLER_SP_REGNUM 16
+#define PROPELLER_LR_REGNUM 15
 #define PROPELLER_FP_REGNUM 14
 
 #define PROPELLER_R0_REGNUM 0
@@ -459,6 +460,12 @@ propeller_frame_prev_register (struct frame_info *this_frame, void **this_cache,
   struct propeller_frame_cache *cache = propeller_frame_cache (this_frame, this_cache);
 
   gdb_assert (regnum >= 0);
+  /* if asked to unwind the PC, then we need to return the LR instead */
+  if (regnum == PROPELLER_PC_REGNUM) {
+    CORE_ADDR lr;
+    lr = frame_unwind_register_unsigned (this_frame, PROPELLER_LR_REGNUM);
+    return frame_unwind_got_constant (this_frame, regnum, lr);
+  }
   if (regnum == PROPELLER_SP_REGNUM && cache->saved_sp){
     return frame_unwind_got_constant (this_frame, regnum, cache->saved_sp);
   }

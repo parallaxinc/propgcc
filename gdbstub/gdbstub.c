@@ -39,6 +39,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define FALSE   0
 #endif
 
+/* verbose logging */
+//#define VERBOSE
 /* disable breakpoint support */
 #define NO_BKPT
 /* enable initial stub download */
@@ -68,8 +70,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define INI_TIMEOUT 2000
 
 /* timeout waiting for packet data */
-//#define PKT_TIMEOUT 10000
-#define PKT_TIMEOUT 100000
+#define PKT_TIMEOUT 10000
 
 /* maximum amount of data in a READ or WRITE packet */
 #define MAX_DATA    128
@@ -111,8 +112,8 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len);
 static int write_memory(uint32_t addr, uint8_t *buf, int len);
 static int read_registers(uint32_t addr, uint8_t *buf, int len);
 static int write_registers(uint32_t addr, uint8_t *buf, int len);
-static uint32_t read_long(uint32_t addr);
-static void write_long(uint32_t addr, uint32_t value);
+static uint32_t read_long_register(uint32_t addr);
+static void write_long_register(uint32_t addr, uint32_t value);
 static int command_loop(void);
 static int rx_ack(int ackbyte, int timeout);
 static int rx_ack_chksum(int ackbyte, uint8_t *chksum, int timeout);
@@ -340,7 +341,9 @@ rx_ack(int ackbyte, int timeout)
 {
   uint8_t byte;
 
+#ifdef VERBOSE_LOG
   if (logfile) fprintf(logfile, "((rx_ack %02x called))\n", ackbyte);
+#endif
   if (rx_timeout(&byte, 1, timeout) != 1) {
     if (logfile) fprintf(logfile, "((rx_ack: timeout on first byte %d))\n", timeout);
     return ERR_TIMEOUT;
@@ -362,7 +365,9 @@ rx_ack(int ackbyte, int timeout)
     if (logfile) fprintf(logfile, "((rx_ack: bad cog # 0x%02x))\n", byte);
     return ERR_CHKSUM;
   }
+#ifdef VERBOSE_LOG
   if (logfile) fprintf(logfile, "((rx_ack: OK))\n");
+#endif
   return ERR_NONE;
 }
 
@@ -405,9 +410,11 @@ static int wait_for_halt(void)
     uint8_t cog;
     int timeout = INI_TIMEOUT;
 
+#ifdef VERBOSE_LOG
     if (logfile) {
       fprintf(logfile, "((wait_for_halt))\n");
     }
+#endif
     for(;;) {
       if (rx(&byte, 1) != 1) {
 	if (logfile) {
@@ -453,6 +460,9 @@ static int wait_for_halt(void)
       return ERR_TIMEOUT;
     }
     cogpc |= (byte<<8);
+    if (logfile) {
+      fprintf(logfile, "((halt at cogpc=%x cogflags=%x))\n", cogpc, cogflags);
+    }
     return ERR_NONE;
 }
 
@@ -641,17 +651,17 @@ static int write_memory(uint32_t addr, uint8_t *buf, int len)
     return ERR_NONE;
 }
 
-static uint32_t read_long(uint32_t addr)
+static uint32_t read_long_register(uint32_t addr)
 {
     uint32_t value;
-    if (read_memory(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
+    if (read_registers(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
         fprintf(stderr, "error: reading %08x\n", addr);
     return value;
 }
 
-static void write_long(uint32_t addr, uint32_t value)
+static void write_long_register(uint32_t addr, uint32_t value)
 {
-    if (write_memory(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
+    if (write_registers(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
         fprintf(stderr, "error: writing %08x\n", addr);
 }
 
@@ -915,21 +925,31 @@ char *cmd_s_step(int cog, int i)
             return "E99"; // BUG: what should this be?
         }
     }
-    if ((err = debug_cmd(DBG_CMD_LMMSTEP, 1)) != ERR_NONE){
+    if ((err = debug_cmd(DBG_CMD_LMMSTEP, 0)) != ERR_NONE){
         error_reply(err);
         return "E99";   // BUG: what should this be?
-    }
-    stepTimes = 1;  // number of times to step
-    if (tx(&stepTimes, 1) != 1) {
-      error_reply(ERR_TIMEOUT);
     }
     if ((err = wait_for_halt()) != ERR_NONE){
         error_reply(err);
         return "E99";   // BUG: what should this be?
     }
+#if 0
     halt_code = "S05";
-    reply(halt_code, 3);
-    
+#else
+    {
+      static char code[80];
+      uint32_t lmmpc;
+      lmmpc = read_long_register(GCC_REG_PC);
+      sprintf(code, "T05%x:%02x%02x%02x%02x;",
+	      GCC_REG_PC,
+	      lmmpc & 0xff,
+	      (lmmpc>>8) & 0xff,
+	      (lmmpc>>16) & 0xff,
+	      (lmmpc>>24) & 0xff);
+      halt_code = code;
+    }
+#endif
+    reply(halt_code, strlen(halt_code));
     return halt_code;
 }
 
@@ -959,7 +979,6 @@ char *cmd_c_continue(int cog, int i)
             return "E99"; // BUG: what should this be?
         }
     }
-    halt_code = "S05";
     if ((err = debug_cmd(DBG_CMD_RESUME, 0)) != ERR_NONE){
         error_reply(err);
         return "E99";   // BUG: what should this be?
@@ -968,7 +987,23 @@ char *cmd_c_continue(int cog, int i)
         error_reply(err);
         return "E99";   // BUG: what should this be?
     }
-    reply(halt_code, 3);
+#if 0
+    halt_code = "S05";
+#else
+    {
+      static char code[80];
+      uint32_t lmmpc;
+      lmmpc = read_long_register(GCC_REG_PC);
+      sprintf(code, "T05%x:%02x%02x%02x%02x;",
+	      GCC_REG_PC,
+	      lmmpc & 0xff,
+	      (lmmpc>>8) & 0xff,
+	      (lmmpc>>16) & 0xff,
+	      (lmmpc>>24) & 0xff);
+      halt_code = code;
+    }
+#endif
+    reply(halt_code, strlen(halt_code));
     
     return halt_code;
 }

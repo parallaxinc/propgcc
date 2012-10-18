@@ -1,3 +1,5 @@
+#include "cogdebug.h"
+
 	.section .kernel, "ax"
 	.global r0
 	.global r1
@@ -52,10 +54,7 @@ hwbkpt	long	entry
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
 Breakpoint
-	call	#__EnterBreakpoint
-
-lmmdbgsteps
-	long	0
+	call	#__EnterLMMBreakpoint
 	
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -67,13 +66,12 @@ __LMM_loop
 	muxnz	ccr, #2		'' save flags
 	and	rxbit,ina nr,wz	' check for low on RX
   if_z	call	#__EnterDebugger_Quiet
+	test	ccr, #COGFLAGS_STEP wz
+  if_nz call	#__EnterDebugger
 	rdlong	L_ins0,pc
-	add	pc,#4
 	shr	ccr, #1 wc,wz,nr	'' restore flags
+	add	pc,#4
 L_ins0	nop
-	tjz	lmmdbgsteps,#__LMM_loop
-	djnz	lmmdbgsteps,#__LMM_loop
-  	call	#__EnterDebugger
 	jmp	#__LMM_loop
 
 	''
