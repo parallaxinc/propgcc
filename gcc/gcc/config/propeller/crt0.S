@@ -21,7 +21,7 @@
 #error "unknown propeller configuration"
 #endif
 
-#if defined(DEBUG_KERNEL)
+#if defined(DEBUG_KERNEL) && !defined(__PROPELLER_CMM__)
 	/* on exit send a message to the debugger */
 	.text
 	.global __ExitHook
