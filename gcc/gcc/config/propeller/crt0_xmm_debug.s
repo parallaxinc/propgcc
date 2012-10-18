@@ -1,3 +1,5 @@
+#include "cogdebug.h"
+
 	''#define HEXDEBUG
 	.section .kernel, "ax"
 
