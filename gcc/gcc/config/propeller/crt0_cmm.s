@@ -1,3 +1,7 @@
+#ifdef DEBUG_KERNEL
+#include "cogdebug.h"
+#endif
+	
 	.section .kernel, "ax"
 	.compress off
 	.global r0
@@ -46,10 +50,19 @@ r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
-	'' constant FFFFFFFF should come after the pc
+ccr	long	0		' condition codes
+	
+	'' the assembler actually relies on _MASK_FFFFFFFF being at register
+	'' 19
 	.global __MASK_FFFFFFFF
 __MASK_FFFFFFFF	long	0xFFFFFFFF
 
+#ifdef DEBUG_KERNEL
+	'' gdb relies on register 20 being a breakpoint command
+Breakpoint
+	call	#__EnterLMMBreakpoint
+#endif
+	
 	.global __TMP0
 __TMP0	long	0
 	.global __TMP1
@@ -70,6 +83,13 @@ xfield  long 0
 sfield  long 0
 	
 __LMM_loop
+#ifdef DEBUG_KERNEL
+	muxc	ccr,#1
+	muxnz	ccr,#2
+	test	ccr, #COGFLAGS_STEP wz
+  if_nz call	#__EnterDebugger
+	shr	ccr,#1 wc,wz,nr		'' restore flags
+#endif
 	rdbyte	ifield,pc
 	add	pc,#1
 	mov	dfield,ifield
@@ -153,6 +173,17 @@ get_word
 get_word_ret
 	ret
 
+	''
+	'' read a signed byte into sfield
+	''
+get_sbyte
+	rdbyte	sfield,pc
+	add	pc,#1
+	shl	sfield,#24
+	sar	sfield,#24
+get_sbyte_ret
+	ret
+	
 __macro_native
 	call	#get_long
 	jmp	#sfield
@@ -225,10 +256,7 @@ __macro_mvreg
 	'' add a signed 8 bit constant to sp
 	''
 __macro_addsp
-	rdbyte	sfield,pc
-	add	pc,#1
-	shl	sfield,#24
-	sar	sfield,#24
+	call	#get_sbyte
 	add	sp,sfield
 	jmp	#__LMM_loop
 
@@ -425,13 +453,10 @@ brw
 	jmp	#__LMM_loop
 
 brs
-	rdbyte	sfield,pc
 	andn	.brsins,cond_mask
-	add	pc,#1
 	shl	dfield,#18	'' get dfield into the cond field
 	or	.brsins,dfield
-	shl	sfield,#24
-	sar	sfield,#24
+	call	#get_sbyte
 .brsins	add	pc,sfield
 	jmp	#__LMM_loop
 
@@ -575,7 +600,6 @@ __MASK_0000FFFF	long	0x0000FFFF
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
-__MULSI
 	mov	__TMP0, r0
 	min	__TMP0, r1
 	max	r1, r0
@@ -585,7 +609,8 @@ __MULSI_loop
  IF_C	add	r0, __TMP0
 	add	__TMP0, __TMP0
  IF_NZ	jmp	#__MULSI_loop
-__MULSI_ret	ret
+__MULSI_ret
+	ret
 
 	''
 	'' code for atomic compare and swap
@@ -630,7 +655,6 @@ __CMPSWAPSI_ret
 	''
 	''
 __COGA	long 0
-dst1	long 1 << 9
 	
 loadbuf
 	movd	.ldlp,__COGA
@@ -638,7 +662,7 @@ loadbuf
 .ldlp
 	rdlong	0-0,__TMP1
 	add	__TMP1,#4
-	add	.ldlp,dst1
+	add	.ldlp,inc_dest1
 	djnz	__TMP0,#.ldlp
 
 loadbuf_ret
@@ -653,8 +677,6 @@ loadbuf_ret
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest4
-	long (4<<9)
 	
 	.global	__LMM_RET
 __LMM_RET
@@ -688,4 +710,12 @@ __LMM_FCACHE_START
 	'' include various kernel extensions
 	''
 #include "kernel.ext"
-	
+#ifdef DEBUG_KERNEL
+//#include "cogdebug.ext"
+__EnterLMMBreakpoint
+__EnterDebugger
+	nop
+__EnterLMMBreakpoint_ret
+__EnterDebugger_ret
+	ret
+#endif
