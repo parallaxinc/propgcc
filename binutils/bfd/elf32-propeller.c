@@ -111,6 +111,49 @@ propeller_pcrel10_reloc (bfd *abfd,
 					 reloc_entry->addend);
 }
 
+/* handle the "23" bit relocation (32 bits which may be interpreted
+ * as an instruction, and hence must have the conditional execution bits
+ * all 0
+ */
+static bfd_reloc_status_type
+propeller_rel23_reloc (bfd *abfd ATTRIBUTE_UNUSED,
+			 arelent *reloc_entry,
+			 asymbol * symbol,
+			 void *data ATTRIBUTE_UNUSED,
+			 asection * input_section,
+			 bfd *output_bfd,
+			 char **error_message ATTRIBUTE_UNUSED)
+{
+  /* This part is from bfd_elf_generic_reloc; short circuit reloc if
+     producing relocatable output and the reloc is against an external
+     symbol
+   */
+  bfd_vma relocation;
+  bfd_vma mask;
+
+  if (output_bfd != NULL
+      && (symbol->flags & BSF_SECTION_SYM) == 0
+      && (! reloc_entry->howto->partial_inplace
+	  || reloc_entry->addend == 0))
+    {
+      reloc_entry->address += input_section->output_offset;
+      return bfd_reloc_ok;
+    }
+
+  if (output_bfd != NULL)
+    /* FIXME: See bfd_perform_relocation.  Is this right?  */
+    return bfd_reloc_continue;
+
+  /* validate relocation */
+  relocation = symbol->value + reloc_entry->addend;
+
+  mask = ~(reloc_entry->howto->dst_mask);
+  if (0 != (relocation & mask)) {
+    return bfd_reloc_overflow;
+  }
+  return bfd_reloc_continue;
+}
+
 static reloc_howto_type propeller_elf_howto_table[] = {
   /* This reloc does nothing. */
   HOWTO (R_PROPELLER_NONE,	/* type */
@@ -142,19 +185,23 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0xffffffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* A 23 bit absolute relocation */
+  /* A 32 bit absolute relocation with a "hole" */
+  /* This is used for 32 bit data which should be ignored (it's inline
+     in code and should be interpreted as a no-op). The conditional
+     execution bits must be set such that the data is not executed
+  */
   HOWTO (R_PROPELLER_23,	/* type */
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
-	 23,			/* bitsize */
+	 32,			/* bitsize */
 	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
 	 complain_overflow_bitfield,	/* complain_on_overflow */
-	 bfd_elf_generic_reloc,	/* special_function */
+	 propeller_rel23_reloc,	/* special_function */
 	 "R_PROPELLER_23",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
-	 0x007fffff,		/* dst_mask */
+	 0xffc3ffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* A 16 bit absolute relocation. */
@@ -331,6 +378,12 @@ propeller_final_link_relocate (reloc_howto_type * howto,
 
   switch (howto->type)
     {
+    case R_PROPELLER_23:
+      /* do a sanity check */
+      if ((relocation & ~howto->dst_mask) != 0) {
+	return bfd_reloc_overflow;
+      }
+      /* fall through */
     case R_PROPELLER_SRC_IMM:
     case R_PROPELLER_SRC:
     case R_PROPELLER_DST:
