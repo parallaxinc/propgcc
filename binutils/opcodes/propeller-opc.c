@@ -47,9 +47,8 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* ldi      000010 zc1i cccc ddddddddd sssssssss */
   {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, R, PROP_1_LMM, NO_COMPRESSED, 0},
 
-/* brw is also made of rdlong and a constant.  We may shrink it later. */
-/* brw       000010 zc1i cccc ddddddddd sssssssss */
-  {"brw", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRW, R, PROP_1_LMM, NO_COMPRESSED, 0},
+/* brw is also made of jmp and a constant.  We may shrink it later. */
+  {"brw", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_BRW, NR, PROP_1_LMM, NO_COMPRESSED, 0},
 
 /* xmmio is made up of a mov immediate followed by a call; the first part
    is mov, so that's what we give here
@@ -67,7 +66,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* lcall expands to a jmp followed by a 32 bit constant, just like fcache */
   {"lcall", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_LCALL, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_LCALL},
 
-/* lcall expands to a jmp followed by a 32 bit constant, just like fcache */
+/* lcall expands to a jmpret followed by a 32 bit constant, just like fcache */
   {"lret", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_RET},
   {"lmul", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_MUL},
   {"ludiv", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, NR, PROP_1_LMM, COMPRESS_MACRO, MACRO_UDIV},
