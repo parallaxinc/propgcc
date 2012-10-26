@@ -75,14 +75,6 @@ __CTZSI
 __CLZSI_ret
 	ret
 	
-	.global __Memcpy
-	.global __Memcpy_ret
-__Memcpy
-	call	#__loadmem
-	call	#__Memcpy_impl
-__Memcpy_ret
-	ret
-
 	''
 	'' the math kernel extension
 	''
@@ -186,12 +178,12 @@ startmem
 	'' copy from r1 to r0
 	'' trashes r3
 	''
-	.global __Memcpy_impl
-	.global __Memcpy_impl_ret
-__Memcpy_impl
+	.global __Memcpy
+	.global __Memcpy_ret
+__Memcpy
 	mov	r3,r0
 	or	r3,r1
-	andn	r3,#3 nr,wz	'' check alignment
+	and	r3,#3 nr,wz	'' check alignment
   if_nz jmp	#.slocpy
 
 	'' get number of longs to copy
@@ -209,7 +201,7 @@ __Memcpy_impl
 	
 .slocpy
 	cmps	r2,#0 wz
-  if_z  jmp	__Memcpy_impl_ret
+  if_z  jmp	__Memcpy_ret
 
 .slolp
 	rdbyte	r3,r1
@@ -218,7 +210,42 @@ __Memcpy_impl
 	add	r0,#1
 	djnz	r2,#.slolp
 
-__Memcpy_impl_ret
+__Memcpy_ret
+	ret
+
+	''
+	'' memclr:
+	'' r0 == address
+	'' r1 == count
+	'' fills memory with 0
+	''
+	'' clobbers r2, r3
+	''
+	.global __Memclr
+	.global __Memclr_ret
+
+__Memclr
+	mov	r2,#0
+	mov	r3,r1 wz	'' check for zero size
+  if_z  jmp	__Memclr_ret
+	and	r0,#3 nr,wz	'' check alignment
+  if_nz jmp	#.sloset
+  	'' get number of longs to set
+	shr    r3,#2 wz
+  if_z	jmp    #.sloset
+  	shl    r3,#2
+	sub    r1,r3
+	shr    r3,#2
+.fastset
+	wrlong	r2, r0
+	add	r0,#4
+	djnz	r3, #.fastset
+
+.sloset
+	wrbyte	r2, r0
+	add	r0,#1
+	djnz	r1, #.sloset
+__Memclr_ret
 	ret
 
 endmem

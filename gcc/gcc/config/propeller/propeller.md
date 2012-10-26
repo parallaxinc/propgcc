@@ -71,6 +71,7 @@
    (UNSPEC_CAS          19)
 
    (UNSPEC_MOVMEM       20)
+   (UNSPEC_SETMEM       21)
 
    (UNSPEC_NAKED_RET   101)
    (UNSPEC_NATIVE_RET  102)
@@ -2672,10 +2673,11 @@
   ]
 "TARGET_BUILTIN_STRINGS"
 {
-    return "call\t#__Memcpy";
+    return "call\\t#__loadmem\\n\\tcall\\t#__Memcpy";
 }
  [(set_attr "type" "multi")
   (set_attr "conds" "clob")
+  (set_attr "length" "8")
  ]
 )
 
@@ -2715,6 +2717,60 @@
 }
 )
 
+(define_insn "prop_clrmem"
+  [(set (mem:BLK (reg:SI 0))
+        (const_int 0))
+   (use (reg:SI 1))
+   (unspec_volatile:BLK [(reg:SI 0) (reg:SI 1)] UNSPEC_SETMEM)
+   (clobber (reg:SI 0))
+   (clobber (reg:SI 1))
+   (clobber (reg:SI 2))
+   (clobber (reg:SI 3))
+   (clobber (reg:CC CC_REG))
+  ]
+"TARGET_BUILTIN_STRINGS"
+{
+    return "call\\t#__loadmem\\n\\tcall\\t#__MemClr";
+}
+ [(set_attr "type" "multi")
+  (set_attr "conds" "clob")
+  (set_attr "length" "8")
+ ]
+)
+
+(define_expand "setmemsi"
+  [(parallel
+    [(set (match_operand:BLK 0 "memory_operand")    ;; Dest
+          (match_operand 2 "const_int_operand"))    ;; Source
+     (use (match_operand:SI 1 "register_operand"))  ;; length in bytes
+     (match_operand 3 "immediate_operand")          ;; align
+     (unspec_volatile:BLK [(reg:SI 0) (reg:SI 1) (reg:SI 2)] UNSPEC_SETMEM)
+    ])
+  ]
+"TARGET_BUILTIN_STRINGS"
+{
+  rtx dstaddr = gen_rtx_REG (SImode, 0);
+  rtx len = gen_rtx_REG(SImode, 1);
+
+  /* only do this for clearing memory */
+  if (operands[2] != const0_rtx)
+     FAIL;
+
+  if (REG_P (operands[0]) && (REGNO (operands[0]) == 1 
+     	    		      || REGNO (operands[0]) == 2))
+     FAIL;
+  if (REG_P (operands[1]) && (REGNO (operands[1]) == 0 
+     	    		      || REGNO (operands[1]) == 2))
+     FAIL;
+
+  emit_move_insn (dstaddr, force_operand (XEXP (operands[0], 0), NULL_RTX));
+  emit_move_insn (len, force_operand (operands[1], NULL_RTX));
+
+  operands[0] = replace_equiv_address_nv (operands[0], dstaddr);
+  emit_insn (gen_prop_clrmem ());
+  DONE;
+}
+)
 
 ;; -------------------------------------------------------------------------
 ;; synchronization insns
