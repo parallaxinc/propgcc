@@ -18,7 +18,9 @@
 #define ZeroFlag 0x02
 #define InfFlag  0x04
 #define NaNFlag  0x08
+#define StickyBit 0x10
 
+	
 			.equ	manA, r2
 			.equ	flagA, r3
 			.equ	expA, r4
@@ -79,86 +81,77 @@ __FUnpack_ret           ret
 
 
 '------------------------------------------------------------------------------
-' input:   r0           32-bit floating point value
-'          r1           32-bit floating point value 
-' output:  flagA        fnumA flag bits (Nan, Infinity, Zero, Sign)
-'          expA         fnumA exponent (no bias)
-'          manA         fnumA mantissa (aligned to bit 29)
-'          flagB        fnumB flag bits (Nan, Infinity, Zero, Sign)
-'          expB         fnumB exponent (no bias)
-'          manB         fnumB mantissa (aligned to bit 29)
-' changes: fnumA, flagA, expA, manA, fnumB, flagB, expB, manB, __TMP0
-'------------------------------------------------------------------------------
-			.global __FUnpack2
-			.global __FUnpack2_ret
-__FUnpack2
-        		mov     manA, r1            ' unpack B to A
-                        call    #__FUnpack
-
-                        mov     flagB, flagA
-                        mov     expB, expA
-                        mov     manB, manA
-
-                        mov     manA, r0               ' unpack A
-                        call    #__FUnpack
-
-__FUnpack2_ret          ret
-
-
-'------------------------------------------------------------------------------
 ' input:   flagA        fnumA flag bits (Nan, Infinity, Zero, Sign)
 '          expA         fnumA exponent (no bias)
 '          manA         fnumA mantissa (aligned to bit 29)
 ' output:  r0           32-bit floating point value
 ' changes: r0, flagA, expA, manA 
 '------------------------------------------------------------------------------
+big_3_29		long 	(2<<29) - 1
+
 			.global __FPack
 			.global __FPack_ret
 __FPack
-			cmp     manA, #0 wz             ' check for zero                                        
-          if_z          mov     expA, #0
+			cmp     manA, #0 wz             ' check for zero                     
           if_z          jmp     #.pack_exit1
 
-                        sub     expA, #380              ' take us out of the danger range for djnz
-.normalize              shl     manA, #1 wc             ' normalize the mantissa
-          if_nc         djnz    expA, #.normalize       ' adjust exponent and jump
-
-                        add     manA, #$100 wc          ' round up by 1/2 lsb
-
-                        addx    expA, #(380 + 127 + 2)  ' add bias to exponent, account for rounding (in flag C, above)
-                        mins    expA, Minus23
-
-                        abs     expA, expA wc,wz        ' check for subnormals, and get the abs in case it is
-          if_a          jmp     #.pack_exit1
-
-.packsubnormal          or      manA, #1                ' adjust mantissa
-                        ror     manA, #1
-
-                        shr     manA, expA
-                        mov     expA, #0                ' biased exponent = 0
-
-.pack_exit1
+			'' re-normalize: if bigger than two, shift down
+			cmp	big_3_29, manA wc
+	  if_c		add	expA, #1
+	  if_c		shr	manA, #1 wc
+          if_c          or      flagA, #StickyBit
+.normlp
+			test	manA, Bit29 wz
+	  if_z		shl	manA, #1
+	  if_z		djnz	expA, #.normlp
+	  if_z		jmp	#.normlp
+	
+			'' check for denormalized numbers
+			add	expA, #127
+			cmps	expA, #0 wz, wc
+	  if_a		jmp	#.normal
+			'' denormalize
+			abs	expA, expA
+			add	expA, #1
+			max	expA, #29
+.shiftdenorm
+			shr	manA, #1 wc
+	  if_c		or	flagA, #StickyBit
+			djnz	expA, #.shiftdenorm
+.normal
+			andn	manA, Bit29
+			'' perform rounding
+			'' we are converting from 3.29 to 9.23,
+			'' so one unit in the last place is
+			'' 0x40
+			test    flagA, #StickyBit wc
+			test	manA, #0x40 wz
+	   if_nz_or_c	or	manA, #1
+			add	manA, #0x1f
+			shr	manA, #6
 			max	expA, #255 wc
-	  if_nc		mov	manA, #0
-        		mov     r0, manA                ' bits 22:0 mantissa
-                        shr     r0, #9
-                        movi    r0, expA                ' bits 23:30 exponent
-                        shl     flagA, #31
-                        or      r0, flagA               ' bit 31 sign            
-__FPack_ret               ret
+	   if_nc	mov	manA, #0
+			shl	expA, #23
+			add	manA, expA
+.pack_exit1	
+			mov	r0, flagA
+			shl	r0, #31
+			or	r0, manA
+
+__FPack_ret             ret
 
 
 '-------------------- constant values -----------------------------------------
 
-Minus23                 long    -23
-Mask23                  long    0x007FFFFF
-Bit29                   long    0x20000000
-Bit31                   long    0x80000000
+Mask23                  long    $007F_FFFF
+Bit29                   long    $2000_0000
 
 
 endfloat
 
-
+			.section .kernel
+Bit31                   long    $8000_0000
+	
 			.compress default
 			.text
 
@@ -177,25 +170,65 @@ __loadfloat
 			mov	pc,lr
 
 			jmp	__LMM_RET
-.FCadd
 
-                        test    flagA, #SignFlag wz     ' negate A mantissa if negative
-          if_nz         neg     manA, manA
-                        test    flagB, #SignFlag wz     ' negate B mantissa if negative
-          if_nz         neg     manB, manB
+'------------------------------------------------------------------------------
+' input:   r0           32-bit floating point value
+'          r1           32-bit floating point value 
+' output:  flagA        fnumA flag bits (Nan, Infinity, Zero, Sign)
+'          expA         fnumA exponent (no bias)
+'          manA         fnumA mantissa (aligned to bit 29)
+'          flagB        fnumB flag bits (Nan, Infinity, Zero, Sign)
+'          expB         fnumB exponent (no bias)
+'          manB         fnumB mantissa (aligned to bit 29)
+' changes: fnumA, flagA, expA, manA, fnumB, flagB, expB, manB, __TMP0
+'------------------------------------------------------------------------------
+			.global __FUnpack2
+			.global __FUnpack2_ret
+			.equ	__FUnpack2, __LMM_FCACHE_START + (.FCunpack2 - .FCfloatstart)
+			.equ	__FUnpack2_ret, __LMM_FCACHE_START + (.FCunpack2_ret - .FCfloatstart)
+	
+.FCunpack2
+        		mov     manA, r1            ' unpack B to A
+                        call    #__FUnpack
+
+                        mov     flagB, flagA
+                        mov     expB, expA
+                        mov     manB, manA
+
+                        mov     manA, r0               ' unpack A
+                        call    #__FUnpack
+
+.FCunpack2_ret          ret
+
+
+
+.FCadd
+			'' we can assume magnitude of A is > magnitude of B
 
                         mov     __TMP0, expA                ' align mantissas
-                        sub     __TMP0, expB
-                        abs     __TMP0, __TMP0          wc
+                        sub     __TMP0, expB wz
                         max     __TMP0, #31
-              if_nc     sar     manB, __TMP0
-              if_c      sar     manA, __TMP0
-              if_c      mov     expA, expB
+			mov	__TMP1, #32
+			sub	__TMP1, __TMP0
+              if_nz     shl	manB, __TMP1 wz,nr
+              if_nz     or      flagA, #StickyBit       ' set sticky bit
+                        shr     manB, __TMP0
 
-                        add     manA, manB              ' add the two mantissas
-                        abs     manA, manA      wc      ' store the absolte value,
-                        muxc    flagA, #SignFlag        ' and flag if it was negative
+			xor	flagB,flagA
+			test	flagB, #SignFlag wz
 
+	      if_z      add     manA, manB
+	      if_z      jmp     #__LMM_FCACHE_START+(.doneadd-.FCfloatstart)
+
+#ifdef FIXME
+	                test	flagA,#StickyBit wc
+	                subx    manA, manB wz
+#else
+			sub	manA, manB wz
+#endif
+	      if_z      andn    flagA, #SignFlag
+	      if_z      or      flagA, #ZeroFlag
+.doneadd
                         call    #__FPack                  ' pack result and exit
 			jmp	__LMM_RET
 
@@ -203,16 +236,22 @@ __loadfloat
                         xor     flagA, flagB            ' get sign of result
                         add     expA, expB              ' add exponents
 
-                        ' standard method: 404 counts for this block
+                        ' multiply manA by manB
+			' produces the high word in __TMP0, low word in manA
+	
                         mov     __TMP0, #0                  ' __TMP0 is my accumulator
-                        mov     __TMP1, #24                 ' loop counter for multiply (only do the bits needed...23 + implied 1)
-                        shr     manB, #6                ' start by right aligning the B mantissa
+                        mov     __TMP1, #32                 ' loop counter for multiply
 
-.multiply               shr     __TMP0, #1                  ' shift the previous accumulation down by 1
-                        shr     manB, #1 wc             ' get multiplier bit
-              if_c      add     __TMP0, manA                ' if the bit was set, add in the multiplicand
+			shl	manB, #2 wc		' pre-adjust
+	
+.multiply   if_c	add	__TMP0, manB wc
+			rcr	__TMP0, #1 wc
+			rcr	manA, #1 wc
 	      		djnz	__TMP1, #__LMM_FCACHE_START+(.multiply-.FCfloatstart)
 
+			'' check for rounding
+			cmp	manA, #0 wz
+	       if_nz    or	flagA, #StickyBit
                         mov     manA, __TMP0                ' yes, that's my final answer.
 
                         call    #__FPack
@@ -224,20 +263,24 @@ __loadfloat
 
                         ' slightly faster division, using 26 passes instead of 30
                         mov     __TMP0, #0                  ' clear quotient
-                        mov     __TMP1, #26                 ' loop counter for divide (need 24, plus 2 for rou
+                        mov     __TMP1, #26                 ' loop counter for divide (need 24, plus 2 for rounding)
 .divide
                         cmpsub  manA, manB      wc
                         rcl     __TMP0, #1
-                        shl     manA, #1
-			sub	__TMP1, #1 wz
-            if_nz       jmp     #__LMM_FCACHE_START + (.divide - .FCfloatstart)
+                        shl     manA, #1 wz
+                        djnz    __TMP1, #__LMM_FCACHE_START + (.divide - .FCfloatstart)
                         shl     __TMP0, #4                  ' align the result (we did 26 instead of 30 iterations)
+			'' check for remainders
+           if_nz        or	__TMP0, #1
                         mov     manA, __TMP0                ' get result and exit
                         call    #__FPack
 			jmp	__LMM_RET
 
 
 .FCfloatend
+
+	
+	
 			.compress default
 
 __return_signed_zero
@@ -272,7 +315,17 @@ ___addsf3
 			mov	r7,lr
 			lcall	#__loadfloat
 			mov	lr,r7
-
+			'' swap so |r0|>|r1|
+			mov	manA,r0
+			mov	manB,r1
+			shl	manA,#1
+			shl	manB,#1
+			cmp	manA,manB wz,wc
+	  if_ae         brs	#.addnoswap
+			mov	manA,r0
+			mov	r0,r1
+			mov	r1,manA
+.addnoswap
 	               	call    #__FUnpack2            ' unpack two variables
 
 			mov	__TMP0, flagA
@@ -304,7 +357,7 @@ __add_excep
 			'' inf + inf == NaN if signs differ
 			xor    flagA, flagB
 			test   flagA, #SignFlag wz
-		if_nz	brs    #__return_nan
+		if_nz	brw    #__return_nan
 			mov    pc,lr
 .addzeroA
 			test	flagB, #ZeroFlag wz
@@ -350,9 +403,9 @@ __mul_excep
 			test	flagA, #InfFlag wz
 		if_nz	brw	#.mulinfA
 			'' ok, A is a normal (nonzero) number
-			test   flagB, #ZeroFlag wz
-		if_nz	brw    #__return_signed_zero
-			brw    #__return_signed_infinity
+			test	flagB, #ZeroFlag wz
+		if_nz	brw	#__return_signed_zero
+			brw    	#__return_signed_infinity
 
 .mulzeroA
 			test	flagB, #InfFlag wz
@@ -407,10 +460,10 @@ __div_excep
 
 			'' come here if A is infinity
 .divinfA
-			'' inf / 0 == NaN
+			'' inf / 0 == inf
 			'' inf / inf == NaN
 
-			test	flagB, #(ZeroFlag|InfFlag) wz
+			test	flagB, #(InfFlag) wz
 		if_nz	brw	#__return_nan
 			brw	#__return_signed_infinity
 #endif
