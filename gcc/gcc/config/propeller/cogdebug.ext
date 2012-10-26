@@ -129,8 +129,6 @@ dbgstart
 
 	'' resume execution
 	'' no response expected/required
-cmd_resume
-
 LeaveDebugger
 	shr	cogflags,#1 wz,wc,nr
 	jmp	cogpc
@@ -335,7 +333,7 @@ hub_decode_cmd
   if_e	rdlong	debugpc,debugpc	     '' jmp	#cmd_status
   	long	hub_cmd_status
   	cmp	cmd, #DBG_CMD_RESUME wz
-  if_e	jmp	#cmd_resume
+  if_e	jmp	#LeaveDebugger
   	cmp	cmd, #DBG_CMD_READCOG wz
   if_e  rdlong	debugpc,debugpc	     ''jmp	#read_cog_mem
   	long	hub_cmd_readcogmem
