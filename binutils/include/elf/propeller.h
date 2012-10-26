@@ -20,7 +20,7 @@
 #ifndef _ELF_PROPELLER_H
 #define _ELF_PROPELLER_H
 
-/* Flags for the st_other field. */
+/* Flags for the st_other field in symbols */
 #define PROPELLER_OTHER_COG_RAM 0x80
 #define PROPELLER_OTHER_COMPRESSED 0x40
 #define PROPELLER_OTHER_FLAGS (0xC0)
@@ -39,5 +39,13 @@ START_RELOC_NUMBERS (elf_propeller_reloc_type)
   RELOC_NUMBER (R_PROPELLER_DST, 7)
   RELOC_NUMBER (R_PROPELLER_PCREL10, 8)
 END_RELOC_NUMBERS (R_PROPELLER_max)
+
+/* Values for the e_flags field in the ELF header. */
+#define E_FLAG_PROPELLER_COMPRESS          (1<<0) /* file contains compressed instructions */
+#define E_FLAG_PROPELLER_XMM               (1<<1) /* file contains XMM instructions */
+
+/* Processor specific values for the section header flags */
+#define SHF_PROPELLER_COGDATA           0x10000000 /* data to be loaded in a cog */
+#define PF_PROPELLER_COGDATA            0x10000000 /* same thing for a program header */
 
 #endif /* _ELF_PROPELLER_H */

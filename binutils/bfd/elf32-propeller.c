@@ -642,6 +642,132 @@ propeller_elf_is_local_label_name (bfd *abfd, const char *name)
   return _bfd_elf_is_local_label_name (abfd, name);
 }
 
+/* Function to set the ELF flag bits.  */
+
+static bfd_boolean
+propeller_elf_set_private_flags (bfd * abfd, flagword flags)
+{
+  elf_elfheader (abfd)->e_flags = flags;
+  elf_flags_init (abfd) = TRUE;
+  return TRUE;
+}
+
+static bfd_boolean no_warn_mismatch = FALSE;
+
+void bfd_elf32_propeller_set_target_flags (bfd_boolean);
+
+void
+bfd_elf32_propeller_set_target_flags (bfd_boolean user_no_warn_mismatch)
+{
+  no_warn_mismatch = user_no_warn_mismatch;
+}
+
+/* Merge backend specific data from an object file to the output
+   object file when linking.  */
+
+static bfd_boolean
+propeller_elf_merge_private_bfd_data (bfd * ibfd, bfd * obfd)
+{
+  flagword old_flags;
+  flagword new_flags;
+  bfd_boolean error = FALSE;
+
+  new_flags = elf_elfheader (ibfd)->e_flags;
+  old_flags = elf_elfheader (obfd)->e_flags;
+
+  if (!elf_flags_init (obfd))
+    {
+      /* First call, no flags set.  */
+      elf_flags_init (obfd) = TRUE;
+      elf_elfheader (obfd)->e_flags = new_flags;
+    }
+  else if (old_flags != new_flags)
+    {
+      /* we can check here for mismatches in bits */
+
+      if (old_flags != 0)
+	{
+	  /* Only complain if inconsistent bits are being set */
+	  if (no_warn_mismatch)
+	    {
+	      elf_elfheader (obfd)->e_flags = (new_flags | old_flags);
+	    }
+	  else
+	    {
+	      (*_bfd_error_handler)
+		("ELF header flags mismatch: old_flags = 0x%.8lx, new_flags = 0x%.8lx, filename = %s",
+		 old_flags, new_flags, bfd_get_filename (ibfd));
+	      error = TRUE;
+	    }
+	}
+      else
+	elf_elfheader (obfd)->e_flags = new_flags;
+    }
+
+  if (error)
+    bfd_set_error (bfd_error_bad_value);
+
+  return !error;
+}
+
+static bfd_boolean
+propeller_elf_print_private_bfd_data (bfd * abfd, void * ptr)
+{
+  FILE * file = (FILE *) ptr;
+  flagword flags;
+
+  BFD_ASSERT (abfd != NULL && ptr != NULL);
+
+  /* Print normal ELF private data.  */
+  _bfd_elf_print_private_bfd_data (abfd, ptr);
+
+  flags = elf_elfheader (abfd)->e_flags;
+  fprintf (file, _("private flags = 0x%lx:"), (long) flags);
+
+  if (flags & E_FLAG_PROPELLER_COMPRESS)
+    fprintf (file, _(" [cmm]"));
+  if (flags & E_FLAG_PROPELLER_XMM)
+    fprintf (file, _(" [xmm]"));
+
+  fputc ('\n', file);
+  return TRUE;
+}
+
+/* Tweak phdrs before writing them out.  */
+/* for the propeller, this just involves copying various flags from the
+   section headers
+*/
+
+#define PROP_FLAGS (0xf0000000)
+
+static int
+propeller_elf_modify_program_headers (bfd *abfd, struct bfd_link_info *info)
+{
+  struct elf_obj_tdata *tdata;
+  Elf_Internal_Phdr *phdr;
+  unsigned int i;
+  unsigned int flags;
+  struct elf_segment_map *m;
+
+  if (info == NULL)
+    return TRUE;
+
+  tdata = elf_tdata (abfd);
+  phdr = tdata->phdr;
+  for (i = 0, m = elf_tdata (abfd)->segment_map; m; ++i, m = m->next)
+    {
+      if (m->count != 0
+	  && (flags = elf_section_flags (m->sections[0])) != 0)
+	{
+	  /* Copy processor specific flags  */
+	  phdr[i].p_flags |= flags & PROP_FLAGS;
+	}
+    }
+
+  return TRUE;
+}
+
+
 #define ELF_ARCH		bfd_arch_propeller
 #define ELF_MACHINE_CODE	EM_PROPELLER
 #define ELF_MAXPAGESIZE		0x1
@@ -655,14 +781,19 @@ propeller_elf_is_local_label_name (bfd *abfd, const char *name)
 #define elf_backend_gc_mark_hook		propeller_elf_gc_mark_hook
 #define elf_backend_check_relocs                propeller_elf_check_relocs
 #define elf_backend_merge_symbol_attribute      propeller_elf_merge_symbol_attribute
+#define elf_backend_modify_program_headers      propeller_elf_modify_program_headers
 
 #define elf_backend_can_gc_sections		1
 #define elf_backend_rela_normal			1
 
 #define bfd_elf32_bfd_reloc_type_lookup		propeller_reloc_type_lookup
 #define bfd_elf32_bfd_reloc_name_lookup		propeller_reloc_name_lookup
-
+#define bfd_elf32_bfd_set_private_flags         propeller_elf_set_private_flags
+#define bfd_elf32_bfd_merge_private_bfd_data    propeller_elf_merge_private_bfd_data
+#define bfd_elf32_bfd_print_private_bfd_data    propeller_elf_print_private_bfd_data
 
 #define bfd_elf32_bfd_is_local_label_name \
 					propeller_elf_is_local_label_name
+
+
 #include "elf32-target.h"
