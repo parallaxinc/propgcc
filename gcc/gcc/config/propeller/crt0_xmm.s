@@ -687,11 +687,7 @@ __CMPSWAPSI_ret
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-#ifdef HEXDEBUG
-	res	20	'' 
-#else
 	res	64	'' reserve 64 longs = 256 bytes
-#endif
 
 	#include "kernel.ext"
 
