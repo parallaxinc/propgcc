@@ -86,13 +86,13 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
         if (i != ki && program.paddr >= program_header.paddr) {
             if (program.filesz > 0) {
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-                printf("  %d S: vaddr %08x, paddr %08x, size %08x\n", i, program.vaddr, program.paddr, program.filesz);
+	      printf("  %d S: vaddr %08x, paddr %08x, size %08x, flags %08x\n", i, program.vaddr, program.paddr, program.filesz, program.flags);
 #endif
                 if (program.paddr + program.filesz > endAddress)
                     endAddress = program.paddr + program.filesz;
                 if (i == si || (program.vaddr != program.paddr && program.vaddr != 0)) {
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-                    printf("  %d I: vaddr %08x, paddr %08x, size %08x\n", i, program.vaddr, program.paddr, program.filesz);
+		  printf("  %d I: vaddr %08x, paddr %08x, size %08x, flags %08x\n", i, program.vaddr, program.paddr, program.filesz, program.flags);
 #endif
                     ++initTableSize;
                 }
@@ -153,12 +153,12 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
         }
         if (i != ki && program.paddr >= program_header.paddr) {
             if (program.filesz > 0) {
-                if (i == si || (program.vaddr != program.paddr && program.vaddr != 0)) {
+	        if (i == si || (program.vaddr != program.paddr && program.vaddr != 0 && !(program.flags & SF_COGDATA) ) ) {
                     initSection->vaddr = program.vaddr;
                     initSection->paddr = program.paddr;
                     initSection->size = program.filesz;
     #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
-                    printf("  %d T: vaddr %08x, paddr %08x, size %08x\n", i,initSection->vaddr, initSection->paddr, initSection->size);
+                    printf("  %d T: vaddr %08x, paddr %08x, size %08x, flags %08x\n", i,initSection->vaddr, initSection->paddr, initSection->size, program.flags);
     #endif
                     ++initSection;
                 }

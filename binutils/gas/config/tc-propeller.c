@@ -25,6 +25,7 @@
 #include "struc-symbol.h"
 #include "safe-ctype.h"
 #include "opcode/propeller.h"
+#include "elf/common.h"
 #include "elf/propeller.h"
 #include "dwarf2dbg.h"
 
@@ -72,6 +73,8 @@ static int cog_ram = 0;		/* Use Cog ram if 1 */
 static int lmm = 0;             /* Enable LMM pseudo-instructions */
 static int compress = 0;        /* Enable compressed (16 bit) instructions */
 static int compress_default = 0; /* default compression mode from command line */
+static int elf_flags = 0;       /* machine specific ELF flags */
+
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
   {"res", pseudo_res, 0},
@@ -1884,6 +1887,8 @@ md_assemble (char *instruction_string)
 	to += 4;
       }
   }
+  if (insn_compressed)
+    elf_flags |= E_FLAG_PROPELLER_COMPRESS;
 }
 
 int
@@ -2005,4 +2010,21 @@ long
 md_pcrel_from (fixS * fixP)
 {
   return fixP->fx_frag->fr_address + fixP->fx_where + fixP->fx_size;
+}
+
+/*
+ * some miscellaneous things
+ */
+void
+propeller_elf_final_processing (void)
+{
+  elf_elfheader (stdoutput)->e_flags |= elf_flags;
+}
+
+/*
+ * hook for start of line
+ */
+void
+propeller_start_line (void)
+{
 }

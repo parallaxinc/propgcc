@@ -25,20 +25,19 @@
 test -z "$TARGET2_TYPE" && TARGET2_TYPE="rel"
 fragment <<EOF
 
-static bfd_boolean propeller_build_flag = FALSE;
+static bfd_boolean no_flag_mismatch_warnings = FALSE;
 
 /* This is a convenient point to tell BFD about target specific flags.
    After the output has been created, but before inputs are read.  */
 static void
 propeller_elf_create_output_section_statements (void)
 {
-#if 0
   /* not actually implemented yet */
   extern void bfd_elf32_propeller_set_target_flags (bfd_boolean);
 
   /* set target specific flags */
-  bfd_elf32_propeller_set_target_flags (propeller_build_flag);
-#endif
+  bfd_elf32_propeller_set_target_flags (no_flag_mismatch_warnings);
+
   /* turn off the D_PAGED bit in the output */
   if (link_info.output_bfd)
     link_info.output_bfd->flags &= ~D_PAGED;
@@ -49,10 +48,13 @@ propeller_elf_create_output_section_statements (void)
  * handle them specially
  * similarly orphan sections ending with .kerext are kernel overlays
  */
+#include "elf/propeller.h"
 
 static lang_output_section_statement_type *
 propeller_place_orphan (asection *s, const char *secname, int constraint)
 {
+  int is_cog = 0;
+
   if (!link_info.relocatable && 0 != (s->flags & SEC_ALLOC) )
     {
       /* for now we only put stuff after .text, but we may want to
@@ -88,6 +90,7 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	{
 	  placeidx = 0;
 	  memregion_name = "coguser";
+	  is_cog = 1;
 	}
       // similarly for .ecog overlays, which are placed after .drivers
       lastn = strlen (secname) - 5;
@@ -95,6 +98,7 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	{
 	  placeidx = 1;
 	  memregion_name = "coguser";
+	  is_cog = 1;
 	}
       // .kerext sections get placed in HUB memory and linked to run from the kernel extension memory region
       lastn = strlen (secname) - 7;
@@ -102,6 +106,7 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	{
 	  placeidx = 2;
 	  memregion_name = "kerextmem";
+	  is_cog = 1;
 	}
 
       if (memregion_name)
@@ -116,6 +121,10 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 
 	  // hold[0] is for the ".text" section
 	  // if there is a .text, put the .cog stuff after it;
+	  if (is_cog) {
+	    // set the section flags before inserting it in the output section
+	    elf_section_flags(s) |= SHF_PROPELLER_COGDATA;
+	  }
 	  place = &hold[placeidx];
 	  if (place->os == NULL)
 	    place->os = lang_output_section_find (place->name);
@@ -130,7 +139,6 @@ propeller_place_orphan (asection *s, const char *secname, int constraint)
 	      os->load_base = NULL;
 	    }
 	  os->sectype = overlay_section;
-
 	  /* now add the necessary overlay symbols */
 	  clean = (char *) xmalloc (strlen (secname) + 1);
 	  s2 = clean;
@@ -181,7 +189,7 @@ PARSE_AND_LIST_OPTIONS='
 
 PARSE_AND_LIST_ARGS_CASES='
     case OPTION_NO_FLAG_MISMATCH_WARNINGS:
-      propeller_build_flag = TRUE;
+      no_flag_mismatch_warnings = TRUE;
       break;
 '
 
