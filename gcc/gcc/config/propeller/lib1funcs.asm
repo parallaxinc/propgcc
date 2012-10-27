@@ -1,9 +1,9 @@
-
 ''        F32 - Concise floating point code for the Propeller
 ''        Copyright (c) 2011 Jonathan "lonesock" Dummer
 ''
 ''        Released under the MIT License (see the end of this file for details)
-''        Modified by Eric Smith for GAS and LMM
+''        Modified by Eric Smith for GAS and LMM, and to fix rounding and
+''        handling of infinity.
 ''
 ''    
 ''        +--------------------------------------------------------------------------+
@@ -38,7 +38,7 @@ startfloat
 ' input:   manA         32-bit floating point value 
 ' output:  flagA        flag bits (Nan, Infinity, Zero, Sign)
 '          expA         exponent (no bias)
-'          manA         mantissa (aligned to bit 29)
+'          manA         mantissa (aligned to bit 28)
 '          C flag       set if value is NaN or infinity
 '          Z flag       set if value is zero
 ' changes: flagA, expA, manA
@@ -66,15 +66,15 @@ __FUnpack
                         or      flagA, #ZeroFlag        ' yes, then set zero flag
                         jmp     #__FUnpack_ret
                                  
-.subnorm                shl     manA, #7                ' fix justification for subnormals  
-.subnorm2               test    manA, Bit29 wz
+.subnorm                shl     manA, #6                ' fix justification for subnormals  
+.subnorm2               test    manA, Bit28 wz
           if_nz         jmp     #.unpack_exit1
                         shl     manA, #1
                         sub     expA, #1
                         jmp     #.subnorm2
 
-.finite                 shl     manA, #6                ' justify mantissa to bit 29
-                        or      manA, Bit29             ' add leading one bit
+.finite                 shl     manA, #5                ' justify mantissa to bit 28
+                        or      manA, Bit28             ' add leading one bit
                         
 .unpack_exit1           sub     expA, #127              ' remove bias from exponent
 __FUnpack_ret           ret       
@@ -87,7 +87,7 @@ __FUnpack_ret           ret
 ' output:  r0           32-bit floating point value
 ' changes: r0, flagA, expA, manA 
 '------------------------------------------------------------------------------
-big_3_29		long 	(2<<29) - 1
+big_4_28		long 	(2<<28) - 1
 
 			.global __FPack
 			.global __FPack_ret
@@ -96,12 +96,12 @@ __FPack
           if_z          jmp     #.pack_exit1
 
 			'' re-normalize: if bigger than two, shift down
-			cmp	big_3_29, manA wc
+			cmp	big_4_28, manA wc
 	  if_c		add	expA, #1
 	  if_c		shr	manA, #1 wc
           if_c          or      flagA, #StickyBit
 .normlp
-			test	manA, Bit29 wz
+			test	manA, Bit28 wz
 	  if_z		shl	manA, #1
 	  if_z		djnz	expA, #.normlp
 	  if_z		jmp	#.normlp
@@ -113,22 +113,22 @@ __FPack
 			'' denormalize
 			abs	expA, expA
 			add	expA, #1
-			max	expA, #29
+			max	expA, #28
 .shiftdenorm
 			shr	manA, #1 wc
 	  if_c		or	flagA, #StickyBit
 			djnz	expA, #.shiftdenorm
 .normal
-			andn	manA, Bit29
+			andn	manA, Bit28
 			'' perform rounding
-			'' we are converting from 3.29 to 9.23,
+			'' we are converting from 4.28 to 9.23,
 			'' so one unit in the last place is
-			'' 0x40
+			'' 0x20
 			test    flagA, #StickyBit wc
-			test	manA, #0x40 wz
+			test	manA, #0x20 wz
 	   if_nz_or_c	or	manA, #1
-			add	manA, #0x1f
-			shr	manA, #6
+			add	manA, #0x0f
+			shr	manA, #5
 			max	expA, #255 wc
 	   if_nc	mov	manA, #0
 			shl	expA, #23
@@ -144,7 +144,7 @@ __FPack_ret             ret
 '-------------------- constant values -----------------------------------------
 
 Mask23                  long    $007F_FFFF
-Bit29                   long    $2000_0000
+Bit28                   long    $1000_0000
 
 
 endfloat
@@ -176,7 +176,7 @@ __loadfloat
 '          r1           32-bit floating point value 
 ' output:  flagA        fnumA flag bits (Nan, Infinity, Zero, Sign)
 '          expA         fnumA exponent (no bias)
-'          manA         fnumA mantissa (aligned to bit 29)
+'          manA         fnumA mantissa (aligned to bit 28)
 '          flagB        fnumB flag bits (Nan, Infinity, Zero, Sign)
 '          expB         fnumB exponent (no bias)
 '          manB         fnumB mantissa (aligned to bit 29)
@@ -216,19 +216,14 @@ __loadfloat
 
 			xor	flagB,flagA
 			test	flagB, #SignFlag wz
+	                test	flagA, #StickyBit wc
+              if_nz     neg     manB, manB
+              if_nz_and_c sub   manB, #1		' adjust for sticky bit
 
-	      if_z      add     manA, manB
-	      if_z      jmp     #__LMM_FCACHE_START+(.doneadd-.FCfloatstart)
+	                add     manA, manB wz
 
-#ifdef FIXME
-	                test	flagA,#StickyBit wc
-	                subx    manA, manB wz
-#else
-			sub	manA, manB wz
-#endif
-	      if_z      andn    flagA, #SignFlag
-	      if_z      or      flagA, #ZeroFlag
-.doneadd
+	      if_z_and_nc      andn    flagA, #SignFlag
+
                         call    #__FPack                  ' pack result and exit
 			jmp	__LMM_RET
 
@@ -242,7 +237,7 @@ __loadfloat
                         mov     __TMP0, #0                  ' __TMP0 is my accumulator
                         mov     __TMP1, #32                 ' loop counter for multiply
 
-			shl	manB, #2 wc		' pre-adjust
+			shl	manB, #3 wc		' pre-adjust and clear carry
 	
 .multiply   if_c	add	__TMP0, manB wc
 			rcr	__TMP0, #1 wc
@@ -269,7 +264,7 @@ __loadfloat
                         rcl     __TMP0, #1
                         shl     manA, #1 wz
                         djnz    __TMP1, #__LMM_FCACHE_START + (.divide - .FCfloatstart)
-                        shl     __TMP0, #4                  ' align the result (we did 26 instead of 30 iterations)
+                        shl     __TMP0, #3                  ' align the result (we did 26 instead of 29 iterations)
 			'' check for remainders
            if_nz        or	__TMP0, #1
                         mov     manA, __TMP0                ' get result and exit
@@ -479,7 +474,7 @@ ___floatsisf
 		if_z	mov	pc,lr
 			mov	flagA,#0
 			muxc	flagA,#SignFlag
-			mov	expA, #29
+			mov	expA, #28
 			call	#__FPack
 			mov	pc,lr
 #endif
