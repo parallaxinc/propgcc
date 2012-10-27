@@ -685,7 +685,7 @@ propeller_elf_merge_private_bfd_data (bfd * ibfd, bfd * obfd)
     {
       /* we can check here for mismatches in bits */
 
-      if (old_flags != 0)
+      if (old_flags != 0 && new_flags != 0)
 	{
 	  /* Only complain if inconsistent bits are being set */
 	  if (no_warn_mismatch)
@@ -701,7 +701,7 @@ propeller_elf_merge_private_bfd_data (bfd * ibfd, bfd * obfd)
 	    }
 	}
       else
-	elf_elfheader (obfd)->e_flags = new_flags;
+	elf_elfheader (obfd)->e_flags |= new_flags;
     }
 
   if (error)
