@@ -25,7 +25,10 @@ LIB2FUNCS_EXTRA =
 # compiled; these are pretty big anyway, and not often used
 # also, we do have a few assembly things as well
 
-FLOATASMFUNCS = _subsf3 _addsf3 _mulsf3 _divsf3 _floatsisf _loadfloat
+FLOATASMFUNCS = _subsf3 _addsf3 _mulsf3 _divsf3 _floatsisf _loadfloat \
+	      _subdf3 _adddf3 _muldf3 _divdf3 _floatsidf _loaddouble \
+	      _floatsfdf _floatunssidf
+
 FAKEASMFUNCS = _multc3 _divtc3
 LIB1ASMFUNCS = $(FAKEASMFUNCS) $(FLOATASMFUNCS)
 LIB1ASMSRC = propeller/lib1funcs.asm
