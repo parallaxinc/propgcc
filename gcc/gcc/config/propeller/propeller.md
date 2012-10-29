@@ -2730,7 +2730,7 @@
   ]
 "TARGET_BUILTIN_STRINGS"
 {
-    return "call\\t#__loadmem\\n\\tcall\\t#__MemClr";
+    return "call\\t#__loadmem\\n\\tcall\\t#__Memclr";
 }
  [(set_attr "type" "multi")
   (set_attr "conds" "clob")

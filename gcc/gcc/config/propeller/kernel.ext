@@ -9,9 +9,11 @@
 	.section .kernel
 	
 	.global __loadmath
-	.global	__load_extension
 	.global __loadmath_ret
+	.global	__load_extension
 	.global	__load_extension_ret
+	.global __loadmem
+	.global __loadmem_ret
 __loadmath
 	mov	__TMP1,__math_kernel_ptr
 __load_extension
