@@ -322,6 +322,9 @@ struct Double __log__D(double);
 #define trunc truncl
 #define lgamma lgammal
 
+#define modf modfl
+#define frexp frexpl
+
 #endif
 
 #endif /* _MATH_PRIVATE_H_ */
