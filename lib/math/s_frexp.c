@@ -46,3 +46,7 @@ double frexp(double x, int *eptr)
 	SET_HIGH_WORD(x,hx);
 	return x;
 }
+
+#if	LDBL_MANT_DIG == 53
+__weak_alias(frexpl, frexp);
+#endif	/* LDBL_MANT_DIG == 53 */

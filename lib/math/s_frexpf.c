@@ -38,3 +38,7 @@ frexpf(float x, int *eptr)
 	SET_FLOAT_WORD(x,hx);
 	return x;
 }
+
+#if defined(__SHORT_DOUBLES_IMPL)
+__strong_alias(frexp, frexpf);
+#endif
