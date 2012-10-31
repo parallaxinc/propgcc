@@ -73,7 +73,8 @@ extern "C" {
 #define	_IOFREEBUF	0x0800		/* buffer needs freeing */
 #define	_IOEOF		0x1000		/* EOF has been reached */
 #define	_IOERR		0x2000		/* an error has occured */
-#define _IOAPPEND       0x4000
+#define _IOAPPEND       0x4000          /* data should be appended to file */
+#define _IONONBLOCK     0x8000          /* i/o should be non-blocking */
 
     long		_cnt;		/* # of bytes in buffer */
     unsigned char	*_ptr;		/* current buffer pointer */

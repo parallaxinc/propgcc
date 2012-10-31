@@ -43,6 +43,14 @@ sp	long	0
 
 __C_LOCK_PTR
 	long	__C_LOCK
+
+	'' allow main to optionally be declared _NATIVE
+	'' if it is _NATIVE then it will define _main_ret, which
+	'' will override the weak definition here
+	'' if it is not declared _NATIVE then the return address
+	'' will be placed in lr, as expected
+	.weak _main_ret
+	.equ  _main_ret, lr
 _start
-	jmpret	lr,#_main
+	jmpret	_main_ret,#_main
 	jmp	#__exit

@@ -79,8 +79,13 @@ _serial_getbyte(FILE *fp)
   _DIRA &= ~rxmask;
 
   /* wait for a start bit */
-  __builtin_propeller_waitpeq(0, rxmask);
-
+  if (fp->_flag & _IONONBLOCK) {
+    /* if non-blocking I/O, return immediately if no data */
+    if ( 0 != (_INA & rxmask) )
+      return -1;
+  } else {
+    __builtin_propeller_waitpeq(0, rxmask);
+  }
   /* sync for one half bit */
   waitcycles = _CNT + (bitcycles>>1) + bitcycles;
   value = 0;
