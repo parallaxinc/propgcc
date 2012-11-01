@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <limits.h>
+#include <signal.h>
 
 #include "osint.h"
 
@@ -86,6 +87,11 @@ int serial_find(const char* prefix, int (*check)(const char* port, void* data), 
     return -1;
 }
 
+static void sigint_handler(int signum)
+{
+	serial_done();
+}
+
 /**
  * open serial port
  * @param port - COMn port name
@@ -97,11 +103,17 @@ int serial_init(const char* port, unsigned long baud)
     int tbaud = 0;
 
     /* open the port */
+#ifdef MACOSX
+    hSerial = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+#else
     hSerial = open(port, O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
+#endif
     if(hSerial == -1) {
         //printf("error: opening '%s' -- %s\n", port, strerror(errno));
         return 0;
     }
+    
+    signal(SIGINT, sigint_handler);
     
     /* set the terminal to exclusive mode */
     if (ioctl(hSerial, TIOCEXCL) != 0) {
@@ -178,6 +190,12 @@ int serial_init(const char* port, unsigned long baud)
     sparm = old_sparm;
     
     /* set raw input */
+#ifdef MACOSX
+	cfmakeraw(&sparm);
+	sparm.c_cc[VTIME] = 0;
+	sparm.c_cc[VMIN] = 1;
+	chk("cfsetspeed", cfsetspeed(&sparm, tbaud));
+#else
     memset(&sparm, 0, sizeof(sparm));
     sparm.c_cflag     = CS8 | CLOCAL | CREAD;
     sparm.c_lflag     = 0; // &= ~(ICANON | ECHO | ECHOE | ISIG);
@@ -188,6 +206,7 @@ int serial_init(const char* port, unsigned long baud)
     sparm.c_cc[VMIN] = 1;
     chk("cfsetispeed", cfsetispeed(&sparm, tbaud));
     chk("cfsetospeed", cfsetospeed(&sparm, tbaud));
+#endif
 
     /* set the options */
     chk("tcflush", tcflush(hSerial, TCIFLUSH));
@@ -202,6 +221,7 @@ int serial_init(const char* port, unsigned long baud)
 void serial_done(void)
 {
     if (hSerial != -1) {
+    	tcflush(hSerial, TCIOFLUSH);
     	tcsetattr(hSerial, TCSANOW, &old_sparm);
     	ioctl(hSerial, TIOCNXCL);
     	close(hSerial);
