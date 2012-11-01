@@ -65,7 +65,8 @@ MISC = 	ctype.o toupper.o tolower.o \
 	sbrk.o signal.o assert.o locale.o \
 	chdir.o rmdir.o mkdir.o opendir.o rdwr.o lseek.o \
 	putenv.o fdopen.o open.o close.o unlink.o stat.o isatty.o \
-	mktemp.o
+	mktemp.o \
+	tinyomp.o
 
 WCHAR = wctype.o iswctype.o iswalnum.o iswalpha.o iswblank.o \
       iswcntrl.o iswdigit.o iswgraph.o iswlower.o iswprint.o \
@@ -83,7 +84,8 @@ STRING = memcpy.o memmove.o memset.o memchr.o memcmp.o \
 	strchr.o strrchr.o strspn.o strcspn.o strtok.o \
 	strcoll.o strxfrm.o \
 	strstr.o strpbrk.o \
-	strerror.o strcasecmp.o strncasecmp.o xmmcopy.o
+	strerror.o strcasecmp.o strncasecmp.o xmmcopy.o \
+	strdup.o
 
 TIME = clock.o sleep.o usleep.o time.o difftime.o strftime.o localtim.o asctime.o \
 	settimeofday.o gettimeofday.o
@@ -91,7 +93,8 @@ TIME = clock.o sleep.o usleep.o time.o difftime.o strftime.o localtim.o asctime.
 THREADS = thread.o cogthread.o cogstart.o cogload.o nap.o atomic64.o
 
 PTHREADS = pthread_create.o pthread_join.o pthread_detach.o \
-	pthread_mutex.o pthread_attr.o pthread_io.o
+	pthread_mutex.o pthread_attr.o pthread_io.o pthread_cond.o \
+	pthread_key.o semaphore.o
 
 DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	FdSerial.o FullDuplexSerial.o null.o drivers.o rtc.o terminal.o \

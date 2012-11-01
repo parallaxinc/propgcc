@@ -48,3 +48,6 @@ _hubsbrk(unsigned long n)
   return r;
 }
 #endif
+
+/* for porting C programs */
+__weak_alias(sbrk, _sbrk);
