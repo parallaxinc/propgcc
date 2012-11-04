@@ -32,15 +32,21 @@
 
 @table @code
 
-@cindex @code{-mcpu=} command line option, Propeller
-@item -mcpu=@var{processor}[+@var{extension}@dots{}]
-This option specifies the target processor.  The assembler will issue an
-error message if an attempt is made to assemble an instruction which
-will not execute on the target processor.  The following processor names are
-recognized: 
-@code{lmm},
-@code{prop2},
-@code{prop2-lmm}.
+@cindex @code{-lmm} command line option, Propeller
+@item -lmm
+This option indicates that code is to be compiled for LMM mode. This
+enables several pseudo-opcodes for branching.
+
+@cindex @code{-cmm} compressed code, Propeller
+@item -cmm
+This option indicates that code is to be compressed by
+default. Normally the compression state is off by default. In either
+case the default may be overridden by explicit @code{.compress}
+directives.
+
+Compressed mode code cannot be directly executed by the processor, but
+must be interpreted by the CMM mode kernel. The compression uses a
+number of techniques to reduce the code size by about half.
 
 @end table
 
@@ -71,12 +77,8 @@ Effect affixes always appear at the end of the instruction.
 @item
 All hardware-defined instructions of the Propeller processor are
 always available.  If LMM mode is enabled, certain pseudo-instructions
-are available.  See below for details.
-
-@item
-If the Propeller-2 is selected, all the Propeller-2 instructions are
-supported.  Prop-2 LMM mode may support additional
-pseudo-instructions.
+are available.  See below for details. In compressed mode
+the LMM pseudo-instructions are available, as well as a few additional ones.
 
 @end table
 
@@ -115,8 +117,8 @@ The character @samp{#} is used to indicate immediate operands.
 
 @cindex floating point, Propeller (@sc{ieee})
 @cindex Propeller floating point (@sc{ieee})
-The Propeller family uses @sc{ieee} floating-point numbers.
-*TODO* Is this really true?
+The Propeller family uses @sc{ieee} floating-point numbers. 32 and 64
+bit registers are available.
 
 @node Propeller-Relocations
 @subsection Propeller relocation generation
@@ -194,7 +196,10 @@ Ends a @code{cog_ram} section.  Terminates symbol marking.
 
 @cindex @code{.res} directive, Propeller
 @item .res
-Reserves 4 bytes at the current address.
+Reserves 4 bytes at the current address. This actually causes 4 bytes
+of zero to be generated at present, although in the future this may
+change to the ``proper'' behavior of simply advancing the location
+counter by 4.
 
 @c SSSSSSSSSSSSSSSSSSSSSSSSSS
 @c TTTTTTTTTTTTTTTTTTTTTTTTTT
