@@ -247,6 +247,7 @@ propeller_option_override (void)
      */
     if ( (TARGET_LMM || TARGET_CMM) && !TARGET_XMM_CODE)
       {
+	if (TARGET_EXPERIMENTAL)
 	propeller_flags |= PROP_FLAG_BUILTIN_STRINGS;
       }
     /*
