@@ -1,0 +1,6 @@
+switch5.c
+>compiler=C
+>memtype=lmm
+>optimize=-Os
+>-fno-exceptions
+>BOARD::HUB

@@ -1,0 +1,16 @@
+/Makefile.am/1.2/Tue Mar  2 14:29:36 2010//
+/Makefile.in/1.5/Thu Dec 16 21:59:15 2010//
+/README/1.2/Tue Mar  2 14:29:36 2010//
+/dummy.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr.c/1.2/Wed Jan  5 17:23:01 2011//
+/xdr_array.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr_float.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr_float_vax.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr_mem.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr_private.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr_private.h/1.2/Wed Jan  5 17:21:23 2011//
+/xdr_rec.c/1.2/Wed Jan  5 17:21:23 2011//
+/xdr_reference.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr_sizeof.c/1.1/Tue Mar  2 12:05:18 2010//
+/xdr_stdio.c/1.1/Tue Mar  2 12:05:18 2010//
+D
