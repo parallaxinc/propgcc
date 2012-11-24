@@ -26,10 +26,6 @@ MKDIR=mkdir -p
 CP=cp
 RM=rm
 
-CFLAGS=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
-LDFLAGS=$(CFLAGS)
-SPINFLAGS=-Ogxr
-
 ifeq ($(OS),linux)
 CFLAGS += -DLINUX
 BSTC=bstc.linux
@@ -62,12 +58,35 @@ OSINT=osint_linux
 LIBS=
 endif
 
+ifeq ($(OS),macosx32)
+OS=macosx
+CFLAGS += -DMACOSX -m32
+BSTC=bstc.osx
+EXT=
+OSINT=osint_linux
+LIBS=
+endif
+
+CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
+LDFLAGS=$(CFLAGS)
+SPINFLAGS=-Ogxr
+
 ##################
 # DEFAULT TARGET #
 ##################
 
 .PHONY:	all
-all:	propeller-load drivers sd-loader
+
+all:	info propeller-load drivers sd-loader
+
+##########################
+# SHOW BUILD INFORMATION #
+##########################
+
+info:
+	@$(ECHO) CFLAGS: $(CFLAGS)
+	@$(ECHO) LDFLAGS: $(LDFLAGS)
+	@$(ECHO) SPINFLAGS: $(SPINFLAGS)
 
 #################
 # CLEAN TARGETS #
@@ -164,7 +183,8 @@ $(DRVDIR)/spi_sram_cache.dat \
 $(DRVDIR)/spi_nway_sram_cache.dat \
 $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
-$(DRVDIR)/synapse_cache.dat
+$(DRVDIR)/synapse_cache.dat \
+$(DRVDIR)/rampage2_cache.dat
 
 #################
 # OTHER DRIVERS #
