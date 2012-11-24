@@ -183,7 +183,8 @@ $(DRVDIR)/spi_sram_cache.dat \
 $(DRVDIR)/spi_nway_sram_cache.dat \
 $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
-$(DRVDIR)/synapse_cache.dat
+$(DRVDIR)/synapse_cache.dat \
+$(DRVDIR)/rampage2_cache.dat
 
 #################
 # OTHER DRIVERS #
