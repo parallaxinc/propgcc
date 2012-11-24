@@ -34,8 +34,10 @@
 
 @cindex @code{-lmm} command line option, Propeller
 @item -lmm
-This option indicates that code is to be compiled for LMM mode. This
-enables several pseudo-opcodes for branching.
+This option indicates that code is to be compiled for a large memory
+model (LMM). Use this option also for the external memory model (XMM),
+which is a form of LMM that uses external RAM instead of hub RAM. This
+option enables several pseudo-opcodes, mainly for branching.
 
 @cindex @code{-cmm} compressed code, Propeller
 @item -cmm
@@ -126,7 +128,9 @@ are named @code{r0}-@code{r15}, @code{sp}, and @code{pc}. @code{r15}
 is also called @code{lr} (``link register'') as it conventionally
 holds the return address for function calls. @code{sp} is used by the
 C compiler for the stack pointer, and @code{pc} is used by
-interpreters to point to the instructions to fetch and execute.
+interpreters to point to the instructions to fetch and execute. (Do
+not confuse the @code{pc} register with the hardare instruction
+pointer, which is not directly addressable.)
 
 @node Propeller Floating Point
 @section Floating Point
@@ -134,7 +138,7 @@ interpreters to point to the instructions to fetch and execute.
 @cindex floating point, Propeller (@sc{ieee})
 @cindex Propeller floating point (@sc{ieee})
 The Propeller family uses @sc{ieee} floating-point numbers. 32 and 64
-bit numbers are available.
+bit floating point formats are available.
 
 @c@node Propeller-Relocations
 @c@subsection Propeller relocation generation
@@ -184,7 +188,7 @@ addresses, not byte addresses, by the linker.  This is intended to
 duplicate the standard behavior of the PASM assembler.
 
 @cindex @code{.compress} directive, Propeller
-@item .compress @var{onoff}
+@item .compress @var{type}
 
 Turns compressed instruction mode on or off. In compressed mode PASM
 instructions (or sequences of instructions) are represented as
@@ -192,7 +196,7 @@ bytecodes which take up about half as much space, but cannot be
 directly executed by the processor -- instead they are interpreted by
 the CMM kernel.
 
-@var{onoff} may be one of @code{on}, @code{off}, or
+@var{type} may be one of @code{on}, @code{off}, or
 @code{default}. @code{default} restores the compression setting to
 whatever was specified on the command line. The typical use for this
 is for sequences of code that are intended to be loaded into COG
@@ -221,7 +225,7 @@ effect; the linker will check memory regions for fit at link time.
 @c HHHHHHHHHHHHHHHHHHHHHHHHHH
 
 @cindex @code{.hub_ram} directive, Propeller
-@item .hubram
+@item .hub_ram
 Ends a @code{cog_ram} section.  Terminates symbol marking.
 
 @c IIIIIIIIIIIIIIIIIIIIIIIIII
@@ -265,14 +269,6 @@ instructions for LMM mode.
 
 @table @code
 
-@cindex @code{BRW <label>} pseudo op, Propeller
-@item BRW
-@smallexample
-  brw target
-@end smallexample
-
-This pseudo op performs an absolute branch in LMM and CMM modes.
-
 @cindex @code{BRS <label>} pseudo op, Propeller
 @item BRS
 @smallexample
@@ -284,10 +280,38 @@ mode. In LMM mode it expands to an add or subtract of the PC register
 (and hence can reach +-512 bytes); in CMM mode it assembles to a
 compressed branch with a 1 byte signed offset.
 
-@cindex @code{LDI reg,<exp>} pseudo op, Propeller
+@cindex @code{BRW <label>} pseudo op, Propeller
+@item BRW
+@smallexample
+  brw target
+@end smallexample
+
+This pseudo op performs an absolute branch in LMM and CMM modes.
+
+@cindex @code{FCACHE <exp>} pseudo op, Propeller
+@item FCACHE
+@smallexample
+  fcache #(end - start)
+  .compress off
+start
+   ...
+end
+  .compress default
+@end smallexample
+
+@code{FCACHE} calls the function @code{__LMM_FCACHE_LOAD} to load a
+sequence of code into the FCACHE region in COG memory and then execute
+it. This is used by the C compiler to optimize small loops, as it
+permits them to execute without interpreter overhead. In CMM mode this
+expands to a single CMM instruction. Note that it is important to
+disable instruction compression for instructions to be loaded into
+FCACHE, since they are directly executed by the processor and not the
+interpreter.
+
+@cindex @code{LDI reg,#<exp>} pseudo op, Propeller
 @item LDI
 @smallexample
-  ldi <register> , <expression>
+  ldi <reg> , <expression>
 @end smallexample
 
 @code{LDI} expands in LMM mode into a move from the next address and a constant
@@ -295,7 +319,73 @@ that decodes as a NOP. This is similar to @code{MVI} but may be slightly
 faster in LMM mode, and @code{reg} does not have to be one of the 15
 general purpose registers.
 
-@cindex @code{MVI reg,<exp>} pseudo op, Propeller
+@cindex @code{LEASP reg, #<exp>} pseudo op, Propeller
+@item LEASP
+@smallexample
+  leasp <reg>, #<exp>
+@end smallexample
+
+@code{LEASP} adds a positive constant offset between 0 and 511 to the
+SP register and puts the result into the destination general purpose
+register (@code{r0}--@code{r15}). In LMM mode this expands to
+@smallexample
+  mov  reg, SP
+  add  reg, #<exp>
+@end smallexample
+In CMM mode it expands to a special 3 byte instruction.
+
+@cindex @code{lpushm #n} pseudo op, Propeller
+@item LPUSHM
+@smallexample
+  lpushm #(x<<4)+y
+@end smallexample
+Push multiple registers onto the stack. 
+The upper 4 bits (@var{x}) of the immediate operand gives the number
+of register to push, and the lower 4 bits (@var{y}) gives the first
+register to push. Registers are pushed from low register first,
+that is, the register number increments as the stack decrements. So
+for example to push registers 10--15 inclusive, the immediate value
+should be @code{10 + (6<<4)}, or @code{0x6A}.
+
+@cindex @code{lpopm #n} pseudo op, Propeller
+@item LPOPM
+@smallexample
+  lpopm #(x<<4)+y
+@end smallexample
+Pop multiple registers from the stack. 
+The upper 4 bits (@var{x}) of the immediate operand gives the number
+of register to push, and the lower 4 bits (@var{y}) gives the first
+register to push. Registers are popped from high register first, so
+the value @var{x} should be the highest register in the set, so for
+example to pop registers 10--15 inclusive, the immediate value should
+be @code{15 + (6<<4)}, or @code{0x6F}.
+
+@cindex @code{lpopret #n} pseudo op, Propeller
+@item LPOPRET
+@smallexample
+  lpopret #(x<<4)+y
+@end smallexample
+Pop multiple registers from the stack, then return by jumping to the
+(possibly new) value in the link register @code{lr}.
+The upper 4 bits (@var{x}) of the immediate operand gives the number
+of register to push, and the lower 4 bits (@var{y}) gives the first
+register to push. Registers are popped from high register first, so
+the value @var{x} should be the highest register in the set, so for
+example to pop registers 10--15 inclusive, the immediate value should
+be @code{0x5F}.
+
+
+@cindex @code{MOVA reg,#<exp>} pseudo op, Propeller
+@item MOVA
+@smallexample
+  mova <reg>, #<exp>
+@end smallexample
+This is exactly the same as the @code{MOV} instruction, except that
+the constant expression is divided by 4. This is useful for assembly
+code that manipulates COG addresses, which are always long word rather
+than byte addresses.
+
+@cindex @code{MVI reg,#<exp>} pseudo op, Propeller
 @item MVI
 @smallexample
   mvi <reg>, #<exp>
@@ -305,7 +395,7 @@ Expands to a sequence which moves a 32 bit constant value into general
 purpose register @code{reg}. This works only for @code{r0} through
 @code{r14} and @code{lr}.
 
-@cindex @code{MVIW reg,<exp>} pseudo op, Propeller
+@cindex @code{MVIW reg,#<exp>} pseudo op, Propeller
 @item MVIW
 @smallexample
   mviw <reg>, #<exp>
@@ -326,7 +416,9 @@ sequence (3 bytes versus 5 bytes).
 In XMM mode this expands to a load or store from external
 memory. @code{op} is the load or store operation that we are
 simulating; for example, @code{rdbyte} will read one byte from
-external memory.
+external memory. The actual code generated is a call to the
+@code{__LMM_RDBYTEI} function (or similar XMM kernel function for
+opcodes other than @code{rdbyte}).
 
 @end table
 
