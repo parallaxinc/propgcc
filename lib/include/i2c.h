@@ -155,7 +155,7 @@ static inline int i2cClose(I2C *dev)
  * I2C stop sequence to be emitted after the data. Setting it
  * to FALSE omits the stop sequence.
  *
- * @param dev I2C device to close
+ * @param dev I2C device to write to
  * @param address I2C address in bits 7:1, zero in bit 0
  * @param buffer Address of the buffer containing data to write
  * @param count Number of bytes of data to write
@@ -178,7 +178,7 @@ static inline int i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, in
  * I2C stop sequence to be emitted after the data. Setting it
  * to FALSE omits the stop sequence.
  *
- * @param dev I2C device to close
+ * @param dev I2C device to read from
  * @param address I2C address in bits 7:1, zero in bit 0
  * @param buffer Address of the buffer to receive data
  * @param count Number of bytes of data to receive
