@@ -68,9 +68,10 @@ static char *skip_whitespace (char *str);
 static char *find_whitespace (char *str);
 static char *find_whitespace_or_separator (char *str);
 
-static int cog_ram = 0;		/* Use Cog ram if 1 */
+static int cog_ram = 0;         /* Use Cog ram if 1 */
 static int lmm = 0;             /* Enable LMM pseudo-instructions */
 static int compress = 0;        /* Enable compressed (16 bit) instructions */
+static int prop2 = 0;           /* Enable Propeller 2 instructions */
 static int compress_default = 0; /* default compression mode from command line */
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
@@ -87,9 +88,16 @@ static struct hash_control *eff_hash = NULL;
 
 const char *md_shortopts = "";
 
+enum {
+    OPTION_MD_LMM = OPTION_MD_BASE,
+    OPTION_MD_CMM,
+    OPTION_MD_P2
+};
+
 struct option md_longopts[] = {
-  {"lmm", no_argument, NULL, OPTION_MD_BASE},
-  {"cmm", no_argument, NULL, OPTION_MD_BASE+1},
+  {"lmm", no_argument, NULL, OPTION_MD_LMM},
+  {"cmm", no_argument, NULL, OPTION_MD_CMM},
+  {"p2", no_argument, NULL, OPTION_MD_P2},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -125,24 +133,31 @@ md_begin (void)
     as_fatal (_("Virtual memory exhausted"));
 
   for (i = 0; i < propeller_num_opcodes; i++){
-    switch(propeller_opcodes[i].hardware){
-    case PROP_1:
-      break;
-    case PROP_1_LMM:
-      if(lmm) break;
-      continue;
-    default:
-      continue;
+    int hardware = propeller_opcodes[i].hardware;
+    int add = 0;
+    if (prop2) {
+      if (hardware & PROP_2)
+        add = 1;
+      if (hardware & PROP_2_LMM && lmm)
+        add = 1;
     }
-    hash_insert (insn_hash, propeller_opcodes[i].name,
-		 (void *) (propeller_opcodes + i));
+    else {
+      if (hardware & PROP_1)
+        add = 1;
+      if ((hardware & PROP_2_LMM) && lmm)
+        add = 1;
+    }
+    if (add) {
+        hash_insert (insn_hash, propeller_opcodes[i].name,
+                     (void *) (propeller_opcodes + i));
+    }
   }
   for (i = 0; i < propeller_num_conditions; i++)
     hash_insert (cond_hash, propeller_conditions[i].name,
-		 (void *) (propeller_conditions + i));
+                 (void *) (propeller_conditions + i));
   for (i = 0; i < propeller_num_effects; i++)
     hash_insert (eff_hash, propeller_effects[i].name,
-		 (void *) (propeller_effects + i));
+                 (void *) (propeller_effects + i));
 
   /* make sure data and bss are longword aligned */
   record_alignment(data_section, 2);
@@ -151,8 +166,8 @@ md_begin (void)
 
 long
 md_chars_to_number (con, nbytes)
-     unsigned char con[];	/* High order byte 1st.  */
-     int nbytes;		/* Number of bytes in the input.  */
+     unsigned char con[];       /* High order byte 1st.  */
+     int nbytes;                /* Number of bytes in the input.  */
 {
   switch (nbytes)
     {
@@ -166,8 +181,8 @@ md_chars_to_number (con, nbytes)
       return (con[2] << (2*BITS_PER_CHAR)) | (con[1] << BITS_PER_CHAR) | con[0];
     case 4:
       return
-	(((con[3] << BITS_PER_CHAR) | con[2]) << (2 * BITS_PER_CHAR))
-	| ((con[1] << BITS_PER_CHAR) | con[0]);
+        (((con[3] << BITS_PER_CHAR) | con[2]) << (2 * BITS_PER_CHAR))
+        | ((con[1] << BITS_PER_CHAR) | con[0]);
     default:
       BAD_CASE (nbytes);
       return 0;
@@ -254,11 +269,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 0;
       rshift = 0;
       if ((val & 0x80000000)) {
-	/* negative */
-	if ( (val & 0xFFFFFF80) == 0xFFFFFF80 ) {
-	  mask |= 0x80;
-	  val &= 0xFF;
-	}
+        /* negative */
+        if ( (val & 0xFFFFFF80) == 0xFFFFFF80 ) {
+          mask |= 0x80;
+          val &= 0xFF;
+        }
       }
       break;
     case BFD_RELOC_PROPELLER_PCREL10:
@@ -266,11 +281,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 0;
       rshift = 0;
       if ((val & 0x80000000)) {
-	/* negative */
-	//fprintf(stderr, "negative val=(%08lx)\n", val);
-	val = (-val) & 0xffffffff;
-	val |=  0x04000000;  /* toggle add to sub */
-	mask |= 0x04000000;
+        /* negative */
+        //fprintf(stderr, "negative val=(%08lx)\n", val);
+        val = (-val) & 0xffffffff;
+        val |=  0x04000000;  /* toggle add to sub */
+        mask |= 0x04000000;
       }
       break;
     default:
@@ -288,9 +303,9 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
 
   if( (((val>>rshift) << shift) & 0xffffffff) & ~mask){
     as_bad_where (fixP->fx_file, fixP->fx_line,
-		  _("Relocation overflows"));
+                  _("Relocation overflows"));
     //fprintf(stderr, "val=(%08lx), mask=%08lx, shift=%d, rshift=%d\n",
-    //	    (unsigned long)val, (unsigned long)mask, shift, rshift);
+    //      (unsigned long)val, (unsigned long)mask, shift, rshift);
   }
 
   {
@@ -343,9 +358,9 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
   if (reloc->howto == NULL)
     {
       as_bad_where (fixp->fx_file, fixp->fx_line,
-		    _
-		    ("Can not represent %s relocation in this object file format"),
-		    bfd_get_reloc_code_name (code));
+                    _
+                    ("Can not represent %s relocation in this object file format"),
+                    bfd_get_reloc_code_name (code));
       return NULL;
     }
 
@@ -507,7 +522,7 @@ static char *matchregname(char *str, const char *match)
     {
       str += len;
       if (ISDIGIT(*str) || ISALPHA(*str) || *str == '_')
-	return NULL;
+        return NULL;
       return str;
     }
   return NULL;
@@ -543,25 +558,25 @@ parse_regspec (char *str, int *regnum, struct propeller_code *operand, int give_
     {
       newstr = matchregname(str, lmm_regs[i].name);
       if (newstr)
-	{
-	  reg = lmm_regs[i].regno;
-	  if (!compress && reg > PC_REGNUM)
-	    {
-	      /* non CMM kernels may have stuff anywhere */
-	      if (give_error)
-		operand->error = _("bad register");
-	      return NULL;
-	    }
-	  *regnum = lmm_regs[i].regno;
-	  str = newstr;
-	  return str;
-	}
+        {
+          reg = lmm_regs[i].regno;
+          if (!compress && reg > PC_REGNUM)
+            {
+              /* non CMM kernels may have stuff anywhere */
+              if (give_error)
+                operand->error = _("bad register");
+              return NULL;
+            }
+          *regnum = lmm_regs[i].regno;
+          str = newstr;
+          return str;
+        }
     }
 
   if ( (*str != 'r' && *str != 'R') || !ISDIGIT(str[1]) )
     {
       if (give_error)
-	operand->error = _("expected register number");
+        operand->error = _("expected register number");
       return str;
     }
   str++;
@@ -574,7 +589,7 @@ parse_regspec (char *str, int *regnum, struct propeller_code *operand, int give_
   if (reg > 15 || reg < 0)
     {
       if (give_error)
-	operand->error = _("illegal register number");
+        operand->error = _("illegal register number");
       return str;
     }
   *regnum = reg;
@@ -592,9 +607,9 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
       str++;
       insn->code |= 1 << 22;
       if (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA)
-	{
-	  integer_reloc = 1;
-	}
+        {
+          integer_reloc = 1;
+        }
     }
   else if (compress)
     {
@@ -603,15 +618,15 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
       int regnum = -1;
       tmp = parse_regspec (str, &regnum, operand, 0);
       if (regnum != -1)
-	{
-	  str = tmp;
-	  operand->reloc.type = BFD_RELOC_NONE;
-	  operand->reloc.pc_rel = 0;
-	  operand->reloc.exp.X_op = O_register;
-	  operand->reloc.exp.X_add_number = regnum;
-	  insn->code |= operand->reloc.exp.X_add_number;
-	  return str;
-	}
+        {
+          str = tmp;
+          operand->reloc.type = BFD_RELOC_NONE;
+          operand->reloc.pc_rel = 0;
+          operand->reloc.exp.X_op = O_register;
+          operand->reloc.exp.X_add_number = regnum;
+          insn->code |= operand->reloc.exp.X_add_number;
+          return str;
+        }
     }
   if (format == PROPELLER_OPERAND_BRS)
     pcrel_reloc = 1;
@@ -624,39 +639,39 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     case O_constant:
     case O_register:
       if (operand->reloc.exp.X_add_number & ~0x1ff)
-	{
-	  operand->error = _("9-bit value out of range");
-	  break;
-	}
+        {
+          operand->error = _("9-bit value out of range");
+          break;
+        }
       insn->code |= operand->reloc.exp.X_add_number;
       break;
     case O_symbol:
     case O_add:
     case O_subtract:
       if (pcrel_reloc)
-	{
-	  operand->reloc.type = compress ? BFD_RELOC_8_PCREL : BFD_RELOC_PROPELLER_PCREL10;
-	  operand->reloc.pc_rel = 1;
-	}
+        {
+          operand->reloc.type = compress ? BFD_RELOC_8_PCREL : BFD_RELOC_PROPELLER_PCREL10;
+          operand->reloc.pc_rel = 1;
+        }
       else
-	{
-	  operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
-	  operand->reloc.pc_rel = 0;
-	}
+        {
+          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+          operand->reloc.pc_rel = 0;
+        }
       break;
     case O_illegal:
       operand->error = _("Illegal operand in source");
       break;
     default:
       if (cog_ram)
-	operand->error = _("Source operand too complicated for .cog_ram");
+        operand->error = _("Source operand too complicated for .cog_ram");
       else if (pcrel_reloc)
-	operand->error = _("Source operand too complicated for brs instruction");
+        operand->error = _("Source operand too complicated for brs instruction");
       else
-	{
-	  operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
-	  operand->reloc.pc_rel = 0;
-	}
+        {
+          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+          operand->reloc.pc_rel = 0;
+        }
       break;
     }
   return str;
@@ -689,10 +704,10 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
     case O_constant:
     case O_register:
       if ((nbits < 32) && (0 != (operand->reloc.exp.X_add_number & ~((1L << nbits)-1))))
-	{
-	  operand->error = _("value out of range");
-	  break;
-	}
+        {
+          operand->error = _("value out of range");
+          break;
+        }
       operand->code = operand->reloc.exp.X_add_number;
       operand->reloc.type = BFD_RELOC_NONE;
       break;
@@ -707,12 +722,12 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
       break;
     default:
       if (cog_ram)
-	operand->error = _("Source operand too complicated for .cog_ram");
+        operand->error = _("Source operand too complicated for .cog_ram");
       else
-	{
-	  operand->reloc.type = default_reloc;
-	  operand->reloc.pc_rel = 0;
-	}
+        {
+          operand->reloc.type = default_reloc;
+          operand->reloc.pc_rel = 0;
+        }
       break;
     }
   return str;
@@ -729,15 +744,15 @@ parse_dest(char *str, struct propeller_code *operand, struct propeller_code *ins
       int regnum = -1;
       tmp = parse_regspec (str, &regnum, operand, 0);
       if (regnum != -1)
-	{
-	  str = tmp;
-	  operand->reloc.type = BFD_RELOC_NONE;
-	  operand->reloc.pc_rel = 0;
-	  operand->reloc.exp.X_op = O_register;
-	  operand->reloc.exp.X_add_number = regnum;
-	  insn->code |= (operand->reloc.exp.X_add_number << 9);
-	  return str;
-	}
+        {
+          str = tmp;
+          operand->reloc.type = BFD_RELOC_NONE;
+          operand->reloc.pc_rel = 0;
+          operand->reloc.exp.X_op = O_register;
+          operand->reloc.exp.X_add_number = regnum;
+          insn->code |= (operand->reloc.exp.X_add_number << 9);
+          return str;
+        }
     }
 
   str = parse_expression (str, operand);
@@ -748,10 +763,10 @@ parse_dest(char *str, struct propeller_code *operand, struct propeller_code *ins
     case O_constant:
     case O_register:
       if (operand->reloc.exp.X_add_number & ~0x1ff)
-	{
-	  operand->error = _("9-bit value out of range");
-	  break;
-	}
+        {
+          operand->error = _("9-bit value out of range");
+          break;
+        }
       insn->code |= operand->reloc.exp.X_add_number << 9;
       break;
     case O_symbol:
@@ -765,12 +780,12 @@ parse_dest(char *str, struct propeller_code *operand, struct propeller_code *ins
       break;
     default:
       if (cog_ram)
-	operand->error = _("Destination operand in .cog_ram too complicated");
+        operand->error = _("Destination operand in .cog_ram too complicated");
       else
-	{
-	  operand->reloc.type = BFD_RELOC_PROPELLER_DST;
-	  operand->reloc.pc_rel = 0;
-	}
+        {
+          operand->reloc.type = BFD_RELOC_PROPELLER_DST;
+          operand->reloc.pc_rel = 0;
+        }
       break;
     }
   return str;
@@ -858,10 +873,10 @@ md_assemble (char *instruction_string)
       p = skip_whitespace (p);
       p2 = find_whitespace (p);
       if (p2 - p == 0)
-	{
-	  as_bad (_("No instruction found after condition"));
-	  return;
-	}
+        {
+          as_bad (_("No instruction found after condition"));
+          return;
+        }
       str = p;
       p = p2;
     }
@@ -907,15 +922,15 @@ md_assemble (char *instruction_string)
        * suppress the condition. */
       insn.code = 0;
       if (compress) { 
-	size = 1; 
-	insn_compressed = 1;
+        size = 1; 
+        insn_compressed = 1;
       }
       break;
 
     case PROPELLER_OPERAND_NO_OPS:
       str = skip_whitespace (str);
       if (*str == 0)
-	str = "";
+        str = "";
       break;
 
     case PROPELLER_OPERAND_DEST_ONLY:
@@ -928,533 +943,533 @@ md_assemble (char *instruction_string)
       str = parse_dest(str, &op1, &insn);
       str = parse_separator (str, &error);
       if (error)
-	{
-	  op2.error = _("Missing ','");
-	  break;
-	}
+        {
+          op2.error = _("Missing ','");
+          break;
+        }
       str = parse_src(str, &op2, &insn, op->format);
       break;
 
     case PROPELLER_OPERAND_LDI:
       {
-	char *pc;
-	str = parse_dest(str, &op1, &insn);
-	str = parse_separator (str, &error);
-	if (error)
-	  {
-	    op3.error = _("Missing ','");
-	    break;
-	  }
-	pc = malloc(3);
-	if (pc == NULL)
-	  as_fatal (_("Virtual memory exhausted"));
-  	strcpy (pc, "pc");
-	parse_src(pc, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
-	str = parse_src_n(str, &op3, 32);
-	size = 8;
-	if(op3.reloc.exp.X_op == O_constant){
-	  /* Be sure to adjust this as needed for Prop-2! FIXME */
-	  if((op3.reloc.exp.X_add_number & 0x003c0000) && (op3.reloc.exp.X_add_number & 0x03800000))
-	    {
-	      op3.error = _("value out of range");
-	      break;
-	    }
-	  op3.code = op3.reloc.exp.X_add_number;
-	}
-	free(pc);
+        char *pc;
+        str = parse_dest(str, &op1, &insn);
+        str = parse_separator (str, &error);
+        if (error)
+          {
+            op3.error = _("Missing ','");
+            break;
+          }
+        pc = malloc(3);
+        if (pc == NULL)
+          as_fatal (_("Virtual memory exhausted"));
+        strcpy (pc, "pc");
+        parse_src(pc, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+        str = parse_src_n(str, &op3, 32);
+        size = 8;
+        if(op3.reloc.exp.X_op == O_constant){
+          /* Be sure to adjust this as needed for Prop-2! FIXME */
+          if((op3.reloc.exp.X_add_number & 0x003c0000) && (op3.reloc.exp.X_add_number & 0x03800000))
+            {
+              op3.error = _("value out of range");
+              break;
+            }
+          op3.code = op3.reloc.exp.X_add_number;
+        }
+        free(pc);
       }
       break;
 
     case PROPELLER_OPERAND_BRS:
       {
-	char *arg;
-	char *arg2;
-	int len;
+        char *arg;
+        char *arg2;
+        int len;
 
-	str = skip_whitespace(str);
-	len = strlen(str);
-	arg = malloc(len+16);
-	if (arg == NULL)
-	  as_fatal (_("Virtual memory exhausted"));
-	if (*str == '#') {
-	  str++;  /* allow optional # in brs */
-	  len--;
-	}
-	sprintf(arg, "pc,#%s", str);
-	str += len;
-	arg2 = parse_dest (arg, &op1, &insn);
-	arg2 = parse_separator (arg2, &error);
+        str = skip_whitespace(str);
+        len = strlen(str);
+        arg = malloc(len+16);
+        if (arg == NULL)
+          as_fatal (_("Virtual memory exhausted"));
+        if (*str == '#') {
+          str++;  /* allow optional # in brs */
+          len--;
+        }
+        sprintf(arg, "pc,#%s", str);
+        str += len;
+        arg2 = parse_dest (arg, &op1, &insn);
+        arg2 = parse_separator (arg2, &error);
         if (error)
-	  {
-	   op2.error = _("Missing ','");
-	   break;
-	  }
+          {
+           op2.error = _("Missing ','");
+           break;
+          }
         arg2 = parse_src (arg2, &op2, &insn, op->format);
-	free (arg);
-	/* here op1 contains pc, op2 contains address */
-	if (compress)
-	  {
-	    unsigned byte0;
-	    op1.reloc.type = BFD_RELOC_NONE;
-	    /* extract the condition code */
-	    byte0 = PREFIX_BRS | ((insn.code >> 18) & 0xf);
-	    reloc_prefix = 1;
-	    insn.code = byte0;
-	    size = 2;
-	    insn_compressed = 1;
-	  }
+        free (arg);
+        /* here op1 contains pc, op2 contains address */
+        if (compress)
+          {
+            unsigned byte0;
+            op1.reloc.type = BFD_RELOC_NONE;
+            /* extract the condition code */
+            byte0 = PREFIX_BRS | ((insn.code >> 18) & 0xf);
+            reloc_prefix = 1;
+            insn.code = byte0;
+            size = 2;
+            insn_compressed = 1;
+          }
       }
       break;
     case PROPELLER_OPERAND_BRW:
       {
-	str = skip_whitespace(str);
+        str = skip_whitespace(str);
 
-	if (compress)
-	  {
-	    unsigned byte0;
-	    str = parse_src_n(str, &op2, 16);
-	    byte0 = PREFIX_BRW | ((insn.code >> 18) & 0xf);
-	    reloc_prefix = 1;
-	    insn.code = byte0;
-	    size = 3;
-	    insn_compressed = 1;
-	  }
-	else
-	  {
-	    char arg[8];
-	    strcpy(arg, "pc");
+        if (compress)
+          {
+            unsigned byte0;
+            str = parse_src_n(str, &op2, 16);
+            byte0 = PREFIX_BRW | ((insn.code >> 18) & 0xf);
+            reloc_prefix = 1;
+            insn.code = byte0;
+            size = 3;
+            insn_compressed = 1;
+          }
+        else
+          {
+            char arg[8];
+            strcpy(arg, "pc");
 
-	    parse_dest(arg, &op1, &insn);
-	    parse_src(arg, &op2, &insn, op->format);
-	    str = parse_src_n(str, &insn2, 23);
-	    insn2_compressed = 1;
-	    size = 8;
-	  }
+            parse_dest(arg, &op1, &insn);
+            parse_src(arg, &op2, &insn, op->format);
+            str = parse_src_n(str, &insn2, 23);
+            insn2_compressed = 1;
+            size = 8;
+          }
       }
       break;
 
     case PROPELLER_OPERAND_XMMIO:
       {
-	/* this looks like:
-	      xmmio rdbyte,r0,r2
-	   and gets translated into two instructions:
-	      mov     __TMP0,#(0<<16)+2
-	      jmpret  __LMM_RDBYTEI_ret, #__LMM_RDBYTEI
-	*/
+        /* this looks like:
+              xmmio rdbyte,r0,r2
+           and gets translated into two instructions:
+              mov     __TMP0,#(0<<16)+2
+              jmpret  __LMM_RDBYTEI_ret, #__LMM_RDBYTEI
+        */
         char *arg;
-	char *rdwrop;
+        char *rdwrop;
         int len;
-	int regnum;
-	char temp0reg[16];
+        int regnum;
+        char temp0reg[16];
 
-	size = 8;  /* this will be a long instruction */
-	str = skip_whitespace (str);
-	len = strlen(str);
-	arg = malloc(len + 16);
-	if (arg == NULL)
-	  as_fatal (_("Virtual memory exhausted"));
-	rdwrop = arg;
-	strcpy(arg, "#__LMM_");
-	arg += 7;
-	while (*str && ISALPHA(*str)) {
-	  *arg++ = TOUPPER(*str);
-	  str++;
-	}
-	*arg++ = 'I';
-	*arg = 0;
+        size = 8;  /* this will be a long instruction */
+        str = skip_whitespace (str);
+        len = strlen(str);
+        arg = malloc(len + 16);
+        if (arg == NULL)
+          as_fatal (_("Virtual memory exhausted"));
+        rdwrop = arg;
+        strcpy(arg, "#__LMM_");
+        arg += 7;
+        while (*str && ISALPHA(*str)) {
+          *arg++ = TOUPPER(*str);
+          str++;
+        }
+        *arg++ = 'I';
+        *arg = 0;
 
-	/* op1 will be __TMP0; op2 will be an immediate constant built
-	   out of the strings we see
-	*/
-	strcpy(temp0reg, "__TMP0");
-	parse_dest (temp0reg, &op1, &insn);
+        /* op1 will be __TMP0; op2 will be an immediate constant built
+           out of the strings we see
+        */
+        strcpy(temp0reg, "__TMP0");
+        parse_dest (temp0reg, &op1, &insn);
         str = parse_separator (str, &error);
         if (error)
-	  {
-	   op2.error = _("Missing ','");
-	   break;
-	  }
-	regnum = -1;
-	str = parse_regspec (str, &regnum, &op2, 1);
-	if (regnum < 0 || regnum > 15)
-	  {
-	    op2.error = _("illegal register");
-	  }
-	insn.code |= (1<<22);  // make it an immediate instruction
-	insn.code |= (regnum<<4);
-	str = parse_separator (str, &error);
-	if (error && !op2.error)
-	  {
-	    op2.error = _("Missing ','");
-	    break;
-	  }
-	regnum = -1;
-	str = parse_regspec (str, &regnum, &op2, 1);
-	if (regnum < 0 || regnum > 15)
-	  {
-	    op2.error = _("illegal register");
-	  }
-	insn.code |= (regnum);
+          {
+           op2.error = _("Missing ','");
+           break;
+          }
+        regnum = -1;
+        str = parse_regspec (str, &regnum, &op2, 1);
+        if (regnum < 0 || regnum > 15)
+          {
+            op2.error = _("illegal register");
+          }
+        insn.code |= (1<<22);  // make it an immediate instruction
+        insn.code |= (regnum<<4);
+        str = parse_separator (str, &error);
+        if (error && !op2.error)
+          {
+            op2.error = _("Missing ','");
+            break;
+          }
+        regnum = -1;
+        str = parse_regspec (str, &regnum, &op2, 1);
+        if (regnum < 0 || regnum > 15)
+          {
+            op2.error = _("illegal register");
+          }
+        insn.code |= (regnum);
 
-	// now set up the CALL instruction
-	insn2.code = 0x5c800000 | (0xf << 18); 
-	parse_src(rdwrop, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
-	strcat(rdwrop, "_ret");
-	parse_dest(rdwrop+1, &op3, &insn2);
-	free(rdwrop);
+        // now set up the CALL instruction
+        insn2.code = (prop2 ? 0x1c800000 : 0x5c800000) | (0xf << 18); 
+        parse_src(rdwrop, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
+        strcat(rdwrop, "_ret");
+        parse_dest(rdwrop+1, &op3, &insn2);
+        free(rdwrop);
       }
       break;
 
     case PROPELLER_OPERAND_FCACHE:
       {
-	/* this looks like:
-	      fcache #n
-	   and gets translated into two instructions:
-	      jmp  #__LMM_FCACHE
-	      long n
-	*/
-	if (compress)
-	  {
-	    size = 3;
-	    str = parse_src_n(str, &op2, 16);
-	    insn.code = MACRO_FCACHE | (op2.code << 8);
-	    insn_compressed = 1;
-	    reloc_prefix = 1;
-	  }
-	else
-	  {
-	    char *arg;
-	    arg = malloc(32);
-	    if (arg == NULL)
-	      as_fatal (_("Virtual memory exhausted"));
-	    strcpy(arg, "#__LMM_FCACHE_LOAD");
-	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	    str = parse_src_n(str, &insn2, 32);
-	    size = 8;
-	    insn2_compressed = 1;  /* insn2 is not an instruction */
-	    free(arg);
-	  }
+        /* this looks like:
+              fcache #n
+           and gets translated into two instructions:
+              jmp  #__LMM_FCACHE
+              long n
+        */
+        if (compress)
+          {
+            size = 3;
+            str = parse_src_n(str, &op2, 16);
+            insn.code = MACRO_FCACHE | (op2.code << 8);
+            insn_compressed = 1;
+            reloc_prefix = 1;
+          }
+        else
+          {
+            char *arg;
+            arg = malloc(32);
+            if (arg == NULL)
+              as_fatal (_("Virtual memory exhausted"));
+            strcpy(arg, "#__LMM_FCACHE_LOAD");
+            parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+            str = parse_src_n(str, &insn2, 32);
+            size = 8;
+            insn2_compressed = 1;  /* insn2 is not an instruction */
+            free(arg);
+          }
       }
       break;
 
     case PROPELLER_OPERAND_MACRO_8:
       {
-	/*
-	      lpushm #n
-	   and gets translated into two instructions:
-	      mov  __TMP0,#n
-	      jmpret __LMM_PUSHM_ret,#__LMM_PUSHM
-	*/
-	if (compress)
-	  {
-	    size = 2;
-	    str = parse_src_n(str, &op2, 8);
-	    insn.code = op->copc | (op2.code << 8);
-	    insn_compressed = 1;
-	    reloc_prefix = 1;
-	  }
-	else
-	  {
-	    char *arg;
-	    char *macroname = "dummy";
+        /*
+              lpushm #n
+           and gets translated into two instructions:
+              mov  __TMP0,#n
+              jmpret __LMM_PUSHM_ret,#__LMM_PUSHM
+        */
+        if (compress)
+          {
+            size = 2;
+            str = parse_src_n(str, &op2, 8);
+            insn.code = op->copc | (op2.code << 8);
+            insn_compressed = 1;
+            reloc_prefix = 1;
+          }
+        else
+          {
+            char *arg;
+            char *macroname = "dummy";
 
-	    switch (op->copc) {
-	    case MACRO_PUSHM:
-	      macroname = "PUSHM";
-	      break;
-	    case MACRO_POPM:
-	      macroname = "POPM";
-	      break;
-	    case MACRO_POPRET:
-	      macroname = "POPRET";
-	      break;
-	    default:
-	      as_fatal (_("internal error, bad instruction"));
-	      break;
-	    }
-	    arg = malloc(64);
-	    if (arg == NULL)
-	      as_fatal (_("Virtual memory exhausted"));
-	    strcpy(arg, "__TMP0");
-	    parse_dest(arg, &op1, &insn);
-	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
-	    sprintf(arg, "__LMM_%s_ret", macroname);
-	    // now set up the CALL instruction
-	    insn2.code = 0x5c800000 | (0xf << 18); 
-	    parse_dest(arg, &op3, &insn2);
-	    sprintf(arg, "#__LMM_%s", macroname);
-	    parse_src(arg, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
-	    free(arg);
+            switch (op->copc) {
+            case MACRO_PUSHM:
+              macroname = "PUSHM";
+              break;
+            case MACRO_POPM:
+              macroname = "POPM";
+              break;
+            case MACRO_POPRET:
+              macroname = "POPRET";
+              break;
+            default:
+              as_fatal (_("internal error, bad instruction"));
+              break;
+            }
+            arg = malloc(64);
+            if (arg == NULL)
+              as_fatal (_("Virtual memory exhausted"));
+            strcpy(arg, "__TMP0");
+            parse_dest(arg, &op1, &insn);
+            str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+            sprintf(arg, "__LMM_%s_ret", macroname);
+            // now set up the CALL instruction
+            insn2.code = (prop2 ? 0x1c800000 : 0x5c800000) | (0xf << 18); 
+            parse_dest(arg, &op3, &insn2);
+            sprintf(arg, "#__LMM_%s", macroname);
+            parse_src(arg, &op4, &insn2, PROPELLER_OPERAND_JMPRET);
+            free(arg);
 
-	    size = 8;
-	  }
+            size = 8;
+          }
       }
       break;
 
     case PROPELLER_OPERAND_MACRO_0:
       {
-	/*
-	   a single macro like
-	      lmul
-	   and gets translated into the instruction
-	      jmpret __MULSI_ret,#__MULSI
-	*/
-	if (compress)
-	  {
-	    size = 1;
-	    insn.code = op->copc;
-	    insn_compressed = 1;
-	  }
-	else
-	  {
-	    char *arg;
-	    char *macroname = "dummy";
+        /*
+           a single macro like
+              lmul
+           and gets translated into the instruction
+              jmpret __MULSI_ret,#__MULSI
+        */
+        if (compress)
+          {
+            size = 1;
+            insn.code = op->copc;
+            insn_compressed = 1;
+          }
+        else
+          {
+            char *arg;
+            char *macroname = "dummy";
 
-	    switch (op->copc) {
-	    case MACRO_RET:
-	      macroname = "__LMM_lret";
-	      break;
-	    case MACRO_MUL:
-	      macroname = "__MULSI";
-	      break;
-	    case MACRO_UDIV:
-	      macroname = "__UDIVSI";
-	      break;
-	    case MACRO_DIV:
-	      macroname = "__DIVSI";
-	      break;
-	    default:
-	      as_fatal (_("internal error, bad instruction"));
-	      break;
-	    }
-	    arg = malloc(64);
-	    if (arg == NULL)
-	      as_fatal (_("Virtual memory exhausted"));
-	    sprintf(arg, "%s_ret", macroname);
-	    parse_dest(arg, &op1, &insn);
-	    sprintf(arg, "#%s", macroname);
-	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMPRET);
-	    free(arg);
+            switch (op->copc) {
+            case MACRO_RET:
+              macroname = "__LMM_lret";
+              break;
+            case MACRO_MUL:
+              macroname = "__MULSI";
+              break;
+            case MACRO_UDIV:
+              macroname = "__UDIVSI";
+              break;
+            case MACRO_DIV:
+              macroname = "__DIVSI";
+              break;
+            default:
+              as_fatal (_("internal error, bad instruction"));
+              break;
+            }
+            arg = malloc(64);
+            if (arg == NULL)
+              as_fatal (_("Virtual memory exhausted"));
+            sprintf(arg, "%s_ret", macroname);
+            parse_dest(arg, &op1, &insn);
+            sprintf(arg, "#%s", macroname);
+            parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMPRET);
+            free(arg);
 
-	    size = 4;
-	  }
+            size = 4;
+          }
       }
       break;
 
     case PROPELLER_OPERAND_LEASP:
       {
-	unsigned destval = 512;
-	/*
-	      leasp rN,#n
-	   and gets translated into two instructions:
-	      mov  rN,#n
+        unsigned destval = 512;
+        /*
+              leasp rN,#n
+           and gets translated into two instructions:
+              mov  rN,#n
               add  rN,sp
-	*/
-	int can_compress = 0;
-	parse_dest(str, &op1, &insn);
-	str = parse_dest(str, &op3, &insn2);
-	str = parse_separator (str, &error);
-	if (error)
-	  {
-	    op1.error = _("Missing ','");
-	    break;
-	  }
+        */
+        int can_compress = 0;
+        parse_dest(str, &op1, &insn);
+        str = parse_dest(str, &op3, &insn2);
+        str = parse_separator (str, &error);
+        if (error)
+          {
+            op1.error = _("Missing ','");
+            break;
+          }
 
-	if (compress && !op1.error)
-	  {
-	    if (op1.reloc.type == BFD_RELOC_NONE) {
-	      destval = ((insn.code >> 9) & 0x1f);
-	      if (destval <= 15) {
-		can_compress = 1;
-	      }
-	    }
-	  }
+        if (compress && !op1.error)
+          {
+            if (op1.reloc.type == BFD_RELOC_NONE) {
+              destval = ((insn.code >> 9) & 0x1f);
+              if (destval <= 15) {
+                can_compress = 1;
+              }
+            }
+          }
 
-	if (can_compress)
-	  {
-	    size = 2;
-	    str = parse_src_n(str, &op2, 8);
-	    insn.code = PREFIX_LEASP | destval | (op2.code << 8);
-	    reloc_prefix = 1;
-	    if (condmask != 0xf) {
-	      insn.code = insn.code << 8;
-	      condmask = ~condmask & 0xf;
-	      insn.code |= (PREFIX_SKIP2 | condmask);
-	      size++;
-	      reloc_prefix++;
-	    }
-	    insn_compressed = 1;
-	    insn2.code = 0;
-	    insn2.reloc.type = BFD_RELOC_NONE;
-	  }
-	else
-	  {
-	    char *arg;
+        if (can_compress)
+          {
+            size = 2;
+            str = parse_src_n(str, &op2, 8);
+            insn.code = PREFIX_LEASP | destval | (op2.code << 8);
+            reloc_prefix = 1;
+            if (condmask != 0xf) {
+              insn.code = insn.code << 8;
+              condmask = ~condmask & 0xf;
+              insn.code |= (PREFIX_SKIP2 | condmask);
+              size++;
+              reloc_prefix++;
+            }
+            insn_compressed = 1;
+            insn2.code = 0;
+            insn2.reloc.type = BFD_RELOC_NONE;
+          }
+        else
+          {
+            char *arg;
 
-	    str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
-	    if (!(insn.code & (1<<22)))
-	      {
-		op2.error = _("leasp only accepts 8 bit immediates");
-	      }
+            str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+            if (!(insn.code & (1<<22)))
+              {
+                op2.error = _("leasp only accepts 8 bit immediates");
+              }
 
-	    arg = malloc(64);
-	    if (arg == NULL)
-	      as_fatal (_("Virtual memory exhausted"));
-	    strcpy(arg, "sp");
-	    parse_dest(arg, &op4, &insn);
-	    // now set up the ADD instruction
-	    insn2.code = 0x80800000 | (0xf << 18); 
-	    free(arg);
+            arg = malloc(64);
+            if (arg == NULL)
+              as_fatal (_("Virtual memory exhausted"));
+            strcpy(arg, "sp");
+            parse_dest(arg, &op4, &insn);
+            // now set up the ADD instruction
+            insn2.code = 0x80800000 | (0xf << 18); 
+            free(arg);
 
-	    size = 8;
-	  }
+            size = 8;
+          }
       }
       break;
 
     case PROPELLER_OPERAND_XMOV:
       {
-	/*
-	      xmov rA,rB,op,rC,rD
-	   and gets translated into two instructions:
-	      mov  rA,rB
+        /*
+              xmov rA,rB,op,rC,rD
+           and gets translated into two instructions:
+              mov  rA,rB
               op   rC,rD
-	*/
-	str = parse_dest(str, &op1, &insn);
-	str = parse_separator (str, &error);
-	if (error)
-	  {
-	    op1.error = _("Missing ',' in xmov");
-	    break;
-	  }
-	str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
-	str = skip_whitespace (str);
-	p = find_whitespace (str);
-	if (p - str == 0)
-	  {
-	    as_bad (_("No instruction found in xmov"));
-	    return;
-	  }
-	c = *p;
-	*p = '\0';
-	lc (str);
-	op = (struct propeller_opcode *) hash_find (insn_hash, str);
-	*p = c;
-	if (op == 0 || op->format != PROPELLER_OPERAND_TWO_OPS)
-	  {
-	    as_bad (_("Bad or missing instruction in xmov: '%s'"), str);
-	    return;
-	  }
-	insn2.code = op->opcode | (condmask << 18);
+        */
+        str = parse_dest(str, &op1, &insn);
+        str = parse_separator (str, &error);
+        if (error)
+          {
+            op1.error = _("Missing ',' in xmov");
+            break;
+          }
+        str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+        str = skip_whitespace (str);
+        p = find_whitespace (str);
+        if (p - str == 0)
+          {
+            as_bad (_("No instruction found in xmov"));
+            return;
+          }
+        c = *p;
+        *p = '\0';
+        lc (str);
+        op = (struct propeller_opcode *) hash_find (insn_hash, str);
+        *p = c;
+        if (op == 0 || op->format != PROPELLER_OPERAND_TWO_OPS)
+          {
+            as_bad (_("Bad or missing instruction in xmov: '%s'"), str);
+            return;
+          }
+        insn2.code = op->opcode | (condmask << 18);
 
-	/* OK, second instruction now */
-	str = p;
-	str = parse_dest (str, &op3, &insn2);
-	str = parse_separator (str, &error);
-	if (error)
-	  {
-	    op3.error = _("Missing ',' in xmov op");
-	    break;
-	  }
-	str = parse_src (str, &op4, &insn2, PROPELLER_OPERAND_TWO_OPS);
-	size = 8;
-	xmov_flag = 1;
+        /* OK, second instruction now */
+        str = p;
+        str = parse_dest (str, &op3, &insn2);
+        str = parse_separator (str, &error);
+        if (error)
+          {
+            op3.error = _("Missing ',' in xmov op");
+            break;
+          }
+        str = parse_src (str, &op4, &insn2, PROPELLER_OPERAND_TWO_OPS);
+        size = 8;
+        xmov_flag = 1;
       }
       break;
 
     case PROPELLER_OPERAND_LCALL:
       {
-	/* this looks like:
-	      lcall #n
-	   and gets translated into two instructions:
-	      jmp  #__LMM_CALL
-	      long n
-	*/
+        /* this looks like:
+              lcall #n
+           and gets translated into two instructions:
+              jmp  #__LMM_CALL
+              long n
+        */
         char *arg;
-	if (compress)
-	  {
-	    str = parse_src_n(str, &op2, 16);
-	    insn.code = MACRO_LCALL | (op2.code << 8);
-	    if (op2.reloc.type == BFD_RELOC_PROPELLER_23)
-	      op2.reloc.type = BFD_RELOC_16;
-	    insn_compressed = 1;
-	    reloc_prefix = 1;
-	    size = 3;
-	  }
-	else
-	  {
-	    arg = malloc(32);
-	    if (arg == NULL)
-	      as_fatal (_("Virtual memory exhausted"));
-	    strcpy(arg, "#__LMM_CALL");
-	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	    str = parse_src_n(str, &insn2, 32);
-	    size = 8;
-	    free(arg);
-	  }
+        if (compress)
+          {
+            str = parse_src_n(str, &op2, 16);
+            insn.code = MACRO_LCALL | (op2.code << 8);
+            if (op2.reloc.type == BFD_RELOC_PROPELLER_23)
+              op2.reloc.type = BFD_RELOC_16;
+            insn_compressed = 1;
+            reloc_prefix = 1;
+            size = 3;
+          }
+        else
+          {
+            arg = malloc(32);
+            if (arg == NULL)
+              as_fatal (_("Virtual memory exhausted"));
+            strcpy(arg, "#__LMM_CALL");
+            parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+            str = parse_src_n(str, &insn2, 32);
+            size = 8;
+            free(arg);
+          }
       }
       break;
 
     case PROPELLER_OPERAND_MVI:
       {
-	/* this looks like:
-	      mvi rN,#n
-	   and gets translated into two instructions:
-	      jmp  #__LMM_MVI_rN
-	      long n
-	*/
-	int reg;
+        /* this looks like:
+              mvi rN,#n
+           and gets translated into two instructions:
+              jmp  #__LMM_MVI_rN
+              long n
+        */
+        int reg;
 
-	reg = -1;
-	str = parse_regspec (str, &reg, &op1, 1);
-	if (reg < 0 || reg > 15)
-	  {
-	    op1.error = _("illegal register");
-	  }
+        reg = -1;
+        str = parse_regspec (str, &reg, &op1, 1);
+        if (reg < 0 || reg > 15)
+          {
+            op1.error = _("illegal register");
+          }
         str = parse_separator (str, &error);
         if (error)
-	  {
-	   op2.error = _("Missing ','");
-	   break;
-	  }
-	if (compress && op->copc == PREFIX_MVIW)
-	  {
-	    str = parse_src_n(str, &op2, 16);
-	  }
-	else
-	  {
-	    str = parse_src_n(str, &insn2, 32);
-	  }
-	if (compress && !op1.error && !op2.error && !insn2.error)
-	  {
-	    if (op->copc == PREFIX_MVIW)
-	      {
-		size = 3;
-		insn.code = op->copc | reg;
-		insn.code |= (op2.code << 8);
-		reloc_prefix = 1;
-	      }
-	    else
-	      {
-		size = 5;
-		insn.code = op->copc | reg;
-	      }
-	    insn_compressed = 1;
-	  }
-	else
-	  {
-	    char *arg;
-	    arg = malloc(32);
-	    if (arg == NULL)
-	      as_fatal (_("Virtual memory exhausted"));
-	    if (reg == 15)
-	      sprintf(arg, "#__LMM_MVI_lr");
-	    else
-	      sprintf(arg, "#__LMM_MVI_r%d", reg);
-	    parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-	    free(arg);
-	    
-	    size = 8;
-	  }
+          {
+           op2.error = _("Missing ','");
+           break;
+          }
+        if (compress && op->copc == PREFIX_MVIW)
+          {
+            str = parse_src_n(str, &op2, 16);
+          }
+        else
+          {
+            str = parse_src_n(str, &insn2, 32);
+          }
+        if (compress && !op1.error && !op2.error && !insn2.error)
+          {
+            if (op->copc == PREFIX_MVIW)
+              {
+                size = 3;
+                insn.code = op->copc | reg;
+                insn.code |= (op2.code << 8);
+                reloc_prefix = 1;
+              }
+            else
+              {
+                size = 5;
+                insn.code = op->copc | reg;
+              }
+            insn_compressed = 1;
+          }
+        else
+          {
+            char *arg;
+            arg = malloc(32);
+            if (arg == NULL)
+              as_fatal (_("Virtual memory exhausted"));
+            if (reg == 15)
+              sprintf(arg, "#__LMM_MVI_lr");
+            else
+              sprintf(arg, "#__LMM_MVI_r%d", reg);
+            parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
+            free(arg);
+            
+            size = 8;
+          }
       }
       break;
 
@@ -1465,56 +1480,56 @@ md_assemble (char *instruction_string)
 
     case PROPELLER_OPERAND_CALL:
       {
-	char *str2, *p2;
+        char *str2, *p2;
         str = skip_whitespace (str);
         if (*str == '#')
-	  {
-	    str++;
-	    insn.code |= 1 << 22;
-	  }
-	str2 = malloc (5 + strlen (str));
-	if (str2 == NULL)
-	  as_fatal (_("Virtual memory exhausted"));
-  	strcpy (str2, str);
-	str = parse_expression (str, &op2);
-	if (op2.error)
-	  break;
-	switch (op2.reloc.exp.X_op)
-	  {
-	  case O_constant:
-	  case O_register:
-	    if (op2.reloc.exp.X_add_number & ~0x1ff)
-	      {
-		op2.error = _("9-bit value out of range");
-		break;
-	      }
-	    insn.code |= op2.reloc.exp.X_add_number;
-	    break;
-	  case O_illegal:
-	    op1.error = _("Illegal operand in call");
-	    break;
-	  default:
-	    op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
-	    op2.reloc.pc_rel = 0;
-	    break;
-	  }
+          {
+            str++;
+            insn.code |= 1 << 22;
+          }
+        str2 = malloc (5 + strlen (str));
+        if (str2 == NULL)
+          as_fatal (_("Virtual memory exhausted"));
+        strcpy (str2, str);
+        str = parse_expression (str, &op2);
+        if (op2.error)
+          break;
+        switch (op2.reloc.exp.X_op)
+          {
+          case O_constant:
+          case O_register:
+            if (op2.reloc.exp.X_add_number & ~0x1ff)
+              {
+                op2.error = _("9-bit value out of range");
+                break;
+              }
+            insn.code |= op2.reloc.exp.X_add_number;
+            break;
+          case O_illegal:
+            op1.error = _("Illegal operand in call");
+            break;
+          default:
+            op2.reloc.type = BFD_RELOC_PROPELLER_SRC;
+            op2.reloc.pc_rel = 0;
+            break;
+          }
 
-	p2 = find_whitespace_or_separator (str2);
-	*p2 = 0;
-	strcat (str2, "_ret");
-	parse_expression (str2, &op1);
-	free (str2);
-	if (op1.error)
-	  break;
-	switch (op1.reloc.exp.X_op)
-	  {
-	  case O_symbol:
-	    op1.reloc.type = BFD_RELOC_PROPELLER_DST;
-	    op1.reloc.pc_rel = 0;
-	    break;
-	  default:
-	    op1.error = _("Improper call target");
-	  }
+        p2 = find_whitespace_or_separator (str2);
+        *p2 = 0;
+        strcat (str2, "_ret");
+        parse_expression (str2, &op1);
+        free (str2);
+        if (op1.error)
+          break;
+        switch (op1.reloc.exp.X_op)
+          {
+          case O_symbol:
+            op1.reloc.type = BFD_RELOC_PROPELLER_DST;
+            op1.reloc.pc_rel = 0;
+            break;
+          default:
+            op1.error = _("Improper call target");
+          }
       }
       break;
 
@@ -1540,14 +1555,14 @@ md_assemble (char *instruction_string)
       eff = (struct propeller_effect *) hash_find (eff_hash, str);
       *p = c;
       if (!eff)
-	break;
+        break;
       str = p;
       if (xmov_flag) {
-	insn2.code |= eff->or;
-	insn2.code &= eff->and;
+        insn2.code |= eff->or;
+        insn2.code &= eff->and;
       } else {
-	insn.code |= eff->or;
-	insn.code &= eff->and;
+        insn.code |= eff->or;
+        insn.code &= eff->and;
       }
       str = parse_separator (str, &error);
     }
@@ -1567,7 +1582,7 @@ md_assemble (char *instruction_string)
     {
       str = skip_whitespace (str);
       if (*str)
-	err = _("Too many operands");
+        err = _("Too many operands");
     }
 
   if (err)
@@ -1604,19 +1619,19 @@ md_assemble (char *instruction_string)
     effects = (insn.code >> 23) & 0x7;
     if (xmov_flag) {
       if (immediate) {
-	as_bad (_("xmov may not have immediate argument for mov"));
-	return;
+        as_bad (_("xmov may not have immediate argument for mov"));
+        return;
       }
       if (effects != 1) {
-	as_bad (_("No effects permitted in xmov"));
-	return;
+        as_bad (_("No effects permitted in xmov"));
+        return;
       }
       effects = (insn2.code >> 23) & 0x7;
       if (destval > 15 || srcval > 15)
-	{
-	  as_bad (_("Illegal register in xmov"));
-	  return;
-	}
+        {
+          as_bad (_("Illegal register in xmov"));
+          return;
+        }
       movbyte = (destval<<4) | srcval;
 
       immediate = (insn2.code >> 22) & 1;
@@ -1627,159 +1642,159 @@ md_assemble (char *instruction_string)
     /* now compress based on type */
     if (op->compress_type == COMPRESS_XOP)
       {
-	/* make sure the effect flags match */
-	switch (op->copc) {
-	case XOP_CMPU:
-	case XOP_CMPS:
-	  expectedeffects = 6;  /* wz,wc,nr */
-	  break;
-	case XOP_WRB:
-	case XOP_WRL:
-	  expectedeffects = 0;
-	  break;
-	default:
-	  expectedeffects = 1;  /* just the R field */
-	  break;
-	}
-	if (effects != expectedeffects) {
-	  goto skip_compress;
-	}
+        /* make sure the effect flags match */
+        switch (op->copc) {
+        case XOP_CMPU:
+        case XOP_CMPS:
+          expectedeffects = 6;  /* wz,wc,nr */
+          break;
+        case XOP_WRB:
+        case XOP_WRL:
+          expectedeffects = 0;
+          break;
+        default:
+          expectedeffects = 1;  /* just the R field */
+          break;
+        }
+        if (effects != expectedeffects) {
+          goto skip_compress;
+        }
 
-	/* handle special destination registers */
-	if (destval > 15)
-	  {
-	    /* only compression with a destination > 15 is
-	       add sp,#XXX
-	    */
-	    if (xmov_flag) goto skip_compress;
-	    if (destval == SP_REGNUM && immediate && srcval < 128)
-	      {
-		if (op->copc == XOP_ADD)
-		  {
-		    newcode = MACRO_ADDSP | (srcval << 8);
-		    size = 2;
-		    goto compress_done;
-		  }
-		if (op->copc == XOP_SUB)
-		  {
-		    srcval = (-srcval) & 0xff;
-		    newcode = MACRO_ADDSP | (srcval << 8);
-		    size = 2;
-		    goto compress_done;
-		  }
-	      }
+        /* handle special destination registers */
+        if (destval > 15)
+          {
+            /* only compression with a destination > 15 is
+               add sp,#XXX
+            */
+            if (xmov_flag) goto skip_compress;
+            if (destval == SP_REGNUM && immediate && srcval < 128)
+              {
+                if (op->copc == XOP_ADD)
+                  {
+                    newcode = MACRO_ADDSP | (srcval << 8);
+                    size = 2;
+                    goto compress_done;
+                  }
+                if (op->copc == XOP_SUB)
+                  {
+                    srcval = (-srcval) & 0xff;
+                    newcode = MACRO_ADDSP | (srcval << 8);
+                    size = 2;
+                    goto compress_done;
+                  }
+              }
 
-	    /* any other operation with a destination other than 0-15 is
-	       bad news */
-	    goto skip_compress;
-	  }
+            /* any other operation with a destination other than 0-15 is
+               bad news */
+            goto skip_compress;
+          }
 
-	/* special case -- a source of __MASK_FFFFFFFF can
-	   be changed to an immediate -1 */
-	if (!immediate && srcval == FFFFFFFF_REGNUM)
-	  {
-	    immediate = 1;
-	    srcval = (-1) & 0x00000FFF;
-	  }
+        /* special case -- a source of __MASK_FFFFFFFF can
+           be changed to an immediate -1 */
+        if (!immediate && srcval == FFFFFFFF_REGNUM)
+          {
+            immediate = 1;
+            srcval = (-1) & 0x00000FFF;
+          }
 
-	/* OK, we can compress now */
-	if (immediate)
-	  {
-	    if (srcval > 15) {
-	      if (xmov_flag) goto skip_compress;
-	      newcode = (PREFIX_REGIMM12 | destval);
-	      xopbyte = ((srcval & 0xff));
-	      xopbyte |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 8;
-	      size = 3;
-	    } else {
-	      /* FIXME: could special case a few things here */
-	      if (xmov_flag)
-		newcode = (PREFIX_XMOVIMM | destval);
-	      else
-		newcode = (PREFIX_REGIMM4 | destval);
-	      xopbyte = ( ((srcval<<4)|op->copc) );
-	      size = 2;
-	    }
-	  }
-	else
-	  {
-	    if (srcval > 15) goto skip_compress;
-	    if (xmov_flag)
-	      newcode = (PREFIX_XMOVREG | destval);
-	    else
-	      newcode = (PREFIX_REGREG | destval);
-	    xopbyte = ( ((srcval<<4)|op->copc));
-	    size = 2;
-	  }
+        /* OK, we can compress now */
+        if (immediate)
+          {
+            if (srcval > 15) {
+              if (xmov_flag) goto skip_compress;
+              newcode = (PREFIX_REGIMM12 | destval);
+              xopbyte = ((srcval & 0xff));
+              xopbyte |= ((((srcval >> 8)&0xf)) | (op->copc<<4)) << 8;
+              size = 3;
+            } else {
+              /* FIXME: could special case a few things here */
+              if (xmov_flag)
+                newcode = (PREFIX_XMOVIMM | destval);
+              else
+                newcode = (PREFIX_REGIMM4 | destval);
+              xopbyte = ( ((srcval<<4)|op->copc) );
+              size = 2;
+            }
+          }
+        else
+          {
+            if (srcval > 15) goto skip_compress;
+            if (xmov_flag)
+              newcode = (PREFIX_XMOVREG | destval);
+            else
+              newcode = (PREFIX_REGREG | destval);
+            xopbyte = ( ((srcval<<4)|op->copc));
+            size = 2;
+          }
 
-	if (xmov_flag)
-	  {
-	    newcode |= movbyte << 8;
-	    newcode |= xopbyte << 16;
-	    size++;
-	  }
-	else
-	  {
-	    newcode |= xopbyte << 8;
-	  }
+        if (xmov_flag)
+          {
+            newcode |= movbyte << 8;
+            newcode |= xopbyte << 16;
+            size++;
+          }
+        else
+          {
+            newcode |= xopbyte << 8;
+          }
       }
     else if (op->compress_type == COMPRESS_MOV)
       {
-	if (destval > 15)
-	  {
-	    goto skip_compress;
-	  }
-	/* for mov, only default wr effect can be compressed */
-	if (effects != 1) goto skip_compress;
-	if (immediate)
-	  {
-	    if (xmov_flag) {
-	      as_bad (_("mov immediate not supported in xmov"));
-	      return;
-	    }
-	    if (srcval == 0 && condmask == 0xf) {
-	      newcode = (PREFIX_ZEROREG | destval);
-	      size = 1;
-	    } else if (srcval <= 255) {
-	      newcode = (PREFIX_MVIB | destval) | (srcval << 8);
-	      size = 2;
-	    } else {
-	      newcode = (PREFIX_MVIW | destval) | (srcval << 8);
-	      size = 3;
-	    }
-	  }
-	else
-	  {
-	    if (srcval > 15)
-	      {
-		goto skip_compress;
-	      }
-	    if (xmov_flag)
-	      {
-		newcode = MACRO_XMVREG;
-		newcode |= (movbyte << 8) | (((destval << 4) | srcval) << 16);
-		size = 3;
-	      }
-	    else
-	      {
-		newcode = MACRO_MVREG;
-		newcode |= (((destval << 4) | srcval) << 8);
-		size = 2;
-	      }
-	  }
+        if (destval > 15)
+          {
+            goto skip_compress;
+          }
+        /* for mov, only default wr effect can be compressed */
+        if (effects != 1) goto skip_compress;
+        if (immediate)
+          {
+            if (xmov_flag) {
+              as_bad (_("mov immediate not supported in xmov"));
+              return;
+            }
+            if (srcval == 0 && condmask == 0xf) {
+              newcode = (PREFIX_ZEROREG | destval);
+              size = 1;
+            } else if (srcval <= 255) {
+              newcode = (PREFIX_MVIB | destval) | (srcval << 8);
+              size = 2;
+            } else {
+              newcode = (PREFIX_MVIW | destval) | (srcval << 8);
+              size = 3;
+            }
+          }
+        else
+          {
+            if (srcval > 15)
+              {
+                goto skip_compress;
+              }
+            if (xmov_flag)
+              {
+                newcode = MACRO_XMVREG;
+                newcode |= (movbyte << 8) | (((destval << 4) | srcval) << 16);
+                size = 3;
+              }
+            else
+              {
+                newcode = MACRO_MVREG;
+                newcode |= (((destval << 4) | srcval) << 8);
+                size = 2;
+              }
+          }
       }
     else
       {
-	goto skip_compress;
+        goto skip_compress;
       }
   compress_done:
     if (condmask != 0xf) {
       newcode = newcode << 8;
       condmask = ~condmask & 0xf;
       if (size == 3)
-	newcode |= (PREFIX_SKIP3 | condmask);
+        newcode |= (PREFIX_SKIP3 | condmask);
       else
-	newcode |= (PREFIX_SKIP2 | condmask);
+        newcode |= (PREFIX_SKIP2 | condmask);
       size++;
     }
     insn.code = newcode;
@@ -1812,11 +1827,11 @@ md_assemble (char *instruction_string)
 
     if (compress && !insn_compressed) {
       /* we are in CMM mode, but failed to compress this instruction;
-	 we will have to add a NATIVE prefix
+         we will have to add a NATIVE prefix
       */
       size += !insn_compressed;
       if (insn2.reloc.type != BFD_RELOC_NONE || insn2.code)
-	size += !insn2_compressed;
+        size += !insn2_compressed;
       insn_size = 4;
     } else if (compress) {
       insn_size = size;
@@ -1828,34 +1843,34 @@ md_assemble (char *instruction_string)
 
     if (compress) {
       if (!insn_compressed) {
-	md_number_to_chars (to, MACRO_NATIVE, 1);
-	CHECK_WRITTEN(1);
-	to++;
+        md_number_to_chars (to, MACRO_NATIVE, 1);
+        CHECK_WRITTEN(1);
+        to++;
       } else if (insn_size > 4) {
-	/* handle the rare long compressed forms like mvi */
-	md_number_to_chars (to, insn.code, insn_size-4);
-	CHECK_WRITTEN(insn_size-4);
-	to += (insn_size-4);
-	insn_size = size = 4;
-	insn = insn2;
-	insn2.code = 0;
-	insn2.reloc.type = BFD_RELOC_NONE;
+        /* handle the rare long compressed forms like mvi */
+        md_number_to_chars (to, insn.code, insn_size-4);
+        CHECK_WRITTEN(insn_size-4);
+        to += (insn_size-4);
+        insn_size = size = 4;
+        insn = insn2;
+        insn2.code = 0;
+        insn2.reloc.type = BFD_RELOC_NONE;
       }
     }
     md_number_to_chars (to, insn.code, insn_size);
     CHECK_WRITTEN(insn_size);
     if (insn.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix, 
-		   insn_size - reloc_prefix,
-		   &insn.reloc.exp, insn.reloc.pc_rel, insn.reloc.type);
+                   insn_size - reloc_prefix,
+                   &insn.reloc.exp, insn.reloc.pc_rel, insn.reloc.type);
     if (op1.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix,
-		   insn_size - reloc_prefix,
-		   &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
+                   insn_size - reloc_prefix,
+                   &op1.reloc.exp, op1.reloc.pc_rel, op1.reloc.type);
     if (op2.reloc.type != BFD_RELOC_NONE)
       fix_new_exp (frag_now, to - frag_now->fr_literal + reloc_prefix,
-		   insn_size - reloc_prefix,
-		   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
+                   insn_size - reloc_prefix,
+                   &op2.reloc.exp, op2.reloc.pc_rel, op2.reloc.type);
     to += insn_size;
 
     /* insn2 is never used for real instructions, but is useful */
@@ -1863,38 +1878,38 @@ md_assemble (char *instruction_string)
     /* note that we never have to do this for compressed instructions */
     if (insn2.reloc.type != BFD_RELOC_NONE || insn2.code)
       {
-	if (compress && !insn2_compressed) {
-	  md_number_to_chars ( to, MACRO_NATIVE, 1 );
-	  CHECK_WRITTEN(1);
-	  to++;
-	}
-	md_number_to_chars (to, insn2.code, 4);
-	CHECK_WRITTEN(4);
-	if(insn2.reloc.type != BFD_RELOC_NONE){
-	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
-		       &insn2.reloc.exp, insn2.reloc.pc_rel, insn2.reloc.type);
-	}
-	if (op3.reloc.type != BFD_RELOC_NONE)
-	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
-		       &op3.reloc.exp, op3.reloc.pc_rel, op3.reloc.type);
-	if (op4.reloc.type != BFD_RELOC_NONE)
-	  fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
-		       &op4.reloc.exp, op4.reloc.pc_rel, op4.reloc.type);
-	to += 4;
+        if (compress && !insn2_compressed) {
+          md_number_to_chars ( to, MACRO_NATIVE, 1 );
+          CHECK_WRITTEN(1);
+          to++;
+        }
+        md_number_to_chars (to, insn2.code, 4);
+        CHECK_WRITTEN(4);
+        if(insn2.reloc.type != BFD_RELOC_NONE){
+          fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+                       &insn2.reloc.exp, insn2.reloc.pc_rel, insn2.reloc.type);
+        }
+        if (op3.reloc.type != BFD_RELOC_NONE)
+          fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+                       &op3.reloc.exp, op3.reloc.pc_rel, op3.reloc.type);
+        if (op4.reloc.type != BFD_RELOC_NONE)
+          fix_new_exp (frag_now, to - frag_now->fr_literal, 4,
+                       &op4.reloc.exp, op4.reloc.pc_rel, op4.reloc.type);
+        to += 4;
       }
   }
 }
 
 int
 md_estimate_size_before_relax (fragS * fragP ATTRIBUTE_UNUSED,
-			       segT segment ATTRIBUTE_UNUSED)
+                               segT segment ATTRIBUTE_UNUSED)
 {
   return 0;
 }
 
 void
 md_convert_frag (bfd * headers ATTRIBUTE_UNUSED,
-		 segT seg ATTRIBUTE_UNUSED, fragS * fragP ATTRIBUTE_UNUSED)
+                 segT seg ATTRIBUTE_UNUSED, fragS * fragP ATTRIBUTE_UNUSED)
 {
 }
 
@@ -1934,19 +1949,19 @@ int md_long_jump_size = 4;
 
 void
 md_create_short_jump (char *ptr ATTRIBUTE_UNUSED,
-		      addressT from_addr ATTRIBUTE_UNUSED,
-		      addressT to_addr ATTRIBUTE_UNUSED,
-		      fragS * frag ATTRIBUTE_UNUSED,
-		      symbolS * to_symbol ATTRIBUTE_UNUSED)
+                      addressT from_addr ATTRIBUTE_UNUSED,
+                      addressT to_addr ATTRIBUTE_UNUSED,
+                      fragS * frag ATTRIBUTE_UNUSED,
+                      symbolS * to_symbol ATTRIBUTE_UNUSED)
 {
 }
 
 void
 md_create_long_jump (char *ptr ATTRIBUTE_UNUSED,
-		     addressT from_addr ATTRIBUTE_UNUSED,
-		     addressT to_addr ATTRIBUTE_UNUSED,
-		     fragS * frag ATTRIBUTE_UNUSED,
-		     symbolS * to_symbol ATTRIBUTE_UNUSED)
+                     addressT from_addr ATTRIBUTE_UNUSED,
+                     addressT to_addr ATTRIBUTE_UNUSED,
+                     fragS * frag ATTRIBUTE_UNUSED,
+                     symbolS * to_symbol ATTRIBUTE_UNUSED)
 {
 }
 
@@ -1959,12 +1974,15 @@ md_parse_option (int c, char *arg)
   (void)arg;
   switch (c)
     {
-    case OPTION_MD_BASE:
+    case OPTION_MD_LMM:
       lmm = 1;
       break;
-    case OPTION_MD_BASE+1:
+    case OPTION_MD_CMM:
       compress = compress_default = 1;
       lmm = 1; /* -cmm implies -lmm */
+      break;
+    case OPTION_MD_P2:
+      prop2 = 1;
       break;
     default:
       return 0;
@@ -1979,6 +1997,7 @@ md_show_usage (FILE * stream)
 Propeller options\n\
   --lmm\t\tEnable LMM instructions.\n\
   --cmm\t\tEnable compressed instructions.\n\
+  --p2\t\tEnable Propeller 2 instructions.\n\
 ");
 }
 
