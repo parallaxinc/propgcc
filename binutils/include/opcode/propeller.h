@@ -20,9 +20,10 @@
 
 /* List of possible hardware types, including any pseudo-types like
  * LMM on Propeller-1, */
-#define PROP_1 0
-#define PROP_2 1
-#define PROP_1_LMM 2
+#define PROP_1          1
+#define PROP_2          2
+#define PROP_1_LMM      (PROP_1 | 4)
+#define PROP_2_LMM      (PROP_2 | 8)
 
 /* List of instruction formats */
 #define PROPELLER_OPERAND_NO_OPS      0
