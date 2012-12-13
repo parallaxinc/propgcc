@@ -86,10 +86,10 @@ read_byte (bfd_vma memaddr, int *word, disassemble_info * info)
 /* Print the Propeller instruction at address MEMADDR in debugged memory,
    on INFO->STREAM.  Returns length of the instruction, in bytes.  */
 
-#define AFTER_INSTRUCTION	"\t"
-#define OPERAND_SEPARATOR	", "
-#define FPRINTF	(*info->fprintf_func)
-#define F	info->stream
+#define AFTER_INSTRUCTION       "\t"
+#define OPERAND_SEPARATOR       ", "
+#define FPRINTF (*info->fprintf_func)
+#define F       info->stream
 
 static const char *const flags[16] = {
   "",
@@ -133,9 +133,9 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
     {
       FPRINTF (F, propeller_conditions[condition].name);
       for (i = 0; i < propeller_conditions[condition].tabs; i++)
-	{
-	  FPRINTF (F, "\t");
-	}
+        {
+          FPRINTF (F, "\t");
+        }
     }
   else
     {
@@ -146,89 +146,89 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
     {
 #define OP propeller_opcodes[i]
       if ((opcode & OP.mask) == OP.opcode)
-	switch (OP.format)
-	  {
-	  case PROPELLER_OPERAND_NO_OPS:
-	    FPRINTF (F, OP.name);
-	    goto done;
-	  case PROPELLER_OPERAND_SOURCE_ONLY:
-	    FPRINTF (F, OP.name);
-	    FPRINTF (F, AFTER_INSTRUCTION);
-	    if (immediate)
-	      {
-		FPRINTF (F, "#");
-		FPRINTF (F, "%d", src);
-	      }
-	    else
-	      {
-		info->target = src;
-		(*info->print_address_func) (info->target, info);
-	      }
-	    goto done;
-	  case PROPELLER_OPERAND_JMP:
-	    FPRINTF (F, OP.name);
-	    FPRINTF (F, AFTER_INSTRUCTION);
-	    {
-	      if (immediate) FPRINTF (F, "#");
-	      info->target = src<<2;
-	      (*info->print_address_func) (info->target, info);
-	    }
-	    goto done;
-	  case PROPELLER_OPERAND_DEST_ONLY:
-	    FPRINTF (F, OP.name);
-	    FPRINTF (F, AFTER_INSTRUCTION);
-	    {
-	      info->target = dst<<2;
-	      (*info->print_address_func) (info->target, info);
-	    }
-	    goto done;
-	  case PROPELLER_OPERAND_TWO_OPS:
-	  case PROPELLER_OPERAND_JMPRET:
-	  case PROPELLER_OPERAND_MOVA:
-	    FPRINTF (F, OP.name);
-	    FPRINTF (F, AFTER_INSTRUCTION);
-	      {
-		info->target = dst<<2;
-		(*info->print_address_func) (info->target, info);
-	      }
-	    FPRINTF (F, OPERAND_SEPARATOR);
-	    if (immediate && (OP.format != PROPELLER_OPERAND_JMPRET && OP.format != PROPELLER_OPERAND_MOVA))
-	      {
-	      FPRINTF (F, "#");
-	      FPRINTF (F, "%d", src);
-	      }
-	    else
-	      {
-		if (immediate) FPRINTF (F, "#");
-		info->target = src<<2;
-		(*info->print_address_func) (info->target, info);
-	      }
-	    goto done;
-	  case PROPELLER_OPERAND_BRS:
-	    if (!immediate)
-	      continue;
-	    if (dst != 17) /* not the PC */
-	      continue;
-	    if (memaddr < 2048)
-	      continue; /* could be in COG memory */
-	    FPRINTF (F, OP.name);
-	    FPRINTF (F, AFTER_INSTRUCTION);
-	    if ((unsigned)OP.opcode == 0x80000000U)
-	      info->target = memaddr + src;
-	    else
-	      info->target = memaddr - src;
-	    (*info->print_address_func) (info->target, info);
-	    goto done;
-	  case PROPELLER_OPERAND_XMMIO:
-	  case PROPELLER_OPERAND_LDI:
-	  case PROPELLER_OPERAND_BRW:
-	    /* disassembly not implemented yet */
-	    continue;
-	  default:
-	    /* TODO: is this a proper way of signalling an error? */
-	    FPRINTF (F, "<internal error: unrecognized instruction type>");
-	    return -1;
-	  }
+        switch (OP.format)
+          {
+          case PROPELLER_OPERAND_NO_OPS:
+            FPRINTF (F, OP.name);
+            goto done;
+          case PROPELLER_OPERAND_SOURCE_ONLY:
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+            if (immediate)
+              {
+                FPRINTF (F, "#");
+                FPRINTF (F, "%d", src);
+              }
+            else
+              {
+                info->target = src;
+                (*info->print_address_func) (info->target, info);
+              }
+            goto done;
+          case PROPELLER_OPERAND_JMP:
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+            {
+              if (immediate) FPRINTF (F, "#");
+              info->target = src<<2;
+              (*info->print_address_func) (info->target, info);
+            }
+            goto done;
+          case PROPELLER_OPERAND_DEST_ONLY:
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+            {
+              info->target = dst<<2;
+              (*info->print_address_func) (info->target, info);
+            }
+            goto done;
+          case PROPELLER_OPERAND_TWO_OPS:
+          case PROPELLER_OPERAND_JMPRET:
+          case PROPELLER_OPERAND_MOVA:
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+              {
+                info->target = dst<<2;
+                (*info->print_address_func) (info->target, info);
+              }
+            FPRINTF (F, OPERAND_SEPARATOR);
+            if (immediate && (OP.format != PROPELLER_OPERAND_JMPRET && OP.format != PROPELLER_OPERAND_MOVA))
+              {
+              FPRINTF (F, "#");
+              FPRINTF (F, "%d", src);
+              }
+            else
+              {
+                if (immediate) FPRINTF (F, "#");
+                info->target = src<<2;
+                (*info->print_address_func) (info->target, info);
+              }
+            goto done;
+          case PROPELLER_OPERAND_BRS:
+            if (!immediate)
+              continue;
+            if (dst != 17) /* not the PC */
+              continue;
+            if (memaddr < 2048)
+              continue; /* could be in COG memory */
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+            if ((unsigned)OP.opcode == 0x80000000U)
+              info->target = memaddr + src;
+            else
+              info->target = memaddr - src;
+            (*info->print_address_func) (info->target, info);
+            goto done;
+          case PROPELLER_OPERAND_XMMIO:
+          case PROPELLER_OPERAND_LDI:
+          case PROPELLER_OPERAND_BRW:
+            /* disassembly not implemented yet */
+            continue;
+          default:
+            /* TODO: is this a proper way of signalling an error? */
+            FPRINTF (F, "<internal error: unrecognized instruction type>");
+            return -1;
+          }
     }
 done:
   if (i < propeller_num_opcodes)
@@ -263,9 +263,9 @@ is_compressed_code (bfd_vma pc, struct disassemble_info *info)
       if (n < 0) continue;
       addr = bfd_asymbol_value (info->symtab[n]);
       if (info->section != NULL && info->section != info->symtab[n]->section)
-	continue; /* ignore symbol */
+        continue; /* ignore symbol */
       if (addr > pc)
-	break;
+        break;
       es = *(elf_symbol_type **)(info->symtab + n);
       type = es->internal_elf_sym.st_other;
     }
@@ -328,44 +328,44 @@ const char *macroname[] = {
 
 static void
 print_opstring(struct disassemble_info *info,
-	       const char *str, int dest, int src, int imm)
+               const char *str, int dest, int src, int imm)
 {
   int c;
   while ( (c = *str++) != 0 )
     {
       if (c == '%') {
-	c = *str++;
-	if (!c) return;
-	switch (c) {
-	case 'd':
-	  FPRINTF ( F, "%s", regname(dest) );
-	  break;
-	case 's':
-	  if (imm) {
-	    FPRINTF ( F, "#0x%x", src );
-	  } else {
-	    FPRINTF ( F, "%s", regname(src) );
-	  }
-	  break;
-	case 'm':
-	  FPRINTF (F, "%s", macroname[dest & 0xf]);
-	  break;
-	case 'a':
-	  if (imm) FPRINTF (F, "#");
-	  info->target = src;
-	  (*info->print_address_func) (info->target, info);
-	  break;
-	case 'A':
-	  if (imm) FPRINTF (F, "#");
-	  info->target = src << 2;
-	  (*info->print_address_func) (info->target, info);
-	  break;
-	default:
-	  FPRINTF ( F, "%c", c );
-	  break;
-	}
+        c = *str++;
+        if (!c) return;
+        switch (c) {
+        case 'd':
+          FPRINTF ( F, "%s", regname(dest) );
+          break;
+        case 's':
+          if (imm) {
+            FPRINTF ( F, "#0x%x", src );
+          } else {
+            FPRINTF ( F, "%s", regname(src) );
+          }
+          break;
+        case 'm':
+          FPRINTF (F, "%s", macroname[dest & 0xf]);
+          break;
+        case 'a':
+          if (imm) FPRINTF (F, "#");
+          info->target = src;
+          (*info->print_address_func) (info->target, info);
+          break;
+        case 'A':
+          if (imm) FPRINTF (F, "#");
+          info->target = src << 2;
+          (*info->print_address_func) (info->target, info);
+          break;
+        default:
+          FPRINTF ( F, "%c", c );
+          break;
+        }
       } else {
-	FPRINTF ( F, "%c", c );
+        FPRINTF ( F, "%c", c );
       }
     }
 }
@@ -393,13 +393,13 @@ print_macro (bfd_vma memaddr, struct disassemble_info *info, int which)
     case MACRO_POPM:
     case MACRO_POPRET:
       if (read_byte (memaddr, &src, info) != 0)
-	return -1;
+        return -1;
       r = 1;
       print_opstring (info, "\t\t%m\t%s", which, src, 1);
       break;
     case MACRO_NATIVE:
       if (read_word (memaddr, &src, info) != 0)
-	return -1;
+        return -1;
       print_insn_propeller32 (memaddr, info, src);
       r = 4;
       break;
@@ -437,10 +437,10 @@ print_macro (bfd_vma memaddr, struct disassemble_info *info, int which)
       if (read_byte (memaddr, &src, info) != 0) return -1;
       r = 1;
       if (src > 0x80) {
-	src = 0x100 - src;
-	print_opstring (info, "\t\tsub\tsp, %s", 0, src, 1);
+        src = 0x100 - src;
+        print_opstring (info, "\t\tsub\tsp, %s", 0, src, 1);
       } else {
-	print_opstring (info, "\t\tadd\tsp, %s", 0, src, 1);
+        print_opstring (info, "\t\tadd\tsp, %s", 0, src, 1);
       }
       break;
     default:

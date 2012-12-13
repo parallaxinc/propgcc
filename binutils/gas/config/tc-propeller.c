@@ -600,10 +600,14 @@ static char *
 parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
   int integer_reloc = 0;
   int pcrel_reloc = 0;
-
+  
   str = skip_whitespace (str);
   if (*str == '#')
     {
+      if (format == PROPELLER_OPERAND_PTRS_OPS) {
+          operand->error = _("Immediate operand not allowed here");
+          return str;
+      }
       str++;
       insn->code |= 1 << 22;
       if (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA)
@@ -674,6 +678,145 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
         }
       break;
     }
+  return str;
+}
+
+static int
+check_ptr(char *str){
+  int is_ptr_op = 0;
+  
+  str = skip_whitespace(str);
+  
+  if (strncmp(str, "++", 2) == 0) {
+    is_ptr_op = 1;
+  }
+  else if (strncmp(str, "--", 2) == 0) {
+    is_ptr_op = 1;
+  }
+  
+  else {
+  
+    str = skip_whitespace(str);
+  
+    // BUG!! this code has problems with symbols that begin with "ptra" or "ptrb"
+    if (strncasecmp(str, "ptra", 4) == 0) {
+      is_ptr_op = 1;
+    }
+    else if (strncasecmp(str, "ptrb", 4) == 0) {
+      is_ptr_op = 1;
+    }
+  }
+  
+  return is_ptr_op;
+}
+
+static char *
+parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
+  int prefix_op = 0;
+  int suffix_op = 0;
+  int field = 0;
+  int ndx = 0;
+  
+  str = skip_whitespace(str);
+  
+  if (strncmp(str, "++", 2) == 0) {
+    field |= 0x080;
+    prefix_op = 1;
+    ndx = 1;
+    str += 2;
+  }
+  else if (strncmp(str, "--", 2) == 0) {
+    field |= 0x080;
+    prefix_op = 1;
+    ndx = -1;
+    str += 2;
+  }
+  
+  str = skip_whitespace(str);
+  
+  if (strncasecmp(str, "ptra", 4) == 0) {
+    //field |= 0x000;
+    str += 4;
+  }
+  else if (strncasecmp(str, "ptrb", 4) == 0) {
+    field |= 0x100;
+    str += 4;
+  }
+  else {
+    operand->error = _("Can only use ++ or -- with PTRA or PTRB");
+    return str;
+  }
+    
+  str = skip_whitespace(str);
+  
+  if (strncmp(str, "++", 2) == 0) {
+    field |= 0x0c0;
+    suffix_op = 1;
+    ndx = 1;
+    str += 2;
+  }
+  else if (strncmp(str, "--", 2) == 0) {
+    field |= 0x0c0;
+    suffix_op = 1;
+    ndx = -1;
+    str += 2;
+  }
+  
+  if (prefix_op && suffix_op) {
+    operand->error = _("Can't use both prefix and postfix update");
+    return str;
+  }
+  
+  str = skip_whitespace(str);
+  
+  if (*str == '[') {
+  
+    str = skip_whitespace(++str);
+    
+    str = parse_expression(str, operand);
+    if (operand->error)
+      return str;
+    
+    switch (operand->reloc.exp.X_op)
+      {
+      case O_constant:
+        ndx = operand->reloc.exp.X_add_number;
+        break;
+      default:
+        operand->error = _("Index must be a constant expression");
+        return str;
+      }
+    
+    str = skip_whitespace(str);
+    
+    if (*str == ']') {
+      ++str;
+    }
+    else {
+      operand->error = _("Missing right bracket");
+      return str;
+    }
+  }
+  
+  if (ndx < -32 || ndx > 31) {
+    operand->error = _("6-bit value out of range");
+    return str;
+  }
+  
+  field |= ndx & 0x3f;
+  
+  switch (format) {
+  case PROPELLER_OPERAND_PTRS_OPS:
+    insn->code |= 0x00400000 | field;
+    break;
+  case PROPELLER_OPERAND_PTRD_OPS:
+    insn->code |= 0x00c00000 | (field << 9);
+    break;
+  default:
+    operand->error = _("Internal error");
+    return str;
+  }
+
   return str;
 }
 
@@ -789,6 +932,17 @@ parse_dest(char *str, struct propeller_code *operand, struct propeller_code *ins
       break;
     }
   return str;
+}
+
+static char *
+parse_dest_imm(char *str, struct propeller_code *operand, struct propeller_code *insn){
+  str = skip_whitespace (str);
+  if (*str == '#')
+    {
+      str++;
+      insn->code |= 1 << 23;
+    }
+  return parse_dest(str, operand, insn);
 }
 
 /*
@@ -937,6 +1091,10 @@ md_assemble (char *instruction_string)
       str = parse_dest(str, &op1, &insn);
       break;
 
+    case PROPELLER_OPERAND_DEST_IMM:
+      str = parse_dest_imm(str, &op1, &insn);
+      break;
+    
     case PROPELLER_OPERAND_TWO_OPS:
     case PROPELLER_OPERAND_JMPRET:
     case PROPELLER_OPERAND_MOVA:
@@ -948,6 +1106,25 @@ md_assemble (char *instruction_string)
           break;
         }
       str = parse_src(str, &op2, &insn, op->format);
+      break;
+
+    case PROPELLER_OPERAND_PTRS_OPS:
+    case PROPELLER_OPERAND_PTRD_OPS:
+      {
+          str = parse_dest(str, &op1, &insn);
+          str = parse_separator (str, &error);
+          if (error)
+            {
+              op2.error = _("Missing ','");
+              break;
+            }
+          if (check_ptr(str)) {
+            str = parse_ptr(str, &op2, &insn, op->format);
+          }
+          else {
+            str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+          }
+      }
       break;
 
     case PROPELLER_OPERAND_LDI:
@@ -1530,12 +1707,6 @@ md_assemble (char *instruction_string)
           default:
             op1.error = _("Improper call target");
           }
-      }
-      break;
-
-    case PROPELLER_OPERAND_PTR_OPS:
-      {
-      // bug: need to add ptr parsing
       }
       break;
 
