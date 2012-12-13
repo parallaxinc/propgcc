@@ -1533,6 +1533,12 @@ md_assemble (char *instruction_string)
       }
       break;
 
+    case PROPELLER_OPERAND_PTR_OPS:
+      {
+      // bug: need to add ptr parsing
+      }
+      break;
+
     default:
       BAD_CASE (op->format);
     }
