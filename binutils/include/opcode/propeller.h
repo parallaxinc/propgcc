@@ -46,7 +46,9 @@
 #define PROPELLER_OPERAND_MACRO_0     17
 #define PROPELLER_OPERAND_LEASP       18
 #define PROPELLER_OPERAND_XMOV        19
-#define PROPELLER_OPERAND_PTR_OPS     20
+#define PROPELLER_OPERAND_PTRS_OPS    20
+#define PROPELLER_OPERAND_PTRD_OPS    21
+#define PROPELLER_OPERAND_DEST_IMM    22
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
