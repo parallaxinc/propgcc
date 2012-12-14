@@ -949,6 +949,10 @@ static char *
 parse_repd(char *str, struct propeller_code *operand, struct propeller_code *insn){
   int error;
   
+  // condition bits are used for other purposes in this instruction
+  // BUG should probably give an error if a condition is used
+  insn->code &= ~0x003c0000;
+  
   str = skip_whitespace (str);
   if (*str++ != '#')
     {
