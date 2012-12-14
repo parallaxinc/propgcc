@@ -945,6 +945,77 @@ parse_dest_imm(char *str, struct propeller_code *operand, struct propeller_code 
   return parse_dest(str, operand, insn);
 }
 
+static char *
+parse_repd(char *str, struct propeller_code *operand, struct propeller_code *insn){
+  int error;
+  
+  str = skip_whitespace (str);
+  if (*str++ != '#')
+    {
+      operand->error = _("immediate operand required");
+      return str;
+    }
+
+  str = skip_whitespace(str);
+    
+  str = parse_expression(str, operand);
+  if (operand->error)
+    return str;
+    
+  switch (operand->reloc.exp.X_op)
+  {
+    case O_constant:
+      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > (1 << 14))
+        {
+          operand->error = _("14-bit value out of range");
+          return str;
+        }
+      insn->code |= (operand->reloc.exp.X_add_number & 0x1fff) << 9;
+      insn->code |= (operand->reloc.exp.X_add_number & 0x2000) << (25 - 13);
+      break;
+    default:
+      operand->error = _("Repeat count must be a constant expression");
+      return str;
+  }
+
+  str = parse_separator (str, &error);
+  if (error)
+    {
+      operand->error = _("Missing ','");
+      return str;
+    }
+  
+  str = skip_whitespace (str);
+  if (*str++ != '#')
+    {
+      operand->error = _("immediate operand required");
+      return str;
+    }
+
+  str = skip_whitespace(str);
+    
+  str = parse_expression(str, operand);
+  if (operand->error)
+    return str;
+    
+  switch (operand->reloc.exp.X_op)
+  {
+    case O_constant:
+      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > (1 << 6))
+        {
+          operand->error = _("6-bit value out of range");
+          return str;
+        }
+      insn->code |= operand->reloc.exp.X_add_number & 0x3f;
+      break;
+    default:
+      operand->error = _("Instruction count must be a constant expression");
+      return str;
+  }
+
+  return str;
+}
+
 /*
   native instructions are 32 bits like:
 
@@ -1710,6 +1781,10 @@ md_assemble (char *instruction_string)
       }
       break;
 
+    case PROPELLER_OPERAND_REPS:
+      str = parse_repd(str, &op1, &insn);
+      break;
+    
     default:
       BAD_CASE (op->format);
     }
