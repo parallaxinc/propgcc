@@ -719,6 +719,7 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
   
   str = skip_whitespace(str);
   
+  // check for prefix operators
   if (strncmp(str, "++", 2) == 0) {
     field |= 0x080;
     prefix_op = 1;
@@ -734,6 +735,7 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
   
   str = skip_whitespace(str);
   
+  // parse the pointer name
   if (strncasecmp(str, "ptra", 4) == 0) {
     //field |= 0x000;
     str += 4;
@@ -749,6 +751,7 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
     
   str = skip_whitespace(str);
   
+  // check for postfix operators
   if (strncmp(str, "++", 2) == 0) {
     field |= 0x0c0;
     suffix_op = 1;
@@ -769,6 +772,7 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
   
   str = skip_whitespace(str);
   
+  // check for an index
   if (*str == '[') {
   
     str = skip_whitespace(++str);
@@ -798,13 +802,14 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
     }
   }
   
+  // handle the index
   if (ndx < -32 || ndx > 31) {
     operand->error = _("6-bit value out of range");
     return str;
   }
-  
   field |= ndx & 0x3f;
   
+  /* build the instruction */
   switch (format) {
   case PROPELLER_OPERAND_PTRS_OPS:
     insn->code |= 0x00400000 | field;
@@ -948,6 +953,51 @@ parse_dest_imm(char *str, struct propeller_code *operand, struct propeller_code 
 static char *
 parse_repd(char *str, struct propeller_code *operand, struct propeller_code *insn){
   int error;
+
+  str = parse_dest_imm(str, operand, insn);
+  
+  str = parse_separator (str, &error);
+  if (error)
+    {
+      operand->error = _("Missing ','");
+      return str;
+    }
+    
+  str = skip_whitespace (str);
+  if (*str++ != '#')
+    {
+      operand->error = _("immediate operand required");
+      return str;
+    }
+
+  str = skip_whitespace(str);
+    
+  str = parse_expression(str, operand);
+  if (operand->error)
+    return str;
+    
+  switch (operand->reloc.exp.X_op)
+  {
+    case O_constant:
+      //--operand->reloc.exp.X_add_number; // 0 means 1, 1 means 2, etc.
+      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 6))
+        {
+          operand->error = _("6-bit value out of range");
+          return str;
+        }
+      insn->code |= operand->reloc.exp.X_add_number & 0x3f;
+      break;
+    default:
+      operand->error = _("Instruction count must be a constant expression");
+      return str;
+  }
+
+  return str;
+}
+
+static char *
+parse_reps(char *str, struct propeller_code *operand, struct propeller_code *insn){
+  int error;
   
   // condition bits are used for other purposes in this instruction
   // BUG should probably give an error if a condition is used
@@ -969,7 +1019,8 @@ parse_repd(char *str, struct propeller_code *operand, struct propeller_code *ins
   switch (operand->reloc.exp.X_op)
   {
     case O_constant:
-      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > (1 << 14))
+      //--operand->reloc.exp.X_add_number; // 0 means 1, 1 means 2, etc.
+      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 14))
         {
           operand->error = _("14-bit value out of range");
           return str;
@@ -1005,7 +1056,8 @@ parse_repd(char *str, struct propeller_code *operand, struct propeller_code *ins
   switch (operand->reloc.exp.X_op)
   {
     case O_constant:
-      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > (1 << 6))
+      //--operand->reloc.exp.X_add_number; // 0 means 1, 1 means 2, etc.
+      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 6))
         {
           operand->error = _("6-bit value out of range");
           return str;
@@ -1785,8 +1837,12 @@ md_assemble (char *instruction_string)
       }
       break;
 
-    case PROPELLER_OPERAND_REPS:
+    case PROPELLER_OPERAND_REPD:
       str = parse_repd(str, &op1, &insn);
+      break;
+    
+    case PROPELLER_OPERAND_REPS:
+      str = parse_reps(str, &op1, &insn);
       break;
     
     default:

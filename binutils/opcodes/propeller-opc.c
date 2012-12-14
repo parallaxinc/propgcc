@@ -358,6 +358,8 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"coginit", 0x0c000000, 0xfc400000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
 /* getcnt    000011 zc11 cccc ddddddddd 000001101 */
   {"getcnt", 0x0cc0000d, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, R, PROP_2, NO_COMPRESSED, 0},
+/* repd  000011 z0n1 cccc nnnnnnnnn 001iiiiii */
+  {"repd", 0x0c400040, 0xfd4001c0, PROPELLER_OPERAND_REPD, NR, PROP_2, NO_COMPRESSED, 0},
 /* reps  000011 n111 nnnn nnnnnnnnn 001iiiiii */
   {"reps", 0x0dc00040, 0xfdc001c0, PROPELLER_OPERAND_REPS, NR, PROP_2, NO_COMPRESSED, 0},
 };
