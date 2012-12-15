@@ -26,7 +26,7 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; :spinboot.o%s} %{mcog:crt0_cog.o%s; :%{g:_crt0_debug.o%s; :_crt0.o%s} _crtbegin.o%s}"
+#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; p2:p2vectors.o%; :spinboot.o%s} %{mcog:crt0_cog.o%s; :%{mp2:crt0_p2.o%s; :%{g:_crt0_debug.o%s; :_crt0.o%s}} _crtbegin.o%s}"
 
 #undef  ENDFILE_SPEC
 #define ENDFILE_SPEC "%{mcog: crtend_cog.o%s; :_crtend.o%s}"
@@ -36,19 +36,20 @@
 %{!mpasm: \
   %{!mcog:-lmm} \
   %{mcmm:-cmm}  \
+  %(mp2:-p2 \
   %{mrelax:-relax}} \
 "
 #undef LIB_SPEC
-#define LIB_SPEC "				\
-%{mcog: -lcog;					\
-  :  --start-group -lc -lgcc --end-group	\
-  }						\
+#define LIB_SPEC "                              \
+%{mcog: -lcog;                                  \
+  :  --start-group -lc -lgcc --end-group        \
+  }                                             \
 "
 
 #undef LINK_SPEC
 #define LINK_SPEC "                                             \
-%{mrelax:-relax}						\
-%{mcog:-mpropeller_cog; mxmmc: -mpropeller_xmmc; mxmm: -mpropeller_xmm; mxmm-single: -mpropeller_xmm_single; mxmm-split: -mpropeller_xmm_split; :-mpropeller}	\
+%{mrelax:-relax}                                                \
+%{mcog:-mpropeller_cog; mxmmc: -mpropeller_xmmc; mxmm: -mpropeller_xmm; mxmm-single: -mpropeller_xmm_single; mxmm-split: -mpropeller_xmm_split; :-mpropeller}   \
 "
 
 #define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)
@@ -63,34 +64,36 @@
 #endif
 
 /* Target CPU builtins.  */
-#define TARGET_CPU_CPP_BUILTINS()			     \
-  do							     \
-    {							     \
+#define TARGET_CPU_CPP_BUILTINS()                            \
+  do                                                         \
+    {                                                        \
       builtin_define ("__propeller__");                      \
       builtin_define ("__PROPELLER__");                      \
       builtin_assert ("cpu=propeller");                      \
       builtin_assert ("machine=propeller");                  \
-      if (TARGET_XMM)					     \
-        {						     \
-	  builtin_define ("__PROPELLER_XMM__");		     \
-	  builtin_define ("__PROPELLER_USE_XMM__");	     \
-	}						     \
-      else if (TARGET_XMM_CODE)				     \
-	{						     \
-	  builtin_define ("__PROPELLER_XMMC__");	     \
-	  builtin_define ("__PROPELLER_USE_XMM__");	     \
-	}						     \
-      else if (TARGET_CMM)				     \
-	builtin_define ("__PROPELLER_CMM__");		     \
-      else if (TARGET_LMM)				     \
-	builtin_define ("__PROPELLER_LMM__");		     \
-      else						     \
-	builtin_define ("__PROPELLER_COG__");		     \
-      if (TARGET_64BIT_DOUBLES)				     \
-	builtin_define ("__PROPELLER_64BIT_DOUBLES__");	     \
-      else						     \
-	builtin_define ("__PROPELLER_32BIT_DOUBLES__");	     \
-    }							     \
+      if (TARGET_XMM)                                        \
+        {                                                    \
+          builtin_define ("__PROPELLER_XMM__");              \
+          builtin_define ("__PROPELLER_USE_XMM__");          \
+        }                                                    \
+      else if (TARGET_XMM_CODE)                              \
+        {                                                    \
+          builtin_define ("__PROPELLER_XMMC__");             \
+          builtin_define ("__PROPELLER_USE_XMM__");          \
+        }                                                    \
+      else if (TARGET_CMM)                                   \
+        builtin_define ("__PROPELLER_CMM__");                \
+      else if (TARGET_LMM)                                   \
+        builtin_define ("__PROPELLER_LMM__");                \
+      else                                                   \
+        builtin_define ("__PROPELLER_COG__");                \
+      if (TARGET_P2)                                         \
+        builtin_define ("__PROPELLER2__");                   \
+      if (TARGET_64BIT_DOUBLES)                              \
+        builtin_define ("__PROPELLER_64BIT_DOUBLES__");      \
+      else                                                   \
+        builtin_define ("__PROPELLER_32BIT_DOUBLES__");      \
+    }                                                        \
   while (0)
 
 /* we always have C99 functions available if floating point is used */
@@ -134,15 +137,15 @@ do {                                                    \
 
 /* Make strings word-aligned so strcpy from constants will be faster.  */
 #define CONSTANT_ALIGNMENT(EXP, ALIGN)  \
-  (TREE_CODE (EXP) == STRING_CST	\
+  (TREE_CODE (EXP) == STRING_CST        \
    && (ALIGN) < BITS_PER_WORD ? BITS_PER_WORD : (ALIGN))
 
 /* Make arrays and structures word-aligned to allow faster copying etc.  */
-#define DATA_ALIGNMENT(TYPE, ALIGN)					\
-  ((((ALIGN) < BITS_PER_WORD)						\
-    && (TREE_CODE (TYPE) == ARRAY_TYPE					\
-	|| TREE_CODE (TYPE) == UNION_TYPE				\
-	|| TREE_CODE (TYPE) == RECORD_TYPE)) ? BITS_PER_WORD : (ALIGN))
+#define DATA_ALIGNMENT(TYPE, ALIGN)                                     \
+  ((((ALIGN) < BITS_PER_WORD)                                           \
+    && (TREE_CODE (TYPE) == ARRAY_TYPE                                  \
+        || TREE_CODE (TYPE) == UNION_TYPE                               \
+        || TREE_CODE (TYPE) == RECORD_TYPE)) ? BITS_PER_WORD : (ALIGN))
 
 /* We need this for the same reason as DATA_ALIGNMENT, namely to cause
    character arrays to be word-aligned so that `strcpy' calls that copy
@@ -175,19 +178,19 @@ do {                                                    \
 /* Trampolines.  */
 /*---------------*/
 
-#define TRAMPOLINE_SIZE		16
+#define TRAMPOLINE_SIZE         16
 
 /*----------------------------------------*/
 /* Layout of source language data types.  */
 /*----------------------------------------*/
-#define INT_TYPE_SIZE		    32
-#define SHORT_TYPE_SIZE		    16
-#define LONG_TYPE_SIZE		    32
-#define LONG_LONG_TYPE_SIZE	    64
+#define INT_TYPE_SIZE               32
+#define SHORT_TYPE_SIZE             16
+#define LONG_TYPE_SIZE              32
+#define LONG_LONG_TYPE_SIZE         64
 
 /* size of C floating point types */
-#define FLOAT_TYPE_SIZE		    32
-#define DOUBLE_TYPE_SIZE	    (TARGET_64BIT_DOUBLES ? 64 : 32)
+#define FLOAT_TYPE_SIZE             32
+#define DOUBLE_TYPE_SIZE            (TARGET_64BIT_DOUBLES ? 64 : 32)
 #define LONG_DOUBLE_TYPE_SIZE       64
 
 #define DEFAULT_SIGNED_CHAR         0
@@ -233,7 +236,7 @@ do {                                                    \
  *  r15 is used to save return addresses (link register)
  *  r14 is used as the frame pointer
  */
-#define REGISTER_NAMES {	\
+#define REGISTER_NAMES {        \
   "r0", "r1", "r2", "r3",   \
   "r4", "r5", "r6", "r7",   \
   "r8", "r9", "r10", "r11",   \
@@ -271,13 +274,13 @@ enum reg_class
 };
 
 #define REG_CLASS_CONTENTS \
-{ { 0x00000000 }, /* Empty */			   \
+{ { 0x00000000 }, /* Empty */                      \
   { 0x00000001 }, /* r0 */                 \
   { 0x00000002 }, /* r1 */                 \
   { 0x0000FFFF }, /* general registers */  \
   { 0x00010000 }, /* sp */        \
   { 0x0001FFFF }, /* base registers */        \
-  { 0x00020000 }, /* pc */	                   \
+  { 0x00020000 }, /* pc */                         \
   { 0x00040000 }, /* cc */                        \
   { 0x0007FFFF }  /* All registers */              \
 }
@@ -356,7 +359,7 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 #define HARD_FRAME_POINTER_IS_FRAME_POINTER 0
 #define HARD_FRAME_POINTER_IS_ARG_POINTER 0
 
-#define ELIMINABLE_REGS							\
+#define ELIMINABLE_REGS                                                 \
 { { ARG_POINTER_REGNUM, STACK_POINTER_REGNUM },              \
   { ARG_POINTER_REGNUM, HARD_FRAME_POINTER_REGNUM },         \
   { FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM },            \
@@ -367,9 +370,9 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
    specifies the initial difference between the specified pair of
    registers.  This macro must be defined if `ELIMINABLE_REGS' is
    defined.  */
-#define INITIAL_ELIMINATION_OFFSET(FROM, TO, OFFSET)			\
-  do {									\
-    (OFFSET) = propeller_initial_elimination_offset ((FROM), (TO));		\
+#define INITIAL_ELIMINATION_OFFSET(FROM, TO, OFFSET)                    \
+  do {                                                                  \
+    (OFFSET) = propeller_initial_elimination_offset ((FROM), (TO));             \
   } while (0)
 
 /* A C expression that is nonzero if REGNO is the number of a hard
@@ -392,12 +395,12 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
    for use as a base register in operand addresses.  */
 #ifdef REG_OK_STRICT
 #define REG_STRICT_P 1
-#define REGNO_OK_FOR_BASE_P(NUM)		 \
-  (HARD_REGNO_OK_FOR_BASE_P(NUM) 		 \
+#define REGNO_OK_FOR_BASE_P(NUM)                 \
+  (HARD_REGNO_OK_FOR_BASE_P(NUM)                 \
    || HARD_REGNO_OK_FOR_BASE_P(reg_renumber[(NUM)]))
 #else
 #define REG_STRICT_P 0
-#define REGNO_OK_FOR_BASE_P(NUM)		 \
+#define REGNO_OK_FOR_BASE_P(NUM)                 \
   ((NUM) >= FIRST_PSEUDO_REGISTER || HARD_REGNO_OK_FOR_BASE_P(NUM))
 #endif
 
@@ -408,8 +411,8 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 /* A C expression for the number of consecutive hard registers,
    starting at register number REGNO, required to hold a value of mode
    MODE.  */
-#define HARD_REGNO_NREGS(REGNO, MODE)			   \
-  ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1)		   \
+#define HARD_REGNO_NREGS(REGNO, MODE)                      \
+  ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1)             \
    / UNITS_PER_WORD)
 
 /* A C expression that is nonzero if it is permissible to store a
@@ -544,9 +547,9 @@ debugging information like that provided by DWARF 2.  */
 #define FUNCTION_VALUE(VALTYPE, FUNC)                                   \
    gen_rtx_REG ((INTEGRAL_TYPE_P (VALTYPE)                              \
                  && TYPE_PRECISION (VALTYPE) < BITS_PER_WORD)           \
-	            ? word_mode                                         \
-	            : TYPE_MODE (VALTYPE),				\
-	            PROP_R0)
+                    ? word_mode                                         \
+                    : TYPE_MODE (VALTYPE),                              \
+                    PROP_R0)
 
 #define LIBCALL_VALUE(MODE) gen_rtx_REG (MODE, PROP_R0)
 
@@ -598,27 +601,27 @@ extern const char *propeller_bss_asm_op;
 
 /* Assembler Commands for Alignment */
 
-#define ASM_OUTPUT_ALIGN(STREAM,POWER)				\
-  do { if (TARGET_PASM)						\
-    {								\
-      if (POWER == 1)						\
-        fprintf (STREAM, "\tword\n");				\
-      else							\
-	fprintf (STREAM, "\tlong\n");				\
-    }								\
-  else								\
+#define ASM_OUTPUT_ALIGN(STREAM,POWER)                          \
+  do { if (TARGET_PASM)                                         \
+    {                                                           \
+      if (POWER == 1)                                           \
+        fprintf (STREAM, "\tword\n");                           \
+      else                                                      \
+        fprintf (STREAM, "\tlong\n");                           \
+    }                                                           \
+  else                                                          \
     fprintf (STREAM, "\t.balign\t%u\n", (1U<<POWER)); } while (0)
 
 /* This says how to output an assembler line
    to define a global common symbol.  */
 
-#define ASM_OUTPUT_COMMON(FILE, NAME, SIZE, ROUNDED)	\
+#define ASM_OUTPUT_COMMON(FILE, NAME, SIZE, ROUNDED)    \
   propeller_asm_output_aligned_common (STREAM, NULL_RTX, NAME, ROUNDED, 0, 1)
 
 /* This says how to output an assembler line
    to define a local common symbol....  */
 #undef  ASM_OUTPUT_LOCAL
-#define ASM_OUTPUT_LOCAL(FILE, NAME, SIZE, ROUNDED)	\
+#define ASM_OUTPUT_LOCAL(FILE, NAME, SIZE, ROUNDED)     \
   propeller_asm_output_aligned_common (STREAM, NULL_RTX, NAME, SIZE, 0, 1)
 
 
@@ -634,11 +637,11 @@ extern const char *propeller_bss_asm_op;
    that says to advance the location counter by SIZE bytes.  */
 #undef  ASM_OUTPUT_SKIP
 #define ASM_OUTPUT_SKIP(FILE,SIZE)  \
-  do {						\
-  if (TARGET_PASM)				\
-    fprintf (FILE, "\tbyte 0[%d]\n", (int)(SIZE));	\
-  else							\
-    fprintf (FILE, "\t.zero\t%d\n", (int)(SIZE));	\
+  do {                                          \
+  if (TARGET_PASM)                              \
+    fprintf (FILE, "\tbyte 0[%d]\n", (int)(SIZE));      \
+  else                                                  \
+    fprintf (FILE, "\t.zero\t%d\n", (int)(SIZE));       \
   } while(0)
 
 /* Output and Generation of Labels */
@@ -647,15 +650,15 @@ extern const char *propeller_bss_asm_op;
 #define ASM_OUTPUT_INTERNAL_LABEL(FILE,NAME) propeller_output_label(FILE,NAME)
 
 #undef  ASM_GENERATE_INTERNAL_LABEL
-#define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)		\
-  do								\
-    {								\
-      if (TARGET_PASM)						\
-	sprintf (LABEL, "*L_%s%u",				\
-		 PREFIX, (unsigned) (NUM));			\
-      else							\
-	sprintf (LABEL, "*.%s%u", PREFIX, (unsigned) (NUM));	\
-    }								\
+#define ASM_GENERATE_INTERNAL_LABEL(LABEL, PREFIX, NUM)         \
+  do                                                            \
+    {                                                           \
+      if (TARGET_PASM)                                          \
+        sprintf (LABEL, "*L_%s%u",                              \
+                 PREFIX, (unsigned) (NUM));                     \
+      else                                                      \
+        sprintf (LABEL, "*.%s%u", PREFIX, (unsigned) (NUM));    \
+    }                                                           \
   while (0)
 
 /* Store in OUTPUT a string (made with alloca) containing an
@@ -665,14 +668,14 @@ extern const char *propeller_bss_asm_op;
    instead. */
 
 #define ASM_FORMAT_PRIVATE_NAME(OUTPUT, NAME, LABELNO)  \
-  do {									\
-    (OUTPUT) = (char *) alloca (strlen ((NAME)) + 15);			\
-    sprintf ((OUTPUT), "%s.%lu", (NAME), (unsigned long)(LABELNO));	\
-    if (TARGET_PASM) {							\
-      char *periodx;							\
-      for (periodx = (OUTPUT); *periodx; periodx++)			\
-	if (*periodx == '.') *periodx = '_';				\
-    }									\
+  do {                                                                  \
+    (OUTPUT) = (char *) alloca (strlen ((NAME)) + 15);                  \
+    sprintf ((OUTPUT), "%s.%lu", (NAME), (unsigned long)(LABELNO));     \
+    if (TARGET_PASM) {                                                  \
+      char *periodx;                                                    \
+      for (periodx = (OUTPUT); *periodx; periodx++)                     \
+        if (*periodx == '.') *periodx = '_';                            \
+    }                                                                   \
   } while (0)
 
 #define ASM_WEAKEN_LABEL(FILE,NAME) propeller_weaken_label(FILE,NAME)
