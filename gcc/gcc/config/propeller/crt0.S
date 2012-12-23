@@ -10,7 +10,11 @@
 # if defined(DEBUG_KERNEL)
 #  include "crt0_lmm_debug.s"
 # else
-#  include "crt0_lmm.s"
+#  if defined(__PROPELLER2__)
+#    include "crt0_lmm2.s"
+#  else
+#    include "crt0_lmm.s"
+#  endif
 # endif
 #elif defined(__PROPELLER_COG__)
 	/* NOTE: we actually build the real crt0_cog.o from the library,

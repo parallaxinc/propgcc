@@ -26,7 +26,7 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; p2:p2vectors.o%; :spinboot.o%s} %{mcog:crt0_cog.o%s; :%{mp2:crt0_p2.o%s; :%{g:_crt0_debug.o%s; :_crt0.o%s}} _crtbegin.o%s}"
+#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; mp2:p2vectors.o%s; :spinboot.o%s} %{mcog:crt0_cog.o%s; :%{g:_crt0_debug.o%s; :_crt0.o%s} _crtbegin.o%s}"
 
 #undef  ENDFILE_SPEC
 #define ENDFILE_SPEC "%{mcog: crtend_cog.o%s; :_crtend.o%s}"
@@ -36,7 +36,7 @@
 %{!mpasm: \
   %{!mcog:-lmm} \
   %{mcmm:-cmm}  \
-  %(mp2:-p2 \
+  %{mp2:-p2} \
   %{mrelax:-relax}} \
 "
 #undef LIB_SPEC
