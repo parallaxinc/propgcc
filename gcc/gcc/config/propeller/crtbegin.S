@@ -48,6 +48,8 @@ entry
 start
 	lcall	#___init
 
+#if !defined(__PROPELLER2__)
+
 	mvi	r1,#__argv  ' set argv
 	'' calculate argc by counting non-zero elements of argv
 	mov	r3,r1
@@ -59,6 +61,8 @@ argc_cnt
   IF_NZ add	r0,#1
   IF_NZ sub	pc,#(.+4)-argc_cnt
 	
+#endif
+
 	mvi	r2,#__environ   ' set environment pointer
 
 	mov	r14,#0		' set frame pointer to 0

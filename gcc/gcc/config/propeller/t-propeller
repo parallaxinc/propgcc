@@ -49,12 +49,12 @@ TARGET_LIBGCC2_CFLAGS = -Os -fomit-frame-pointer
 # because -mcog is so restricted that much of libgcc would not fit in it
 # anyway!
 
-MULTILIB_OPTIONS = mxmm/mxmmc/mcmm/mp2 m32bit-doubles
+MULTILIB_OPTIONS = mxmm/mxmmc/mcmm mp2 m32bit-doubles
 MULTILIB_MATCHES = mxmm=mxmm-single mxmm=mxmm-split
 MULTILIB_DIRNAMES = xmm xmmc cmm p2 short-doubles
 
 # dunno if this is necessary
-MULTILIB_EXCEPTIONS = 
+MULTILIB_EXCEPTIONS = *mxmm*/*mp2* *mxmmc*/*mp2* *mcmm*/*mp2*
 #
 #don't think we need these
 #EXTRA_MULTILIB_PARTS = crtbegin.o crtend.o
@@ -71,7 +71,7 @@ PROPDIR = $(srcdir)/config/propeller
 $(T)spinboot.o: $(PROPDIR)/spinboot.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
-$(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s $(PROPDIR)/crt0_cmm.s $(PROPDIR)/crt0_p2.s
+$(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s $(PROPDIR)/crt0_cmm.s $(PROPDIR)/crt0_lmm2.s
 	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
 
 $(T)_crt0_debug.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_xmm.s

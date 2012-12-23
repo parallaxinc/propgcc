@@ -219,6 +219,10 @@ propeller_option_override (void)
     if (TARGET_CMM)
       target_flags |= MASK_LMM;
 
+    /* -mp2 implies -mlmm */
+    if (TARGET_P2)
+      target_flags |= MASK_LMM;
+
     /* -mxmm-single and -mxmm-split imply -mxmm */
     if (TARGET_XMM_SINGLE || TARGET_XMM_SPLIT)
       target_flags |= MASK_XMM;

@@ -15,7 +15,7 @@
 int
 _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_state_t *tls)
 {
-#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__)
+#if !defined(__PROPELLER2__) && (defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__))
   extern unsigned int _load_start_kernel[];
   unsigned int *sp = stacktop;
 

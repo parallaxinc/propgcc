@@ -72,8 +72,9 @@ LOBJS = serialparam.o \
         getldec.o \
         getludec.o \
         getlfnum.o \
-        c++-alloc.o \
-        tinystream.o
+
+#        c++-alloc.o \
+#        tinystream.o
 
 TINYDIR = $(MODELDIR)/tiny
 TINY_LOBJS = $(addprefix $(TINYDIR)/, $(LOBJS))

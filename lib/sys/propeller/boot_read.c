@@ -1,3 +1,4 @@
+#if !defined(__PROPELLER2__)
 #include <propeller.h>
 #include "cogload.h"
 #include "i2c.h"
@@ -24,3 +25,4 @@ int readFromBootEeprom(uint32_t offset, void *buf, size_t size)
         
     return i2cRead(_boot_i2c, EEPROM_ADDR, buf, size, TRUE);
 }
+#endif

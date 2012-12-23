@@ -1,3 +1,5 @@
+#if !defined(__PROPELLER2__)
+
 #include <propeller.h>
 #include "cogload.h"
 #include "i2c.h"
@@ -102,3 +104,4 @@ int coginitFromBootEeprom(int id, void *code, size_t codeSize, void *param)
     return coginit(id, cogbuf, param);
 }
 
+#endif

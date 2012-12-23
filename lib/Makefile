@@ -24,6 +24,8 @@ all:	$(OBJDIR) cog .FORCE
 	make -f Makefile.incl MODEL=lmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=cmm OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=cmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=p2 OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR)
@@ -41,6 +43,8 @@ tiny:	$(OBJDIR)
 	make -f Makefile.incl MODEL=lmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=cmm OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=cmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=p2 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR) tiny
@@ -51,6 +55,8 @@ install-tiny:
 	cp $(OBJDIR)/lmm/short-doubles/libtiny.a $(DEST)/lib/short-doubles/
 	cp $(OBJDIR)/cmm/libtiny.a $(DEST)/lib/cmm/
 	cp $(OBJDIR)/cmm/short-doubles/libtiny.a $(DEST)/lib/cmm/short-doubles/
+	cp $(OBJDIR)/p2/libtiny.a $(DEST)/lib/p2/
+	cp $(OBJDIR)/p2/short-doubles/libtiny.a $(DEST)/lib/p2/short-doubles/
 	cp $(OBJDIR)/xmmc/libtiny.a $(DEST)/lib/xmmc
 	cp $(OBJDIR)/xmmc/short-doubles/libtiny.a $(DEST)/lib/xmmc/short-doubles/
 	cp $(OBJDIR)/xmm/libtiny.a $(DEST)/lib/xmm/
@@ -67,6 +73,8 @@ install: all install-dirs install-includes install-specs
 	cp $(addprefix $(OBJDIR)/lmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/short-doubles/
 	cp $(addprefix $(OBJDIR)/cmm/, $(SRCLIBS)) $(DEST)/lib/cmm/
 	cp $(addprefix $(OBJDIR)/cmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/cmm/short-doubles/
+	cp $(addprefix $(OBJDIR)/p2/, $(SRCLIBS)) $(DEST)/lib/p2/
+	cp $(addprefix $(OBJDIR)/p2/short-doubles/, $(SRCLIBS)) $(DEST)/lib/p2/short-doubles/
 	cp $(addprefix $(OBJDIR)/xmmc/, $(SRCLIBS)) $(DEST)/lib/xmmc/
 	cp $(addprefix $(OBJDIR)/xmmc/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmmc/short-doubles/
 	cp $(addprefix $(OBJDIR)/xmm/, $(SRCLIBS)) $(DEST)/lib/xmm/
@@ -79,6 +87,7 @@ install: all install-dirs install-includes install-specs
 install-dirs:
 	mkdir -p $(DEST)/lib/short-doubles/
 	mkdir -p $(DEST)/lib/cmm/short-doubles/
+	mkdir -p $(DEST)/lib/p2/short-doubles/
 	mkdir -p $(DEST)/lib/xmm/short-doubles/
 	mkdir -p $(DEST)/lib/xmmc/short-doubles/
 
@@ -89,6 +98,8 @@ install-specs:
 	cp $(LIBSPECS) $(DEST)/lib/short-doubles/
 	cp $(LIBSPECS) $(DEST)/lib/cmm/
 	cp $(LIBSPECS) $(DEST)/lib/cmm/short-doubles/
+	cp $(LIBSPECS) $(DEST)/lib/p2/
+	cp $(LIBSPECS) $(DEST)/lib/p2/short-doubles/
 	cp $(LIBSPECS) $(DEST)/lib/xmm/
 	cp $(LIBSPECS) $(DEST)/lib/xmm/short-doubles/
 	cp $(LIBSPECS) $(DEST)/lib/xmmc/

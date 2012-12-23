@@ -1,3 +1,4 @@
+#if !defined(__PROPELLER2__)
 /*
  * very simple COG program to keep the 64 bit _default_ticks variable
  * up to date
@@ -57,3 +58,4 @@ _rtc_start_timekeeping_cog(void)
     cognew(_load_start_cogrtcupdate, 0);
 #endif
 }
+#endif
