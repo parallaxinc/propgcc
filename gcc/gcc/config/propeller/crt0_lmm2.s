@@ -364,6 +364,40 @@ __MULSI_loop
  IF_NZ  jmp     #__MULSI_loop
 __MULSI_ret     ret
 
+        ''
+        '' code for atomic compare and swap
+        ''
+        .global __C_LOCK_PTR
+__C_LOCK_PTR
+        long    __C_LOCK
+
+        ''
+        '' compare and swap a variable
+        '' r0 == new value to set if (*r2) == r1
+        '' r1 == value to compare with
+        '' r2 == pointer to memory
+        '' output: r0 == original value of (*r2)
+        ''         Z flag is set if (*r2) == r1, clear otherwise
+        ''
+        .global __CMPSWAPSI
+        .global __CMPSWAPSI_ret
+__CMPSWAPSI
+        '' get the C_LOCK
+        rdbyte  __TMP1,__C_LOCK_PTR
+        mov     __TMP0,r0       '' save value to set
+.swaplp
+        lockset __TMP1 wc
+   IF_C jmp     #.swaplp
+
+        rdlong  r0,r2           '' fetch original value
+        cmp     r0,r1 wz        '' compare with desired original value
+   IF_Z wrlong  __TMP0,r2       '' if match, save new value
+        
+        '' now release the C lock
+        lockclr __TMP1
+__CMPSWAPSI_ret
+        ret
+	
 '*******************************************************************************
 ' Get one character from the input port.
 ' Input none
