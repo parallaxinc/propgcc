@@ -65,6 +65,8 @@ void VM_putchar(int ch)
     putchar(ch);
 }
 
+#ifdef LOAD_SAVE
+
 int VM_opendir(const char *path, VMDIR *dir)
 {
     if (!(dir->dirp = opendir(path)))
@@ -92,6 +94,8 @@ void VM_closedir(VMDIR *dir)
 {
     closedir(dir->dirp);
 }
+
+#endif
 
 void LOG_printf(const char *fmt, ...)
 {
