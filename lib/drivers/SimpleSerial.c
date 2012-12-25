@@ -26,10 +26,23 @@ extern unsigned int _baud;
  * drvarg[3] = bitcycles
  */
 
+#ifdef __PROPELLER2__
+__attribute__((native)) void _TX(int ch);
+__attribute__((native)) int _RX(void);
+#endif
+
 /*
  * We need _serial_putbyte to always be fcached so that the timing is
  * OK.
  */
+#ifdef __PROPELLER2__
+static int
+_serial_putbyte(int c, FILE *fp)
+{
+  _TX(c);
+  return c;
+}
+#else
 __attribute__((fcache))
 static int
 _serial_putbyte(int c, FILE *fp)
@@ -62,9 +75,17 @@ _serial_putbyte(int c, FILE *fp)
   //_DIRA &= ~txmask;
   return c;
 }
+#endif
 
 /* and here is getbyte */
 /* we need to put it in fcache to get it to work in XMM and CMM modes */
+#ifdef __PROPELLER2__
+static int
+_serial_getbyte(FILE *fp)
+{
+  return _RX();
+}
+#else
 __attribute__((fcache))
 static int
 _serial_getbyte(FILE *fp)
@@ -97,6 +118,7 @@ _serial_getbyte(FILE *fp)
   __builtin_propeller_waitpeq(rxmask, rxmask);
   return value;
 }
+#endif
 
 
 /*
@@ -150,8 +172,10 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
 _DESTRUCTOR
 static void SimpleSerialExit(void)
 {
+#ifndef __PROPELLER2__
   _OUTA |= (1<<_txpin);
   _DIRA |= (1<<_txpin);
+#endif
 }
 
 /*

@@ -383,6 +383,7 @@ ALL_EMULATION_SOURCES = \
 	eppcpe.c \
 	eppclynx.c \
 	epropeller.c \
+	epropeller2.c \
 	epropeller_cog.c \
 	epropeller_xmm.c \
 	epropeller_xmm_single.c \
@@ -1717,6 +1718,9 @@ eppclynx.c: $(srcdir)/emulparams/ppclynx.sh \
 epropeller.c: $(srcdir)/emulparams/propeller.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller "$(tdir_propeller)"
+epropeller2.c: $(srcdir)/emulparams/propeller2.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller2 "$(tdir_propeller)"
 epropeller_cog.c: $(srcdir)/emulparams/propeller_cog.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller_cog "$(tdir_propeller)"

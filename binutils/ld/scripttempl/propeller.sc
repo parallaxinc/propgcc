@@ -4,7 +4,8 @@ OUTPUT_ARCH(${ARCH})
 
 MEMORY
 {
-  hub     : ORIGIN = 0, LENGTH = 32K
+  ${P2-"hub     : ORIGIN = 0, LENGTH = 32K"}
+  ${P2+"hub     : ORIGIN = 0, LENGTH = 128K"}
   cog	  : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
   /* coguser is just an alias for cog, but for overlays */
   coguser : ORIGIN = 0, LENGTH = 1984 /* 496*4 */
@@ -188,28 +189,40 @@ SECTIONS
   .debug_loc      0 : { *(.debug_loc .zdebug_loc) }
   .debug_macinfo  0 : { *(.debug_macinfo .zdebug_macinfo) }
 
-  /* provide some case-sensitive aliases */
-  PROVIDE(par = PAR) ;
-  PROVIDE(cnt = CNT) ;
-  PROVIDE(ina = INA) ;
-  PROVIDE(inb = INB) ;
-  PROVIDE(outa = OUTA) ;
-  PROVIDE(outb = OUTB) ;
-  PROVIDE(dira = DIRA) ;
-  PROVIDE(dirb = DIRB) ;
-  PROVIDE(ctra = CTRA) ;
-  PROVIDE(ctrb = CTRB) ;
-  PROVIDE(frqa = FRQA) ;
-  PROVIDE(frqb = FRQB) ;
-  PROVIDE(phsa = PHSA) ;
-  PROVIDE(phsb = PHSB) ;
-  PROVIDE(vcfg = VCFG) ;
-  PROVIDE(vscl = VSCL) ;
+  /* provide some case-sensitive aliases - propeller 1 */
+  ${P2-"PROVIDE(par = PAR) ;"}
+  ${P2-"PROVIDE(cnt = CNT) ;"}
+  ${P2-"PROVIDE(ina = INA) ;"}
+  ${P2-"PROVIDE(inb = INB) ;"}
+  ${P2-"PROVIDE(outa = OUTA) ;"}
+  ${P2-"PROVIDE(outb = OUTB) ;"}
+  ${P2-"PROVIDE(dira = DIRA) ;"}
+  ${P2-"PROVIDE(dirb = DIRB) ;"}
+  ${P2-"PROVIDE(ctra = CTRA) ;"}
+  ${P2-"PROVIDE(ctrb = CTRB) ;"}
+  ${P2-"PROVIDE(frqa = FRQA) ;"}
+  ${P2-"PROVIDE(frqb = FRQB) ;"}
+  ${P2-"PROVIDE(phsa = PHSA) ;"}
+  ${P2-"PROVIDE(phsb = PHSB) ;"}
+  ${P2-"PROVIDE(vcfg = VCFG) ;"}
+  ${P2-"PROVIDE(vscl = VSCL) ;"}
+
+  /* provide some case-sensitive aliases - propeller 2 */
+  ${P2+"PROVIDE(pina = PINA) ;"}
+  ${P2+"PROVIDE(pinb = PINB) ;"}
+  ${P2+"PROVIDE(pinc = PINC) ;"}
+  ${P2+"PROVIDE(pind = PIND) ;"}
+  ${P2+"PROVIDE(dira = DIRA) ;"}
+  ${P2+"PROVIDE(dirb = DIRB) ;"}
+  ${P2+"PROVIDE(dirc = DIRC) ;"}
+  ${P2+"PROVIDE(dird = DIRD) ;"}
+
   /* this symbol is used to tell the spin boot code where the spin stack can go */
   ${RELOCATING+ "PROVIDE(__hub_end = ADDR(.hub_heap) + 16) ;"}
   
   /* default initial stack pointer */
-  PROVIDE(__stack_end = 0x8000) ;
+  ${P2-"PROVIDE(__stack_end = 0x8000) ;"}
+  ${P2+"PROVIDE(__stack_end = 0x20000) ;"}
 
 }
 EOF
