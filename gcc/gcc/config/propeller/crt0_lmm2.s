@@ -31,12 +31,12 @@
     
         .global __LMM_entry
 __LMM_entry
-r0      setp    #TX_PIN
-r1      or      REG_DIRC, tx_mask
-r2      jmp     #__LMM_loop
+r0      getptra sp
+r1      setp    #TX_PIN
+r2      or      REG_DIRC, tx_mask
+r3      jmp     #__LMM_loop
 tx_mask
-r3      long    1 << (TX_PIN - 64)  ' must be in dirc
-r4      long    0
+r4      long    1 << (TX_PIN - 64)  ' must be in dirc
 r5      long    0
 r6      long    0 
 r7      long    0 
@@ -49,7 +49,7 @@ r13     long    0
 r14     long    0
 r15     '' alias for link register lr
 lr      long    __exit
-sp      long    0x8000      ' de0-nano only supports 32k of hub memory
+sp      long    0x20000     ' 128k of hub memory
 pc      long    entry       ' default pc
 
         ''
