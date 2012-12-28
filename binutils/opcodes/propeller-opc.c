@@ -55,7 +55,7 @@ const struct propeller_opcode propeller_opcodes[] = {
    is mov, so that's what we give here
 */
 /* xmmio      101000 zcri cccc ddddddddd sssssssss */
-  {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, R, PROP_1_LMM | PROP_2_LMM, NO_COMPRESSED, 0},
+  {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, R, PROP_1_LMM, NO_COMPRESSED, 0},
 
 
 /* fcache is a jmp followed by a 32 bit constant */
@@ -139,14 +139,6 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* rdlongc   000010 z11i cccc ddddddddd sssssssss */
   {"rdlongc", 0x09800000, 0xff800000, PROPELLER_OPERAND_PTRS_OPS, R, PROP_2, NO_COMPRESSED, 0},
 
-/* wrquad   000011 00ii cccc ddddddddd sssssssss */
-  {"wrquad", 0x0c0000b0, 0xff0001ff, PROPELLER_OPERAND_PTRD_OPS, NR, PROP_2, NO_COMPRESSED, 0},
-
-/* rdquad   000011 00ii cccc ddddddddd sssssssss */
-  {"rdquad", 0x0c0000b1, 0xff0001ff, PROPELLER_OPERAND_PTRD_OPS, R, PROP_2, NO_COMPRESSED, 0},
-/* rdquadc   000011 01ii cccc ddddddddd sssssssss */
-  {"rdquadc", 0x0d0000b1, 0xff0001ff, PROPELLER_OPERAND_PTRD_OPS, R, PROP_2, NO_COMPRESSED, 0},
-
 /* clkset   000011 zc01 cccc ddddddddd 000000000 */
   {"clkset", 0x0c400000, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* cogid    000011 zcr1 cccc ddddddddd 000000001 */
@@ -164,28 +156,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* lockclr  000011 zcR1 cccc ddddddddd 000000111 */
   {"lockclr", 0x0c400007, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* hubop    000011 zcRi cccc ddddddddd sssssssss */
-  {"hubop", 0x0c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
-
-/* getp    000011 zcRi cccc ddddddddd sssssssss */
-  {"getp", 0x0c4000d6, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* getnp    000011 zcRi cccc ddddddddd sssssssss */
-  {"getnp", 0x0c4000d7, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* offp    000011 zcRi cccc ddddddddd sssssssss */
-  {"offp", 0x0c4000d8, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* notp    000011 zcRi cccc ddddddddd sssssssss */
-  {"notp", 0x0c4000d9, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* clrp    000011 zcRi cccc ddddddddd sssssssss */
-  {"clrp", 0x0c4000da, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* setp    000011 zcRi cccc ddddddddd sssssssss */
-  {"setp", 0x0c4000db, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* setpc    000011 zcRi cccc ddddddddd sssssssss */
-  {"setpc", 0x0c4000dc, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* setpnc    000011 zcRi cccc ddddddddd sssssssss */
-  {"setpnc", 0x0c4000dd, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* setpz    000011 zcRi cccc ddddddddd sssssssss */
-  {"setpz", 0x0c4000de, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
-/* setpnz    000011 zcRi cccc ddddddddd sssssssss */
-  {"setpnz", 0x0c4000df, 0xfc4001ff, PROPELLER_OPERAND_DEST_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+  {"hubop", 0x0c000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_1, NO_COMPRESSED, 0},
 
 /* ror      001000 zcri cccc ddddddddd sssssssss */
   {"ror", 0x20000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1 | PROP_2, NO_COMPRESSED, 0},
@@ -325,8 +296,14 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"subsx", 0xdc000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* cmpsub   111000 zcri cccc ddddddddd sssssssss */
   {"cmpsub", 0xe0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_1, NO_COMPRESSED, 0},
-/* cmpsub   111000 zcri cccc ddddddddd sssssssss */
+/* subr   111000 zcri cccc ddddddddd sssssssss */
+  {"subr", 0xe0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* cmpsub   111001 zcri cccc ddddddddd sssssssss */
   {"cmpsub", 0xe4000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* incmod   111010 zcri cccc ddddddddd sssssssss */
+  {"incmod", 0xe8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* decmod   111011 zcri cccc ddddddddd sssssssss */
+  {"decmod", 0xec000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
 /* djnz     111001 zcri cccc ddddddddd sssssssss */
   {"djnz", 0xe4000000, 0xfc000000, PROPELLER_OPERAND_JMPRET, R, PROP_1, NO_COMPRESSED, 0},
 /* djnz     111101 10ri cccc ddddddddd sssssssss */
@@ -356,50 +333,410 @@ const struct propeller_opcode propeller_opcodes[] = {
 
 /* coginit  000011 zcr0 cccc ddddddddd sssssssss */
   {"coginit", 0x0c000000, 0xfc400000, PROPELLER_OPERAND_TWO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
-/* repd  000011 z0n1 cccc nnnnnnnnn 001iiiiii */
-  {"repd", 0x0c400040, 0xfd4001c0, PROPELLER_OPERAND_REPD, NR, PROP_2, NO_COMPRESSED, 0},
-/* reps  000011 n111 nnnn nnnnnnnnn 001iiiiii */
-  {"reps", 0x0dc00040, 0xfdc001c0, PROPELLER_OPERAND_REPS, NR, PROP_2, NO_COMPRESSED, 0},
+
+/* cachex  000011 zcr1 cccc 000000000 000001000 */
+  {"cachex", 0x0c400008, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* clracca  000011 zcr1 cccc 000000001 000001000 */
+  {"clracca", 0x0c400208, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* clraccb  000011 zcr1 cccc 000000010 000001000 */
+  {"clraccb", 0x0c400408, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* clraccs  000011 zcr1 cccc 000000011 000001000 */
+  {"clraccs", 0x0c400608, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* fitacca  000011 zcr1 cccc 000000101 000001000 */
+  {"fitacca", 0x0c400a08, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* fitaccb  000011 zcr1 cccc 000000110 000001000 */
+  {"fitaccb", 0x0c400c08, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* fitaccs  000011 zcr1 cccc 000000111 000001000 */
+  {"fitaccs", 0x0c400e08, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* sndser  000011 zc01 cccc ddddddddd 000001001 */
+  {"sndser", 0x0c400009, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* rcvser  000011 zc11 cccc ddddddddd 000001001 */
+  {"rcvser", 0x0cc00009, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* pushzc  000011 zcr1 cccc ddddddddd 000001010 */
+  {"pushzc", 0x0c40000a, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* popzc  000011 zcr1 cccc ddddddddd 000001011 */
+  {"popzc", 0x0c40000b, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* subcnt  000011 zcr1 cccc ddddddddd 000001100 */
+  {"subcnt", 0x0c40000c, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* passcnt  000011 zcr1 cccc ddddddddd 000001101 */
+  {"passcnt", 0x0c40000d, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
 /* getcnt    000011 zc11 cccc ddddddddd 000001101 */
   {"getcnt", 0x0cc0000d, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, R, PROP_2, NO_COMPRESSED, 0},
-/* getacca  000011 n111 nnnn nnnnnnnnn 000001110 */
+/* getacca  000011 zcr1 cccc ddddddddd 000001110 */
   {"getacca", 0x0c40000e, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getaccb  000011 n111 nnnn nnnnnnnnn 000001111 */
+/* getaccb  000011 zcr1 cccc ddddddddd 000001111 */
   {"getaccb", 0x0c40000f, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getaccb  000011 n111 nnnn nnnnnnnnn 000001111 */
+/* getaccb  000011 zcr1 cccc ddddddddd 000001111 */
   {"getaccb", 0x0c40000f, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getlfsr  000011 n111 nnnn nnnnnnnnn 000010000 */
+  
+/* getlfsr  000011 zcr1 cccc ddddddddd 000010000 */
   {"getlfsr", 0x0c400010, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* gettops  000011 n111 nnnn nnnnnnnnn 000010001 */
+/* gettops  000011 zcr1 cccc ddddddddd 000010001 */
   {"gettops", 0x0c400011, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getptra  000011 n111 nnnn nnnnnnnnn 000010010 */
+/* getptra  000011 zcr1 cccc ddddddddd 000010010 */
   {"getptra", 0x0c400012, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getptrb  000011 n111 nnnn nnnnnnnnn 000010011 */
+/* getptrb  000011 zcr1 cccc ddddddddd 000010011 */
   {"getptrb", 0x0c400013, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getpix  000011 n111 nnnn nnnnnnnnn 000010100 */
+  
+/* getpix  000011 zcr1 cccc ddddddddd 000010100 */
   {"getpix", 0x0c400014, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getspd  000011 n111 nnnn nnnnnnnnn 000010101 */
+/* getspd  000011 zcr1 cccc ddddddddd 000010101 */
   {"getspd", 0x0c400015, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getspa  000011 n111 nnnn nnnnnnnnn 000010110 */
+/* getspa  000011 zcr1 cccc ddddddddd 000010110 */
   {"getspa", 0x0c400016, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* getspb  000011 n111 nnnn nnnnnnnnn 000010111 */
+/* getspb  000011 zcr1 cccc ddddddddd 000010111 */
   {"getspb", 0x0c400017, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* popar  000011 n111 nnnn nnnnnnnnn 000011000 */
+  
+/* popar  000011 zcr1 cccc ddddddddd 000011000 */
   {"popar", 0x0c400018, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* popbr  000011 n111 nnnn nnnnnnnnn 000011001 */
+/* popbr  000011 zcr1 cccc ddddddddd 000011001 */
   {"popbr", 0x0c400019, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* popa  000011 n111 nnnn nnnnnnnnn 000011010 */
+/* popa  000011 zcr1 cccc ddddddddd 000011010 */
   {"popa", 0x0c40001a, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* popb  000011 n111 nnnn nnnnnnnnn 000011011 */
+/* popb  000011 zcr1 cccc ddddddddd 000011011 */
   {"popb", 0x0c40001b, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* reta  000011 n111 nnnn nnnnnnnnn 000011100 */
-  {"reta", 0x0c40001c, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* retb  000011 n111 nnnn nnnnnnnnn 000011101 */
-  {"retb", 0x0c40001d, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* retad  000011 n111 nnnn nnnnnnnnn 000011110 */
-  {"retad", 0x0c40001e, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
-/* retbd  000011 n111 nnnn nnnnnnnnn 000011111 */
-  {"retbd", 0x0c40001f, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* reta  000011 zcr1 cccc 000000000 000011100 */
+  {"reta", 0x0c40001c, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* retb  000011 zcr1 cccc 000000000 000011101 */
+  {"retb", 0x0c40001d, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* retad  000011 zcr1 cccc 000000000 000011110 */
+  {"retad", 0x0c40001e, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* retbd  000011 zcr1 cccc 000000000 000011111 */
+  {"retbd", 0x0c40001f, 0xfc43ffff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* decod2  000011 zcr1 cccc ddddddddd 000100000 */
+  {"decod2", 0x0c400020, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* decod3  000011 zcr1 cccc ddddddddd 000100001 */
+  {"decod3", 0x0c400021, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* decod4  000011 zcr1 cccc ddddddddd 000100010 */
+  {"decod4", 0x0c400022, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* decod5  000011 zcr1 cccc ddddddddd 000100011 */
+  {"decod5", 0x0c400023, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* blmask  000011 zcr1 cccc ddddddddd 000100100 */
+  {"blmask", 0x0c400024, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* not  000011 zcr1 cccc ddddddddd 000100101 */
+  {"not", 0x0c400025, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* onecnt  000011 zcr1 cccc ddddddddd 000100110 */
+  {"onecnt", 0x0c400026, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* zercnt  000011 zcr1 cccc ddddddddd 000100111 */
+  {"zercnt", 0x0c400027, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* incpat  000011 zcr1 cccc ddddddddd 000101000 */
+  {"incpat", 0x0c400028, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* decpat  000011 zcr1 cccc ddddddddd 000101001 */
+  {"decpat", 0x0c400029, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* bingry  000011 zcr1 cccc ddddddddd 000101010 */
+  {"bingry", 0x0c40002a, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* grybin  000011 zcr1 cccc ddddddddd 000101011 */
+  {"grybin", 0x0c40002b, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* mergew  000011 zcr1 cccc ddddddddd 000101100 */
+  {"mergew", 0x0c40002c, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* splitw  000011 zcr1 cccc ddddddddd 000101101 */
+  {"splitw", 0x0c40002d, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* seussf  000011 zcr1 cccc ddddddddd 000101110 */
+  {"seussf", 0x0c40002e, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* seussr  000011 zcr1 cccc ddddddddd 000101111 */
+  {"seussr", 0x0c40002f, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* getmull  000011 zcr1 cccc ddddddddd 000110000 */
+  {"getmull", 0x0c400030, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getmulh  000011 zcr1 cccc ddddddddd 000110001 */
+  {"getmulh", 0x0c400031, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getdivq  000011 zcr1 cccc ddddddddd 000110010 */
+  {"getdivq", 0x0c400032, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getdivr  000011 zcr1 cccc ddddddddd 000110011 */
+  {"getdivr", 0x0c400033, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getsqrt  000011 zcr1 cccc ddddddddd 000110100 */
+  {"getsqrt", 0x0c400034, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getqx  000011 zcr1 cccc ddddddddd 000110101 */
+  {"getqx", 0x0c400035, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getqy  000011 zcr1 cccc ddddddddd 000110110 */
+  {"getqy", 0x0c400036, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getqz  000011 zcr1 cccc ddddddddd 000110111 */
+  {"getqz", 0x0c400037, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* getphsa  000011 zcr1 cccc ddddddddd 000111000 */
+  {"getphsa", 0x0c400038, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getphza  000011 zcr1 cccc ddddddddd 000111001 */
+  {"getphza", 0x0c400039, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getcos  000011 zcr1 cccc ddddddddd 000111010 */
+  {"getcos", 0x0c40003a, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getsin  000011 zcr1 cccc ddddddddd 000111011 */
+  {"getsin", 0x0c40003b, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getphsb  000011 zcr1 cccc ddddddddd 000111100 */
+  {"getphsb", 0x0c40003c, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getphzb  000011 zcr1 cccc ddddddddd 000111101 */
+  {"getphzb", 0x0c40003d, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getcosb  000011 zcr1 cccc ddddddddd 000111110 */
+  {"getcosb", 0x0c40003e, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+/* getsinb  000011 zcr1 cccc ddddddddd 000111111 */
+  {"getsinb", 0x0c40003f, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* repd  000011 z0n1 cccc nnnnnnnnn 001iiiiii */
+  {"repd", 0x0c400040, 0xfd4001c0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* reps  000011 n111 nnnn nnnnnnnnn 001iiiiii */
+  {"reps", 0x0dc00040, 0xfdc001c0, PROPELLER_OPERAND_REPS, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* jmptask  000011 zcn1 cccc nnnnnnnnn 01001tttt */
+  {"jmptask", 0x0c400090, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* nopx  000011 zcn1 cccc nnnnnnnnn 010100000 */
+  {"nopx", 0x0c4000a0, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setzc  000011 zcn1 cccc nnnnnnnnn 010100001 */
+  {"setzc", 0x0c4000a1, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setspa  000011 zcn1 cccc nnnnnnnnn 010100010 */
+  {"setspa", 0x0c4000a2, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setspb  000011 zcn1 cccc nnnnnnnnn 010100011 */
+  {"setspb", 0x0c4000a3, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* addspa  000011 zcn1 cccc nnnnnnnnn 010100100 */
+  {"addspa", 0x0c4000a4, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* addspb  000011 zcn1 cccc nnnnnnnnn 010100101 */
+  {"addspb", 0x0c4000a5, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* subspa  000011 zcn1 cccc nnnnnnnnn 010100110 */
+  {"subspa", 0x0c4000a6, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* subspb  000011 zcn1 cccc nnnnnnnnn 010100111 */
+  {"subspb", 0x0c4000a7, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* pushar  000011 zcn1 cccc nnnnnnnnn 010101000 */
+  {"pushar", 0x0c4000a8, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* pushbr  000011 zcn1 cccc nnnnnnnnn 010101001 */
+  {"pushbr", 0x0c4000a9, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* pusha  000011 zcn1 cccc nnnnnnnnn 010101010 */
+  {"pusha", 0x0c4000aa, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* pushb  000011 zcn1 cccc nnnnnnnnn 010101011 */
+  {"pushb", 0x0c4000ab, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* calla  000011 zcn1 cccc nnnnnnnnn 010101100 */
+  {"calla", 0x0c4000ac, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* callb  000011 zcn1 cccc nnnnnnnnn 010101101 */
+  {"callb", 0x0c4000ad, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* callad  000011 zcn1 cccc nnnnnnnnn 010101110 */
+  {"callad", 0x0c4000ae, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* callbd  000011 zcn1 cccc nnnnnnnnn 010101111 */
+  {"callbd", 0x0c4000af, 0xfc4001f0, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* wrquad   000011 00ii cccc ddddddddd sssssssss */
+  {"wrquad", 0x0c0000b0, 0xff0001ff, PROPELLER_OPERAND_PTRD_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* rdquad   000011 00ii cccc ddddddddd sssssssss */
+  {"rdquad", 0x0c0000b1, 0xff0001ff, PROPELLER_OPERAND_PTRD_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* rdquadc   000011 01ii cccc ddddddddd sssssssss */
+  {"rdquadc", 0x0d0000b1, 0xff0001ff, PROPELLER_OPERAND_PTRD_OPS, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* setptra   000011 zcn1 cccc nnnnnnnnn 010110010 */
+  {"setptra", 0x0c0000b2, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setptrb   000011 zcn1 cccc nnnnnnnnn 010110011 */
+  {"setptrb", 0x0c0000b3, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* addptra   000011 zcn1 cccc nnnnnnnnn 010110100 */
+  {"addptra", 0x0c0000b4, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* addptrb   000011 zcn1 cccc nnnnnnnnn 010110101 */
+  {"addptrb", 0x0c0000b5, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* subptra   000011 zcn1 cccc nnnnnnnnn 010110110 */
+  {"subptra", 0x0c0000b6, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* subptrb   000011 zcn1 cccc nnnnnnnnn 010110111 */
+  {"subptrb", 0x0c0000b7, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* setpix   000011 zcn1 cccc nnnnnnnnn 010111000 */
+  {"setpix", 0x0c0000b8, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setpixu   000011 zcn1 cccc nnnnnnnnn 010111001 */
+  {"setpixu", 0x0c0000b9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setpixv   000011 zcn1 cccc nnnnnnnnn 010111010 */
+  {"setpixv", 0x0c0000ba, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setpixz   000011 zcn1 cccc nnnnnnnnn 010111011 */
+  {"setpixz", 0x0c0000bb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setpixa   000011 zcn1 cccc nnnnnnnnn 010111100 */
+  {"setpixa", 0x0c0000bc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setpixr   000011 zcn1 cccc nnnnnnnnn 010111101 */
+  {"setpixr", 0x0c0000bd, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setpixg   000011 zcn1 cccc nnnnnnnnn 010111110 */
+  {"setpixg", 0x0c0000be, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setpixb   000011 zcn1 cccc nnnnnnnnn 010111111 */
+  {"setpixb", 0x0c0000bf, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* setmulu   000011 z0n1 cccc nnnnnnnnn 011000000 */
+  {"setmulu", 0x0d0000c0, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setmula   000011 z1n1 cccc nnnnnnnnn 011000000 */
+  {"setmula", 0x0d0000c0, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setmulb   000011 zcn1 cccc nnnnnnnnn 011000001 */
+  {"setmulb", 0x0c0000c1, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setdivu   000011 z0n1 cccc nnnnnnnnn 011000010 */
+  {"setdivu", 0x0d0000c2, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setdiva   000011 z1n1 cccc nnnnnnnnn 011000010 */
+  {"setdiva", 0x0d0000c2, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setdivb   000011 zcn1 cccc nnnnnnnnn 011000011 */
+  {"setdivb", 0x0c0000c3, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setsqrh   000011 zcn1 cccc nnnnnnnnn 011000100 */
+  {"setsqrh", 0x0d0000c4, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setsqrl   000011 zcn1 cccc nnnnnnnnn 011000101 */
+  {"setsqrl", 0x0d0000c5, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setqi   000011 zcn1 cccc nnnnnnnnn 011000110 */
+  {"setqi", 0x0d0000c6, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setqz   000011 zcn1 cccc nnnnnnnnn 011000111 */
+  {"setqz", 0x0d0000c7, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* qlog   000011 zcn1 cccc nnnnnnnnn 011001000 */
+  {"qlog", 0x0d0000c8, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* qexp   000011 zcn1 cccc nnnnnnnnn 011001001 */
+  {"qexp", 0x0d0000c9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setf   000011 zcn1 cccc nnnnnnnnn 011001010 */
+  {"setf", 0x0d0000ca, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* settask   000011 zcn1 cccc nnnnnnnnn 011001011 */
+  {"settask", 0x0d0000cb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* cfgdac0   000011 zcn1 cccc nnnnnnnnn 011001100 */
+  {"cfgdac0", 0x0d0000cc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* cfgdac1   000011 zcn1 cccc nnnnnnnnn 011001101 */
+  {"cfgdac1", 0x0d0000cd, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* cfgdac2   000011 zcn1 cccc nnnnnnnnn 011001110 */
+  {"cfgdac2", 0x0d0000ce, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* cfgdac3   000011 zcn1 cccc nnnnnnnnn 011001111 */
+  {"crgdac3", 0x0d0000cf, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* setdac0   000011 zcn1 cccc nnnnnnnnn 011010000 */
+  {"setdac0", 0x0d0000d0, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setdac1   000011 zcn1 cccc nnnnnnnnn 011010001 */
+  {"setdac1", 0x0d0000d1, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setdac2   000011 zcn1 cccc nnnnnnnnn 011010010 */
+  {"setdac2", 0x0d0000d2, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setdac3   000011 zcn1 cccc nnnnnnnnn 011010011 */
+  {"setdac3", 0x0d0000d3, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* cfgdacs   000011 zcn1 cccc nnnnnnnnn 011010100 */
+  {"cfgdacs", 0x0d0000d4, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+/* setdacs   000011 zcn1 cccc nnnnnnnnn 011010101 */
+  {"setdacs", 0x0d0000d5, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, R, PROP_2, NO_COMPRESSED, 0},
+  
+/* getp    000011 zcRi cccc ddddddddd 011010110 */
+  {"getp", 0x0c4000d6, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* getnp    000011 zcRi cccc ddddddddd 011010111 */
+  {"getnp", 0x0c4000d7, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* offp    000011 zcRi cccc ddddddddd 011011000 */
+  {"offp", 0x0c4000d8, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* notp    000011 zcRi cccc ddddddddd 011011001 */
+  {"notp", 0x0c4000d9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* clrp    000011 zcRi cccc ddddddddd 011011010 */
+  {"clrp", 0x0c4000da, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setp    000011 zcRi cccc ddddddddd 011011011 */
+  {"setp", 0x0c4000db, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setpc    000011 zcRi cccc ddddddddd 011011100 */
+  {"setpc", 0x0c4000dc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setpnc    000011 zcRi cccc ddddddddd 011011101 */
+  {"setpnc", 0x0c4000dd, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setpz    000011 zcRi cccc ddddddddd 011011110 */
+  {"setpz", 0x0c4000de, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setpnz    000011 zcRi cccc ddddddddd 011011111 */
+  {"setpnz", 0x0c4000df, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+
+/* setcog    000011 zcRi cccc ddddddddd 011100000 */
+  {"setcog", 0x0c4000e0, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setmap    000011 zcRi cccc ddddddddd 011100001 */
+  {"setmap", 0x0c4000e1, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setquad    000011 zcRi cccc ddddddddd 011100010 */
+  {"setquad", 0x0c4000e2, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setport    000011 zcRi cccc ddddddddd 011100011 */
+  {"setport", 0x0c4000e3, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setpora    000011 zcRi cccc ddddddddd 011100100 */
+  {"setpora", 0x0c4000e4, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setporb    000011 zcRi cccc ddddddddd 011100101 */
+  {"setporb", 0x0c4000e5, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setporc    000011 zcRi cccc ddddddddd 011100110 */
+  {"setporc", 0x0c4000e6, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setpord    000011 zcRi cccc ddddddddd 011100111 */
+  {"setpord", 0x0c4000e7, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+  
+/* setxch    000011 zcRi cccc ddddddddd 011101000 */
+  {"setxch", 0x0c4000e8, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setxfr    000011 zcRi cccc ddddddddd 011101001 */
+  {"setxfr", 0x0c4000e9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setser    000011 zcRi cccc ddddddddd 011101010 */
+  {"setser", 0x0c4000ea, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setskip    000011 zcRi cccc ddddddddd 011101011 */
+  {"setskip", 0x0c4000eb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setvid    000011 zcRi cccc ddddddddd 011101100 */
+  {"setvid", 0x0c4000ec, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setvidy    000011 zcRi cccc ddddddddd 011101101 */
+  {"setvidy", 0x0c4000ed, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setvidi    000011 zcRi cccc ddddddddd 011101110 */
+  {"setvidi", 0x0c4000ee, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setvidq    000011 zcRi cccc ddddddddd 011101111 */
+  {"setvidq", 0x0c4000ef, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+
+/* setctra    000011 zcRi cccc ddddddddd 011110000 */
+  {"setctra", 0x0c4000f0, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setwava    000011 zcRi cccc ddddddddd 011110001 */
+  {"setwava", 0x0c4000f1, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setfrqa    000011 zcRi cccc ddddddddd 011110010 */
+  {"setfrqa", 0x0c4000f2, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setphsa    000011 zcRi cccc ddddddddd 011110011 */
+  {"setphsa", 0x0c4000f3, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* addphsa    000011 zcRi cccc ddddddddd 011110100 */
+  {"addphsa", 0x0c4000f4, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* subphsa    000011 zcRi cccc ddddddddd 011110101 */
+  {"subphsa", 0x0c4000f5, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* synctra    000011 zcRi cccc ddddddddd 011110110 */
+  {"syctra", 0x0c4000f6, 0xfc4001ff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* capctra    000011 zcRi cccc ddddddddd 011110111 */
+  {"capctra", 0x0c4000f7, 0xfc4001ff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+
+/* setctrb    000011 zcRi cccc ddddddddd 011111000 */
+  {"setctrb", 0x0c4000f8, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setwavb    000011 zcRi cccc ddddddddd 011111001 */
+  {"setwavb", 0x0c4000f9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setfrqb    000011 zcRi cccc ddddddddd 011111010 */
+  {"setfrqb", 0x0c4000fa, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setphsb    000011 zcRi cccc ddddddddd 011111011 */
+  {"setphsb", 0x0c4000fb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* addphsb    000011 zcRi cccc ddddddddd 011111100 */
+  {"addphsb", 0x0c4000fc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* subphsb    000011 zcRi cccc ddddddddd 011111101 */
+  {"subphsb", 0x0c4000fd, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* synctrb    000011 zcRi cccc ddddddddd 011111110 */
+  {"syctrb", 0x0c4000fe, 0xfc4001ff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+/* capctrb    000011 zcRi cccc ddddddddd 011111111 */
+  {"capctrb", 0x0c4000ff, 0xfc4001ff, PROPELLER_OPERAND_NO_OPS, NR, PROP_2, NO_COMPRESSED, 0},
+
+/* isob    000011 zcRi cccc ddddddddd 1000bbbbb */
+  {"isob", 0x0c400100, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* notb    000011 zcRi cccc ddddddddd 1001bbbbb */
+  {"notb", 0x0c400120, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* clrb    000011 zcRi cccc ddddddddd 1010bbbbb */
+  {"clrb", 0x0c400140, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setb    000011 zcRi cccc ddddddddd 1011bbbbb */
+  {"setb", 0x0c400160, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setbc    000011 zcRi cccc ddddddddd 1100bbbbb */
+  {"setbc", 0x0c400180, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setbnc    000011 zcRi cccc ddddddddd 1101bbbbb */
+  {"setbnc", 0x0c4001a0, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setbz    000011 zcRi cccc ddddddddd 1110bbbbb */
+  {"setbz", 0x0c4001c0, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+/* setbnz    000011 zcRi cccc ddddddddd 1111bbbbb */
+  {"setbnz", 0x0c4001e0, 0xfc4001e0, PROPELLER_OPERAND_DESTIMM_IMM, NR, PROP_2, NO_COMPRESSED, 0},
+
+/* setacca      000100 000i cccc ddddddddd sssssssss */
+  {"setacca", 0x10000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* setaccb      000100 010i cccc ddddddddd sssssssss */
+  {"setaccb", 0x11000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* macca      000100 100i cccc ddddddddd sssssssss */
+  {"macca", 0x12000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* maccb      000100 110i cccc ddddddddd sssssssss */
+  {"maccb", 0x13000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* mul      000100 zc1i cccc ddddddddd sssssssss */
+  {"mul", 0x10800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+
+/* movf      000101 000i cccc ddddddddd sssssssss */
+  {"movf", 0x14000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* qsincos      000101 010i cccc ddddddddd sssssssss */
+  {"qsincos", 0x15000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* qarctan      000101 100i cccc ddddddddd sssssssss */
+  {"qarctan", 0x16000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* qrotate      000101 110i cccc ddddddddd sssssssss */
+  {"qrotate", 0x17000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+/* scl      000101 zc1i cccc ddddddddd sssssssss */
+  {"maccb", 0x14800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
+
+/* enc   000110 zc1i cccc ddddddddd sssssssss *//* these, */
+  {"enc", 0x18800000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, R, PROP_2, NO_COMPRESSED, 0},
 };
 
 const int propeller_num_opcodes =

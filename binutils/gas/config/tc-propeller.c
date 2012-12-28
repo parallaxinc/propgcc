@@ -951,7 +951,7 @@ parse_dest_imm(char *str, struct propeller_code *operand, struct propeller_code 
 }
 
 static char *
-parse_repd(char *str, struct propeller_code *operand, struct propeller_code *insn){
+parse_destimm_imm(char *str, struct propeller_code *operand, struct propeller_code *insn, int mask){
   int error;
 
   str = parse_dest_imm(str, operand, insn);
@@ -979,16 +979,15 @@ parse_repd(char *str, struct propeller_code *operand, struct propeller_code *ins
   switch (operand->reloc.exp.X_op)
   {
     case O_constant:
-      //--operand->reloc.exp.X_add_number; // 0 means 1, 1 means 2, etc.
-      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 6))
+      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > mask)
         {
-          operand->error = _("6-bit value out of range");
+          operand->error = _("Value out of range");
           return str;
         }
-      insn->code |= operand->reloc.exp.X_add_number & 0x3f;
+      insn->code |= operand->reloc.exp.X_add_number & mask;
       break;
     default:
-      operand->error = _("Instruction count must be a constant expression");
+      operand->error = _("Must be a constant expression");
       return str;
   }
 
@@ -1019,7 +1018,6 @@ parse_reps(char *str, struct propeller_code *operand, struct propeller_code *ins
   switch (operand->reloc.exp.X_op)
   {
     case O_constant:
-      //--operand->reloc.exp.X_add_number; // 0 means 1, 1 means 2, etc.
       if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 14))
         {
           operand->error = _("14-bit value out of range");
@@ -1218,7 +1216,7 @@ md_assemble (char *instruction_string)
       str = parse_dest(str, &op1, &insn);
       break;
 
-    case PROPELLER_OPERAND_DEST_IMM:
+    case PROPELLER_OPERAND_DESTIMM:
       str = parse_dest_imm(str, &op1, &insn);
       break;
     
@@ -1838,13 +1836,21 @@ md_assemble (char *instruction_string)
       break;
 
     case PROPELLER_OPERAND_REPD:
-      str = parse_repd(str, &op1, &insn);
+      str = parse_destimm_imm(str, &op1, &insn, 0x3f);
       break;
-    
+      
     case PROPELLER_OPERAND_REPS:
       str = parse_reps(str, &op1, &insn);
       break;
     
+    case PROPELLER_OPERAND_JMPTASK:
+      str = parse_destimm_imm(str, &op1, &insn, 0xf);
+      break;
+      
+    case PROPELLER_OPERAND_BIT:
+      str = parse_destimm_imm(str, &op1, &insn, 0x1f);
+      break;
+      
     default:
       BAD_CASE (op->format);
     }
