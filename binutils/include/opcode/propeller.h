@@ -144,6 +144,13 @@
 #define MACRO_FCACHE 0x0E
 #define MACRO_NATIVE 0x0F
 
+/* flags allowed in this instruction */
+#define FLAG_CC         0x01
+#define FLAG_Z          0x02
+#define FLAG_C          0x04
+#define FLAG_R          0x08
+#define FLAG_R_DEF      0x10
+
 /* opcode structure */
 struct propeller_opcode
 {
@@ -151,7 +158,7 @@ struct propeller_opcode
   int opcode;
   int mask;
   int format;
-  int result;
+  int flags;
   int hardware;
   int compress_type;
   int copc;  /* compressed opcode */
@@ -169,6 +176,7 @@ struct propeller_effect
   const char *name;
   int or;
   int and;
+  int flag;
 };
 
 
