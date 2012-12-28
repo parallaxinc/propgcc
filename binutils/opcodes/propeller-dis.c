@@ -28,6 +28,12 @@
 #include "elf/propeller.h"
 
 static int
+is_propeller2(disassemble_info * info)
+{
+    return info->disassembler_options && strcmp(info->disassembler_options, "-p2") == 0;
+}
+
+static int
 read_word (bfd_vma memaddr, int *word, disassemble_info * info)
 {
   int status;
@@ -145,7 +151,8 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
   for (i = 0; i < propeller_num_opcodes; i++)
     {
 #define OP propeller_opcodes[i]
-      if ((opcode & OP.mask) == OP.opcode)
+#define HWMATCH ((OP.hardware & (is_propeller2(info) ? PROP_2 : PROP_1)) != 0)
+      if (HWMATCH && (opcode & OP.mask) == OP.opcode)
         switch (OP.format)
           {
           case PROPELLER_OPERAND_NO_OPS:
@@ -222,8 +229,16 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_XMMIO:
           case PROPELLER_OPERAND_LDI:
           case PROPELLER_OPERAND_BRW:
+          case PROPELLER_OPERAND_PTRS_OPS:
+          case PROPELLER_OPERAND_PTRD_OPS:
+          case PROPELLER_OPERAND_DESTIMM:
+          case PROPELLER_OPERAND_REPD:
+          case PROPELLER_OPERAND_REPS:
+          case PROPELLER_OPERAND_JMPTASK:
+          case PROPELLER_OPERAND_BIT:
             /* disassembly not implemented yet */
-            continue;
+            FPRINTF (F, OP.name);
+            goto done;
           default:
             /* TODO: is this a proper way of signalling an error? */
             FPRINTF (F, "<internal error: unrecognized instruction type>");
