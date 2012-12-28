@@ -981,7 +981,7 @@ parse_destimm_imm(char *str, struct propeller_code *operand, struct propeller_co
     case O_constant:
       if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > mask)
         {
-          operand->error = _("Value out of range");
+          operand->error = _("Second operand value out of range");
           return str;
         }
       insn->code |= operand->reloc.exp.X_add_number & mask;
@@ -1111,6 +1111,7 @@ md_assemble (char *instruction_string)
   int insn2_compressed = 0;
   unsigned int reloc_prefix = 0;  /* for a compressed instruction */
   int xmov_flag = 0;
+  int cc_flag = 0;
 
   if (ignore_input())
     {
@@ -1158,6 +1159,7 @@ md_assemble (char *instruction_string)
         }
       str = p;
       p = p2;
+      cc_flag = 1;
     }
   else
     {
@@ -1174,6 +1176,11 @@ md_assemble (char *instruction_string)
       as_bad (_("Unknown instruction '%s'"), str);
       return;
     }
+    
+  if (cc_flag && !(op->flags & FLAG_CC)) {
+      as_bad (_("Condition code not allowed with this instruction"));
+      return;
+  }
 
   insn.error = NULL;
   insn.code |= op->opcode;
@@ -1856,11 +1863,13 @@ md_assemble (char *instruction_string)
     }
 
   /* set the r bit to its default state for this insn */
-  if (xmov_flag)
-    insn2.code |= op->result << 23;
-  else
-    insn.code |= op->result << 23;
-
+  if (op->flags & FLAG_R) {
+    if (xmov_flag)
+      insn2.code |= (op->flags & FLAG_R_DEF ? 1 : 0) << 23;
+    else
+      insn.code |= (op->flags & FLAG_R_DEF ? 1 : 0) << 23;
+  }
+  
   /* Find and process any effect flags */
   do
     {
@@ -1875,12 +1884,18 @@ md_assemble (char *instruction_string)
       if (!eff)
         break;
       str = p;
-      if (xmov_flag) {
-        insn2.code |= eff->or;
-        insn2.code &= eff->and;
-      } else {
-        insn.code |= eff->or;
-        insn.code &= eff->and;
+      if (op->flags & eff->flag) {
+        if (xmov_flag) {
+          insn2.code |= eff->or;
+          insn2.code &= eff->and;
+        } else {
+          insn.code |= eff->or;
+          insn.code &= eff->and;
+        }
+      }
+      else {
+        as_bad(_("Effect '%s' not allowed with this instruction"), eff->name);
+        return;
       }
       str = parse_separator (str, &error);
     }
