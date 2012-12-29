@@ -232,6 +232,10 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_PTRS_OPS:
           case PROPELLER_OPERAND_PTRD_OPS:
           case PROPELLER_OPERAND_DESTIMM:
+          case PROPELLER_OPERAND_DESTIMM_SRCIMM:
+          case PROPELLER_OPERAND_SETINDA:
+          case PROPELLER_OPERAND_SETINDB:
+          case PROPELLER_OPERAND_SETINDS:
           case PROPELLER_OPERAND_REPD:
           case PROPELLER_OPERAND_REPS:
           case PROPELLER_OPERAND_JMPTASK:
@@ -248,7 +252,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 done:
   if (i < propeller_num_opcodes)
     {
-      FPRINTF (F, " %s", flags[set + OP.result * 8]);
+      FPRINTF (F, " %s", flags[set + (OP.flags & FLAG_R_DEF ? 1 : 0) * 8]);
     }
   else
     {

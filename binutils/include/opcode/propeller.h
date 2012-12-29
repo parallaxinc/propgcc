@@ -26,33 +26,37 @@
 #define PROP_2_LMM      (PROP_2 | 8)
 
 /* List of instruction formats */
-#define PROPELLER_OPERAND_NO_OPS      0
-#define PROPELLER_OPERAND_SOURCE_ONLY 1
-#define PROPELLER_OPERAND_DEST_ONLY   2
-#define PROPELLER_OPERAND_TWO_OPS     3
-#define PROPELLER_OPERAND_CALL        4
-#define PROPELLER_OPERAND_IGNORE      5
-#define PROPELLER_OPERAND_JMP         6
-#define PROPELLER_OPERAND_JMPRET      7
-#define PROPELLER_OPERAND_MOVA        8
-#define PROPELLER_OPERAND_LDI         9
-#define PROPELLER_OPERAND_BRW         10
-#define PROPELLER_OPERAND_BRS         11
-#define PROPELLER_OPERAND_XMMIO       12
-#define PROPELLER_OPERAND_FCACHE      13
-#define PROPELLER_OPERAND_MVI         14
-#define PROPELLER_OPERAND_LCALL       15
-#define PROPELLER_OPERAND_MACRO_8     16
-#define PROPELLER_OPERAND_MACRO_0     17
-#define PROPELLER_OPERAND_LEASP       18
-#define PROPELLER_OPERAND_XMOV        19
-#define PROPELLER_OPERAND_PTRS_OPS    20
-#define PROPELLER_OPERAND_PTRD_OPS    21
-#define PROPELLER_OPERAND_DESTIMM     22
-#define PROPELLER_OPERAND_REPD        23
-#define PROPELLER_OPERAND_REPS        24
-#define PROPELLER_OPERAND_JMPTASK     25
-#define PROPELLER_OPERAND_BIT         26
+#define PROPELLER_OPERAND_NO_OPS            0
+#define PROPELLER_OPERAND_SOURCE_ONLY       1
+#define PROPELLER_OPERAND_DEST_ONLY         2
+#define PROPELLER_OPERAND_TWO_OPS           3
+#define PROPELLER_OPERAND_CALL              4
+#define PROPELLER_OPERAND_IGNORE            5
+#define PROPELLER_OPERAND_JMP               6
+#define PROPELLER_OPERAND_JMPRET            7
+#define PROPELLER_OPERAND_MOVA              8
+#define PROPELLER_OPERAND_LDI               9
+#define PROPELLER_OPERAND_BRW               10
+#define PROPELLER_OPERAND_BRS               11
+#define PROPELLER_OPERAND_XMMIO             12
+#define PROPELLER_OPERAND_FCACHE            13
+#define PROPELLER_OPERAND_MVI               14
+#define PROPELLER_OPERAND_LCALL             15
+#define PROPELLER_OPERAND_MACRO_8           16
+#define PROPELLER_OPERAND_MACRO_0           17
+#define PROPELLER_OPERAND_LEASP             18
+#define PROPELLER_OPERAND_XMOV              19
+#define PROPELLER_OPERAND_PTRS_OPS          20
+#define PROPELLER_OPERAND_PTRD_OPS          21
+#define PROPELLER_OPERAND_DESTIMM           23
+#define PROPELLER_OPERAND_DESTIMM_SRCIMM    24
+#define PROPELLER_OPERAND_SETINDA           25
+#define PROPELLER_OPERAND_SETINDB           26
+#define PROPELLER_OPERAND_SETINDS           27
+#define PROPELLER_OPERAND_REPD              28
+#define PROPELLER_OPERAND_REPS              29
+#define PROPELLER_OPERAND_JMPTASK           30
+#define PROPELLER_OPERAND_BIT               31
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
