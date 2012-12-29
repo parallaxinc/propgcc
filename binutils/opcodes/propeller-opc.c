@@ -732,8 +732,18 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* decmod   111011 zcri cccc ddddddddd sssssssss */
   {"decmod", 0xec000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 
-/* setindx */
-/* fixindx */
+/* setinda   111000 0000 0001 000000000 aaaaaaaaa */
+  {"setinda", 0xe0040000, 0xfffc0000, PROPELLER_OPERAND_SETINDA, 0, PROP_2, NO_COMPRESSED, 0},
+/* setindb   111000 0000 0100 bbbbbbbbb 000000000 */
+  {"setindb", 0xe0100000, 0xfffc0000, PROPELLER_OPERAND_SETINDB, 0, PROP_2, NO_COMPRESSED, 0},
+/* setinds   111000 0000 0101 bbbbbbbbb aaaaaaaaa */
+  {"setinds", 0xe0140000, 0xfffc0000, PROPELLER_OPERAND_SETINDS, 0, PROP_2, NO_COMPRESSED, 0},
+/* fixinda   111000 zcri cccc ddddddddd sssssssss */
+  {"fixinda", 0xe4040000, 0xfffc0000, PROPELLER_OPERAND_DESTIMM_SRCIMM, 0, PROP_2, NO_COMPRESSED, 0},
+/* fixindb   111000 zcri cccc ddddddddd sssssssss */
+  {"fixindb", 0xe4100000, 0xfffc0000, PROPELLER_OPERAND_DESTIMM_SRCIMM, 0, PROP_2, NO_COMPRESSED, 0},
+/* fixinds   111000 zcri cccc ddddddddd sssssssss */
+  {"fixinds", 0xe4140000, 0xfffc0000, PROPELLER_OPERAND_DESTIMM_SRCIMM, 0, PROP_2, NO_COMPRESSED, 0},
 /* cfgpins  111010 000i cccc ddddddddd sssssssss */
   {"cfgpins", 0xe8000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, CC, PROP_2, NO_COMPRESSED, 0},
 /* waitvid  111011 000i cccc ddddddddd sssssssss */
