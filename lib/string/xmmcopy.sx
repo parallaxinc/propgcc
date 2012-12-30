@@ -1,3 +1,4 @@
+#ifdef __PROPELLER_USE_XMM__
 	.text
 	.balign	4
 	.global	__copy_from_xmm
@@ -48,3 +49,4 @@ __copy_from_xmm
 	brs	.L2
 .L16
 	mov	pc,lr
+#endif

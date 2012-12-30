@@ -68,7 +68,7 @@ L_ins1    nop               'execute instruction
 
 /*
 __LMM_loop
-        reps #511,#5
+        reps #512,#5
         nop
           rdlongc L_ins1,pc
           add pc,#4
@@ -103,7 +103,7 @@ L_ins0  nop
 
 /*
 __LMM_loop
-        reps #$3fff,#3
+        reps #$4000,#3
         nop
         rdlongc L_ins1,pc
         add pc,#4
@@ -114,7 +114,7 @@ L_ins1  nop
 
 /*
 __LMM_loop
-        reps #$3fff,#7
+        reps #$4000,#7
         nop
         rdlongc L_ins1,pc
         add pc,#4
@@ -129,7 +129,7 @@ L_ins2  nop
 
 
 __LMM_loop
-        repd #$1ff,#7
+        repd #$200,#7
         nop
         nop
         nop
