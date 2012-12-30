@@ -8,7 +8,11 @@
 #  include "crt0_cmm.s"
 #elif defined(__PROPELLER_LMM__)
 # if defined(DEBUG_KERNEL)
-#  include "crt0_lmm_debug.s"
+#  if defined(__PROPELLER2__)
+#    include "crt0_lmm2_debug.s"
+#  else
+#    include "crt0_lmm_debug.s"
+#  endif
 # else
 #  if defined(__PROPELLER2__)
 #    include "crt0_lmm2.s"

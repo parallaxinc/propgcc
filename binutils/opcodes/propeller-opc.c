@@ -273,13 +273,13 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"waitvid", 0xfc000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_1, NO_COMPRESSED, 0},
 
 /* wrbyte   000000 000i cccc ddddddddd sssssssss */
-  {"wrbyte", 0x00000000, 0xff800000, PROPELLER_OPERAND_PTRS_OPS, CCZC, PROP_2, COMPRESS_XOP, XOP_WRB},
+  {"wrbyte", 0x00000000, 0xff800000, PROPELLER_OPERAND_PTRS_OPS, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* rdbyte   000000 z01i cccc ddddddddd sssssssss */
   {"rdbyte", 0x00800000, 0xfd800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* rdbytec   000000 z11i cccc ddddddddd sssssssss */
   {"rdbytec", 0x01800000, 0xff800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* wrword   000001 000i cccc ddddddddd sssssssss */
-  {"wrword", 0x04000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"wrword", 0x04000000, 0xff800000, PROPELLER_OPERAND_PTRS_OPS, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* rdword   000001 001i cccc ddddddddd sssssssss */
   {"rdword", 0x04800000, 0xff800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* rdwordc   000001 z11i cccc ddddddddd sssssssss */

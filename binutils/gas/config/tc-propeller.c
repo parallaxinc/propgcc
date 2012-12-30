@@ -596,97 +596,13 @@ parse_regspec (char *str, int *regnum, struct propeller_code *operand, int give_
   return str;
 }
 
-static char *
-parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
-  int integer_reloc = 0;
-  int pcrel_reloc = 0;
-  
-  str = skip_whitespace (str);
-  if (*str == '#')
-    {
-      if (format == PROPELLER_OPERAND_PTRS_OPS) {
-          operand->error = _("Immediate operand not allowed here");
-          return str;
-      }
-      str++;
-      insn->code |= 1 << 22;
-      if (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA)
-        {
-          integer_reloc = 1;
-        }
-    }
-  else if (compress)
-    {
-      /* check for registers */
-      char *tmp;
-      int regnum = -1;
-      tmp = parse_regspec (str, &regnum, operand, 0);
-      if (regnum != -1)
-        {
-          str = tmp;
-          operand->reloc.type = BFD_RELOC_NONE;
-          operand->reloc.pc_rel = 0;
-          operand->reloc.exp.X_op = O_register;
-          operand->reloc.exp.X_add_number = regnum;
-          insn->code |= operand->reloc.exp.X_add_number;
-          return str;
-        }
-    }
-  if (format == PROPELLER_OPERAND_BRS)
-    pcrel_reloc = 1;
-
-  str = parse_expression (str, operand);
-  if (operand->error)
-    return str;
-  switch (operand->reloc.exp.X_op)
-    {
-    case O_constant:
-    case O_register:
-      if (operand->reloc.exp.X_add_number & ~0x1ff)
-        {
-          operand->error = _("9-bit value out of range");
-          break;
-        }
-      insn->code |= operand->reloc.exp.X_add_number;
-      break;
-    case O_symbol:
-    case O_add:
-    case O_subtract:
-      if (pcrel_reloc)
-        {
-          operand->reloc.type = compress ? BFD_RELOC_8_PCREL : BFD_RELOC_PROPELLER_PCREL10;
-          operand->reloc.pc_rel = 1;
-        }
-      else
-        {
-          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
-          operand->reloc.pc_rel = 0;
-        }
-      break;
-    case O_illegal:
-      operand->error = _("Illegal operand in source");
-      break;
-    default:
-      if (cog_ram)
-        operand->error = _("Source operand too complicated for .cog_ram");
-      else if (pcrel_reloc)
-        operand->error = _("Source operand too complicated for brs instruction");
-      else
-        {
-          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
-          operand->reloc.pc_rel = 0;
-        }
-      break;
-    }
-  return str;
-}
-
 static int
 check_ptr(char *str){
   int is_ptr_op = 0;
   
   str = skip_whitespace(str);
   
+  /* check for prefix operators */
   if (strncmp(str, "++", 2) == 0) {
     is_ptr_op = 1;
   }
@@ -694,15 +610,13 @@ check_ptr(char *str){
     is_ptr_op = 1;
   }
   
+  /* check for a pointer or index register */
   else {
-  
     str = skip_whitespace(str);
-  
-    // BUG!! this code has problems with symbols that begin with "ptra" or "ptrb"
-    if (strncasecmp(str, "ptra", 4) == 0) {
-      is_ptr_op = 1;
-    }
-    else if (strncasecmp(str, "ptrb", 4) == 0) {
+    if (matchregname(str, "ptra")
+    ||  matchregname(str, "ptrb")
+    ||  matchregname(str, "inda")
+    ||  matchregname(str, "indb")) {
       is_ptr_op = 1;
     }
   }
@@ -712,22 +626,23 @@ check_ptr(char *str){
 
 static char *
 parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
+  char *newstr;
+  int isindx = 0; // 0 for ptra/ptrb, 1 for inda/indb
   int prefix_op = 0;
   int suffix_op = 0;
   int field = 0;
   int ndx = 0;
+  int regnum;
   
   str = skip_whitespace(str);
   
   // check for prefix operators
   if (strncmp(str, "++", 2) == 0) {
-    field |= 0x080;
     prefix_op = 1;
     ndx = 1;
     str += 2;
   }
   else if (strncmp(str, "--", 2) == 0) {
-    field |= 0x080;
     prefix_op = 1;
     ndx = -1;
     str += 2;
@@ -736,16 +651,26 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
   str = skip_whitespace(str);
   
   // parse the pointer name
-  if (strncasecmp(str, "ptra", 4) == 0) {
+  if ((newstr = matchregname(str, "ptra")) != NULL) {
     //field |= 0x000;
-    str += 4;
+    str = newstr;
   }
-  else if (strncasecmp(str, "ptrb", 4) == 0) {
+  else if ((newstr = matchregname(str, "ptrb")) != NULL) {
     field |= 0x100;
-    str += 4;
+    str = newstr;
+  }
+  else if ((newstr = matchregname(str, "inda")) != NULL) {
+    regnum = 0x1f6;
+    str = newstr;
+    isindx = 1;
+  }
+  else if ((newstr = matchregname(str, "indb")) != NULL) {
+    regnum = 0x1f7;
+    str = newstr;
+    isindx = 1;
   }
   else {
-    operand->error = _("Can only use ++ or -- with PTRA or PTRB");
+    operand->error = _("Can only use ++ or -- with ptra, ptrb, inda, or indb");
     return str;
   }
     
@@ -753,13 +678,11 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
   
   // check for postfix operators
   if (strncmp(str, "++", 2) == 0) {
-    field |= 0x0c0;
     suffix_op = 1;
     ndx = 1;
     str += 2;
   }
   else if (strncmp(str, "--", 2) == 0) {
-    field |= 0x0c0;
     suffix_op = 1;
     ndx = -1;
     str += 2;
@@ -768,6 +691,37 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
   if (prefix_op && suffix_op) {
     operand->error = _("Can't use both prefix and postfix update");
     return str;
+  }
+  
+  /* handle inda/indb in the source field */
+  if (isindx) {
+  
+    if (prefix_op) {
+      if (ndx == -1) {
+        operand->error = _("Can't use prefix -- with inda or indb");
+        return str;
+      }
+      insn->code |= 3 << 18;
+    }
+    else if (suffix_op) {
+      insn->code |= (ndx == 1 ? 1 : 2) << 18;
+    }
+    
+    operand->reloc.type = BFD_RELOC_NONE;
+    operand->reloc.pc_rel = 0;
+    operand->reloc.exp.X_op = O_register;
+    operand->reloc.exp.X_add_number = regnum;
+    insn->code |= operand->reloc.exp.X_add_number;
+    
+    return str;
+  }
+  
+  /* complete the field */
+  if (prefix_op) {
+    field |= 0x080;
+  }
+  else if (suffix_op) {
+    field |= 0x0c0;
   }
   
   str = skip_whitespace(str);
@@ -822,6 +776,174 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
     return str;
   }
 
+  return str;
+}
+
+static char *
+parse_indx(char *str, struct propeller_code *operand, struct propeller_code *insn, int type){
+  char *newstr;
+  int prefix_op = 0;
+  int suffix_op = 0;
+  int ndx = 0;
+  int regnum;
+
+  str = skip_whitespace(str);
+  
+  // check for the ++ prefix operator (-- is not allowed here)
+  if (strncmp(str, "++", 2) == 0) {
+    prefix_op = 1;
+    ndx = 1;
+    str += 2;
+  }
+  
+  str = skip_whitespace(str);
+  
+  // parse the index register name
+  if ((newstr = matchregname(str, "inda")) != NULL) {
+    regnum = 0x1f6;
+    str = newstr;
+  }
+  else if ((newstr = matchregname(str, "indb")) != NULL) {
+    regnum = 0x1f7;
+    str = newstr;
+  }
+  else {
+    if (prefix_op) {
+        operand->error = _("Can only use ++ with inda or indb");
+        return str;
+    }
+    else {
+        return NULL;
+    }
+  }
+    
+  str = skip_whitespace(str);
+  
+  // check for postfix operators
+  if (strncmp(str, "++", 2) == 0) {
+    suffix_op = 1;
+    ndx = 1;
+    str += 2;
+  }
+  else if (strncmp(str, "--", 2) == 0) {
+    suffix_op = 1;
+    ndx = -1;
+    str += 2;
+  }
+  
+  if (prefix_op && suffix_op) {
+    operand->error = _("Can't use both prefix and postfix update");
+    return str;
+  }
+  
+  if (prefix_op) {
+    insn->code |= 3 << (type == BFD_RELOC_PROPELLER_SRC ? 18 : 20);
+  }
+  else if (suffix_op) {
+    insn->code |= (ndx == 1 ? 1 : 2) << (type == BFD_RELOC_PROPELLER_SRC ? 18 : 20);
+  }
+    
+  operand->reloc.type = BFD_RELOC_NONE;
+  operand->reloc.pc_rel = 0;
+  operand->reloc.exp.X_op = O_register;
+  operand->reloc.exp.X_add_number = regnum;
+  insn->code |= operand->reloc.exp.X_add_number << (type == BFD_RELOC_PROPELLER_SRC ? 0 : 9);
+    
+  return str;
+}
+
+static char *
+parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn, int format){
+  int integer_reloc = 0;
+  int pcrel_reloc = 0;
+  int immediate = 0;
+  
+  str = skip_whitespace (str);
+  if (*str == '#')
+    {
+      if (format == PROPELLER_OPERAND_PTRS_OPS) {
+          operand->error = _("Immediate operand not allowed here");
+          return str;
+      }
+      str++;
+      insn->code |= 1 << 22;
+      if (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA)
+        {
+          integer_reloc = 1;
+        }
+      immediate = 1;
+    }
+  else if (compress)
+    {
+      /* check for registers */
+      char *tmp;
+      int regnum = -1;
+      tmp = parse_regspec (str, &regnum, operand, 0);
+      if (regnum != -1)
+        {
+          str = tmp;
+          operand->reloc.type = BFD_RELOC_NONE;
+          operand->reloc.pc_rel = 0;
+          operand->reloc.exp.X_op = O_register;
+          operand->reloc.exp.X_add_number = regnum;
+          insn->code |= operand->reloc.exp.X_add_number;
+          return str;
+        }
+    }
+    
+  if (prop2 && !immediate) {
+    char *newstr;
+    if ((newstr = parse_indx(str, operand, insn, BFD_RELOC_PROPELLER_SRC)) != NULL) {
+      return newstr;
+    }
+  }
+  
+  if (format == PROPELLER_OPERAND_BRS)
+    pcrel_reloc = 1;
+
+  str = parse_expression (str, operand);
+  if (operand->error)
+    return str;
+  switch (operand->reloc.exp.X_op)
+    {
+    case O_constant:
+    case O_register:
+      if (operand->reloc.exp.X_add_number & ~0x1ff)
+        {
+          operand->error = _("9-bit value out of range");
+          break;
+        }
+      insn->code |= operand->reloc.exp.X_add_number;
+      break;
+    case O_symbol:
+    case O_add:
+    case O_subtract:
+      if (pcrel_reloc)
+        {
+          operand->reloc.type = compress ? BFD_RELOC_8_PCREL : BFD_RELOC_PROPELLER_PCREL10;
+          operand->reloc.pc_rel = 1;
+        }
+      else
+        {
+          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+          operand->reloc.pc_rel = 0;
+        }
+      break;
+    case O_illegal:
+      operand->error = _("Illegal operand in source");
+      break;
+    default:
+      if (cog_ram)
+        operand->error = _("Source operand too complicated for .cog_ram");
+      else if (pcrel_reloc)
+        operand->error = _("Source operand too complicated for brs instruction");
+      else
+        {
+          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+          operand->reloc.pc_rel = 0;
+        }
+      break;
+    }
   return str;
 }
 
@@ -882,7 +1004,7 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
 }
 
 static char *
-parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_code *insn, int type){
+parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_code *insn, int type, int delta){
 
   str = skip_whitespace (str);
   if (compress)
@@ -909,6 +1031,7 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
   switch (operand->reloc.exp.X_op)
     {
     case O_constant:
+      operand->reloc.exp.X_add_number += delta;
     case O_register:
       if (operand->reloc.exp.X_add_number & ~0x1ff)
         {
@@ -924,11 +1047,13 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
       operand->reloc.pc_rel = 0;
       break;
     case O_illegal:
-      operand->error = _("Illegal operand in destination");
+      operand->error = _(type == BFD_RELOC_PROPELLER_DST ? "Illegal operand in destination"
+                                                         : "Illegal operand in source");
       break;
     default:
       if (cog_ram)
-        operand->error = _("Destination operand in .cog_ram too complicated");
+        operand->error = _(type == BFD_RELOC_PROPELLER_DST ? "Destination operand in .cog_ram too complicated"
+                                                           : "Source operand in .cog_ram too complicated");
       else
         {
           operand->reloc.type = type;
@@ -941,7 +1066,13 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
 
 static char *
 parse_dest(char *str, struct propeller_code *operand, struct propeller_code *insn){
-  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST);
+  if (prop2) {
+    char *newstr;
+    if ((newstr = parse_indx(str, operand, insn, BFD_RELOC_PROPELLER_DST)) != NULL) {
+      return newstr;
+    }
+  }
+  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST, 0);
 }
 
 static char *
@@ -952,25 +1083,28 @@ parse_srcimm(char *str, struct propeller_code *operand, struct propeller_code *i
       str++;
       insn->code |= 1 << 23;
     }
-  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_SRC);
+  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_SRC, 0);
 }
 
 static char *
-parse_destimm(char *str, struct propeller_code *operand, struct propeller_code *insn){
+parse_destimm(char *str, struct propeller_code *operand, struct propeller_code *insn, int delta){
   str = skip_whitespace (str);
   if (*str == '#')
     {
       str++;
       insn->code |= 1 << 23;
     }
-  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST);
+  else {
+    delta = 0;
+  }
+  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST, delta);
 }
 
 static char *
 parse_destimm_imm(char *str, struct propeller_code *operand, struct propeller_code *insn, int mask){
   int error;
 
-  str = parse_destimm(str, operand, insn);
+  str = parse_destimm(str, operand, insn, 0);
   
   str = parse_separator (str, &error);
   if (error)
@@ -1092,6 +1226,50 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
 }
 
 static char *
+parse_repd(char *str, struct propeller_code *operand, struct propeller_code *insn){
+  int error;
+
+  str = parse_destimm(str, operand, insn, -1);
+  
+  str = parse_separator (str, &error);
+  if (error)
+    {
+      operand->error = _("Missing ','");
+      return str;
+    }
+    
+  str = skip_whitespace (str);
+  if (*str++ != '#')
+    {
+      operand->error = _("immediate operand required");
+      return str;
+    }
+
+  str = skip_whitespace(str);
+    
+  str = parse_expression(str, operand);
+  if (operand->error)
+    return str;
+    
+  switch (operand->reloc.exp.X_op)
+  {
+    case O_constant:
+      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > 0x3f)
+        {
+          operand->error = _("9-bit value out of range");
+          return str;
+        }
+      insn->code |= operand->reloc.exp.X_add_number & 0x3f;
+      break;
+    default:
+      operand->error = _("Must be a constant expression");
+      return str;
+  }
+
+  return str;
+}
+
+static char *
 parse_reps(char *str, struct propeller_code *operand, struct propeller_code *insn){
   int error;
   
@@ -1115,6 +1293,7 @@ parse_reps(char *str, struct propeller_code *operand, struct propeller_code *ins
   switch (operand->reloc.exp.X_op)
   {
     case O_constant:
+      --operand->reloc.exp.X_add_number; // value encoded into instruction is one less than the repeat count
       if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 14))
         {
           operand->error = _("14-bit value out of range");
@@ -1320,7 +1499,7 @@ md_assemble (char *instruction_string)
       break;
 
     case PROPELLER_OPERAND_DESTIMM_SRCIMM:
-      str = parse_dest(str, &op1, &insn);
+      str = parse_destimm(str, &op1, &insn, 0);
       str = parse_separator (str, &error);
       if (error)
         {
@@ -1331,7 +1510,7 @@ md_assemble (char *instruction_string)
       break;
     
     case PROPELLER_OPERAND_DESTIMM:
-      str = parse_destimm(str, &op1, &insn);
+      str = parse_destimm(str, &op1, &insn, 0);
       break;
     
     case PROPELLER_OPERAND_SETINDA:
@@ -1367,7 +1546,6 @@ md_assemble (char *instruction_string)
       break;
 
     case PROPELLER_OPERAND_PTRS_OPS:
-    case PROPELLER_OPERAND_PTRD_OPS:
       {
           str = parse_dest(str, &op1, &insn);
           str = parse_separator (str, &error);
@@ -1381,6 +1559,17 @@ md_assemble (char *instruction_string)
           }
           else {
             str = parse_src(str, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+          }
+      }
+      break;
+
+    case PROPELLER_OPERAND_PTRD_OPS:
+      {
+          if (check_ptr(str)) {
+            str = parse_ptr(str, &op2, &insn, op->format);
+          }
+          else {
+            str = parse_dest(str, &op2, &insn);
           }
       }
       break;
@@ -1969,7 +2158,7 @@ md_assemble (char *instruction_string)
       break;
 
     case PROPELLER_OPERAND_REPD:
-      str = parse_destimm_imm(str, &op1, &insn, 0x3f);
+      str = parse_repd(str, &op1, &insn);
       break;
       
     case PROPELLER_OPERAND_REPS:
