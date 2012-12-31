@@ -640,7 +640,7 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
   int suffix_op = 0;
   int field = 0;
   int ndx = 0;
-  int regnum;
+  int regnum = 0;
   
   str = skip_whitespace(str);
   
