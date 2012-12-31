@@ -28,6 +28,12 @@
 #include "elf/propeller.h"
 #include "dwarf2dbg.h"
 
+/* "always" condition code */
+#define CC_ALWAYS   (0xf << 18)
+
+/* condition code mask */
+#define CC_MASK     (0xf << 18)
+
 /* A representation for Propeller machine code.  */
 struct propeller_code
 {
@@ -73,6 +79,8 @@ static int lmm = 0;             /* Enable LMM pseudo-instructions */
 static int compress = 0;        /* Enable compressed (16 bit) instructions */
 static int prop2 = 0;           /* Enable Propeller 2 instructions */
 static int compress_default = 0; /* default compression mode from command line */
+static int cc_flag;             /* set if a condition code was specified in the current instruction */
+static int cc_cleared;          /* set if the condition code field has been cleared in the process of handling inda/indb references */
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
   {"res", pseudo_res, 0},
@@ -738,7 +746,10 @@ parse_ptr(char *str, struct propeller_code *operand, struct propeller_code *insn
     switch (operand->reloc.exp.X_op)
       {
       case O_constant:
-        ndx = operand->reloc.exp.X_add_number;
+        if (ndx < 0)
+          ndx = -operand->reloc.exp.X_add_number;
+        else
+          ndx = operand->reloc.exp.X_add_number;
         break;
       default:
         operand->error = _("Index must be a constant expression");
@@ -815,6 +826,18 @@ parse_indx(char *str, struct propeller_code *operand, struct propeller_code *ins
     else {
         return NULL;
     }
+  }
+  
+  // make sure a condition code was not given on this instruction
+  if (cc_flag) {
+        operand->error = _("Condition can not be used with inda or indb");
+        return str;
+  }
+  
+  // clear the "always" condition that is set by default
+  if (!cc_cleared) {
+    insn->code &= ~CC_MASK;
+    cc_cleared = 1;
   }
     
   str = skip_whitespace(str);
@@ -1386,13 +1409,15 @@ md_assemble (char *instruction_string)
   int insn2_compressed = 0;
   unsigned int reloc_prefix = 0;  /* for a compressed instruction */
   int xmov_flag = 0;
-  int cc_flag = 0;
 
   if (ignore_input())
     {
       //fprintf(stderr, "ignore input in md_assemble!\n");
       return;
     }
+
+  /* initialize the condition code flags */
+  cc_flag = cc_cleared = 0;
 
   /* force 4 byte alignment for this section */
   record_alignment(now_seg, 2);
@@ -1438,7 +1463,7 @@ md_assemble (char *instruction_string)
     }
   else
     {
-      insn.code = 0xf << 18;
+      insn.code = CC_ALWAYS;
     }
   condmask = 0xf & (insn.code >> 18);
   c = *p;
