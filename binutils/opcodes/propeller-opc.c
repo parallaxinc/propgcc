@@ -126,7 +126,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* cogid    000011 zcr1 cccc ddddddddd 000000001 */
   {"cogid", 0x0c400001, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* coginit  000011 zcR1 cccc ddddddddd 000000010 */
-  {"coginit", 0x0c400002, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_1, NO_COMPRESSED, 0},
+  {"coginit", 0x0c400002, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_1, NO_COMPRESSED, 0},
 /* cogstop  000011 zcR1 cccc ddddddddd 000000011 */
   {"cogstop", 0x0c400003, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* locknew  000011 zcr1 cccc ddddddddd 000000100 */
