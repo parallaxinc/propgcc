@@ -26,10 +26,13 @@
 /* Config for gas and binutils   */
 /*-------------------------------*/
 #undef  STARTFILE_SPEC
-#define STARTFILE_SPEC "%{mxmm*:hubstart_xmm.o%s; mp2:p2vectors.o%s; :spinboot.o%s} %{mcog:crt0_cog.o%s; :%{g:_crt0_debug.o%s; :_crt0.o%s} _crtbegin.o%s}"
+#define STARTFILE_SPEC "\
+%{mxmm*:hubstart_xmm.o%s; mp2:p2vectors.o%s; :spinboot.o%s} \
+%{mcog:%{mp2:crt0_cog2.o%s; :crt0_cog.o%s}; :%{g:_crt0_debug.o%s; :_crt0.o%s} _crtbegin.o%s} \
+"
 
 #undef  ENDFILE_SPEC
-#define ENDFILE_SPEC "%{mcog: crtend_cog.o%s; :_crtend.o%s}"
+#define ENDFILE_SPEC "%{mcog:%{mp2:crtend_cog2.o%s; :crtend_cog.o%s}; :_crtend.o%s}"
 
 #undef ASM_SPEC
 #define ASM_SPEC "\
@@ -41,7 +44,7 @@
 "
 #undef LIB_SPEC
 #define LIB_SPEC "                              \
-%{mcog: -lcog;                                  \
+%{mcog: %{mp2:-lcog2; :-lcog};                  \
   :  --start-group -lc -lgcc --end-group        \
   }                                             \
 "
@@ -49,7 +52,8 @@
 #undef LINK_SPEC
 #define LINK_SPEC "                                             \
 %{mrelax:-relax}                                                \
-%{mcog:-mpropeller_cog; mxmmc: -mpropeller_xmmc; mxmm: -mpropeller_xmm; mxmm-single: -mpropeller_xmm_single; mxmm-split: -mpropeller_xmm_split; mp2: -mpropeller2; :-mpropeller}   \
+%{mcog:-mpropeller_cog; mxmmc:-mpropeller_xmmc; mxmm:-mpropeller_xmm; mxmm-single:-mpropeller_xmm_single; mxmm-split:-mpropeller_xmm_split; :-mpropeller}  \
+%{mp2:-mpropeller2} \
 "
 
 #define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)

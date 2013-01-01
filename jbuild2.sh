@@ -392,30 +392,30 @@ fi
 #
 # build propeller-elf-gdb
 #
-mkdir -p ../build/gdb
-cd ../build/gdb
-../../propgcc/gdb/configure --target=propeller-elf
-if test $? != 0
-then
-   echo "gdb configure failed"
-   cd ../../propgcc
-   exit 1
-fi
+#mkdir -p ../build/gdb
+#cd ../build/gdb
+#../../propgcc/gdb/configure --target=propeller-elf
+#if test $? != 0
+#then
+#   echo "gdb configure failed"
+#   cd ../../propgcc
+#   exit 1
+#fi
 
-make ${JOBS} all
-if test $? != 0
-then
-   echo "gdb make all failed"
-   cd ../../propgcc
-   exit 1
-fi
-if [ ${OS} != "msys" ]
-then
-    cp -f gdb/gdb ${PREFIX}/bin/propeller-elf-gdb
-else
-    cp -f gdb/gdb.exe ${PREFIX}/bin/propeller-elf-gdb.exe
-fi
-cd ../../propgcc
+#make ${JOBS} all
+#if test $? != 0
+#then
+#   echo "gdb make all failed"
+#   cd ../../propgcc
+#   exit 1
+#fi
+#if [ ${OS} != "msys" ]
+#then
+#    cp -f gdb/gdb ${PREFIX}/bin/propeller-elf-gdb
+#else
+#    cp -f gdb/gdb.exe ${PREFIX}/bin/propeller-elf-gdb.exe
+#fi
+#cd ../../propgcc
 
 #
 # build spinsim
@@ -447,28 +447,28 @@ cd ../../propgcc
 #
 # build gdbstub
 #
-cd gdbstub
-make clean
-if test $? != 0
-then
-   echo "gdbstub clean failed"
-   cd ..
-   exit 1
-fi
-make
-if test $? != 0
-then
-   echo "gdbstub make failed"
-   cd ..
-   exit 1
-fi
-if [ ${OS} != "msys" ]
-then
-    cp -f gdbstub ${PREFIX}/bin/.
-else
-    cp -f gdbstub.exe ${PREFIX}/bin/.
-fi
-cd ../../propgcc
+#cd gdbstub
+#make clean
+#if test $? != 0
+#then
+#   echo "gdbstub clean failed"
+#   cd ..
+#   exit 1
+#fi
+#make
+#if test $? != 0
+#then
+#   echo "gdbstub make failed"
+#   cd ..
+#   exit 1
+#fi
+#if [ ${OS} != "msys" ]
+#then
+#    cp -f gdbstub ${PREFIX}/bin/.
+#else
+#    cp -f gdbstub.exe ${PREFIX}/bin/.
+#fi
+#cd ../../propgcc
 
 echo "Build complete."
 exit 0
