@@ -49,13 +49,15 @@ const struct propeller_opcode propeller_opcodes[] = {
   /* dummy entry for the disassembler only */
   {"brs ", 0x84800000, 0xfc800000, PROPELLER_OPERAND_BRS, CCZCWR, PROP_1_LMM | PROP_2_LMM, COMPRESS_BRL, 0},
 
-/* ldi is a fake instruction built from a rdlong and a constant that decodes as NOP */
+/* ldi is a fake instruction built from a rdlong (rdlongc for p2) and a constant that decodes as NOP */
 /* ldi      000010 zc1i cccc ddddddddd sssssssss */
-  {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, CCZCWR, PROP_1_LMM | PROP_2_LMM, NO_COMPRESSED, 0},
+  {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, CCZCWR, PROP_1_LMM, NO_COMPRESSED, 0},
+  {"ldi", 0x09800000, 0xfd800000, PROPELLER_OPERAND_LDI, CCZCWR, PROP_2_LMM, NO_COMPRESSED, 0},
 
-/* brw is also made of rdlong and a constant.  We may shrink it later. */
+/* brw is also made of rdlong (rdlongc for p2) and a constant.  We may shrink it later. */
 /* brw       000010 zc1i cccc ddddddddd sssssssss */
-  {"brw", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRW, CCZCWR, PROP_1_LMM | PROP_2_LMM, NO_COMPRESSED, 0},
+  {"brw", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRW, CCZCWR, PROP_1_LMM, NO_COMPRESSED, 0},
+  {"brw", 0x09800000, 0xfd800000, PROPELLER_OPERAND_BRW, CCZCWR, PROP_2_LMM, NO_COMPRESSED, 0},
 
 /* xmmio is made up of a mov immediate followed by a call; the first part
    is mov, so that's what we give here
@@ -126,7 +128,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* cogid    000011 zcr1 cccc ddddddddd 000000001 */
   {"cogid", 0x0c400001, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* coginit  000011 zcR1 cccc ddddddddd 000000010 */
-  {"coginit", 0x0c400002, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_1, NO_COMPRESSED, 0},
+  {"coginit", 0x0c400002, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_1, NO_COMPRESSED, 0},
 /* cogstop  000011 zcR1 cccc ddddddddd 000000011 */
   {"cogstop", 0x0c400003, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* locknew  000011 zcr1 cccc ddddddddd 000000100 */
@@ -285,11 +287,11 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* rdwordc   000001 z11i cccc ddddddddd sssssssss */
   {"rdwordc", 0x05800000, 0xfd800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* wrlong   000010 000i cccc ddddddddd sssssssss */
-  {"wrlong", 0x08000000, 0xfd800000, PROPELLER_OPERAND_PTRS_OPS, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"wrlong", 0x08000000, 0xfc800000, PROPELLER_OPERAND_PTRS_OPS, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* rdlong   000010 z01i cccc ddddddddd sssssssss */
-  {"rdlong", 0x08800000, 0xfc800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
+  {"rdlong", 0x08800000, 0xfd800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* rdlongc   000010 z11i cccc ddddddddd sssssssss */
-  {"rdlongc", 0x09800000, 0xfc800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
+  {"rdlongc", 0x09800000, 0xfd800000, PROPELLER_OPERAND_PTRS_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 
 /* coginit  000011 zcr0 cccc ddddddddd sssssssss */
   {"coginit", 0x0c000000, 0xfc400000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
