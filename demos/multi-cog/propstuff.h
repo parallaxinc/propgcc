@@ -32,8 +32,8 @@ static __inline__ uint32_t p2_coginit(uint32_t n, void *image, void *par)
     p2_setcog(n);
     __asm__ volatile (
         "coginit %0, %2 wc\n\t"
-        "if_c mov %0, #\n\t"
-        "if_c not %0"
+        "mov %0, #0\n\t"
+        "rcl %0, #1"
     : /* outputs */
         "=r" (image)
     : /* inputs */
@@ -159,12 +159,14 @@ static __inline__ void p1_setpin(uint32_t pin, uint32_t value)
         _OUTA |= mask;
     else
         _OUTA &= ~mask;
+    _DIRA |= mask;
 }
 
 static __inline__ void p1_togglepin(uint32_t pin)
 {
     uint32_t mask = 1 << pin;
     _OUTA ^= mask;
+    _DIRA |= mask;
 }
 
 #define CLKFREQ_P                   ((uint32_t *)0)

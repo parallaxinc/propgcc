@@ -12,6 +12,12 @@
 #include "propstuff.h"
 #include "toggle.h"
 
+#ifdef __PROPELLER2__
+#define DEFAULT_PIN 32
+#else
+#define DEFAULT_PIN 16
+#endif
+
 /* probably don't need a stack, but provide a small one just in case */
 #define STACK_SIZE 16
 
@@ -54,7 +60,7 @@ void main (int argc,  char* argv[])
 {
     /* default the base pin to 16 to indicate LEDs on P16-23 to match the QuickStart board */
     if (_cfg_basepin == -1)
-        _cfg_basepin = 32;
+        _cfg_basepin = DEFAULT_PIN;
         
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;     /* start by waiting for 1 second */
@@ -97,7 +103,7 @@ void main (int argc,  char* argv[])
     par_7.m.token = 1;
     par_7.m.next = &par_0.m;
     
-    /* start the new cogs */
+    /* start the other cogs */
     prop_cognew(LOAD_START(toggle_fw), &par_0.m);
     prop_cognew(LOAD_START(toggle_fw), &par_1.m);
     prop_cognew(LOAD_START(toggle_fw), &par_2.m);
@@ -105,6 +111,8 @@ void main (int argc,  char* argv[])
     prop_cognew(LOAD_START(toggle_fw), &par_4.m);
     prop_cognew(LOAD_START(toggle_fw), &par_5.m);
     prop_cognew(LOAD_START(toggle_fw), &par_6.m);
+    
+    /* restart this cog */
     prop_coginit(cogid(), LOAD_START(toggle_fw), &par_7.m);
 }
 

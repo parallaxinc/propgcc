@@ -21,11 +21,11 @@ static _COGMEM unsigned int nextcnt;
 _NATIVE
 void main(volatile struct toggle_mailbox *m)
 {
+uint32_t delta = *CLKFREQ_P >> 2;
 for (;;){
- prop_setpin(32, 1);
- prop_waitcnt(prop_getcnt() + (*CLKFREQ_P >> 2));
- prop_setpin(32, 0);
- prop_waitcnt(prop_getcnt() + (*CLKFREQ_P >> 2));
+ prop_togglepin(m->pin);
+ prop_togglepin(40 + prop_cogid());
+ prop_waitcnt(prop_getcnt() + delta);
 }
 
   /* make the token delay 1 second */
