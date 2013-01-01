@@ -214,13 +214,8 @@ propeller_option_override (void)
         error ("-fPIC and -fpic are not supported");
         flag_pic = 0;
     }
-
     /* -mcmm implies -mlmm */
     if (TARGET_CMM)
-      target_flags |= MASK_LMM;
-
-    /* -mp2 implies -mlmm */
-    if (TARGET_P2)
       target_flags |= MASK_LMM;
 
     /* -mxmm-single and -mxmm-split imply -mxmm */

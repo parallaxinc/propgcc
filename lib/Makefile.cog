@@ -4,7 +4,7 @@ MODEL=cog
 
 CC=propeller-elf-gcc
 MKDIR = mkdir -p
-CFLAGS=-Os -m$(MODEL) -nostdinc -I./include
+CFLAGS=-Os -m$(MODEL) $(CHIP) -nostdinc -I./include
 AR=propeller-elf-ar
 
 VPATH=.:cog:misc:stdio:stdlib:string:sys:sys/propeller:time:drivers:fdlibm
@@ -33,16 +33,19 @@ OBJS = $(COG) $(MISC) $(STRING) $(STDLIB)
 
 COGOBJS = $(addprefix $(OBJDIR)/cog/, $(OBJS))
 
-all: $(OBJDIR)/$(MODEL) $(OBJDIR)/$(MODEL)/libcog.a $(OBJDIR)/$(MODEL)/crt0_cog.o $(OBJDIR)/$(MODEL)/crtend_cog.o
+all: $(OBJDIR)/$(MODEL) $(OBJDIR)/$(MODEL)/libcog$(SUFFIX).a $(OBJDIR)/$(MODEL)/crt0_cog$(SUFFIX).o $(OBJDIR)/$(MODEL)/crtend_cog$(SUFFIX).o
 
 $(OBJDIR)/$(MODEL):
 	$(MKDIR) $(OBJDIR)/$(MODEL)
 
-$(OBJDIR)/$(MODEL)/libcog.a: $(COGOBJS)
+$(OBJDIR)/$(MODEL)/libcog$(SUFFIX).a: $(COGOBJS)
 	$(AR) rs $@ $^
 
 $(OBJDIR)/$(MODEL)/%.o: %.s
-	$(CC) $(CFLAGS) -m$(MODEL) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(OBJDIR)/$(MODEL)/%.o: %.S
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 $(OBJDIR)/$(MODEL)/%.o: %.c
-	$(CC) $(CFLAGS) -m$(MODEL) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<

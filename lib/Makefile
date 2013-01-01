@@ -36,6 +36,9 @@ cog:	$(OBJDIR) install-includes
 	make -f Makefile.cog OBJDIR=$(OBJDIR)
 	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
 	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
+	make -f Makefile.cog OBJDIR=$(OBJDIR)/p2 CHIP=-mp2 SUFFIX=2
+	cp $(OBJDIR)/p2/cog/crt0_cog2.o $(OBJDIR)/p2/cog/crtend_cog2.o $(DEST)/lib/
+	cp $(OBJDIR)/p2/cog/libcog2.a $(DEST)/lib/
 
 # libtiny.a needs to be built after the c++ library
 tiny:	$(OBJDIR)
@@ -83,6 +86,8 @@ install: all install-dirs install-includes install-specs
 	cp ../gcc/COPYING3 ../gcc/COPYING.RUNTIME $(DEST)/lib/
 	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
 	cp $(OBJDIR)/cog/libcog.a $(DEST)/lib/
+	cp $(OBJDIR)/p2/cog/crt0_cog2.o $(OBJDIR)/p2/cog/crtend_cog2.o $(DEST)/lib/
+	cp $(OBJDIR)/p2/cog/libcog2.a $(DEST)/lib/
 
 install-dirs:
 	mkdir -p $(DEST)/lib/short-doubles/

@@ -25,6 +25,11 @@
 	   so this probably does not need to be here
 	*/
 #include "crt0_cog.s"
+# if defined(__PROPELLER2__)
+#   include "crt0_cog2.s"
+# else
+#   include "crt0_cog.s"
+# endif
 #else
 #error "unknown propeller configuration"
 #endif
