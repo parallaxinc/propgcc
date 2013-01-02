@@ -229,6 +229,8 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_XMMIO:
           case PROPELLER_OPERAND_LDI:
           case PROPELLER_OPERAND_BRW:
+            /* disassembly not implemented yet */
+            continue;
           case PROPELLER_OPERAND_PTRS_OPS:
           case PROPELLER_OPERAND_PTRD_OPS:
           case PROPELLER_OPERAND_DESTIMM:
