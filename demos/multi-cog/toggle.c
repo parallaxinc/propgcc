@@ -65,7 +65,7 @@ void main (int argc,  char* argv[])
     /* set up the parameters for the C cogs */
     par_0.m.wait_time = _clkfreq;     /* start by waiting for 1 second */
     par_0.m.pin = _cfg_basepin + 0;
-    par_0.m.token = 0;
+    par_0.m.token = 1;
     par_0.m.next = &par_1.m;
     
     par_1.m.wait_time = _clkfreq>>2;  /* start by waiting for 1/4 second */
