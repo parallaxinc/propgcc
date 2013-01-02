@@ -32,16 +32,20 @@
         .global __LMM_entry
 __LMM_entry
 r0      getptra sp
-r1      setp    #TX_PIN
-r2      or      REG_DIRC, tx_mask
-r3      jmp     #__LMM_loop
+r1      rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
+r2  IF_NE    jmp    #not_first_cog      ' if not, skip some stuff
+        
+        '' initialization for first time run
+r3      locknew __TMP0 wc       ' allocate a lock
+r4      or      __TMP0, #256    ' in case lock is 0, make the 32 bit value nonzero
+r5      wrlong __TMP0, __C_LOCK_PTR     ' save it to ram
+
+not_first_cog
+r6      setp    #TX_PIN
+r7      or      REG_DIRC, tx_mask
+r8      jmp     #__LMM_loop
 tx_mask
-r4      long    1 << (TX_PIN - 64)  ' must be in dirc
-r5      long    0
-r6      long    0 
-r7      long    0 
-r8      long    0
-r9      long    0
+r9      long    1 << (TX_PIN - 64)  ' must be in dirc
 r10     long    0
 r11     long    0
 r12     long    0
@@ -397,7 +401,7 @@ __CMPSWAPSI
         lockclr __TMP1
 __CMPSWAPSI_ret
         ret
-	
+        
 '*******************************************************************************
 ' Get one character from the input port.
 ' Input none

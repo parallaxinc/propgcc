@@ -91,8 +91,12 @@ void main (int argc,  char* argv[])
     par_5.m.wait_time = _clkfreq>>3;  /* start by waiting for 1/8 second */
     par_5.m.pin = _cfg_basepin + 5;
     par_5.m.token = 0;
-    par_5.m.next = &par_6.m;
+#ifdef __PROPELLER2__
+    par_5.m.next = &par_0.m;
     
+#else
+    par_5.m.next = &par_6.m;
+
     par_6.m.wait_time = _clkfreq>>1;  /* start by waiting for 1/2 second */
     par_6.m.pin = _cfg_basepin + 6;
     par_6.m.token = 0;
@@ -102,6 +106,7 @@ void main (int argc,  char* argv[])
     par_7.m.pin = _cfg_basepin + 7;
     par_7.m.token = 1;
     par_7.m.next = &par_0.m;
+#endif
     
     /* start the other cogs */
     prop_cognew(LOAD_START(toggle_fw), &par_0.m);
@@ -110,10 +115,14 @@ void main (int argc,  char* argv[])
     prop_cognew(LOAD_START(toggle_fw), &par_3.m);
     prop_cognew(LOAD_START(toggle_fw), &par_4.m);
     prop_cognew(LOAD_START(toggle_fw), &par_5.m);
+#ifdef __PROPELLER2__
+    prop_coginit(cogid(), LOAD_START(toggle_fw), &par_5.m);
+#else
     prop_cognew(LOAD_START(toggle_fw), &par_6.m);
     
     /* restart this cog */
     prop_coginit(cogid(), LOAD_START(toggle_fw), &par_7.m);
+#endif
 }
 
 /* +--------------------------------------------------------------------

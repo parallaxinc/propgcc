@@ -19,13 +19,16 @@
         
 r0      getptra sp
 r1      mov r0, sp
-r2      nop
-r3      nop
-r4      nop
-r5      nop
-r6      nop
-r7      nop
-r8      nop
+
+        '' check for first time run
+r2      rdlong  r1, __C_LOCK_PTR wz
+r3  IF_NE jmp   #_start
+        '' allocate a lock, and clear the bss
+r4      locknew r1
+r5      or      r1,#256
+r6      wrlong  r1, __C_LOCK_PTR
+r7      sub     lr,r13 wz
+r8  IF_Z  jmp #_start
 
 __bss_clear
 r9      wrbyte  r14,r13
