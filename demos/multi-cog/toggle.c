@@ -114,10 +114,10 @@ void main (int argc,  char* argv[])
     prop_cognew(LOAD_START(toggle_fw), &par_2.m);
     prop_cognew(LOAD_START(toggle_fw), &par_3.m);
     prop_cognew(LOAD_START(toggle_fw), &par_4.m);
-    prop_cognew(LOAD_START(toggle_fw), &par_5.m);
 #ifdef __PROPELLER2__
     prop_coginit(cogid(), LOAD_START(toggle_fw), &par_5.m);
 #else
+    prop_cognew(LOAD_START(toggle_fw), &par_5.m);
     prop_cognew(LOAD_START(toggle_fw), &par_6.m);
     
     /* restart this cog */
