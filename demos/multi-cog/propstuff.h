@@ -7,9 +7,9 @@ static __inline__ uint32_t p2_cogid(void)
 {
     uint32_t value;
     __asm__ volatile (
-        "cogid %0"
+        "cogid %[_value]"
     : /* outputs */
-        "=r" (value)
+        [_value] "=r" (value)
     : /* no inputs */
     : /* no clobbered registers */
     );
@@ -19,10 +19,10 @@ static __inline__ uint32_t p2_cogid(void)
 static __inline__ void p2_setcog(uint32_t n)
 {
     __asm__ volatile (
-        "setcog %0"
+        "setcog %[_n]"
     : /* no outputs */
     : /* inputs */
-        "r" (n)
+        [_n] "r" (n)
     : /* no clobbered registers */
     );
 }
@@ -31,14 +31,14 @@ static __inline__ uint32_t p2_coginit(uint32_t n, void *image, void *par)
 {
     p2_setcog(n);
     __asm__ volatile (
-        "coginit %0, %2 wc\n\t"
-        "mov %0, #0\n\t"
-        "rcl %0, #1"
+        "coginit %[_image], %[_par] wc\n\t"
+        "if_c mov %[_value], #0\n\t"
+        "if_c not %[_value]"
     : /* outputs */
-        "=r" (image)
+        [_value] "=r" (image)
     : /* inputs */
-        "0" (image),
-        "r" (par)
+        [_image] "0" (image),
+        [_par] "r" (par)
     : /* no clobbered registers */
     );
     return (uint32_t)image;
@@ -52,10 +52,10 @@ static __inline__ uint32_t p2_cognew(void *image, void *par)
 static __inline__ void p2_cogstop(uint32_t n)
 {
     __asm__ volatile (
-        "cogstop %0"
+        "cogstop %[_n]"
     : /* no outputs */
     : /* inputs */
-        "r" (n)
+        [_n] "r" (n)
     : /* no clobbered registers */
     );
 }
@@ -64,9 +64,9 @@ static __inline__ uint32_t p2_getcnt(void)
 {
     uint32_t value;
     __asm__ volatile (
-        "getcnt %0"
+        "getcnt %[_value]"
     : /* outputs */
-        "=r" (value)
+        [_value] "=r" (value)
     : /* no inputs */
     : /* no clobbered registers */
     );
@@ -77,13 +77,13 @@ static __inline__ uint32_t p2_getpin(uint32_t pin)
 {
     uint32_t value;
     __asm__ volatile (
-        "getpin %1 wc\n\t"
-        "mov %0, #0\n\t"
-        "rcl %0, #1"
+        "getpin %[_pin] wc\n\t"
+        "mov %[_value], #0\n\t"
+        "rcl %[_value], #1"
     : /* outputs */
-        "=r" (value)
+        [_value] "=r" (value)
     : /* inputs */
-        "r" (pin)
+        [_pin] "r" (pin)
     : /* no clobbered registers */
     );
     return value;
@@ -92,13 +92,13 @@ static __inline__ uint32_t p2_getpin(uint32_t pin)
 static __inline__ void p2_setpin(uint32_t pin, uint32_t value)
 {
     __asm__ volatile (
-        "rcr %2, #1 wc\n\t"
-        "setpc %1"
+        "rcr %[_value], #1 wc\n\t"
+        "setpc %[_pin]"
     : /* outputs */
         "=r" (value)
     : /* inputs */
-        "r" (pin),
-        "0" (value)
+        [_pin]"r" (pin),
+        [_value] "0" (value)
     : /* no clobbered registers */
     );
 }
@@ -106,10 +106,10 @@ static __inline__ void p2_setpin(uint32_t pin, uint32_t value)
 static __inline__ void p2_togglepin(uint32_t pin)
 {
     __asm__ volatile (
-        "notp %0"
+        "notp %[_pin]"
     : /* no outputs */
     : /* inputs */
-        "r" (pin)
+        [_pin] "r" (pin)
     : /* no clobbered registers */
     );
 }
@@ -117,12 +117,12 @@ static __inline__ void p2_togglepin(uint32_t pin)
 static __inline__ uint32_t p2_waitcnt2(uint32_t target, uint32_t delta)
 {
     __asm__ volatile (
-        "waitcnt %0, %2"
+        "waitcnt %[_target], %[_delta]"
     : /* outputs */
-        "=r" (target)
+        [_value] "=r" (target)
     : /* inputs */
-        "0" (target),
-        "r" (delta)
+        [_target] "0" (target),
+        [_delta] "r" (delta)
     : /* no clobbered registers */
     );
     return target;
