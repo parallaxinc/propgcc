@@ -19,6 +19,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 */
 
+#ifndef __PROPELLER2__
+
 #include <propeller.h>
 #include "i2c.h"
 
@@ -168,3 +170,4 @@ static uint8_t i2cReceiveByte(I2C_SIMPLE *dev, int acknowledge)
     return byte;
 }
 
+#endif // __PROPELLER2__

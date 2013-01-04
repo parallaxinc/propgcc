@@ -9,7 +9,6 @@
 
 #include <stdio.h>  // using temporary stdio
 #include <propeller.h>
-#include "propstuff.h"
 #include "toggle.h"
 
 #ifdef __PROPELLER2__
@@ -109,19 +108,19 @@ void main (int argc,  char* argv[])
 #endif
     
     /* start the other cogs */
-    prop_cognew(LOAD_START(toggle_fw), &par_0.m);
-    prop_cognew(LOAD_START(toggle_fw), &par_1.m);
-    prop_cognew(LOAD_START(toggle_fw), &par_2.m);
-    prop_cognew(LOAD_START(toggle_fw), &par_3.m);
-    prop_cognew(LOAD_START(toggle_fw), &par_4.m);
+    cognew(LOAD_START(toggle_fw), &par_0.m);
+    cognew(LOAD_START(toggle_fw), &par_1.m);
+    cognew(LOAD_START(toggle_fw), &par_2.m);
+    cognew(LOAD_START(toggle_fw), &par_3.m);
+    cognew(LOAD_START(toggle_fw), &par_4.m);
 #ifdef __PROPELLER2__
-    prop_coginit(cogid(), LOAD_START(toggle_fw), &par_5.m);
+    coginit(cogid(), LOAD_START(toggle_fw), &par_5.m);
 #else
-    prop_cognew(LOAD_START(toggle_fw), &par_5.m);
-    prop_cognew(LOAD_START(toggle_fw), &par_6.m);
+    cognew(LOAD_START(toggle_fw), &par_5.m);
+    cognew(LOAD_START(toggle_fw), &par_6.m);
     
     /* restart this cog */
-    prop_coginit(cogid(), LOAD_START(toggle_fw), &par_7.m);
+    coginit(cogid(), LOAD_START(toggle_fw), &par_7.m);
 #endif
 }
 

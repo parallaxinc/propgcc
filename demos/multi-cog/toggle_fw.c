@@ -7,8 +7,13 @@
  */
 
 #include <propeller.h>
-#include "propstuff.h"
 #include "toggle.h"
+
+#ifdef __PROPELLER2__
+#define CLKFREQ_P                   ((uint32_t *)0x0e80)
+#else
+#define CLKFREQ_P                   ((uint32_t *)0)
+#endif
 
 #define MIN_GAP 400000
 
@@ -25,7 +30,7 @@ void main(volatile struct toggle_mailbox *m)
   tokendelay = *CLKFREQ_P;
   
   /* figure out how long to wait the first time */
-  nextcnt = prop_getcnt() + m->wait_time;
+  nextcnt = getcnt() + m->wait_time;
 
   /* loop forever, updating the wait time from the mailbox */
   for (;;) {
@@ -33,13 +38,13 @@ void main(volatile struct toggle_mailbox *m)
         m->wait_time >>= 1;
         if (m->wait_time < MIN_GAP)
             m->wait_time = *CLKFREQ_P;
-        nextcnt = prop_waitcnt2(prop_getcnt() + tokendelay, m->wait_time);
+        nextcnt = waitcnt2(getcnt() + tokendelay, m->wait_time);
         m->next->token = 1;
         m->token = 0;
     }
     else {
-        prop_togglepin(m->pin);
-        nextcnt = prop_waitcnt2(nextcnt, m->wait_time);
+        togglepin(m->pin);
+        nextcnt = waitcnt2(nextcnt, m->wait_time);
     }
   }
 }

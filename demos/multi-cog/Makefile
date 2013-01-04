@@ -8,7 +8,7 @@
 # Propeller Demo include
 PROPLIB = ../common
 
-CFLAGS = -save-temps -Os -DPARALLAX_I2C_BUS
+CFLAGS = -Os -DPARALLAX_I2C_BUS
 CHIP = -mp2
 
 #
