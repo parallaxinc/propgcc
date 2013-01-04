@@ -42,9 +42,11 @@ extern "C"
                                     |(((id)                  ) & 0x0000000f))
 
 /**
- * @brief CNT register accessor.  *
- * @details P2 provides a shared CNT register, but it is not memory mapped as in P1.
- * The CNT is only readable with the getcnt instruction.
+ * @brief CNT register accessor.
+ *
+ * @details P1 provides a COG accessible CNT register.
+ *
+ * This macro is a convenience for portability between P1/P2 code.
  *
  * @returns the global CNT value.
  */
@@ -55,6 +57,8 @@ extern "C"
  *
  * @details P1 provides pin registers only.
  * This inline macro provides access to read a given pin.
+ *
+ * This macro is a convenience for portability between P1/P2 code.
  *
  * @note The use of uint32_t -vs- simple int types here is being discussed.
  *
@@ -73,6 +77,8 @@ static __inline__ uint32_t getpin(uint32_t pin)
  *
  * @details P1 provides pin registers only.
  * This inline macro provides access to write the value to a given pin.
+ *
+ * This macro is a convenience for portability between P1/P2 code.
  *
  * @note The use of uint32_t -vs- simple int types here is being discussed.
  *
@@ -96,6 +102,8 @@ static __inline__ void setpin(uint32_t pin, uint32_t value)
  * @details P1 provides pin registers only.
  * This inline macro provides access to toggle the value of a given pin.
  * Toggle means to set the opposite of the existing state.
+ *
+ * This macro is a convenience for portability between P1/P2 code.
  *
  * @note The use of uint32_t -vs- simple int types here is being discussed.
  *
