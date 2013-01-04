@@ -60,12 +60,10 @@ extern "C"
  *
  * This macro is a convenience for portability between P1/P2 code.
  *
- * @note The use of uint32_t -vs- simple int types here is being discussed.
- *
  * @param pin Pin to read in the range 0:31.
  * @returns State of the requested pin with range 0:1.
  */
-static __inline__ uint32_t getpin(uint32_t pin)
+static __inline__ int getpin(int pin)
 {
     uint32_t mask = 1 << pin;
     _OUTA &= ~mask;
@@ -80,13 +78,11 @@ static __inline__ uint32_t getpin(uint32_t pin)
  *
  * This macro is a convenience for portability between P1/P2 code.
  *
- * @note The use of uint32_t -vs- simple int types here is being discussed.
- *
  * @param pin Pin to read in the range 0:31.
  * @param value The value to set to the pin 0:1
  * @returns Nothing.
  */
-static __inline__ void setpin(uint32_t pin, uint32_t value)
+static __inline__ void setpin(int pin, int value)
 {
     uint32_t mask = 1 << pin;
     if (value)
@@ -105,12 +101,10 @@ static __inline__ void setpin(uint32_t pin, uint32_t value)
  *
  * This macro is a convenience for portability between P1/P2 code.
  *
- * @note The use of uint32_t -vs- simple int types here is being discussed.
- *
  * @param pin Pin to read in the range 0:31.
  * @returns Nothing.
  */
-static __inline__ void togglepin(uint32_t pin)
+static __inline__ void togglepin(int pin)
 {
     uint32_t mask = 1 << pin;
     _OUTA ^= mask;

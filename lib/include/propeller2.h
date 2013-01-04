@@ -38,7 +38,7 @@ extern "C"
  *
  * @returns COG ID provided by the builtin function or -1 on failure.
  */
-static __inline__ uint32_t coginit(uint32_t id, void *image, void *par)
+static __inline__ int coginit(int id, void *image, void *par)
 {
     __asm__ volatile (
         "setcog %[_id]\n\t"
@@ -83,12 +83,10 @@ static __inline__ uint32_t getcnt(void)
  * @details P2 provides pin registers and instructions.
  * This inline macro provides access to read a given pin.
  *
- * @note The use of uint32_t -vs- simple int types here is being discussed.
- *
  * @param pin Pin to read in the range 0:127.
  * @returns State of the requested pin with range 0:1.
  */
-static __inline__ uint32_t getpin(uint32_t pin)
+static __inline__ int getpin(int pin)
 {
     uint32_t value;
     __asm__ volatile (
@@ -110,13 +108,11 @@ static __inline__ uint32_t getpin(uint32_t pin)
  * @details P2 provides pin registers and instructions.
  * This inline macro provides access to write the value to a given pin.
  *
- * @note The use of uint32_t -vs- simple int types here is being discussed.
- *
  * @param pin Pin to read in the range 0:127.
  * @param value The value to set to the pin 0:1
  * @returns Nothing.
  */
-static __inline__ void setpin(uint32_t pin, uint32_t value)
+static __inline__ void setpin(int pin, int value)
 {
     __asm__ volatile (
         "rcr %[_value], #1 wc\n\t"
@@ -137,12 +133,10 @@ static __inline__ void setpin(uint32_t pin, uint32_t value)
  * This inline macro provides access to toggle the value of a given pin.
  * Toggle means to set the opposite of the existing state.
  *
- * @note The use of uint32_t -vs- simple int types here is being discussed.
- *
  * @param pin Pin to read in the range 0:127.
  * @returns Nothing.
  */
-static __inline__ void togglepin(uint32_t pin)
+static __inline__ void togglepin(int pin)
 {
     __asm__ volatile (
         "notp %[_pin]"
