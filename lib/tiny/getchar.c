@@ -41,7 +41,7 @@ HUBTEXT int getchar()
     waitpeq(0, rxmask);
 
     /* sync for one half bit */
-    unsigned int waitcycles = CNT + (bitcycles>>1) + bitcycles;
+    unsigned int waitcycles = getcnt() + (bitcycles>>1) + bitcycles;
 
     int i;
     for (i = 0; i < 8; i++)
