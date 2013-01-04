@@ -59,7 +59,7 @@ static __inline__ uint32_t coginit(uint32_t id, void *image, void *par)
 /**
  * @brief CNT register accessor.
  *
- * @details P2 provides a shared CNT register, but it is not memory mapped as in P1.
+ * @details P2 provides a shared CNT register, but it is not register memory mapped as in P1.
  * The CNT is only readable with the getcnt instruction.
  *
  * @returns the global CNT value.

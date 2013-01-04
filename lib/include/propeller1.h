@@ -55,7 +55,7 @@ extern "C"
 /**
  * @brief getpin accessor used to read the state of a pin.
  *
- * @details P1 provides pin registers only.
+ * @details P1 provides pin access via registers only.
  * This inline macro provides access to read a given pin.
  *
  * This macro is a convenience for portability between P1/P2 code.
@@ -75,7 +75,7 @@ static __inline__ uint32_t getpin(uint32_t pin)
 /**
  * @brief setpin accessor used to write the state of a pin.
  *
- * @details P1 provides pin registers only.
+ * @details P1 provides pin access via registers only.
  * This inline macro provides access to write the value to a given pin.
  *
  * This macro is a convenience for portability between P1/P2 code.
@@ -99,7 +99,7 @@ static __inline__ void setpin(uint32_t pin, uint32_t value)
 /**
  * @brief togglepin accessor used to toggle the state of a pin.
  *
- * @details P1 provides pin registers only.
+ * @details P1 provides pin access via registers only.
  * This inline macro provides access to toggle the value of a given pin.
  * Toggle means to set the opposite of the existing state.
  *
