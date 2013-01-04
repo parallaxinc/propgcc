@@ -41,8 +41,26 @@ extern "C"
                                     |(((uint32_t)(code) <<  2) & 0x0003fff0) \
                                     |(((id)                  ) & 0x0000000f))
 
+/**
+ * @brief CNT register accessor.  *
+ * @details P2 provides a shared CNT register, but it is not memory mapped as in P1.
+ * The CNT is only readable with the getcnt instruction.
+ *
+ * @returns the global CNT value.
+ */
 #define getcnt()                    _CNT
 
+/**
+ * @brief getpin accessor used to read the state of a pin.
+ *
+ * @details P1 provides pin registers only.
+ * This inline macro provides access to read a given pin.
+ *
+ * @note The use of uint32_t -vs- simple int types here is being discussed.
+ *
+ * @param pin Pin to read in the range 0:31.
+ * @returns State of the requested pin with range 0:1.
+ */
 static __inline__ uint32_t getpin(uint32_t pin)
 {
     uint32_t mask = 1 << pin;
@@ -50,6 +68,18 @@ static __inline__ uint32_t getpin(uint32_t pin)
     return _INA & mask ? 1 : 0;
 }
 
+/**
+ * @brief setpin accessor used to write the state of a pin.
+ *
+ * @details P1 provides pin registers only.
+ * This inline macro provides access to write the value to a given pin.
+ *
+ * @note The use of uint32_t -vs- simple int types here is being discussed.
+ *
+ * @param pin Pin to read in the range 0:31.
+ * @param value The value to set to the pin 0:1
+ * @returns Nothing.
+ */
 static __inline__ void setpin(uint32_t pin, uint32_t value)
 {
     uint32_t mask = 1 << pin;
@@ -60,6 +90,18 @@ static __inline__ void setpin(uint32_t pin, uint32_t value)
     _DIRA |= mask;
 }
 
+/**
+ * @brief togglepin accessor used to toggle the state of a pin.
+ *
+ * @details P1 provides pin registers only.
+ * This inline macro provides access to toggle the value of a given pin.
+ * Toggle means to set the opposite of the existing state.
+ *
+ * @note The use of uint32_t -vs- simple int types here is being discussed.
+ *
+ * @param pin Pin to read in the range 0:31.
+ * @returns Nothing.
+ */
 static __inline__ void togglepin(uint32_t pin)
 {
     uint32_t mask = 1 << pin;
