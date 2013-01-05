@@ -50,7 +50,7 @@ _default_update_ticks(void)
      counter overflow, which happens about every 54 seconds or so
   */
   ticks.curticks = _getAtomic64(&_default_ticks);
-  now = _CNT;
+  now = getcnt();
 
   if (ticks.s.lo > now)
     {

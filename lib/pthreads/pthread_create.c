@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <assert.h>
 #include <cog.h>
+#include <propeller.h>
 
 /* define REAL_SLEEP to add a timer queue that processes can sleep on
  * if that isn't defined, sleeps will just be busy waits
@@ -101,7 +102,7 @@ _pthread_schedule_raw(void)
     /* wake up everything on the timer queue whose
        timer limit has elapsed
      */
-    unsigned int now = _CNT;
+    unsigned int now = getcnt();
     next = __timer_queue;
     while (next && (int)(next->timer - now) <= 0)
       {
@@ -187,7 +188,7 @@ _pthread_napuntil(unsigned int newclock)
   /* add the current thread to the "timer" queue
      that queue is kept sorted by time to wake up
   */
-  now = _CNT;
+  now = getcnt();;
   thr->timer = newclock;
   delta = (int)(thr->timer - now);
     {
