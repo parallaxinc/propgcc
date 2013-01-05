@@ -6,13 +6,21 @@
 /* globals that the loader may change; these represent the default
  * pins to use
  */
+#ifdef __PROPELLER2__
+unsigned int _rxpin = 91;
+unsigned int _txpin = 90;
+#else
 unsigned int _rxpin = 31;
 unsigned int _txpin = 30;
+#endif
 unsigned int _baud = 115200;
 unsigned int _bitcycles;
 
 int putchar(int origval)
 {
+#ifdef __PROPELLER2__
+  return -1;
+#else
   int value = origval;
   int i;
   int txmask = (1<<_txpin);
@@ -41,4 +49,5 @@ int putchar(int origval)
       value >>= 1;
     }
   return origval;
+#endif
 }
