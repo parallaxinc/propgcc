@@ -284,11 +284,14 @@ __MASK_FFFFFFFF long    0xFFFFFFFF
         .global __CLZSI
         .global __CLZSI_ret
         .global __CTZSI
+        .global __CTZSI_ret
+        
 __TMP0  long    0
 __MASK_00FF00FF long    0x00FF00FF
 __MASK_0F0F0F0F long    0x0F0F0F0F
 __MASK_33333333 long    0x33333333
 __MASK_55555555 long    0x55555555
+
 __CLZSI rev     r0, #0
 __CTZSI neg     __TMP0, r0
         and     __TMP0, r0      wz
@@ -305,6 +308,8 @@ __CTZSI neg     __TMP0, r0
         test    __TMP0, __MASK_55555555 wz
  IF_Z   add     r0, #1
 __CLZSI_ret     ret
+__CTZSI_ret     ret
+
 __DIVR  long    0
 __TMP1
 __DIVCNT
