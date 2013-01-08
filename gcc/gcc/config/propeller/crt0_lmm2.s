@@ -333,17 +333,24 @@ __UDIVSI_loop
 __UDIVSI_done
         mov     r1, __DIVR
 __UDIVSI_ret    ret
+
 __DIVSGN        long    0
-__DIVSI mov     __DIVSGN, r0
-        xor     __DIVSGN, r1
-        abs     r0, r0 wc
-        muxc    __DIVSGN, #1    ' save original sign of r0
-        abs     r1, r1
-        call    #__UDIVSI
-        cmps    __DIVSGN, #0    wz, wc
- IF_B   neg     r0, r0
-        test    __DIVSGN, #1 wz ' check original sign of r0
- IF_NZ  neg     r1, r1          ' make the modulus result match
+
+__DIVSI
+        setdiva r0
+        setdivb r1
+        getdivq r0
+        getdivr r1 
+'        mov     __DIVSGN, r0
+'        xor     __DIVSGN, r1
+'        abs     r0, r0 wc
+'        muxc    __DIVSGN, #1    ' save original sign of r0
+'        abs     r1, r1
+'        call    #__UDIVSI
+'        cmps    __DIVSGN, #0    wz, wc
+' IF_B   neg     r0, r0
+'        test    __DIVSGN, #1 wz ' check original sign of r0
+' IF_NZ  neg     r1, r1          ' make the modulus result match
 __DIVSI_ret     ret
 
         '' come here on divide by zero
@@ -357,15 +364,18 @@ __UDIV_BY_ZERO
         .global __MULSI_ret
 __MULSI
 __MULSI
-        mov     __TMP0, r0
-        min     __TMP0, r1
-        max     r1, r0
-        mov     r0, #0
-__MULSI_loop
-        shr     r1, #1  wz, wc
- IF_C   add     r0, __TMP0
-        add     __TMP0, __TMP0
- IF_NZ  jmp     #__MULSI_loop
+        setmula r0
+        setmulb r1
+        getmull r0
+'        mov     __TMP0, r0
+'        min     __TMP0, r1
+'        max     r1, r0
+'        mov     r0, #0
+'__MULSI_loop
+'        shr     r1, #1  wz, wc
+' IF_C   add     r0, __TMP0
+'        add     __TMP0, __TMP0
+' IF_NZ  jmp     #__MULSI_loop
 __MULSI_ret     ret
 
         ''
