@@ -313,25 +313,29 @@ __DIVCNT
         '' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
         ''
 __UDIVSI
-        mov     __DIVR, r0
-        call    #__CLZSI
-        neg     __DIVCNT, r0
-        mov     r0, r1 wz
- IF_Z   jmp     #__UDIV_BY_ZERO
-        call    #__CLZSI
-        add     __DIVCNT, r0
-        mov     r0, #0
-        cmps    __DIVCNT, #0    wz, wc
- IF_C   jmp     #__UDIVSI_done
-        shl     r1, __DIVCNT
-        add     __DIVCNT, #1
-__UDIVSI_loop
-        cmpsub  __DIVR, r1      wz, wc
-        addx    r0, r0
-        shr     r1, #1
-        djnz    __DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-        mov     r1, __DIVR
+        setdivu r0
+        setdivb r1
+        getdivq r0
+        getdivr r1 
+'        mov     __DIVR, r0
+'        call    #__CLZSI
+'        neg     __DIVCNT, r0
+'        mov     r0, r1 wz
+' IF_Z   jmp     #__UDIV_BY_ZERO
+'        call    #__CLZSI
+'        add     __DIVCNT, r0
+'        mov     r0, #0
+'        cmps    __DIVCNT, #0    wz, wc
+' IF_C   jmp     #__UDIVSI_done
+'        shl     r1, __DIVCNT
+'        add     __DIVCNT, #1
+'__UDIVSI_loop
+'        cmpsub  __DIVR, r1      wz, wc
+'        addx    r0, r0
+'        shr     r1, #1
+'        djnz    __DIVCNT, #__UDIVSI_loop
+'__UDIVSI_done
+'        mov     r1, __DIVR
 __UDIVSI_ret    ret
 
 __DIVSGN        long    0
