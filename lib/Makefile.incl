@@ -197,6 +197,9 @@ $(MODELDIR)/%.ecog: %.c
 $(MODELDIR)/%.o: %.s
 	$(CC) $(CFLAGS) -o $@ -c $<
 
+$(MODELDIR)/%.o: %.S
+	$(CC) $(CFLAGS) -o $@ -c $<
+
 $(MODELDIR)/%.o: %.sx
 	$(CC) $(CFLAGS) -o $@ -c $<
 
