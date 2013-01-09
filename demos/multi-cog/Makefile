@@ -24,6 +24,3 @@ toggle_fw.cog
 all: $(NAME).elf
 
 include $(PROPLIB)/common.mk
-
-run2:
-	p2load toggle.elf
