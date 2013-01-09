@@ -1,4 +1,3 @@
-#if !defined(__PROPELLER2__)
 /*
 # #########################################################
 # This file loads the SD driver cog code.
@@ -74,4 +73,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 +------------------------------------------------------------------
 */
-#endif
