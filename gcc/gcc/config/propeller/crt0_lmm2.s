@@ -156,9 +156,10 @@ L_ins2  nop
         .macro LMM_movi reg
         .global __LMM_MVI_\reg
 __LMM_MVI_\reg
-        rdlongc \reg,pc
-        add     pc,#4
-        jmp     #__LMM_loop
+        jmpd        #__LMM_loop
+          rdlongc   \reg,pc
+          add       pc,#4
+          nop
         .endm
 
         LMM_movi r0
@@ -187,17 +188,20 @@ __LMM_CALL
         rdlongc __TMP0,pc
         add     pc,#4
 __LMM_CALL_INDIRECT
-        mov     lr,pc
-        mov     pc,__TMP0
-        jmp     #__LMM_loop
+        jmpd    #__LMM_loop
+          mov   lr,pc
+          mov   pc,__TMP0
+          nop
 
         ''
         '' direct jmp
         ''
         .global __LMM_JMP
 __LMM_JMP
-        rdlongc pc,pc
-        jmp     #__LMM_loop
+        jmpd    #__LMM_loop
+          rdlongc pc,pc
+          nop
+          nop
 
         ''
         '' push and pop multiple
@@ -277,14 +281,6 @@ __MASK_FFFFFFFF long    0xFFFFFFFF
         '' math support functions
         ''
         .global __TMP0
-        .global __DIVSI
-        .global __DIVSI_ret
-        .global __UDIVSI
-        .global __UDIVSI_ret
-        .global __CLZSI
-        .global __CLZSI_ret
-        .global __CTZSI
-        .global __CTZSI_ret
         
 __TMP0  long    0
 __MASK_00FF00FF long    0x00FF00FF
@@ -292,6 +288,10 @@ __MASK_0F0F0F0F long    0x0F0F0F0F
 __MASK_33333333 long    0x33333333
 __MASK_55555555 long    0x55555555
 
+        .global __CLZSI
+        .global __CLZSI_ret
+        .global __CTZSI
+        .global __CTZSI_ret
 __CLZSI rev     r0, #0
 __CTZSI neg     __TMP0, r0
         and     __TMP0, r0      wz
@@ -310,65 +310,29 @@ __CTZSI neg     __TMP0, r0
 __CLZSI_ret     ret
 __CTZSI_ret     ret
 
-__DIVR  long    0
 __TMP1
-__DIVCNT
         long    0
         ''
         '' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
         ''
+        .global __UDIVSI
+        .global __UDIVSI_ret
 __UDIVSI
         setdivu r0
         setdivb r1
         getdivq r0
         getdivr r1 
-'        mov     __DIVR, r0
-'        call    #__CLZSI
-'        neg     __DIVCNT, r0
-'        mov     r0, r1 wz
-' IF_Z   jmp     #__UDIV_BY_ZERO
-'        call    #__CLZSI
-'        add     __DIVCNT, r0
-'        mov     r0, #0
-'        cmps    __DIVCNT, #0    wz, wc
-' IF_C   jmp     #__UDIVSI_done
-'        shl     r1, __DIVCNT
-'        add     __DIVCNT, #1
-'__UDIVSI_loop
-'        cmpsub  __DIVR, r1      wz, wc
-'        addx    r0, r0
-'        shr     r1, #1
-'        djnz    __DIVCNT, #__UDIVSI_loop
-'__UDIVSI_done
-'        mov     r1, __DIVR
 __UDIVSI_ret    ret
 
-__DIVSGN        long    0
-
+        .global __DIVSI
+        .global __DIVSI_ret
 __DIVSI
         setdiva r0
         setdivb r1
         getdivq r0
         getdivr r1 
-'        mov     __DIVSGN, r0
-'        xor     __DIVSGN, r1
-'        abs     r0, r0 wc
-'        muxc    __DIVSGN, #1    ' save original sign of r0
-'        abs     r1, r1
-'        call    #__UDIVSI
-'        cmps    __DIVSGN, #0    wz, wc
-' IF_B   neg     r0, r0
-'        test    __DIVSGN, #1 wz ' check original sign of r0
-' IF_NZ  neg     r1, r1          ' make the modulus result match
 __DIVSI_ret     ret
 
-        '' come here on divide by zero
-        '' we probably should raise a signal
-__UDIV_BY_ZERO
-        neg     r0,#1
-        mov     r1,#0
-        jmp     #__UDIVSI_ret
-        
         .global __MULSI
         .global __MULSI_ret
 __MULSI
@@ -376,15 +340,6 @@ __MULSI
         setmula r0
         setmulb r1
         getmull r0
-'        mov     __TMP0, r0
-'        min     __TMP0, r1
-'        max     r1, r0
-'        mov     r0, #0
-'__MULSI_loop
-'        shr     r1, #1  wz, wc
-' IF_C   add     r0, __TMP0
-'        add     __TMP0, __TMP0
-' IF_NZ  jmp     #__MULSI_loop
 __MULSI_ret     ret
 
         ''
