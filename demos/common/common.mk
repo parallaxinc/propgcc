@@ -50,6 +50,7 @@ AS = propeller-elf-as
 AR = propeller-elf-ar
 OBJCOPY = propeller-elf-objcopy
 LOADER = propeller-load
+LOADER2 = p2load
 
 # BSTC program
 BSTC=bstc
@@ -115,6 +116,9 @@ clean:
 
 #
 # how to run
-#
 run: $(NAME).elf
 	$(LOADER) $(BOARDFLAG) $(NAME).elf -r -t
+
+run2: $(NAME).elf
+	$(LOADER2) $(NAME).elf -t
+#
