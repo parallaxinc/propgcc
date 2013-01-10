@@ -73,6 +73,7 @@ LOBJS = serialparam.o \
         getludec.o \
         getlfnum.o \
 
+# these require c++ which isn't working yet on the propeller 2
 #        c++-alloc.o \
 #        tinystream.o
 
