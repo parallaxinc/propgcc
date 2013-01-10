@@ -4,7 +4,7 @@ CC=propeller-elf-gcc
 
 FILES=fibo.o
 
-MODEL=lmm
+MODEL?=lmm
 
 CFLAGS=-Os -m$(MODEL) -mp2 -mno-fcache
 
