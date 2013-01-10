@@ -14,9 +14,6 @@ fibo.elf:	$(FILES)
 %.o:	%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.o:	%.S
-	$(CC) $(CFLAGS) -c $< -o $@
-
 run:
 	p2load -v fibo.elf -t
 

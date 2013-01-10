@@ -456,6 +456,7 @@ skip2
         shl     dfield,#18      '' get dfield into the cond field
         or      .skip2ins,dfield
         nop
+        nop
 .skip2ins       add     pc,#2
         jmp     #__LMM_loop
 
@@ -463,6 +464,7 @@ skip3
         andn    .skip3ins,cond_mask
         shl     dfield,#18      '' get dfield into the cond field
         or      .skip3ins,dfield
+        nop
         nop
 .skip3ins
         add     pc,#3
