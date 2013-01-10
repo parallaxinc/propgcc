@@ -1,4 +1,4 @@
-' crt0_p2.S - an LMM kernel for the Propeller 2
+' crt0_lmm2.S - an LMM kernel for the Propeller 2
 '
 '  Based on ideas from Bill Henning's original LMM design
 
@@ -23,11 +23,6 @@
         .global pc
 
     CLOCK_FREQ =    60000000
-    BAUDRATE =      115200
-    RX_PIN =        91
-    TX_PIN =        90
-    
-    REG_DIRC =      0x1fe
     
         .global __LMM_entry
 __LMM_entry
@@ -41,11 +36,10 @@ r4      or      __TMP0, #256    ' in case lock is 0, make the 32 bit value nonze
 r5      wrlong __TMP0, __C_LOCK_PTR     ' save it to ram
 
 not_first_cog
-r6      setp    #TX_PIN
-r7      or      REG_DIRC, tx_mask
-r8      jmp     #__LMM_loop
-tx_mask
-r9      long    1 << (TX_PIN - 64)  ' must be in dirc
+r6      jmp     #__LMM_loop
+r7      long    0
+r8      long    0
+r9      long    0
 r10     long    0
 r11     long    0
 r12     long    0
@@ -376,63 +370,6 @@ __CMPSWAPSI
 __CMPSWAPSI_ret
         ret
         
-'*******************************************************************************
-' Get one character from the input port.
-' Input none
-' Changes r0, temp, temp1, temp2, c, z
-' Output r0
-' Code from Dave Hein's dfth as modified by David Betz for P2
-'*******************************************************************************
-                        .global __RX
-                        .global __RX_ret
-__RX                    getp    #RX_PIN wz
-        if_nz           jmp     #__RX
-                        getcnt  temp2
-                        mov     temp, bitcycles
-                        shr     temp, #1
-                        add     temp2, temp
-                        mov     temp1, #10
-                        mov     r0, #0
-__RX_loop               waitcnt temp2, bitcycles
-                        ror     r0, #1
-                        getp    #RX_PIN wc
-        if_c            or      r0, #1
-                        djnz    temp1, #__RX_loop
-                        rol     r0, #8
-                        and     r0, #255
-__RX_ret                ret
-
-'*******************************************************************************
-' Send one character to the output port.
-' Input r0
-' Changes r0, temp1, temp2, c
-' Output none             
-' Code from Dave Hein's dfth as modified by David Betz for P2
-'*******************************************************************************
-                        .global __TX
-                        .global __TX_ret
-__TX                    and     r0, #$0ff
-                        or      r0, #$100
-                        shl     r0, #1
-                        mov     temp1, #10
-                        getcnt  temp2
-                        add     temp2, bitcycles
-__TX_loop               ror     r0, #1                  wc
-                        setpc   #TX_PIN
-                        waitcnt temp2, bitcycles
-                        djnz    temp1, #__TX_loop
-__TX_ret                ret
-
-bitcycles               long    CLOCK_FREQ / BAUDRATE
-temp                    long    0
-temp1                   long    0
-temp2                   long    0
-
-                        .global __GETCNT
-                        .global __GETCNT_ret
-__GETCNT                getcnt  r0
-__GETCNT_ret            ret
-
         ''
         '' FCACHE region
         '' The FCACHE is an area where we can
