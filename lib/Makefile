@@ -46,10 +46,12 @@ cog:	$(OBJDIR) install-includes
 tiny:	$(OBJDIR)
 	make -f Makefile.incl MODEL=lmm OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=lmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=lmm CHIP=p2 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=lmm CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=cmm OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=cmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
-	make -f Makefile.incl MODEL=p2 OBJDIR=$(OBJDIR) tiny
-	make -f Makefile.incl MODEL=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=cmm CHIP=p2 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=cmm CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR) tiny
@@ -58,10 +60,12 @@ tiny:	$(OBJDIR)
 install-tiny:
 	cp $(OBJDIR)/lmm/libtiny.a $(DEST)/lib/
 	cp $(OBJDIR)/lmm/short-doubles/libtiny.a $(DEST)/lib/short-doubles/
+	cp $(OBJDIR)/lmm/p2/libtiny.a $(DEST)/lib/p2/
+	cp $(OBJDIR)/lmm/p2/short-doubles/libtiny.a $(DEST)/lib/p2/short-doubles/
 	cp $(OBJDIR)/cmm/libtiny.a $(DEST)/lib/cmm/
 	cp $(OBJDIR)/cmm/short-doubles/libtiny.a $(DEST)/lib/cmm/short-doubles/
-	cp $(OBJDIR)/p2/libtiny.a $(DEST)/lib/p2/
-	cp $(OBJDIR)/p2/short-doubles/libtiny.a $(DEST)/lib/p2/short-doubles/
+	cp $(OBJDIR)/cmm/p2/libtiny.a $(DEST)/lib/cmm/p2/
+	cp $(OBJDIR)/cmm/p2/short-doubles/libtiny.a $(DEST)/lib/cmm/p2/short-doubles/
 	cp $(OBJDIR)/xmmc/libtiny.a $(DEST)/lib/xmmc
 	cp $(OBJDIR)/xmmc/short-doubles/libtiny.a $(DEST)/lib/xmmc/short-doubles/
 	cp $(OBJDIR)/xmm/libtiny.a $(DEST)/lib/xmm/
