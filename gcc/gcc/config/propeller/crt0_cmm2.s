@@ -269,6 +269,7 @@ mvi8
         rdbytec sfield,pc
         movd    .domvi8,dfield
         add     pc,#1
+        nop
 .domvi8
         mov     0-0,sfield
         jmp     #__LMM_loop
@@ -278,6 +279,7 @@ mvi8
         '''
 mvi0
         movd    .domvi0,dfield
+        nop
         nop
 .domvi0
         mov     0-0,#0
@@ -315,6 +317,7 @@ doreg
         add     xfield,#(xtable-r0)/4
         movs    .ins_rr,xfield
         movd    sfield,dfield
+        nop
 .ins_rr or      sfield,0-0
         jmp     #sfield
 
@@ -329,6 +332,7 @@ xmov
         movs    .xmov,sfield
         movd    .xmov,xfield
         add     pc,#1
+        nop
 .xmov   mov     0-0,0-0
 xmov_ret
         ret
@@ -386,6 +390,7 @@ regimm12
         or      sfield,itemp
 .ins_ri or      .ins2,0-0
         add     pc,#1
+        nop
 
 .ins2
         nop
@@ -565,6 +570,7 @@ __LMM_POPM
         and     __TMP1,#0x0f
         movd    L_poploop,__TMP1
         shr     __TMP0,#4
+        nop
 L_poploop
         rdlong  0-0,sp
         add     sp,#4
