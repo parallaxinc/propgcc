@@ -388,6 +388,7 @@ regimm12
         add     xfield,#(xtable-r0)/4
         movs    .ins_ri,xfield
         or      sfield,itemp
+        nop
 .ins_ri or      .ins2,0-0
         add     pc,#1
         nop
