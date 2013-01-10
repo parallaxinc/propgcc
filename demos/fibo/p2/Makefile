@@ -4,7 +4,9 @@ CC=propeller-elf-gcc
 
 FILES=fibo.o
 
-CFLAGS=-Os -mp2 -mno-fcache
+MODEL=lmm
+
+CFLAGS=-Os -m$(MODEL) -mp2 -mno-fcache
 
 fibo.elf:	$(FILES)
 	$(CC) $(CFLAGS) -o $@ $(FILES)

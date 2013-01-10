@@ -9,6 +9,7 @@
 #include <time.h>
 #include <cog.h>
 #include <errno.h>
+#include <propeller.h>
 #include <sys/driver.h>
 
 /* globals that the loader may change; these represent the default
@@ -36,10 +37,31 @@ __attribute__((native)) int _RX(void);
  * OK.
  */
 #ifdef __PROPELLER2__
+#define TX_PIN  90
 static int
 _serial_putbyte(int c, FILE *fp)
 {
-  _TX(c);
+  unsigned int bitcycles = fp->drvarg[3];
+  unsigned int waitcycles;
+  int i, value;
+
+  /* set output */
+  setpin(TX_PIN, 1);
+
+  value = (c | 256) << 1;
+  waitcycles = getcnt() + bitcycles;
+  for (i = 0; i < 10; i++)
+    {
+      waitcycles = waitcnt2(waitcycles, bitcycles);
+      setpin(TX_PIN, (value & 1) ? 1 : 0);
+      value >>= 1;
+    }
+  // if we turn off DIRA, then some boards (like QuickStart) are left with
+  // floating pins and garbage output; if we leave it on, we're left with
+  // a high pin and other cogs cannot produce output on it
+  // the solution is to use FullDuplexSerialDriver instead on applications
+  // with multiple cogs
+  //_DIRA &= ~txmask;
   return c;
 }
 #else
@@ -52,19 +74,19 @@ _serial_putbyte(int c, FILE *fp)
   unsigned int waitcycles;
   int i, value;
 
-  /* set input */
+  /* set output */
   _OUTA |= txmask;
   _DIRA |= txmask;
 
   value = (c | 256) << 1;
-  waitcycles = _CNT + bitcycles;
+  waitcycles = getcnt() + bitcycles;
   for (i = 0; i < 10; i++)
     {
       waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
       if (value & 1)
-	_OUTA |= txmask;
+        _OUTA |= txmask;
       else
-	_OUTA &= ~txmask;
+        _OUTA &= ~txmask;
       value >>= 1;
     }
   // if we turn off DIRA, then some boards (like QuickStart) are left with
@@ -80,10 +102,36 @@ _serial_putbyte(int c, FILE *fp)
 /* and here is getbyte */
 /* we need to put it in fcache to get it to work in XMM and CMM modes */
 #ifdef __PROPELLER2__
+#define RX_PIN  91
+__attribute__((fcache))
 static int
 _serial_getbyte(FILE *fp)
 {
-  return _RX();
+  unsigned int bitcycles = fp->drvarg[3];
+  unsigned int waitcycles;
+  int value;
+  int i;
+
+  /* wait for a start bit */
+  if (fp->_flag & _IONONBLOCK) {
+    /* if non-blocking I/O, return immediately if no data */
+    if ( 0 != getpin(RX_PIN) )
+      return -1;
+  } else {
+    while (getpin(RX_PIN))
+      ;
+  }
+  /* sync for one half bit */
+  waitcycles = getcnt() + (bitcycles>>1) + bitcycles;
+  value = 0;
+  for (i = 0; i < 8; i++) {
+    waitcycles = waitcnt2(waitcycles, bitcycles);
+    value = (getpin(RX_PIN) << 7) | (value >> 1);
+  }
+  /* wait for the line to go high (as it will when the stop bit arrives) */
+    while (!getpin(RX_PIN))
+      ;
+  return value;
 }
 #else
 __attribute__((fcache))
@@ -108,7 +156,7 @@ _serial_getbyte(FILE *fp)
     __builtin_propeller_waitpeq(0, rxmask);
   }
   /* sync for one half bit */
-  waitcycles = _CNT + (bitcycles>>1) + bitcycles;
+  waitcycles = getcnt() + (bitcycles>>1) + bitcycles;
   value = 0;
   for (i = 0; i < 8; i++) {
     waitcycles = __builtin_propeller_waitcnt(waitcycles, bitcycles);
@@ -144,10 +192,10 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
       rxpin = atoi(name);
       while (*name && *name != ',') name++;
       if (*name)
-	{
-	  name++;
-	  txpin = atoi(name);
-	}
+        {
+          name++;
+          txpin = atoi(name);
+        }
     }
   }
   bitcycles = _clkfreq / baud;

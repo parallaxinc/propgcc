@@ -90,7 +90,7 @@ static __inline__ int getpin(int pin)
 {
     uint32_t value;
     __asm__ volatile (
-        "getpin %[_pin] wc\n\t"
+        "getp %[_pin] wc\n\t"
         "mov %[_value], #0\n\t"
         "rcl %[_value], #1"
     : /* outputs */

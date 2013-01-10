@@ -8,12 +8,20 @@ ifndef OBJDIR
 OBJDIR=obj
 endif
 
+ifeq ($(CHIP),)
+  CHIPOPT=
+  CHIPDIR=
+else
+  CHIPOPT=-m$(CHIP)
+  CHIPDIR=/$(CHIP)
+endif
+
 ifeq ($(SHORTDOUBLES),1)
-MODELDIR=$(OBJDIR)/$(MODEL)/short-doubles
+MODELDIR=$(OBJDIR)/$(MODEL)$(CHIPDIR)/short-doubles
 FLOATMODEL=-m32bit-doubles
 FLOATDEF=-D__SHORT_DOUBLES_IMPL
 else
-MODELDIR=$(OBJDIR)/$(MODEL)
+MODELDIR=$(OBJDIR)/$(MODEL)$(CHIPDIR)
 FLOATMODEL=-m64bit-doubles
 FLOATDEF=
 endif
@@ -23,8 +31,8 @@ PREFIX = /usr/local/propeller
 WARN = -Wall -Werror
 #WARN =
 BASEFLAGS = $(WARN) $(FLOATMODEL) -Os -nostdinc -I./include
-CFLAGS = $(BASEFLAGS) -m$(MODEL)
-MATHCFLAGS = $(WARN) -m$(MODEL) $(FLOATDEF) -Os -nostdinc -I./include
+CFLAGS = $(BASEFLAGS) -m$(MODEL) $(CHIPOPT)
+MATHCFLAGS = $(WARN) -m$(MODEL) $(CHIPOPT) $(FLOATDEF) -Os -nostdinc -I./include
 AR = propeller-elf-ar
 CC = propeller-elf-gcc
 OBJCOPY = propeller-elf-objcopy

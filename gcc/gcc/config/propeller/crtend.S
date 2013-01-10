@@ -59,6 +59,10 @@ __environ
 	.weak __clkfreqval
 	.weak __clkmodeval
 
+#ifdef __PROPELLER2__
+	__clkfreqval = 60000000
+	__clkmodeval = 0x6f
+#else
 	__clkfreqval = 80000000
 	__clkmodeval = 0x6f
-
+#endif

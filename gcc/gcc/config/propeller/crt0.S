@@ -5,7 +5,11 @@
 #  include "crt0_xmm.s"
 # endif
 #elif defined(__PROPELLER_CMM__)
-#  include "crt0_cmm.s"
+#  if defined(__PROPELLER2__)
+#    include "crt0_cmm2.s"
+#  else
+#    include "crt0_cmm.s"
+#  endif
 #elif defined(__PROPELLER_LMM__)
 # if defined(DEBUG_KERNEL)
 #  if defined(__PROPELLER2__)
