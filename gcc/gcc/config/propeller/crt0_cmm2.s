@@ -70,7 +70,7 @@ xfield  long 0
 sfield  long 0
         
 __LMM_loop
-        rdbyte  ifield,pc
+        rdbytec ifield,pc
         add     pc,#1
         mov     dfield,ifield
         shr     ifield,#4
@@ -123,15 +123,15 @@ macro_tab_base
         '' read a long into sfield
         '' trashes ifield,xfield
 get_long
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         add     pc,#1
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         add     pc,#1
         shl     xfield,#8
-        rdbyte  ifield,pc
+        rdbytec ifield,pc
         add     pc,#1
         shl     ifield,#16
-        rdbyte  itemp,pc
+        rdbytec itemp,pc
         add     pc,#1
         shl     itemp,#24
         or      sfield,itemp
@@ -144,9 +144,9 @@ get_long_ret
         '' read a word into sfield
         '' trashes xfield
 get_word
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         add     pc,#1
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         add     pc,#1
         shl     xfield,#8
         or      sfield,xfield
@@ -158,9 +158,9 @@ __macro_native
         jmp     #sfield
 
 __macro_fcache
-        rdbyte  __TMP0,pc
+        rdbytec __TMP0,pc
         add     pc,#1
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         shl     sfield,#8
         or      __TMP0,sfield
         add     pc,#1
@@ -181,19 +181,19 @@ __macro_div
         jmp     #__LMM_loop
 
 __macro_pushm
-        rdbyte  __TMP0,pc
+        rdbytec __TMP0,pc
         add     pc,#1
         call    #__LMM_PUSHM
         jmp     #__LMM_loop
 
 __macro_popret
-        rdbyte  __TMP0,pc
+        rdbytec __TMP0,pc
         add     pc,#1
         call    #__LMM_POPRET
         jmp     #__LMM_loop
 
 __macro_popm
-        rdbyte  __TMP0,pc
+        rdbytec __TMP0,pc
         add     pc,#1
         call    #__LMM_POPM
         jmp     #__LMM_loop
@@ -225,7 +225,7 @@ __macro_mvreg
         '' add a signed 8 bit constant to sp
         ''
 __macro_addsp
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         add     pc,#1
         shl     sfield,#24
         sar     sfield,#24
@@ -251,10 +251,10 @@ mvi32
         ''' move immediate of a 16 bit value
         '''
 mvi16
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         movd    .domvi16,dfield
         add     pc,#1
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         add     pc,#1
         shl     xfield,#8
         or      sfield,xfield
@@ -266,7 +266,7 @@ mvi16
         ''' move immediate of an 8 bit value
         '''
 mvi8
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         movd    .domvi8,dfield
         add     pc,#1
 .domvi8
@@ -289,7 +289,7 @@ mvi0
         ''' sets dst = sp + x
         ''' 
 leasp
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         movd    .doleasp1,dfield
         movd    .doleasp2,dfield
         add     pc,#1
@@ -306,7 +306,7 @@ leasp
         '''    iiii dddd ssss xxxx
         '''
 regreg
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         mov     sfield,xfield
         shr     sfield,#4
 doreg
@@ -322,7 +322,7 @@ doreg
         ''' decode an embedded move instruction
         ''' dddd ssss
 xmov
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         mov     sfield,xfield
         shr     xfield,#4
         and     sfield,#15
@@ -352,7 +352,7 @@ xmov_imm
         ''' register plus 4 bit immediate
         '''
 regimm4
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         mov     sfield,xfield
         shr     sfield,#4
         or      sfield,__IMM_BIT
@@ -371,10 +371,10 @@ __IMM_BIT       long (1<<22)
         ''' instead of xor r0,__MASK_FFFFFFFF
         '''
 regimm12
-        rdbyte  itemp,pc                '' read low 8 bits
+        rdbytec itemp,pc                '' read low 8 bits
         add     pc,#1
         mov     .ins2,#(sfield-r0)/4    '' set the source to "sfield" register
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         movd    .ins2,dfield
         mov     sfield,xfield
         and     sfield,#15              '' get the high 4 bits of sfield
@@ -422,10 +422,10 @@ xtable
 cond_mask long (0xf<<18)
         
 brw
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         andn    .brwins,cond_mask
         add     pc,#1
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         shl     dfield,#18      '' get it into the cond field
         or      .brwins,dfield
         add     pc,#1
@@ -435,7 +435,7 @@ brw
         jmp     #__LMM_loop
 
 brs
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         andn    .brsins,cond_mask
         add     pc,#1
         shl     dfield,#18      '' get dfield into the cond field
@@ -480,12 +480,12 @@ skip3
         '' on entry to this function eeeI is in dfield
         ''
 pack_native
-        rdbyte  sfield,pc
+        rdbytec sfield,pc
         add     pc,#1
-        rdbyte  itemp,pc
+        rdbytec itemp,pc
         add     pc,#1
         shl     itemp,#8
-        rdbyte  xfield,pc
+        rdbytec xfield,pc
         add     pc,#1
         or      sfield,itemp
         mov     itemp,xfield   '' get the opcodes
@@ -585,17 +585,14 @@ __MASK_0000FFFF long    0x0000FFFF
         ''
         '' math support functions
         ''
-        .global __DIVSI
-        .global __DIVSI_ret
-        .global __UDIVSI
-        .global __UDIVSI_ret
-        .global __CLZSI
-        .global __CLZSI_ret
-        .global __CTZSI
 __MASK_00FF00FF long    0x00FF00FF
 __MASK_0F0F0F0F long    0x0F0F0F0F
 __MASK_33333333 long    0x33333333
 __MASK_55555555 long    0x55555555
+
+        .global __CLZSI
+        .global __CLZSI_ret
+        .global __CTZSI
 __CLZSI rev     r0, #0
 __CTZSI neg     __TMP0, r0
         and     __TMP0, r0      wz
@@ -612,67 +609,39 @@ __CTZSI neg     __TMP0, r0
         test    __TMP0, __MASK_55555555 wz
  IF_Z   add     r0, #1
 __CLZSI_ret     ret
-__DIVR  long    0
+__CTZSI_ret     ret
+
 __TMP1
-__DIVCNT
         long    0
+        
         ''
         '' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
         ''
+        .global __UDIVSI
+        .global __UDIVSI_ret
 __UDIVSI
-        mov     __DIVR, r0
-        call    #__CLZSI
-        neg     __DIVCNT, r0
-        mov     r0, r1 wz
- IF_Z   jmp     #__UDIV_BY_ZERO
-        call    #__CLZSI
-        add     __DIVCNT, r0
-        mov     r0, #0
-        cmps    __DIVCNT, #0    wz, wc
- IF_C   jmp     #__UDIVSI_done
-        shl     r1, __DIVCNT
-        add     __DIVCNT, #1
-__UDIVSI_loop
-        cmpsub  __DIVR, r1      wz, wc
-        addx    r0, r0
-        shr     r1, #1
-        djnz    __DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-        mov     r1, __DIVR
+        setdivu r0
+        setdivb r1
+        getdivq r0
+        getdivr r1 
 __UDIVSI_ret    ret
-__DIVSGN        long    0
-__DIVSI mov     __DIVSGN, r0
-        xor     __DIVSGN, r1
-        abs     r0, r0 wc
-        muxc    __DIVSGN, #1    ' save original sign of r0
-        abs     r1, r1
-        call    #__UDIVSI
-        cmps    __DIVSGN, #0    wz, wc
- IF_B   neg     r0, r0
-        test    __DIVSGN, #1 wz ' check original sign of r0
- IF_NZ  neg     r1, r1          ' make the modulus result match
+
+        .global __DIVSI
+        .global __DIVSI_ret
+__DIVSI
+        setdiva r0
+        setdivb r1
+        getdivq r0
+        getdivr r1 
 __DIVSI_ret     ret
 
-        '' come here on divide by zero
-        '' we probably should raise a signal
-__UDIV_BY_ZERO
-        neg     r0,#1
-        mov     r1,#0
-        jmp     #__UDIVSI_ret
-        
         .global __MULSI
         .global __MULSI_ret
 __MULSI
 __MULSI
-        mov     __TMP0, r0
-        min     __TMP0, r1
-        max     r1, r0
-        mov     r0, #0
-__MULSI_loop
-        shr     r1, #1  wz, wc
- IF_C   add     r0, __TMP0
-        add     __TMP0, __TMP0
- IF_NZ  jmp     #__MULSI_loop
+        setmula r0
+        setmulb r1
+        getmull r0
 __MULSI_ret     ret
 
         ''
