@@ -320,22 +320,22 @@ fi
 # this must be done after the library build, since it depends on
 # library header files
 #
-#cd ../build/gcc
-#make ${JOBS} all
-#if test $? != 0
-#then
-#   echo "gcc libstdc++ make all failed"
-#   cd ../../propgcc
-#   exit 1
-#fi
-#make install
-#if test $? != 0
-#then
-#   echo "gcc libstdc++ make install failed."
-#   cd ../../propgcc
-#   exit 1
-#fi
-#cd ../../propgcc
+cd ../build/gcc
+make ${JOBS} all
+if test $? != 0
+then
+   echo "gcc libstdc++ make all failed"
+   cd ../../propgcc
+   exit 1
+fi
+make install
+if test $? != 0
+then
+   echo "gcc libstdc++ make install failed."
+   cd ../../propgcc
+   exit 1
+fi
+cd ../../propgcc
 
 #
 # build tiny library
