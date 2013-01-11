@@ -387,7 +387,7 @@ void terminal_mode(int check_for_exit)
 
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
+    newt.c_lflag &= ~(ICANON | ECHO | ISIG);
     newt.c_iflag &= ~(ICRNL | INLCR);
     newt.c_oflag &= ~OPOST;
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
