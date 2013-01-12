@@ -29,6 +29,50 @@
 
 /* Forward declarations.  */
 
+
+/* Set the right machine number for an ELF file */
+static bfd_boolean
+propeller_elf_object_p (bfd *abfd)
+{
+  flagword flags;
+  unsigned long mach;
+
+  flags = elf_elfheader (abfd)->e_flags;
+  if (flags & EF_PROPELLER_PROP2)
+    {
+      mach = bfd_mach_prop2;
+    }
+  else
+    {
+      /* default to propeller 1 for compatibility with old object files */
+      mach = bfd_mach_prop1;
+    }
+  bfd_default_set_arch_mach (abfd, bfd_arch_propeller, mach);
+  return TRUE;
+}
+
+/* final write processing; set flags in the object file, etc */
+static void
+propeller_elf_final_write_processing (bfd *abfd,
+				      bfd_boolean linker ATTRIBUTE_UNUSED)
+{
+  flagword val;
+  /* set the flags */
+  switch (bfd_get_mach (abfd))
+    {
+    default:
+    case bfd_mach_prop1:
+      val = EF_PROPELLER_PROP1;
+      break;
+    case bfd_mach_prop2:
+      val = EF_PROPELLER_PROP2;
+      break;
+    }
+  elf_elfheader (abfd)->e_flags &= ~(EF_PROPELLER_MACH);
+  elf_elfheader (abfd)->e_flags |= val;
+}
+
+
 /* Utility to actually perform an R_M32R_10_PCREL reloc.  */
 
 static bfd_reloc_status_type
@@ -602,6 +646,8 @@ propeller_elf_is_local_label_name (bfd *abfd, const char *name)
 #define elf_backend_gc_mark_hook		propeller_elf_gc_mark_hook
 #define elf_backend_check_relocs                propeller_elf_check_relocs
 #define elf_backend_merge_symbol_attribute      propeller_elf_merge_symbol_attribute
+#define elf_backend_object_p                    propeller_elf_object_p
+#define elf_backend_final_write_processing      propeller_elf_final_write_processing
 
 #define elf_backend_can_gc_sections		1
 #define elf_backend_rela_normal			1

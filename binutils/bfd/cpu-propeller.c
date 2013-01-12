@@ -41,8 +41,13 @@
 
 static const bfd_arch_info_type arch_info_struct[] =
 {
-    PROP( bfd_mach_prop1, "prop1", FALSE, NULL ),
+    PROP( bfd_mach_prop1, "prop1", FALSE, &arch_info_struct[1] ),
+    PROP( bfd_mach_prop2, "prop2", FALSE, NULL )
 };
 
+/* the default architecture is prop1 but with a machine number of 0,
+   to allow the linker to distinguish between a default setting of
+   "propeller" and an explicit "prop1"
+*/
 const bfd_arch_info_type bfd_propeller_arch =
-    PROP( bfd_mach_prop2, "prop2", TRUE, &arch_info_struct[0] );
+  PROP( 0, "prop1", TRUE, &arch_info_struct[0] );

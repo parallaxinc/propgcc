@@ -144,12 +144,14 @@ md_begin (void)
     int hardware = propeller_opcodes[i].hardware;
     int add = 0;
     if (prop2) {
+      bfd_set_arch_mach (stdoutput, bfd_arch_propeller, bfd_mach_prop2);
       if (hardware & PROP_2)
         add = 1;
       if (hardware & PROP_2_LMM && lmm)
         add = 1;
     }
     else {
+      bfd_set_arch_mach (stdoutput, bfd_arch_propeller, bfd_mach_prop1);
       if (hardware & PROP_1)
         add = 1;
       if ((hardware & PROP_2_LMM) && lmm)
@@ -2696,4 +2698,12 @@ long
 md_pcrel_from (fixS * fixP)
 {
   return fixP->fx_frag->fr_address + fixP->fx_where + fixP->fx_size;
+}
+
+/* any special processing for the ELF output file */
+void
+propeller_elf_final_processing (void)
+{
+  /* set various flags in the elf header if necessary */
+  /* nothing to do here?? */
 }
