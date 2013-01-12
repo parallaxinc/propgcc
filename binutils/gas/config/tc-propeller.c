@@ -79,8 +79,10 @@ static int lmm = 0;             /* Enable LMM pseudo-instructions */
 static int compress = 0;        /* Enable compressed (16 bit) instructions */
 static int prop2 = 0;           /* Enable Propeller 2 instructions */
 static int compress_default = 0; /* default compression mode from command line */
+static int elf_flags = 0;       /* machine specific ELF flags */
 static int cc_flag;             /* set if a condition code was specified in the current instruction */
 static int cc_cleared;          /* set if the condition code field has been cleared in the process of handling inda/indb references */
+
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
   {"res", pseudo_res, 0},
@@ -2573,6 +2575,8 @@ md_assemble (char *instruction_string)
         to += 4;
       }
   }
+  if (insn_compressed)
+    elf_flags |= EF_PROPELLER_COMPRESS;
 }
 
 int
@@ -2705,5 +2709,5 @@ void
 propeller_elf_final_processing (void)
 {
   /* set various flags in the elf header if necessary */
-  /* nothing to do here?? */
+  elf_elfheader (stdoutput)->e_flags |= elf_flags;
 }
