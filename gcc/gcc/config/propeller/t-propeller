@@ -87,5 +87,5 @@ $(T)hubstart_xmm.o: $(PROPDIR)/hubstart_xmm.s
 	$(GCC_FOR_TARGET) -o $@ -c $<
 
 $(T)p2vectors.o: $(PROPDIR)/p2vectors.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
+	$(GCC_FOR_TARGET) -mp2 -o $@ -c $<
 
