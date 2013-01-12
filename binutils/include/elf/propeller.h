@@ -52,7 +52,7 @@ END_RELOC_NUMBERS (R_PROPELLER_max)
 #define EF_PROPELLER_PROP2      0x00000002
 
 /* mask for machine type */
-#define EF_PROPELLER_MACH       0x0000000F
+#define EF_PROPELLER_MACH       0x000000FF
 
 #define EF_PROPELLER_COMPRESS   0x00000100 /* file contains compressed instructions */
 #define EF_PROPELLER_XMM        0x00000200 /* file contains XMM instructions */
