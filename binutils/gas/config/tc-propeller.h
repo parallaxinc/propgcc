@@ -50,6 +50,9 @@ valueT propeller_s_get_value (symbolS *s);
 
 #define tc_fix_adjustable(f) 0
 
+#define elf_tc_final_processing propeller_elf_final_processing
+void propeller_elf_final_processing (void);
+
 /* end of tc-propeller.h */
 
 /* Stuff for experiments or debugging.  This should all

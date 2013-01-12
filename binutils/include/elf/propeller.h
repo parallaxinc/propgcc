@@ -20,7 +20,21 @@
 #ifndef _ELF_PROPELLER_H
 #define _ELF_PROPELLER_H
 
-/* Flags for the st_other field. */
+/* processor specific flags for the ELF header e_flags field. */
+
+/* file contains Propeller1 code */
+#define EF_PROPELLER_PROP1      0x00000001
+
+/* file contains Propeller2 code */
+#define EF_PROPELLER_PROP2      0x00000002
+
+/* mask for machine type */
+#define EF_PROPELLER_MACH       0x0000000F
+
+/* Flags for the st_other field, indicating information about
+ * a symbol; whether it is assembled with the .cog_ram flag set,
+ * or whether it was assembled with .compress on in effect.
+ */
 #define PROPELLER_OTHER_COG_RAM 0x80
 #define PROPELLER_OTHER_COMPRESSED 0x40
 #define PROPELLER_OTHER_FLAGS (0xC0)
