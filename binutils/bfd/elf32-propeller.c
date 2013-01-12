@@ -678,9 +678,22 @@ propeller_elf_merge_private_bfd_data (bfd * ibfd, bfd * obfd)
     }
   else if (old_flags != new_flags)
     {
-      /* we can check here for mismatches in bits */
+      flagword old_mach, new_mach;
+      flagword old_ef, new_ef;
 
-      if (old_flags != 0 && new_flags != 0)
+      /* we can check here for mismatches in bits */
+      old_mach = old_flags & EF_PROPELLER_MACH;
+      new_mach = new_flags & EF_PROPELLER_MACH;
+      old_ef = old_flags & (~EF_PROPELLER_MACH);
+      new_ef = new_flags & (~EF_PROPELLER_MACH);
+
+      if (old_mach != 0 && new_mach != 0 && old_mach != new_mach)
+	{
+	      (*_bfd_error_handler)
+		("propeller architecture mismatch: old = 0x%.8lx, new = 0x%.8lx, filename = %s",
+		 old_mach, new_mach, bfd_get_filename (ibfd));
+	}
+      if (old_ef != 0 && new_ef != 0)
 	{
 	  /* Only complain if inconsistent bits are being set */
 	  if (no_warn_mismatch)
