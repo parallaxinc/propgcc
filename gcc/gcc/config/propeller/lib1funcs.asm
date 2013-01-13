@@ -147,15 +147,15 @@ __FPack_ret             ret
 
 '-------------------- constant values -----------------------------------------
 
-Mask23                  long    $007F_FFFF
-Bit28                   long    $1000_0000
+Mask23                  long    $007FFFFF
+Bit28                   long    $10000000
 
 
 endfloat
 
 			.section .kernel
 			.global	__Bit31
-__Bit31                 long    $8000_0000
+__Bit31                 long    $80000000
 	
 			.compress default
 			.text
