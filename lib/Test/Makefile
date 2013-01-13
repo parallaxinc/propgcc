@@ -33,7 +33,7 @@ strtol.elf: strtol.o $(LIB)
 strtod.elf: strtod.o $(LIBM)
 	$(CC) $(CFLAGS) -o $@ $^
 
-sprintf.elf: sprintf.o $(LIB)
+sprintf.elf: sprintf.o $(LIBM)
 	$(CC) $(CFLAGS) -o $@ $^
 
 scanf.elf: scanf.o $(LIB)

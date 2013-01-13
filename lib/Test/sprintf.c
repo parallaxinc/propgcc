@@ -56,6 +56,14 @@ main()
 
   printf("ok\n");
 
+  printf("Testing floating point: "); fflush(stdout);
+  TEST1("%.3f", 1.234, "1.234");
+  TEST1("%e", 1e-5, "1.000000e-05");
+  TEST1("%g", 1e-20, "1e-20");
+  TEST1("%.1f", 99999999.1, "99999999.1");
+  TEST1("%.1f", 1.23e+20, "123000000000000000000.0");
+  printf("ok\n");
+
   printf("testing wide characters: "); fflush(stdout);
   // \u00eb is lower case e with umlaut
   // \u00f8 is lower case o with slash
