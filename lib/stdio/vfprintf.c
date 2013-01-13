@@ -867,6 +867,7 @@ fmtflt(FILE *fp, LDOUBLE fvalue, int width,
 	char esign = 0;
 	char sign = 0;
 	int leadfraczeros = 0;
+	int izeros = 0;   /* extra zeros for integer portion */
 	int exponent = 0;
 	int emitpoint = 0;
 	int omitzeros = 0;
@@ -965,9 +966,10 @@ again:
 	if (estyle)	/* We want exactly one integer digit. */
 		ufvalue /= mypow10(exponent);
 
-	if ((intpart = cast(ufvalue)) == UINTMAX_MAX) {
-		*overflow = 1;
-		return len;
+	while ((intpart = cast(ufvalue)) == UINTMAX_MAX) {
+	        ufvalue /= 10.0;
+		fvalue /= 10.0;
+		izeros += 1;
 	}
 
 	/*
@@ -1113,7 +1115,13 @@ again:
 	while (ipos > 0) {	/* Integer part. */
 		ipos--;
 		OUTCHAR(fp, len, iconvert[ipos]);
-		if (separators > 0 && ipos > 0 && ipos % 3 == 0)
+		if (separators > 0 && (ipos+izeros) > 0 && (ipos+izeros) % 3 == 0)
+			printsep(fp);
+	}
+	while (izeros > 0) {    /* Integer part. */
+	        izeros--;
+		OUTCHAR(fp, len, '0');
+		if (separators > 0 && izeros > 0 && izeros % 3 == 0)
 			printsep(fp);
 	}
 	if (emitpoint) {	/* Decimal point. */
