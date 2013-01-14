@@ -39,6 +39,9 @@
 #define COGIMAGE_LO BASE
 #define COGIMAGE_HI 0x1000
 
+/* offset of signature in image */
+#define SIG_OFFSET  0x1f8
+
 /* defaults */
 #define CLOCK_FREQ  60000000
 #define BAUD_RATE   115200
@@ -68,6 +71,7 @@ typedef struct {
 } Stage2Hdr;
 
 /* globals */
+static int baudRate, baudRate2, baudRate3;
 static uint8_t txbuf[1024];
 static int txcnt;
 static uint8_t rxbuf[1024];
@@ -75,13 +79,10 @@ static int rxnext, rxcnt;
 static int version;
 static uint8_t lfsr;
 
-/* second-stage loader binary image */
-extern uint8_t loader_array[];
-extern int loader_size;
-
 /* prototypes */
 static void Usage(void);
 static void *LoadElfFile(FILE *fp, ElfHdr *hdr, int *pImageSize);
+static int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop);
 
 static int HardwareFound(void);
 static void SerialInit(void);
@@ -103,13 +104,10 @@ static int WaitForAckNak(int timeout);
 
 int main(int argc, char *argv[])
 {
-    uint8_t loader_image[2048];
     char actualPort[PATH_MAX], *port, *infile, *p;
-    int baudRate, baudRate2, baudRate3, verbose, strip, terminalMode, cnt, imageSize, i;
-    Stage2Hdr *hdr;
-    uint32_t *p32;
-    uint32_t cogimage = COGIMAGE_LO;
-    uint32_t stacktop = 0x20000;
+    int verbose, strip, terminalMode, imageSize, err, i;
+    uint32_t cogImage = COGIMAGE_LO;
+    uint32_t stackTop = 0x20000;
     uint8_t *imageBuf, *ptr;
     ElfHdr elfHdr;
     FILE *fp;
@@ -144,10 +142,10 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 'h':
-                cogimage = COGIMAGE_HI;
+                cogImage = COGIMAGE_HI;
                 break;
             case 'n':
-                stacktop = 0x8000;
+                stackTop = 0x8000;
                 break;
             case 'p':
                 if(argv[i][2])
@@ -248,7 +246,7 @@ int main(int argc, char *argv[])
         imageSize -= BASE;
         
         /* propgcc always creates images that start at 0x1000 */
-        cogimage = COGIMAGE_HI;
+        cogImage = COGIMAGE_HI;
     }
     
     /* load a binary file */
@@ -292,67 +290,13 @@ int main(int argc, char *argv[])
         fclose(fp);
     }
     
-    /* build the loader image */
-    memset(loader_image, 0, sizeof(loader_image));
-    memcpy(loader_image, loader_array, loader_size);
-        
-    /* patch the binary loader with the baud rate information */
-    hdr = (Stage2Hdr *)loader_image;
-    hdr->clkfreq = CLOCK_FREQ;
-    hdr->period = hdr->clkfreq / baudRate2;
-    hdr->cogimage = cogimage;
-    hdr->stacktop = stacktop;
-    
-    /* add the signature */
-    p32 = (uint32_t *)loader_image;
-    for (i = 0; i < 8; ++i)
-        p32[0x1f8 + i] = 0x00000001;
-        
-    /* download the second-stage loader binary */
-    for (i = 0; i < 2048; i += 4)
-        TLong(loader_image[i]
-            | (loader_image[i + 1] << 8)
-            | (loader_image[i + 2] << 16)
-            | (loader_image[i + 3] << 24));
-    TComm();
-    
-    /* change to the baud rate for the second-stage loader */
-    if (baudRate2 != baudRate)
-        serial_baud(baudRate2);
-
-    /* wait for the loader to start */
-    msleep(100);
-    
-    /* wait for the loader to be ready */
-    if (!WaitForInitialAck()) {
-        printf("error: packet handshake failed\n");
-        return 1;
-    }
-    
-    /* load the binary image */
-    while ((cnt = imageSize) > 0) {
-        if (cnt > PKTMAXLEN)
-            cnt = PKTMAXLEN;
-        if (!SendPacket(ptr, cnt)) {
-            printf("error: send packet failed\n");
-            return 1;
-        }
-        ptr += cnt;
-        imageSize -= cnt;
-        printf(".");
-        fflush(stdout);
-    }
-    printf("\n");
+    /* load the image */
+    if ((err = p2_LoadImage(ptr, imageSize, cogImage, stackTop)) != 0)
+        return err;
     
     /* free the image buffer */
     free(imageBuf);
         
-    /* terminate the transfer and start the program */
-    if (!SendPacket(NULL, 0)) {
-        printf("error: send start packet failed\n");
-        return 1;
-    }
-    
     /* enter terminal mode if requested */
     if (terminalMode) {
         printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
@@ -381,6 +325,78 @@ usage: p2load\n\
          [ -? ]            display a usage message and exit\n\
          <name>            file to load\n", BAUD_RATE);
     exit(1);
+}
+
+/* p2_LoadImage - load a binary hub image into a propeller 2 */
+static int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop)
+{
+    extern uint8_t loader_array[];
+    extern int loader_size;
+    uint8_t loader_image[512*sizeof(uint32_t)];
+    Stage2Hdr *hdr;
+    uint32_t *ptr32;
+    uint8_t *ptr;
+    int cnt, i;
+
+    /* build the loader image */
+    memset(loader_image, 0, sizeof(loader_image));
+    memcpy(loader_image, loader_array, loader_size);
+        
+    /* patch the binary loader with the baud rate information */
+    hdr = (Stage2Hdr *)loader_image;
+    hdr->clkfreq = CLOCK_FREQ;
+    hdr->period = hdr->clkfreq / baudRate2;
+    hdr->cogimage = cogImage;
+    hdr->stacktop = stackTop;
+    
+    /* add the (dummy) signature */
+    ptr32 = (uint32_t *)loader_image;
+    for (i = 0; i < 8; ++i)
+        ptr32[SIG_OFFSET + i] = 0x00000001;
+        
+    /* download the second-stage loader binary */
+    for (i = 0; i < 2048; i += 4)
+        TLong(loader_image[i]
+            | (loader_image[i + 1] << 8)
+            | (loader_image[i + 2] << 16)
+            | (loader_image[i + 3] << 24));
+    TComm();
+    
+    /* change to the baud rate for the second-stage loader */
+    if (baudRate2 != baudRate)
+        serial_baud(baudRate2);
+
+    /* wait for the loader to start */
+    msleep(100);
+    
+    /* wait for the loader to be ready */
+    if (!WaitForInitialAck()) {
+        printf("error: packet handshake failed\n");
+        return 1;
+    }
+    
+    /* load the binary image */
+    for (ptr = imageBuf; (cnt = imageSize) > 0; ptr += cnt) {
+        if (cnt > PKTMAXLEN)
+            cnt = PKTMAXLEN;
+        if (!SendPacket(ptr, cnt)) {
+            printf("error: send packet failed\n");
+            return 1;
+        }
+        imageSize -= cnt;
+        printf(".");
+        fflush(stdout);
+    }
+    printf("\n");
+    
+    /* terminate the transfer and start the program */
+    if (!SendPacket(NULL, 0)) {
+        printf("error: send start packet failed\n");
+        return 1;
+    }
+    
+    /* return successfully */
+    return 0;
 }
 
 static void *LoadElfFile(FILE *fp, ElfHdr *hdr, int *pImageSize)
