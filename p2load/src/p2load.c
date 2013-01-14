@@ -56,9 +56,6 @@ enum {
     CHECK_PORT_NO_PROPELLER
 };
 
-/* globals */
-int baudRate, baudRate2, baudRate3;
-
 /* locals */
 static int version;
 
@@ -67,7 +64,7 @@ static void Usage(void);
 static void *LoadElfFile(FILE *fp, ElfHdr *hdr, int *pImageSize);
 
 int p2_HardwareFound(int *pVersion);
-int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop);
+int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate);
 
 static int ShowPort(const char* port, void* data);
 static void ShowPorts(char *prefix);
@@ -78,7 +75,7 @@ static int OpenPort(const char* port, int baud);
 int main(int argc, char *argv[])
 {
     char actualPort[PATH_MAX], *port, *infile, *p;
-    int verbose, strip, terminalMode, imageSize, err, i;
+    int baudRate, baudRate2, verbose, strip, terminalMode, imageSize, err, i;
     uint32_t cogImage = COGIMAGE_LO;
     uint32_t stackTop = 0x20000;
     uint8_t *imageBuf, *ptr;
@@ -86,7 +83,7 @@ int main(int argc, char *argv[])
     FILE *fp;
     
     /* initialize */
-    baudRate = baudRate2 = baudRate3 = BAUD_RATE;
+    baudRate = baudRate2 = BAUD_RATE;
     port = infile = NULL;
     verbose = strip = terminalMode = FALSE;
     
@@ -104,14 +101,10 @@ int main(int argc, char *argv[])
                 else
                     Usage();
                 if (*p != ':')
-                    baudRate = baudRate2 = baudRate3 = atoi(p);
+                    baudRate = baudRate2 = atoi(p);
                 if ((p = strchr(p, ':')) != NULL) {
                     if (*++p != ':' && *p != '\0')
-                        baudRate2 = baudRate3 = atoi(p);
-                    if ((p = strchr(p, ':')) != NULL) {
-                        if (*++p != '\0')
-                            baudRate3 = atoi(p);
-                    }
+                        baudRate2 = atoi(p);
                 }
                 break;
             case 'h':
@@ -264,7 +257,7 @@ int main(int argc, char *argv[])
     }
     
     /* load the image */
-    if ((err = p2_LoadImage(ptr, imageSize, cogImage, stackTop)) != 0)
+    if ((err = p2_LoadImage(ptr, imageSize, cogImage, stackTop, baudRate)) != 0)
         return err;
     
     /* free the image buffer */
@@ -274,8 +267,8 @@ int main(int argc, char *argv[])
     if (terminalMode) {
         printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
         fflush(stdout);
-        if (baudRate3 != baudRate2)
-            serial_baud(baudRate3);
+        if (baudRate2 != baudRate)
+            serial_baud(baudRate2);
         terminal_mode(FALSE);
     }
 
