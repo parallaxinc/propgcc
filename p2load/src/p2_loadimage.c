@@ -25,8 +25,6 @@ typedef struct {
     uint32_t stacktop;  // address of the top of stack
 } Stage2Hdr;
 
-extern int baudRate, baudRate2;
-
 static uint8_t txbuf[1024];
 static int txcnt;
 static uint8_t rxbuf[1024];
@@ -45,7 +43,7 @@ static int SendPacket(uint8_t *buf, int len);
 static int WaitForAckNak(int timeout);
 
 /* p2_LoadImage - load a binary hub image into a propeller 2 */
-int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop)
+int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate)
 {
     extern uint8_t loader_array[];
     extern int loader_size;
@@ -62,7 +60,7 @@ int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t s
     /* patch the binary loader with the baud rate information */
     hdr = (Stage2Hdr *)loader_image;
     hdr->clkfreq = CLOCK_FREQ;
-    hdr->period = hdr->clkfreq / baudRate2;
+    hdr->period = hdr->clkfreq / baudRate;
     hdr->cogimage = cogImage;
     hdr->stacktop = stackTop;
     
@@ -79,10 +77,6 @@ int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t s
             | (loader_image[i + 3] << 24));
     TComm();
     
-    /* change to the baud rate for the second-stage loader */
-    if (baudRate2 != baudRate)
-        serial_baud(baudRate2);
-
     /* wait for the loader to start */
     msleep(100);
     
