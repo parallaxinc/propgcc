@@ -53,6 +53,7 @@ HDRS=
 OBJS=\
 $(OBJDIR)/p2load.o \
 $(OBJDIR)/loadelf.o \
+$(OBJDIR)/p2_loadimage.o \
 $(OBJDIR)/loader.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
 
