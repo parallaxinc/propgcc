@@ -1121,50 +1121,51 @@ parse_destimm(char *str, struct propeller_code *operand, struct propeller_code *
       str++;
       insn->code |= 1 << 23;
     }
-  else {
-    delta = 0;
-  }
+  else
+    {
+      delta = 0;
+    }
   return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST, delta);
 }
 
 static char *
-parse_destimm_imm(char *str, struct propeller_code *operand, struct propeller_code *insn, int mask){
+parse_destimm_imm(char *str, struct propeller_code *op1, struct propeller_code *op2, struct propeller_code *insn, int mask){
   int error;
 
-  str = parse_destimm(str, operand, insn, 0);
+  str = parse_destimm(str, op1, insn, 0);
   
   str = parse_separator (str, &error);
   if (error)
     {
-      operand->error = _("Missing ','");
+      op2->error = _("Missing ','");
       return str;
     }
     
   str = skip_whitespace (str);
   if (*str++ != '#')
     {
-      operand->error = _("immediate operand required");
+      op2->error = _("immediate operand required");
       return str;
     }
 
   str = skip_whitespace(str);
     
-  str = parse_expression(str, operand);
-  if (operand->error)
+  str = parse_expression(str, op2);
+  if (op2->error)
     return str;
     
-  switch (operand->reloc.exp.X_op)
+  switch (op2->reloc.exp.X_op)
   {
     case O_constant:
-      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > mask)
+      if (op2->reloc.exp.X_add_number < 0 || op2->reloc.exp.X_add_number > mask)
         {
-          operand->error = _("Second operand value out of range");
+          op2->error = _("Second operand value out of range");
           return str;
         }
-      insn->code |= operand->reloc.exp.X_add_number & mask;
+      insn->code |= op2->reloc.exp.X_add_number & mask;
       break;
     default:
-      operand->error = _("Must be a constant expression");
+      op2->error = _("Must be a constant expression");
       return str;
   }
 
@@ -1253,43 +1254,44 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
 }
 
 static char *
-parse_repd(char *str, struct propeller_code *operand, struct propeller_code *insn){
+parse_repd(char *str, struct propeller_code *op1, struct propeller_code *op2, struct propeller_code *insn){
   int error;
 
-  str = parse_destimm(str, operand, insn, -1);
+  str = parse_destimm(str, op1, insn, -1);
   
   str = parse_separator (str, &error);
   if (error)
     {
-      operand->error = _("Missing ','");
+      op2->error = _("Missing ','");
       return str;
     }
     
   str = skip_whitespace (str);
   if (*str++ != '#')
     {
-      operand->error = _("immediate operand required");
+      op2->error = _("immediate operand required");
       return str;
     }
 
   str = skip_whitespace(str);
     
-  str = parse_expression(str, operand);
-  if (operand->error)
+  str = parse_expression(str, op2);
+  if (op2->error)
     return str;
     
-  switch (operand->reloc.exp.X_op)
+  switch (op2->reloc.exp.X_op)
   {
     case O_constant:
-      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number > 0x3f)
+      --op2->reloc.exp.X_add_number; // value encoded into instruction is one less than the instruction count
+      if (op2->reloc.exp.X_add_number < 0 || op2->reloc.exp.X_add_number > 0x3f)
         {
-          operand->error = _("9-bit value out of range");
+          op2->error = _("9-bit value out of range");
           return str;
         }
-      insn->code |= operand->reloc.exp.X_add_number & 0x3f;
+      insn->code |= op2->reloc.exp.X_add_number & 0x3f;
       break;
     default:
-      operand->error = _("Must be a constant expression");
+      op2->error = _("Must be a constant expression");
       return str;
   }
 
@@ -1297,7 +1299,7 @@ parse_repd(char *str, struct propeller_code *operand, struct propeller_code *ins
 }
 
 static char *
-parse_reps(char *str, struct propeller_code *operand, struct propeller_code *insn){
+parse_reps(char *str, struct propeller_code *op1, struct propeller_code *op2, struct propeller_code *insn){
   int error;
   
   // condition bits are used for other purposes in this instruction
@@ -1307,65 +1309,66 @@ parse_reps(char *str, struct propeller_code *operand, struct propeller_code *ins
   str = skip_whitespace (str);
   if (*str++ != '#')
     {
-      operand->error = _("immediate operand required");
+      op1->error = _("immediate operand required");
       return str;
     }
 
   str = skip_whitespace(str);
     
-  str = parse_expression(str, operand);
-  if (operand->error)
+  str = parse_expression(str, op1);
+  if (op1->error)
     return str;
     
-  switch (operand->reloc.exp.X_op)
+  switch (op1->reloc.exp.X_op)
   {
     case O_constant:
-      --operand->reloc.exp.X_add_number; // value encoded into instruction is one less than the repeat count
-      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 14))
+      --op1->reloc.exp.X_add_number; // value encoded into instruction is one less than the repeat count
+      if (op1->reloc.exp.X_add_number < 0 || op1->reloc.exp.X_add_number >= (1 << 14))
         {
-          operand->error = _("14-bit value out of range");
+          op1->error = _("14-bit value out of range");
           return str;
         }
-      insn->code |= (operand->reloc.exp.X_add_number & 0x1fff) << 9;
-      insn->code |= (operand->reloc.exp.X_add_number & 0x2000) << (25 - 13);
+      insn->code |= (op1->reloc.exp.X_add_number & 0x1fff) << 9;
+      insn->code |= (op1->reloc.exp.X_add_number & 0x2000) << (25 - 13);
       break;
     default:
-      operand->error = _("Repeat count must be a constant expression");
+      op1->error = _("Repeat count must be a constant expression");
       return str;
   }
 
   str = parse_separator (str, &error);
   if (error)
     {
-      operand->error = _("Missing ','");
+      op2->error = _("Missing ','");
       return str;
     }
   
   str = skip_whitespace (str);
   if (*str++ != '#')
     {
-      operand->error = _("immediate operand required");
+      op2->error = _("immediate operand required");
       return str;
     }
 
   str = skip_whitespace(str);
     
-  str = parse_expression(str, operand);
-  if (operand->error)
+  str = parse_expression(str, op2);
+  if (op2->error)
     return str;
     
-  switch (operand->reloc.exp.X_op)
+  switch (op2->reloc.exp.X_op)
   {
     case O_constant:
-      if (operand->reloc.exp.X_add_number < 0 || operand->reloc.exp.X_add_number >= (1 << 6))
+      --op2->reloc.exp.X_add_number; // value encoded into instruction is one less than the instruction count
+      if (op2->reloc.exp.X_add_number < 0 || op2->reloc.exp.X_add_number >= (1 << 6))
         {
-          operand->error = _("6-bit value out of range");
+          op2->error = _("6-bit value out of range");
           return str;
         }
-      insn->code |= operand->reloc.exp.X_add_number & 0x3f;
+      insn->code |= op2->reloc.exp.X_add_number & 0x3f;
       break;
     default:
-      operand->error = _("Instruction count must be a constant expression");
+      op2->error = _("Instruction count must be a constant expression");
       return str;
   }
 
@@ -1481,9 +1484,12 @@ md_assemble (char *instruction_string)
       return;
     }
     
-  if (cc_flag && !(op->flags & FLAG_CC)) {
+  if (!(op->flags & FLAG_CC)) {
+    if (cc_flag) {
       as_bad (_("Condition code not allowed with this instruction"));
       return;
+    }
+    insn.code = 0;
   }
 
   insn.error = NULL;
@@ -1535,7 +1541,7 @@ md_assemble (char *instruction_string)
           op2.error = _("Missing ','");
           break;
         }
-      str = parse_srcimm(str, &op1, &insn);
+      str = parse_srcimm(str, &op2, &insn);
       break;
     
     case PROPELLER_OPERAND_DESTIMM:
@@ -2187,19 +2193,19 @@ md_assemble (char *instruction_string)
       break;
 
     case PROPELLER_OPERAND_REPD:
-      str = parse_repd(str, &op1, &insn);
+      str = parse_repd(str, &op1, &op2, &insn);
       break;
       
     case PROPELLER_OPERAND_REPS:
-      str = parse_reps(str, &op1, &insn);
+      str = parse_reps(str, &op1, &op2, &insn);
       break;
     
     case PROPELLER_OPERAND_JMPTASK:
-      str = parse_destimm_imm(str, &op1, &insn, 0xf);
+      str = parse_destimm_imm(str, &op1, &op2, &insn, 0xf);
       break;
       
     case PROPELLER_OPERAND_BIT:
-      str = parse_destimm_imm(str, &op1, &insn, 0x1f);
+      str = parse_destimm_imm(str, &op1, &op2, &insn, 0x1f);
       break;
       
     default:

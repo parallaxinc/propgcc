@@ -3,6 +3,10 @@ RM=rm
 CC=cc
 ECHO=echo
 
+PROPCC=propeller-elf-gcc
+PROPCFLAGS=-mp2
+PROPOBJCOPY=propeller-elf-objcopy
+
 OS?=macosx
 
 ifeq ($(OS),linux)
@@ -39,6 +43,7 @@ endif
 
 SRCDIR=src
 OBJDIR=obj/$(OS)
+PROPOBJDIR=obj/propeller
 BINDIR=bin/$(OS)
 
 TARGET=$(BINDIR)/p2load$(EXT)
@@ -57,7 +62,7 @@ LDFLAGS=$(CFLAGS)
 .PHONY:	default
 default:	$(TARGET)
 
-DIRS=$(OBJDIR) $(BINDIR)
+DIRS=$(OBJDIR) $(PROPOBJDIR) $(BINDIR)
 
 $(TARGET):	$(BINDIR) $(OBJDIR) $(OBJS)
 	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -65,9 +70,17 @@ $(TARGET):	$(BINDIR) $(OBJDIR) $(OBJS)
 
 $(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS) $(OBJDIR)
 	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(ECHO) $(CC) $@
+
+$(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)
+	@$(PROPCC) $(PROPCFLAGS) -nostdlib $< -o $@
+	@$(ECHO) $(PROPCC) $@
+
+$(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
+	@$(PROPOBJCOPY) -O binary $< $@
 	@$(ECHO) cc $@
 
-$(OBJDIR)/%.c:	$(SRCDIR)/%.BIN bin2c $(OBJDIR)
+$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) bin2c $@
 
@@ -84,6 +97,7 @@ $(DIRS):
 .PHONY:	clean
 clean:
 	@$(RM) -f -r $(OBJDIR)
+	@$(RM) -f -r $(PROPOBJDIR)
 	@$(RM) -f -r $(BINDIR)
 
 .PHONY:

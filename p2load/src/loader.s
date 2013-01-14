@@ -7,8 +7,6 @@
 ''* MIT License                               *
 ''*********************************************
 
-'CON
-
   BASE = 0x0e80
   CLOCK_FREQ = 60000000
   BAUD = 115200
@@ -28,8 +26,9 @@
   STATE_CRC_HI = 5
   STATE_CRC_LO = 6
   
-'DAT
-
+  dirc = 0x1fe
+  
+                        .cog_ram
                         org     0
                         
                         jmp     #init
@@ -40,15 +39,17 @@ period                  long    CLOCK_FREQ / BAUD
 cogimage                long    BASE
 stacktop                long    0x20000
                         
-init                    reps    #0x1F6-reserves,#1       'clear reserves
-                        setinda reserves
+init                    repd    reserves_cnt_m1, #1     'clear reserves
+                        setinda #reserves
+                        nop
+                        nop
                         mov     inda++,#0
         
                         setp    tx_pin
                         mov     dirc,dirc_mask          'make tx pin an output
         
                         jmptask #rx_task,#%0010         'enable serial receiver task
-                        settask #%%1010
+                        settask #0x44 '%%1010
 
                         mov     rcv_state, #STATE_SOH   'initialize the packet receive state
                         mov     rcv_base, base_addr     'initialize the start of packet
@@ -146,7 +147,7 @@ tx                      shl     x,#1                    'insert start bit
 
                         getcnt  w                       'get initial time
 
-tx_bit                  add     w,period                'add bit period to time
+tx_loop                 add     w,period                'add bit period to time
                         passcnt w                       'loop until bit period elapsed
                         shr     x,#1            wc      'get next bit into c
                         setpc   tx_pin                  'write c to tx pin
@@ -192,7 +193,7 @@ rx_task                 chkspb                  wz      'if start or rollover, r
                         neg     rx_time,period          'get -0.5 period
                         sar     rx_time,#1
 
-                        jp      rx_pin,#0x               'wait for start bit
+rx_wait                 jp      rx_pin,#rx_wait         'wait for start bit
 
                         subcnt  rx_time                 'get time + 0.5 period for initial 1.5 period delay
 
@@ -252,6 +253,8 @@ crctab
     word 0xef1f,  0xff3e,  0xcf5d,  0xdf7c,  0xaf9b,  0xbfba,  0x8fd9,  0x9ff8
     word 0x6e17,  0x7e36,  0x4e55,  0x5e74,  0x2e93,  0x3eb2,  0x0ed1,  0x1ef0
 
+reserves_cnt_m1         long    end_reserves-reserves-1
+
 
 '*************
 '* Variables *
@@ -295,5 +298,7 @@ rcv_base                res     1
 rcv_ptr                 res     1
 rcv_cnt                 res     1
 crc                     res     1
+
+end_reserves
 
                         fit     496

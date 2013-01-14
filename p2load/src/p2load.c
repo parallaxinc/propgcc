@@ -103,9 +103,11 @@ static int WaitForAckNak(int timeout);
 
 int main(int argc, char *argv[])
 {
+    uint8_t loader_image[2048];
     char actualPort[PATH_MAX], *port, *infile, *p;
     int baudRate, baudRate2, baudRate3, verbose, strip, terminalMode, cnt, imageSize, i;
-    Stage2Hdr *hdr = (Stage2Hdr *)loader_array;
+    Stage2Hdr *hdr;
+    uint32_t *p32;
     uint32_t cogimage = COGIMAGE_LO;
     uint32_t stacktop = 0x20000;
     uint8_t *imageBuf, *ptr;
@@ -289,19 +291,29 @@ int main(int argc, char *argv[])
         /* close the binary file */
         fclose(fp);
     }
+    
+    /* build the loader image */
+    memset(loader_image, 0, sizeof(loader_image));
+    memcpy(loader_image, loader_array, loader_size);
         
     /* patch the binary loader with the baud rate information */
+    hdr = (Stage2Hdr *)loader_image;
     hdr->clkfreq = CLOCK_FREQ;
     hdr->period = hdr->clkfreq / baudRate2;
     hdr->cogimage = cogimage;
     hdr->stacktop = stacktop;
     
+    /* add the signature */
+    p32 = (uint32_t *)loader_image;
+    for (i = 0; i < 8; ++i)
+        p32[0x1f8 + i] = 0x00000001;
+        
     /* download the second-stage loader binary */
-    for (i = 0; i < loader_size; i += 4)
-        TLong(loader_array[i]
-            | (loader_array[i + 1] << 8)
-            | (loader_array[i + 2] << 16)
-            | (loader_array[i + 3] << 24));
+    for (i = 0; i < 2048; i += 4)
+        TLong(loader_image[i]
+            | (loader_image[i + 1] << 8)
+            | (loader_image[i + 2] << 16)
+            | (loader_image[i + 3] << 24));
     TComm();
     
     /* change to the baud rate for the second-stage loader */

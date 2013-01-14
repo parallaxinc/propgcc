@@ -322,7 +322,7 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"popzc", 0x0c40000b, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_2, NO_COMPRESSED, 0},
   
 /* subcnt  000011 zcr1 cccc ddddddddd 000001100 */
-  {"subcnt", 0x0c40000c, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_2, NO_COMPRESSED, 0},
+  {"subcnt", 0x0c40000c, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 /* passcnt  000011 zcr1 cccc ddddddddd 000001101 */
   {"passcnt", 0x0c40000d, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* getcnt    000011 zc11 cccc ddddddddd 000001101 */
@@ -348,11 +348,11 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* getspd  000011 zcr1 cccc ddddddddd 000010101 */
   {"getspd", 0x0c400015, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 /* chkspa  000011 zcr1 cccc ddddddddd 000010110 */
-  {"chkspa", 0x0c400016, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_2, NO_COMPRESSED, 0},
+  {"chkspa", 0x0c400016, 0xfcc001ff, PROPELLER_OPERAND_NO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
 /* getspa  000011 zcr1 cccc ddddddddd 000010110 */
   {"getspa", 0x0c400016, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 /* chkspb  000011 zcr1 cccc ddddddddd 000010111 */
-  {"chkspb", 0x0c400017, 0xfcc001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCNR, PROP_2, NO_COMPRESSED, 0},
+  {"chkspb", 0x0c400017, 0xfcc001ff, PROPELLER_OPERAND_NO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
 /* getspb  000011 zcr1 cccc ddddddddd 000010111 */
   {"getspb", 0x0c400017, 0xfc4001ff, PROPELLER_OPERAND_DEST_ONLY, CCZCWR, PROP_2, NO_COMPRESSED, 0},
   
