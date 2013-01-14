@@ -31,7 +31,6 @@ static uint8_t txbuf[1024];
 static int txcnt;
 static uint8_t rxbuf[1024];
 static int rxnext, rxcnt;
-static int version;
 static uint8_t lfsr;
 
 static void SerialInit(void);
@@ -119,9 +118,9 @@ int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t s
 
 /* this code is adapted from Chip Gracey's PNut IDE */
 
-int p2_HardwareFound(void)
+int p2_HardwareFound(int *pVersion)
 {
-    int i;
+    int version, i;
     
     /* reset the propeller */
     hwreset();
@@ -154,6 +153,7 @@ int p2_HardwareFound(void)
         }
         version = ((version >> 1) & 0x7f) | (bit << 7);
     }
+    *pVersion = version;
         
     /* return successfully */
     return TRUE;
