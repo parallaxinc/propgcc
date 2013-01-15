@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include "p2_loadimage.h"
+#include "p2image.h"
+#include "config.h"
 #include "osint.h"
 
 #ifndef TRUE
@@ -11,20 +12,24 @@
 /* maximum packet size for the second-stage loader */
 #define PKTMAXLEN   1024
 
-/* clock frequency (for Propeller 2 FPGA boards) */
-#define CLOCK_FREQ  60000000
-
-/* offset of signature in image */
+/* offset of signature in second-stage loader image */
 #define SIG_OFFSET  0x1f8
+
+/* p2 program base */
+#define BASE    0xe80
 
 /* second-stage loader header structure */
 typedef struct {
     uint32_t jmpinit;
-    uint32_t clkfreq;
     uint32_t period;    // clkfreq / baudrate
     uint32_t cogimage;  // address of the cog image
     uint32_t stacktop;  // address of the top of stack
 } Stage2Hdr;
+
+/* p2 program header */
+typedef struct {
+    uint32_t clkfreq;
+} P2Hdr;
 
 static uint8_t txbuf[1024];
 static int txcnt;
@@ -43,27 +48,46 @@ static int WaitForInitialAck(void);
 static int SendPacket(uint8_t *buf, int len);
 static int WaitForAckNak(int timeout);
 
+void p2_UpdateHeader(BoardConfig *config, uint8_t *imageBuf, uint32_t imageSize)
+{
+    P2Hdr *hdr = (P2Hdr *)(imageBuf + BASE);
+    int ivalue;
+
+    /* patch in header fields */
+    GetNumericConfigField(config, "clkfreq", &ivalue);
+    hdr->clkfreq = ivalue;
+}
+
+void p2_UpdateChecksum(uint8_t *imagebuf, int imageSize)
+{
+    /* nothing to do here yet */
+}
+
 /* p2_LoadImage - load a binary hub image into a propeller 2 */
 int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate)
 {
-    extern uint8_t loader_array[];
-    extern int loader_size;
+    extern uint8_t p2loader_array[];
+    extern int p2loader_size;
     uint8_t loader_image[512*sizeof(uint32_t)];
-    Stage2Hdr *hdr;
+    Stage2Hdr *hdr2;
+    P2Hdr *hdr = (P2Hdr *)(imageBuf + BASE);
     uint32_t *ptr32;
     uint8_t *ptr;
     int cnt, i;
+    
+    /* skip past the rom loader image */
+    imageBuf += BASE;
+    imageSize -= BASE;
 
     /* build the loader image */
     memset(loader_image, 0, sizeof(loader_image));
-    memcpy(loader_image, loader_array, loader_size);
+    memcpy(loader_image, p2loader_array, p2loader_size);
         
-    /* patch the binary loader with the baud rate information */
-    hdr = (Stage2Hdr *)loader_image;
-    hdr->clkfreq = CLOCK_FREQ;
-    hdr->period = hdr->clkfreq / baudRate;
-    hdr->cogimage = cogImage;
-    hdr->stacktop = stackTop;
+    /* patch the second-stage loader */
+    hdr2 = (Stage2Hdr *)loader_image;
+    hdr2->period = hdr->clkfreq / baudRate;
+    hdr2->cogimage = cogImage;
+    hdr2->stacktop = stackTop;
     
     /* add the (dummy) signature */
     ptr32 = (uint32_t *)loader_image;

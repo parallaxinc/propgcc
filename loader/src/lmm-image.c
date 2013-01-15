@@ -5,6 +5,8 @@
 #include "loader.h"
 #include "packet.h"
 #include "PLoadLib.h"
+#include "p1image.h"
+#include "p2image.h"
 #include "osint.h"
 
 uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart, int *pImageSize, int *pCogImagesSize)
@@ -12,8 +14,7 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     uint32_t start, imageSize, cogImagesSize;
     uint8_t *imagebuf, *buf;
     ElfProgramHdr program;
-    int ivalue, i;
-    SpinHdr *hdr;
+    int i;
 
     /* get the total size of the program */
     if (!GetProgramSize(c, &start, &imageSize, &cogImagesSize))
@@ -42,18 +43,11 @@ uint8_t *BuildInternalImage(BoardConfig *config, ElfContext *c, uint32_t *pStart
     /* patch the program with values from the config file */
     PatchVariables(config, c, imagebuf, 0);
     
-    /* fixup the header to point past the spin bytecodes and generated PASM code */
-    hdr = (SpinHdr *)imagebuf;
-    GetNumericConfigField(config, "clkfreq", &ivalue);
-    hdr->clkfreq = ivalue;
-    GetNumericConfigField(config, "clkmode", &ivalue);
-    hdr->clkmode = ivalue;
-    hdr->vbase = imageSize;
-    hdr->dbase = imageSize + 2 * sizeof(uint32_t); // stack markers
-    hdr->dcurr = hdr->dbase + sizeof(uint32_t);
-    
-    /* update the checksum */
-    UpdateChecksum(imagebuf, imageSize);
+    /* update the image header */
+    if (ELF_CHIP(&c->hdr) == ELF_CHIP_P2)
+        p2_UpdateHeader(config, imagebuf, imageSize);
+    else
+        p1_UpdateHeader(config, imagebuf, imageSize);
     
     /* return the image */
     *pStart = start;

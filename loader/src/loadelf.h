@@ -63,6 +63,12 @@ typedef struct {
     uint16_t    shstrndx;
 } ElfHdr;
 
+#define ELF_CHIP(h) ((h)->flags & 0xff)
+
+#define ELF_CHIP_UNKNOWN    0
+#define ELF_CHIP_P1         1
+#define ELF_CHIP_P2         2
+
 typedef struct {
     uint32_t    name;
     uint32_t    type;

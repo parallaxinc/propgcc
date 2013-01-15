@@ -73,6 +73,10 @@ $(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS) $(OBJDIR)
 	@$(CC) $(CFLAGS) -c $< -o $@
 	@$(ECHO) $(CC) $@
 
+$(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS) $(OBJDIR)
+	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(ECHO) $(CC) $@
+
 $(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)
 	@$(PROPCC) $(PROPCFLAGS) -nostdlib $< -o $@
 	@$(ECHO) $(PROPCC) $@

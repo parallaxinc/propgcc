@@ -16,6 +16,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "loadelf.h"
+#include "p2_loadimage.h"
 #include "osint.h"
 
 #ifndef TRUE
@@ -62,9 +63,6 @@ static int version;
 /* prototypes */
 static void Usage(void);
 static void *LoadElfFile(FILE *fp, ElfHdr *hdr, int *pImageSize);
-
-int p2_HardwareFound(int *pVersion);
-int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate);
 
 static int ShowPort(const char* port, void* data);
 static void ShowPorts(char *prefix);
