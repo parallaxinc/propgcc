@@ -18,13 +18,18 @@ DRVDIR=$(BUILDROOT)/include
 INSTALLBINDIR=$(TARGET)/bin
 INSTALLLIBDIR=$(TARGET)/propeller-load
 
-DIRS = $(OBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
+DIRS = $(OBJDIR) $(PROPOBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
 
 CC=gcc
 ECHO=echo
 MKDIR=mkdir -p
 CP=cp
 RM=rm
+
+PROPCC=propeller-elf-gcc
+PROPOBJCOPY=propeller-elf-objcopy
+PROPCFLAGS=-mp2
+PROPOBJDIR=$(BUILDROOT)/obj/propeller
 
 ifeq ($(OS),linux)
 CFLAGS += -DLINUX
@@ -119,6 +124,9 @@ $(OBJDIR)/pex-image.o \
 $(OBJDIR)/loadelf.o \
 $(OBJDIR)/packet.o \
 $(OBJDIR)/PLoadLib.o \
+$(OBJDIR)/p1image.o \
+$(OBJDIR)/p2image.o \
+$(OBJDIR)/p2loader.o \
 $(OBJDIR)/config.o \
 $(OBJDIR)/expr.o \
 $(OBJDIR)/system.o \
@@ -267,6 +275,26 @@ $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 $(OBJDIR)/%.c:	$(OBJDIR)/%.dat
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) $@
+
+############
+# GAS TO C #
+############
+
+$(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)
+	@$(PROPCC) $(PROPCFLAGS) -nostdlib $< -o $@
+	@$(ECHO) $(PROPCC) $@
+
+$(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
+	@$(PROPOBJCOPY) -O binary $< $@
+	@$(ECHO) cc $@
+
+$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)
+	@$(BINDIR)/bin2c$(EXT) $< $@
+	@$(ECHO) bin2c $@
+
+$(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
+	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(ECHO) $(CC) $@
 
 ################
 # MAIN TARGETS #

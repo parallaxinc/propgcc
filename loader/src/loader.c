@@ -28,6 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "loader.h"
 #include "packet.h"
 #include "PLoadLib.h"
+#include "p2image.h"
 #include "osint.h"
 #include "pex.h"
 #include "../sdloader/sd_loader.h"
@@ -340,18 +341,29 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
         free(cogimagesbuf);
     }
 
-    /* determine the download mode */
-    if (flags & LFLAG_WRITE_EEPROM)
-        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
-    else if (flags & LFLAG_RUN)
-        mode = DOWNLOAD_RUN_BINARY;
-    else
-        mode = SHUTDOWN_CMD;
+    /* handle propeller 2 loads */
+    if (ELF_CHIP(&c->hdr) == ELF_CHIP_P2) {
+        int baudrate;
+        GetNumericConfigField(config, "baudrate", &baudrate);
+        p2_LoadImage(imagebuf, imageSize, 0x1000, 0x20000, baudrate);
+    }
     
-    /* load the internal image */
-    if (mode != SHUTDOWN_CMD && ploadbuf(path, imagebuf, imageSize, mode) != 0) {
-        free(imagebuf);
-        return Error("load failed");
+    /* otherwise, handle propeller 1 loads */
+    else {
+    
+        /* determine the download mode */
+        if (flags & LFLAG_WRITE_EEPROM)
+            mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+        else if (flags & LFLAG_RUN)
+            mode = DOWNLOAD_RUN_BINARY;
+        else
+            mode = SHUTDOWN_CMD;
+    
+        /* load the internal image */
+        if (mode != SHUTDOWN_CMD && ploadbuf(path, imagebuf, imageSize, mode) != 0) {
+            free(imagebuf);
+            return Error("load failed");
+        }
     }
     
     /* free the image buffer */
