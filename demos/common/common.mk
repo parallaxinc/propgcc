@@ -40,7 +40,7 @@ endif
 CFLAGS_NO_MODEL := $(CFLAGS) $(CHIPFLAG)
 CFLAGS += -m$(MODEL) $(CHIPFLAG)
 CXXFLAGS += $(CFLAGS)
-LDFLAGS += -m$(MODEL) $(CHIPFLAG) -fno-exceptions -fno-rtti
+LDFLAGS += $(CFLAGS) -fno-exceptions -fno-rtti
 
 ifneq ($(LDSCRIPT),)
 LDFLAGS += -T $(LDSCRIPT)

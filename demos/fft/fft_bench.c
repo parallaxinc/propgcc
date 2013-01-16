@@ -71,7 +71,7 @@ unsigned int time_ms()
 #if defined(__propeller__)
     //printf("CLKFREQ: %lu\n", CLKFREQ);
     //printf("CNT %08x\n", CNT);
-    return (CNT / (CLKFREQ / 1000));
+    return (getcnt() / (CLKFREQ / 1000));
 
 #else
     struct timeval timeval;
