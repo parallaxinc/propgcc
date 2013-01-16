@@ -9,7 +9,7 @@
 PROPLIB = ../common
 
 CFLAGS = -Os -DPARALLAX_I2C_BUS
-CHIP = -mp2
+CHIP = p2
 
 #
 # objects for this program
