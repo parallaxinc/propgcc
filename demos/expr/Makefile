@@ -1,12 +1,21 @@
+#
+# objects for this program
+#
+
+PROPLIB = ../common
+
+NAME = expr
+OBJS = expr.o
+
+# memory model
 MODEL = cmm
 
-CFLAGS = -Wall -Os -m$(MODEL) -m32bit-doubles
+#
+# enable experimental fcache code for this demo
+#
+CFLAGS = -Os -m32bit-doubles -DMAIN
+LIBS = -lm
 
-expr.elf:	Makefile expr.c
-	propeller-elf-gcc $(CFLAGS) -DMAIN -o expr.elf expr.c -lm
+all: $(NAME).elf
 
-run:
-	propeller-load expr.elf -r -t
-
-clean:
-	rm -rf expr.elf
+include $(PROPLIB)/common.mk
