@@ -1,5 +1,5 @@
 /* tc-propeller
-   Copyright 2011 Parallax Inc.
+   Copyright 2011-2013 Parallax Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -156,7 +156,7 @@ md_begin (void)
       bfd_set_arch_mach (stdoutput, bfd_arch_propeller, bfd_mach_prop1);
       if (hardware & PROP_1)
         add = 1;
-      if ((hardware & PROP_2_LMM) && lmm)
+      if ((hardware & PROP_1_LMM) && lmm)
         add = 1;
     }
     if (add) {
@@ -241,6 +241,12 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
 
   switch (fixP->fx_r_type)
     {
+    case BFD_RELOC_PROPELLER_REPINSCNT:
+      val -= 1;
+      mask = 0x0000003f;
+      shift = 0;
+      rshift = 0;
+      break;
     case BFD_RELOC_PROPELLER_SRC_IMM:
       mask = 0x000001ff;
       shift = 0;
@@ -357,6 +363,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_PROPELLER_DST:
     case BFD_RELOC_PROPELLER_23:
     case BFD_RELOC_PROPELLER_PCREL10:
+    case BFD_RELOC_PROPELLER_REPINSCNT:
       code = fixp->fx_r_type;
       break;
 
@@ -884,7 +891,8 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
   int integer_reloc = 0;
   int pcrel_reloc = 0;
   int immediate = 0;
-  
+  int val;
+
   str = skip_whitespace (str);
   if (*str == '#')
     {
@@ -935,12 +943,25 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     {
     case O_constant:
     case O_register:
-      if (operand->reloc.exp.X_add_number & ~0x1ff)
-        {
-          operand->error = _("9-bit value out of range");
-          break;
-        }
-      insn->code |= operand->reloc.exp.X_add_number;
+      val = operand->reloc.exp.X_add_number;
+      if (format == PROPELLER_OPERAND_REPD)
+	{
+	  val -= 1;
+	  if (val & ~0x3f)
+	    {
+	      operand->error = _("6-bit value out of range");
+	      break;
+	    }
+	}
+      else
+	{
+	  if (val & ~0x1ff)
+	    {
+	      operand->error = _("9-bit value out of range");
+	      break;
+	    }
+	}
+      insn->code |= val;
       break;
     case O_symbol:
     case O_add:
@@ -952,7 +973,13 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
         }
       else
         {
-          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+	  if (format == PROPELLER_OPERAND_REPD) {
+	    operand->reloc.type = BFD_RELOC_PROPELLER_REPINSCNT;
+	  } else if (integer_reloc) {
+	    operand->reloc.type = BFD_RELOC_PROPELLER_SRC_IMM;
+	  } else {
+	    operand->reloc.type = BFD_RELOC_PROPELLER_SRC;
+	  }
           operand->reloc.pc_rel = 0;
         }
       break;
@@ -966,7 +993,13 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
         operand->error = _("Source operand too complicated for brs instruction");
       else
         {
-          operand->reloc.type = integer_reloc ? BFD_RELOC_PROPELLER_SRC_IMM : BFD_RELOC_PROPELLER_SRC;
+	  if (format == PROPELLER_OPERAND_REPD) {
+	    operand->reloc.type = BFD_RELOC_PROPELLER_REPINSCNT;
+	  } else if (integer_reloc) {
+	    operand->reloc.type = BFD_RELOC_PROPELLER_SRC_IMM;
+	  } else {
+	    operand->reloc.type = BFD_RELOC_PROPELLER_SRC;
+	  }
           operand->reloc.pc_rel = 0;
         }
       break;
@@ -1267,34 +1300,11 @@ parse_repd(char *str, struct propeller_code *op1, struct propeller_code *op2, st
     }
     
   str = skip_whitespace (str);
-  if (*str++ != '#')
+  if (*str != '#')
     {
-      op2->error = _("immediate operand required");
-      return str;
+      op2->error = _("Instruction requires immediate source");
     }
-
-  str = skip_whitespace(str);
-    
-  str = parse_expression(str, op2);
-  if (op2->error)
-    return str;
-    
-  switch (op2->reloc.exp.X_op)
-  {
-    case O_constant:
-      --op2->reloc.exp.X_add_number; // value encoded into instruction is one less than the instruction count
-      if (op2->reloc.exp.X_add_number < 0 || op2->reloc.exp.X_add_number > 0x3f)
-        {
-          op2->error = _("9-bit value out of range");
-          return str;
-        }
-      insn->code |= op2->reloc.exp.X_add_number & 0x3f;
-      break;
-    default:
-      op2->error = _("Must be a constant expression");
-      return str;
-  }
-
+  str = parse_src(str, op2, insn, PROPELLER_OPERAND_REPD);
   return str;
 }
 
