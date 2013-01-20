@@ -93,6 +93,8 @@ struct GTY(()) propeller_frame_info
 struct GTY(()) machine_function {
   /* the current frame information, calculated by propeller_compute_frame_info */
   struct propeller_frame_info frame;
+  /* a flag to indicate the save of the link register can be eliminated */
+  bool lr_save_eliminated;
 };
 
 static HOST_WIDE_INT propeller_compute_frame_info (void);
@@ -299,7 +301,9 @@ has_func_attr (tree decl, const char * func_attr)
 {
   tree attrs, a;
 
-  if (!decl) return false;
+  if (decl == NULL_TREE) {
+    decl = current_function_decl;
+  }
   attrs = DECL_ATTRIBUTES (decl);
   a = lookup_attribute (func_attr, attrs);
   return a != NULL_TREE;
@@ -733,7 +737,7 @@ pasm_divsi(FILE *f) {
   fprintf(f, "__DIVSI_ret\tret\n");
 }
 /*
- * implement signed division by using udivsi
+ * implement compare and swap
  */
 static void
 pasm_cmpswapsi(FILE *f ATTRIBUTE_UNUSED)
@@ -1298,6 +1302,33 @@ propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
                            const_tree type, bool named ATTRIBUTE_UNUSED)
 {
   *cum += PROP_NUM_REGS (mode, type);
+}
+
+/*
+ * check to see if a function can be called as a "sibling" call
+ * "decl" is a function_decl or NULL if this is an indirect call
+ * (in which case "exp" is the expression for it)
+ */
+static bool
+propeller_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
+{
+  /* do not allow indirect tail calls; we don't know if the target
+   * is naked, native, or whatever
+   */
+  if (decl == NULL)
+    return false;
+
+  /* do not allow tail calls to/from native functions (the calling convention
+   * won't allow it) or from naked functions
+   */
+  if (is_naked_function (current_function_decl)
+      || is_native_function (current_function_decl)
+      || is_native_function (decl))
+    {
+      return false;
+    }
+
+  return true;
 }
 
 
@@ -1962,10 +1993,25 @@ propeller_compute_frame_info (void)
   return total_size;
 }
 
+bool
+propeller_epilogue_uses(int regno ATTRIBUTE_UNUSED)
+{
+  /* We acutally lie about this and say that the epilogue does not
+     use lr (although it does). The reason is that the prologue will
+     arrange to push lr if it is ever live in the function, so the
+     epilogue will pop it and use the popped version.
+  */
+#if 0
+  if (regno == PROP_LR_REGNUM)
+    return true;
+#endif
+  return false;
+}
+
 /* set to 1 to keep scheduling from moving around stuff in the prologue
  * and epilogue
  */
-#define PROLOGUE_BLOCKAGE 1
+#define PROLOGUE_BLOCKAGE (!TARGET_EXPERIMENTAL)
 
 /* Create and emit instructions for a functions prologue.  */
 void
@@ -2000,10 +2046,11 @@ propeller_expand_prologue (void)
       stack_adjust (-(cfun->machine->frame.total_size - pushed));
 
 
-#ifdef PROLOGUE_BLOCKAGE
-      /* Prevent prologue from being scheduled into function body.  */
-      emit_insn (gen_blockage ());
-#endif
+      if (PROLOGUE_BLOCKAGE)
+	{
+	  /* Prevent prologue from being scheduled into function body.  */
+	  emit_insn (gen_blockage ());
+	}
     }
 }
 
@@ -2042,10 +2089,11 @@ propeller_expand_epilogue (bool is_sibcall)
 
   if (cfun->machine->frame.total_size > 0)
     {
-#ifdef PROLOGUE_BLOCKAGE
-      /* Prevent stack code from being reordered.  */
-      emit_insn (gen_blockage ());
-#endif
+      if (PROLOGUE_BLOCKAGE)
+	{
+	  /* Prevent stack code from being reordered.  */
+	  emit_insn (gen_blockage ());
+	}
 
       /* Deallocate stack.  */
       if (propeller_use_frame_pointer ())
@@ -2072,7 +2120,7 @@ propeller_expand_epilogue (bool is_sibcall)
     rtx current_func_sym = XEXP (DECL_RTL (current_function_decl), 0);
     emit_jump_insn (gen_native_return (current_func_sym));
   }
-  else
+  else if (!is_sibcall)
   {
     emit_jump_insn (gen_return_internal (lr_rtx));
   }
@@ -2107,7 +2155,7 @@ propeller_can_use_return (void)
  * matching needs to be done
  */
 bool
-propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
+propeller_expand_call (rtx setreg, rtx dest, rtx numargs, bool sibcall)
 {
     rtx callee = XEXP (dest, 0);
     if (GET_CODE (callee) == SYMBOL_REF)
@@ -2120,6 +2168,9 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
             {
                 error("native function cannot be recursive");
             }
+	    if (sibcall) {
+	      return false;  /* no sibcalls from native functions */
+	    }
             if (setreg == NULL_RTX) {
                 pat = gen_call_native (callee, numargs);
             } else {
@@ -2196,6 +2247,11 @@ static section *
 propeller_select_rtx_section (enum machine_mode mode, rtx x,
                               unsigned HOST_WIDE_INT align)
 {
+  if (is_native_function (current_function_decl) && !propeller_base_cog)
+    {
+      if (GET_MODE_SIZE (mode) <= BITS_PER_UNIT && mode != BLKmode)
+	return kernel_section;
+    }
   if (!TARGET_LMM)
     {
       if (GET_MODE_SIZE (mode) <= BITS_PER_UNIT
@@ -2677,7 +2733,12 @@ get_jump_dest(rtx branch)
   if (extract_asm_operands (call) != NULL)
     return NULL;
 
-  set = single_set (branch);
+  if (GET_CODE (call) == SET)
+    {
+      set = call;
+    }
+  else
+    set = single_set (branch);
   if (!set)
     return NULL;
 
@@ -2807,8 +2868,6 @@ propeller_unlikely_branch_p (rtx jump)
  * or recursive calls
  */
 
-#define MAX_FCACHE_SIZE ( TARGET_CMM ? 252 : 508 )
-
 static bool
 fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 {
@@ -2826,7 +2885,10 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
     fprintf (dump_file, "checking block, func_p = %s\n",
              func_p ? "TRUE" : "FALSE");
 
-  fcache_size = MAX_FCACHE_SIZE;
+  if (TARGET_CMM || TARGET_XMM_CODE)
+    fcache_size = 252;
+  else
+    fcache_size = 508;
 
   /* quick check for block too big */
   if (INSN_ADDRESSES_SET_P ())
@@ -2979,7 +3041,7 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
             }
         }
       total_len += get_attr_length (insn);
-      if (total_len > MAX_FCACHE_SIZE)
+      if (total_len > fcache_size)
         {
           if (dump_file)
             {
@@ -3063,6 +3125,38 @@ fcache_convert_call (rtx insn)
 }
 
 /*
+ * replace a label with an UNSPEC_FCACHE_LABEL
+ */
+static void
+fcache_replace_label(rtx pattern, rtx fcache_base)
+{
+  rtx src;
+  rtx addr;
+
+  src = SET_SRC (pattern);
+
+  if (GET_CODE (SET_DEST (pattern)) != PC)
+    abort ();
+  if (GET_CODE (src) == IF_THEN_ELSE)
+    {
+      if (GET_CODE (XEXP (src, 1)) != PC)
+	{
+	  addr = XEXP (src, 1);
+	  XEXP (src, 1) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	}
+      else
+	{
+	  addr = XEXP (src, 2);
+	  XEXP (src, 2) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	}
+    }
+  else
+    {
+      SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, src, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+    }
+}
+
+/*
  * convert a jump insn
  * this pretty much requires that we re-generate the insn
  * "fcache_base" is the label at the start of the fcache block
@@ -3096,6 +3190,12 @@ fcache_convert_jump(rtx orig_insn, rtx fcache_base)
                                  UNSPEC_FCACHE_RET);
           XVECEXP (pattern, 0, 0) = addr;
         }
+      else if (GET_CODE (src) == SET)
+	{
+	  fcache_replace_label(src, fcache_base);
+	}
+      else
+	gcc_unreachable ();
     }
   else if (GET_CODE (pattern) == RETURN)
     {
@@ -3110,27 +3210,7 @@ fcache_convert_jump(rtx orig_insn, rtx fcache_base)
     }
   else
     {
-      src = SET_SRC (pattern);
-
-      if (GET_CODE (SET_DEST (pattern)) != PC)
-        abort ();
-      if (GET_CODE (src) == IF_THEN_ELSE)
-        {
-          if (GET_CODE (XEXP (src, 1)) != PC)
-            {
-              addr = XEXP (src, 1);
-              XEXP (src, 1) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-            }
-          else
-            {
-              addr = XEXP (src, 2);
-              XEXP (src, 2) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-            }
-        }
-      else
-        {
-          SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, src, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-        }
+      fcache_replace_label(pattern, fcache_base);
     }
 
   /* generate a new insn with the given pattern */
@@ -3561,6 +3641,8 @@ propeller_reorg(void)
 #define TARGET_FUNCTION_ARG propeller_function_arg
 #undef TARGET_FUNCTION_ARG_ADVANCE
 #define TARGET_FUNCTION_ARG_ADVANCE propeller_function_arg_advance
+#undef TARGET_FUNCTION_OK_FOR_SIBCALL
+#define TARGET_FUNCTION_OK_FOR_SIBCALL propeller_function_ok_for_sibcall
 #undef TARGET_PROMOTE_PROTOTYPES
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_false
 #undef TARGET_LEGITIMATE_ADDRESS_P

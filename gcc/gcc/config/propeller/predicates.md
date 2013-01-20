@@ -30,6 +30,13 @@
   (ior (match_code "symbol_ref")
        (match_operand 0 "register_operand")))
 
+;;
+;; for sibcall operations we allow only symbolic addresses (for now)
+;;
+(define_predicate "sibcall_operand"
+  (match_code "symbol_ref")
+)
+
 ;; True if OP refers to any kind of symbol.
 ;; For roughly the same reasons that pmode_register_operand exists, this
 ;; predicate ignores its mode argument.
@@ -102,6 +109,11 @@
 
 ;; true if this operator is a math operator with 1 arguments
 (define_special_predicate "propeller_math_op1"
+  (match_code "neg,not,abs"))
+
+;; true if this operator is a math operator with 1 argument that
+;; sets flags based on source
+(define_special_predicate "propeller_math_op1srcflags"
   (match_code "neg,not,abs"))
 
 ;; true if this operator can be paired in CMM mode

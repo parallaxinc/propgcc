@@ -317,11 +317,19 @@ extern enum reg_class propeller_reg_class[FIRST_PSEUDO_REGISTER];
 /* 1 for registers not available across function calls
  * these must include the FIXED_REGISTERS and also any registers
  * that can be used without being saved
+ *
+ * Note that we do not mark the link register lr as being
+ * call-clobbered. It's actually the call instruction itself
+ * which clobbers the register, and native calls (for example)
+ * do not do so.
+ *
+ * This approach makes it easier to implement sibcalls; unlike
+ * normal calls, sibcalls don't clobber lr.
  */
 #define CALL_USED_REGISTERS \
 {                       \
   1,1,1,1,1,1,1,1,      \
-  0,0,0,0,0,0,0,1,      \
+  0,0,0,0,0,0,0,0,      \
   1,1,1,1,1,        \
 }
 
@@ -528,6 +536,10 @@ typedef unsigned int CUMULATIVE_ARGS;
    incoming return address at the beginning of any function, before
    the prologue.  */
 #define INCOMING_RETURN_ADDR_RTX  gen_rtx_REG( SImode, PROP_LR_REGNUM)
+
+/* Define this macro as a C expression that is nonzero for registers used by
+   the epilogue or return pattern */
+#define EPILOGUE_USES(regno) propeller_epilogue_uses(regno)
 
 /* A C expression whose value is RTL representing the value of the return
    address for the frame COUNT steps up from the current frame.  */
