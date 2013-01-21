@@ -44,7 +44,7 @@ YACC = bison
 CC = gcc
 #CFLAGS = -g -Wall -Werror
 #CC = clang
-CFLAGS = -O -g -Wall -Werror
+CFLAGS = -O -g -Wall -Werror -I$(OBJDIR) -I.
 LIBS = -lm
 RM = rm -f
 MKDIR=mkdir -p
@@ -63,13 +63,12 @@ all: $(OBJDIR) $(PROGS)
 $(OBJDIR)/testlex$(EXT): testlex.c $(LEXOBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-spin.tab.c spin.tab.h: spin.y
-	$(YACC) -t -b spin -d spin.y
+$(OBJDIR)/spin.tab.c $(OBJDIR)/spin.tab.h: spin.y
+	$(YACC) -t -b $(OBJDIR)/spin -d spin.y
 
-lexer.c: spin.tab.h
+lexer.c: $(OBJDIR)/spin.tab.h
 
 clean: $(OBJDIR)
-	$(RM) spin.tab.c spin.tab.h
 	$(RM) -r $(OBJDIR)
 
 test: $(PROGS)
