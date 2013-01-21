@@ -63,15 +63,6 @@ OSINT=osint_linux
 LIBS=
 endif
 
-ifeq ($(OS),macosx32)
-OS=macosx
-CFLAGS += -DMACOSX -m32
-BSTC=bstc.osx
-EXT=
-OSINT=osint_linux
-LIBS=
-endif
-
 CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 SPINFLAGS=-Ogxr

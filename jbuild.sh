@@ -365,6 +365,30 @@ fi
 cd ..
 
 #
+# build spin2cpp
+#
+make -C spin2cpp clean
+if test $? != 0
+then
+   echo "spin2cpp make clean failed"
+   exit 1
+fi
+
+make -C spin2cpp TARGET=$PREFIX BUILDROOT=../../build/spin2cpp
+if test $? != 0
+then
+   echo "spin2cpp make failed"
+   exit 1
+fi
+
+make -C spin2cpp TARGET=$PREFIX BUILDROOT=../../build/spin2cpp install
+if test $? != 0
+then
+   echo "spin2cpp install failed"
+   exit 1
+fi
+
+#
 # build propeller-load ... before gdb
 # gdbstub relies on a loader library
 #
