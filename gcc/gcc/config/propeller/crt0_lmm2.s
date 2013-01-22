@@ -2,7 +2,7 @@
 '
 '  Based on ideas from Bill Henning's original LMM design
 
-        .section .lmmkernel, "ax"
+        .section .kernel, "ax"
         .global r0
         .global r1
         .global r2
@@ -34,17 +34,18 @@ r2  IF_NE    jmp    #not_first_cog      ' if not, skip some stuff
 r3      locknew __TMP0 wc       ' allocate a lock
 r4      or      __TMP0, #256    ' in case lock is 0, make the 32 bit value nonzero
 r5      wrlong __TMP0, __C_LOCK_PTR     ' save it to ram
+r6      jmp     #__LMM_loop
 
 not_first_cog
-r6      jmp     #__LMM_loop
-r7      long    0
-r8      long    0
-r9      long    0
-r10     long    0
-r11     long    0
-r12     long    0
-r13     long    0
-r14     long    0
+	'' initialization for non-primary cogs
+r7      rdlong pc,sp		' if user stack, pop the pc
+r8      add	sp,#4
+r9      rdlong r0,sp		' pop the argument for the function
+r10     add	sp,#4
+r11     rdlong __TLS,sp	' and the _TLS variable
+r12     add	sp,#4
+r13	jmp	#__LMM_loop
+r14	nop
 r15     '' alias for link register lr
 lr      long    __exit
 sp      long    0x20000     ' 128k of hub memory
@@ -277,57 +278,9 @@ __MASK_FFFFFFFF long    0xFFFFFFFF
         .global __TMP0
         
 __TMP0  long    0
-__MASK_00FF00FF long    0x00FF00FF
-__MASK_0F0F0F0F long    0x0F0F0F0F
-__MASK_33333333 long    0x33333333
-__MASK_55555555 long    0x55555555
-
-        .global __CLZSI
-        .global __CLZSI_ret
-        .global __CTZSI
-        .global __CTZSI_ret
-__CLZSI rev     r0, #0
-__CTZSI neg     __TMP0, r0
-        and     __TMP0, r0      wz
-        mov     r0, #0
- IF_Z   mov     r0, #1
-        test    __TMP0, __MASK_0000FFFF wz
- IF_Z   add     r0, #16
-        test    __TMP0, __MASK_00FF00FF wz
- IF_Z   add     r0, #8
-        test    __TMP0, __MASK_0F0F0F0F wz
- IF_Z   add     r0, #4
-        test    __TMP0, __MASK_33333333 wz
- IF_Z   add     r0, #2
-        test    __TMP0, __MASK_55555555 wz
- IF_Z   add     r0, #1
-__CLZSI_ret     ret
-__CTZSI_ret     ret
-
 __TMP1
         long    0
         
-        ''
-        '' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
-        ''
-        .global __UDIVSI
-        .global __UDIVSI_ret
-__UDIVSI
-        setdivu r0
-        setdivb r1
-        getdivq r0
-        getdivr r1 
-__UDIVSI_ret    ret
-
-        .global __DIVSI
-        .global __DIVSI_ret
-__DIVSI
-        setdiva r0
-        setdivb r1
-        getdivq r0
-        getdivr r1 
-__DIVSI_ret     ret
-
         .global __MULSI
         .global __MULSI_ret
 __MULSI
@@ -370,73 +323,104 @@ __CMPSWAPSI
         lockclr __TMP1
 __CMPSWAPSI_ret
         ret
-        
-        ''
-        '' FCACHE region
-        '' The FCACHE is an area where we can
-        '' execute small functions or loops entirely
-        '' in Cog memory, providing a significant
-        '' speedup.
-        ''
+
+	''
+	'' code to load a buffer from hub memory into cog memory
+	'' the idea is from the fast code posted by Kuroneko in
+	'' the "Fastest possible memory transfer" thread on the
+	'' Parallax forums; modified slightly by Eric Smith
+        '' for multiple cog buffers
+	''
+	'' parameters: __TMP0 = count of bytes (will be rounded up to multiple
+	''                      of 8)
+	''             __TMP1 = hub address
+	''             __COGA = COG address
+	''
+	''
+__COGA	long 0
+	
+loadbuf
+	'' first, find the number of longs to transfer
+	'' round up to next 64 bit boundary (the loop processes 64 bits
+	'' at a time)
+	'' setup: 11 ins (vs. 6 ins)
+ 	'' loop:   6 ins, 1 transfer/hub windows (vs. 13 ins,  0.8 transfer/hub window)
+	add	__TMP0, #7
+	andn	__TMP0, #7	'' round TMP0 up
+	
+	'' point to last byte in HUB buffer
+	add	__TMP1, __TMP0
+	sub	__TMP1, #1
+	'' point to last longs in cog memory
+	shr	__TMP0, #2	'' convert to longs
+	sub	__COGA, #1
+	add	__COGA, __TMP0
+	movd	lbuf0, __COGA
+	sub	__COGA, #1
+	movd	lbuf1, __COGA
+	sub	__TMP0, #2
+	movi	__TMP1, __TMP0
+	
+lbuf0	rdlong	0-0, __TMP1
+	sub	lbuf0, dst2
+	sub	__TMP1, i2s7 wc
+lbuf1	rdlong	0-0, __TMP1
+	sub	lbuf1, dst2
+  if_nc	djnz	__TMP1, #lbuf0		'' sub #7/djnz
+
+loadbuf_ret
+	ret
+	
+	'' initialized data and presets
+dst2	long	2 << 9
+i2s7	long	(2<<23) | 7
+	
+	
+	
+	''
+	'' FCACHE region
+	'' The FCACHE is an area where we can
+	'' execute small functions or loops entirely
+	'' in Cog memory, providing a significant
+	'' speedup.
+	''
 
 __LMM_FCACHE_ADDR
-        long 0
-inc_dest4
-        long (4<<9)
-        
-        .global __LMM_RET
-        .global __LMM_FCACHE_LOAD
+	long 0
+	
+	.global	__LMM_RET
+	.global	__LMM_FCACHE_LOAD
 __LMM_RET
-        long 0
+	long 0
 __LMM_FCACHE_LOAD
-        rdlong  __TMP0,pc       '' read count of bytes for load
-        add     pc,#4
-        mov     __TMP1,pc
-        cmp     __LMM_FCACHE_ADDR,pc wz '' is this the same fcache block we loaded last?
-        add     pc,__TMP0       '' skip over data
-  IF_Z  jmp     #Lmm_fcache_doit
+	rdlong	__TMP0,pc	'' read count of bytes for load
+	add	pc,#4
+	mov	__TMP1,pc
+	cmp	__LMM_FCACHE_ADDR,pc wz	'' is this the same fcache block we loaded last?
+	add	pc,__TMP0	'' skip over data
+  IF_Z	jmp	#Lmm_fcache_doit
 
-        mov     __LMM_FCACHE_ADDR, __TMP1
-        
-        '' assembler awkwardness here
-        '' we would like to just write
-        '' movd Lmm_fcache_loop,#__LMM_FCACHE_START
-        '' but binutils doesn't work right with this now
-        movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-        movd Lmm_fcache_loop2,#1+(__LMM_FCACHE_START-__LMM_entry)/4
-        movd Lmm_fcache_loop3,#2+(__LMM_FCACHE_START-__LMM_entry)/4
-        movd Lmm_fcache_loop4,#3+(__LMM_FCACHE_START-__LMM_entry)/4
-        add  __TMP0,#15         '' round up to next multiple of 16
-        shr  __TMP0,#4          '' we process 16 bytes per loop iteration
-Lmm_fcache_loop
-        rdlong  0-0,__TMP1
-        add     __TMP1,#4
-        add     Lmm_fcache_loop,inc_dest4
-Lmm_fcache_loop2
-        rdlong  0-0,__TMP1
-        add     __TMP1,#4
-        add     Lmm_fcache_loop2,inc_dest4
-Lmm_fcache_loop3
-        rdlong  0-0,__TMP1
-        add     __TMP1,#4
-        add     Lmm_fcache_loop3,inc_dest4
-Lmm_fcache_loop4
-        rdlong  0-0,__TMP1
-        add     __TMP1,#4
-        add     Lmm_fcache_loop4,inc_dest4
+	mov	__LMM_FCACHE_ADDR, __TMP1
 
-        djnz    __TMP0,#Lmm_fcache_loop
-
+	'' copy TMP0 bytes from TMP1 to LMM_FCACHE_START
+	mova	__COGA, #__LMM_FCACHE_START	'' mova because src is a cog address immediate
+	call	#loadbuf
+	
 Lmm_fcache_doit
-        jmpret  __LMM_RET,#__LMM_FCACHE_START
-        jmp     #__LMM_loop
+	jmpret	__LMM_RET,#__LMM_FCACHE_START
+	jmp	#__LMM_loop
 
 
-        ''
-        '' the fcache area should come last in the file
-        ''
-        .global __LMM_FCACHE_START
+	''
+	'' the fcache area should come last in the file
+	''
+	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-        res     128     '' reserve 256 longs = 1K
+	res	128	'' reserve 128 longs = 512 bytes
 
+
+	''
+	'' now include kernel extensions that we always want
+	''
+#include "kernel.ext"
 

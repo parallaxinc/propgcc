@@ -1,4 +1,8 @@
-	.section .lmmkernel, "ax"
+#ifdef DEBUG_KERNEL
+#include "cogdebug.h"
+#endif
+	
+	.section .kernel, "ax"
 	.compress off
 	.global r0
 	.global r1
@@ -46,12 +50,23 @@ r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
-	'' constant FFFFFFFF should come after the pc
+ccr	long	0		' condition codes
+	
+	'' the assembler actually relies on _MASK_FFFFFFFF being at register
+	'' 19
 	.global __MASK_FFFFFFFF
 __MASK_FFFFFFFF	long	0xFFFFFFFF
 
+#ifdef DEBUG_KERNEL
+	'' gdb relies on register 20 being a breakpoint command
+Breakpoint
+	call	#__EnterLMMBreakpoint
+#endif
+	
 	.global __TMP0
 __TMP0	long	0
+	.global __TMP1
+__TMP1	long	0
 
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -68,6 +83,13 @@ xfield  long 0
 sfield  long 0
 	
 __LMM_loop
+#ifdef DEBUG_KERNEL
+	muxc	ccr,#1
+	muxnz	ccr,#2
+	test	ccr, #COGFLAGS_STEP wz
+  if_nz call	#__EnterDebugger
+	shr	ccr,#1 wc,wz,nr		'' restore flags
+#endif
 	rdbyte	ifield,pc
 	add	pc,#1
 	mov	dfield,ifield
@@ -151,6 +173,17 @@ get_word
 get_word_ret
 	ret
 
+	''
+	'' read a signed byte into sfield
+	''
+get_sbyte
+	rdbyte	sfield,pc
+	add	pc,#1
+	shl	sfield,#24
+	sar	sfield,#24
+get_sbyte_ret
+	ret
+	
 __macro_native
 	call	#get_long
 	jmp	#sfield
@@ -223,10 +256,7 @@ __macro_mvreg
 	'' add a signed 8 bit constant to sp
 	''
 __macro_addsp
-	rdbyte	sfield,pc
-	add	pc,#1
-	shl	sfield,#24
-	sar	sfield,#24
+	call	#get_sbyte
 	add	sp,sfield
 	jmp	#__LMM_loop
 
@@ -249,13 +279,8 @@ mvi32
 	''' move immediate of a 16 bit value
 	'''
 mvi16
-	rdbyte	sfield,pc
 	movd	.domvi16,dfield
-	add	pc,#1
-	rdbyte	xfield,pc
-	add	pc,#1
-	shl	xfield,#8
-	or	sfield,xfield
+	call	#get_word
 .domvi16
 	mov	0-0,sfield
 	jmp	#__LMM_loop
@@ -420,26 +445,18 @@ xtable
 cond_mask long (0xf<<18)
 	
 brw
-	rdbyte	sfield,pc
 	andn	.brwins,cond_mask
-	add	pc,#1
-	rdbyte	xfield,pc
-	shl	dfield,#18	'' get it into the cond field
+	shl	dfield,#18	'' get dfield into the cond field
 	or	.brwins,dfield
-	add	pc,#1
-	shl	xfield,#8
-	or	sfield,xfield
+	call	#get_word
 .brwins	mov	pc,sfield
 	jmp	#__LMM_loop
 
 brs
-	rdbyte	sfield,pc
 	andn	.brsins,cond_mask
-	add	pc,#1
 	shl	dfield,#18	'' get dfield into the cond field
 	or	.brsins,dfield
-	shl	sfield,#24
-	sar	sfield,#24
+	call	#get_sbyte
 .brsins	add	pc,sfield
 	jmp	#__LMM_loop
 
@@ -580,87 +597,8 @@ __LMM_POPM_ret
 
 __MASK_0000FFFF	long	0x0000FFFF
 
-	''
-	'' math support functions
-	''
-	.global __DIVSI
-	.global __DIVSI_ret
-	.global __UDIVSI
-	.global __UDIVSI_ret
-	.global __CLZSI
-	.global __CLZSI_ret
-	.global __CTZSI
-__MASK_00FF00FF	long	0x00FF00FF
-__MASK_0F0F0F0F	long	0x0F0F0F0F
-__MASK_33333333	long	0x33333333
-__MASK_55555555	long	0x55555555
-__CLZSI	rev	r0, #0
-__CTZSI	neg	__TMP0, r0
-	and	__TMP0, r0	wz
-	mov	r0, #0
- IF_Z	mov	r0, #1
-	test	__TMP0, __MASK_0000FFFF	wz
- IF_Z	add	r0, #16
-	test	__TMP0, __MASK_00FF00FF	wz
- IF_Z	add	r0, #8
-	test	__TMP0, __MASK_0F0F0F0F	wz
- IF_Z	add	r0, #4
-	test	__TMP0, __MASK_33333333	wz
- IF_Z	add	r0, #2
-	test	__TMP0, __MASK_55555555	wz
- IF_Z	add	r0, #1
-__CLZSI_ret	ret
-__DIVR	long	0
-__TMP1
-__DIVCNT
-	long	0
-	''
-	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
-	''
-__UDIVSI
-	mov	__DIVR, r0
-	call	#__CLZSI
-	neg	__DIVCNT, r0
-	mov	r0, r1 wz
- IF_Z   jmp	#__UDIV_BY_ZERO
-	call	#__CLZSI
-	add	__DIVCNT, r0
-	mov	r0, #0
-	cmps	__DIVCNT, #0	wz, wc
- IF_C	jmp	#__UDIVSI_done
-	shl	r1, __DIVCNT
-	add	__DIVCNT, #1
-__UDIVSI_loop
-	cmpsub	__DIVR, r1	wz, wc
-	addx	r0, r0
-	shr	r1, #1
-	djnz	__DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-	mov	r1, __DIVR
-__UDIVSI_ret	ret
-__DIVSGN	long	0
-__DIVSI	mov	__DIVSGN, r0
-	xor	__DIVSGN, r1
-	abs	r0, r0 wc
-	muxc	__DIVSGN, #1	' save original sign of r0
-	abs	r1, r1
-	call	#__UDIVSI
-	cmps	__DIVSGN, #0	wz, wc
- IF_B	neg	r0, r0
-	test	__DIVSGN, #1 wz	' check original sign of r0
- IF_NZ	neg	r1, r1		' make the modulus result match
-__DIVSI_ret	ret
-
-	'' come here on divide by zero
-	'' we probably should raise a signal
-__UDIV_BY_ZERO
-	neg	r0,#1
-	mov	r1,#0
-	jmp	#__UDIVSI_ret
-	
 	.global __MULSI
 	.global __MULSI_ret
-__MULSI
 __MULSI
 	mov	__TMP0, r0
 	min	__TMP0, r1
@@ -671,7 +609,8 @@ __MULSI_loop
  IF_C	add	r0, __TMP0
 	add	__TMP0, __TMP0
  IF_NZ	jmp	#__MULSI_loop
-__MULSI_ret	ret
+__MULSI_ret
+	ret
 
 	''
 	'' code for atomic compare and swap
@@ -708,6 +647,27 @@ __CMPSWAPSI_ret
 	ret
 	
 	''
+	'' code to load a buffer from hub memory into cog memory
+	''
+	'' parameters: __TMP0 = count of bytes
+	''             __TMP1 = hub address
+	''             __COGA = COG address
+	''
+	''
+__COGA	long 0
+	
+loadbuf
+	movd	.ldlp,__COGA
+	shr	__TMP0,#2	'' convert to longs
+.ldlp
+	rdlong	0-0,__TMP1
+	add	__TMP1,#4
+	add	.ldlp,inc_dest1
+	djnz	__TMP0,#.ldlp
+
+loadbuf_ret
+	ret
+	''
 	'' FCACHE region
 	'' The FCACHE is an area where we can
 	'' execute small functions or loops entirely
@@ -717,13 +677,12 @@ __CMPSWAPSI_ret
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest4
-	long (4<<9)
 	
 	.global	__LMM_RET
 __LMM_RET
 	long 0
 
+	
 __LMM_FCACHE_DO
 	add	pc,#3		'' round up to next longword boundary
 	andn	pc,#3
@@ -733,46 +692,30 @@ __LMM_FCACHE_DO
   IF_Z	jmp	#Lmm_fcache_doit
 
 	mov	__LMM_FCACHE_ADDR, __TMP1
-	
-	'' assembler awkwardness here
-	'' we would like to just write
-	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
-	'' but binutils doesn't work right with this now
-	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop2,#1+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop3,#2+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop4,#3+(__LMM_FCACHE_START-__LMM_entry)/4
-	add  __TMP0,#15		'' round up to next multiple of 16
-	shr  __TMP0,#4		'' we process 16 bytes per loop iteration
-Lmm_fcache_loop
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop,inc_dest4
-Lmm_fcache_loop2
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop2,inc_dest4
-Lmm_fcache_loop3
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop3,inc_dest4
-Lmm_fcache_loop4
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop4,inc_dest4
-
-	djnz	__TMP0,#Lmm_fcache_loop
-
+	mova	__COGA, #__LMM_FCACHE_START
+	call	#loadbuf
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
 	jmp	#__LMM_loop
 
 
 	''
-	'' the fcache area should come last in the file
+	'' the fcache area 
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
 	res	64	'' reserve 64 longs = 256 bytes
 
-
+	''
+	'' include various kernel extensions
+	''
+#include "kernel.ext"
+#ifdef DEBUG_KERNEL
+//#include "cogdebug.ext"
+__EnterLMMBreakpoint
+__EnterDebugger
+	nop
+__EnterLMMBreakpoint_ret
+__EnterDebugger_ret
+	ret
+#endif

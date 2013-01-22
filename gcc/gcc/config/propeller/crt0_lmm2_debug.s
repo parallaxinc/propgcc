@@ -1,8 +1,9 @@
 '--------------------------------------------------------------------
 ' LMM debug kernel
 '--------------------------------------------------------------------
-
-	.section .lmmkernel, "ax"
+#include "cogdebug.h"
+	
+	.section .kernel, "ax"
 	.global r0
 	.global r1
 	.global r2
@@ -21,8 +22,6 @@
 	.global lr	
 	.global sp
 	.global pc
-
-	.set ACK, 6
 
 	.global __LMM_entry
 __LMM_entry
@@ -47,13 +46,16 @@ r15		' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
-flags	long	0
-breakpt	long	0
 
-'--------------------------------------------------------------------
-' LMM debugger entry - as there are 20 registers above, a simple
-' "jmp #20" is our breakpoint primitive
-'--------------------------------------------------------------------
+ccr	long	0
+
+hwbkpt	long	entry
+	'' register 20 needs to be the breakpoint command
+	'' the instruction at "Breakpoint" should be whatever
+	'' the debugger should use as a breakpoint instruction
+Breakpoint
+	call	#__EnterLMMBreakpoint
+	
 
 __LMM_debug
 	muxnz	flags,#2	' save zero flag

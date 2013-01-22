@@ -44,6 +44,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define SF_ALLOC    2
 #define SF_EXECUTE  4
 
+/* Propeller specific section flags */
+#define SF_COGDATA 0x10000000
+
 #define ELFNAMEMAX  128
 
 typedef struct {
