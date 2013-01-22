@@ -549,7 +549,8 @@ static char *matchregname(char *str, const char *match)
 
 #define SP_REGNUM 16
 #define PC_REGNUM 17
-#define FFFFFFFF_REGNUM 18
+#define CC_REGNUM 18
+#define FFFFFFFF_REGNUM 19
 
 static struct {
   const char *name;
@@ -559,6 +560,7 @@ static struct {
   { "LR", 15 },
   { "sp", SP_REGNUM },
   { "pc", PC_REGNUM },
+  { "ccr", CC_REGNUM },
   { "__MASK_FFFFFFFF", FFFFFFFF_REGNUM },
 };
 

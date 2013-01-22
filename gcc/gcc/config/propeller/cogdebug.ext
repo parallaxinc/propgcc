@@ -1,0 +1,567 @@
+	
+	''
+	'' debug stub
+	''
+	.section .kernel
+
+rxbit		long	0x80000000
+txbit		long	0x40000000
+now		long	0
+bits		long	0
+ch		long	0
+zero		long 	0
+
+#if defined(__PROPELLER2__)
+'--------------------------------------------------------------------
+' rx8bits	Receive 8 bits
+'--------------------------------------------------------------------
+
+rx8bits	mov	bits,#8
+	waitpeq	zero,rxbit	' wait for startbit
+	getcnt	now
+	add	now,halfbit
+	sub	now,#8
+	waitcnt	now,#0
+
+rxloop	getcnt	now
+	add	now,onebit
+	waitcnt	now,#0
+	test	rxbit,ina wc
+	rcr	ch,#1
+	djnz	bits,#rxloop
+
+	'' wait for the line to go high (as it will when the stop bit arrives)
+	waitpeq	rxbit,rxbit
+
+rx8bits_ret
+	ret
+
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,#0x100
+	shl	ch,#1
+	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+	muxc	outa,txbit  ' 22
+'-------
+	getcnt	now
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+'-------
+	djnz	bits,#txloop wz
+
+txbyte_ret
+	ret
+
+' 115200
+halfbit	long	694  '1600000000 / (2*115200) = 347.2222
+onebit		long	1389
+
+' 57600
+'halfbit		long	1041 
+'onebit		long	2083
+
+' 38400
+'halfbit		long	2083 
+'onebit		long	4167
+
+' 19200
+'halfbit		long	2083-11 
+'onebit		long	4166-16 
+#else
+'--------------------------------------------------------------------
+' rx8bits	Receive 8 bits
+'--------------------------------------------------------------------
+
+rx8bits	mov	bits,#8
+	waitpeq	zero,rxbit	' wait for startbit
+	mov	now,CNT
+	add	now,halfbit
+	sub	now,#8
+	waitcnt	now,#0
+
+rxloop	mov	now,CNT
+	add	now,onebit
+	waitcnt	now,#0
+	test	rxbit,ina wc
+	rcr	ch,#1
+	djnz	bits,#rxloop
+
+	'' wait for the line to go high (as it will when the stop bit arrives)
+	waitpeq	rxbit,rxbit
+
+rx8bits_ret
+	ret
+
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,#0x100
+	shl	ch,#1
+	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+	muxc	outa,txbit  ' 22
+'-------
+	mov	now,CNT
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+'-------
+	djnz	bits,#txloop wz
+
+txbyte_ret
+	ret
+
+' 115200
+halfbit	long	347  '80000000 / (2*115200) = 347.2222
+onebit		long	694
+
+' 57600
+'halfbit	long	694  
+'onebit		long	1389
+
+' 38400
+'halfbit		long	1041 
+'onebit		long	2083
+
+' 19200
+'halfbit		long	2083 
+'onebit		long	4167
+
+' 9600
+'halfbit		long	2083-11 
+'onebit		long	4166-16 
+#endif
+
+'--------------------------------------------------------------------
+' rxbyte	Receive byte into ch
+'--------------------------------------------------------------------
+
+rxbyte	call	#rx8bits
+	shr	ch,#24
+rxbyte_ret
+	ret
+
+'--------------------------------------------------------------------
+' debugger control variables
+'--------------------------------------------------------------------
+
+	.global	__EnterDebugger
+	.global __EnterDebugger_ret
+__EnterDebugger_ret
+__EnterBreakpoint_ret
+__EnterLMMBreakpoint_ret
+__EnterDebugger_Quiet_ret
+cogpc
+	long 0
+cogflags
+	long 0
+cogid
+	long 0
+debugpc
+	long 0
+
+
+__debug_kernel_ptr
+	long	__load_start_debug_kerext
+
+__EnterDebugger_Quiet
+	or	cogflags, #COGFLAGS_QUIET
+	jmp	#dbgstart
+__EnterBreakpoint
+	sub	cogpc, #1
+	jmp	#__EnterDebugger
+__EnterLMMBreakpoint
+	sub	pc, #4
+__EnterDebugger
+	andn	cogflags, #COGFLAGS_QUIET
+dbgstart
+	andn	ccr, #COGFLAGS_STEP
+	or	DIRA, txbit
+	or	OUTA, txbit
+
+	mov	__TMP1,__debug_kernel_ptr
+	call	#__load_extension
+	jmp	#debug
+
+	'' resume execution
+	'' no response expected/required
+LeaveDebugger
+	shr	cogflags,#1 wz,wc,nr
+	jmp	cogpc
+
+	.section .debug.kerext, "ax"
+startdebug
+	long	enddebug - startdebug
+
+cmd
+	long 0	
+cmdlen
+	long 0
+tmp0
+	long 0
+dbgcnt
+	long 0
+respond1
+	long 0
+
+
+
+DebugLMM
+
+dbg_lmm_loop
+	rdlong	ldbg, debugpc
+	add	debugpc, #4
+ldbg
+	nop
+	jmp	#dbg_lmm_loop
+DebugLMM_ret
+	ret
+
+debug
+	mov	debugpc, hub_start_ptr
+	call	#DebugLMM
+cmdloop
+	mov	debugpc, hub_cmdloop_ptr
+	call	#DebugLMM
+	jmp	#cmdloop
+
+
+	'' skip over a command not for us
+skip_cmd
+	call	#rxbyte
+	djnz	cmdlen, #skip_cmd
+skip_cmd_ret
+	ret
+
+	''
+	'' loop to read data from a cog and send it back to the host
+	'' "dbgcnt" contains a count of the number of bytes to send
+	''
+read_cog_loop
+rcsrc
+	mov	tmp0, 0-0
+	call	#txlong
+	add	rcsrc,#1
+	djnz	dbgcnt, #read_cog_loop
+read_cog_loop_ret
+	ret
+
+  	'' read longs from the serial and write them to cog memory
+write_cog_loop
+	call	#rxlong
+wcdst
+	mov	0-0, ch
+	add	wcdst,inc_dest1
+	sub	cmdlen, #4 wz
+ if_nz  jmp	#write_cog_loop
+write_cog_loop_ret
+	ret
+
+'--------------------------------------------------------------------
+' transmit long word in tmp0
+'--------------------------------------------------------------------
+txtmp	long 0
+txlong
+	mov	txtmp,#4
+txlloop
+	mov	ch, tmp0
+	shr	tmp0,#8
+	and	ch, #0xff
+	call	#txbyte
+	djnz	txtmp, #txlloop
+txlong_ret
+	ret
+
+
+
+'--------------------------------------------------------------------
+' rxword	Receive word into ch
+'--------------------------------------------------------------------
+rxword	call	#rx8bits
+	call	#rx8bits
+	shr	ch, #16
+rxword_ret
+	ret
+
+'--------------------------------------------------------------------
+' rxlong	Receive long into ch
+'--------------------------------------------------------------------
+rxlong	call	#rx8bits
+	call	#rx8bits
+	call	#rx8bits
+	call	#rx8bits
+rxlong_ret
+	ret
+
+
+
+hub_start_ptr
+	long	hub_debug_start
+hub_cmdloop_ptr
+	long	hub_cmdloop
+
+enddebug
+
+'--------------------------------------------------------------------
+' 
+' Here is where we put code in HUB memory that can be interpreted by
+' our very simple debug-specific LMM engine
+'
+'--------------------------------------------------------------------
+
+	.section .hub
+
+	''
+	'' here's where we start debugging
+	''
+hub_debug_start
+  	muxnz	cogflags, #2
+	muxc	cogflags, #1
+
+	'' should we send our status?
+	'' if not, just go right to command reception
+	test	cogflags, #COGFLAGS_QUIET wz
+  if_nz	rdlong	debugpc,debugpc
+  	long	hub_cmdloop
+
+	'' fall through to send the status command
+
+	''
+	'' here's what we send back to the host
+	'' COGID COGFLAGS COGPCLO COGPCHI
+	''
+hub_cmd_status
+	mov	ch, #RESPOND_STATUS
+	call	#txbyte
+	cogid	ch
+	mov	cogid, ch
+	call	#txbyte
+	mov	ch, cogflags
+	call	#txbyte
+	mov	ch, cogpc
+	and	ch, #255
+	call	#txbyte
+	mov	ch, cogpc
+	shr	ch, #8
+	call	#txbyte
+
+	'' fall through to the command loop
+
+hub_cmdloop
+	''
+	'' now wait for a command from the host
+	''
+	call	#rxbyte
+	'' make sure it really is a command
+	cmp	ch, #HOST_PACKET wz
+  if_ne	rdlong	debugpc,debugpc	 ''jmp	#notcmd
+  	long	hub_notcmd
+
+  	'' retreive the command
+	call	#rxbyte
+	mov	cmd, ch
+	'' retrieve the length
+	call	#rxbyte
+	mov	cmdlen, ch
+
+#if 0
+	'' now check to see if the command is for us
+	mov    tmp0, cmd
+	and    tmp0, #0x0f
+	cmp    tmp0, #0x0f wz	'' 0x0f == broadcast
+  if_e	rdlong debugpc,debugpc
+  	long   hub_decode_cmd
+
+	cmp    tmp0, cogid wz	'' if not broadcast, check cog id
+  if_e	rdlong debugpc,debugpc  ''jmp    #decode_cmd
+  	long   hub_decode_cmd
+
+  	call   #skip_cmd
+	jmp    #cmdloop
+#endif
+
+	'' fall through
+
+hub_decode_cmd
+	'' decode command
+	and	cmd, #0xf0
+	cmp	cmd, #DBG_CMD_STATUS wz
+  if_e	rdlong	debugpc,debugpc	     '' jmp	#cmd_status
+  	long	hub_cmd_status
+  	cmp	cmd, #DBG_CMD_RESUME wz
+  if_e	jmp	#LeaveDebugger
+  	cmp	cmd, #DBG_CMD_READCOG wz
+  if_e  rdlong	debugpc,debugpc	     ''jmp	#read_cog_mem
+  	long	hub_cmd_readcogmem
+  	cmp	cmd, #DBG_CMD_WRITECOG wz
+  if_e  rdlong	debugpc,debugpc	      '' jmp	#write_cog_mem
+	long	hub_cmd_writecogmem
+
+  	cmp	cmd, #DBG_CMD_READHUB wz
+  if_e  rdlong	debugpc,debugpc
+  	long	hub_cmd_readhubmem
+  	cmp	cmd, #DBG_CMD_WRITEHUB wz
+  if_e  rdlong	debugpc,debugpc
+	long	hub_cmd_writehubmem
+  	cmp	cmd, #DBG_CMD_QUERYBP wz
+  if_e  rdlong	debugpc,debugpc
+	long	hub_cmd_querybp
+	cmp	cmd, #DBG_CMD_LMMSTEP wz
+  if_e	rdlong	debugpc,debugpc
+  	long	hub_cmd_lmmstep
+
+	'' fall through to error if command not recognized
+hub_cmderr
+	mov	respond1, #RESPOND_ERR
+
+	'' fall through
+hub_donecmd
+	'' read any remaining bytes
+	cmp	cmdlen, #0 wz
+  if_ne	call	#skip_cmd
+
+	'' send the response
+	mov	ch, respond1
+	call	#txbyte
+	mov	ch, cogid
+	call	#txbyte
+	mov	ch, #0	'' FIXME should be more detailed response
+	call	#txbyte
+	jmp	#cmdloop
+
+	''
+	'' received a byte that was not a command
+	'' just ignore it and start the command loop
+	''
+hub_notcmd
+	jmp	#cmdloop
+
+
+hub_cmd_readcogmem
+	'' must be exactly 3 more bytes left (len + cog address)
+	cmp	cmdlen, #3 wz
+  if_ne	rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+  	'' read the length (number of bytes to read)
+	call	#rxbyte
+	mov	dbgcnt, ch
+	shr	dbgcnt, #2 wz
+  if_e  rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+	'' read the address
+	call	#rxword
+	movs	rcsrc, ch
+  	sub	cmdlen, #3
+
+	'' now start our response
+	mov     ch, #RESPOND_DATA
+	call    #txbyte
+	mov     ch, cogid
+	call    #txbyte
+
+	call    #read_cog_loop
+	jmp     #cmdloop
+
+hub_cmd_writecogmem
+	'' must be at least 2 bytes (the address) left
+	cmps	cmdlen, #2 wz,wc
+  if_b	rdlong	debugpc,debugpc		'jmp	#cmderr
+  	long	hub_cmderr
+
+  	call	#rxword
+	movd	wcdst,ch
+	sub	cmdlen, #2 wz
+  if_e	jmp	#cmdloop
+
+	'' make sure the number of longs is even
+	test	cmdlen, #3 wz
+  if_nz	rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+  	call	#write_cog_loop
+
+  	'' send the ack
+	mov	respond1, #RESPOND_ACK
+
+	rdlong	debugpc,debugpc		'jmp	#donecmd
+	long	hub_donecmd
+
+
+hub_cmd_readhubmem
+	'' must be exactly 5 more bytes left (len + hub address)
+	cmp	cmdlen, #5 wz
+  if_ne	rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+	'' read the length (number of bytes to read)
+	call	#rxbyte
+	mov	dbgcnt, ch
+
+	'' read the address
+	call	#rxlong
+	mov	tmp0, ch
+
+	sub	cmdlen, #5
+
+	'' now start the response
+	mov    ch, #RESPOND_DATA
+	call   #txbyte
+	mov    ch, cogid
+	call   #txbyte
+
+read_hub_loop
+	rdbyte	ch, tmp0
+	add	tmp0, #1
+	call	#txbyte
+	sub	dbgcnt, #1 wz
+  if_nz	rdlong	debugpc,debugpc
+  	long	read_hub_loop
+
+	jmp	#cmdloop
+
+hub_cmd_writehubmem
+	'' must be at least 5 bytes (the address + a byte of data) left
+	cmps	cmdlen, #5 wz,wc
+  if_b	rdlong	debugpc,debugpc
+  	long	hub_cmderr
+
+	call	#rxlong
+  	mov	tmp0, ch	' save address
+	sub	cmdlen, #4
+write_hub_loop
+	call	#rxbyte
+	wrbyte	ch, tmp0
+	add	tmp0, #1
+	sub	cmdlen, #1 wz
+  if_nz rdlong	debugpc,debugpc
+  	long	write_hub_loop
+
+	'' now send a response
+	mov	respond1, #RESPOND_ACK
+
+	rdlong	debugpc,debugpc		'jmp	#donecmd
+	long	hub_donecmd
+
+hub_cmd_querybp
+	mov	ch, #RESPOND_DATA
+	call	#txbyte
+	mov	ch, cogid
+	call	#txbyte
+
+	mov	tmp0, Breakpoint
+	call	#txlong
+	jmp	#cmdloop
+
+hub_cmd_lmmstep
+	or	ccr, #COGFLAGS_STEP
+	jmp	#LeaveDebugger
+
