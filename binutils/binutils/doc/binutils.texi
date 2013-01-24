@@ -2012,6 +2012,14 @@ disassembly for the e300 family.  @option{440} selects disassembly for
 the PowerPC 440.  @option{ppcps} selects disassembly for the paired
 single instructions of the PPC750CL.
 
+For the Propeller, @option{compress} forces disassembly to treat the
+instructions as compressed; @option{nocompress} forces them to be
+treated as uncompressed. If neither of these are given the
+disassembler tries to figure it out using heuristics. @option{p2}
+forces disassembly to use the Propeller 2 instruction set; without
+this the instruction set is determined from the object file header (if
+present), defaulting to Propeller 1.
+
 For MIPS, this option controls the printing of instruction mnemonic
 names and register names in disassembled instructions.  Multiple
 selections from the following may be specified as a comma separated
