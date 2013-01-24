@@ -334,6 +334,21 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0x0003FE00,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
+  /* A 9 bit relocation of the DST field of an instruction */
+  HOWTO (R_PROPELLER_DST_IMM,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 9,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 9,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_DST",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0003FE00,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
   /* a pc-relative offset between -511 and +511; the sign bit actually
      has to toggle between the "add" and "sub" instructions */
   HOWTO (R_PROPELLER_PCREL10,	/* type */
@@ -404,6 +419,7 @@ static const struct propeller_reloc_map propeller_reloc_map[] = {
   {BFD_RELOC_PROPELLER_SRC_IMM, R_PROPELLER_SRC_IMM},
   {BFD_RELOC_PROPELLER_SRC, R_PROPELLER_SRC},
   {BFD_RELOC_PROPELLER_DST, R_PROPELLER_DST},
+  {BFD_RELOC_PROPELLER_DST_IMM, R_PROPELLER_DST_IMM},
   {BFD_RELOC_PROPELLER_23, R_PROPELLER_23},
   {BFD_RELOC_PROPELLER_PCREL10, R_PROPELLER_PCREL10},
   {BFD_RELOC_PROPELLER_REPS, R_PROPELLER_REPS},

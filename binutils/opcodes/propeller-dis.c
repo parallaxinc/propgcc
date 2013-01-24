@@ -224,6 +224,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
   int need_zcr = 1;
   char *srcindirect, *dstindirect;
   char srcibuf[8], dstibuf[8];
+  int immediate_dst = 0;
 
   /* code for handling prop2 inda and indb operations */
   srcindirect = NULL;
@@ -237,15 +238,27 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 
   indcond = condition;
   if (is_propeller2 (info)) {
-    if ( (src == 0x1f6 || src == 0x1f7) && !immediate ) {
-      srcindirect = srcibuf;
-      set_indirect_string(srcibuf, indcond, src);
+    /* special case reps instruction */
+    if ( (opcode & 0xfdc001c0) == 0x0dc00040 ) {
+      src = (src & 0x3f) + 1;
+      dst = (opcode >> 9) & 0x1fff;
+      if (opcode & 0x02000000)
+	dst |= 0x2000;
+      dst -= 1;
       condition = 15;
-    }
-    if (dst == 0x1f6 || dst == 0x1f7) {
-      dstindirect = dstibuf;
-      set_indirect_string(dstibuf, (indcond>>2), dst);
-      condition = 15;
+      need_zcr = 0;
+      immediate_dst = 1;
+    } else {
+      if ( (src == 0x1f6 || src == 0x1f7) && !immediate ) {
+	srcindirect = srcibuf;
+	set_indirect_string(srcibuf, indcond, src);
+	condition = 15;
+      }
+      if (dst == 0x1f6 || dst == 0x1f7) {
+	dstindirect = dstibuf;
+	set_indirect_string(dstibuf, (indcond>>2), dst);
+	condition = 15;
+      }
     }
   }
   if (condition == 0)
@@ -318,12 +331,25 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
               (*info->print_address_func) (info->target, info);
             }
             goto done;
+          case PROPELLER_OPERAND_REPD:
+	    if (set & 0x1) {
+	      immediate_dst = 1;
+	      dst += 1;
+	      set = 0;
+	    }
+	    src = (src & 0x3f) + 1;
+	    /* fall through */
+          case PROPELLER_OPERAND_REPS:
           case PROPELLER_OPERAND_TWO_OPS:
           case PROPELLER_OPERAND_JMPRET:
           case PROPELLER_OPERAND_MOVA:
             FPRINTF (F, OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
-	    if (dstindirect)
+	    if (immediate_dst) 
+	      {
+		FPRINTF (F, "#%d", dst);
+	      }
+	    else if (dstindirect)
 	      {
 		  FPRINTF (F, "%s", dstindirect);
 	      }
@@ -428,8 +454,6 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_SETINDA:
           case PROPELLER_OPERAND_SETINDB:
           case PROPELLER_OPERAND_SETINDS:
-          case PROPELLER_OPERAND_REPD:
-          case PROPELLER_OPERAND_REPS:
           case PROPELLER_OPERAND_JMPTASK:
           case PROPELLER_OPERAND_BIT:
             /* disassembly not implemented yet */
