@@ -257,6 +257,11 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 0;
       rshift = 2;
       break;
+    case BFD_RELOC_PROPELLER_DST_IMM:
+      mask = 0x0003fe00;
+      shift = 9;
+      rshift = 0;
+      break;
     case BFD_RELOC_PROPELLER_DST:
       mask = 0x0003fe00;
       shift = 9;
@@ -1068,6 +1073,10 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
 static char *
 parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_code *insn, int type, int delta){
 
+  int isdest;
+
+  isdest = (type == BFD_RELOC_PROPELLER_DST || type == BFD_RELOC_PROPELLER_DST_IMM);
+
   str = skip_whitespace (str);
   if (compress)
     {
@@ -1082,7 +1091,7 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
           operand->reloc.pc_rel = 0;
           operand->reloc.exp.X_op = O_register;
           operand->reloc.exp.X_add_number = regnum;
-          insn->code |= (operand->reloc.exp.X_add_number << (type == BFD_RELOC_PROPELLER_DST ? 9 : 0));
+          insn->code |= (operand->reloc.exp.X_add_number << (isdest ? 9 : 0));
           return str;
         }
     }
@@ -1100,7 +1109,7 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
           operand->error = _("9-bit value out of range");
           break;
         }
-      insn->code |= operand->reloc.exp.X_add_number << (type == BFD_RELOC_PROPELLER_DST ? 9 : 0);
+      insn->code |= operand->reloc.exp.X_add_number << (isdest ? 9 : 0);
       break;
     case O_symbol:
     case O_add:
@@ -1109,13 +1118,13 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
       operand->reloc.pc_rel = 0;
       break;
     case O_illegal:
-      operand->error = _(type == BFD_RELOC_PROPELLER_DST ? "Illegal operand in destination"
-                                                         : "Illegal operand in source");
+      operand->error = _(isdest ? "Illegal operand in destination"
+			 : "Illegal operand in source");
       break;
     default:
       if (cog_ram)
-        operand->error = _(type == BFD_RELOC_PROPELLER_DST ? "Destination operand in .cog_ram too complicated"
-                                                           : "Source operand in .cog_ram too complicated");
+        operand->error = _(isdest ? "Destination operand in .cog_ram too complicated"
+			   : "Source operand in .cog_ram too complicated");
       else
         {
           operand->reloc.type = type;
@@ -1150,17 +1159,19 @@ parse_srcimm(char *str, struct propeller_code *operand, struct propeller_code *i
 
 static char *
 parse_destimm(char *str, struct propeller_code *operand, struct propeller_code *insn, int delta){
+  int reloc = BFD_RELOC_PROPELLER_DST;
   str = skip_whitespace (str);
   if (*str == '#')
     {
       str++;
       insn->code |= 1 << 23;
+      //reloc = BFD_RELOC_PROPELLER_DST_IMM; // do we sometimes want this??
     }
   else
     {
       delta = 0;
     }
-  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST, delta);
+  return parse_src_or_dest(str, operand, insn, reloc, delta);
 }
 
 static char *
@@ -1362,28 +1373,10 @@ parse_reps(char *str, struct propeller_code *op1, struct propeller_code *op2, st
       return str;
     }
 
-  str = skip_whitespace(str);
-    
-  str = parse_expression(str, op2);
+  str = parse_src(str, op2, insn, PROPELLER_OPERAND_REPD);
   if (op2->error)
     return str;
     
-  switch (op2->reloc.exp.X_op)
-  {
-    case O_constant:
-      --op2->reloc.exp.X_add_number; // value encoded into instruction is one less than the instruction count
-      if (op2->reloc.exp.X_add_number < 0 || op2->reloc.exp.X_add_number >= (1 << 6))
-        {
-          op2->error = _("6-bit value out of range");
-          return str;
-        }
-      insn->code |= op2->reloc.exp.X_add_number & 0x3f;
-      break;
-    default:
-      op2->error = _("Instruction count must be a constant expression");
-      return str;
-  }
-
   return str;
 }
 

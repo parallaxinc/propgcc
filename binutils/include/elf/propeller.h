@@ -43,6 +43,7 @@ START_RELOC_NUMBERS (elf_propeller_reloc_type)
   RELOC_NUMBER (R_PROPELLER_PCREL10, 8)
   RELOC_NUMBER (R_PROPELLER_REPS, 9)
   RELOC_NUMBER (R_PROPELLER_REPINSCNT, 10)
+  RELOC_NUMBER (R_PROPELLER_DST_IMM, 11)
 END_RELOC_NUMBERS (R_PROPELLER_max)
 
 /* processor specific flags for the ELF header e_flags field. */
