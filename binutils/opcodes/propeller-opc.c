@@ -38,7 +38,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /*
    mnemonic  insn  zcri cond    dst       src */
 /* nop      ------ ---- cccc --------- --------- */
-  {"nop", 0x00000000, 0x003c0000, PROPELLER_OPERAND_IGNORE, CCZCNR, PROP_1 | PROP_2, COMPRESS_MACRO, 0x00},
+  {"nop", 0x00000000, 0xffffffff, PROPELLER_OPERAND_IGNORE, CCZCNR, PROP_1, COMPRESS_MACRO, 0x00},
 
   /* we put the pseudo-instructions here so the disassembler gets a first
      crack at them
