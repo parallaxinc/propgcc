@@ -200,6 +200,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
   int condition;
   int set, immediate;
   int i;
+  int need_zcr = 1;
 
   src = (opcode >> 0) & 0x1ff;
   dst = (opcode >> 9) & 0x1ff;
@@ -309,6 +310,50 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             /* disassembly not implemented yet */
             continue;
           case PROPELLER_OPERAND_PTRS_OPS:
+	    need_zcr = 0;
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+              {
+                info->target = dst<<2;
+                (*info->print_address_func) (info->target, info);
+              }
+            FPRINTF (F, OPERAND_SEPARATOR);
+            if (immediate)
+              {
+		int offset = src & 0x1f;
+		int reg = (src & 0x100) ? 'B' : 'A';
+		int update = (src & 0x80);
+		int postmodify = (src & 0x40);
+
+		if (src & 0x20) {
+		  offset = -(32 - offset);
+		}
+		if (update) {
+		  char *prestr = (offset < 0) ? "--" : "++";
+		  char *poststr = (offset < 0) ? "--" : "++";
+		  if (postmodify)
+		    prestr = "";
+		  else
+		    poststr = "";
+		  if (offset < 0)
+		    offset = -offset;
+		  FPRINTF (F, "%sPTR%c%s", prestr, reg, poststr);
+		  if (offset != 1) {
+		    FPRINTF (F, "[%d]", offset);
+		  }
+		} else {
+		  FPRINTF (F, "PTR%c", reg);
+		  if (offset != 0) {
+		    FPRINTF (F, "[%d]", offset);
+		  }
+		}
+              }
+            else
+              {
+                info->target = src<<2;
+                (*info->print_address_func) (info->target, info);
+              }
+	    goto done;
           case PROPELLER_OPERAND_PTRD_OPS:
           case PROPELLER_OPERAND_DESTIMM:
           case PROPELLER_OPERAND_DESTIMM_SRCIMM:
@@ -331,7 +376,9 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 done:
   if (i < propeller_num_opcodes)
     {
-      FPRINTF (F, " %s", flags[set + (OP.flags & FLAG_R_DEF ? 1 : 0) * 8]);
+      if (need_zcr) {
+	FPRINTF (F, " %s", flags[set + (OP.flags & FLAG_R_DEF ? 1 : 0) * 8]);
+      }
     }
   else
     {
