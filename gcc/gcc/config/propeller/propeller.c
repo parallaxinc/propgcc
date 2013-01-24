@@ -2220,7 +2220,7 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
     case 'I': return value >= 0 && value <= 511;
     case 'M': return value >= -512 && value < 0;
     case 'N': return value >= -511 && value <= 0;
-    case 'W': return value < 0 && value > 511;
+    case 'W': return value < 0 || value > 511;
     default:
         gcc_unreachable();
     }
