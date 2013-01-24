@@ -193,14 +193,41 @@ static const char *const flags[16] = {
   "wz, wc"
 };
 
+static void
+set_indirect_string(char *buf, int indcond, int regval)
+{
+  char reg = (regval & 1) ? 'B' : 'A';
+  switch (indcond) {
+  case 0:
+    sprintf (buf, "IND%c", reg);
+    break;
+  case 1:
+    sprintf (buf, "IND%c++", reg);
+    break;
+  case 2:
+    sprintf (buf, "IND%c--", reg);
+    break;
+  case 3:
+    sprintf (buf, "++IND%c", reg);
+    break;
+  }
+}
+
 static int
 print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opcode)
 {
   int src, dst;
   int condition;
+  int indcond;
   int set, immediate;
   int i;
   int need_zcr = 1;
+  char *srcindirect, *dstindirect;
+  char srcibuf[8], dstibuf[8];
+
+  /* code for handling prop2 inda and indb operations */
+  srcindirect = NULL;
+  dstindirect = NULL;
 
   src = (opcode >> 0) & 0x1ff;
   dst = (opcode >> 9) & 0x1ff;
@@ -208,6 +235,19 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
   immediate = (opcode >> 22) & 1;
   set = (opcode >> 23) & 7;
 
+  indcond = condition;
+  if (is_propeller2 (info)) {
+    if ( (src == 0x1f6 || src == 0x1f7) && !immediate ) {
+      srcindirect = srcibuf;
+      set_indirect_string(srcibuf, indcond & 0xf, src);
+      condition = 15;
+    }
+    if (dst == 0x1f6 || dst == 0x1f7) {
+      dstindirect = dstibuf;
+      set_indirect_string(dstibuf, (indcond>>4) & 0xf, dst);
+      condition = 15;
+    }
+  }
   if (condition == 0)
     {
       FPRINTF (F, "\t\tnop");
@@ -244,7 +284,11 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
                 FPRINTF (F, "#");
                 FPRINTF (F, "%d", src);
               }
-            else
+            else if (srcindirect)
+	      {
+		FPRINTF (F, "%s", srcindirect);
+	      }
+	    else
               {
                 info->target = src;
                 (*info->print_address_func) (info->target, info);
@@ -255,8 +299,15 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             FPRINTF (F, AFTER_INSTRUCTION);
             {
               if (immediate) FPRINTF (F, "#");
-              info->target = src<<2;
-              (*info->print_address_func) (info->target, info);
+	      if (srcindirect)
+		{
+		  FPRINTF (F, "%s", srcindirect);
+		}
+	      else
+		{
+		  info->target = src<<2;
+		  (*info->print_address_func) (info->target, info);
+		}
             }
             goto done;
           case PROPELLER_OPERAND_DEST_ONLY:
@@ -272,6 +323,11 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_MOVA:
             FPRINTF (F, OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
+	    if (dstindirect)
+	      {
+		  FPRINTF (F, "%s", srcindirect);
+	      }
+	    else
               {
                 info->target = dst<<2;
                 (*info->print_address_func) (info->target, info);
@@ -279,14 +335,21 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             FPRINTF (F, OPERAND_SEPARATOR);
             if (immediate && (OP.format != PROPELLER_OPERAND_JMPRET && OP.format != PROPELLER_OPERAND_MOVA))
               {
-              FPRINTF (F, "#");
-              FPRINTF (F, "%d", src);
+		FPRINTF (F, "#");
+		FPRINTF (F, "%d", src);
               }
             else
               {
                 if (immediate) FPRINTF (F, "#");
-                info->target = src<<2;
-                (*info->print_address_func) (info->target, info);
+		if (srcindirect)
+		  {
+		    FPRINTF (F, "%s", srcindirect);
+		  }
+		else
+		  {
+		    info->target = src<<2;
+		    (*info->print_address_func) (info->target, info);
+		  }
               }
             goto done;
           case PROPELLER_OPERAND_BRS:
@@ -313,6 +376,11 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 	    need_zcr = 0;
             FPRINTF (F, OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
+	    if (dstindirect)
+	      {
+		FPRINTF (F, "%s", dstindirect);
+	      }
+	    else
               {
                 info->target = dst<<2;
                 (*info->print_address_func) (info->target, info);
@@ -369,7 +437,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             goto done;
           default:
             /* TODO: is this a proper way of signalling an error? */
-            FPRINTF (F, "<internal error: unrecognized instruction type>");
+            FPRINTF (F, "<internal error: unrecognized instruction type: %d", OP.format);
             return -1;
           }
     }
