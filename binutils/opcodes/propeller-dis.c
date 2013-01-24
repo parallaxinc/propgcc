@@ -197,7 +197,7 @@ static void
 set_indirect_string(char *buf, int indcond, int regval)
 {
   char reg = (regval & 1) ? 'B' : 'A';
-  switch (indcond) {
+  switch (indcond & 3) {
   case 0:
     sprintf (buf, "IND%c", reg);
     break;
@@ -239,12 +239,12 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
   if (is_propeller2 (info)) {
     if ( (src == 0x1f6 || src == 0x1f7) && !immediate ) {
       srcindirect = srcibuf;
-      set_indirect_string(srcibuf, indcond & 0xf, src);
+      set_indirect_string(srcibuf, indcond, src);
       condition = 15;
     }
     if (dst == 0x1f6 || dst == 0x1f7) {
       dstindirect = dstibuf;
-      set_indirect_string(dstibuf, (indcond>>4) & 0xf, dst);
+      set_indirect_string(dstibuf, (indcond>>2), dst);
       condition = 15;
     }
   }
@@ -325,7 +325,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             FPRINTF (F, AFTER_INSTRUCTION);
 	    if (dstindirect)
 	      {
-		  FPRINTF (F, "%s", srcindirect);
+		  FPRINTF (F, "%s", dstindirect);
 	      }
 	    else
               {
