@@ -196,19 +196,19 @@ static const char *const flags[16] = {
 static void
 set_indirect_string(char *buf, int indcond, int regval)
 {
-  char reg = (regval & 1) ? 'B' : 'A';
+  char reg = (regval & 1) ? 'b' : 'a';
   switch (indcond & 3) {
   case 0:
-    sprintf (buf, "IND%c", reg);
+    sprintf (buf, "ind%c", reg);
     break;
   case 1:
-    sprintf (buf, "IND%c++", reg);
+    sprintf (buf, "ind%c++", reg);
     break;
   case 2:
-    sprintf (buf, "IND%c--", reg);
+    sprintf (buf, "ind%c--", reg);
     break;
   case 3:
-    sprintf (buf, "++IND%c", reg);
+    sprintf (buf, "++ind%c", reg);
     break;
   }
 }
@@ -389,7 +389,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             if (immediate)
               {
 		int offset = src & 0x1f;
-		int reg = (src & 0x100) ? 'B' : 'A';
+		int reg = (src & 0x100) ? 'b' : 'a';
 		int update = (src & 0x80);
 		int postmodify = (src & 0x40);
 
@@ -405,12 +405,12 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 		    poststr = "";
 		  if (offset < 0)
 		    offset = -offset;
-		  FPRINTF (F, "%sPTR%c%s", prestr, reg, poststr);
+		  FPRINTF (F, "%sptr%c%s", prestr, reg, poststr);
 		  if (offset != 1) {
 		    FPRINTF (F, "[%d]", offset);
 		  }
 		} else {
-		  FPRINTF (F, "PTR%c", reg);
+		  FPRINTF (F, "ptr%c", reg);
 		  if (offset != 0) {
 		    FPRINTF (F, "[%d]", offset);
 		  }
