@@ -27,14 +27,91 @@
 #include "elf/internal.h"
 #include "elf/propeller.h"
 
-static int
-is_propeller2(disassemble_info * info)
+/*
+ * some flags
+ */
+static int is_p2;  /* if set, assume p2 instructions */
+static int is_compress; /* if set, assume compressed instructions */
+static int is_nocompress; /* if set, assume uncompressed instructions */
+
+
+static void
+parse_prop_dis_option (const char *option, unsigned int len)
 {
-    return info->disassembler_options && strcmp(info->disassembler_options, "-p2") == 0;
+  if (len == 2 && !strncmp (option, "p2", len))
+    {
+      is_p2 = 1;
+      return;
+    }
+  if (len == 8 && !strncmp (option, "compress", len))
+    {
+      is_compress = 1;
+      return;
+    }
+  if (len == 10 && !strncmp (option, "nocompress", len))
+    {
+      is_nocompress = 1;
+      return;
+    }
+}
+
+static void
+parse_propeller_dis_options (const char *options)
+{
+  const char *option_end;
+
+  if (options == NULL)
+    return;
+  while (*options != '\0') {
+    /* Skip empty options */
+    if (*options == ',')
+      {
+	options++;
+	continue;
+      }
+      /* We know that *options is neither NUL or a comma.  */
+      option_end = options + 1;
+      while (*option_end != ',' && *option_end != '\0')
+	option_end++;
+
+      parse_prop_dis_option (options, option_end - options);
+
+      /* Go on to the next one.  If option_end points to a comma, it
+	 will be skipped above.  */
+      options = option_end;
+    }
+
+}
+
+static void
+set_default_propeller_dis_options (struct disassemble_info *info)
+{
+  is_p2 = 0;
+  is_compress = 0;
+  is_nocompress = 0;
+
+  /* check for p2 object files */
+  if (info->flavour == bfd_target_elf_flavour && info->section != NULL)
+    {
+      Elf_Internal_Ehdr *header;
+
+      header = elf_elfheader (info->section->owner);
+      if ((header->e_flags & EF_PROPELLER_MACH) == EF_PROPELLER_PROP2)
+	{
+	  is_p2 = 1;
+	}
+    }
+}
+
+
+static int
+is_propeller2(struct disassemble_info * info ATTRIBUTE_UNUSED)
+{
+  return is_p2;
 }
 
 static int
-read_word (bfd_vma memaddr, int *word, disassemble_info * info)
+read_word (bfd_vma memaddr, int *word, struct disassemble_info * info)
 {
   int status;
   bfd_byte x[4];
@@ -277,6 +354,12 @@ is_compressed_code (bfd_vma pc, struct disassemble_info *info)
   bfd_vma addr;
   elf_symbol_type *es;
   unsigned int type = 0;
+
+  /* allow explicit option overrides */
+  if (is_compress)
+    return 1;
+  if (is_nocompress)
+    return 0;
 
   start = info->symtab_pos;
   for (n = start; n < info->symtab_size; n++)
@@ -601,6 +684,9 @@ print_insn_propeller (bfd_vma memaddr, struct disassemble_info *info)
   int opcode;
   int r;
   int compress = 0;
+
+  set_default_propeller_dis_options (info);
+  parse_propeller_dis_options (info->disassembler_options);
 
   compress = is_compressed_code (memaddr, info);
   if (compress) {
