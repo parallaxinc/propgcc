@@ -331,6 +331,21 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
               (*info->print_address_func) (info->target, info);
             }
             goto done;
+          case PROPELLER_OPERAND_DESTIMM:
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+	    immediate_dst = (set & 0x1);
+	    set &= 0x4;
+	    if (immediate_dst) 
+	      {
+		FPRINTF (F, "#%d", dst);
+	      }
+	    else
+              {
+                info->target = dst<<2;
+                (*info->print_address_func) (info->target, info);
+              }
+	    goto done;
           case PROPELLER_OPERAND_REPD:
 	    if (set & 0x1) {
 	      immediate_dst = 1;
@@ -449,7 +464,6 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
               }
 	    goto done;
           case PROPELLER_OPERAND_PTRD_OPS:
-          case PROPELLER_OPERAND_DESTIMM:
           case PROPELLER_OPERAND_DESTIMM_SRCIMM:
           case PROPELLER_OPERAND_SETINDA:
           case PROPELLER_OPERAND_SETINDB:
