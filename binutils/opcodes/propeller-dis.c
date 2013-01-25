@@ -248,6 +248,21 @@ print_pointer_string(disassemble_info *info, int src)
   }
 }
 
+static void
+print_setx (struct disassemble_info *info, int setx, int val)
+{
+  if (setx == 3) {
+    if (val > 255) {
+      FPRINTF (F, "--%d", (512-val));
+    } else {
+      FPRINTF (F, "++%d", val);
+    }
+  } else {
+    info->target = val<<2;
+    (*info->print_address_func) (info->target, info);
+  }
+}
+
 static int
 print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opcode)
 {
@@ -273,8 +288,14 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 
   indcond = condition;
   if (is_propeller2 (info)) {
+    /* check for SETINDx instruction */
+    if ( (opcode & 0xFFC00000) == 0xE0000000 ) {
+      indcond = condition;
+      condition = 15;
+      need_zcr = 0;
+    }
     /* special case reps instruction */
-    if ( (opcode & 0xfdc001c0) == 0x0dc00040 ) {
+    else if ( (opcode & 0xfdc001c0) == 0x0dc00040 ) {
       src = (src & 0x3f) + 1;
       dst = (opcode >> 9) & 0x1fff;
       if (opcode & 0x02000000)
@@ -399,6 +420,10 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
                 (*info->print_address_func) (info->target, info);
               }
 	    goto done;
+          case PROPELLER_OPERAND_BIT:
+	    immediate = 1;
+	    src = src & 0x1f;
+	    goto two_ops;
           case PROPELLER_OPERAND_REPD:
 	    if (set & 0x1) {
 	      immediate_dst = 1;
@@ -411,6 +436,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_TWO_OPS:
           case PROPELLER_OPERAND_JMPRET:
           case PROPELLER_OPERAND_MOVA:
+	  two_ops:
             FPRINTF (F, OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
 	    if (immediate_dst) 
@@ -489,12 +515,33 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
                 (*info->print_address_func) (info->target, info);
               }
 	    goto done;
-          case PROPELLER_OPERAND_DESTIMM_SRCIMM:
           case PROPELLER_OPERAND_SETINDA:
           case PROPELLER_OPERAND_SETINDB:
           case PROPELLER_OPERAND_SETINDS:
+	    {
+	      int seta = indcond & 0x3;
+	      int setb = (indcond >> 2) & 0x3;
+	      char *needcomma = "";
+
+	      if (!seta && !setb) {
+		FPRINTF (F, "nop");
+		goto done;
+	      }
+	      FPRINTF (F, OP.name);
+	      FPRINTF (F, AFTER_INSTRUCTION);
+	      if (setb) {
+		needcomma = ", ";
+		print_setx (info, setb, dst);
+	      }
+	      if (seta) {
+		FPRINTF (F, "%s", needcomma);
+		print_setx (info, seta, src);
+	      }
+	    }
+            goto done;
+
+          case PROPELLER_OPERAND_DESTIMM_SRCIMM:
           case PROPELLER_OPERAND_JMPTASK:
-          case PROPELLER_OPERAND_BIT:
             /* disassembly not implemented yet */
             FPRINTF (F, OP.name);
             goto done;
