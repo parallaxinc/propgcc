@@ -174,7 +174,8 @@ read_byte (bfd_vma memaddr, int *word, disassemble_info * info)
 #define FPRINTF (*info->fprintf_func)
 #define F       info->stream
 
-static const char *const flags[16] = {
+#if 0
+static const char *const flags_blah[16] = {
   "",
   "wr",
   "wc",
@@ -192,6 +193,7 @@ static const char *const flags[16] = {
   "wz, wc, nr",
   "wz, wc"
 };
+#endif
 
 static void
 set_indirect_string(char *buf, int indcond, int regval)
@@ -210,6 +212,39 @@ set_indirect_string(char *buf, int indcond, int regval)
   case 3:
     sprintf (buf, "++ind%c", reg);
     break;
+  }
+}
+
+static void
+print_pointer_string(disassemble_info *info, int src)
+{
+  int offset = src & 0x1f;
+  int reg = (src & 0x100) ? 'b' : 'a';
+  int update = (src & 0x80);
+  int postmodify = (src & 0x40);
+
+  if (src & 0x20) {
+    offset = -(32 - offset);
+  }
+  if (update) {
+    char *prestr = (offset < 0) ? "--" : "++";
+    char *poststr = (offset < 0) ? "--" : "++";
+    if (postmodify)
+      prestr = "";
+    else
+      poststr = "";
+    if (offset < 0)
+      offset = -offset;
+
+    FPRINTF (F, "%sptr%c%s", prestr, reg, poststr);
+    if (offset != 1) {
+      FPRINTF (F, "[%d]", offset);
+    }
+  } else {
+    FPRINTF (F, "ptr%c", reg);
+    if (offset != 0) {
+      FPRINTF (F, "[%d]", offset);
+    }
   }
 }
 
@@ -323,13 +358,31 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 		}
             }
             goto done;
+          case PROPELLER_OPERAND_PTRD_OPS:
+            FPRINTF (F, OP.name);
+            FPRINTF (F, AFTER_INSTRUCTION);
+	    if (set & 0x01)
+	      {
+		print_pointer_string(info, dst);
+	      }
+	    else
+	      {
+		info->target = dst<<2;
+		(*info->print_address_func) (info->target, info);
+	      }
+            goto done;
           case PROPELLER_OPERAND_DEST_ONLY:
             FPRINTF (F, OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
-            {
-              info->target = dst<<2;
-              (*info->print_address_func) (info->target, info);
-            }
+	    if (dstindirect)
+	      {
+		FPRINTF (F, "%s", dstindirect);
+	      }
+	    else
+	      {
+		info->target = dst<<2;
+		(*info->print_address_func) (info->target, info);
+	      }
             goto done;
           case PROPELLER_OPERAND_DESTIMM:
             FPRINTF (F, OP.name);
@@ -414,7 +467,6 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             /* disassembly not implemented yet */
             continue;
           case PROPELLER_OPERAND_PTRS_OPS:
-	    need_zcr = 0;
             FPRINTF (F, OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
 	    if (dstindirect)
@@ -429,33 +481,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             FPRINTF (F, OPERAND_SEPARATOR);
             if (immediate)
               {
-		int offset = src & 0x1f;
-		int reg = (src & 0x100) ? 'b' : 'a';
-		int update = (src & 0x80);
-		int postmodify = (src & 0x40);
-
-		if (src & 0x20) {
-		  offset = -(32 - offset);
-		}
-		if (update) {
-		  char *prestr = (offset < 0) ? "--" : "++";
-		  char *poststr = (offset < 0) ? "--" : "++";
-		  if (postmodify)
-		    prestr = "";
-		  else
-		    poststr = "";
-		  if (offset < 0)
-		    offset = -offset;
-		  FPRINTF (F, "%sptr%c%s", prestr, reg, poststr);
-		  if (offset != 1) {
-		    FPRINTF (F, "[%d]", offset);
-		  }
-		} else {
-		  FPRINTF (F, "ptr%c", reg);
-		  if (offset != 0) {
-		    FPRINTF (F, "[%d]", offset);
-		  }
-		}
+		print_pointer_string(info, src);
               }
             else
               {
@@ -463,7 +489,6 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
                 (*info->print_address_func) (info->target, info);
               }
 	    goto done;
-          case PROPELLER_OPERAND_PTRD_OPS:
           case PROPELLER_OPERAND_DESTIMM_SRCIMM:
           case PROPELLER_OPERAND_SETINDA:
           case PROPELLER_OPERAND_SETINDB:
@@ -483,7 +508,26 @@ done:
   if (i < propeller_num_opcodes)
     {
       if (need_zcr) {
-	FPRINTF (F, " %s", flags[set + (OP.flags & FLAG_R_DEF ? 1 : 0) * 8]);
+	char *need_comma = "";
+	if ((OP.flags & FLAG_Z) && (set & 0x4)) {
+	  FPRINTF(F, "%s wz", need_comma);
+	  need_comma = ",";
+	}
+	if ((OP.flags & FLAG_C) && (set & 0x2)) {
+	  FPRINTF(F, "%s wc", need_comma);
+	  need_comma = ",";
+	}
+	if ((OP.flags & FLAG_R)) {
+	  if (FLAG_R_DEF) {
+	    if (!(set & 0x1)) {
+	      FPRINTF(F, "%s nr", need_comma);
+	    }
+	  } else {
+	    if ((set & 0x1)) {
+	      FPRINTF(F, "%s wr", need_comma);
+	    }
+	  }
+	}
       }
     }
   else
