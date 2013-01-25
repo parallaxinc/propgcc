@@ -38,7 +38,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /*
    mnemonic  insn  zcri cond    dst       src */
 /* nop      ------ ---- cccc --------- --------- */
-  {"nop", 0x00000000, 0xffffffff, PROPELLER_OPERAND_IGNORE, CCZCNR, PROP_1 | PROP2, COMPRESS_MACRO, 0x00},
+  {"nop", 0x00000000, 0xffffffff, PROPELLER_OPERAND_IGNORE, CCZCNR, PROP_1 | PROP_2, COMPRESS_MACRO, 0x00},
 
   /* we put the pseudo-instructions here so the disassembler gets a first
      crack at them
@@ -735,11 +735,11 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"decmod", 0xec000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 
 /* setinda   111000 0000 0001 000000000 aaaaaaaaa */
-  {"setinda", 0xe0040000, 0xfffc0000, PROPELLER_OPERAND_SETINDA, 0, PROP_2, NO_COMPRESSED, 0},
+  {"setinda", 0xe0040000, 0xfff7fe00, PROPELLER_OPERAND_SETINDA, 0, PROP_2, NO_COMPRESSED, 0},
 /* setindb   111000 0000 0100 bbbbbbbbb 000000000 */
-  {"setindb", 0xe0100000, 0xfffc0000, PROPELLER_OPERAND_SETINDB, 0, PROP_2, NO_COMPRESSED, 0},
+  {"setindb", 0xe0100000, 0xffdff1ff, PROPELLER_OPERAND_SETINDB, 0, PROP_2, NO_COMPRESSED, 0},
 /* setinds   111000 0000 0101 bbbbbbbbb aaaaaaaaa */
-  {"setinds", 0xe0140000, 0xfffc0000, PROPELLER_OPERAND_SETINDS, 0, PROP_2, NO_COMPRESSED, 0},
+  {"setinds", 0xe0140000, 0xffd40000, PROPELLER_OPERAND_SETINDS, 0, PROP_2, NO_COMPRESSED, 0},
 /* fixinda   111000 zcri cccc ddddddddd sssssssss */
   {"fixinda", 0xe4040000, 0xfffc0000, PROPELLER_OPERAND_DESTIMM_SRCIMM, 0, PROP_2, NO_COMPRESSED, 0},
 /* fixindb   111000 zcri cccc ddddddddd sssssssss */
