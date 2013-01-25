@@ -38,7 +38,7 @@ const struct propeller_opcode propeller_opcodes[] = {
 /*
    mnemonic  insn  zcri cond    dst       src */
 /* nop      ------ ---- cccc --------- --------- */
-  {"nop", 0x00000000, 0xffffffff, PROPELLER_OPERAND_IGNORE, CCZCNR, PROP_1, COMPRESS_MACRO, 0x00},
+  {"nop", 0x00000000, 0xffffffff, PROPELLER_OPERAND_IGNORE, CCZCNR, PROP_1 | PROP2, COMPRESS_MACRO, 0x00},
 
   /* we put the pseudo-instructions here so the disassembler gets a first
      crack at them
@@ -484,9 +484,9 @@ const struct propeller_opcode propeller_opcodes[] = {
   
 /* wrquad   000011 zcn1 cccc ddddddddd sssssssss */
   {"wrquad", 0x0c4000b0, 0xfc4001ff, PROPELLER_OPERAND_PTRD_OPS, CCZC, PROP_2, NO_COMPRESSED, 0},
-/* rdquad   000011 00i1 cccc ddddddddd sssssssss */
+/* rdquad   000011 z0i1 cccc ddddddddd sssssssss */
   {"rdquad", 0x0c4000b1, 0xfd4001ff, PROPELLER_OPERAND_PTRD_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
-/* rdquadc   000011 01i1 cccc ddddddddd sssssssss */
+/* rdquadc   000011 z1i1 cccc ddddddddd sssssssss */
   {"rdquadc", 0x0d4000b1, 0xfd4001ff, PROPELLER_OPERAND_PTRD_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* setptra   000011 zcn1 cccc nnnnnnnnn 010110010 */
   {"setptra", 0x0c0000b2, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
@@ -725,10 +725,10 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* calld     010111 zc11 cccc DDDDDDDDD sssssssss *//* too. */
   {"calld", 0x5c000000, 0xfc000000, PROPELLER_OPERAND_CALL, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 
-/* subr   111000 zcri cccc ddddddddd sssssssss */
-  {"subr", 0xe0000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
-/* cmpsub   111001 zcri cccc ddddddddd sssssssss */
-  {"cmpsub", 0xe4000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
+/* subr   111000 zc1i cccc ddddddddd sssssssss */
+  {"subr", 0xe0800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
+/* cmpsub   111001 zc1i cccc ddddddddd sssssssss */
+  {"cmpsub", 0xe4800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
 /* incmod   111010 zcri cccc ddddddddd sssssssss */
   {"incmod", 0xe8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 /* decmod   111011 zcri cccc ddddddddd sssssssss */
