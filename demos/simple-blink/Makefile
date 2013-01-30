@@ -8,18 +8,17 @@
 # Propeller Demo include
 PROPLIB = ../common
 
-CFLAGS = -Os
+CFLAGS = -Os -mno-fcache
 CHIP = p2
 
 #
 # objects for this program
 #
 
-NAME = toggle
+NAME = blink
 
 OBJS = \
-toggle.o \
-toggle_fw.cog
+blink.o
 
 all: $(NAME).elf
 
