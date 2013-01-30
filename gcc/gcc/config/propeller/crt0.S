@@ -1,7 +1,3 @@
-#if defined(__PROPELLER2__)
-#undef DEBUG_KERNEL
-#endif
-
 #if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
 # if defined(DEBUG_KERNEL)
 #  include "crt0_xmm_debug.s"
