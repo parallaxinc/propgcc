@@ -64,14 +64,9 @@ Breakpoint
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
 	''
-dbgdummy	long	0	'' FIXME for debugging
-dbgdelay	long	2000000	'' FIXME for debugging
 __LMM_start
 #if defined(__PROPELLER2__)
 	call	#rxtx_init
-	neg	r1, #1		'' FIXME for debugging
-	mov	dirb, r1	'' FIXME for debugging
-	call	#__EnterDebugger	'' FIXME for debugging
 #endif
 __LMM_loop
 	muxc	ccr, #1
@@ -84,9 +79,19 @@ __LMM_loop
   if_z	call	#__EnterDebugger_Quiet
 	test	ccr, #COGFLAGS_STEP wz
   if_nz call	#__EnterDebugger
-#if defined(__PROPELLER2__)
-	mov	pinb, pc	'' FIXME for debugging
+
+#if 0
+	'' DEBUG -- dump pcs as they execute
+#  define HEXDEBUG
+	mov	hexch, pc
+	call	#txhex
+	mov	ch, #0x20
+	call	#txbyte
+	shl	pc, #1 wc,nr
+  if_c	call	#__EnterDebugger
+	'' END DEBUG CODE
 #endif
+
 	rdlong	L_ins0,pc
 	shr	ccr, #1 wc,wz,nr	'' restore flags
 	add	pc,#4
@@ -187,6 +192,9 @@ __LMM_POPM
 	and	__TMP1,#0x0f
 	movd	L_poploop,__TMP1
 	shr	__TMP0,#4
+#if defined(__PROPELLER2__)
+	nop
+#endif
 L_poploop
 	rdlong	0-0,sp
 	add	sp,#4
@@ -265,11 +273,6 @@ __CMPSWAPSI_ret
 
 	''
 	'' code to load a buffer from hub memory into cog memory
-	'' the idea is from the fast code posted by Kuroneko in
-	'' the "Fastest possible memory transfer" thread on the
-	'' Parallax forums; modified slightly by Eric Smith
-        '' for multiple cog buffers
-	''
 	'' parameters: __TMP0 = count of bytes (will be rounded up to multiple
 	''                      of 8)
 	''             __TMP1 = hub address
@@ -279,41 +282,18 @@ __CMPSWAPSI_ret
 __COGA	long 0
 	
 loadbuf
-	'' first, find the number of longs to transfer
-	'' round up to next 64 bit boundary (the loop processes 64 bits
-	'' at a time)
-	'' setup: 11 ins (vs. 6 ins)
- 	'' loop:   6 ins, 1 transfer/hub windows (vs. 13 ins,  0.8 transfer/hub window)
-	add	__TMP0, #7
-	andn	__TMP0, #7	'' round TMP0 up
-	
-	'' point to last byte in HUB buffer
-	add	__TMP1, __TMP0
-	sub	__TMP1, #1
-	'' point to last longs in cog memory
-	shr	__TMP0, #2	'' convert to longs
-	sub	__COGA, #1
-	add	__COGA, __TMP0
-	movd	lbuf0, __COGA
-	sub	__COGA, #1
-	movd	lbuf1, __COGA
-	sub	__TMP0, #2
-	movi	__TMP1, __TMP0
-	
-lbuf0	rdlong	0-0, __TMP1
-	sub	lbuf0, dst2
-	sub	__TMP1, i2s7 wc
-lbuf1	rdlong	0-0, __TMP1
-	sub	lbuf1, dst2
-  if_nc	djnz	__TMP1, #lbuf0		'' sub #7/djnz
+	movd	.ldlp,__COGA
+	shr	__TMP0,#2	'' convert to longs
+	nop
+.ldlp
+	rdlongc	0-0,__TMP1
+	add	__TMP1,#4
+	add	.ldlp,inc_dest1
+	djnz	__TMP0,#.ldlp
 
 loadbuf_ret
 	ret
-	
-	'' initialized data and presets
-dst2	long	2 << 9
-i2s7	long	(2<<23) | 7
-	
+
 	
 	
 	''
