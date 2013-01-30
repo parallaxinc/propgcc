@@ -4,34 +4,74 @@
 	''
 	.section .kernel
 
+#if defined(__PROPELLER2__)
+rxpin		long	91
+txpin		long	90
+#else
 rxbit		long	0x80000000
 txbit		long	0x40000000
+#endif
 now		long	0
 bits		long	0
 ch		long	0
 zero		long 	0
 
 #if defined(__PROPELLER2__)
+clkfreq_ptr	long	__clkfreq
+baud_ptr	long	__baud
+
+dummy		long	60000000
+
+rxtx_init
+	'' calculate halfbit based on clock frequency
+	rdlong	halfbit, clkfreq_ptr
+	rdlong	r1, baud_ptr
+	setdivu	halfbit
+	setdivb	r1		// calculate clock frequency / baud
+	getdivq	onebit
+	mov	halfbit, onebit
+	shr	halfbit, #1
+
+#if 0
+	'' debug code
+	mov	r0, #'@'
+loop
+	mov	ch, r0
+	call	#txbyte
+	add	r0, #1
+	jmp	#loop
+#endif
+
+rxtx_init_ret
+	ret
+
 '--------------------------------------------------------------------
 ' rx8bits	Receive 8 bits
 '--------------------------------------------------------------------
 
 rx8bits	mov	bits,#8
-	waitpeq	zero,rxbit	' wait for startbit
+	'' wait for rxpin to go low
+rxwaitstart
+	getp	rxpin	wz
+  if_nz jmp	#rxwaitstart
+
+  	'' and start
 	getcnt	now
 	add	now,halfbit
 	sub	now,#8
-	waitcnt	now,#0
+	waitcnt	now,onebit
 
-rxloop	getcnt	now
-	add	now,onebit
-	waitcnt	now,#0
-	test	rxbit,ina wc
+rxloop
+	waitcnt	now,onebit
+	getp	rxpin wc
 	rcr	ch,#1
 	djnz	bits,#rxloop
 
 	'' wait for the line to go high (as it will when the stop bit arrives)
-	waitpeq	rxbit,rxbit
+	waitcnt	now,onebit
+rxwaitstop
+	getp	rxpin wz
+  if_z	jmp	#rxwaitstop
 
 rx8bits_ret
 	ret
@@ -45,14 +85,14 @@ txbyte	or	ch,#0x100
 	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
 
 txloop	shr	ch,#1 wc
-	muxc	outa,txbit  ' 22
+	setpc	txpin
 '-------
 	getcnt	now
 	add	now,onebit
 	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
 	waitcnt	now,#0
 '-------
-	djnz	bits,#txloop wz
+	djnz	bits,#txloop
 
 txbyte_ret
 	ret
@@ -183,9 +223,12 @@ __EnterDebugger
 	andn	cogflags, #COGFLAGS_QUIET
 dbgstart
 	andn	ccr, #COGFLAGS_STEP
+#if defined(__PROPELLER2__)
+	setp	txpin
+#else
 	or	DIRA, txbit
 	or	OUTA, txbit
-
+#endif
 	mov	__TMP1,__debug_kernel_ptr
 	call	#__load_extension
 	jmp	#debug
@@ -218,6 +261,9 @@ DebugLMM
 dbg_lmm_loop
 	rdlong	ldbg, debugpc
 	add	debugpc, #4
+#if defined(__PROPELLER2__)
+	nop
+#endif
 ldbg
 	nop
 	jmp	#dbg_lmm_loop
@@ -359,6 +405,7 @@ hub_cmdloop
 	'' now wait for a command from the host
 	''
 	call	#rxbyte
+
 	'' make sure it really is a command
 	cmp	ch, #HOST_PACKET wz
   if_ne	rdlong	debugpc,debugpc	 ''jmp	#notcmd
