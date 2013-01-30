@@ -38,6 +38,7 @@ __attribute__((native)) int _RX(void);
  */
 #ifdef __PROPELLER2__
 #define TX_PIN  90
+__attribute__((fcache))
 static int
 _serial_putbyte(int c, FILE *fp)
 {
