@@ -612,3 +612,27 @@ hub_cmd_lmmstep
 	or	ccr, #COGFLAGS_STEP
 	jmp	#LeaveDebugger
 
+
+
+
+#ifdef HEXDEBUG
+	.section .kernel
+hexcnt	long 0
+hexch	long 0
+	
+txhex
+	mov	hexcnt, #8
+hexlp
+	mov	ch, hexch
+	rol	hexch, #4
+	shr	ch,#28
+	cmp	ch,#0x09 wz,wc
+	add	ch,#0x30
+  if_a	add	ch,#(0x41-0x3A)  '' 3A -> 41
+	call	#txbyte
+	djnz	hexcnt, #hexlp
+
+txhex_ret
+	ret
+#endif
+
