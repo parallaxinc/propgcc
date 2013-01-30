@@ -1,0 +1,7 @@
+thread.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>-lpthread
+>BOARD::HUB

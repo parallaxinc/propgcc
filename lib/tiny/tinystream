@@ -1,0 +1,32 @@
+/*
+ * Super-simple text I/O for PropGCC, stripped of all stdio overhead.
+ * Copyright (c) 2012, Ted Stefanik. Concept inspired by:
+ *
+ *     very simple printf, adapted from one written by me [Eric Smith]
+ *     for the MiNT OS long ago
+ *     placed in the public domain
+ *       - Eric Smith
+ *     Propeller specific adaptations
+ *     Copyright (c) 2011 Parallax, Inc.
+ *     Written by Eric R. Smith, Total Spectrum Software Inc.
+ *
+ * MIT licensed (see terms at end of file)
+ */
+
+/*
+ * Tiny IO features:
+ *
+ * - Extremely small memory footprint.  On the Prop, a "Hello World" program
+ *   using stdlibc++ takes 500K.  It takes less than 2K by using this header
+ *   and the Tiny I/O library.
+ *
+ * - However, this I/O class is not link-compatible.  In other words, you must
+ *   #include <tinystream> instead of #include <iostream>
+ *
+ * - operator new / operator delete without the exception overhead.  These
+ *   "skinny" allocators do have the appropriate signatures and therefore
+ *   are link-compatible without including any special header.
+ *
+ */
+
+#include <tinystream.h>
