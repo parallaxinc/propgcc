@@ -37,7 +37,7 @@ r2      IF_NE    jmp    #not_first_cog	' if not, skip some stuff
 r3      locknew	__TMP0 wc	' allocate a lock
 r4	or	__TMP0, #256	' in case lock is 0, make the 32 bit value nonzero
 r5      wrlong __TMP0, __C_LOCK_PTR	' save it to ram
-r6      jmp    #__LMM_loop
+r6      jmp    #__LMM_start
 
 not_first_cog
 	'' initialization for non-primary cogs
@@ -47,7 +47,7 @@ r9      rdlong r0,sp		' pop the argument for the function
 r10     add	sp,#4
 r11     rdlong __TLS,sp	' and the _TLS variable
 r12     add	sp,#4
-r13	jmp	#__LMM_loop
+r13	jmp	#__LMM_start
 r14	nop
 	
 r15	'' alias for link register lr
@@ -61,7 +61,7 @@ ccr	long	0		' condition codes
 	.global __MASK_FFFFFFFF
 __MASK_FFFFFFFF	long	0xFFFFFFFF
 
-#ifdef DEBUG_KERNEL
+#if 0 && defined(DEBUG_KERNEL)
 	'' gdb relies on register 20 being a breakpoint command
 Breakpoint
 	call	#__EnterLMMBreakpoint
@@ -86,13 +86,42 @@ xfield  long 0
 	'' it falls through into __LMM_loop
 sfield  long 0
 	
+#ifdef DEBUG_KERNEL
+# ifdef __PROPELLER2__
+dbgdelay	long 6000000
+# endif
+#endif
+
+__LMM_start
+#ifdef DEBUG_KERNEL
+# ifdef __PROPELLER2__
+	'' FIXME debug code
+	neg	r1,#1
+	mov	dirb,r1
+# endif
+#endif
+	
 __LMM_loop
 #ifdef DEBUG_KERNEL
+# ifdef __PROPELLER2__
+	'' FIXME debug code
+	pushzc	ccr
+	shl	pc,#1 nr,wc
+die
+  if_c  jmp	#die
+	popzc	ccr
+	
+	mov	pinb,pc
+	''getcnt	itemp
+	''add	itemp,dbgdelay
+	''waitcnt	itemp,dbgdelay
+# else
 	muxc	ccr,#1
 	muxnz	ccr,#2
 	test	ccr, #COGFLAGS_STEP wz
   if_nz call	#__EnterDebugger
 	shr	ccr,#1 wc,wz,nr		'' restore flags
+# endif
 #endif
 	rdbytec	ifield,pc
 	add	pc,#1
@@ -467,24 +496,19 @@ brs
 .brsins	add	pc,sfield
 	jmp	#__LMM_loop
 
-skip2
-	andn	.skip2ins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip2ins,dfield
-	nop
-	nop
-.skip2ins
-	add	pc,#2
-	jmp	#__LMM_loop
-
 skip3
-	andn	.skip3ins,cond_mask
+	mov	xfield, #3
+	jmp	#doskip
+skip2
+	mov	xfield, #2
+doskip
+	andn	.skipins,cond_mask
 	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip3ins,dfield
+	or	.skipins,dfield
 	nop
 	nop
-.skip3ins
-	add	pc,#3
+.skipins
+	add	pc,xfield
 	jmp	#__LMM_loop
 
 	''
@@ -599,13 +623,12 @@ L_poploop
 __LMM_POPM_ret
 	ret
 
-	
+
 	''
 	'' masks
 	''
 	.global __MASK_0000FFFF
 __MASK_0000FFFF	long	0x0000FFFF
-
 	
 	.global __MULSI
 	.global __MULSI_ret
@@ -663,6 +686,7 @@ __COGA	long 0
 loadbuf
 	movd	.ldlp,__COGA
 	shr	__TMP0,#2	'' convert to longs
+	nop
 .ldlp
 	rdlong	0-0,__TMP1
 	add	__TMP1,#4
@@ -714,8 +738,8 @@ __LMM_FCACHE_START
 	'' include various kernel extensions
 	''
 #include "kernel.ext"
-#ifdef DEBUG_KERNEL
-//#include "cogdebug.ext"
+#if 0 && defined(DEBUG_KERNEL) 
+//#include "cogdebug.ext" // does not fit!
 __EnterLMMBreakpoint
 __EnterDebugger
 	nop

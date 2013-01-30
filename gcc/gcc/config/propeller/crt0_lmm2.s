@@ -213,6 +213,9 @@ __LMM_PUSHM
         and     __TMP1,#0x0f
         movd    L_pushins,__TMP1
         shr     __TMP0,#4
+#if defined(__PROPELLER2__)
+	nop
+#endif
 L_pushloop
         sub     sp,#4
 L_pushins
