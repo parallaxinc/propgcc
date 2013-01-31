@@ -2685,6 +2685,10 @@ get_call_dest(rtx branch)
 {
   rtx call;
   call = PATTERN (branch);
+
+  if (GET_CODE (call) == COND_EXEC)
+    call = COND_EXEC_CODE (call);
+
   /* there might be a parallel in here with a clobber */
   if (GET_CODE (call) == PARALLEL)
     call = XVECEXP (call, 0, 0);
@@ -3035,7 +3039,7 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
                 }
               if (print_msgs)
                 {
-                  warning (0, "could not place function in fcache: a label in the function is used outside of it", current_function_name ());
+                  warning (0, "could not place function %s in fcache: a label in the function is used outside of it", current_function_name ());
                 }
               return false;
             }
