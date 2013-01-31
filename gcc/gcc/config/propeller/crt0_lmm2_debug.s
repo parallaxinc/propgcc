@@ -1,3 +1,7 @@
+' crt0_lmm2.S - an LMM kernel for the Propeller 2
+'
+'  Based on ideas from Bill Henning's original LMM design
+
 #include "cogdebug.h"
 
 	.section .kernel, "ax"
