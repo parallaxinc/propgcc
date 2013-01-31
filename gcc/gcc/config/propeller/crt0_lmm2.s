@@ -127,7 +127,7 @@ L_ins2  nop
 */
 
 
-#define OLD_LMM
+//#define OLD_LMM
 	
 #ifdef OLD_LMM
 __LMM_loop
@@ -151,7 +151,7 @@ L_ins3	nop
 
 #else
 __LMM_loop
-        repd #$200,#7
+        repd #$200,#8
         nop
         nop
         nop
