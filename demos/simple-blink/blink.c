@@ -7,7 +7,7 @@ void main(void)
 #ifdef __PROPELLER2__
   unsigned int pin = 32;	// de2-115
 #else
-  unsigned int pin = 16;	// quickstart
+  unsigned int pin = 32;	// quickstart
 #endif
 
   for (;;) {
