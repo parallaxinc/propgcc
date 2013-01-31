@@ -1,0 +1,2 @@
+set target_triplet propeller-elf
+lappend boards_dir /opt/parallax/share/dejagnu/boards
