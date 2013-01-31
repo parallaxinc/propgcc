@@ -22,8 +22,6 @@
         .global sp
         .global pc
 
-    CLOCK_FREQ =    60000000
-    
         .global __LMM_entry
 __LMM_entry
 r0      getptra sp
@@ -34,7 +32,7 @@ r2  IF_NE    jmp    #not_first_cog      ' if not, skip some stuff
 r3      locknew __TMP0 wc       ' allocate a lock
 r4      or      __TMP0, #256    ' in case lock is 0, make the 32 bit value nonzero
 r5      wrlong __TMP0, __C_LOCK_PTR     ' save it to ram
-r6      jmp     #__LMM_loop
+r6      jmp     #__LMM_start
 
 not_first_cog
 	'' initialization for non-primary cogs
@@ -44,17 +42,19 @@ r9      rdlong r0,sp		' pop the argument for the function
 r10     add	sp,#4
 r11     rdlong __TLS,sp	' and the _TLS variable
 r12     add	sp,#4
-r13	jmp	#__LMM_loop
+r13	jmp	#__LMM_start
 r14	nop
 r15     '' alias for link register lr
 lr      long    __exit
 sp      long    0x20000     ' 128k of hub memory
 pc      long    entry       ' default pc
 
+
         ''
         '' main LMM loop -- read instructions from hub memory
         '' and executes them
         ''
+__LMM_start
 /*
 __LMM_loop
         rdlongc L_ins1,pc   'read instruction
@@ -127,6 +127,29 @@ L_ins2  nop
 */
 
 
+#define OLD_LMM
+	
+#ifdef OLD_LMM
+__LMM_loop
+	rdlongc	L_ins0,pc
+	add	pc,#4
+	nop
+L_ins0	nop
+	rdlongc	L_ins1,pc
+	add	pc,#4
+	nop
+L_ins1	nop
+	rdlongc	L_ins2,pc
+	add	pc,#4
+	nop
+L_ins2	nop
+	rdlongc	L_ins3,pc
+	add	pc,#4
+	nop
+L_ins3	nop
+	jmp	#__LMM_loop
+
+#else
 __LMM_loop
         repd #$200,#7
         nop
@@ -141,7 +164,7 @@ L_ins1  nop
         nop
 L_ins2  nop
         jmp #__LMM_loop
-
+#endif
         
         ''
         '' LMM support functions
@@ -213,9 +236,7 @@ __LMM_PUSHM
         and     __TMP1,#0x0f
         movd    L_pushins,__TMP1
         shr     __TMP0,#4
-#if defined(__PROPELLER2__)
 	nop
-#endif
 L_pushloop
         sub     sp,#4
 L_pushins
@@ -233,22 +254,24 @@ inc_dest1
         .global __LMM_POPRET
         .global __LMM_POPRET_ret
 
-/*
+
+#ifdef OLD_LMM
 __LMM_POPRET
         call    #__LMM_POPM
         mov     pc,lr
 __LMM_POPRET_ret
         ret
-*/
+#else
 
 __LMM_POPRET
         call    #__LMM_POPM
         mov     pc,lr
-        mov     L_ins2,dec_pc   'compensate 2nd inc_pc if popret is executed in L_ins1 
+	mov	L_ins2, dec_pc	'compensate 2nd inc_pc if popret is executed in L_ins1
 __LMM_POPRET_ret
         ret
 
 dec_pc  sub  pc,#4
+#endif
 
         
 __LMM_POPM
@@ -329,11 +352,6 @@ __CMPSWAPSI_ret
 
 	''
 	'' code to load a buffer from hub memory into cog memory
-	'' the idea is from the fast code posted by Kuroneko in
-	'' the "Fastest possible memory transfer" thread on the
-	'' Parallax forums; modified slightly by Eric Smith
-        '' for multiple cog buffers
-	''
 	'' parameters: __TMP0 = count of bytes (will be rounded up to multiple
 	''                      of 8)
 	''             __TMP1 = hub address
@@ -343,41 +361,18 @@ __CMPSWAPSI_ret
 __COGA	long 0
 	
 loadbuf
-	'' first, find the number of longs to transfer
-	'' round up to next 64 bit boundary (the loop processes 64 bits
-	'' at a time)
-	'' setup: 11 ins (vs. 6 ins)
- 	'' loop:   6 ins, 1 transfer/hub windows (vs. 13 ins,  0.8 transfer/hub window)
-	add	__TMP0, #7
-	andn	__TMP0, #7	'' round TMP0 up
-	
-	'' point to last byte in HUB buffer
-	add	__TMP1, __TMP0
-	sub	__TMP1, #1
-	'' point to last longs in cog memory
-	shr	__TMP0, #2	'' convert to longs
-	sub	__COGA, #1
-	add	__COGA, __TMP0
-	movd	lbuf0, __COGA
-	sub	__COGA, #1
-	movd	lbuf1, __COGA
-	sub	__TMP0, #2
-	movi	__TMP1, __TMP0
-	
-lbuf0	rdlong	0-0, __TMP1
-	sub	lbuf0, dst2
-	sub	__TMP1, i2s7 wc
-lbuf1	rdlong	0-0, __TMP1
-	sub	lbuf1, dst2
-  if_nc	djnz	__TMP1, #lbuf0		'' sub #7/djnz
+	movd	.ldlp,__COGA
+	shr	__TMP0,#2	'' convert to longs
+	nop
+.ldlp
+	rdlongc	0-0,__TMP1
+	add	__TMP1,#4
+	add	.ldlp,inc_dest1
+	djnz	__TMP0,#.ldlp
 
 loadbuf_ret
 	ret
-	
-	'' initialized data and presets
-dst2	long	2 << 9
-i2s7	long	(2<<23) | 7
-	
+
 	
 	
 	''
