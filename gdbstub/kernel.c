@@ -67,6 +67,7 @@ _NAKED int main(void)
         switch (rxbyte()) {
             case FCN_STEP:
             case FCN_RUN:
+	        /* this starts the Spin interpreter in ROM (at address 0xf004) */
                 coginit(cogid(), 0xf004, 0x4);
                 break;
             case FCN_READ:
