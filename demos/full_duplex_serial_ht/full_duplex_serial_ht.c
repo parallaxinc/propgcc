@@ -26,8 +26,9 @@ volatile struct fds_mailbox mbox;
 // code (which we've placed in the .coguser1 section)
 void fdx_start(int tx_pin, int rx_pin, int baud)
 {
-// <HEATER>Where on earth does this label come from?</HEATER>
-    extern unsigned int _load_start_coguser1[];
+// we put our code in the fds_ht_cog section (see the objcopy in
+// the Makefile)
+    extern unsigned int _load_start_fds_ht_cog[];
 
     // Set up the fdx mail box 
     mbox.txHead = 0;
@@ -39,7 +40,7 @@ void fdx_start(int tx_pin, int rx_pin, int baud)
     mbox.baudRate = baud;
 
     // Start fdx driver cog
-    cognew (_load_start_coguser1, (void*)&mbox);
+    cognew (_load_start_fds_ht_cog, (void*)&mbox);
 }
 
 // Recieve a char from the UART

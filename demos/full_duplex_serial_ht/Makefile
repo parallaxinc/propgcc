@@ -14,9 +14,8 @@ CFLAGS = -Os -mlmm
 #
 # objects for this program
 #
-# <HEATER>What's the thing with the "_1" naming convention ?</HEATER>
 NAME = full_duplex_serial_ht_demo 
-OBJS = full_duplex_serial_ht_demo.o full_duplex_serial_ht.o full_duplex_serial_ht_1.cog
+OBJS = full_duplex_serial_ht_demo.o full_duplex_serial_ht.o fds_ht.cog
 
 all: $(NAME).elf
 
@@ -32,7 +31,7 @@ include $(PROPLIB)/common.mk
 # and so on
 
 # the raw C code for the cog
-full_duplex_serial_ht_1.o: full_duplex_serial_ht_cog.c
+fds_ht.o: full_duplex_serial_ht_cog.c
 	$(CC) -r -Os -mcog -o $@ $<
 
 #
@@ -43,6 +42,4 @@ full_duplex_serial_ht_1.o: full_duplex_serial_ht_cog.c
 #
 
 %.cog: %.o
-	$(OBJCOPY) --localize-text $^ $@
-
-
+	$(OBJCOPY) --rename-section .text=$@ --localize-text $^ $@
