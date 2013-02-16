@@ -55,6 +55,8 @@ r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
+	.globl __ccr__
+__ccr__
 ccr	long	0
 
 hwbkpt	long	entry
