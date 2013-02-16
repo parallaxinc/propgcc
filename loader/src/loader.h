@@ -38,6 +38,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define LFLAG_WRITE_SDLOADER        (1 << 4)
 #define LFLAG_WRITE_SDCACHELOADER   (1 << 5)
 #define LFLAG_WRITE_SDFILE          (1 << 6)
+#define LFLAG_DEBUG                 (1 << 7)
 
 /* flags that need an open serial port */
 #define NEED_PORT                   (LFLAG_WRITE_SDFILE | LFLAG_RUN | LFLAG_WRITE_EEPROM)
