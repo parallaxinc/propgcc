@@ -1,6 +1,7 @@
 /* gdbstub.c - a gdb stub for the Propeller
 
 Copyright (c) 2012 David Michael Betz
+Modifications Copyright (c) 2012 Parallax Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 and associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,11 +20,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 */
 
+/* modified by Eric R. Smith to work with the new COG debug protocol */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include "cogdebug.h"
 #include "config.h"
 #include "port.h"
 #include "PLoadLib.h"
@@ -36,8 +39,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define FALSE   0
 #endif
 
+/* verbose logging */
+#define VERBOSE_LOG
 /* disable breakpoint support */
 #define NO_BKPT
+/* enable initial stub download */
+#define DEBUG_STUB
 
 /* defaults */
 #if defined(CYGWIN) || defined(WIN32) || defined(MINGW)
@@ -65,45 +72,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 /* timeout waiting for packet data */
 #define PKT_TIMEOUT 10000
 
-/* attention byte sent before a command is sent */
-#define ATTN        0x01
-#define ACK         0x40
-
-/* serial debug kernel function codes */
-#define FCN_STEP    0x01
-#define FCN_RUN     0x02
-#define FCN_READ    0x03
-#define FCN_WRITE   0x04
-
-/* protocol ack/nak */
-#define NAK         0x15
-
-/* code to send to the serial debug kernel to interrupt program execution */
-#define INT         0x01
-
-/* code received from the serial debug kernel when the program halts do to a breakpoint or single step */
-#define HALT        '!'
-
 /* maximum amount of data in a READ or WRITE packet */
 #define MAX_DATA    128
 
-/* maximum packet size (FCN_WRITE packet with 2 byte addr, 1 byte count, 128 data bytes */
+/* maximum packet size (cmd + cog + len byte + data) */
 #define PKT_MAX     (3 + MAX_DATA)
 
-#define DEF_GCC_REG_BASE    0x20
-#define GCC_REG_COUNT       18  // r0-r14, lr, sp, pc -- what about flags, breakpt?
+#define GCC_REG_COUNT       19  // r0-r14, lr, sp, pc, ccr 
 #define GCC_REG_PC          17
-
-#define PC_ADDR             (gcc_reg_base + GCC_REG_PC * sizeof(uint32_t))
 
 FILE *logfile = NULL;
 char cmd[1028];
-uint32_t gcc_reg_base = DEF_GCC_REG_BASE;
 
+#define DEFAULT_COG 0
+
+#ifdef DEBUG_STUB
 /* On the first 'c' or 's' request we need to start the real debug kernel that was downloaded as
    part of the user's program.
 */
-static int first_run = 1;
+static int first_run = 0;
+#endif
+
+static int no_ack_mode = 0;
 
 static void MyInfo(System *sys, const char *fmt, va_list ap);
 static void MyError(System *sys, const char *fmt, va_list ap);
@@ -115,14 +105,21 @@ static SystemOps myOps = {
 
 /* prototypes */
 static void Usage(void);
-static int debug_cmd(int fcn);
+static int debug_cmd(int fcn, int len);
+#ifdef DEBUG_STUB
 static int start_debug_kernel(void);
+#endif
 static int wait_for_halt(void);
 static int read_memory(uint32_t addr, uint8_t *buf, int len);
 static int write_memory(uint32_t addr, uint8_t *buf, int len);
-static uint32_t read_long(uint32_t addr);
-static void write_long(uint32_t addr, uint32_t value);
+static int read_registers(uint32_t addr, uint8_t *buf, int len);
+static int write_registers(uint32_t addr, uint8_t *buf, int len);
+static uint32_t read_long_register(uint32_t addr);
+static void write_long_register(uint32_t addr, uint32_t value);
 static int command_loop(void);
+static int rx_ack(int ackbyte, int timeout);
+static int rx_ack_chksum(int ackbyte, uint8_t *chksum, int timeout);
+void reply(char *ptr, int len);
 
 int main(int argc, char *argv[])
 {
@@ -133,10 +130,10 @@ int main(int argc, char *argv[])
     char *logname = NULL;
     int verbose = FALSE, i;
     int baud = 0;
-    uint8_t byte;
     System sys;
     int ivalue;
-    
+    int need_stub = FALSE;
+
     /* get the environment settings */
     if (!(port = getenv("PROPELLER_LOAD_PORT")))
         port = NULL;
@@ -213,6 +210,9 @@ int main(int argc, char *argv[])
                         Usage();
                     xbAddPath(p);
                     break;
+                case 'k':
+                    need_stub = TRUE;
+                    break;
                 case 'v':
                     verbose = TRUE;
                     break;
@@ -275,22 +275,30 @@ int main(int argc, char *argv[])
             return 1;
     }
     
+
+#ifdef DEBUG_STUB
     /* load the dummy debug kernel */
-    if (ploadbuf("the debug helper", kernel_image_array, kernel_image_size, DOWNLOAD_RUN_BINARY) != 0) {
+    if (need_stub) {
+      if (ploadbuf("the debug helper", kernel_image_array, kernel_image_size, DOWNLOAD_RUN_BINARY) != 0) {
         fprintf(stderr, "error: debug kernel load failed\n");
         serial_done();
         return 1;
+      }
+      first_run = 1;
     }
-    
-    if (rx_timeout(&byte, 1, INI_TIMEOUT) != 1) {
-        fprintf(stderr, "error: timeout waiting for initial response from dummy debug kernel\n");
+#endif
+    if (debug_cmd(DBG_CMD_STATUS, 0) != ERR_NONE) {
+      fprintf(stderr, "error: error sending initial status request\n");
+    }
+    if (rx_ack(RESPOND_STATUS, INI_TIMEOUT) != ERR_NONE) {
+        fprintf(stderr, "error waiting for initial response from dummy debug kernel\n");
         serial_done();
         return 1;
-    }
-    else if (byte != HALT) {
-        fprintf(stderr, "error: bad initial response from debug kernel: %02x\n", byte);
-        serial_done();
-        return 1;
+    } else {
+        uint8_t dummy[3];
+	if (rx_timeout(dummy, 3, INI_TIMEOUT) != 3) {
+	  fprintf(stderr, "bad initial status packet\n");
+	}
     }
 printf("connected!\n");
     
@@ -316,69 +324,214 @@ static void Usage(void)
     exit(1);
 }
 
-static int debug_cmd(int fcn)
+#if defined(LINUX) || defined(MACOSX) || defined(CYGWIN)
+#include <sys/select.h>
+static int
+data_ready_on_stdin()
+{
+  fd_set readfds;
+  struct timeval tv;
+  int r;
+
+  FD_ZERO(&readfds);
+  FD_SET(0, &readfds);
+  memset(&tv, 0, sizeof(tv));
+
+  r = select(1, &readfds, NULL, NULL, &tv);
+  if (r > 0)
+    return 1;
+  else
+    return 0;
+}
+#else
+static int
+data_ready_on_stdin()
+{
+  return 0;
+}
+#endif
+
+
+static int debug_cmd(int fcn, int len)
 {
     uint8_t byte;
     
     /* send the attention byte */
-    byte = ATTN;
+    byte = HOST_PACKET;
     tx(&byte, 1);
     
-    /* wait for an ACK or a timeout */
-    do {
-        if (rx_timeout(&byte, 1, PKT_TIMEOUT) != 1)
-            return ERR_TIMEOUT;
-    } while (byte != ACK);
-    
-    /* send the function code */
-    byte = fcn;
+    /* and now the function code and cog */
+    byte = DEFAULT_COG | fcn;
     tx(&byte, 1);
-    
+
+    /* finally the length of remaining data */
+    byte = len;
+    tx(&byte, 1);
+
     /* return successfully */
     return ERR_NONE;
 }
 
+/* wait for a response; return 0 if OK, error if response not seen */
+static int
+rx_ack(int ackbyte, int timeout)
+{
+  uint8_t byte;
+
+#ifdef VERBOSE_LOG
+  if (logfile) fprintf(logfile, "((rx_ack %02x called))\n", ackbyte);
+#endif
+  if (rx_timeout(&byte, 1, timeout) != 1) {
+    if (logfile) fprintf(logfile, "((rx_ack: timeout on first byte %d))\n", timeout);
+    return ERR_TIMEOUT;
+  }
+  if (byte != ackbyte) {
+    if (byte == RESPOND_ERR) {
+      rx_timeout(&byte, 1, timeout);  /* eat COG number */
+      rx_timeout(&byte, 1, timeout);  /* eat error code */
+    }
+    if (logfile) fprintf(logfile, "((rx_ack: unexpected byte 0x%02x))\n", byte);
+    return byte == 0 ? 0xff : byte;
+  }
+  if (rx_timeout(&byte, 1, timeout) != 1) {
+    if (logfile) fprintf(logfile, "((rx_ack: timeout on second byte))\n");
+    return ERR_TIMEOUT;
+  }
+  /* the byte should be our cog */
+  if (byte != DEFAULT_COG) {
+    if (logfile) fprintf(logfile, "((rx_ack: bad cog # 0x%02x))\n", byte);
+    return ERR_CHKSUM;
+  }
+#ifdef VERBOSE_LOG
+  if (logfile) fprintf(logfile, "((rx_ack: OK))\n");
+#endif
+  return ERR_NONE;
+}
+
+static int
+rx_ack_chksum(int ackbyte, uint8_t *chksum_p, int timeout)
+{
+  int err;
+  err = rx_ack(ackbyte, timeout);
+  if (err != ERR_NONE)
+    return err;
+  if (rx(chksum_p, 1) != 1)
+    return ERR_TIMEOUT;
+  return ERR_NONE;
+}
+
+static uint16_t cogpc;
+static uint8_t cogflags;
+
+
+#ifdef DEBUG_STUB
 static int start_debug_kernel(void)
 {
-    uint8_t byte;
     int err;
     
-    if ((err = debug_cmd(FCN_RUN)) != ERR_NONE)
+    if (logfile) {
+      fprintf(logfile, "((start_debug_kernel))\n");
+    }
+    if ((err = debug_cmd(DBG_CMD_RESUME, 0)) != ERR_NONE)
         return err;
     
-    if (rx_timeout(&byte, 1, INI_TIMEOUT) != 1) {
-        fprintf(stderr, "error: timeout waiting for initial response from debug kernel\n");
-        return ERR_TIMEOUT;
-    }
-    else if (byte != HALT) {
-        fprintf(stderr, "error: bad initial response from debug kernel: %02x\n", byte);
-        return ERR_INIT;
-    }
-    
+    wait_for_halt();
     first_run = 0;
     return ERR_NONE;
 }
+#endif
 
 static int wait_for_halt(void)
 {
     uint8_t byte;
-    
-    if (rx(&byte, 1) != 1) {
-        fprintf(stderr, "error: waiting for halt message\n");
-        return ERR_TIMEOUT;
+    uint8_t cog;
+    int timeout = INI_TIMEOUT;
+    char buf[8];
+
+#ifdef VERBOSE_LOG
+    if (logfile) {
+      fprintf(logfile, "((wait_for_halt))\n");
     }
-    else if (byte != HALT) {
-        fprintf(stderr, "error: bad halt message from debug kernel: %02x\n", byte);
-        return ERR_INIT;
+#endif
+    for(;;) {
+      if (logfile) fflush(logfile);
+      if (data_ready_on_stdin()) {
+	// check for command from gdb
+	int ch;
+	if (logfile) fprintf(logfile, "gdb> ");
+	while (data_ready_on_stdin()) {
+	  ch = fgetc(stdin);
+	  if (ch < 0) return ERR_TIMEOUT;
+	  if (logfile) { fputc(ch, logfile); fflush(logfile); }
+	  msleep(10);
+	  if (ch == 3) {
+	    uint8_t byte;
+	    // use ^C to interrupt the device
+	    byte = 0x03;
+	    tx(&byte, 1);
+	    // and then ask for debug status
+	    debug_cmd(DBG_CMD_STATUS, 0);
+	  }
+	}
+	if (logfile) fputc('\n', logfile);
+      }
+      if (rx_timeout(&byte, 1, INI_TIMEOUT) == 1) {
+	if (byte <= 0xf7) {
+	  // print the character for the user to see
+	  // we have to ask GDB to do this, using an O format packet
+	  sprintf(buf, "O%02x", byte);
+	  reply(buf, 3);
+	  continue;
+	}
+	if (rx(&cog, 1) != 1) {
+	  if (logfile) fprintf(logfile, "((error: error waiting for cog id))\n");
+	  return ERR_TIMEOUT;
+	}
+	if (byte == RESPOND_EXIT) {
+	  if (rx_timeout(&cogflags, 1, timeout) != 1) {
+	    if (logfile) fprintf(logfile, "((error: error waiting for exit status))\n");
+	    continue;
+	  }
+	  sprintf(buf, "W%02x", cogflags & 0xff);
+	  reply(buf, 3);
+	  return ERR_NONE;
+	}
+	if (byte != RESPOND_STATUS) {
+	  if (logfile) fprintf(logfile, "((error: unexpected byte 0x%x))\n", byte);
+	  return ERR_INIT;
+	}
+	if (rx_timeout(&cogflags, 1, timeout) != 1) {
+	  if (logfile) {
+	    fprintf(logfile, "((wait_for_halt: timeout waiting for flags))\n");
+	  }
+	  return ERR_TIMEOUT;
+	}
+	if (rx_timeout(&byte, 1, timeout) != 1) {
+	  if (logfile) {
+	    fprintf(logfile, "((wait_for_halt: timeout waiting for cogpc))\n");
+	  }
+	  return ERR_TIMEOUT;
+	}
+	cogpc = byte;
+	if (rx_timeout(&byte, 1, timeout) != 1) {
+	  if (logfile) {
+	    fprintf(logfile, "((wait_for_halt: timeout waiting for cogpc))\n");
+	  }
+	  return ERR_TIMEOUT;
+	}
+	cogpc |= (byte<<8);
+	if (logfile) {
+	  fprintf(logfile, "((halt at cogpc=%x cogflags=%x))\n", cogpc, cogflags);
+	}
+	return ERR_NONE;
+      }
     }
-    
-    return ERR_NONE;
 }
 
-static int read_memory(uint32_t addr, uint8_t *buf, int len)
+static int read_registers(uint32_t addr, uint8_t *buf, int len)
 {
     uint8_t pkt[PKT_MAX], *p;
-    uint8_t pktlen, chksum, rchksum, i;
+    uint8_t pktlen;
     int remaining, cnt, err;
     
     /* read data in MAX_DATA sized chunks */
@@ -387,37 +540,28 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
         /* build the next packet */
         pktlen = (len > MAX_DATA ? MAX_DATA : len);
         
-        /* insert the address into the packet */
+        /* insert the length and address into the packet */
         p = pkt;
+        *p++ = pktlen;
         *p++ =  addr        & 0xff;
         *p++ = (addr >>  8) & 0xff;
-        *p++ = pktlen;
         
         /* setup for a read command */
-        if ((err = debug_cmd(FCN_READ)) != ERR_NONE)
+        if ((err = debug_cmd(DBG_CMD_READCOG, 3)) != ERR_NONE)
             return err;
         
         /* send the packet to the debug kernel */
         tx(pkt, p - pkt);
         
+        /* get the read response */
+        if ( 0 != (err = rx_ack(RESPOND_DATA, PKT_TIMEOUT)) )
+	  return err;
+
         /* read the data */
         for (p = buf, remaining = pktlen; remaining > 0; p += cnt, remaining -= cnt)
             if ((cnt = rx_timeout(p, remaining, PKT_TIMEOUT)) <= 0)
                 return ERR_TIMEOUT;
                 
-        /* get the checksum */
-        if (rx_timeout(&rchksum, 1, PKT_TIMEOUT) != 1)
-            return ERR_TIMEOUT;
-        
-        /* initialize the checksum */
-        chksum = pktlen;
-        
-        /* verify the checksum */
-        for (i = 0; i < pktlen; ++i)
-            chksum += buf[i];
-        if (chksum != rchksum)
-            return ERR_CHKSUM;
-        
         /* move ahead to the next packet */
         addr += pktlen;
         len -= pktlen;
@@ -428,10 +572,11 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
     return ERR_NONE;
 }
 
-static int write_memory(uint32_t addr, uint8_t *buf, int len)
+static int write_registers(uint32_t addr, uint8_t *buf, int len)
 {
-    uint8_t pkt[PKT_MAX], byte;
+    uint8_t pkt[PKT_MAX];
     uint8_t pktlen, chksum, i, *p;
+    uint8_t rchksum;
     int err;
     
     /* write data in MAX_DATA sized chunks */
@@ -444,7 +589,6 @@ static int write_memory(uint32_t addr, uint8_t *buf, int len)
         p = pkt;
         *p++ = ( addr        & 0xff);
         *p++ = ((addr >>  8) & 0xff);
-        *p++ = pktlen;
         
         /* initialize the checksum */
         chksum = pktlen;
@@ -454,18 +598,16 @@ static int write_memory(uint32_t addr, uint8_t *buf, int len)
             chksum += (*p++ = *buf++);
         
         /* setup for a write command */
-        if ((err = debug_cmd(FCN_WRITE)) != ERR_NONE)
+        if ((err = debug_cmd(DBG_CMD_WRITEHUB, pktlen + 2)) != ERR_NONE)
             return err;
         
         /* send the packet to the debug kernel */
         tx(pkt, p - pkt);
         
         /* wait for the debug kernel to acknowledge */
-        if (rx_timeout(&byte, 1, PKT_TIMEOUT) != 1)
-            return ERR_TIMEOUT;
-        else if (byte != chksum)
-            return ERR_CHKSUM;
-        
+	if ( 0 != (err = rx_ack_chksum(RESPOND_ACK, &rchksum, PKT_TIMEOUT)) )
+	  return err;
+
         /* move ahead to the next packet */
         addr += pktlen;
         len -= pktlen;
@@ -475,17 +617,113 @@ static int write_memory(uint32_t addr, uint8_t *buf, int len)
     return ERR_NONE;
 }
 
-static uint32_t read_long(uint32_t addr)
+static int read_memory(uint32_t addr, uint8_t *buf, int len)
+{
+    uint8_t pkt[PKT_MAX], *p;
+    uint8_t pktlen;
+    int remaining, cnt, err;
+    
+    /* read data in MAX_DATA sized chunks */
+    while (len > 0) {
+        
+        /* build the next packet */
+        pktlen = (len > MAX_DATA ? MAX_DATA : len);
+        
+        /* insert the length and address into the packet */
+        p = pkt;
+        *p++ = pktlen;
+        *p++ =  addr        & 0xff;
+        *p++ = (addr >>  8) & 0xff;
+	*p++ = (addr >> 16) & 0xff;
+	*p++ = (addr >> 24) & 0xff;
+        
+        /* setup for a read command */
+        if ((err = debug_cmd(DBG_CMD_READHUB, 5)) != ERR_NONE) {	  
+	    if (logfile) fprintf(logfile, "((error %d sending readhub cmd))\n", err);
+            return err;
+	}
+        /* send the packet to the debug kernel */
+        tx(pkt, p - pkt);
+        
+        /* get the read response */
+        if ( 0 != (err = rx_ack(RESPOND_DATA, PKT_TIMEOUT)) ) {
+	    if (logfile) fprintf(logfile, "((error %d in rx_ack))\n", err);
+	    return err;
+	}
+        /* read the data */
+        for (p = buf, remaining = pktlen; remaining > 0; p += cnt, remaining -= cnt)
+	    if ((cnt = rx_timeout(p, remaining, PKT_TIMEOUT)) <= 0) {
+	        if (logfile) fprintf(logfile, "((error %d in rx_timeout))\n", err);
+                return ERR_TIMEOUT;
+	    }
+        /* move ahead to the next packet */
+        addr += pktlen;
+        len -= pktlen;
+        buf += pktlen;
+    }
+    
+    /* return successfully */
+    return ERR_NONE;
+}
+
+static int write_memory(uint32_t addr, uint8_t *buf, int len)
+{
+    uint8_t pkt[PKT_MAX];
+    uint8_t pktlen, chksum, i, *p;
+    uint8_t rchksum;
+    int err;
+    
+    /* write data in MAX_DATA sized chunks */
+    while (len > 0) {
+        
+        /* build the next packet */
+        pktlen = (len > MAX_DATA ? MAX_DATA : len);
+        
+        /* insert the address into the packet */
+        p = pkt;
+        *p++ = ( addr        & 0xff);
+        *p++ = ((addr >>  8) & 0xff);
+        *p++ = ((addr >>  16) & 0xff);
+        *p++ = ((addr >>  24) & 0xff);
+        
+        /* initialize the checksum */
+        chksum = pktlen;
+        
+        /* store the data into the packet */
+        for (i = 0; i < pktlen; ++i)
+            chksum += (*p++ = *buf++);
+        
+        /* setup for a write command */
+        if ((err = debug_cmd(DBG_CMD_WRITEHUB, pktlen + 4)) != ERR_NONE)
+            return err;
+        
+        /* send the packet to the debug kernel */
+        tx(pkt, p - pkt);
+        
+        /* wait for the debug kernel to acknowledge */
+	if ( 0 != (err = rx_ack_chksum(RESPOND_ACK, &rchksum, PKT_TIMEOUT)) )
+	  return err;
+
+        /* move ahead to the next packet */
+        addr += pktlen;
+        len -= pktlen;
+    }
+    
+    /* return successfully */
+    return ERR_NONE;
+}
+
+static uint32_t read_long_register(uint32_t addr)
 {
     uint32_t value;
-    if (read_memory(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
+    if (read_registers(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
         fprintf(stderr, "error: reading %08x\n", addr);
     return value;
 }
 
-static void write_long(uint32_t addr, uint32_t value)
+static void write_long_register(uint32_t addr, uint32_t value)
 {
-    if (write_memory(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
+    if (write_registers(addr, (uint8_t *)&value, sizeof(uint32_t)) != ERR_NONE)
         fprintf(stderr, "error: writing %08x\n", addr);
 }
 
@@ -550,13 +788,12 @@ int get_cmd()
     int i = 0;
     int ch;
     
+    if(logfile) fprintf(logfile, "gdb>");
     do{
         if ((ch = getc(stdin)) < 0)
             return -1;
+	if(logfile) putc(ch, logfile);
     } while(ch != '$');
-    
-    if(logfile) fprintf(logfile, "gdb>");
-    if(logfile) putc(ch, logfile);
     
     for(i = 0; i < sizeof(cmd); i++){
         if ((ch = getc(stdin)) < 0)
@@ -617,25 +854,17 @@ void cmd_g_get_registers(int cog)
 {
     uint8_t buf[GCC_REG_COUNT * sizeof(uint32_t)];
     char response[1024];
-    int32_t reg;
     int j;
     int err;
     
-    if((err = read_memory(gcc_reg_base, buf, sizeof(buf))) != ERR_NONE){
+    if((err = read_registers(0, buf, sizeof(buf))) != ERR_NONE){
         error_reply(err);
         return;
     }
     for(j = 0; j < sizeof(buf); j++){
         sprintf(response+2*j, "%02x", buf[j]);
     }
-    reg = get_cog_pc(cog) * 4 + 0x80000000 + cog * 0x10000000;
-    sprintf(response+2*j,
-            "%02x%02x%02x%02x",
-            (unsigned char)(reg & 0xff),
-            (unsigned char)((reg>>8) & 0xff),
-            (unsigned char)((reg>>16) & 0xff),
-            (unsigned char)((reg>>24) & 0xff));
-    reply(response, sizeof(buf)*2+8);
+    reply(response, sizeof(buf)*2);
 }
 
 /* 'G' - set registers */
@@ -649,11 +878,13 @@ void cmd_G_set_registers(int cog, int i)
         buf[j] = parse_byte(&cmd[i]);
         i += 2;
     }
-    if((err = write_memory(gcc_reg_base, buf, sizeof(buf))) != ERR_NONE){
+    if((err = write_registers(0, buf, sizeof(buf))) != ERR_NONE){
         error_reply(err);
         return;
     }
+#if 0
     set_cog_pc(cog, (get_addr(&i) & ~0xfffff800) >> 2);
+#endif
     reply("OK",2);
 }
 
@@ -721,13 +952,15 @@ char *cmd_s_step(int cog, int i)
 {
     char *halt_code;
     int err;
-    
+
+#ifdef DEBUG_STUB
     if (first_run) {
         if ((err = start_debug_kernel()) != ERR_NONE){
             error_reply(err);
             return "E99";   // BUG: what should this be?
         }
     }
+#endif
     if(cmd[i]){
         uint8_t buf[sizeof(uint32_t)];
         int j;
@@ -735,12 +968,12 @@ char *cmd_s_step(int cog, int i)
             buf[j] = parse_byte(&cmd[i]);
             i += 2;
         }
-        if((err = write_memory(gcc_reg_base + GCC_REG_PC * sizeof(uint32_t), buf, sizeof(buf))) != ERR_NONE){
+        if((err = write_registers(GCC_REG_PC, buf, sizeof(buf))) != ERR_NONE){
             error_reply(err);
             return "E99"; // BUG: what should this be?
         }
     }
-    if ((err = debug_cmd(FCN_STEP)) != ERR_NONE){
+    if ((err = debug_cmd(DBG_CMD_LMMSTEP, 0)) != ERR_NONE){
         error_reply(err);
         return "E99";   // BUG: what should this be?
     }
@@ -748,9 +981,23 @@ char *cmd_s_step(int cog, int i)
         error_reply(err);
         return "E99";   // BUG: what should this be?
     }
+#if 0
     halt_code = "S05";
-    reply(halt_code, 3);
-    
+#else
+    {
+      static char code[80];
+      uint32_t lmmpc;
+      lmmpc = read_long_register(GCC_REG_PC);
+      sprintf(code, "T05%x:%02x%02x%02x%02x;",
+	      GCC_REG_PC,
+	      lmmpc & 0xff,
+	      (lmmpc>>8) & 0xff,
+	      (lmmpc>>16) & 0xff,
+	      (lmmpc>>24) & 0xff);
+      halt_code = code;
+    }
+#endif
+    reply(halt_code, strlen(halt_code));
     return halt_code;
 }
 
@@ -760,12 +1007,14 @@ char *cmd_c_continue(int cog, int i)
     char *halt_code;
     int err;
     
+#ifdef DEBUG_STUB
     if (first_run) {
         if ((err = start_debug_kernel()) != ERR_NONE){
             error_reply(err);
             return "E99";   // BUG: what should this be?
         }
     }
+#endif
     if(cmd[i]){
         uint8_t buf[sizeof(uint32_t)];
         int j;
@@ -773,13 +1022,12 @@ char *cmd_c_continue(int cog, int i)
             buf[j] = parse_byte(&cmd[i]);
             i += 2;
         }
-        if((err = write_memory(gcc_reg_base + GCC_REG_PC * sizeof(uint32_t), buf, sizeof(buf))) != ERR_NONE){
+        if((err = write_registers(GCC_REG_PC, buf, sizeof(buf))) != ERR_NONE){
             error_reply(err);
             return "E99"; // BUG: what should this be?
         }
     }
-    halt_code = "S05";
-    if ((err = debug_cmd(FCN_RUN)) != ERR_NONE){
+    if ((err = debug_cmd(DBG_CMD_RESUME, 0)) != ERR_NONE){
         error_reply(err);
         return "E99";   // BUG: what should this be?
     }
@@ -787,8 +1035,23 @@ char *cmd_c_continue(int cog, int i)
         error_reply(err);
         return "E99";   // BUG: what should this be?
     }
-    write_long(PC_ADDR, read_long(PC_ADDR) - 4); // backup so pc points to the breakpoint instruction
-    reply(halt_code, 3);
+#if 0
+    halt_code = "S05";
+#else
+    {
+      static char code[80];
+      uint32_t lmmpc;
+      lmmpc = read_long_register(GCC_REG_PC);
+      sprintf(code, "T05%x:%02x%02x%02x%02x;",
+	      GCC_REG_PC,
+	      lmmpc & 0xff,
+	      (lmmpc>>8) & 0xff,
+	      (lmmpc>>16) & 0xff,
+	      (lmmpc>>24) & 0xff);
+      halt_code = code;
+    }
+#endif
+    reply(halt_code, strlen(halt_code));
     
     return halt_code;
 }
@@ -800,6 +1063,30 @@ void cmd_H_set_thread(int i)
         reply("OK", 2);
     } else {
         reply("", 0);
+    }
+}
+
+/* 'q' - query features */
+void cmd_q_query(int i)
+{
+    if (!strncmp(&cmd[i], "Supported", 8)){
+      reply("QStartNoAckMode+", 16);
+    } else {
+        reply("", 0);
+    }
+}
+
+/* 'Q' - set features */
+void cmd_Q_set(int i)
+{
+    if (!strncmp(&cmd[i], "StartNoAckMode-", 15)) {
+      reply("OK", 2);
+      no_ack_mode = 0;
+    } else if (!strncmp(&cmd[i], "StartNoAckMode", 14)) {
+      reply("OK", 2);
+      no_ack_mode = 1;
+    } else {
+      reply("", 0);
     }
 }
 
@@ -897,6 +1184,8 @@ static int command_loop(void)
             case 'c':   halt_code = cmd_c_continue(cog, i); break;
             case 'H':   cmd_H_set_thread(i);                break;
             case 'k':   reply("OK", 2); goto out;           break;
+	    case 'q':   cmd_q_query(i);                     break;
+	    case 'Q':   cmd_Q_set(i);                       break;
             case 'z':   cmd_z_remove_breakpoint(i);         break;
             case 'Z':   cmd_Z_set_breakpoint(i);            break;
             case '?':   reply(halt_code, 3);                break;
