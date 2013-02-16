@@ -47,6 +47,8 @@ r15	'' alias for lr
 lr	long	0
 sp	long	0
 pc	long	0
+	.global __ccr__
+__ccr__
 ccr	long	0
 hwbkpt	long	entry
 	'' register 20 needs to be the breakpoint command
