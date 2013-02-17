@@ -29,6 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 /* InitPort flags */
 #define IFLAG_VERBOSE               (1 << 0)
+#define IFLAG_NORESET               (1 << 1)
 
 /* LoadXXX flags */
 #define LFLAG_WRITE_EEPROM          (1 << 0)
