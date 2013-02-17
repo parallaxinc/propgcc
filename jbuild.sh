@@ -418,7 +418,7 @@ fi
 #
 mkdir -p ../build/gdb
 cd ../build/gdb
-../../propgcc/gdb/configure --target=propeller-elf
+../../propgcc/gdb/configure --target=propeller-elf --prefix=${PREFIX} --with-system-gdbinit=${PREFIX}/lib/gdb/gdbinit
 if test $? != 0
 then
    echo "gdb configure failed"
@@ -439,6 +439,9 @@ then
 else
     cp -f gdb/gdb.exe ${PREFIX}/bin/propeller-elf-gdb.exe
 fi
+mkdir -p ${PREFIX}/lib/gdb
+cp -f gdbstub/gdbinit.propeller ${PREFIX}/lib/gdb/gdbinit
+
 cd ../../propgcc
 
 #
