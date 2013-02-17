@@ -65,6 +65,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define ERR_WRITE   3
 #define ERR_CHKSUM  4
 #define ERR_INIT    5
+#define ERR_INVAL   6
 
 /* timeout waiting for debug kernel to initialize */
 #define INI_TIMEOUT 2000
@@ -845,13 +846,57 @@ int32_t get_addr(int *i)
     return reg;
 }
 
+#define MAX_BREAKPOINT_LEN 8
+
 struct bkpt {
     struct bkpt *next;
     uint32_t addr;
     uint32_t len;
+    uint8_t saved_data[MAX_BREAKPOINT_LEN];
 };
 
 struct bkpt *bkpt = 0;
+
+int bkpt_len = 0;  /* will be 0 unless/until breakpoint is queried from target */
+uint8_t bkpt_bytes[MAX_BREAKPOINT_LEN];
+
+
+/* fetch the breakpoint descriptor from the target */
+int
+get_bkpt_info(void)
+{
+  int err;
+  uint8_t len;
+
+  err = debug_cmd(DBG_CMD_QUERYBP, 0);
+  if (err != ERR_NONE)
+    {
+      if (logfile) fprintf(logfile, "((error %d requesting breakpoint data))\n", err);
+      return err;
+    }
+  err = rx_ack(RESPOND_DATA, PKT_TIMEOUT);
+  if (err != ERR_NONE)
+    {
+      if (logfile) fprintf(logfile, "((error %d awaiting breakpoint data))\n", err);
+      return err;
+    }
+  if (rx_timeout(&len, 1, PKT_TIMEOUT) != 1) {
+    return ERR_TIMEOUT;
+  }
+  if (len == 0 || len > MAX_BREAKPOINT_LEN) {
+    if (logfile) fprintf(logfile, "((bad length %d for breakpoint data))\n", len);
+    return ERR_INVAL;
+  }
+  bkpt_len = len;
+  err = rx_timeout(bkpt_bytes, len, PKT_TIMEOUT);
+  if (err != len) 
+    {
+      if (logfile) fprintf(logfile, "((read error %d for breakpoint data))\n", err);
+      bkpt_len = 0;
+      return ERR_INVAL;
+    }
+  return ERR_NONE;
+}
 
 /* 'g' - get registers */
 void cmd_g_get_registers(int cog)

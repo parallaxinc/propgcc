@@ -604,6 +604,9 @@ hub_cmd_querybp
 	mov	ch, cogid
 	call	#txbyte
 
+	mov	ch, #4	'length of breakpoint
+	call	#txbyte
+	'' now the actual breakpoint data
 	mov	tmp0, Breakpoint
 	call	#txlong
 	jmp	#cmdloop
