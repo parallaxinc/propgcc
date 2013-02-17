@@ -47,7 +47,7 @@
 #include "opcode/propeller.h"
 #include "elf/propeller.h"
 #include "elf-bfd.h"
-
+#include "bfd-in2.h"
 
 #define PROPELLER_NUM_REGS 19
 #define PROPELLER_PC_REGNUM 17
@@ -607,11 +607,19 @@ propeller_dummy_id (struct gdbarch *gdbarch, struct frame_info *this_frame)
   return frame_id_build (fp + 4, get_frame_pc (this_frame));
 }
 
-static const gdb_byte bpt_little[4] = {0x14, 0x00, 0x7c, 0x5c};
-static const gdb_byte bpt_big[4] = {0x5c, 0x7c, 0x00, 0x14};
+/* little endian version of P1 breakpoint instruction */
+static const gdb_byte bpt_p1[4] = {0x14, 0x00, 0x7c, 0x5c};
+static const gdb_byte bpt_p2[4] = {0x14, 0x00, 0x7c, 0x1c};
+
 static const gdb_byte *propeller_breakpoint_from_pc(struct gdbarch *arch, CORE_ADDR *addr, int *x){
+  int flags;
+
+  flags = gdbarch_tdep (arch)->elf_flags;
+
   *x = 4;
-  return bpt_little;
+  if ((flags & EF_PROPELLER_MACH) == EF_PROPELLER_PROP2)
+    return bpt_p2;
+  return bpt_p1;
 }
 
 /* There is a fair number of calling conventions that are in somewhat
