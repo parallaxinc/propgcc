@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
     System sys;
     int ivalue;
     int need_stub = FALSE;
+    int flags = 0;
 
     /* get the environment settings */
     if (!(port = getenv("PROPELLER_LOAD_PORT")))
@@ -260,7 +261,10 @@ int main(int argc, char *argv[])
     psetverbose(verbose);
     
     /* find and open the serial port */
-    switch (InitPort(PORT_PREFIX, port, baud, verbose, NULL)) {
+    if (verbose) flags |= IFLAG_VERBOSE;
+    if (!need_stub) flags |= IFLAG_NORESET;
+
+    switch (InitPort(PORT_PREFIX, port, baud, flags, NULL)) {
         case PLOAD_STATUS_OK:
             // port initialized successfully
             break;
