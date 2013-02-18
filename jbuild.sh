@@ -440,9 +440,9 @@ else
     cp -f gdb/gdb.exe ${PREFIX}/bin/propeller-elf-gdb.exe
 fi
 mkdir -p ${PREFIX}/lib/gdb
-cp -f gdbstub/gdbinit.propeller ${PREFIX}/lib/gdb/gdbinit
 
 cd ../../propgcc
+cp -f gdbstub/gdbinit.propeller ${PREFIX}/lib/gdb/gdbinit
 
 #
 # build spinsim
