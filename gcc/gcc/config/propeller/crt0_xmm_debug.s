@@ -48,13 +48,13 @@ pc	long	0
 	.global __ccr__
 __ccr__
 ccr	long	0
-hwbkpt	long	0
 
+hwbkpt	long	0
 	'' register 20 needs to be the breakpoint command
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
 Breakpoint
-	call	#__EnterBreakpoint
+	call	#__EnterLMMBreakpoint
 
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -65,10 +65,17 @@ __LMM_start
 __LMM_loop
 	muxc	ccr, #1
 	muxnz	ccr, #2
-	cmp	pc,hwbkpt wz
- if_e	call	#__EnterDebugger
+#if defined(__PROPELLER2__)
+	getp	rxpin wz	' check for low on RX
+#else
+	and	rxbit,ina nr,wz	' check for low on RX
+#endif
+  if_z	call	#__EnterDebugger
 	test	ccr, #COGFLAGS_STEP wz
- if_nz  call	#__EnterDebugger
+  if_nz call	#__EnterDebugger
+	cmp	pc, hwbkpt wz
+  if_z  call	#__EnterDebugger
+	
 	call	#read_code
 	add	pc,#4
 	shr	ccr, #1 wc,wz,nr	'' restore flags
