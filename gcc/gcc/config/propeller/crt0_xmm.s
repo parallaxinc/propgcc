@@ -46,9 +46,6 @@ sp	long	0
 pc	long	0
 ccr	long	0
 
-	.global __C_LOCK_PTR
-__C_LOCK_PTR long __C_LOCK
-
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
@@ -60,6 +57,9 @@ __LMM_loop
 	add	pc,#4
 L_ins0	nop
 	jmp	#__LMM_loop
+
+	.global __C_LOCK_PTR
+__C_LOCK_PTR long __C_LOCK
 
 	''
 	'' LMM support functions
