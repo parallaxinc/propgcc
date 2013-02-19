@@ -280,29 +280,37 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
 
 #define CCR_FLAG_LMMSTEP 0x80
 
-static int PatchImageForDebug(uint8_t *imagebuf, int imageSize, ElfContext *c)
+static int PatchSectionForDebug(uint8_t *imagebuf, int imageSize, int offset, ElfContext *c)
 {
-    ElfProgramHdr kernel;
     ElfSymbol symbol;
-    int offset;
-    if (FindProgramSegment(c, ".lmmkernel", &kernel) < 0) {
-      return Error(".lmmkernel section not found");
-    }
     if (!FindElfSymbol(c, "__ccr__", &symbol) ) {
       return Error("unable to debug this ELF file: __ccr__ symbol missing");
     }
-    offset = symbol.value + kernel.paddr;
-    printf("patching at offset 0x%x\n", offset);
+    offset += symbol.value;
+
+    printf("patching for debug at offset 0x%x\n", offset);
     if (offset < 0 || offset > imageSize) {
       return Error("Bad offset for debug symbol __ccr__");
     }
 
     /* set the flag to enter the debugger immediately */
     imagebuf[offset] |= CCR_FLAG_LMMSTEP;
+    return TRUE;
+}
+
+static int PatchLMMImageForDebug(uint8_t *imagebuf, int imageSize, ElfContext *c)
+{
+    ElfProgramHdr kernel;
+    int err;
+
+    if (FindProgramSegment(c, ".lmmkernel", &kernel) < 0) {
+      return Error(".lmmkernel section not found");
+    }
+    err = PatchSectionForDebug(imagebuf, imageSize, kernel.paddr, c);
 
     /* recompute the checksum */
     UpdateChecksum(imagebuf, imageSize);
-    return TRUE;
+    return err;
 }
 
 static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c)
@@ -317,7 +325,7 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
         return FALSE;
 
     if ( (flags & LFLAG_DEBUG) != 0) {
-      if (!PatchImageForDebug(imagebuf, imageSize, c))
+      if (!PatchLMMImageForDebug(imagebuf, imageSize, c))
 	return FALSE;
     }
 
@@ -659,6 +667,13 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     if (!(kernelbuf = LoadProgramSegment(c, &program_kernel))) {
         free(imagebuf);
         return Error("can't load .xmmkernel section");
+    }
+    /* if debugging requested, patch */
+    if ( (flags & LFLAG_DEBUG) != 0) {
+        if (!(PatchSectionForDebug(kernelbuf, program_kernel.filesz, 0, c))) {
+            free(imagebuf);
+	    return Error("can't patch .xmmkernel section");
+	}
     }
 
     /* handle downloads to eeprom that must be done before the external memory download */

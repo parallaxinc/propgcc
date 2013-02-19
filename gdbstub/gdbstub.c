@@ -85,7 +85,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 FILE *logfile = NULL;
 char cmd[1028];
 
-#define DEFAULT_COG 0
+int DEFAULT_COG = 0x0f;
 
 #ifdef DEBUG_STUB
 /* On the first 'c' or 's' request we need to start the real debug kernel that was downloaded as
@@ -404,8 +404,13 @@ rx_ack(int ackbyte, int timeout)
   }
   /* the byte should be our cog */
   if (byte != DEFAULT_COG) {
-    if (logfile) fprintf(logfile, "((rx_ack: bad cog # 0x%02x))\n", byte);
-    return ERR_CHKSUM;
+    if (DEFAULT_COG == 0x0f)
+      DEFAULT_COG = byte;
+    else
+      {
+	if (logfile) fprintf(logfile, "((rx_ack: bad cog # 0x%02x))\n", byte);
+	return ERR_CHKSUM;
+      }
   }
 #ifdef VERBOSE_LOG
   if (logfile) fprintf(logfile, "((rx_ack: OK))\n");
