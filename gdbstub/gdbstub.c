@@ -1139,23 +1139,68 @@ void cmd_Q_set(int i)
     }
 }
 
+/*
+ * figure out the address and breakpoint length
+ * if some error happens, return -1, otherwise
+ * return the new index into the command buffer
+ */
+
+static int
+parse_breakpoint(int i, long *addr, long *len)
+{
+    char *p = &cmd[i];
+        
+    p++;   /* Skip the comma */
+    *addr = strtol(p, &p, 16);
+    p++;   /* Skip the other comma */
+    *len = strtol(p, NULL, 16);
+
+    return i;
+}
+
+/*
+ * set the LMM hardware breakpoint to addr
+ */
+static int
+set_lmm_break(uint32_t addr)
+{
+    int err = 0;
+    uint8_t rchksum;
+    uint8_t pkt[8];
+
+    err = debug_cmd(DBG_CMD_LMMBRK, 4);
+    if (err != ERR_NONE)
+        return err;
+    /* send the address */
+    pkt[0] = addr & 0xff;
+    pkt[1] = (addr>>8) & 0xff;
+    pkt[2] = (addr>>16) & 0xff;
+    pkt[3] = (addr>>24) & 0xff;
+    tx(pkt, 4);
+
+    /* check for an ack */
+    err = rx_ack_chksum(RESPOND_ACK, &rchksum, PKT_TIMEOUT);
+
+    return err;
+}
+
 /* 'z' - remove breakpoint */
 void cmd_z_remove_breakpoint(int i)
 {
+    int code;
+    long addr, len;
+    int err;
+
+    code = cmd[i++];
+    i = parse_breakpoint(i, &addr, &len);
+    if (i < 0) {
+      reply("", 0);
+    } else if (code ==  '0') {
 #ifdef NO_BKPT
-    reply("", 0);
+        reply("", 0);
 #else
-    /* Remove breakpoint */
-    if(cmd[i++] == '0'){
-        long addr;
-        long len;
+        /* Remove memory breakpoint */
         struct bkpt *b;
-        char *p = &cmd[i];
-        
-        p++;   /* Skip the comma */
-        addr = strtol(p, &p, 16);
-        p++;   /* Skip the other comma */
-        len = strtol(p, NULL, 16);
         for(b = (struct bkpt *)&bkpt; b && b->next; b = b->next){
             if((b->next->addr == addr) && (b->next->len == len)){
                 struct bkpt *t = b->next;
@@ -1164,52 +1209,68 @@ void cmd_z_remove_breakpoint(int i)
             }
         }
         reply("OK", 2);
+#endif
+    } else if (code ==  '1') {
+        /* remove hardware breakpoint */
+        /* we don't really have a way to do this, so just set it to an impossible value */
+        err = set_lmm_break(0xFFFFFFFF);
+	if (err == 0)
+	  reply("OK", 2);
+	else
+	  reply("E99", 3);  /* what should this be? */
     } else {
         reply("", 0);
     }
-#endif
 }
 
 /* 'Z' - set breakpoint */
 void cmd_Z_set_breakpoint(int i)
 {
+    int code;
+    long addr, len;
+    int err;
+
+    code = cmd[i++];
+    i = parse_breakpoint(i, &addr, &len);
+    if (i < 0) {
+      reply("", 0);
+    } else if (code ==  '0') {
 #ifdef NO_BKPT
-    reply("", 0);
+        reply("", 0);
 #else
-    /* Set breakpoint */
-    if(cmd[i++] == '0'){
-        long addr;
-        long len;
+        /* Set memory breakpoint */
         struct bkpt *b;
-        char *p = &cmd[i];
-        p++;   /* Skip the comma */
-        addr = strtol(p, &p, 16);
-        p++;   /* Skip the other comma */
-        len = strtol(p, NULL, 16);
-        for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
-            if((b->addr == addr) && (b->len == len)){
+	for(b = (struct bkpt *)&bkpt; b->next; b = b->next){
+	    if((b->addr == addr) && (b->len == len)){
                 /* Duplicate; bail out */
                 break;
-            }
-        }
-        if(b->next){
-            /* Was a duplicate, do nothing */
-        } else {
-            struct bkpt *t = (struct bkpt *)malloc(sizeof(struct bkpt));
-            if(!t){
+	    }
+	}
+	if(b->next){
+	      /* Was a duplicate, do nothing */
+	} else {
+	    struct bkpt *t = (struct bkpt *)malloc(sizeof(struct bkpt));
+	    if(!t){
                 fprintf(stderr, "Failed to allocate a breakpoint structure\n");
                 exit(1);
-            }
-            t->addr = addr;
-            t->len = len;
-            t->next = bkpt;
-            bkpt = t;
-        }
-        reply("OK", 2);
+	    }
+	    t->addr = addr;
+	    t->len = len;
+	    t->next = bkpt;
+	    bkpt = t;
+	}
+	reply("OK", 2);
+#endif
+    } else if (code == '1') {
+        /* set hardware breakpoint */
+        err = set_lmm_break(addr);
+	if (err == 0)
+	  reply("OK", 2);
+	else
+	  reply("E99", 3);  /* what should this be? */
     } else {
         reply("", 0);
     }
-#endif
 }
 
 static int command_loop(void)
