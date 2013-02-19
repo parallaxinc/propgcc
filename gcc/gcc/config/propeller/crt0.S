@@ -12,11 +12,8 @@
 #  endif
 #elif defined(__PROPELLER_LMM__)
 # if defined(DEBUG_KERNEL)
-#  if defined(__PROPELLER2__)
+	/* note: the debug kernel is the same for prop1 and prop2 */
 #    include "crt0_lmm2_debug.s"
-#  else
-#    include "crt0_lmm_debug.s"
-#  endif
 # else
 #  if defined(__PROPELLER2__)
 #    include "crt0_lmm2.s"
