@@ -1,6 +1,4 @@
 #include "cogdebug.h"
-
-	''#define HEXDEBUG
 	.section .kernel, "ax"
 
 	.global r0
@@ -50,15 +48,13 @@ pc	long	0
 	.global __ccr__
 __ccr__
 ccr	long	0
-hwbkpt	long	entry
+hwbkpt	long	0
+
 	'' register 20 needs to be the breakpoint command
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
 Breakpoint
 	call	#__EnterBreakpoint
-
-	.global __C_LOCK_PTR
-__C_LOCK_PTR long __C_LOCK
 
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -78,6 +74,9 @@ __LMM_loop
 	shr	ccr, #1 wc,wz,nr	'' restore flags
 L_ins0	nop
 	jmp	#__LMM_loop
+
+	.global __C_LOCK_PTR
+__C_LOCK_PTR long __C_LOCK
 
 	''
 	'' LMM support functions
@@ -704,30 +703,3 @@ __LMM_FCACHE_START
 
 	#include "kernel.ext"
 	#include "cogdebug.ext"
-
-#ifdef HEXDEBUG
-	.section .kernel
-hexcnt	long 0
-hexch	long 0
-	
-txhex
-	mov	hexcnt, #8
-hexlp
-	mov	ch, hexch
-	rol	hexch, #4
-	shr	ch,#28
-	cmp	ch,#0x09 wz,wc
-	add	ch,#0x30
-  if_a	add	ch,#(0x41-0x3A)  '' 3A -> 41
-	call	#txbyte
-	djnz	hexcnt, #hexlp
-
-	mov	ch,#10
-	call	#txbyte
-	mov	ch,#13
-	call	#txbyte
-
-txhex_ret
-	ret
-#endif
-
