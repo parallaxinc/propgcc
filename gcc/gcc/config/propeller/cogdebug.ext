@@ -197,7 +197,6 @@ rxbyte_ret
 __EnterDebugger_ret
 __EnterBreakpoint_ret
 __EnterLMMBreakpoint_ret
-__EnterDebugger_Quiet_ret
 cogpc
 	long 0
 cogflags
@@ -211,16 +210,12 @@ debugpc
 __debug_kernel_ptr
 	long	__load_start_debug_kerext
 
-__EnterDebugger_Quiet
-	or	cogflags, #COGFLAGS_QUIET
-	jmp	#dbgstart
 __EnterBreakpoint
 	sub	cogpc, #1
 	jmp	#__EnterDebugger
 __EnterLMMBreakpoint
 	sub	pc, #4
 __EnterDebugger
-	andn	cogflags, #COGFLAGS_QUIET
 dbgstart
 	andn	ccr, #COGFLAGS_STEP
 #if defined(__PROPELLER2__)
@@ -253,7 +248,8 @@ dbgcnt
 	long 0
 respond1
 	long 0
-
+respond2
+	long 0
 
 
 DebugLMM
@@ -371,12 +367,6 @@ hub_debug_start
   	muxnz	cogflags, #2
 	muxc	cogflags, #1
 
-	'' should we send our status?
-	'' if not, just go right to command reception
-	test	cogflags, #COGFLAGS_QUIET wz
-  if_nz	rdlong	debugpc,debugpc
-  	long	hub_cmdloop
-
 	'' fall through to send the status command
 
 	''
@@ -438,6 +428,7 @@ hub_cmdloop
 
 hub_decode_cmd
 	'' decode command
+	mov	respond2, #0
 	and	cmd, #0xf0
 	cmp	cmd, #DBG_CMD_STATUS wz
   if_e	rdlong	debugpc,debugpc	     '' jmp	#cmd_status
@@ -463,8 +454,12 @@ hub_decode_cmd
 	cmp	cmd, #DBG_CMD_LMMSTEP wz
   if_e	rdlong	debugpc,debugpc
   	long	hub_cmd_lmmstep
+	cmp	cmd, #DBG_CMD_LMMBRK wz
+  if_e	rdlong	debugpc,debugpc
+  	long	hub_cmd_lmmbrk
 
 	'' fall through to error if command not recognized
+	mov	respond2, #ERR_NOCMD
 hub_cmderr
 	mov	respond1, #RESPOND_ERR
 
@@ -479,7 +474,7 @@ hub_donecmd
 	call	#txbyte
 	mov	ch, cogid
 	call	#txbyte
-	mov	ch, #0	'' FIXME should be more detailed response
+	mov	ch,respond2
 	call	#txbyte
 	jmp	#cmdloop
 
@@ -545,6 +540,7 @@ hub_cmd_writecogmem
 
 hub_cmd_readhubmem
 	'' must be exactly 5 more bytes left (len + hub address)
+	mov	respond2, #ERR_READLEN
 	cmp	cmdlen, #5 wz
   if_ne	rdlong	debugpc, debugpc	'jmp	#cmderr
   	long	hub_cmderr
@@ -615,6 +611,20 @@ hub_cmd_lmmstep
 	or	ccr, #COGFLAGS_STEP
 	jmp	#LeaveDebugger
 
+hub_cmd_lmmbrk
+	'' must have 4 bytes left in command (address for LMM breakpoint)
+	cmp	cmdlen, #4 wz
+  if_ne	mov	respond2, #ERR_BRKLEN
+  if_ne	rdlong	debugpc, debugpc
+        long    hub_cmderr
+
+	'' read the address
+	call	#rxlong
+	mov	cmdlen, #0
+	mov	hwbkpt, ch
+	mov	respond1, #RESPOND_ACK
+	rdlong	debugpc, debugpc
+	long	hub_donecmd
 
 
 

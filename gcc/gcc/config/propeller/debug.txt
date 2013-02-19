@@ -1,4 +1,4 @@
-Proposed debug protocol:
+Cog debug protocol:
 
 Packets from the host to the device are always at least 3 bytes long.
 
@@ -70,4 +70,12 @@ The following commands are understood:
   - 0x70: DBG_CMD_LMMSTEP: single step the LMM interpreter
     The device response happens after the step, and is the same as for
     DBG_CMD_STATUS.
+
+  - 0x80: DBG_CMD_LMMBRK: set the hardware breakpoint address
+    This requests that the LMM interpreter break when the PC gets to a
+    certain value. The length is 4 (4 additional bytes) consisting of
+    the 4 byte PC value to break at.
+
+    The response is 0xFA (ack) followed by cog number and a checksum
+    of the address (not implemented yet, checksum is always 0).
 

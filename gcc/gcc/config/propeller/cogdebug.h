@@ -34,6 +34,9 @@
 /* request to single step the LMM interpreter */
 #define DBG_CMD_LMMSTEP    0x70
 
+/* set LMM hardware breakpoint: data is 4 bytes address */
+#define DBG_CMD_LMMBRK     0x80
+
 /* response packets */
 /* responses always have the form:
  *  byte 0: response type (0xf8-0xff)
@@ -42,13 +45,18 @@
  */
 #define RESPOND_STATUS 0xf8  /* always 4 bytes coming back */
 #define RESPOND_DATA   0xf9  /* same number of bytes as host requested */
-#define RESPOND_ACK    0xfa
-#define RESPOND_ERR    0xfe
+#define RESPOND_ACK    0xfa  /* 1 byte data, intended to be checksum but always 0 for now */
+#define RESPOND_ERR    0xfe  /* 1 byte data error code */
 
 /* bits in the cogflags register */
 #define COGFLAGS_C      0x01
 #define COGFLAGS_NZ     0x02
 
 #define COGFLAGS_STEP   0x80  /* break on next LMM loop */
-#define COGFLAGS_QUIET 0x100  /* tells the debug stub break but not to report pc */
+
+
+#define ERR_NOCMD       0xe1
+#define ERR_READLEN     0xe2
+#define ERR_BRKLEN      0xe3
+
 #endif
