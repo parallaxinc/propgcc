@@ -85,7 +85,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 FILE *logfile = NULL;
 char cmd[1028];
 
+#define PROP1 1
+#define PROP2 2
+int prop_version = 0;
 int DEFAULT_COG = 0x0f;
+int lmm_break_used;
+
+static char p1_memregions[] = 
+  "<?xml version=\"1.0\"?>"
+  "<!DOCTYPE memory-map PUBLIC \"+//IDN gnu.org//DTD GDB Memory Map V1.0//EN\""
+  "           \"HTTP://sourceware.org/gdb/gdb-memory-map.dtd\">"
+  "<memory-map>"
+  "  <memory type=\"ram\" start=\"0\" length=\"0x8000\"/>"
+  "  <memory type=\"rom\" start=\"0x8000\" length=\"0x8000\"/>"
+  "  <memory type=\"rom\" start=\"0x30000000\" length=\"0x01000000\"/>"
+  "</memory-map>"
+  ;
+
+static char p2_memregions[] = 
+  "<?xml version=\"1.0\"?>"
+  "<!DOCTYPE memory-map PUBLIC \"+//IDN gnu.org//DTD GDB Memory Map V1.0//EN\""
+  "           \"HTTP://sourceware.org/gdb/gdb-memory-map.dtd\">"
+  "<memory-map>"
+  "  <memory type=\"ram\" start=\"0\" length=\"0x20000\"/>"
+  "  <memory type=\"rom\" start=\"0x30000000\" length=\"0x01000000\"/>"
+  "</memory-map>"
+  ;
+
 
 #ifdef DEBUG_STUB
 /* On the first 'c' or 's' request we need to start the real debug kernel that was downloaded as
@@ -120,7 +146,8 @@ static void write_long_register(uint32_t addr, uint32_t value);
 static int command_loop(void);
 static int rx_ack(int ackbyte, int timeout);
 static int rx_ack_chksum(int ackbyte, uint8_t *chksum, int timeout);
-void reply(char *ptr, int len);
+void reply(const char *ptr, int len);
+void replystr(const char *ptr);
 
 int main(int argc, char *argv[])
 {
@@ -304,8 +331,10 @@ int main(int argc, char *argv[])
 	if (rx_timeout(dummy, 3, INI_TIMEOUT) != 3) {
 	  fprintf(stderr, "bad initial status packet\n");
 	}
+	/* the status packet gives: flags (1 byte) cogpc (2 bytes) */
+	/* bits 4-5 of the flags give the propeller version */
+	prop_version = 1 + ((dummy[0] >> 4) & 0x3);
     }
-printf("connected!\n");
     
     command_loop();
     
@@ -676,6 +705,18 @@ static int read_memory(uint32_t addr, uint8_t *buf, int len)
     return ERR_NONE;
 }
 
+static int
+is_rom(uint32_t addr)
+{
+  if (addr >= 0x30000000 && addr <= 0x3fffffff)
+    return 1;
+  if (prop_version < 2) {
+    if (addr >= 0x7fff && addr <= 0xffff)
+      return 1;
+  }
+  return 0;
+}
+
 static int write_memory(uint32_t addr, uint8_t *buf, int len)
 {
     uint8_t pkt[PKT_MAX];
@@ -756,7 +797,7 @@ void set_cog_pc(int cog, uint32_t addr)
 {
 }
 
-void reply(char *ptr, int len)
+void reply(const char *ptr, int len)
 {
     unsigned char cksum = 0;
     int i;
@@ -773,6 +814,12 @@ void reply(char *ptr, int len)
     if(logfile) putc('\n', logfile);
     fflush(stdout);
     if(logfile) fflush(logfile);
+}
+
+void
+replystr(const char *str)
+{
+  reply(str, strlen(str));
 }
 
 void error_reply(int sts)
@@ -994,6 +1041,10 @@ void cmd_M_write_memory(int i)
         i += 2;
         buf[j] = val & 0xff;
     }
+    if (is_rom(addr))
+      {
+	reply("",0);
+      }
     if((err = write_memory(addr, buf, len)) != ERR_NONE){
         error_reply(err);
         return;
@@ -1120,11 +1171,57 @@ void cmd_H_set_thread(int i)
     }
 }
 
+/*
+ * send back memory data from a qXfer request
+ * "src" is the source memory probed, and srclen is its length
+ * offset is the offset into the memory
+ * len is the length to send back
+ */
+static void
+replymem(const char *src, unsigned srclen, unsigned offset, unsigned len)
+{
+    char response[1024];
+    char *ptr;
+    int c;
+
+    ptr = response;
+    if (offset > srclen) {
+      *ptr++ = 'l';
+      len = 0;
+    } else if (offset + len >= srclen) {
+      *ptr++ = 'l';
+      len = srclen - offset;
+    } else {
+      *ptr++ = 'm';  /* indicate more data remains */
+    }
+    // encode the memory in the GDB escape format (escape character is 0x7d)
+    while (len > 0) {
+      c = src[offset++];
+      if (c == 0x7d || c == 0x23 || c == 0x24 || c == 0x2a) {
+	*ptr++ = 0x7d;
+	c = c ^ 0x20;
+      }
+      *ptr++ = c;
+      --len;
+    }
+    *ptr++ = 0;
+    replystr(response);
+}
+
 /* 'q' - query features */
 void cmd_q_query(int i)
 {
+    char *memdata;
+    unsigned int offset, length;
+
     if (!strncmp(&cmd[i], "Supported", 8)){
-      reply("QStartNoAckMode+", 16);
+      //      reply("QStartNoAckMode+", 16);
+        replystr("QStartNoAckMode+;qXfer:memory-map:read+");
+    } else if (!strncmp(&cmd[i], "Xfer:memory-map:read:", 21)) {
+        i += 21;
+	sscanf(cmd+i, ":%x,%x", &offset, &length);
+        memdata = (prop_version == 2) ? p2_memregions : p1_memregions;
+	replymem(memdata, strlen(memdata), offset, length);
     } else {
         reply("", 0);
     }
@@ -1218,6 +1315,7 @@ void cmd_z_remove_breakpoint(int i)
     } else if (code ==  '1') {
         /* remove hardware breakpoint */
         /* we don't really have a way to do this, so just set it to an impossible value */
+        lmm_break_used = 0;
         err = set_lmm_break(0xFFFFFFFF);
 	if (err == 0)
 	  reply("OK", 2);
@@ -1267,12 +1365,18 @@ void cmd_Z_set_breakpoint(int i)
 	reply("OK", 2);
 #endif
     } else if (code == '1') {
-        /* set hardware breakpoint */
-        err = set_lmm_break(addr);
-	if (err == 0)
-	  reply("OK", 2);
-	else
-	  reply("E99", 3);  /* what should this be? */
+        if (lmm_break_used) {
+	  /* cannot do this again */
+	  reply("", 0);
+	} else {
+	  lmm_break_used = 1;
+	  /* set hardware breakpoint */
+	  err = set_lmm_break(addr);
+	  if (err == 0)
+	    reply("OK", 2);
+	  else
+	    reply("E99", 3);  /* what should this be? */
+	}
     } else {
         reply("", 0);
     }
