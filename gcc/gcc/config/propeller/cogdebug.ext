@@ -366,12 +366,18 @@ enddebug
 hub_debug_start
   	muxnz	cogflags, #2
 	muxc	cogflags, #1
-
+#if defined(__PROPELLER2__)
+        or      cogflags, #0x10
+#endif
 	'' fall through to send the status command
 
 	''
 	'' here's what we send back to the host
 	'' COGID COGFLAGS COGPCLO COGPCHI
+	''
+	'' NOTE that COGFLAGS is not the same as the LMM condition
+	'' code register (CCR) which is saved at a different point in
+	'' the LMM loop
 	''
 hub_cmd_status
 	mov	ch, #RESPOND_STATUS
@@ -562,7 +568,15 @@ hub_cmd_readhubmem
 	call   #txbyte
 
 read_hub_loop
+#if defined(__PROPELLER_USE_XMM__)
+        mov	t1, tmp0
+	test	t1, extern_mem_mask wz
+  if_z 	mov	memp,t1 
+  if_nz	call	#cache_read
+	rdbyte	ch, memp
+#else
 	rdbyte	ch, tmp0
+#endif
 	add	tmp0, #1
 	call	#txbyte
 	sub	dbgcnt, #1 wz
@@ -582,7 +596,15 @@ hub_cmd_writehubmem
 	sub	cmdlen, #4
 write_hub_loop
 	call	#rxbyte
+#if defined(__PROPELLER_USE_XMM__)
+        mov	t1, tmp0
+	test	t1, extern_mem_mask wz
+  if_z 	mov	memp,t1 
+  if_nz	call	#cache_read
+	wrbyte	ch, memp
+#else
 	wrbyte	ch, tmp0
+#endif
 	add	tmp0, #1
 	sub	cmdlen, #1 wz
   if_nz rdlong	debugpc,debugpc
