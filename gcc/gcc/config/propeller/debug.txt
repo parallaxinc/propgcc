@@ -17,12 +17,19 @@ The following commands are understood:
 
   - 0x00: DBG_CMD_STATUS: request cog id, flags, and PC
     device responds with 5 bytes:
-      0xF8 II NN YY XX
+      0xF8 II FF YY XX
     where
         II is the cog number
-        NN is the current cog status bits (c in bit 0, nz in bit 1)
+        FF is the current cog status bits (see below)
         XXYY is the current cog PC
     This command is intended to assist with debugging COG code
+    
+    cog status bits:
+    bit 0:  carry flag (C)
+    bit 1:  nz flag (!Z)
+    bits 4-5:  propeller version: 0=prop1, 1 = prop2
+    bit 7:  single step bit (LMM kernel only)
+    all other bits are reserved
 
   - 0x10: DBG_CMD_RESUME: resume execution
     device does not immediately respond, but sends a status byte when
