@@ -62,6 +62,7 @@
 
 struct gdbarch_tdep {
   int elf_flags;
+  unsigned int call_ins;
 };
 
 static const char *propeller_register_names[] = {
@@ -162,11 +163,16 @@ propeller_alloc_frame_cache (void)
 
 #define SUB4_P(op) ((op & 0xfffc01ff) == 0x84fc0004)
 #define SUB_P(op) ((op & 0xfffc0000) == 0x84fc0000)
-#define CALL_P(op) ((op & 0xfffc0000) == 0x5cfc0000)
 #define MOVE_P(op) ((op & 0xffbc0000) == 0xa0bc0000)
 #define WRLONG_P(op) ((op & 0xfffc0000) == 0x083c0000)
 #define GET_DST(op) ((op >> 9) & 0x1ff)
 #define GET_SRC(op) (op & 0x1ff)
+
+int
+CALL_P(unsigned int op, struct gdbarch *arch)
+{
+  return ((op & 0xfffc0000) == gdbarch_tdep(arch)->call_ins);
+}
 
 /* Do a full analysis of the prologue at PC and update CACHE
    accordingly.  Bail out early if CURRENT_PC is reached.  Return the
@@ -263,7 +269,7 @@ propeller_analyze_prologue (struct gdbarch *gdbarch,
     reg = GET_SRC(op) & 0xf;
     count = (GET_SRC(op) & 0xf0) >> 4;
     op = read_memory_unsigned_integer (pc+4, 4, byte_order);
-    if(CALL_P(op)){
+    if(CALL_P(op, gdbarch)){
       pc += 8;
       cache->locals = 4 * count;
       cache-> reg_bytes_saved = 4 * count;
@@ -785,6 +791,11 @@ propeller_gdbarch_init (struct gdbarch_info info,
   tdep = (struct gdbarch_tdep *) xmalloc (sizeof (struct gdbarch_tdep));
   gdbarch = gdbarch_alloc (&info, tdep);
   tdep->elf_flags = elf_flags;
+  if ((elf_flags & 0x3) == 2) {
+    tdep->call_ins = 0x1cfc0000;
+  } else {
+    tdep->call_ins = 0x5cfc0000;
+  }
   //  tdep->prologue = propeller_prologue;
   set_gdbarch_addr_bit (gdbarch, 32);
   //  set_gdbarch_num_pseudo_regs (gdbarch, PROPELLER_NUM_PSEUDO_REGS);
