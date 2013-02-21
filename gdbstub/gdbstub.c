@@ -1367,7 +1367,7 @@ void cmd_Z_set_breakpoint(int i)
     } else if (code == '1') {
         if (lmm_break_used) {
 	  /* cannot do this again */
-	  reply("", 0);
+	  reply("E98", 3);
 	} else {
 	  lmm_break_used = 1;
 	  /* set hardware breakpoint */
