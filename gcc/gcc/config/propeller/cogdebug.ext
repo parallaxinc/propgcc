@@ -436,34 +436,14 @@ hub_decode_cmd
 	'' decode command
 	mov	respond2, #0
 	and	cmd, #0xf0
-	cmp	cmd, #DBG_CMD_STATUS wz
-  if_e	rdlong	debugpc,debugpc	     '' jmp	#cmd_status
-  	long	hub_cmd_status
-  	cmp	cmd, #DBG_CMD_RESUME wz
-  if_e	jmp	#LeaveDebugger
-  	cmp	cmd, #DBG_CMD_READCOG wz
-  if_e  rdlong	debugpc,debugpc	     ''jmp	#read_cog_mem
-  	long	hub_cmd_readcogmem
-  	cmp	cmd, #DBG_CMD_WRITECOG wz
-  if_e  rdlong	debugpc,debugpc	      '' jmp	#write_cog_mem
-	long	hub_cmd_writecogmem
+	shr	cmd, #2
+	add	cmd, hub_cmdloop_ptr
+	add	cmd, #(hub_cmd_table - hub_cmdloop)
+	rdlong	debugpc,cmd
+	nop
+	'' the above branches to the desired command
 
-  	cmp	cmd, #DBG_CMD_READHUB wz
-  if_e  rdlong	debugpc,debugpc
-  	long	hub_cmd_readhubmem
-  	cmp	cmd, #DBG_CMD_WRITEHUB wz
-  if_e  rdlong	debugpc,debugpc
-	long	hub_cmd_writehubmem
-  	cmp	cmd, #DBG_CMD_QUERYBP wz
-  if_e  rdlong	debugpc,debugpc
-	long	hub_cmd_querybp
-	cmp	cmd, #DBG_CMD_LMMSTEP wz
-  if_e	rdlong	debugpc,debugpc
-  	long	hub_cmd_lmmstep
-	cmp	cmd, #DBG_CMD_LMMBRK wz
-  if_e	rdlong	debugpc,debugpc
-  	long	hub_cmd_lmmbrk
-
+hub_cmd_bad
 	'' fall through to error if command not recognized
 	mov	respond2, #ERR_NOCMD
 hub_cmderr
@@ -484,6 +464,29 @@ hub_donecmd
 	call	#txbyte
 	jmp	#cmdloop
 
+	'' need a table of commands here
+hub_cmd_table
+	long	hub_cmd_status
+	long	hub_cmd_resume
+	long	hub_cmd_readcogmem
+	long	hub_cmd_writecogmem
+
+	long	hub_cmd_readhubmem
+	long	hub_cmd_writehubmem
+	long	hub_cmd_querybp
+	long	hub_cmd_lmmstep
+
+	long	hub_cmd_lmmbrk
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+
+
 	''
 	'' received a byte that was not a command
 	'' just ignore it and start the command loop
@@ -492,6 +495,15 @@ hub_notcmd
 	jmp	#cmdloop
 
 
+	''
+	'' resume execution
+	''
+hub_cmd_resume
+	jmp	#LeaveDebugger
+
+	''
+	'' read cog memory
+	''
 hub_cmd_readcogmem
 	'' must be exactly 3 more bytes left (len + cog address)
 	cmp	cmdlen, #3 wz
@@ -640,7 +652,9 @@ hub_cmd_lmmbrk
   if_ne	rdlong	debugpc, debugpc
         long    hub_cmderr
 
+	xor	ch,ch wz,wc
 	'' read the address
+	'' we can borrow the write_cog_loop
 	call	#rxlong
 	mov	cmdlen, #0
 	mov	hwbkpt, ch
