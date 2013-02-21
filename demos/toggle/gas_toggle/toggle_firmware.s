@@ -40,7 +40,17 @@
 		'' but it never hurts to be explicit!
 		''
 		.section .cogtoggle, "ax"
+
+		'' this code is written intending labels to be COG addresses
+		'' (4 byte aligned) instead of HUB addresses (1 byte aligned),
+		'' so we use the .cog_ram directive. This is useful for porting
+		'' PASM code over, since PASM labels are always long addresses.
+		'' Never use .cog_ram for LMM code executing from HUB RAM.
 		.cog_ram
+
+		'' This code should never be compressed for CMM mode, since
+		'' it executes directly on the hardware
+		.compress off
 	
 		'' load the pins and wait delay from the C
 		'' variables "pins" and "wait_time" respectively
