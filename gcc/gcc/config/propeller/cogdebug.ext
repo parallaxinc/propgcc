@@ -20,8 +20,6 @@ zero		long 	0
 clkfreq_ptr	long	__clkfreq
 baud_ptr	long	__baud
 
-dummy		long	60000000
-
 rxtx_init
 	'' calculate halfbit based on clock frequency
 	rdlong	halfbit, clkfreq_ptr
@@ -31,16 +29,6 @@ rxtx_init
 	getdivq	onebit
 	mov	halfbit, onebit
 	shr	halfbit, #1
-
-#if 0
-	'' debug code
-	mov	r0, #'@'
-loop
-	mov	ch, r0
-	call	#txbyte
-	add	r0, #1
-	jmp	#loop
-#endif
 
 rxtx_init_ret
 	ret
@@ -74,27 +62,6 @@ rxwaitstop
   if_z	jmp	#rxwaitstop
 
 rx8bits_ret
-	ret
-
-'--------------------------------------------------------------------
-' txbyte	Send one byte using kernel serial code
-'--------------------------------------------------------------------
-
-txbyte	or	ch,#0x100
-	shl	ch,#1
-	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
-
-txloop	shr	ch,#1 wc
-	setpc	txpin
-'-------
-	getcnt	now
-	add	now,onebit
-	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
-	waitcnt	now,#0
-'-------
-	djnz	bits,#txloop
-
-txbyte_ret
 	ret
 
 ' 115200
@@ -135,27 +102,6 @@ rxloop	mov	now,CNT
 	waitpeq	rxbit,rxbit
 
 rx8bits_ret
-	ret
-
-'--------------------------------------------------------------------
-' txbyte	Send one byte using kernel serial code
-'--------------------------------------------------------------------
-
-txbyte	or	ch,#0x100
-	shl	ch,#1
-	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
-
-txloop	shr	ch,#1 wc
-	muxc	outa,txbit  ' 22
-'-------
-	mov	now,CNT
-	add	now,onebit
-	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
-	waitcnt	now,#0
-'-------
-	djnz	bits,#txloop wz
-
-txbyte_ret
 	ret
 
 ' 115200
@@ -214,7 +160,8 @@ __EnterBreakpoint
 	sub	cogpc, #1
 	jmp	#__EnterDebugger
 __EnterLMMBreakpoint
-	sub	pc, #4
+	sub	pc, #4	'' do we want the PC left pointing at the last instruction??
+	'' fall through
 __EnterDebugger
 dbgstart
 	andn	ccr, #COGFLAGS_STEP
@@ -231,8 +178,18 @@ dbgstart
 	'' resume execution
 	'' no response expected/required
 LeaveDebugger
+#if defined(__PROPELLER2__)
+	cachex		'' invalidate cache
+#endif
 	shr	cogflags,#1 wz,wc,nr
 	jmp	cogpc
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'' debug kernel extension: loaded when we enter the debug kernel
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 	.section .debug.kerext, "ax"
 startdebug
@@ -250,6 +207,30 @@ respond1
 	long 0
 respond2
 	long 0
+
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,#0x100
+	shl	ch,#1
+	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+#if defined(__PROPELLER2__)
+	setpc	txpin
+	getcnt	now
+#else
+	muxc	outa, txbit ' 22
+	mov	now, CNT
+#endif
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+	djnz	bits,#txloop
+
+txbyte_ret
+	ret
 
 
 DebugLMM
@@ -628,6 +609,9 @@ write_hub_loop
 	rdlong	debugpc,debugpc		'jmp	#donecmd
 	long	hub_donecmd
 
+	''
+	'' find the instruction to use for a software breakpoint
+	''
 hub_cmd_querybp
 	mov	ch, #RESPOND_DATA
 	call	#txbyte
@@ -645,20 +629,37 @@ hub_cmd_lmmstep
 	or	ccr, #COGFLAGS_STEP
 	jmp	#LeaveDebugger
 
+	''
+	'' place a hardware breakpoint
+	'' 
 hub_cmd_lmmbrk
-	'' must have 4 bytes left in command (address for LMM breakpoint)
-	cmp	cmdlen, #4 wz
+	'' must have 5 bytes left in command (1 byte bkpt number, 4 bytes address for LMM breakpoint)
+	cmp	cmdlen, #5 wz
   if_ne	mov	respond2, #ERR_BRKLEN
   if_ne	rdlong	debugpc, debugpc
         long    hub_cmderr
 
-	xor	ch,ch wz,wc
+	call	#rxbyte
+	sub	cmdlen, #1
+	mov	tmp0, ch	'' save breakpoint number
 	'' read the address
-	'' we can borrow the write_cog_loop
 	call	#rxlong
 	mov	cmdlen, #0
-	mov	hwbkpt, ch
+
 	mov	respond1, #RESPOND_ACK
+#if defined(__PROPELLER_USE_XMM__)
+	'' in XMM mode there are 2 hardware breakpoints available, 0 and 1
+	cmp	tmp0, #1 wz
+  if_z	mov	hwbkpt1, ch
+  if_z  rdlong	debugpc, debugpc
+  	long	hub_donecmd
+#endif
+	'' in other modes only 1 hardware breakpoint is available
+	cmp	tmp0, #0 wz
+ if_nz	mov   	respond2, #ERR_BRKNUM
+ if_nz	rdlong	debugpc, debugpc
+ 	long	hub_cmderr
+	mov	hwbkpt0, ch
 	rdlong	debugpc, debugpc
 	long	hub_donecmd
 

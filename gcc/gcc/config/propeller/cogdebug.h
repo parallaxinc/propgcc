@@ -34,7 +34,7 @@
 /* request to single step the LMM interpreter */
 #define DBG_CMD_LMMSTEP    0x70
 
-/* set LMM hardware breakpoint: data is 4 bytes address */
+/* set LMM hardware breakpoint: data is 1 byte bkpt number, 4 bytes address */
 #define DBG_CMD_LMMBRK     0x80
 
 /* response packets */
@@ -58,5 +58,6 @@
 #define ERR_NOCMD       0xe1
 #define ERR_READLEN     0xe2
 #define ERR_BRKLEN      0xe3
+#define ERR_BRKNUM      0xe4
 
 #endif

@@ -49,13 +49,21 @@ pc	long	0
 __ccr__
 ccr	long	0
 
-hwbkpt	long	0
+	''
+	'' there are two "hardware" breakpoints, hwbkpt0 and hwbkpt1
+	'' these are useful because XMM code often executes from ROM
+	'' or flash where normal software breakpoints are difficult or
+	'' impossible to place
+
+hwbkpt0	long	0
 	'' register 20 needs to be the breakpoint command
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
 Breakpoint
 	call	#__EnterLMMBreakpoint
 
+hwbkpt1	long 0		'' only available in XMM
+	
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
@@ -73,9 +81,11 @@ __LMM_loop
   if_z	call	#__EnterDebugger
 	test	ccr, #COGFLAGS_STEP wz
   if_nz call	#__EnterDebugger
-	cmp	pc, hwbkpt wz
+	cmp	pc, hwbkpt0 wz
   if_z  call	#__EnterDebugger
-	
+	cmp	pc, hwbkpt1 wz
+  if_z  call	#__EnterDebugger
+
 	call	#read_code
 	add	pc,#4
 	shr	ccr, #1 wc,wz,nr	'' restore flags
