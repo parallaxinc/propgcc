@@ -61,7 +61,7 @@ pc	long	entry		' default pc
 __ccr__
 ccr	long	0
 
-hwbkpt	long	0
+hwbkpt0	long	0
 	'' register 20 needs to be the breakpoint command
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
@@ -87,7 +87,7 @@ __LMM_loop
   if_z	call	#__EnterDebugger
 	test	ccr, #COGFLAGS_STEP wz
   if_nz call	#__EnterDebugger
-	cmp	pc, hwbkpt wz
+	cmp	pc, hwbkpt0 wz
   if_z  call	#__EnterDebugger
 #if defined(__PROPELLER2__)
 	rdlongc	L_ins0,pc

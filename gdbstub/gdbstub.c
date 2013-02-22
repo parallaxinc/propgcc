@@ -89,7 +89,11 @@ char cmd[1028];
 #define PROP2 2
 int prop_version = 0;
 int DEFAULT_COG = 0x0f;
-int lmm_break_used;
+
+#define ADDR_UNUSED 0xffffffff
+
+int lmm_break_addr0 = ADDR_UNUSED;
+int lmm_break_addr1 = ADDR_UNUSED;
 
 static char p1_memregions[] = 
   "<?xml version=\"1.0\"?>"
@@ -1264,21 +1268,23 @@ parse_breakpoint(int i, long *addr, long *len)
  * set the LMM hardware breakpoint to addr
  */
 static int
-set_lmm_break(uint32_t addr)
+set_lmm_break(int brknum, uint32_t addr)
 {
     int err = 0;
     uint8_t rchksum;
     uint8_t pkt[8];
+    uint8_t *p = pkt;
 
-    err = debug_cmd(DBG_CMD_LMMBRK, 4);
+    err = debug_cmd(DBG_CMD_LMMBRK, 5);
     if (err != ERR_NONE)
         return err;
-    /* send the address */
-    pkt[0] = addr & 0xff;
-    pkt[1] = (addr>>8) & 0xff;
-    pkt[2] = (addr>>16) & 0xff;
-    pkt[3] = (addr>>24) & 0xff;
-    tx(pkt, 4);
+    /* send the breakpoint number + address */
+    *p++ = brknum;
+    *p++ = addr & 0xff;
+    *p++ = (addr>>8) & 0xff;
+    *p++ = (addr>>16) & 0xff;
+    *p++ = (addr>>24) & 0xff;
+    tx(pkt, 5);
 
     /* check for an ack */
     err = rx_ack_chksum(RESPOND_ACK, &rchksum, PKT_TIMEOUT);
@@ -1315,8 +1321,21 @@ void cmd_z_remove_breakpoint(int i)
     } else if (code ==  '1') {
         /* remove hardware breakpoint */
         /* we don't really have a way to do this, so just set it to an impossible value */
-        lmm_break_used = 0;
-        err = set_lmm_break(0xFFFFFFFF);
+        if (addr == lmm_break_addr0)
+	  {
+	    err = set_lmm_break(0, 0xFFFFFFFF);
+	    lmm_break_addr0 = 0xffffffff;
+	  }
+	else if (addr == lmm_break_addr1)
+	  {
+	    err = set_lmm_break(1, 0xFFFFFFFF);
+	    lmm_break_addr1 = 0xffffffff;
+	  }
+	else
+	  {
+	    /* bad address, return an error */
+	    err = -1;
+	  }
 	if (err == 0)
 	  reply("OK", 2);
 	else
@@ -1365,18 +1384,27 @@ void cmd_Z_set_breakpoint(int i)
 	reply("OK", 2);
 #endif
     } else if (code == '1') {
-        if (lmm_break_used) {
-	  /* cannot do this again */
-	  reply("E98", 3);
-	} else {
-	  lmm_break_used = 1;
-	  /* set hardware breakpoint */
-	  err = set_lmm_break(addr);
-	  if (err == 0)
-	    reply("OK", 2);
-	  else
-	    reply("E99", 3);  /* what should this be? */
-	}
+        if (lmm_break_addr0 == ADDR_UNUSED || lmm_break_addr0 == addr)
+	  {
+	    err = set_lmm_break(0, addr);
+	    if (err == 0)
+	      lmm_break_addr0 = addr;
+	  }
+        else if (lmm_break_addr1 == ADDR_UNUSED || lmm_break_addr1 == addr)
+	  {
+	    err = set_lmm_break(1, addr);
+	    if (err == 0)
+	      lmm_break_addr1 = addr;
+	  }
+	else
+	  {
+	    err = -1;  /* no breakpoints left */
+	  }
+
+	if (err == 0)
+	  reply("OK", 2);
+	else
+	  reply("E99", 3);  /* what should this be? */
     } else {
         reply("", 0);
     }
