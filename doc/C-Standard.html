@@ -1,0 +1,106 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+  <META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+  <TITLE>Propeller GCC Standards Compliance</TITLE>
+</HEAD>
+<BODY>
+
+<H1>Contents</H1>
+<A HREF="#intro">Introduction</A><BR>
+<A HREF="#implementation">Implementation Defined Behavior</A><BR>
+<A HREF="#exceptions">Exceptions to the C99 Standard</A><BR>
+<A HREF="#compiler-exceptions">..Compiler</A><BR>
+<A HREF="#library-exceptions">..Library</A><BR>
+
+<A NAME="intro"><H1>Introduction</H1></A>
+<P>
+<I>This document is still a work in progress, and not all standards
+  violations are necessarily listed herein!</I>
+</P>
+<P>
+  The Propeller GCC compiler + library conforms to the C90 (ISO/IEC
+  9899:1990) standard, as far we we know. Any failure to conform is a
+  bug; please report it as such.
+
+  The compiler and library mostly conform to the C99 standard (ISO/IEC
+  9899:1999) except as noted in <A HREF="#exceptions">exceptions to the
+    C99 standard</A>.
+</P>
+
+<A NAME="implementation"><H1>Implementation Defined Behavior</H1></A>
+<P>
+  Here are some of the implementation defined behaviors as specified in Annex
+  J.3 of the C99 Standard. See also the GCC documentation for the
+  general GCC implementation behaviors; here we document details that
+  are specific to the Propeller implementation of GCC and to the
+  default library.
+</P>
+<A NAME="environment"><H2>Environment</H2></A>
+<P>
+  The <CODE>argv</CODE> argument to <CODE>main</CODE> is derived from
+  the global array <CODE>const char *__argv[]</CODE>, which is a NULL
+  terminated list of strings. By default this contains only a single
+  empty string followed by NULL.
+</P>
+<A NAME="characters"><H2>Characters</H2></A>
+<P>
+  There are 8 bits in a byte (3.6).
+  <CODE>char</CODE> is equivalent to <CODE>unsigned char</CODE> by
+  default (6.2.5).
+  We use UTF-8 encoding for multibyte characters at run time; however,
+  note that the "C" locale does not support any operations on these
+  characters. Use the "C.UTF-8" locale to operate with multibyte
+  characters and wide characters.
+</P>
+
+<A NAME="exceptions"><H1>Exceptions to the C99 Standard</H1></A>
+<P>
+  Propeller GCC does not implement all of the features of C99. The
+  exceptions are as follows.
+</P>
+
+<A NAME="compiler-exceptions"><H2>Compiler</H2></A>
+<P>
+  GCC does not implement some of the <CODE>#pragma</CODE> directives
+  for floating point control mandated by the standard.
+</P>
+
+<A NAME="library-exceptions"><H2>Library</H2></A>
+<P>
+  The library is missing some features of the C99 standard. The
+  missing features are outlined in this section.
+</P>
+<A NAME="stdio"><H3>Missing features in stdio functions</H3></A>
+<P>
+  The <CODE>printf</CODE> family of functions does not accept
+  the <CODE>%a</CODE> and <CODE>%A</CODE> specifiers for output of
+  hexadecimal floating point. Similarly, <CODE>scanf</CODE> does not
+  accept those specifiers for input of floating point numbers in
+  hexadecimal notation.
+</P>
+<P>
+  To get floating point output from <CODE>printf</CODE> and related
+  functions it is necessary to link with <CODE>-lm</CODE>. (This is
+  not actually a standard violation, but it may be surprising.)
+</P>
+<P>
+  <CODE>printf</CODE> and <CODE>scanf</CODE> do not correctly round
+  floating point numbers in many cases.
+</P>
+
+<A NAME="stdlib"><H3>Missing features in stdlib functions</H3></A>
+<P>
+  <CODE>strtod</CODE> and <CODE>strtof</CODE> do not always round
+  their outputs correctly according to the standard.
+</P>
+
+<A NAME="wide-char"><H3>Wide character I/O is not implemented</H3></A>
+<P>
+  The wide character input and output functions from &lt;wchar.h&gt;, such
+  as <CODE>fgetwc</CODE>, <CODE>fputwc</CODE>, <CODE>wprintf</CODE>,
+  and <CODE>wscanf</CODE>, are not implemented.
+</P>
+
+</BODY>
+</HTML>
