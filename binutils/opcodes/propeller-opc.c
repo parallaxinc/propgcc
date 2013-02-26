@@ -54,10 +54,10 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"ldi", 0x08800000, 0xfc800000, PROPELLER_OPERAND_LDI, CCZCWR, PROP_1_LMM, NO_COMPRESSED, 0},
   {"ldi", 0x09800000, 0xfd800000, PROPELLER_OPERAND_LDI, CCZCWR, PROP_2_LMM, NO_COMPRESSED, 0},
 
-/* brw is also made of rdlong (rdlongc for p2) and a constant.  We may shrink it later. */
+/* brw is made of a jmp and a constant.  We may shrink it later. */
 /* brw       000010 zc1i cccc ddddddddd sssssssss */
-  {"brw", 0x08800000, 0xfc800000, PROPELLER_OPERAND_BRW, CCZCWR, PROP_1_LMM, NO_COMPRESSED, 0},
-  {"brw", 0x09800000, 0xfd800000, PROPELLER_OPERAND_BRW, CCZCWR, PROP_2_LMM, NO_COMPRESSED, 0},
+  {"brw", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_BRW, CCZCNR, PROP_1_LMM, NO_COMPRESSED, 0},
+  {"brw", 0x1c000000, 0xffffffff, PROPELLER_OPERAND_BRW, CCZCNR, PROP_2_LMM, NO_COMPRESSED, 0},
 
 /* xmmio is made up of a mov immediate followed by a call; the first part
    is mov, so that's what we give here
