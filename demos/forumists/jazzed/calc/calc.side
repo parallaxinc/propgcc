@@ -1,0 +1,8 @@
+calc.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>-Dprintf=__simple_printf
+>-lm
+>BOARD::HUB
