@@ -34,7 +34,7 @@
 /* request to single step the LMM interpreter */
 #define DBG_CMD_LMMSTEP    0x70
 
-/* set LMM hardware breakpoint: data is 1 byte bkpt number, 4 bytes address */
+/* set LMM hardware breakpoint: data is 1 byte bkpt number (0 or 1), 4 bytes address */
 #define DBG_CMD_LMMBRK     0x80
 
 /* response packets */
@@ -46,18 +46,13 @@
 #define RESPOND_STATUS 0xf8  /* always 4 bytes coming back */
 #define RESPOND_DATA   0xf9  /* same number of bytes as host requested */
 #define RESPOND_ACK    0xfa  /* 1 byte data, intended to be checksum but always 0 for now */
-#define RESPOND_ERR    0xfe  /* 1 byte data error code */
+#define RESPOND_ERR    0xfe  /* 1 byte data, intended to be error code but always 0 for now */
+#define RESPOND_EXIT   0xff
 
 /* bits in the cogflags register */
 #define COGFLAGS_C      0x01
 #define COGFLAGS_NZ     0x02
 
 #define COGFLAGS_STEP   0x80  /* break on next LMM loop */
-
-
-#define ERR_NOCMD       0xe1
-#define ERR_READLEN     0xe2
-#define ERR_BRKLEN      0xe3
-#define ERR_BRKNUM      0xe4
 
 #endif

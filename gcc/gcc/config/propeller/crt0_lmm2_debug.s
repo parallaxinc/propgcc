@@ -1,6 +1,8 @@
-' crt0_lmm2.S - an LMM kernel for the Propeller 2
+' crt0_lmm2.S - an LMM kernel for the Propeller 1 and 2
 '
 '  Based on ideas from Bill Henning's original LMM design
+
+' This is the debug version of the kernel, and shared between prop1 and prop2.
 
 #include "cogdebug.h"
 
@@ -55,9 +57,11 @@ r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
+	.global __ccr__
+__ccr__
 ccr	long	0
 
-hwbkpt	long	entry
+hwbkpt0	long	0
 	'' register 20 needs to be the breakpoint command
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
@@ -80,23 +84,16 @@ __LMM_loop
 #else
 	and	rxbit,ina nr,wz	' check for low on RX
 #endif
-  if_z	call	#__EnterDebugger_Quiet
+  if_z	call	#__EnterDebugger
 	test	ccr, #COGFLAGS_STEP wz
   if_nz call	#__EnterDebugger
-
-#if 0
-	'' DEBUG -- dump pcs as they execute
-#  define HEXDEBUG
-	mov	hexch, pc
-	call	#txhex
-	mov	ch, #0x20
-	call	#txbyte
-	shl	pc, #1 wc,nr
-  if_c	call	#__EnterDebugger
-	'' END DEBUG CODE
-#endif
-
+	cmp	pc, hwbkpt0 wz
+  if_z  call	#__EnterDebugger
+#if defined(__PROPELLER2__)
+	rdlongc	L_ins0,pc
+#else
 	rdlong	L_ins0,pc
+#endif
 	shr	ccr, #1 wc,wz,nr	'' restore flags
 	add	pc,#4
 L_ins0	nop
@@ -110,7 +107,11 @@ L_ins0	nop
 	.macro LMM_movi reg
 	.global __LMM_MVI_\reg
 __LMM_MVI_\reg
+#if defined(__PROPELLER2__)
 	rdlongc	\reg,pc
+#else
+	rdlong	\reg,pc
+#endif
 	add	pc,#4
 	jmp	#__LMM_loop
 	.endm
@@ -138,7 +139,11 @@ __LMM_MVI_\reg
 	.global	__LMM_CALL
 	.global __LMM_CALL_INDIRECT
 __LMM_CALL
+#if defined(__PROPELLER2__)
 	rdlongc	__TMP0,pc
+#else
+	rdlong	__TMP0,pc
+#endif
 	add	pc,#4
 __LMM_CALL_INDIRECT
 	mov	lr,pc
@@ -150,7 +155,11 @@ __LMM_CALL_INDIRECT
 	''
 	.global __LMM_JMP
 __LMM_JMP
+#if defined(__PROPELLER2__)
 	rdlongc	pc,pc
+#else
+	rdlong	pc,pc
+#endif
 	jmp	#__LMM_loop
 
 	''
@@ -284,7 +293,8 @@ __CMPSWAPSI_ret
 	''
 	''
 __COGA	long 0
-	
+
+#if defined(__PROPELLER2__)
 loadbuf
 	movd	.ldlp,__COGA
 	shr	__TMP0,#2	'' convert to longs
@@ -297,8 +307,50 @@ loadbuf
 
 loadbuf_ret
 	ret
-
+#else
+	'' fast prop1 version of the code
+	'' the idea is from the fast code posted by Kuroneko in
+	'' the "Fastest possible memory transfer" thread on the
+	'' Parallax forums; modified slightly by Eric Smith
+        '' for multiple cog buffers
+	''
+loadbuf
+	'' first, find the number of longs to transfer
+	'' round up to next 64 bit boundary (the loop processes 64 bits
+	'' at a time)
+	'' setup: 11 ins (vs. 6 ins)
+ 	'' loop:   6 ins, 1 transfer/hub windows (vs. 13 ins,  0.8 transfer/hub window)
+	add	__TMP0, #7
+	andn	__TMP0, #7	'' round TMP0 up
 	
+	'' point to last byte in HUB buffer
+	add	__TMP1, __TMP0
+	sub	__TMP1, #1
+	'' point to last longs in cog memory
+	shr	__TMP0, #2	'' convert to longs
+	sub	__COGA, #1
+	add	__COGA, __TMP0
+	movd	lbuf0, __COGA
+	sub	__COGA, #1
+	movd	lbuf1, __COGA
+	sub	__TMP0, #2
+	movi	__TMP1, __TMP0
+	
+lbuf0	rdlong	0-0, __TMP1
+	sub	lbuf0, dst2
+	sub	__TMP1, i2s7 wc
+lbuf1	rdlong	0-0, __TMP1
+	sub	lbuf1, dst2
+  if_nc	djnz	__TMP1, #lbuf0		'' sub #7/djnz
+
+loadbuf_ret
+	ret
+	
+	'' initialized data and presets
+dst2	long	2 << 9
+i2s7	long	(2<<23) | 7
+
+#endif	
 	
 	''
 	'' FCACHE region

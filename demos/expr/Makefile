@@ -8,7 +8,7 @@ NAME = expr
 OBJS = expr.o
 
 # memory model
-MODEL = cmm
+MODEL ?= cmm
 
 #
 # enable experimental fcache code for this demo

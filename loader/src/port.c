@@ -42,6 +42,7 @@ typedef struct {
     int baud;
     int verbose;
     char *actualport;
+    int noreset;
 } CheckPortInfo;
 
 static int CheckPort(const char* port, void* data)
@@ -50,7 +51,7 @@ static int CheckPort(const char* port, void* data)
     int rc;
     if (info->verbose)
         printf("Trying %s                    \r", port); fflush(stdout);
-    if ((rc = popenport(port, info->baud)) != PLOAD_STATUS_OK)
+    if ((rc = popenport(port, info->baud, info->noreset)) != PLOAD_STATUS_OK)
         return rc;
     if (info->actualport) {
         strncpy(info->actualport, port, PATH_MAX - 1);
@@ -59,22 +60,30 @@ static int CheckPort(const char* port, void* data)
     return 0;
 }
 
-int InitPort(char *prefix, char *port, int baud, int verbose, char *actualport)
+int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
 {
     int rc;
-    
+    int noreset = PLOAD_RESET_DEVICE;
+    int verbose = 0;
+
+    if (flags & IFLAG_VERBOSE)
+      verbose = 1;
+    if (flags & IFLAG_NORESET)
+      noreset = PLOAD_NORESET;
+
     if (port) {
         if (actualport) {
             strncpy(actualport, port, PATH_MAX - 1);
             actualport[PATH_MAX - 1] = '\0';
         }
-        rc = popenport(port, baud);
+        rc = popenport(port, baud, noreset);
     }
     else {
         CheckPortInfo info;
         info.baud = baud;
         info.verbose = verbose;
         info.actualport = actualport;
+	info.noreset = noreset;
         if (serial_find(prefix, CheckPort, &info) == 0)
             rc = PLOAD_STATUS_OK;
         else

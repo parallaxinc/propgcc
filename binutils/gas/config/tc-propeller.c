@@ -1700,11 +1700,10 @@ md_assemble (char *instruction_string)
           }
         else
           {
-            char arg[8];
-            strcpy(arg, "pc");
+            char arg[16];
+            strcpy(arg, "#__LMM_JMP");
 
-            parse_dest(arg, &op1, &insn);
-            parse_src(arg, &op2, &insn, op->format);
+            parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
             str = parse_src_n(str, &insn2, 23);
             insn2_compressed = 1;
             size = 8;

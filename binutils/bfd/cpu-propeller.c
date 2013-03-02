@@ -50,4 +50,4 @@ static const bfd_arch_info_type arch_info_struct[] =
    "propeller" and an explicit "prop1"
 */
 const bfd_arch_info_type bfd_propeller_arch =
-  PROP( 0, "prop1", TRUE, &arch_info_struct[0] );
+  PROP( 0, "prop", TRUE, &arch_info_struct[0] );

@@ -1,6 +1,4 @@
 #include "cogdebug.h"
-
-	''#define HEXDEBUG
 	.section .kernel, "ax"
 
 	.global r0
@@ -47,17 +45,25 @@ r15	'' alias for lr
 lr	long	0
 sp	long	0
 pc	long	0
+	.global __ccr__
+__ccr__
 ccr	long	0
-hwbkpt	long	entry
+
+	''
+	'' there are two "hardware" breakpoints, hwbkpt0 and hwbkpt1
+	'' these are useful because XMM code often executes from ROM
+	'' or flash where normal software breakpoints are difficult or
+	'' impossible to place
+
+hwbkpt0	long	0
 	'' register 20 needs to be the breakpoint command
 	'' the instruction at "Breakpoint" should be whatever
 	'' the debugger should use as a breakpoint instruction
 Breakpoint
-	call	#__EnterBreakpoint
+	call	#__EnterLMMBreakpoint
 
-	.global __C_LOCK_PTR
-__C_LOCK_PTR long __C_LOCK
-
+hwbkpt1	long 0		'' only available in XMM
+	
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
@@ -67,15 +73,27 @@ __LMM_start
 __LMM_loop
 	muxc	ccr, #1
 	muxnz	ccr, #2
-	cmp	pc,hwbkpt wz
- if_e	call	#__EnterDebugger
+#if defined(__PROPELLER2__)
+	getp	rxpin wz	' check for low on RX
+#else
+	and	rxbit,ina nr,wz	' check for low on RX
+#endif
+  if_z	call	#__EnterDebugger
 	test	ccr, #COGFLAGS_STEP wz
- if_nz  call	#__EnterDebugger
+  if_nz call	#__EnterDebugger
+	cmp	pc, hwbkpt0 wz
+  if_z  call	#__EnterDebugger
+	cmp	pc, hwbkpt1 wz
+  if_z  call	#__EnterDebugger
+
 	call	#read_code
 	add	pc,#4
 	shr	ccr, #1 wc,wz,nr	'' restore flags
 L_ins0	nop
 	jmp	#__LMM_loop
+
+	.global __C_LOCK_PTR
+__C_LOCK_PTR long __C_LOCK
 
 	''
 	'' LMM support functions
@@ -702,30 +720,3 @@ __LMM_FCACHE_START
 
 	#include "kernel.ext"
 	#include "cogdebug.ext"
-
-#ifdef HEXDEBUG
-	.section .kernel
-hexcnt	long 0
-hexch	long 0
-	
-txhex
-	mov	hexcnt, #8
-hexlp
-	mov	ch, hexch
-	rol	hexch, #4
-	shr	ch,#28
-	cmp	ch,#0x09 wz,wc
-	add	ch,#0x30
-  if_a	add	ch,#(0x41-0x3A)  '' 3A -> 41
-	call	#txbyte
-	djnz	hexcnt, #hexlp
-
-	mov	ch,#10
-	call	#txbyte
-	mov	ch,#13
-	call	#txbyte
-
-txhex_ret
-	ret
-#endif
-

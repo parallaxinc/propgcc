@@ -901,7 +901,9 @@ propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
  *   S   Print a mask (1<<n) where n is a constant
  *   B   Print a cog memory reference; note that the hardware wants
  *       these to be treated as long addresses, so they have to be divided by 4
- *         
+ *   I   Print the instruction opcode for a mathematical operation
+ *   Q   The register containing the least significant part of a 64 bit value
+ *   R   The register containing the most significant part of a 64 bit value
  */
 
 #define PREDLETTER(YES, REV)  (letter == 'p') ? (YES) : (REV)
@@ -943,7 +945,7 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       fprintf (file, "IF_%s", str);
       return;
   }
-  if (letter == 'Q') {
+  if (letter == 'I') {
     switch (code) {
     case PLUS: str = "add"; break;
     case MINUS: str = "sub"; break;
@@ -990,6 +992,46 @@ propeller_print_operand (FILE * file, rtx op, int letter)
     fprintf (file, "/4)");
     return;
   }
+  if (letter == 'Q') {
+      if (code == CONST_INT || code == CONST_DOUBLE)
+	{
+	  rtx part = gen_lowpart (SImode, op);
+	  fprintf (file, "#" HOST_WIDE_INT_PRINT_DEC, INTVAL (part));
+	  return;
+	}
+
+      if (code != REG || REGNO (op) > PROP_SP_REGNUM)
+	{
+	  output_operand_lossage ("invalid operand for code '%c'", letter);
+	  return;
+	}
+
+      asm_fprintf (file, "%r", REGNO (op));
+      return;
+  }
+  if (letter == 'R') {
+      if (code == CONST_INT || code == CONST_DOUBLE)
+	{
+	  enum machine_mode mode = GET_MODE (op);
+	  rtx part;
+
+	  if (mode == VOIDmode)
+	    mode = DImode;
+	  part = gen_highpart_mode (SImode, mode, op);
+	  fprintf (file, "#" HOST_WIDE_INT_PRINT_DEC, INTVAL (part));
+	  return;
+	}
+
+      if (code != REG || REGNO (op) > PROP_SP_REGNUM)
+	{
+	  output_operand_lossage ("invalid operand for code '%c'", letter);
+	  return;
+	}
+
+      asm_fprintf (file, "%r", REGNO (op) + 1);
+      return;
+  }
+
   if (code == SIGN_EXTEND)
     op = XEXP (op, 0), code = GET_CODE (op);
   else if (code == REG || code == SUBREG)
@@ -3323,7 +3365,7 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
               rtx const_insn;
               rtx next;
               rtx mov_insn = insn;
-              int mode;
+              enum machine_mode mode;
 
               const_label = gen_label_rtx ();
               LABEL_NUSES (const_label)++;

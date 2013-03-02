@@ -1,5 +1,5 @@
 /* propeller-specific support for 32-bit ELF.
-   Copyright 2011 Parallax Inc.
+   Copyright 2011-2013 Parallax Inc.
 
    Copied from elf32-moxie.c which is..
    Copyright 2009, 2010 Free Software Foundation, Inc.
@@ -28,6 +28,183 @@
 #include "elf/propeller.h"
 
 /* Forward declarations.  */
+
+
+/* Utilities to actually perform propeller relocs.  */
+
+static bfd_reloc_status_type
+propeller_elf_do_pcrel10_reloc (
+				reloc_howto_type *howto,
+				bfd *abfd,
+				asection *input_section,
+				bfd_byte *data,
+				bfd_vma offset,
+				bfd_vma symbol_value,
+				bfd_vma addend)
+{
+  bfd_signed_vma relocation;
+  unsigned long x;
+  bfd_reloc_status_type status;
+
+  /* Sanity check the address (offset in section).  */
+  if (offset > bfd_get_section_limit (abfd, input_section))
+    return bfd_reloc_outofrange;
+
+  relocation = symbol_value + addend;
+  /* Make it pc relative.  */
+  relocation -=	(input_section->output_section->vma
+		 + input_section->output_offset);
+
+  /* Has to be relative to the next instruction, actually */
+  relocation += 4;
+
+  if (relocation < -0x1ff || relocation > 0x1ff)
+    status = bfd_reloc_overflow;
+  else
+    status = bfd_reloc_ok;
+
+  x = bfd_get_32 (abfd, data + offset);
+  if (relocation < 0)
+    {
+      /* toggle add/sub bit */
+      x |= 0x04000000;
+      relocation = -relocation;
+    }
+  relocation >>= howto->rightshift;
+  relocation <<= howto->bitpos;
+  x = (x & ~howto->dst_mask) | (((x & howto->src_mask) + relocation) & howto->dst_mask);
+  bfd_put_32 (abfd, (bfd_vma) x, data + offset);
+
+  return status;
+}
+
+static bfd_reloc_status_type
+propeller_elf_do_inscnt_reloc (
+				reloc_howto_type *howto,
+				bfd *abfd,
+				asection *input_section,
+				bfd_byte *data,
+				bfd_vma offset,
+				bfd_vma symbol_value,
+				bfd_vma addend)
+{
+  bfd_signed_vma relocation;
+  unsigned long x;
+  bfd_reloc_status_type status;
+
+  /* Sanity check the address (offset in section).  */
+  if (offset > bfd_get_section_limit (abfd, input_section))
+    return bfd_reloc_outofrange;
+
+  relocation = symbol_value + addend;
+  /* subtract 1  */
+  relocation -=	1;
+
+  /* only 6 bits */
+  if (relocation < 0 || relocation > 0x3f)
+    status = bfd_reloc_overflow;
+  else
+    status = bfd_reloc_ok;
+
+  x = bfd_get_32 (abfd, data + offset);
+  relocation >>= howto->rightshift;
+  relocation <<= howto->bitpos;
+  x = (x & ~howto->dst_mask) | (((x & howto->src_mask) + relocation) & howto->dst_mask);
+  bfd_put_32 (abfd, (bfd_vma) x, data + offset);
+
+  return status;
+}
+
+/* handle propeller specific relocations */
+static bfd_reloc_status_type
+propeller_specific_reloc (bfd *abfd,
+			 arelent *reloc_entry,
+			 asymbol * symbol,
+			 void *data,
+			 asection * input_section,
+			 bfd *output_bfd,
+			 char **error_message ATTRIBUTE_UNUSED)
+{
+  /* This part is from bfd_elf_generic_reloc.  */
+  if (output_bfd != NULL
+      && (symbol->flags & BSF_SECTION_SYM) == 0
+      && (! reloc_entry->howto->partial_inplace
+	  || reloc_entry->addend == 0))
+    {
+      reloc_entry->address += input_section->output_offset;
+      return bfd_reloc_ok;
+    }
+
+  if (output_bfd != NULL)
+    /* FIXME: See bfd_perform_relocation.  Is this right?  */
+    return bfd_reloc_continue;
+
+  switch (reloc_entry->howto->type) {
+  case R_PROPELLER_PCREL10:
+    return propeller_elf_do_pcrel10_reloc (reloc_entry->howto, abfd,
+					   input_section,
+					   data, reloc_entry->address,
+					   (symbol->value
+					    + symbol->section->output_section->vma
+					    + symbol->section->output_offset),
+					   reloc_entry->addend);
+  case R_PROPELLER_REPINSCNT:
+    return propeller_elf_do_inscnt_reloc (reloc_entry->howto, abfd,
+					   input_section,
+					   data, reloc_entry->address,
+					   (symbol->value
+					    + symbol->section->output_section->vma
+					    + symbol->section->output_offset),
+					   reloc_entry->addend);
+  case R_PROPELLER_23:
+  case R_PROPELLER_REPS:
+  default:
+    return bfd_reloc_notsupported;
+  }
+}
+
+/* handle the "23" bit relocation (32 bits which may be interpreted
+ * as an instruction, and hence must have the conditional execution bits
+ * all 0
+ */
+static bfd_reloc_status_type
+propeller_rel23_reloc (bfd *abfd ATTRIBUTE_UNUSED,
+			 arelent *reloc_entry,
+			 asymbol * symbol,
+			 void *data ATTRIBUTE_UNUSED,
+			 asection * input_section,
+			 bfd *output_bfd,
+			 char **error_message ATTRIBUTE_UNUSED)
+{
+  /* This part is from bfd_elf_generic_reloc; short circuit reloc if
+     producing relocatable output and the reloc is against an external
+     symbol
+   */
+  bfd_vma relocation;
+  bfd_vma mask;
+
+  if (output_bfd != NULL
+      && (symbol->flags & BSF_SECTION_SYM) == 0
+      && (! reloc_entry->howto->partial_inplace
+	  || reloc_entry->addend == 0))
+    {
+      reloc_entry->address += input_section->output_offset;
+      return bfd_reloc_ok;
+    }
+
+  if (output_bfd != NULL)
+    /* FIXME: See bfd_perform_relocation.  Is this right?  */
+    return bfd_reloc_continue;
+
+  /* validate relocation */
+  relocation = symbol->value + reloc_entry->addend;
+
+  mask = ~(reloc_entry->howto->dst_mask);
+  if (0 != (relocation & mask)) {
+    return bfd_reloc_overflow;
+  }
+  return bfd_reloc_continue;
+}
 
 static reloc_howto_type propeller_elf_howto_table[] = {
   /* This reloc does nothing. */
@@ -60,19 +237,23 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0xffffffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* A 23 bit absolute relocation. */
+  /* A 32 bit absolute relocation with a "hole" */
+  /* This is used for 32 bit data which should be ignored (it's inline
+     in code and should be interpreted as a no-op). The conditional
+     execution bits must be set such that the data is not executed
+  */
   HOWTO (R_PROPELLER_23,	/* type */
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
-	 23,			/* bitsize */
+	 32,			/* bitsize */
 	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
-	 complain_overflow_dont,	/* complain_on_overflow */
-	 bfd_elf_generic_reloc,	/* special_function */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 propeller_rel23_reloc,	/* special_function */
 	 "R_PROPELLER_23",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
-	 0x007fffff,		/* dst_mask */
+	 0xffc3ffff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* A 16 bit absolute relocation. */
@@ -153,6 +334,73 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0x0003FE00,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
+  /* A 9 bit relocation of the DST field of an instruction */
+  HOWTO (R_PROPELLER_DST_IMM,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 9,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 9,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_DST",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0003FE00,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* a pc-relative offset between -511 and +511; the sign bit actually
+     has to toggle between the "add" and "sub" instructions */
+  HOWTO (R_PROPELLER_PCREL10,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 10,			/* bitsize */
+	 TRUE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 propeller_specific_reloc,	/* special_function */
+	 "R_PROPELLER_PCREL10",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x000003FF,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* count for REPS instruction
+   * REPS uses not only the normal 9 bit dest field for the count, but adds
+   * 5 other bits stolen from the condition codes and z bit for a total
+   * of 14 bits for the count; also, 1 is subtracted from the count
+   * (so a rep count of 0 means to run the loop once)
+   */
+  HOWTO (R_PROPELLER_REPS,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 14,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 9,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 propeller_specific_reloc,	/* special_function */
+	 "R_PROPELLER_REPS",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x023FFE00,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* a 6 bit instruction repeat count; 1 is subtracted from the
+     constant
+  */
+  HOWTO (R_PROPELLER_REPINSCNT,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 6,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 propeller_specific_reloc,	/* special_function */
+	 "R_PROPELLER_REPINSCNT",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0000003F,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
 };
 
 /* Map BFD reloc types to Propeller ELF reloc types. */
@@ -166,12 +414,16 @@ struct propeller_reloc_map
 static const struct propeller_reloc_map propeller_reloc_map[] = {
   {BFD_RELOC_NONE, R_PROPELLER_NONE},
   {BFD_RELOC_32, R_PROPELLER_32},
-  {BFD_RELOC_PROPELLER_23, R_PROPELLER_23},
   {BFD_RELOC_16, R_PROPELLER_16},
   {BFD_RELOC_8, R_PROPELLER_8},
   {BFD_RELOC_PROPELLER_SRC_IMM, R_PROPELLER_SRC_IMM},
   {BFD_RELOC_PROPELLER_SRC, R_PROPELLER_SRC},
   {BFD_RELOC_PROPELLER_DST, R_PROPELLER_DST},
+  {BFD_RELOC_PROPELLER_DST_IMM, R_PROPELLER_DST_IMM},
+  {BFD_RELOC_PROPELLER_23, R_PROPELLER_23},
+  {BFD_RELOC_PROPELLER_PCREL10, R_PROPELLER_PCREL10},
+  {BFD_RELOC_PROPELLER_REPS, R_PROPELLER_REPS},
+  {BFD_RELOC_PROPELLER_REPINSCNT, R_PROPELLER_REPINSCNT},
 };
 
 static reloc_howto_type *
@@ -232,13 +484,35 @@ propeller_final_link_relocate (reloc_howto_type * howto,
 
   switch (howto->type)
     {
+    case R_PROPELLER_23:
+      /* do a sanity check */
+      if ((relocation & ~howto->dst_mask) != 0) {
+	return bfd_reloc_overflow;
+      }
+      /* fall through */
     case R_PROPELLER_SRC_IMM:
     case R_PROPELLER_SRC:
     case R_PROPELLER_DST:
-    default:
+    case R_PROPELLER_32:
+    case R_PROPELLER_16:
+    case R_PROPELLER_8:
       r = _bfd_final_link_relocate (howto, input_bfd, input_section,
 				    contents, rel->r_offset,
 				    relocation, rel->r_addend);
+      break;
+    case R_PROPELLER_PCREL10:
+      r = propeller_elf_do_pcrel10_reloc(howto, input_bfd, input_section,
+					 contents, rel->r_offset,
+					 relocation, rel->r_addend);
+      break;
+    case R_PROPELLER_REPINSCNT:
+      r = propeller_elf_do_inscnt_reloc(howto, input_bfd, input_section,
+					 contents, rel->r_offset,
+					 relocation, rel->r_addend);
+      break;
+    default:
+      r = bfd_reloc_notsupported;
+      break;
     }
 
   return r;
@@ -400,6 +674,29 @@ propeller_elf_relocate_section (bfd * output_bfd,
   return TRUE;
 }
 
+/* Merge non-visibility st_other attributes. Ensure that our
+   architecture specific flags are copied into h->other even if this
+   is not a definition of the symbol
+*/
+static void
+propeller_elf_merge_symbol_attribute (struct elf_link_hash_entry *h,
+				      const Elf_Internal_Sym *isym,
+				      bfd_boolean definition,
+				      bfd_boolean dynamic ATTRIBUTE_UNUSED)
+{
+  if ((isym->st_other & ~ELF_ST_VISIBILITY (-1)) != 0)
+    {
+      unsigned char other;
+
+      other = (definition ? isym->st_other : h->other);
+      other &= ~ELF_ST_VISIBILITY (-1);
+      h->other = other | ELF_ST_VISIBILITY (h->other);
+    }
+  if (!definition && (isym->st_other & PROPELLER_OTHER_FLAGS))
+    h->other |= isym->st_other & PROPELLER_OTHER_FLAGS;
+}
+
+
 /* Return the section that should be marked against GC for a given
    relocation.  */
 
@@ -454,6 +751,208 @@ propeller_elf_check_relocs (bfd * abfd,
   return TRUE;
 }
 
+/* Propeller ELF local labels start with either '.' or 'L_'.  */
+
+static bfd_boolean
+propeller_elf_is_local_label_name (bfd *abfd, const char *name)
+{
+#if 0
+  if (name[0] == 'L' && name[1] == '_')
+    return TRUE;
+#endif
+  /* accept the generic ELF local label syntax as well.  */
+  return _bfd_elf_is_local_label_name (abfd, name);
+}
+
+/* Set the right machine number for an ELF file */
+static bfd_boolean
+propeller_elf_object_p (bfd *abfd)
+{
+  flagword flags;
+  unsigned long mach;
+
+  flags = elf_elfheader (abfd)->e_flags;
+  if (flags & EF_PROPELLER_PROP2)
+    {
+      mach = bfd_mach_prop2;
+    }
+  else
+    {
+      /* default to propeller 1 for compatibility with old object files */
+      mach = bfd_mach_prop1;
+    }
+  bfd_default_set_arch_mach (abfd, bfd_arch_propeller, mach);
+  return TRUE;
+}
+
+/* final write processing; set flags in the object file, etc */
+static void
+propeller_elf_final_write_processing (bfd *abfd,
+				      bfd_boolean linker ATTRIBUTE_UNUSED)
+{
+  flagword val;
+  /* set the flags */
+  switch (bfd_get_mach (abfd))
+    {
+    case bfd_mach_prop1:
+      val = EF_PROPELLER_PROP1;
+      break;
+    case bfd_mach_prop2:
+      val = EF_PROPELLER_PROP2;
+      break;
+    default:
+      /* leave flags unchanged */
+      val = 0;
+      break;
+    }
+  if (val != 0) {
+    elf_elfheader (abfd)->e_flags &= ~(EF_PROPELLER_MACH);
+    elf_elfheader (abfd)->e_flags |= val;
+  }
+}
+
+/* Function to set the ELF flag bits.  */
+
+static bfd_boolean
+propeller_elf_set_private_flags (bfd * abfd, flagword flags)
+{
+  elf_elfheader (abfd)->e_flags = flags;
+  elf_flags_init (abfd) = TRUE;
+  return TRUE;
+}
+
+static bfd_boolean no_warn_mismatch = FALSE;
+
+/* provide a prototype to make the compiler happy */
+void bfd_elf32_propeller_set_target_flags (bfd_boolean);
+
+void
+bfd_elf32_propeller_set_target_flags (bfd_boolean user_no_warn_mismatch)
+{
+  no_warn_mismatch = user_no_warn_mismatch;
+}
+/* Merge backend specific data from an object file to the output
+   object file when linking.  */
+
+static bfd_boolean
+propeller_elf_merge_private_bfd_data (bfd * ibfd, bfd * obfd)
+{
+  flagword old_flags;
+  flagword new_flags;
+  bfd_boolean error = FALSE;
+
+  new_flags = elf_elfheader (ibfd)->e_flags;
+  old_flags = elf_elfheader (obfd)->e_flags;
+
+  if (!elf_flags_init (obfd))
+    {
+      /* First call, no flags set.  */
+      elf_flags_init (obfd) = TRUE;
+      elf_elfheader (obfd)->e_flags = new_flags;
+    }
+  else if (old_flags != new_flags)
+    {
+      flagword old_mach, new_mach;
+      flagword old_ef, new_ef;
+
+      /* we can check here for mismatches in bits */
+      old_mach = old_flags & EF_PROPELLER_MACH;
+      new_mach = new_flags & EF_PROPELLER_MACH;
+      old_ef = old_flags & (~EF_PROPELLER_MACH);
+      new_ef = new_flags & (~EF_PROPELLER_MACH);
+
+      if (old_mach != 0 && new_mach != 0 && old_mach != new_mach)
+	{
+	      (*_bfd_error_handler)
+		("propeller architecture mismatch: old = 0x%.8lx, new = 0x%.8lx, filename = %s",
+		 old_mach, new_mach, bfd_get_filename (ibfd));
+	}
+      if (old_ef != 0 && new_ef != 0)
+	{
+	  /* Only complain if inconsistent bits are being set */
+	  if (no_warn_mismatch)
+	    {
+	      elf_elfheader (obfd)->e_flags = (new_flags | old_flags);
+	    }
+	  else
+	    {
+	      (*_bfd_error_handler)
+		("ELF header flags mismatch: old_flags = 0x%.8lx, new_flags = 0x%.8lx, filename = %s",
+		 old_flags, new_flags, bfd_get_filename (ibfd));
+	      error = TRUE;
+	    }
+	}
+      else
+	elf_elfheader (obfd)->e_flags |= new_flags;
+    }
+
+  if (error)
+    bfd_set_error (bfd_error_bad_value);
+
+  return !error;
+}
+
+static bfd_boolean
+propeller_elf_print_private_bfd_data (bfd * abfd, void * ptr)
+{
+  FILE * file = (FILE *) ptr;
+  flagword flags;
+
+  BFD_ASSERT (abfd != NULL && ptr != NULL);
+
+  /* Print normal ELF private data.  */
+  _bfd_elf_print_private_bfd_data (abfd, ptr);
+
+  flags = elf_elfheader (abfd)->e_flags;
+  fprintf (file, _("private flags = 0x%lx:"), (long) flags);
+
+  if (flags & EF_PROPELLER_PROP1)
+    fprintf (file, _(" [prop1]"));
+  if (flags & EF_PROPELLER_PROP2)
+    fprintf (file, _(" [prop2]"));
+  if (flags & EF_PROPELLER_COMPRESS)
+    fprintf (file, _(" [cmm]"));
+  if (flags & EF_PROPELLER_XMM)
+    fprintf (file, _(" [xmm]"));
+
+  fputc ('\n', file);
+  return TRUE;
+}
+
+/* Tweak phdrs before writing them out.  */
+/* for the propeller, this just involves copying various flags from the
+   section headers
+*/
+
+#define PROP_FLAGS (0xf0000000)
+
+static int
+propeller_elf_modify_program_headers (bfd *abfd, struct bfd_link_info *info)
+{
+  struct elf_obj_tdata *tdata;
+  Elf_Internal_Phdr *phdr;
+  unsigned int i;
+  unsigned int flags;
+  struct elf_segment_map *m;
+
+  if (info == NULL)
+    return TRUE;
+
+  tdata = elf_tdata (abfd);
+  phdr = tdata->phdr;
+  for (i = 0, m = elf_tdata (abfd)->segment_map; m; ++i, m = m->next)
+    {
+      if (m->count != 0
+	  && (flags = elf_section_flags (m->sections[0])) != 0)
+	{
+	  /* Copy processor specific flags  */
+	  phdr[i].p_flags |= flags & PROP_FLAGS;
+	}
+    }
+
+  return TRUE;
+}
+
 #define ELF_ARCH		bfd_arch_propeller
 #define ELF_MACHINE_CODE	EM_PROPELLER
 #define ELF_MAXPAGESIZE		0x1
@@ -466,11 +965,21 @@ propeller_elf_check_relocs (bfd * abfd,
 #define elf_backend_relocate_section		propeller_elf_relocate_section
 #define elf_backend_gc_mark_hook		propeller_elf_gc_mark_hook
 #define elf_backend_check_relocs                propeller_elf_check_relocs
+#define elf_backend_merge_symbol_attribute      propeller_elf_merge_symbol_attribute
+#define elf_backend_modify_program_headers      propeller_elf_modify_program_headers
+#define elf_backend_object_p                    propeller_elf_object_p
+#define elf_backend_final_write_processing      propeller_elf_final_write_processing
 
 #define elf_backend_can_gc_sections		1
 #define elf_backend_rela_normal			1
 
 #define bfd_elf32_bfd_reloc_type_lookup		propeller_reloc_type_lookup
 #define bfd_elf32_bfd_reloc_name_lookup		propeller_reloc_name_lookup
+#define bfd_elf32_bfd_set_private_flags         propeller_elf_set_private_flags
+#define bfd_elf32_bfd_merge_private_bfd_data    propeller_elf_merge_private_bfd_data
+#define bfd_elf32_bfd_print_private_bfd_data    propeller_elf_print_private_bfd_data
+
+#define bfd_elf32_bfd_is_local_label_name \
+					propeller_elf_is_local_label_name
 
 #include "elf32-target.h"

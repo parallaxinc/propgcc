@@ -20,8 +20,6 @@ zero		long 	0
 clkfreq_ptr	long	__clkfreq
 baud_ptr	long	__baud
 
-dummy		long	60000000
-
 rxtx_init
 	'' calculate halfbit based on clock frequency
 	rdlong	halfbit, clkfreq_ptr
@@ -31,16 +29,6 @@ rxtx_init
 	getdivq	onebit
 	mov	halfbit, onebit
 	shr	halfbit, #1
-
-#if 0
-	'' debug code
-	mov	r0, #'@'
-loop
-	mov	ch, r0
-	call	#txbyte
-	add	r0, #1
-	jmp	#loop
-#endif
 
 rxtx_init_ret
 	ret
@@ -74,27 +62,6 @@ rxwaitstop
   if_z	jmp	#rxwaitstop
 
 rx8bits_ret
-	ret
-
-'--------------------------------------------------------------------
-' txbyte	Send one byte using kernel serial code
-'--------------------------------------------------------------------
-
-txbyte	or	ch,#0x100
-	shl	ch,#1
-	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
-
-txloop	shr	ch,#1 wc
-	setpc	txpin
-'-------
-	getcnt	now
-	add	now,onebit
-	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
-	waitcnt	now,#0
-'-------
-	djnz	bits,#txloop
-
-txbyte_ret
 	ret
 
 ' 115200
@@ -137,27 +104,6 @@ rxloop	mov	now,CNT
 rx8bits_ret
 	ret
 
-'--------------------------------------------------------------------
-' txbyte	Send one byte using kernel serial code
-'--------------------------------------------------------------------
-
-txbyte	or	ch,#0x100
-	shl	ch,#1
-	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
-
-txloop	shr	ch,#1 wc
-	muxc	outa,txbit  ' 22
-'-------
-	mov	now,CNT
-	add	now,onebit
-	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
-	waitcnt	now,#0
-'-------
-	djnz	bits,#txloop wz
-
-txbyte_ret
-	ret
-
 ' 115200
 halfbit	long	347  '80000000 / (2*115200) = 347.2222
 onebit		long	694
@@ -197,7 +143,6 @@ rxbyte_ret
 __EnterDebugger_ret
 __EnterBreakpoint_ret
 __EnterLMMBreakpoint_ret
-__EnterDebugger_Quiet_ret
 cogpc
 	long 0
 cogflags
@@ -211,16 +156,13 @@ debugpc
 __debug_kernel_ptr
 	long	__load_start_debug_kerext
 
-__EnterDebugger_Quiet
-	or	cogflags, #COGFLAGS_QUIET
-	jmp	#dbgstart
 __EnterBreakpoint
 	sub	cogpc, #1
 	jmp	#__EnterDebugger
 __EnterLMMBreakpoint
-	sub	pc, #4
+	sub	pc, #4	'' do we want the PC left pointing at the last instruction??
+	'' fall through
 __EnterDebugger
-	andn	cogflags, #COGFLAGS_QUIET
 dbgstart
 	andn	ccr, #COGFLAGS_STEP
 #if defined(__PROPELLER2__)
@@ -236,8 +178,18 @@ dbgstart
 	'' resume execution
 	'' no response expected/required
 LeaveDebugger
+#if defined(__PROPELLER2__)
+	cachex		'' invalidate cache
+#endif
 	shr	cogflags,#1 wz,wc,nr
 	jmp	cogpc
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'' debug kernel extension: loaded when we enter the debug kernel
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 	.section .debug.kerext, "ax"
 startdebug
@@ -253,7 +205,32 @@ dbgcnt
 	long 0
 respond1
 	long 0
+respond2
+	long 0
 
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,#0x100
+	shl	ch,#1
+	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+#if defined(__PROPELLER2__)
+	setpc	txpin
+	getcnt	now
+#else
+	muxc	outa, txbit ' 22
+	mov	now, CNT
+#endif
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+	djnz	bits,#txloop
+
+txbyte_ret
+	ret
 
 
 DebugLMM
@@ -370,18 +347,18 @@ enddebug
 hub_debug_start
   	muxnz	cogflags, #2
 	muxc	cogflags, #1
-
-	'' should we send our status?
-	'' if not, just go right to command reception
-	test	cogflags, #COGFLAGS_QUIET wz
-  if_nz	rdlong	debugpc,debugpc
-  	long	hub_cmdloop
-
+#if defined(__PROPELLER2__)
+        or      cogflags, #0x10
+#endif
 	'' fall through to send the status command
 
 	''
 	'' here's what we send back to the host
 	'' COGID COGFLAGS COGPCLO COGPCHI
+	''
+	'' NOTE that COGFLAGS is not the same as the LMM condition
+	'' code register (CCR) which is saved at a different point in
+	'' the LMM loop
 	''
 hub_cmd_status
 	mov	ch, #RESPOND_STATUS
@@ -438,33 +415,18 @@ hub_cmdloop
 
 hub_decode_cmd
 	'' decode command
+	mov	respond2, #0
 	and	cmd, #0xf0
-	cmp	cmd, #DBG_CMD_STATUS wz
-  if_e	rdlong	debugpc,debugpc	     '' jmp	#cmd_status
-  	long	hub_cmd_status
-  	cmp	cmd, #DBG_CMD_RESUME wz
-  if_e	jmp	#LeaveDebugger
-  	cmp	cmd, #DBG_CMD_READCOG wz
-  if_e  rdlong	debugpc,debugpc	     ''jmp	#read_cog_mem
-  	long	hub_cmd_readcogmem
-  	cmp	cmd, #DBG_CMD_WRITECOG wz
-  if_e  rdlong	debugpc,debugpc	      '' jmp	#write_cog_mem
-	long	hub_cmd_writecogmem
+	shr	cmd, #2
+	add	cmd, hub_cmdloop_ptr
+	add	cmd, #(hub_cmd_table - hub_cmdloop)
+	rdlong	debugpc,cmd
+	nop
+	'' the above branches to the desired command
 
-  	cmp	cmd, #DBG_CMD_READHUB wz
-  if_e  rdlong	debugpc,debugpc
-  	long	hub_cmd_readhubmem
-  	cmp	cmd, #DBG_CMD_WRITEHUB wz
-  if_e  rdlong	debugpc,debugpc
-	long	hub_cmd_writehubmem
-  	cmp	cmd, #DBG_CMD_QUERYBP wz
-  if_e  rdlong	debugpc,debugpc
-	long	hub_cmd_querybp
-	cmp	cmd, #DBG_CMD_LMMSTEP wz
-  if_e	rdlong	debugpc,debugpc
-  	long	hub_cmd_lmmstep
-
+hub_cmd_bad
 	'' fall through to error if command not recognized
+	mov	respond2, #ERR_NOCMD
 hub_cmderr
 	mov	respond1, #RESPOND_ERR
 
@@ -479,9 +441,32 @@ hub_donecmd
 	call	#txbyte
 	mov	ch, cogid
 	call	#txbyte
-	mov	ch, #0	'' FIXME should be more detailed response
+	mov	ch,respond2
 	call	#txbyte
 	jmp	#cmdloop
+
+	'' need a table of commands here
+hub_cmd_table
+	long	hub_cmd_status
+	long	hub_cmd_resume
+	long	hub_cmd_readcogmem
+	long	hub_cmd_writecogmem
+
+	long	hub_cmd_readhubmem
+	long	hub_cmd_writehubmem
+	long	hub_cmd_querybp
+	long	hub_cmd_lmmstep
+
+	long	hub_cmd_lmmbrk
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+
 
 	''
 	'' received a byte that was not a command
@@ -491,6 +476,15 @@ hub_notcmd
 	jmp	#cmdloop
 
 
+	''
+	'' resume execution
+	''
+hub_cmd_resume
+	jmp	#LeaveDebugger
+
+	''
+	'' read cog memory
+	''
 hub_cmd_readcogmem
 	'' must be exactly 3 more bytes left (len + cog address)
 	cmp	cmdlen, #3 wz
@@ -545,6 +539,7 @@ hub_cmd_writecogmem
 
 hub_cmd_readhubmem
 	'' must be exactly 5 more bytes left (len + hub address)
+	mov	respond2, #ERR_READLEN
 	cmp	cmdlen, #5 wz
   if_ne	rdlong	debugpc, debugpc	'jmp	#cmderr
   	long	hub_cmderr
@@ -566,7 +561,15 @@ hub_cmd_readhubmem
 	call   #txbyte
 
 read_hub_loop
+#if defined(__PROPELLER_USE_XMM__)
+        mov	t1, tmp0
+	test	t1, extern_mem_mask wz
+  if_z 	mov	memp,t1 
+  if_nz	call	#cache_read
+	rdbyte	ch, memp
+#else
 	rdbyte	ch, tmp0
+#endif
 	add	tmp0, #1
 	call	#txbyte
 	sub	dbgcnt, #1 wz
@@ -586,7 +589,15 @@ hub_cmd_writehubmem
 	sub	cmdlen, #4
 write_hub_loop
 	call	#rxbyte
+#if defined(__PROPELLER_USE_XMM__)
+        mov	t1, tmp0
+	test	t1, extern_mem_mask wz
+  if_z 	mov	memp,t1 
+  if_nz	call	#cache_read
+	wrbyte	ch, memp
+#else
 	wrbyte	ch, tmp0
+#endif
 	add	tmp0, #1
 	sub	cmdlen, #1 wz
   if_nz rdlong	debugpc,debugpc
@@ -598,12 +609,18 @@ write_hub_loop
 	rdlong	debugpc,debugpc		'jmp	#donecmd
 	long	hub_donecmd
 
+	''
+	'' find the instruction to use for a software breakpoint
+	''
 hub_cmd_querybp
 	mov	ch, #RESPOND_DATA
 	call	#txbyte
 	mov	ch, cogid
 	call	#txbyte
 
+	mov	ch, #4	'length of breakpoint
+	call	#txbyte
+	'' now the actual breakpoint data
 	mov	tmp0, Breakpoint
 	call	#txlong
 	jmp	#cmdloop
@@ -612,6 +629,39 @@ hub_cmd_lmmstep
 	or	ccr, #COGFLAGS_STEP
 	jmp	#LeaveDebugger
 
+	''
+	'' place a hardware breakpoint
+	'' 
+hub_cmd_lmmbrk
+	'' must have 5 bytes left in command (1 byte bkpt number, 4 bytes address for LMM breakpoint)
+	cmp	cmdlen, #5 wz
+  if_ne	mov	respond2, #ERR_BRKLEN
+  if_ne	rdlong	debugpc, debugpc
+        long    hub_cmderr
+
+	call	#rxbyte
+	sub	cmdlen, #1
+	mov	tmp0, ch	'' save breakpoint number
+	'' read the address
+	call	#rxlong
+	mov	cmdlen, #0
+
+	mov	respond1, #RESPOND_ACK
+#if defined(__PROPELLER_USE_XMM__)
+	'' in XMM mode there are 2 hardware breakpoints available, 0 and 1
+	cmp	tmp0, #1 wz
+  if_z	mov	hwbkpt1, ch
+  if_z  rdlong	debugpc, debugpc
+  	long	hub_donecmd
+#endif
+	'' in other modes only 1 hardware breakpoint is available
+	cmp	tmp0, #0 wz
+ if_nz	mov   	respond2, #ERR_BRKNUM
+ if_nz	rdlong	debugpc, debugpc
+ 	long	hub_cmderr
+	mov	hwbkpt0, ch
+	rdlong	debugpc, debugpc
+	long	hub_donecmd
 
 
 

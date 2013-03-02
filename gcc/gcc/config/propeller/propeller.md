@@ -3183,7 +3183,7 @@
     (set (match_dup 1)(match_dup 0))
    ]
   "propeller_reg_dead_peep (insn, operands[0])"
-  "%Q3\t%1,%2"
+  "%I3\t%1,%2"
 )
 
 (define_peephole
@@ -3225,7 +3225,7 @@
           (match_operand:SI 3 "propeller_cmm_src_operand" "ri")]))
   ]
   "TARGET_CMM"
-  "xmov\t%0,%1 %Q4 %2,%3"
+  "xmov\t%0,%1 %I4 %2,%3"
 )
 
 ;; we have to special case sub r0,#1, it gets turned into add r0,#-1
