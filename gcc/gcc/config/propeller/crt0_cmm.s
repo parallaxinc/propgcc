@@ -144,7 +144,7 @@ macro_tab_base
 	jmp	#__macro_mvreg	' macro A -- register register move
 	jmp	#__macro_xmvreg	' macro B -- two register register moves
 	jmp	#__macro_addsp	' macro C -- add a constant to SP
-	jmp	#__LMM_loop	' macro D -- NOP
+	jmp	#__LMM_loop	' macro D -- loop
 	jmp	#__macro_fcache	' macro E -- FCACHE
 	jmp	#__macro_native	' macro F -- NATIVE
 
@@ -196,10 +196,7 @@ __macro_native
 	call	#get_long
 	jmp	#sfield
 
-__macro_fcache
-	call	#get_word
-	mov	__TMP0, sfield
-	jmp	#__LMM_FCACHE_DO
+	'' see later for __macro_fcache
 	
 __macro_ret
 	mov	pc,lr
@@ -234,12 +231,6 @@ __macro_popret
 __macro_popm
 	call	#__fetch_TMP0
 	call	#__LMM_POPM
-	jmp	#__LMM_loop
-
-__macro_lcall
-	call	#get_word
-	mov	lr,pc
-	mov	pc,sfield
 	jmp	#__LMM_loop
 
 	''
@@ -354,13 +345,13 @@ doreg
 	''' decode an embedded move instruction
 	''' dddd ssss
 xmov
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	xfield,#4
-	and	sfield,#15
-	movs	.xmov,sfield
-	movd	.xmov,xfield
-	add	pc,#1
+	call	#reg_helper
+	'' note reg-helper assumes sfield is upper 4 bits, xfield is lower
+	'' 4, which is kind of the reverse of what xmov wants
+	'' (the dest is in the upper, src in the lower)
+	movs	.xmov,xfield
+	movd	.xmov,sfield
+	nop
 .xmov	mov	0-0,0-0
 xmov_ret
 	ret
@@ -521,12 +512,19 @@ pack_native
 	.global __LMM_CALL_INDIRECT
 __LMM_CALL
 	call	#get_long
-	mov	__TMP0,sfield
-__LMM_CALL_INDIRECT
+	jmp	#do_call
+__macro_lcall
+	call	#get_word
+do_call
 	mov	lr,pc
-	mov	pc,__TMP0
+	mov	pc,sfield
 	jmp	#__LMM_loop
 
+__LMM_CALL_INDIRECT
+	mov	sfield,__TMP0
+	jmp	#do_call
+
+#if 0
 	''
 	'' direct jmp
 	''
@@ -535,6 +533,7 @@ __LMM_JMP
 	call	#get_long
 	mov	pc,sfield
 	jmp	#__LMM_loop
+#endif
 
 	''
 	'' push and pop multiple macros
@@ -681,7 +680,10 @@ __LMM_FCACHE_ADDR
 __LMM_RET
 	long 0
 
-	
+__macro_fcache
+	call	#get_word
+	mov	__TMP0, sfield
+
 __LMM_FCACHE_DO
 	add	pc,#3		'' round up to next longword boundary
 	andn	pc,#3
