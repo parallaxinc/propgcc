@@ -12,7 +12,6 @@ rxbit		long	0x80000000
 txbit		long	0x40000000
 #endif
 now		long	0
-bits		long	0
 ch		long	0
 zero		long 	0
 
@@ -36,6 +35,8 @@ rxtx_init_ret
 '--------------------------------------------------------------------
 ' rx8bits	Receive 8 bits
 '--------------------------------------------------------------------
+
+bits		long	0
 
 rx8bits	mov	bits,#8
 	'' wait for rxpin to go low
@@ -84,7 +85,9 @@ onebit		long	1389
 ' rx8bits	Receive 8 bits
 '--------------------------------------------------------------------
 
-rx8bits	mov	bits,#8
+'' uses the INB shadow register for bits count
+
+rx8bits	mov	INB,#8
 	waitpeq	zero,rxbit	' wait for startbit
 	mov	now,CNT
 	add	now,halfbit
@@ -96,7 +99,7 @@ rxloop	mov	now,CNT
 	waitcnt	now,#0
 	test	rxbit,ina wc
 	rcr	ch,#1
-	djnz	bits,#rxloop
+	djnz	INB,#rxloop
 
 	'' wait for the line to go high (as it will when the stop bit arrives)
 	waitpeq	rxbit,rxbit
@@ -164,13 +167,6 @@ __EnterLMMBreakpoint
 	'' fall through
 __EnterDebugger
 dbgstart
-	andn	ccr, #COGFLAGS_STEP
-#if defined(__PROPELLER2__)
-	setp	txpin
-#else
-	or	DIRA, txbit
-	or	OUTA, txbit
-#endif
 	mov	__TMP1,__debug_kernel_ptr
 	call	#__load_extension
 	jmp	#debug
@@ -208,22 +204,18 @@ respond1
 respond2
 	long 0
 
+#if defined(__PROPELLER2__)
 '--------------------------------------------------------------------
 ' txbyte	Send one byte using kernel serial code
 '--------------------------------------------------------------------
 
 txbyte	or	ch,#0x100
 	shl	ch,#1
-	mov	bits,#10 wz ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+	mov	bits,#10   ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
 
 txloop	shr	ch,#1 wc
-#if defined(__PROPELLER2__)
 	setpc	txpin
 	getcnt	now
-#else
-	muxc	outa, txbit ' 22
-	mov	now, CNT
-#endif
 	add	now,onebit
 	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
 	waitcnt	now,#0
@@ -232,6 +224,26 @@ txloop	shr	ch,#1 wc
 txbyte_ret
 	ret
 
+#else
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,#0x100
+	shl	ch,#1
+	mov	INB,#10   ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+	muxc	outa, txbit ' 22
+	mov	now, CNT
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+	djnz	INB,#txloop
+
+txbyte_ret
+	ret
+#endif
 
 DebugLMM
 
@@ -247,7 +259,18 @@ ldbg
 DebugLMM_ret
 	ret
 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'' main entry point for debug extension
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 debug
+	andn	ccr, #COGFLAGS_STEP
+#if defined(__PROPELLER2__)
+	setp	txpin
+#else
+	or	DIRA, txbit
+	or	OUTA, txbit
+#endif
 	mov	debugpc, hub_start_ptr
 	call	#DebugLMM
 cmdloop
@@ -654,12 +677,17 @@ hub_cmd_lmmbrk
   if_z  rdlong	debugpc, debugpc
   	long	hub_donecmd
 #endif
+#if defined(__PROPELLER_CMM__)
+	'' in CMM mode no hardware breakpoint is available
+	mov   respond2, #ERR_BRKNUM
+#else
 	'' in other modes only 1 hardware breakpoint is available
 	cmp	tmp0, #0 wz
  if_nz	mov   	respond2, #ERR_BRKNUM
  if_nz	rdlong	debugpc, debugpc
  	long	hub_cmderr
 	mov	hwbkpt0, ch
+#endif
 	rdlong	debugpc, debugpc
 	long	hub_donecmd
 
