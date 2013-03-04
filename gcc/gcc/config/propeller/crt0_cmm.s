@@ -121,9 +121,18 @@ macro
 	add	dfield,#(macro_tab_base-r0)/4
 	jmp	dfield
 
+#ifdef DEBUG_KERNEL
+__macro_brk
+	call	#__EnterDebugger
+	'' fall through to macro_tab_base
+#endif
 macro_tab_base
 	jmp	#__LMM_loop	' macro 0 -- NOP
+#ifdef DEBUG_KERNEL
+	jmp	#__macro_brk
+#else
 	jmp	#__LMM_loop	' macro 1 -- BREAK
+#endif
 	jmp	#__macro_ret	' macro 2 -- RET
 	jmp	#__macro_pushm	' macro 3 -- PUSHM
 	jmp	#__macro_popm	' macro 4 -- POPM
@@ -177,11 +186,19 @@ get_word_ret
 	'' read a signed byte into sfield
 	''
 get_sbyte
-	rdbyte	sfield,pc
-	add	pc,#1
+	call	#get_byte
 	shl	sfield,#24
 	sar	sfield,#24
 get_sbyte_ret
+	ret
+
+	''
+	'' read an unsigned byte
+	''
+get_byte
+	rdbyte	sfield, pc
+	add	pc, #1
+get_byte_ret
 	ret
 	
 __macro_native
@@ -189,12 +206,8 @@ __macro_native
 	jmp	#sfield
 
 __macro_fcache
-	rdbyte	__TMP0,pc
-	add	pc,#1
-	rdbyte  sfield,pc
-	shl	sfield,#8
-	or	__TMP0,sfield
-	add	pc,#1
+	call	#get_word
+	mov	__TMP0, sfield
 	jmp	#__LMM_FCACHE_DO
 	
 __macro_ret
@@ -279,9 +292,9 @@ mvi32
 	''' move immediate of a 16 bit value
 	'''
 mvi16
-	movd	.domvi16,dfield
+	movd	mvi_set,dfield
 	call	#get_word
-.domvi16
+mvi_set
 	mov	0-0,sfield
 	jmp	#__LMM_loop
 
@@ -289,22 +302,17 @@ mvi16
 	''' move immediate of an 8 bit value
 	'''
 mvi8
-	rdbyte	sfield,pc
-	movd	.domvi8,dfield
-	add	pc,#1
-.domvi8
-	mov	0-0,sfield
-	jmp	#__LMM_loop
+	movd	mvi_set,dfield
+	call	#get_byte
+	jmp	#mvi_set
 
 	'''
 	''' zero a register
 	'''
 mvi0
-	movd	.domvi0,dfield
-	nop
-.domvi0
-	mov	0-0,#0
-	jmp	#__LMM_loop
+	movd	mvi_set,dfield
+	mov	sfield,#0
+	jmp	#mvi_set
 
 
 	'''
@@ -312,10 +320,9 @@ mvi0
 	''' sets dst = sp + x
 	''' 
 leasp
-	rdbyte	sfield,pc
 	movd	.doleasp1,dfield
 	movd	.doleasp2,dfield
-	add	pc,#1
+	call	#get_byte
 .doleasp1
 	mov	0-0,sp
 .doleasp2
@@ -445,37 +452,29 @@ xtable
 cond_mask long (0xf<<18)
 	
 brw
+	call	#get_word
+do_branch
 	andn	.brwins,cond_mask
 	shl	dfield,#18	'' get dfield into the cond field
 	or	.brwins,dfield
-	call	#get_word
+	nop
 .brwins	mov	pc,sfield
 	jmp	#__LMM_loop
 
 brs
-	andn	.brsins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.brsins,dfield
 	call	#get_sbyte
-.brsins	add	pc,sfield
-	jmp	#__LMM_loop
+rel_branch
+	add	sfield,pc
+	jmp	#do_branch
 
 skip2
-	andn	.skip2ins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip2ins,dfield
-	nop
-.skip2ins	add	pc,#2
-	jmp	#__LMM_loop
+	mov	sfield,#2
+	jmp	#rel_branch
+	
 
 skip3
-	andn	.skip3ins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip3ins,dfield
-	nop
-.skip3ins
-	add	pc,#3
-	jmp	#__LMM_loop
+	mov	sfield,#3
+	jmp	#rel_branch
 
 	''
 	'' packed native instructions
@@ -711,11 +710,16 @@ __LMM_FCACHE_START
 	''
 #include "kernel.ext"
 #ifdef DEBUG_KERNEL
-//#include "cogdebug.ext"
+
+#if 1
+#include "cogdebug.ext"
+#else
 __EnterLMMBreakpoint
 __EnterDebugger
 	nop
 __EnterLMMBreakpoint_ret
 __EnterDebugger_ret
 	ret
+#endif
+	
 #endif
