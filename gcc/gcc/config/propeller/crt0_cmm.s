@@ -215,21 +215,24 @@ __macro_div
 	call	#__DIVSI
 	jmp	#__LMM_loop
 
-__macro_pushm
+__fetch_TMP0
 	rdbyte	__TMP0,pc
 	add	pc,#1
+__fetch_TMP0_ret
+	ret
+	
+__macro_pushm
+	call	#__fetch_TMP0
 	call	#__LMM_PUSHM
 	jmp	#__LMM_loop
 
 __macro_popret
-	rdbyte	__TMP0,pc
-	add	pc,#1
+	call	#__fetch_TMP0
 	call	#__LMM_POPRET
 	jmp	#__LMM_loop
 
 __macro_popm
-	rdbyte	__TMP0,pc
-	add	pc,#1
+	call	#__fetch_TMP0
 	call	#__LMM_POPM
 	jmp	#__LMM_loop
 
@@ -273,9 +276,9 @@ __macro_addsp
 	''' move immediate of a 32 bit value
 	'''
 mvi32
-	movd	.domvi32,dfield
+	movd	mvi_set,dfield
 	call	#get_long
-.domvi32
+mvi_set
 	mov	0-0,sfield
 	jmp	#__LMM_loop
 
@@ -285,9 +288,7 @@ mvi32
 mvi16
 	movd	mvi_set,dfield
 	call	#get_word
-mvi_set
-	mov	0-0,sfield
-	jmp	#__LMM_loop
+	jmp	#mvi_set
 
 	'''
 	''' move immediate of an 8 bit value
@@ -322,17 +323,27 @@ leasp
 
 
 	'''
+	''' helper function:
+	''' loads xfield and sfield with next byte
+	''' with sfield having upper 4 bits
+	''' and xfield having lower 4 bits
+	'''
+reg_helper
+	call	#get_byte
+	mov	xfield,sfield
+	shr	sfield,#4
+	and	xfield, #15
+reg_helper_ret
+	ret
+	
+	'''
 	''' 16 bit compressed forms of instructions
 	''' register-register operations encoded as
 	'''    iiii dddd ssss xxxx
 	'''
 regreg
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	sfield,#4
+	call	#reg_helper
 doreg
-	add	pc,#1
-	and	xfield,#15
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_rr,xfield
 	movd	sfield,dfield
@@ -373,9 +384,7 @@ xmov_imm
 	''' register plus 4 bit immediate
 	'''
 regimm4
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	sfield,#4
+	call	#reg_helper
 	or	sfield,__IMM_BIT
 	jmp	#doreg
 
