@@ -149,27 +149,6 @@ macro_tab_base
 	jmp	#__macro_native	' macro F -- NATIVE
 
 	'' utility routine
-	'' read a long into sfield
-	'' trashes ifield,xfield
-get_long
-	rdbyte	sfield,pc
-	add	pc,#1
-	rdbyte	xfield,pc
-	add	pc,#1
-	shl	xfield,#8
-	rdbyte	ifield,pc
-	add	pc,#1
-	shl	ifield,#16
-	rdbyte	itemp,pc
-	add	pc,#1
-	shl	itemp,#24
-	or	sfield,itemp
-	or	sfield,xfield
-	or	sfield,ifield
-get_long_ret
-	ret
-
-	'' utility routine
 	'' read a word into sfield
 	'' trashes xfield
 get_word
@@ -180,6 +159,18 @@ get_word
 	shl	xfield,#8
 	or	sfield,xfield
 get_word_ret
+	ret
+
+	'' utility routine
+	'' read a long into sfield
+	'' trashes ifield,xfield
+get_long
+	call	#get_word
+	mov	ifield, sfield
+	call	#get_word
+	shl	sfield, #16
+	or	sfield,ifield
+get_long_ret
 	ret
 
 	''
