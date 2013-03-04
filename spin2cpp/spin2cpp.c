@@ -458,7 +458,7 @@ main(int argc, char **argv)
        options have been parsed
     */
     pp_init(&gl_pp);
-    pp_setcomments(&gl_pp, "{", "}");
+    pp_setcomments(&gl_pp, "\'", "{", "}");
     pp_setlinedirective(&gl_pp, "{#line %d %s}");
 
     /* save our command line arguments and comments describing

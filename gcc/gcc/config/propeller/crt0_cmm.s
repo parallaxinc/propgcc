@@ -121,9 +121,18 @@ macro
 	add	dfield,#(macro_tab_base-r0)/4
 	jmp	dfield
 
+#ifdef DEBUG_KERNEL
+__macro_brk
+	call	#__EnterDebugger
+	'' fall through to macro_tab_base
+#endif
 macro_tab_base
 	jmp	#__LMM_loop	' macro 0 -- NOP
+#ifdef DEBUG_KERNEL
+	jmp	#__macro_brk
+#else
 	jmp	#__LMM_loop	' macro 1 -- BREAK
+#endif
 	jmp	#__macro_ret	' macro 2 -- RET
 	jmp	#__macro_pushm	' macro 3 -- PUSHM
 	jmp	#__macro_popm	' macro 4 -- POPM
@@ -135,30 +144,9 @@ macro_tab_base
 	jmp	#__macro_mvreg	' macro A -- register register move
 	jmp	#__macro_xmvreg	' macro B -- two register register moves
 	jmp	#__macro_addsp	' macro C -- add a constant to SP
-	jmp	#__LMM_loop	' macro D -- NOP
+	jmp	#__LMM_loop	' macro D -- loop
 	jmp	#__macro_fcache	' macro E -- FCACHE
 	jmp	#__macro_native	' macro F -- NATIVE
-
-	'' utility routine
-	'' read a long into sfield
-	'' trashes ifield,xfield
-get_long
-	rdbyte	sfield,pc
-	add	pc,#1
-	rdbyte	xfield,pc
-	add	pc,#1
-	shl	xfield,#8
-	rdbyte	ifield,pc
-	add	pc,#1
-	shl	ifield,#16
-	rdbyte	itemp,pc
-	add	pc,#1
-	shl	itemp,#24
-	or	sfield,itemp
-	or	sfield,xfield
-	or	sfield,ifield
-get_long_ret
-	ret
 
 	'' utility routine
 	'' read a word into sfield
@@ -173,29 +161,42 @@ get_word
 get_word_ret
 	ret
 
+	'' utility routine
+	'' read a long into sfield
+	'' trashes ifield,xfield
+get_long
+	call	#get_word
+	mov	ifield, sfield
+	call	#get_word
+	shl	sfield, #16
+	or	sfield,ifield
+get_long_ret
+	ret
+
 	''
 	'' read a signed byte into sfield
 	''
 get_sbyte
-	rdbyte	sfield,pc
-	add	pc,#1
+	call	#get_byte
 	shl	sfield,#24
 	sar	sfield,#24
 get_sbyte_ret
+	ret
+
+	''
+	'' read an unsigned byte
+	''
+get_byte
+	rdbyte	sfield, pc
+	add	pc, #1
+get_byte_ret
 	ret
 	
 __macro_native
 	call	#get_long
 	jmp	#sfield
 
-__macro_fcache
-	rdbyte	__TMP0,pc
-	add	pc,#1
-	rdbyte  sfield,pc
-	shl	sfield,#8
-	or	__TMP0,sfield
-	add	pc,#1
-	jmp	#__LMM_FCACHE_DO
+	'' see later for __macro_fcache
 	
 __macro_ret
 	mov	pc,lr
@@ -211,28 +212,25 @@ __macro_div
 	call	#__DIVSI
 	jmp	#__LMM_loop
 
-__macro_pushm
+__fetch_TMP0
 	rdbyte	__TMP0,pc
 	add	pc,#1
+__fetch_TMP0_ret
+	ret
+	
+__macro_pushm
+	call	#__fetch_TMP0
 	call	#__LMM_PUSHM
 	jmp	#__LMM_loop
 
 __macro_popret
-	rdbyte	__TMP0,pc
-	add	pc,#1
+	call	#__fetch_TMP0
 	call	#__LMM_POPRET
 	jmp	#__LMM_loop
 
 __macro_popm
-	rdbyte	__TMP0,pc
-	add	pc,#1
+	call	#__fetch_TMP0
 	call	#__LMM_POPM
-	jmp	#__LMM_loop
-
-__macro_lcall
-	call	#get_word
-	mov	lr,pc
-	mov	pc,sfield
 	jmp	#__LMM_loop
 
 	''
@@ -269,9 +267,9 @@ __macro_addsp
 	''' move immediate of a 32 bit value
 	'''
 mvi32
-	movd	.domvi32,dfield
+	movd	mvi_set,dfield
 	call	#get_long
-.domvi32
+mvi_set
 	mov	0-0,sfield
 	jmp	#__LMM_loop
 
@@ -279,32 +277,25 @@ mvi32
 	''' move immediate of a 16 bit value
 	'''
 mvi16
-	movd	.domvi16,dfield
+	movd	mvi_set,dfield
 	call	#get_word
-.domvi16
-	mov	0-0,sfield
-	jmp	#__LMM_loop
+	jmp	#mvi_set
 
 	'''
 	''' move immediate of an 8 bit value
 	'''
 mvi8
-	rdbyte	sfield,pc
-	movd	.domvi8,dfield
-	add	pc,#1
-.domvi8
-	mov	0-0,sfield
-	jmp	#__LMM_loop
+	movd	mvi_set,dfield
+	call	#get_byte
+	jmp	#mvi_set
 
 	'''
 	''' zero a register
 	'''
 mvi0
-	movd	.domvi0,dfield
-	nop
-.domvi0
-	mov	0-0,#0
-	jmp	#__LMM_loop
+	movd	mvi_set,dfield
+	mov	sfield,#0
+	jmp	#mvi_set
 
 
 	'''
@@ -312,10 +303,9 @@ mvi0
 	''' sets dst = sp + x
 	''' 
 leasp
-	rdbyte	sfield,pc
 	movd	.doleasp1,dfield
 	movd	.doleasp2,dfield
-	add	pc,#1
+	call	#get_byte
 .doleasp1
 	mov	0-0,sp
 .doleasp2
@@ -324,17 +314,27 @@ leasp
 
 
 	'''
+	''' helper function:
+	''' loads xfield and sfield with next byte
+	''' with sfield having upper 4 bits
+	''' and xfield having lower 4 bits
+	'''
+reg_helper
+	call	#get_byte
+	mov	xfield,sfield
+	shr	sfield,#4
+	and	xfield, #15
+reg_helper_ret
+	ret
+	
+	'''
 	''' 16 bit compressed forms of instructions
 	''' register-register operations encoded as
 	'''    iiii dddd ssss xxxx
 	'''
 regreg
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	sfield,#4
+	call	#reg_helper
 doreg
-	add	pc,#1
-	and	xfield,#15
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_rr,xfield
 	movd	sfield,dfield
@@ -345,13 +345,13 @@ doreg
 	''' decode an embedded move instruction
 	''' dddd ssss
 xmov
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	xfield,#4
-	and	sfield,#15
-	movs	.xmov,sfield
-	movd	.xmov,xfield
-	add	pc,#1
+	call	#reg_helper
+	'' note reg-helper assumes sfield is upper 4 bits, xfield is lower
+	'' 4, which is kind of the reverse of what xmov wants
+	'' (the dest is in the upper, src in the lower)
+	movs	.xmov,xfield
+	movd	.xmov,sfield
+	nop
 .xmov	mov	0-0,0-0
 xmov_ret
 	ret
@@ -375,9 +375,7 @@ xmov_imm
 	''' register plus 4 bit immediate
 	'''
 regimm4
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	sfield,#4
+	call	#reg_helper
 	or	sfield,__IMM_BIT
 	jmp	#doreg
 
@@ -445,37 +443,29 @@ xtable
 cond_mask long (0xf<<18)
 	
 brw
+	call	#get_word
+do_branch
 	andn	.brwins,cond_mask
 	shl	dfield,#18	'' get dfield into the cond field
 	or	.brwins,dfield
-	call	#get_word
+	nop
 .brwins	mov	pc,sfield
 	jmp	#__LMM_loop
 
 brs
-	andn	.brsins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.brsins,dfield
 	call	#get_sbyte
-.brsins	add	pc,sfield
-	jmp	#__LMM_loop
+rel_branch
+	add	sfield,pc
+	jmp	#do_branch
 
 skip2
-	andn	.skip2ins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip2ins,dfield
-	nop
-.skip2ins	add	pc,#2
-	jmp	#__LMM_loop
+	mov	sfield,#2
+	jmp	#rel_branch
+	
 
 skip3
-	andn	.skip3ins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip3ins,dfield
-	nop
-.skip3ins
-	add	pc,#3
-	jmp	#__LMM_loop
+	mov	sfield,#3
+	jmp	#rel_branch
 
 	''
 	'' packed native instructions
@@ -522,12 +512,19 @@ pack_native
 	.global __LMM_CALL_INDIRECT
 __LMM_CALL
 	call	#get_long
-	mov	__TMP0,sfield
-__LMM_CALL_INDIRECT
+	jmp	#do_call
+__macro_lcall
+	call	#get_word
+do_call
 	mov	lr,pc
-	mov	pc,__TMP0
+	mov	pc,sfield
 	jmp	#__LMM_loop
 
+__LMM_CALL_INDIRECT
+	mov	sfield,__TMP0
+	jmp	#do_call
+
+#if 0
 	''
 	'' direct jmp
 	''
@@ -536,6 +533,7 @@ __LMM_JMP
 	call	#get_long
 	mov	pc,sfield
 	jmp	#__LMM_loop
+#endif
 
 	''
 	'' push and pop multiple macros
@@ -682,7 +680,10 @@ __LMM_FCACHE_ADDR
 __LMM_RET
 	long 0
 
-	
+__macro_fcache
+	call	#get_word
+	mov	__TMP0, sfield
+
 __LMM_FCACHE_DO
 	add	pc,#3		'' round up to next longword boundary
 	andn	pc,#3
@@ -711,11 +712,16 @@ __LMM_FCACHE_START
 	''
 #include "kernel.ext"
 #ifdef DEBUG_KERNEL
-//#include "cogdebug.ext"
+
+#if 1
+#include "cogdebug.ext"
+#else
 __EnterLMMBreakpoint
 __EnterDebugger
 	nop
 __EnterLMMBreakpoint_ret
 __EnterDebugger_ret
 	ret
+#endif
+	
 #endif
