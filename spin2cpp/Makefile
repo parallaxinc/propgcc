@@ -50,10 +50,12 @@ RM = rm -f
 MKDIR=mkdir -p
 CP=cp
 
-_PROGS = testlex$(EXT) spin2cpp$(EXT)
+_SPIN2CPP = spin2cpp$(EXT)
+_PROGS = testlex$(EXT) $(_SPIN2CPP)
 _LEXOBJS = lexer.o symbol.o ast.o expr.o flexbuf.o preprocess.o
 _OBJS = $(_LEXOBJS) spin.tab.o functions.o pasm.o outcpp.o outdat.o
 
+SPIN2CPP = $(addprefix $(OBJDIR)/, $(_SPIN2CPP))
 PROGS = $(addprefix $(OBJDIR)/, $(_PROGS))
 LEXOBJS = $(addprefix $(OBJDIR)/, $(_LEXOBJS))
 OBJS = $(addprefix $(OBJDIR)/, $(_OBJS))
@@ -73,7 +75,7 @@ clean: $(OBJDIR)
 
 test: $(PROGS)
 	$(OBJDIR)/testlex
-	(cd Test; ./runtests.sh)
+	(cd Test; ./runtests.sh ../$(SPIN2CPP))
 
 $(OBJDIR)/spin2cpp$(EXT): spin2cpp.c $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
