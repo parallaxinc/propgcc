@@ -42,9 +42,10 @@ vpath %.h $(OBJDIR)
 #YACC = byacc
 YACC = bison
 CC = gcc
+OPT = -O
 #CFLAGS = -g -Wall -Werror
 #CC = clang
-CFLAGS = -O -g -Wall -Werror -I$(OBJDIR) -I.
+CFLAGS = $(OPT) -g -Wall -Werror -I$(OBJDIR) -I.
 LIBS = -lm
 RM = rm -f
 MKDIR=mkdir -p

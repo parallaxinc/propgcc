@@ -246,6 +246,10 @@ extern int IsReservedWord(const char *str);
 /* return a new object */
 AST *NewObject(AST *identifier, AST *string);
 
+/* utility to create a new string by adding an extension to a base file name */
+/* if the base string has an extension already, we remove it */
+char *ReplaceExtension(const char *base, const char *ext);
+
 /* different kinds of output functions */
 void OutputCppCode(const char *name, ParserState *P, int printMain);
 void OutputDatFile(const char *name, ParserState *P);
