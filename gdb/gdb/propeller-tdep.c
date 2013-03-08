@@ -50,6 +50,7 @@
 #include "bfd-in2.h"
 
 #define PROPELLER_NUM_REGS 19
+#define PROPELLER_CCR_REGNUM 18
 #define PROPELLER_PC_REGNUM 17
 #define PROPELLER_SP_REGNUM 16
 #define PROPELLER_LR_REGNUM 15
@@ -59,6 +60,8 @@
 #define PROPELLER_R1_REGNUM 1
 
 #define NUM_ARG_REGS 6
+
+#define PROPELLER_CMM_BIT 0x40
 
 struct gdbarch_tdep {
   int elf_flags;
@@ -86,6 +89,32 @@ static const char *propeller_register_names[] = {
   "pc",
   "cc",
 };
+
+/* Macros for setting and testing a bit in a minimal symbol that marks
+   it as CMM code.  The MSB of the minimal symbol's "info" field
+   is used for this purpose.
+
+   MSYMBOL_SET_SPECIAL	Actually sets the "special" bit.
+   MSYMBOL_IS_SPECIAL   Tests the "special" bit in a minimal symbol.  */
+
+#define MSYMBOL_SET_SPECIAL(msym)				\
+	MSYMBOL_TARGET_FLAG_1 (msym) = 1
+
+#define MSYMBOL_IS_SPECIAL(msym)				\
+	MSYMBOL_TARGET_FLAG_1 (msym)
+
+static void
+propeller_elf_make_msymbol_special(asymbol *sym, struct minimal_symbol *msym)
+{
+  int is_cmm;
+  Elf_Internal_Sym *elfsym;
+
+  elfsym = &((elf_symbol_type *)sym)->internal_elf_sym;
+  is_cmm = (elfsym->st_other & PROPELLER_OTHER_COMPRESSED) != 0;
+  if (is_cmm)
+    MSYMBOL_SET_SPECIAL (msym);
+
+}
 
 /* Return the GDB type object for the "standard" data type of data in
    register N.  This should be int for all registers except
@@ -159,6 +188,32 @@ propeller_alloc_frame_cache (void)
   cache->locals = -1;
 
   return cache;
+}
+
+/*
+ * determine whether instructions at memaddr are encoded using CMM (compressed)
+ * or regular uncompressed instructions
+ */
+int
+propeller_pc_is_cmm (struct gdbarch *gdbarch, CORE_ADDR memaddr)
+{
+  struct minimal_symbol *sym;
+
+  sym = lookup_minimal_symbol_by_pc (memaddr);
+  if (sym)
+    return MSYMBOL_IS_SPECIAL (sym);
+
+  if (target_has_registers)
+    {
+      CORE_ADDR ccr;
+
+      ccr = get_frame_register_unsigned (get_current_frame (), PROPELLER_CCR_REGNUM);
+      return (ccr & PROPELLER_CMM_BIT) != 0;
+    }
+
+  /* assume regular instructions if we can't find it */
+  return 0;
+
 }
 
 #define SUB4_P(op) ((op & 0xfffc01ff) == 0x84fc0004)
@@ -342,11 +397,38 @@ static CORE_ADDR
 propeller_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
 {
   struct propeller_frame_cache cache;
-  CORE_ADDR pc;
+  CORE_ADDR pc, func_addr;
   int op;
 
+  /* See if we can determine the end of the prologue via the symbol table.
+     If so, then return either PC, or the PC after the prologue, whichever
+     is greater. */
+  if (find_pc_partial_function(start_pc, NULL, &func_addr, NULL))
+    {
+      CORE_ADDR post_prologue_pc = skip_prologue_using_sal (gdbarch, func_addr);
+      struct symtab *s = find_pc_symtab (func_addr);
+
+      /* GCC always emits a line note before the prologue and another
+	 one after, even if the two are at the same address or on the
+	 same line.  Take advantage of this so that we do not need to
+	 know every instruction that might appear in the prologue.  We
+	 will have producer information for most binaries; if it is
+	 missing (e.g. for -gstabs), assuming the GNU tools.  */
+      if (post_prologue_pc
+	  && (s == NULL
+	      || s->producer == NULL
+	      || strncmp (s->producer, "GNU ", sizeof ("GNU ") - 1) == 0))
+	return post_prologue_pc;
+    }
   cache.locals = -1;
-  pc = propeller_analyze_prologue (gdbarch, start_pc, (CORE_ADDR) -1, &cache);
+  if (propeller_pc_is_cmm (gdbarch, start_pc))
+    {
+      fprintf(stderr, "CMM PROLOGUE CODE NEEDED\n");
+    }
+  else
+    {
+      pc = propeller_analyze_prologue (gdbarch, start_pc, (CORE_ADDR) -1, &cache);
+    }
   if (cache.locals < 0)
     return start_pc;
   return pc;
@@ -615,10 +697,20 @@ propeller_dummy_id (struct gdbarch *gdbarch, struct frame_info *this_frame)
 
 /* little endian version of P1 breakpoint instruction */
 static const gdb_byte bpt_p1[4] = {0x14, 0x00, 0x7c, 0x5c};
+/* P2 breakpoint instruction */
 static const gdb_byte bpt_p2[4] = {0x14, 0x00, 0x7c, 0x1c};
+/* CMM breakpoint instruction (both P1 and P2) */
+static const gdb_byte bpt_cmm[1] = { 0x01 };
 
 static const gdb_byte *propeller_breakpoint_from_pc(struct gdbarch *arch, CORE_ADDR *addr, int *x){
   int flags;
+
+
+  if (propeller_pc_is_cmm (arch, *addr))
+    {
+      *x = 1;
+      return bpt_cmm;
+    }
 
   flags = gdbarch_tdep (arch)->elf_flags;
 
@@ -838,6 +930,11 @@ propeller_gdbarch_init (struct gdbarch_info info,
   set_gdbarch_inner_than (gdbarch, core_addr_lessthan);
   set_gdbarch_breakpoint_from_pc (gdbarch, propeller_breakpoint_from_pc);
   set_gdbarch_print_insn (gdbarch, print_insn_propeller);
+
+  //
+  // Minsymbol frobbing
+  //
+  set_gdbarch_elf_make_msymbol_special (gdbarch, propeller_elf_make_msymbol_special);
 
   //  propeller_add_reggroups (gdbarch);
   //  set_gdbarch_register_reggroup_p (gdbarch, propeller_register_reggroup_p);
