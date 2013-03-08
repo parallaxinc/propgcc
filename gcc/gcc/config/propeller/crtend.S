@@ -32,7 +32,7 @@ __exit
 	'' this is a weak reference so the user can override it
 	.weak __ExitHook
 __ExitHook
-	mov	pc,lr
+	lret
 
 	'' make sure the ctors and dtors are null terminated
 	''
