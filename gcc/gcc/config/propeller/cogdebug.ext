@@ -163,7 +163,11 @@ __EnterBreakpoint
 	sub	cogpc, #1
 	jmp	#__EnterDebugger
 __EnterLMMBreakpoint
+#if defined(__PROPELLER_CMM__)
+	sub	pc, #1	'' do we want the PC left pointing at the last instruction??
+#else
 	sub	pc, #4	'' do we want the PC left pointing at the last instruction??
+#endif
 	'' fall through
 __EnterDebugger
 dbgstart
