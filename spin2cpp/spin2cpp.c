@@ -437,6 +437,24 @@ appendCompiler(void)
     appendToCmd(ccompiler);
 }
 
+char *
+ReplaceExtension(const char *basename, const char *extension)
+{
+  char *ret = malloc(strlen(basename) + strlen(extension) + 1);
+  char *dot;
+  if (!ret) {
+    fprintf(stderr, "FATAL: out of memory\n");
+    exit(2);
+  }
+  strcpy(ret, basename);
+  dot = strrchr(ret, '/');
+  if (!dot) dot = ret;
+  dot = strrchr(dot, '.');
+  if (dot) *dot = 0;
+  strcat(ret, extension);
+  return ret;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -451,6 +469,7 @@ main(int argc, char **argv)
     struct flexbuf argbuf;
     time_t timep;
     int i;
+    char *outname = NULL;
 
     /* Initialize the global preprocessor; we need to do this here
        so that the -D command line option can define preprocessor
@@ -525,6 +544,26 @@ main(int argc, char **argv)
                 appendToCmd("-mp2");
             }
             argv++; --argc;
+	} else if (!strncmp(argv[0], "-o", 2)) {
+	    char *opt;
+	    opt = argv[0];
+            argv++; --argc;
+            if (opt[2] == 0) {
+                if (argv[0] == NULL) {
+                    fprintf(stderr, "Error: expected another argument after -D\n");
+                    exit(2);
+                }
+                opt = argv[0];
+		argv++; --argc;
+            } else {
+                opt += 2;
+            }
+            /* if we are compiling, pass this on to the compiler too */
+            if (compile) {
+                appendToCmd("-o");
+                appendToCmd(opt);
+            }
+	    outname = strdup(opt);
         } else if (!strncmp(argv[0], "-D", 2)) {
             char *opt = argv[0];
             char *name;
@@ -534,8 +573,8 @@ main(int argc, char **argv)
                     fprintf(stderr, "Error: expected another argument after -D\n");
                     exit(2);
                 }
-                argv++; --argc;
                 opt = argv[0];
+                argv++; --argc;
             } else {
                 opt += 2;
             }
@@ -563,8 +602,7 @@ main(int argc, char **argv)
                 )
             {
                 appendToCmd(argv[0]); argv++; --argc;
-            } else if (!strncmp(argv[0], "-o", 2)
-                       || !strncmp(argv[0], "-u", 2)
+            } else if (!strncmp(argv[0], "-u", 2)
                        || !strncmp(argv[0], "-D", 2)
                 )
             {
@@ -597,9 +635,11 @@ main(int argc, char **argv)
     if (P) {
         if (outputDat) {
             if (gl_gas_dat) {
-                OutputGasFile(P->basename, P);
+	        if (!outname) outname = ReplaceExtension(P->basename, ".S");
+                OutputGasFile(outname, P);
             } else {
-                OutputDatFile(P->basename, P);
+	        if (!outname) outname = ReplaceExtension(P->basename, ".dat");
+                OutputDatFile(outname, P);
             }
         } else {
             ParserState *Q;
