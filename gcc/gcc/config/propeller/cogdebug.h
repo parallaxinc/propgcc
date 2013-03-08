@@ -52,6 +52,9 @@
 #define COGFLAGS_C      0x01
 #define COGFLAGS_NZ     0x02
 
+#define COGFLAGS_VERSION 0x30 /* mask for propeller version */
+#define COGFLAGS_P2     0x10  /* code is running on Propeller 2 */
+#define COGFLAGS_CMM    0x40
 #define COGFLAGS_STEP   0x80  /* break on next LMM loop */
 
 
