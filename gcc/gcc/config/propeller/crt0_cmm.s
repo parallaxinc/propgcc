@@ -1,7 +1,12 @@
 #ifdef DEBUG_KERNEL
 #include "cogdebug.h"
 #endif
-	
+
+#if defined(__PROPELLER2__)
+#define RDBYTEC rdbytec
+#else
+#define RDBYTEC rdbyte
+#endif
 	.section .kernel, "ax"
 	.compress off
 	.global r0
@@ -25,7 +30,11 @@
 
 	.global __LMM_entry
 __LMM_entry
+#if defined(__PROPELLER2__)
+r0	getptra sp
+#else
 r0	mov	sp, PAR
+#endif
 r1	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
 r2      IF_NE    jmp    #not_first_cog	' if not, skip some stuff
 	
@@ -33,7 +42,7 @@ r2      IF_NE    jmp    #not_first_cog	' if not, skip some stuff
 r3      locknew	__TMP0 wc	' allocate a lock
 r4	or	__TMP0, #256	' in case lock is 0, make the 32 bit value nonzero
 r5      wrlong __TMP0, __C_LOCK_PTR	' save it to ram
-r6      jmp    #__LMM_loop
+r6      jmp    #__LMM_start
 
 not_first_cog
 	'' initialization for non-primary cogs
@@ -43,7 +52,7 @@ r9      rdlong r0,sp		' pop the argument for the function
 r10     add	sp,#4
 r11     rdlong __TLS,sp	' and the _TLS variable
 r12     add	sp,#4
-r13	jmp	#__LMM_loop
+r13	jmp	#__LMM_start
 r14	nop
 	
 r15	'' alias for link register lr
@@ -72,6 +81,7 @@ __TMP0	long	0
 	.global __TMP1
 __TMP1	long	0
 
+
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
@@ -85,7 +95,7 @@ xfield  long 0
 	'' note, place sfield last so that if NATIVE code jumps here
 	'' it falls through into __LMM_loop
 sfield  long 0
-	
+
 __LMM_loop
 #ifdef DEBUG_KERNEL
 	muxc	ccr,#1
@@ -94,7 +104,7 @@ __LMM_loop
   if_nz call	#__EnterDebugger
 	shr	ccr,#1 wc,wz,nr		'' restore flags
 #endif
-	rdbyte	ifield,pc
+	RDBYTEC	ifield,pc
 	add	pc,#1
 	mov	dfield,ifield
 	shr	ifield,#4
@@ -156,9 +166,9 @@ macro_tab_base
 	'' read a word into sfield
 	'' trashes xfield
 get_word
-	rdbyte	sfield,pc
+	RDBYTEC	sfield,pc
 	add	pc,#1
-	rdbyte	xfield,pc
+	RDBYTEC	xfield,pc
 	add	pc,#1
 	shl	xfield,#8
 	or	sfield,xfield
@@ -191,7 +201,7 @@ get_sbyte_ret
 	'' read an unsigned byte
 	''
 get_byte
-	rdbyte	sfield, pc
+	RDBYTEC	sfield, pc
 	add	pc, #1
 get_byte_ret
 	ret
@@ -217,7 +227,7 @@ __macro_div
 	jmp	#__LMM_loop
 
 __fetch_TMP0
-	rdbyte	__TMP0,pc
+	RDBYTEC	__TMP0,pc
 	add	pc,#1
 __fetch_TMP0_ret
 	ret
@@ -342,6 +352,9 @@ doreg
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_rr,xfield
 	movd	sfield,dfield
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .ins_rr	or	sfield,0-0
 	jmp	#sfield
 
@@ -356,6 +369,9 @@ xmov
 	movs	.xmov,xfield
 	movd	.xmov,sfield
 	nop
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .xmov	mov	0-0,0-0
 xmov_ret
 	ret
@@ -396,10 +412,10 @@ __IMM_BIT	long (1<<22)
 	''' instead of xor r0,__MASK_FFFFFFFF
 	'''
 regimm12
-	rdbyte	itemp,pc		'' read low 8 bits
+	RDBYTEC	itemp,pc		'' read low 8 bits
 	add	pc,#1
 	mov	.ins2,#(sfield-r0)/4	'' set the source to "sfield" register
-	rdbyte	xfield,pc
+	RDBYTEC	xfield,pc
 	movd	.ins2,dfield
 	mov	sfield,xfield
 	and	sfield,#15		'' get the high 4 bits of sfield
@@ -409,9 +425,14 @@ regimm12
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_ri,xfield
 	or	sfield,itemp
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .ins_ri	or	.ins2,0-0
 	add	pc,#1
-
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .ins2
 	nop
 	jmp	#__LMM_loop
@@ -453,6 +474,9 @@ do_branch
 	shl	dfield,#18	'' get dfield into the cond field
 	or	.brwins,dfield
 	nop
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .brwins	mov	pc,sfield
 	jmp	#__LMM_loop
 
@@ -489,14 +513,9 @@ skip3
 	'' on entry to this function eeeI is in dfield
 	''
 pack_native
-	rdbyte	sfield,pc
+	call	#get_word	'' set sfield to first 16 bits
+	RDBYTEC	xfield,pc
 	add	pc,#1
-	rdbyte	itemp,pc
-	add	pc,#1
-	shl	itemp,#8
-	rdbyte	xfield,pc
-	add	pc,#1
-	or	sfield,itemp
 	mov	itemp,xfield   '' get the opcodes
 	and	xfield,#3
 	or	xfield,#0x3C   '' set condition bits
@@ -582,6 +601,9 @@ __LMM_POPM
 	and	__TMP1,#0x0f
 	movd	L_poploop,__TMP1
 	shr	__TMP0,#4
+#if defined(__PROPELLER2__)
+	nop
+#endif
 L_poploop
 	rdlong	0-0,sp
 	add	sp,#4
@@ -661,6 +683,9 @@ __COGA	long 0
 loadbuf
 	movd	.ldlp,__COGA
 	shr	__TMP0,#2	'' convert to longs
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .ldlp
 	rdlong	0-0,__TMP1
 	add	__TMP1,#4
@@ -709,23 +734,27 @@ Lmm_fcache_doit
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	64	'' reserve 64 longs = 256 bytes
+
+	'' initialization code can go here and be overwritten later
+__LMM_start
+#if defined(__PROPELLER2__)
+#ifdef DEBUG_KERNEL
+	call	#rxtx_init
+#else
+	nop
+#endif
+	jmp	#__LMM_loop
+	res	62	'' reserve 64 longs = 256 bytes
+#else
+	jmp	#__LMM_loop
+	res	63	'' reserve 64 longs = 256 bytes
+#endif
 
 	''
 	'' include various kernel extensions
 	''
 #include "kernel.ext"
-#ifdef DEBUG_KERNEL
 
-#if 1
+#ifdef DEBUG_KERNEL
 #include "cogdebug.ext"
-#else
-__EnterLMMBreakpoint
-__EnterDebugger
-	nop
-__EnterLMMBreakpoint_ret
-__EnterDebugger_ret
-	ret
-#endif
-	
 #endif
