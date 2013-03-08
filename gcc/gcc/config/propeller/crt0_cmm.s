@@ -109,9 +109,16 @@ __LMM_loop
 	mov	dfield,ifield
 	shr	ifield,#4
 	and	dfield,#15
+#if defined(__PROPELLER2__)
+	setspa	ifield
+	popar	ifield
+	jmp	ifield
+	.data
+	'' for jmptable
+#else
 	add	ifield,#(jmptab_base-r0)/4
 	jmp	ifield
-
+#endif
 	
 jmptab_base
 	jmp	#macro	' instruction 0x
@@ -131,6 +138,9 @@ jmptab_base
 	jmp	#xmov_imm	' instruction Ed
 	jmp	#pack_native	' instruction Fd
 
+#if defined(__PROPELLER2__)
+	.section .kernel
+#endif
 macro
 	add	dfield,#(macro_tab_base-r0)/4
 	jmp	dfield
@@ -743,8 +753,19 @@ __LMM_start
 #else
 	nop
 #endif
+	'' copy jmptab_base into the CLUT/STACK area
+	setspa	#0
+	mov	r5, #16
+.inilp
+	rdlong	r4, __jmptab_ptr
+	add	__jmptab_ptr, #4
+	pusha	r4
+	djnz	r5, #.inilp
+	
 	jmp	#__LMM_loop
-	res	62	'' reserve 64 longs = 256 bytes
+__jmptab_ptr
+	long	jmptab_base
+	res	54	'' reserve 64 longs = 256 bytes
 #else
 	jmp	#__LMM_loop
 	res	63	'' reserve 64 longs = 256 bytes
