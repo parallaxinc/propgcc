@@ -82,15 +82,16 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* lcall expands to a jmp followed by a 32 bit constant, just like fcache */
   {"lcall", 0x1c000000, 0xffffffff, PROPELLER_OPERAND_LCALL, CCZCNR, PROP_2_LMM, COMPRESS_MACRO, MACRO_LCALL},
 
-/* lcall expands to a jmp followed by a 32 bit constant, just like fcache */
-  {"lret", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_1_LMM, COMPRESS_MACRO, MACRO_RET},
-  {"lret", 0x1c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_2_LMM, COMPRESS_MACRO, MACRO_RET},
-  {"lmul", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_1_LMM, COMPRESS_MACRO, MACRO_MUL},
-  {"lmul", 0x1c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_2_LMM, COMPRESS_MACRO, MACRO_MUL},
-  {"ludiv", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_1_LMM, COMPRESS_MACRO, MACRO_UDIV},
-  {"ludiv", 0x1c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_2_LMM, COMPRESS_MACRO, MACRO_UDIV},
-  {"ldiv", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_1_LMM, COMPRESS_MACRO, MACRO_DIV},
-  {"ldiv", 0x1c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCNR, PROP_2_LMM, COMPRESS_MACRO, MACRO_DIV},
+  /* lret expands to "mov pc, lr" */
+  {"lret", 0xa0000000, 0xffffffff, PROPELLER_OPERAND_LRET, CCZCWR, PROP_1_LMM|PROP_2_LMM, COMPRESS_MACRO, MACRO_RET},
+
+  /* other macros expand to a call */
+  {"lmul", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCWR, PROP_1_LMM, COMPRESS_MACRO, MACRO_MUL},
+  {"lmul", 0x1c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCWR, PROP_2_LMM, COMPRESS_MACRO, MACRO_MUL},
+  {"ludiv", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCWR, PROP_1_LMM, COMPRESS_MACRO, MACRO_UDIV},
+  {"ludiv", 0x1c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCWR, PROP_2_LMM, COMPRESS_MACRO, MACRO_UDIV},
+  {"ldiv", 0x5c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCWR, PROP_1_LMM, COMPRESS_MACRO, MACRO_DIV},
+  {"ldiv", 0x1c800000, 0xffffffff, PROPELLER_OPERAND_MACRO_0, CCZCWR, PROP_2_LMM, COMPRESS_MACRO, MACRO_DIV},
 
 /* pushm and popm expand to a mov followed by a jmpret */
 /* push and pop      101000 zcri cccc ddddddddd sssssssss */

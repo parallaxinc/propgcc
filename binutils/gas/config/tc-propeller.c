@@ -1869,6 +1869,35 @@ md_assemble (char *instruction_string)
       }
       break;
 
+    case PROPELLER_OPERAND_LRET:
+      {
+        /*
+	   the "lret" macro expands to "mov pc, lr"
+        */
+        if (compress)
+          {
+            size = 1;
+            insn.code = op->copc;
+            insn_compressed = 1;
+          }
+        else
+          {
+            char *arg;
+
+            arg = malloc(64);
+            if (arg == NULL)
+              as_fatal (_("Virtual memory exhausted"));
+            strcpy(arg, "pc");
+            parse_dest(arg, &op1, &insn);
+            strcpy(arg, "lr");
+            parse_src(arg, &op2, &insn, PROPELLER_OPERAND_TWO_OPS);
+            free(arg);
+
+            size = 4;
+          }
+      }
+      break;
+
     case PROPELLER_OPERAND_MACRO_0:
       {
         /*
