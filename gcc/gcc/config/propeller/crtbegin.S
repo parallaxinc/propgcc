@@ -57,7 +57,7 @@ argc_cnt
 	add	r3,#4
 	cmp	r2,#0 wz
   IF_NZ add	r0,#1
-  IF_NZ sub	pc,#(.+4)-argc_cnt
+  IF_NZ brs	#argc_cnt
 	
 	mvi	r2,#__environ   ' set environment pointer
 
