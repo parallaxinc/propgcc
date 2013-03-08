@@ -706,10 +706,42 @@ handle_define(struct preprocess *pp, ParseState *P, int isDef)
     pp_define_internal(pp, name, def, PREDEF_FLAG_FREEDEFS);
 }
 
+static char *
+find_include_on_path(struct preprocess *pp, const char *name)
+{
+  const char *path;
+  char *ret;
+  char *last;
+
+  if (name[0] == '/' || name[0] == '\\') {
+    /* absolute path */
+    return strdup(name);
+  }
+  path = pp->fil->name;
+  if (!path || !path[0]) {
+    return strdup(name);
+  }
+  ret = malloc(strlen(path) + strlen(name) + 2);
+  if (!ret) {
+    fprintf(stderr, "FATAL ERROR: out of memory\n");
+    exit(2);
+  }
+  strcpy(ret, path);
+  last = strrchr(ret, '/');
+  if (last) {
+    last[1] = 0;
+  } else {
+    ret[0] = 0;
+  }
+  strcat(ret, name);
+  return ret;
+}
+
 static void
 handle_include(struct preprocess *pp, ParseState *P)
 {
     char *name;
+
     if (!pp_active(pp)) {
         return;
     }
@@ -718,7 +750,13 @@ handle_include(struct preprocess *pp, ParseState *P)
         doerror(pp, "no string found for include");
         return;
     }
-    pp_push_file(pp, strdup(name));
+    /* if the file does not start with a /, it could be relative
+       to the current file name
+    */
+    name = find_include_on_path(pp, name);
+
+    pp_push_file(pp, name);
+    pp->fil->lineno = 0;  /* hack to correct for \n in buffer?? */
 }
 
 /*
