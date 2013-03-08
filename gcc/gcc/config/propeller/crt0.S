@@ -6,7 +6,7 @@
 # endif
 #elif defined(__PROPELLER_CMM__)
 #  if defined(__PROPELLER2__)
-#    include "crt0_cmm2.s"
+#    include "crt0_cmm.s"
 #  else
 #    include "crt0_cmm.s"
 #  endif
