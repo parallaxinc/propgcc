@@ -54,6 +54,10 @@ r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
+#ifdef DEBUG_KERNEL
+	global __ccr__
+__ccr__
+#endif
 ccr	long	0		' condition codes
 	
 	'' the assembler actually relies on _MASK_FFFFFFFF being at register
@@ -61,7 +65,7 @@ ccr	long	0		' condition codes
 	.global __MASK_FFFFFFFF
 __MASK_FFFFFFFF	long	0xFFFFFFFF
 
-#if 0 && defined(DEBUG_KERNEL)
+#if defined(DEBUG_KERNEL)
 	'' gdb relies on register 20 being a breakpoint command
 Breakpoint
 	call	#__EnterLMMBreakpoint

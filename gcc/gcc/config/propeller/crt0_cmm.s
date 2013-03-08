@@ -50,6 +50,10 @@ r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
+#ifdef DEBUG_KERNEL
+	global __ccr__
+__ccr__
+#endif
 ccr	long	0		' condition codes
 	
 	'' the assembler actually relies on _MASK_FFFFFFFF being at register
