@@ -127,7 +127,7 @@ macro
 
 #ifdef DEBUG_KERNEL
 __macro_brk
-	call	#__EnterDebugger
+	call	#__EnterLMMBreakpoint
 	'' fall through to macro_tab_base
 #endif
 macro_tab_base

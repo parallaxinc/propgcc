@@ -158,9 +158,18 @@ macro
 	add	dfield,#(macro_tab_base-r0)/4
 	jmp	dfield
 
+#ifdef DEBUG_KERNEL
+__macro_brk
+	call	#__EnterLMMBreakpoint
+	'' fall through to macro_tab_base
+#endif
 macro_tab_base
 	jmp	#__LMM_loop	' macro 0 -- NOP
+#ifdef DEBUG_KERNEL
+	jmp	#__macro_brk
+#else
 	jmp	#__LMM_loop	' macro 1 -- BREAK
+#endif
 	jmp	#__macro_ret	' macro 2 -- RET
 	jmp	#__macro_pushm	' macro 3 -- PUSHM
 	jmp	#__macro_popm	' macro 4 -- POPM
@@ -742,8 +751,10 @@ __LMM_FCACHE_START
 	'' include various kernel extensions
 	''
 #include "kernel.ext"
-#if 0 && defined(DEBUG_KERNEL) 
+#if defined(DEBUG_KERNEL) 
 //#include "cogdebug.ext" // does not fit!
+	.global __EnterDebugger
+	.global __EnterDebugger_ret
 __EnterLMMBreakpoint
 __EnterDebugger
 	nop
