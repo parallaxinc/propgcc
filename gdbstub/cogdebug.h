@@ -53,6 +53,10 @@
 #define COGFLAGS_C      0x01
 #define COGFLAGS_NZ     0x02
 
+#define COGFLAGS_P2     0x10
+/* 0x20 is reserved for future use (0x10 and 0x20 form the version #) */
+#define COGFLAGS_CMM    0x40
+
 #define COGFLAGS_STEP   0x80  /* break on next LMM loop */
 
 #endif

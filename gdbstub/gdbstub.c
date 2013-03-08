@@ -88,6 +88,7 @@ char cmd[1028];
 #define PROP1 1
 #define PROP2 2
 int prop_version = 0;
+int prop_cmm = 0;
 int DEFAULT_COG = 0x0f;
 
 #define ADDR_UNUSED 0xffffffff
@@ -338,6 +339,7 @@ int main(int argc, char *argv[])
 	/* the status packet gives: flags (1 byte) cogpc (2 bytes) */
 	/* bits 4-5 of the flags give the propeller version */
 	prop_version = 1 + ((dummy[0] >> 4) & 0x3);
+	prop_cmm = (dummy[0] & COGFLAGS_CMM) != 0;
     }
     
     command_loop();
