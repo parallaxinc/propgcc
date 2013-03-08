@@ -371,7 +371,10 @@ hub_debug_start
   	muxnz	cogflags, #2
 	muxc	cogflags, #1
 #if defined(__PROPELLER2__)
-        or      cogflags, #0x10
+        or      cogflags, #COGFLAGS_P2
+#endif
+#if defined(__PROPELLER_CMM__)
+	or	cogflags, #COGFLAGS_CMM
 #endif
 	'' fall through to send the status command
 
