@@ -57,6 +57,7 @@
 #define PROPELLER_OPERAND_REPS              29
 #define PROPELLER_OPERAND_JMPTASK           30
 #define PROPELLER_OPERAND_BIT               31
+#define PROPELLER_OPERAND_LRET              32
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
