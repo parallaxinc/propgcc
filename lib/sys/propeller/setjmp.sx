@@ -1,0 +1,85 @@
+
+	.global _setjmp
+	.global _longjmp
+
+#if defined(__PROPELLER_XMM__)
+	.macro STORE reg,mem
+	xmmio  wrlong,\reg,\mem
+	.endm
+	.macro LOAD reg,mem
+	xmmio  rdlong,\reg,\mem
+	.endm
+#else
+	.macro STORE reg,mem
+	wrlong	\reg,\mem
+	.endm
+	.macro LOAD reg,mem
+	rdlong	\reg,\mem
+	.endm
+#endif
+
+#if defined(__PROPELLER_COG__)
+	.macro RETURN
+	ret
+	.endm
+#else
+	.macro RETURN
+	mov	pc,lr
+	.endm
+#endif
+	''
+	'' int setjmp(jmp_buf env)
+	'' save all callee saved registers into the jump buffer
+	'' always returns 0
+	''
+_setjmp:
+	STORE	r8,r0
+	add	r0,#4
+	STORE	r9,r0
+	add	r0,#4
+	STORE	r10,r0
+	add	r0,#4
+	STORE	r11,r0
+	add	r0,#4
+	STORE	r12,r0
+	add	r0,#4
+	STORE	r13,r0
+	add	r0,#4
+	STORE	r14,r0
+	add	r0,#4
+	STORE	lr,r0
+	add	r0,#4
+	mov	r2,sp
+	STORE	r2,r0
+	mov	r0,#0
+	RETURN
+
+
+	'' int longjmp(jmp_buf env, int val)
+	'' restore registers from env, and return val
+	'' (which must be non-zero)
+
+_longjmp:
+	cmp	r1,#0 wz
+   IF_Z mov	r1,#1
+	LOAD	r8,r0
+	add	r0,#4
+	LOAD	r9,r0
+	add	r0,#4
+	LOAD	r10,r0
+	add	r0,#4
+	LOAD	r11,r0
+	add	r0,#4
+	LOAD	r12,r0
+	add	r0,#4
+	LOAD	r13,r0
+	add	r0,#4
+	LOAD	r14,r0
+	add	r0,#4
+	LOAD	lr,r0
+	add	r0,#4
+	LOAD	r2,r0
+	mov	sp,r2
+	
+	mov	r0,r1
+	RETURN
