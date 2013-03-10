@@ -5,11 +5,11 @@
 #  include "crt0_xmm.s"
 # endif
 #elif defined(__PROPELLER_CMM__)
-#  if defined(__PROPELLER2__)
+	/* note: at the moment the same CMM source is used for both P1 and P2 */
+	/* also, the debug source is the same as regular source, with */
+	/* #ifdefs applied as necessary */
 #    include "crt0_cmm.s"
-#  else
-#    include "crt0_cmm.s"
-#  endif
+
 #elif defined(__PROPELLER_LMM__)
 # if defined(DEBUG_KERNEL)
 	/* note: the debug kernel is the same for prop1 and prop2 */
