@@ -33,7 +33,7 @@ PROPOBJDIR=$(BUILDROOT)/obj/propeller
 
 ifeq ($(OS),linux)
 CFLAGS += -DLINUX
-BSTC=bstc.linux
+BSTC_OS=bstc.linux
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -41,7 +41,7 @@ endif
 
 ifeq ($(OS),cygwin)
 CFLAGS += -DCYGWIN
-BSTC=bstc
+BSTC_OS=bstc
 EXT=.exe
 OSINT=osint_cygwin enumcom
 LIBS=-lsetupapi
@@ -49,7 +49,7 @@ endif
 
 ifeq ($(OS),msys)
 CFLAGS += -DMINGW
-BSTC=bstc
+BSTC_OS=bstc
 EXT=.exe
 OSINT=osint_mingw enumcom
 LIBS=-lsetupapi
@@ -57,7 +57,7 @@ endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
-BSTC=bstc.osx
+BSTC_OS=bstc
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -65,7 +65,14 @@ endif
 
 CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
-SPINFLAGS=-Ogxr
+
+#
+# Use the next two lines for bstc
+#
+SPIN=$(BSTC_OS) -Ogxr
+SPINBFLAGS=
+#SPIN=spin2cpp
+#SPINBFLAGS=-mcmm -O
 
 ##################
 # DEFAULT TARGET #
@@ -82,7 +89,7 @@ all:	info propeller-load drivers sd-loader
 info:
 	@$(ECHO) CFLAGS: $(CFLAGS)
 	@$(ECHO) LDFLAGS: $(LDFLAGS)
-	@$(ECHO) SPINFLAGS: $(SPINFLAGS)
+	@$(ECHO) SPIN: $(SPIN)
 
 #################
 # CLEAN TARGETS #
@@ -94,14 +101,14 @@ clean:
 	@$(RM) -f -r $(BINDIR)
 	@$(RM) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf
 	@$(RM) -f *.binary
-	
+
 .PHONY:
 clean-all:	clean
 	@$(RM) -f -r $(BUILDROOT)/obj
 	@$(RM) -f -r $(BUILDROOT)/bin
 	@$(RM) -f $(DRVDIR)/*.dat
 	@$(RM) -f *.binary
-	
+
 #####################
 # OBJECT FILE LISTS #
 #####################
@@ -204,11 +211,11 @@ sd-loader:	$(DRVDIR)
 ##################
 
 $(OBJDIR)/serial_helper.binary:	$(SPINDIR)/serial_helper.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%_loader.binary:	$(SPINDIR)/%_loader.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
@@ -220,43 +227,43 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 ###############
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DENABLE_RAM -o $(basename $@) $<
+	@$(SPIN) -c -DENABLE_RAM -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPIN) -c -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPIN) -c -DSST -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DFAST -o $(basename $@) $<
+	@$(SPIN) -c -DFAST -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -DFAST -o $(basename $@) $<
+	@$(SPIN) -c -DSST -DFAST -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPIN) -c -DSST -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DWINBOND -o $(basename $@) $<
+	@$(SPIN) -c -DWINBOND -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPIN) -c -DSST -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DWINBOND -o $(basename $@) $<
+	@$(SPIN) -c -DWINBOND -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPIN) -c -o $(basename $@) $<
 	@$(ECHO) $@
 
 ############
@@ -327,7 +334,7 @@ $(BINDIR)/bin2c$(EXT):	$(OBJDIR) $(SRCDIR)/tools/bin2c.c
 
 $(DIRS):
 	$(MKDIR) $@
-	
+
 ##################
 # INSTALL TARGET #
 ##################
