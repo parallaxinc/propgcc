@@ -145,6 +145,7 @@ struct parserstate {
     SymbolTable objsyms;
 
     /* various file name related strings */
+    const char *fullname;    /* full name and path of the file */
     char *basename;    /* the file name without ".spin" */
     char *classname;   /* the class name */
 

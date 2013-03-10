@@ -106,4 +106,9 @@ void pp_run(struct preprocess *pp);
 /* finish preprocessing and retrieve the result string */
 char *pp_finish(struct preprocess *pp);
 
+/* find a file on the standard include path */
+/* "ext" is an optional extension which may be applied to the file */
+/* returns the full name */
+char *find_file_on_path(struct preprocess *pp, const char *name, const char *ext, const char *path);
+
 #endif

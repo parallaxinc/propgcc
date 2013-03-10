@@ -706,22 +706,30 @@ handle_define(struct preprocess *pp, ParseState *P, int isDef)
     pp_define_internal(pp, name, def, PREDEF_FLAG_FREEDEFS);
 }
 
-static char *
-find_include_on_path(struct preprocess *pp, const char *name)
+char *
+find_file_on_path(struct preprocess *pp, const char *name, const char *ext, const char *incpath)
 {
-  const char *path;
+  const char *path = NULL;
   char *ret;
   char *last;
+  FILE *f;
 
   if (name[0] == '/' || name[0] == '\\') {
     /* absolute path */
-    return strdup(name);
+    path = "";
+  } else if (incpath) {
+      path = incpath;
+  } else {
+    if (pp && pp->fil)
+      path = pp->fil->name;
+    if (!path)
+      path = "";
   }
-  path = pp->fil->name;
-  if (!path || !path[0]) {
-    return strdup(name);
+  if (ext) {
+    ret = malloc(strlen(path) + strlen(name) + strlen(ext) + 2);
+  } else {
+    ret = malloc(strlen(path) + strlen(name) + 2);
   }
-  ret = malloc(strlen(path) + strlen(name) + 2);
   if (!ret) {
     fprintf(stderr, "FATAL ERROR: out of memory\n");
     exit(2);
@@ -734,6 +742,18 @@ find_include_on_path(struct preprocess *pp, const char *name)
     ret[0] = 0;
   }
   strcat(ret, name);
+  f = fopen(ret, "r");
+  if (!f && ext) {
+    strcat(ret, ext);
+    f = fopen(ret, "r");
+  }
+  if (!f) {
+    /* give up */
+    free(ret);
+    ret = NULL;
+  }
+  if (f)
+    fclose(f);
   return ret;
 }
 
@@ -741,20 +761,22 @@ static void
 handle_include(struct preprocess *pp, ParseState *P)
 {
     char *name;
+    char *orig_name;
 
     if (!pp_active(pp)) {
         return;
     }
-    name = parse_getquotedstring(P);
-    if (!name) {
+    orig_name = parse_getquotedstring(P);
+    if (!orig_name) {
         doerror(pp, "no string found for include");
         return;
     }
     /* if the file does not start with a /, it could be relative
        to the current file name
     */
-    name = find_include_on_path(pp, name);
-
+    name = find_file_on_path(pp, orig_name, NULL, NULL);
+    if (!name)
+      name = strdup(orig_name);
     pp_push_file(pp, name);
     pp->fil->lineno = 0;  /* hack to correct for \n in buffer?? */
 }
