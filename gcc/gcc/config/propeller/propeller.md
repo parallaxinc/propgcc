@@ -25,6 +25,16 @@
 ;; Propeller specific constraints, predicates and attributes
 ;; -------------------------------------------------------------------------
 
+;;
+;; CPU types
+;; currently we support p1 (original Propeller) and p2 (Propeller 2)
+;;
+(define_enum "processor" [ p1 p2 ])
+
+;; attribute describing the processor
+(define_enum_attr "cpu" "processor"
+  (const (symbol_ref "propeller_cpu")))
+
 ;; defines for specific registers of interest
 ;; some of these are also used in propeller.h
 
@@ -94,8 +104,10 @@
 ;; hub  == instruction that references hub memory
 ;; wait == a wait instruction
 ;; multi == an insn that expands to multiple instructions
+;; dbranch == core branch that may have a delay slot added
+;; dcall == subroutine call that may have a delay slot added
 ;;
-(define_attr "type" "core,call,hub,wait,multi" (const_string "core"))
+(define_attr "type" "core,call,dbranch,dcall,hub,wait,multi" (const_string "core"))
 
 ; condition codes: this one is used by final_prescan_insn to speed up
 ; conditionalizing instructions.  It saves having to scan the rtl to see if
@@ -121,6 +133,7 @@
 	(if_then_else
 	 (ior
            (eq_attr "type" "call")
+           (eq_attr "type" "dcall")
            (eq_attr "type" "multi"))
 	 (const_string "clob")
          (const_string "nocond")))
@@ -142,6 +155,23 @@
 
 
 ;; -------------------------------------------------------------------------
+;; delay slots
+;; branches have 3 delay slots, which may be filled by any core (non-branch)
+;; instruction
+;; -------------------------------------------------------------------------
+(define_delay (and (eq_attr "type" "dbranch")
+                   (eq (symbol_ref "propeller_use_delay_slots")(const_int 1)))
+  [(ior (eq_attr "type" "core") 
+        (eq_attr "type" "hub"))
+          (nil) (nil)
+   (ior (eq_attr "type" "core")
+        (eq_attr "type" "hub"))
+          (nil) (nil)
+   (ior (eq_attr "type" "core")(eq_attr "type" "hub"))
+          (nil) (nil)]
+)
+
+;; ---------------------------- ---------------------------------------------
 ;; machine model for instruction scheduling
 ;; the tricky part here is that hub memory operations are only available
 ;; every 16 cycles (4 instructions) and that 16 cycle period is independent
@@ -158,7 +188,7 @@
 (define_reservation "use_slot3" "(issue+slot3),slot3*3")
 (define_reservation "use_slot4" "(issue+slot4),slot4*3")
 
-(define_insn_reservation "coreop" 1 (eq_attr "type" "core")
+(define_insn_reservation "coreop" 1 (eq_attr "type" "core,dbranch,dcall")
 			 "use_slot1 | use_slot2 | use_slot3 | use_slot4")
 (define_insn_reservation "hubop" 1 (eq_attr "type" "hub,wait")
 			 "(issue+slot1+slot2),(slot1+slot2)*3")
@@ -1800,9 +1830,10 @@
 		      (pc)))]
   "!TARGET_LMM"
 {
-  return "%p1\tjmp\t#%l0";
+  return "%p1\tjmp%~\t#%l0";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1815,9 +1846,10 @@
         ))]	      
   "!TARGET_LMM"
 {
-  return "%P1\tjmp\t#%l0";
+  return "%P1\tjmp%~\t#%l0";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1921,9 +1953,10 @@
 		      (pc)))]
   ""
 {
-  return "%p2\tjmp\t#__LMM_FCACHE_START+(%l0-%l1)";
+  return "%p2\tjmp%~\t#__LMM_FCACHE_START+(%l0-%l1)";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1938,9 +1971,10 @@
         ))]
   ""
 {
-  return "%P2\tjmp\t#__LMM_FCACHE_START+(%l0-%l1)";
+  return "%P2\tjmp%~\t#__LMM_FCACHE_START+(%l0-%l1)";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1976,9 +2010,9 @@
   ]
   "!TARGET_LMM"
   "@
-   jmpret\tlr,#%0
-   jmpret\tlr,%0"
-  [(set_attr "type" "call")
+   jmpret%~\tlr,#%0
+   jmpret%~\tlr,%0"
+  [(set_attr "type" "dcall")
    (set_attr "predicable" "yes")]
 )
 
@@ -1988,8 +2022,8 @@
    (return)
   ]
   "!TARGET_LMM"
-  "jmp\t#%0"
-  [(set_attr "type" "call")
+  "jmp%~\t#%0"
+  [(set_attr "type" "dcall")
    (set_attr "predicable" "yes")]
 )
 
@@ -2068,9 +2102,9 @@
   ]
   "!TARGET_LMM"
   "@
-   jmpret\tlr,#%1
-   jmpret\tlr,%1"
-  [(set_attr "type" "call")
+   jmpret%~\tlr,#%1
+   jmpret%~\tlr,%1"
+  [(set_attr "type" "dcall")
    (set_attr "predicable" "yes")]
  )
 
@@ -2081,8 +2115,8 @@
    (return)
   ]
   "!TARGET_LMM"
-  "jmp\t#%1"
-  [(set_attr "type" "call")
+  "jmp%~\t#%1"
+  [(set_attr "type" "dcall")
    (set_attr "predicable" "yes")]
  )
 
@@ -2149,7 +2183,10 @@
   [(set (pc)
 	(label_ref (match_operand 0 "" "")))]
   "!TARGET_LMM"
-  "jmp\t#%0"
+  "jmp%~\t#%0"
+[
+  (set_attr "type" "dbranch")
+]
 )
 
 ;;
@@ -2161,7 +2198,10 @@
 	         (label_ref (match_operand 1 "" ""))]
 		UNSPEC_FCACHE_LABEL_REF))]
   ""
-  "jmp\t#__LMM_FCACHE_START+(%0-%1)"
+  "jmp%~\t#__LMM_FCACHE_START+(%0-%1)"
+[
+  (set_attr "type" "dbranch")
+]
 )
 
 (define_insn "*jump_cmm"
@@ -2269,22 +2309,26 @@
   ]
   ""
 {
-    return "jmp\t%0";
+    return "jmp%~\t%0";
 }
+[(set_attr "type" "dbranch")]
 )
 
-(define_insn "return_internal"
+(define_insn "return_cog"
   [(return)
    (use (match_operand:SI 0 "register_operand" "r"))
   ]
-  ""
-{ if (TARGET_CMM)
-    return "lret";
-  else if (TARGET_LMM)
-    return "mov\tpc,%0";
-  else
-    return "jmp\t%0";
-}
+  "!TARGET_LMM"
+  "jmp%~\t%0";
+[(set_attr "type" "dbranch")]
+)
+
+(define_insn "return_lmm"
+  [(return)
+   (use (match_operand:SI 0 "register_operand" "r"))
+  ]
+  "TARGET_LMM"
+  "lret"
 )
 
 (define_insn "naked_return"
@@ -2302,7 +2346,8 @@
    (use (reg:SI LINK_REG))
   ]
   ""
-  "'native return\n%0_ret\n\tret"
+  "'native return\n%0_ret\n\tret%~"
+[(set_attr "type" "dbranch")]
 )
 
 (define_expand "return"
@@ -2391,7 +2436,7 @@
 {
  if (which_alternative != 0)
    return "#";
- return "djnz\t%1,#%l0";
+ return "djnz%~\t%1,#%l0";
 }
  "&& reload_completed
   && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
@@ -2406,7 +2451,7 @@
                           (label_ref (match_dup 0))
                           (pc)))]
  ""
- [(set_attr "type" "core,multi,multi")
+ [(set_attr "type" "dbranch,multi,multi")
   (set_attr "length" "4,16,16")
  ]
 )
@@ -2463,7 +2508,7 @@
 {
  if (which_alternative != 0)
    return "#";
- return "djnz\\t%1,#__LMM_FCACHE_START+(%l0-%l4)";
+ return "djnz%~\\t%1,#__LMM_FCACHE_START+(%l0-%l4)";
 }
  "&& reload_completed
   && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
@@ -2478,7 +2523,7 @@
                           (label_ref (match_dup 0))
                           (pc)))]
  ""
- [(set_attr "type" "core,multi,multi")
+ [(set_attr "type" "dbranch,multi,multi")
   (set_attr "length" "4,16,16")
  ]
 )

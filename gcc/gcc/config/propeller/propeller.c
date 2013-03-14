@@ -133,6 +133,11 @@ static int propeller_base_target_flags;
 /* true if -mcog is the default mode */
 bool propeller_base_cog;
 
+/* CPU to generate code for */
+enum processor propeller_cpu;
+
+/* true if we should use delayed forms of branches */
+int propeller_use_delay_slots = 0;
 
 /*
  * options handling
@@ -211,6 +216,14 @@ propeller_return_addr (int count, rtx frame ATTRIBUTE_UNUSED)
 static void
 propeller_option_override (void)
 {
+    propeller_cpu = PROCESSOR_P1;
+    if (TARGET_P2)
+      {
+	propeller_cpu = PROCESSOR_P2;
+	if (TARGET_EXPERIMENTAL)
+	  propeller_use_delay_slots = 1;
+      }
+
     if (flag_pic)
     {
         error ("-fPIC and -fpic are not supported");
@@ -884,11 +897,35 @@ propeller_asm_output_aligned_common (FILE *stream,
     }
 }
 
-/* test whether punctuation is valid in operand output */
+/*
+ * punctuation:
+ * the punctuation characters we use are:
+ * '~': prints a D if this is a delayed branch sequence
+ */
+
 bool
-propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
+propeller_print_operand_punct_valid_p (unsigned char code)
 {
-    return false;
+  if (code == '~')
+    return true;
+  return false;
+}
+
+static void
+propeller_print_operand_punctuation (FILE *file, int ch)
+{
+  switch (ch)
+    {
+    case '~':
+      if (final_sequence != 0)
+	{
+	  fputc ('d', file);
+	}
+      break;
+    default:
+      gcc_unreachable ();
+      break;
+    }
 }
 
 /* The PRINT_OPERAND worker; prints an operand to an assembler
@@ -914,6 +951,11 @@ propeller_print_operand (FILE * file, rtx op, int letter)
   enum rtx_code code;
   const char *str;
 
+  if (propeller_print_operand_punct_valid_p (letter))
+    {
+      propeller_print_operand_punctuation (file, letter);
+      return;
+    }
   code = GET_CODE (op);
   if (letter == 'p' || letter == 'P') {
       switch (code) {
@@ -2164,7 +2206,10 @@ propeller_expand_epilogue (bool is_sibcall)
   }
   else if (!is_sibcall)
   {
-    emit_jump_insn (gen_return_internal (lr_rtx));
+    if (TARGET_LMM)
+      emit_jump_insn (gen_return_lmm (lr_rtx));
+    else
+      emit_jump_insn (gen_return_cog (lr_rtx));
   }
 }
 
@@ -3654,6 +3699,28 @@ propeller_reorg(void)
           fcache_func_reorg ();
         }
     }
+}
+
+
+/* output a sequence of delay slots */
+void
+propeller_output_seqend(FILE *file)
+{
+  int need_nops = 0;
+
+  need_nops = dbr_sequence_length();
+
+  need_nops = 3 - need_nops;
+  if (need_nops < 0) {
+    gcc_unreachable();
+  } else if (need_nops == 0) {
+    /* nothing to do */
+  } else if (need_nops == 1) {
+    fprintf (file, "\tnop\n");
+  } else {
+    fprintf (file, "\tnopx\t#%d\n", need_nops - 1);
+  }
+  fprintf (file, "\t''end delay slot\n");
 }
 
 

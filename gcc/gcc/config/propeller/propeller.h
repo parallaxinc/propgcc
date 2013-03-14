@@ -719,9 +719,13 @@ extern const char *propeller_bss_asm_op;
 
 #ifndef USED_FOR_TARGET
 extern GTY(()) struct target_globals *propeller_cog_globals;
+extern enum processor propeller_cpu;
+extern int propeller_use_delay_slots;
 #endif
 
 /* Like REG_P except that this macro is true for SET expressions.  */
 #define SET_P(rtl)    (GET_CODE (rtl) == SET)
+
+#define DBR_OUTPUT_SEQEND(STREAM) propeller_output_seqend(STREAM)
 
 #endif /* GCC_PROPELLER_H */
