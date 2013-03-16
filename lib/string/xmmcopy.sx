@@ -23,7 +23,7 @@ __copy_from_xmm
 	IF_NE	jmp	#__LMM_FCACHE_START+(.L12-.L19)
 	jmp	__LMM_RET
 .L20
-	mov	pc,lr
+	lret
 .L15
 	cmp	r2, #9 wc
 	IF_B 	brs	.L2
@@ -48,5 +48,5 @@ __copy_from_xmm
 .L18
 	brs	.L2
 .L16
-	mov	pc,lr
+	lret
 #endif
