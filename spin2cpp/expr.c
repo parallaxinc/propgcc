@@ -1323,8 +1323,12 @@ EvalIntOperator(int op, int32_t lval, int32_t rval, int *valid)
     case '-':
         return lval - rval;
     case '/':
+        if (rval == 0)
+	    return rval;
         return lval / rval;
     case T_MODULUS:
+        if (rval == 0)
+	    return rval;
         return lval % rval;
     case '*':
         return lval * rval;
