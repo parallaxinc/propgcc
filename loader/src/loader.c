@@ -385,7 +385,10 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
     if (ELF_CHIP(&c->hdr) == ELF_CHIP_P2) {
         int baudrate;
         GetNumericConfigField(config, "baudrate", &baudrate);
-        p2_LoadImage(imagebuf, imageSize, 0x1000, 0x20000, baudrate);
+        if (flags & LFLAG_WRITE_EEPROM)
+            p2_FlashImage(imagebuf, imageSize, 0x1000, 0x20000, baudrate);
+        else
+            p2_LoadImage(imagebuf, imageSize, 0x1000, 0x20000, baudrate);
     }
     
     /* otherwise, handle propeller 1 loads */
