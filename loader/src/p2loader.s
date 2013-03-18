@@ -134,8 +134,7 @@ _load                   mov     t1, 0-0
                         and     crc, word_mask
 updcrc_ret              ret
 
-start                   coginit cogimage, stacktop
-      'relaunch cog0 with loaded program
+start                   coginit cogimage, stacktop   'relaunch cog0 with loaded program
 
 '
 '
