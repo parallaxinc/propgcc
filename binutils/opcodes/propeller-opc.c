@@ -489,35 +489,35 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"rdquad", 0x0c4000b1, 0xfd4001ff, PROPELLER_OPERAND_PTRD_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* rdquadc   000011 z1i1 cccc ddddddddd sssssssss */
   {"rdquadc", 0x0d4000b1, 0xfd4001ff, PROPELLER_OPERAND_PTRD_OPS, CCZ, PROP_2, NO_COMPRESSED, 0},
-/* setptra   000011 zcn1 cccc nnnnnnnnn 010110010 */
-  {"setptra", 0x0c0000b2, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+/* setptra   000011 z0i1 cccc nnnnnnnnn 010110010 */
+  {"setptra", 0x0c4000b2, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* setptrb   000011 zcn1 cccc nnnnnnnnn 010110011 */
-  {"setptrb", 0x0c0000b3, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setptrb", 0x0c4000b3, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* addptra   000011 zcn1 cccc nnnnnnnnn 010110100 */
-  {"addptra", 0x0c0000b4, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"addptra", 0x0c4000b4, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* addptrb   000011 zcn1 cccc nnnnnnnnn 010110101 */
-  {"addptrb", 0x0c0000b5, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"addptrb", 0x0c4000b5, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* subptra   000011 zcn1 cccc nnnnnnnnn 010110110 */
-  {"subptra", 0x0c0000b6, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"subptra", 0x0c4000b6, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, CCZ, PROP_2, NO_COMPRESSED, 0},
 /* subptrb   000011 zcn1 cccc nnnnnnnnn 010110111 */
-  {"subptrb", 0x0c0000b7, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"subptrb", 0x0c4000b7, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, CCZ, PROP_2, NO_COMPRESSED, 0},
   
 /* setpix   000011 zcn1 cccc nnnnnnnnn 010111000 */
-  {"setpix", 0x0c0000b8, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpix", 0x0c4000b8, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setpixu   000011 zcn1 cccc nnnnnnnnn 010111001 */
-  {"setpixu", 0x0c0000b9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpixu", 0x0c4000b9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setpixv   000011 zcn1 cccc nnnnnnnnn 010111010 */
-  {"setpixv", 0x0c0000ba, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpixv", 0x0c4000ba, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setpixz   000011 zcn1 cccc nnnnnnnnn 010111011 */
-  {"setpixz", 0x0c0000bb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpixz", 0x0c4000bb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setpixa   000011 zcn1 cccc nnnnnnnnn 010111100 */
-  {"setpixa", 0x0c0000bc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpixa", 0x0c4000bc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setpixr   000011 zcn1 cccc nnnnnnnnn 010111101 */
-  {"setpixr", 0x0c0000bd, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpixr", 0x0c4000bd, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setpixg   000011 zcn1 cccc nnnnnnnnn 010111110 */
-  {"setpixg", 0x0c0000be, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpixg", 0x0c4000be, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setpixb   000011 zcn1 cccc nnnnnnnnn 010111111 */
-  {"setpixb", 0x0c0000bf, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"setpixb", 0x0c4000bf, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
   
 /* setmulu   000011 z0n1 cccc nnnnnnnnn 011000000 */
   {"setmulu", 0x0c4000c0, 0xfd4001ff, PROPELLER_OPERAND_DESTIMM, CCZ, PROP_2, NO_COMPRESSED, 0},
