@@ -101,14 +101,13 @@ tx              setp    #SERIAL_TX              ' do it each time to simplify
                 shl     x,#1                    ' insert start bit
                 setb    x,#9                    ' set stop bit
                 getcnt  w                       ' get initial time
-_xloop          add     w,#511     'period      ' add bit period to time
+_xloop          add     w,period                ' add bit period to time
                 passcnt w                       ' loop until bit period elapsed
                 shr     x,#1            wc      ' get next bit into c
                 setpc   #SERIAL_TX              ' write c to tx pin
                 tjnz    x,#_xloop               ' loop until 10 bits done
 tx_ret          ret
-'
-'period          long    _bitrate               ' 1 bit time (to save long, use #511 which is close enough)
+
 x               long    0
 w               long    0
 
