@@ -10,13 +10,16 @@
 #endif
 
 /* maximum packet size for the second-stage loader */
-#define PKTMAXLEN   1024
+#define PKTMAXLEN       1024
+
+/* size of cog image */
+#define COG_IMAGE_SIZE  0x800
 
 /* offset of signature in second-stage loader image */
-#define SIG_OFFSET  0x1f8
+#define SIG_OFFSET      0x1f8
 
 /* p2 program base */
-#define BASE    0xe80
+#define BASE            0xe80
 
 /* second-stage loader header structure */
 typedef struct {
@@ -26,10 +29,22 @@ typedef struct {
     uint32_t stacktop;  // address of the top of stack
 } Stage2Hdr;
 
+/* flash boot header structure */
+typedef struct {
+    uint8_t booter[COG_IMAGE_SIZE];
+    uint32_t size;      // size of hub image in bytes
+    uint32_t cogimage;  // address of the cog image
+    uint32_t stacktop;  // address of the top of stack
+    uint8_t unused[512 - 3 * sizeof(uint32_t)];
+} FlashBootHeader;
+
 /* p2 program header */
 typedef struct {
     uint32_t clkfreq;
 } P2Hdr;
+
+static int LoadHelper(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate);
+static void MakeSignedImage(uint8_t *signedImageBuf, uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int period);
 
 static uint8_t txbuf[1024];
 static int txcnt;
@@ -63,54 +78,22 @@ void p2_UpdateChecksum(uint8_t *imagebuf, int imageSize)
     /* nothing to do here yet */
 }
 
-/* p2_LoadImage - load a binary hub image into a propeller 2 */
+/* p2_LoadImage - load a binary hub image into a propeller 2 hub memory */
 int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate)
 {
     extern uint8_t p2loader_array[];
     extern int p2loader_size;
-    uint8_t loader_image[512*sizeof(uint32_t)];
-    Stage2Hdr *hdr2;
     P2Hdr *hdr = (P2Hdr *)(imageBuf + BASE);
-    uint32_t *ptr32;
     uint8_t *ptr;
-    int cnt, i;
+    int cnt;
+    
+    if (LoadHelper(p2loader_array, p2loader_size, cogImage, stackTop, hdr->clkfreq / baudRate) != 0)
+        return 1;
     
     /* skip past the rom loader image */
     imageBuf += BASE;
     imageSize -= BASE;
 
-    /* build the loader image */
-    memset(loader_image, 0, sizeof(loader_image));
-    memcpy(loader_image, p2loader_array, p2loader_size);
-        
-    /* patch the second-stage loader */
-    hdr2 = (Stage2Hdr *)loader_image;
-    hdr2->period = hdr->clkfreq / baudRate;
-    hdr2->cogimage = cogImage;
-    hdr2->stacktop = stackTop;
-    
-    /* add the (dummy) signature */
-    ptr32 = (uint32_t *)loader_image;
-    for (i = 0; i < 8; ++i)
-        ptr32[SIG_OFFSET + i] = 0x00000001;
-        
-    /* download the second-stage loader binary */
-    for (i = 0; i < 2048; i += 4)
-        TLong(loader_image[i]
-            | (loader_image[i + 1] << 8)
-            | (loader_image[i + 2] << 16)
-            | (loader_image[i + 3] << 24));
-    TComm();
-    
-    /* wait for the loader to start */
-    msleep(100);
-    
-    /* wait for the loader to be ready */
-    if (!WaitForInitialAck()) {
-        printf("error: packet handshake failed\n");
-        return 1;
-    }
-    
     /* load the binary image */
     for (ptr = imageBuf; (cnt = imageSize) > 0; ptr += cnt) {
         if (cnt > PKTMAXLEN)
@@ -133,6 +116,137 @@ int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t s
     
     /* return successfully */
     return 0;
+}
+
+/* p2_FlashImage - load a binary hub image into a propeller 2 boot flash */
+int p2_FlashImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate)
+{
+    extern uint8_t p2flasher_array[];
+    extern int p2flasher_size;
+    extern uint8_t p2booter_array[];
+    extern int p2booter_size;
+    FlashBootHeader bootHeader;
+    P2Hdr *hdr = (P2Hdr *)(imageBuf + BASE);
+    int period, cnt, remaining, i;
+    uint8_t *ptr;
+    
+    /* determine the serial bit period */
+    period = hdr->clkfreq / baudRate;
+    
+    if (LoadHelper(p2flasher_array, p2flasher_size, 0, 0, period) != 0)
+        return 1;
+    
+    /* skip past the rom loader image */
+    imageBuf += BASE;
+    imageSize -= BASE;
+    
+    /* initialize the boot header */
+    bootHeader.size = imageSize;
+    bootHeader.cogimage = cogImage;
+    bootHeader.stacktop = stackTop;
+    memset(bootHeader.unused, 0, sizeof(bootHeader.unused));
+
+    /* make a signed COG image */
+    MakeSignedImage(bootHeader.booter, p2booter_array, p2booter_size, 0, 0, period);
+    
+    /* make it big-endian for the rom loader */
+    for (i = 0; i < COG_IMAGE_SIZE; i += 4) {
+        int tmp = bootHeader.booter[i];
+        bootHeader.booter[i] = bootHeader.booter[i + 3];
+        bootHeader.booter[i + 3] = tmp;
+        tmp = bootHeader.booter[i + 1];
+        bootHeader.booter[i + 1] = bootHeader.booter[i + 2];
+        bootHeader.booter[i + 2] = tmp;
+    }
+    
+    /* flash the booter image */
+    for (ptr = (uint8_t *)&bootHeader, remaining = sizeof(bootHeader); (cnt = remaining) > 0; ptr += cnt) {
+        if (cnt > PKTMAXLEN)
+            cnt = PKTMAXLEN;
+        if (!SendPacket(ptr, cnt)) {
+            printf("error: send packet failed\n");
+            return 1;
+        }
+        remaining -= cnt;
+        printf(".");
+        fflush(stdout);
+    }
+    
+    /* flash the binary image */
+    for (ptr = imageBuf, remaining = imageSize; (cnt = remaining) > 0; ptr += cnt) {
+        if (cnt > PKTMAXLEN)
+            cnt = PKTMAXLEN;
+        if (!SendPacket(ptr, cnt)) {
+            printf("error: send packet failed\n");
+            return 1;
+        }
+        remaining -= cnt;
+        printf(".");
+        fflush(stdout);
+    }
+    printf("\n");
+    
+    /* terminate the transfer and start the program */
+    if (!SendPacket(NULL, 0)) {
+        printf("error: send start packet failed\n");
+        return 1;
+    }
+    
+    /* return successfully */
+    return 0;
+}
+
+/* LoadHelper - load the second stage loader or flasher using the p2 boot loader */
+static int LoadHelper(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int period)
+{
+    uint8_t loader_image[COG_IMAGE_SIZE];
+    int i;
+    
+    /* make a signed COG image */
+    MakeSignedImage(loader_image, imageBuf, imageSize, cogImage, stackTop, period);
+    
+    /* download the second-stage loader binary */
+    for (i = 0; i < 2048; i += 4)
+        TLong(loader_image[i]
+            | (loader_image[i + 1] << 8)
+            | (loader_image[i + 2] << 16)
+            | (loader_image[i + 3] << 24));
+    TComm();
+    
+    /* wait for the loader to start */
+    msleep(100);
+    
+    /* wait for the loader to be ready */
+    if (!WaitForInitialAck()) {
+        printf("error: packet handshake failed\n");
+        return 1;
+    }
+    
+    /* return successfully */
+    return 0;
+}
+
+/* MakeSignedImage - make a signed image to boot the p2 */
+static void MakeSignedImage(uint8_t *signedImageBuf, uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int period)
+{
+    Stage2Hdr *hdr;
+    uint32_t *ptr;
+    int i;
+    
+    /* build the loader image */
+    memset(signedImageBuf, 0, COG_IMAGE_SIZE);
+    memcpy(signedImageBuf, imageBuf, imageSize);
+        
+    /* patch the second-stage loader */
+    hdr = (Stage2Hdr *)signedImageBuf;
+    hdr->period = period;
+    hdr->cogimage = cogImage;
+    hdr->stacktop = stackTop;
+    
+    /* add the (dummy) signature */
+    ptr = (uint32_t *)signedImageBuf;
+    for (i = 0; i < 8; ++i)
+        ptr[SIG_OFFSET + i] = 0x00000001;
 }
 
 /* this code is adapted from Chip Gracey's PNut IDE */
