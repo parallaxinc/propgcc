@@ -57,7 +57,7 @@ endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
-BSTC_OS=bstc
+BSTC_OS=bstc.osx
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -73,6 +73,8 @@ SPIN=$(BSTC_OS) -Ogxr
 SPINBFLAGS=
 #SPIN=spin2cpp
 #SPINBFLAGS=-mcmm -O
+
+SPIN_DAT=spin2cpp --dat
 
 ##################
 # DEFAULT TARGET #
@@ -125,6 +127,8 @@ $(OBJDIR)/PLoadLib.o \
 $(OBJDIR)/p1image.o \
 $(OBJDIR)/p2image.o \
 $(OBJDIR)/p2loader.o \
+$(OBJDIR)/p2booter.o \
+$(OBJDIR)/p2flasher.o \
 $(OBJDIR)/config.o \
 $(OBJDIR)/expr.o \
 $(OBJDIR)/system.o \
@@ -227,43 +231,43 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 ###############
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DENABLE_RAM -o $(basename $@) $<
+	@$(SPIN_DAT) -DENABLE_RAM -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(SPIN) -c -o $(basename $@) $<
+	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DSST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DFAST -o $(basename $@) $<
+	@$(SPIN_DAT) -DFAST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DSST -DFAST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -DFAST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DSST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DWINBOND -o $(basename $@) $<
+	@$(SPIN_DAT) -DWINBOND -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DSST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN) -c -DWINBOND -o $(basename $@) $<
+	@$(SPIN_DAT) -DWINBOND -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(SPIN) -c -o $(basename $@) $<
+	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
 ############

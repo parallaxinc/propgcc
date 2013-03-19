@@ -10,7 +10,14 @@
   BASE = 0x0e80
   CLOCK_FREQ = 60000000
   BAUD = 115200
-  SERIAL_TX = 90        ' must be in the port c
+  
+  
+  ' must be in the port c
+  FLASH_DO = 86         ' SPI flash pins
+  FLASH_DI = 87
+  FLASH_CLK = 88
+  FLASH_CS = 89
+  SERIAL_TX = 90        ' serial pins
   SERIAL_RX = 91
 
   ' character codes
@@ -27,6 +34,8 @@
   STATE_CRC_LO = 6
   
   dirc = 0x1fe
+  
+  PAGE_SIZE = 4096
   
                         .cog_ram
                         org     0
@@ -45,13 +54,13 @@ init                    repd    reserves_cnt_m1, #1     'clear reserves
                         mov     inda++,#0
         
                         setp    tx_pin
+                        setp    #FLASH_CS
                         mov     dirc,dirc_mask          'make tx pin an output
         
                         jmptask #rx_task,#%0010         'enable serial receiver task
                         settask #0x44 '%%1010
 
                         mov     rcv_state, #STATE_SOH   'initialize the packet receive state
-                        mov     rcv_base, base_addr     'initialize the start of packet
                         mov     rcv_ptr, base_addr      'initialize the hub memory pointer
 
                         'there must be space in the transmit buffer for this character
@@ -110,14 +119,18 @@ do_crc_hi               call    #updcrc               'update the crc
 do_crc_lo               call    #updcrc               'update the crc
                         cmp     crc, #0 wz            'check the crc
               if_nz     jmp     #send_nak
-                        mov     rcv_base, rcv_ptr     'move to the next packet
-                        mov     x, #ACK
+                        tjz     rcv_length, #skip_data
+                        mov     hubaddr, base_addr
+                        mov     count, rcv_length
+                        call    #write_block
+                        mov     rcv_ptr, base_addr    'move to the next packet
+skip_data               mov     x, #ACK
                         call    #tx
                         tjz     rcv_length, #start    'start the program on a zero-length packet
                         mov     rcv_state, #STATE_SOH
                         jmp     #next_packet          'byte done, receive next byte
 
-send_nak                mov     rcv_ptr, rcv_base     'reset to the start of the packet
+send_nak                mov     rcv_ptr, base_addr    'reset to the start of the packet
                         mov     x, #NAK
                         jmp     #ack_nak              'look for the next packet
 
@@ -134,7 +147,120 @@ _load                   mov     t1, 0-0
                         and     crc, word_mask
 updcrc_ret              ret
 
-start                   coginit cogimage, stacktop   'relaunch cog0 with loaded program
+start                   mov		t1, #0x100					'hardware reset
+						clkset	t1
+						coginit monitor_pgm, monitor_ptr    'relaunch cog0 with shut down or monitor
+monitor_pgm             long    $70C                        'monitor program address
+monitor_ptr             long    SERIAL_TX<<9 + SERIAL_RX    'monitor parameter (conveys pins)
+
+' write_block
+'   parameters:
+'     vmaddr contains the target flash address
+'     hubaddr contains the hup address of the data to write
+'     count contains the number of bytes to write
+'
+wloop   test    vmaddr, #$ff wz
+  if_nz jmp     #wdata
+        setp    #FLASH_CS       ' release
+        call    #wait_until_done
+write_block
+        test    vmaddr, pagemask wz
+  if_z  call    #erase_4k_block
+        call    #write_enable
+        mov     cmd, vmaddr
+        or      cmd, fprogram
+        mov     bytes, #4
+        call    #start_spi_cmd
+wdata   rdbyte  data, hubaddr
+        call    #spiSendByte
+        add     hubaddr, #1
+        add     vmaddr, #1
+        djnz    count, #wloop
+        setp    #FLASH_CS       ' release
+        call    #wait_until_done
+write_block_ret
+        ret
+
+erase_4k_block
+        call    #write_enable
+        mov     cmd, vmaddr
+        or      cmd, ferase4kblk
+        mov     bytes, #4
+        call    #start_spi_cmd
+        setp    #FLASH_CS       ' release
+        call    #wait_until_done
+erase_4k_block_ret
+        ret
+
+write_enable
+        mov     cmd, fwrenable
+        call    #start_spi_cmd_1
+        setp    #FLASH_CS       ' release
+write_enable_ret
+        ret
+
+wait_until_done
+        mov     cmd, frdstatus
+        call    #start_spi_cmd_1
+_wait   call    #spiRecvByte
+        test    data, #1 wz
+  if_nz jmp     #_wait
+        setp    #FLASH_CS       ' release
+wait_until_done_ret
+        ret
+
+start_spi_cmd_1
+        mov     bytes, #1
+start_spi_cmd
+        clrp    #FLASH_CS       ' select
+_loop   rol     cmd, #8
+        mov     data, cmd
+        call    #spiSendByte
+        djnz    bytes, #_loop
+start_spi_cmd_1_ret
+start_spi_cmd_ret
+        ret
+
+spiSendByte
+        shl     data, #24
+        mov     bits, #8
+spiSend rol     data, #1 wc
+        setpc   #FLASH_DI
+        setp    #FLASH_CLK
+        clrp    #FLASH_CLK
+        djnz    bits, #spiSend
+        setp    #FLASH_DI
+spiSendByte_ret
+        ret
+
+spiRecvByte
+        mov     bits, #8
+spiRecv mov     data, #0
+_rloop  setp    #FLASH_CLK
+        getp    #FLASH_DO wc
+        rcl     data, #1
+        clrp    #FLASH_CLK
+        djnz    bits, #_rloop
+spiRecvByte_ret
+        ret
+
+' input parameters to BREAD and BWRITE
+vmaddr      long    0       ' virtual address
+hubaddr     long    0       ' hub memory address to read from or write to
+count       long    0
+
+' variables used by the spi send/receive functions
+pagemask    long    PAGE_SIZE - 1
+cmd         long    0
+bytes       long    0
+bits        long    0
+data        long    0
+
+' spi commands
+fprogram    long    $02000000       ' flash program byte/page
+ferase4kblk long    $20000000       ' flash erase a 4k block
+frdstatus   long    $05000000       ' flash read status
+fwrenable   long    $06000000       ' flash write enable
 
 '
 '
@@ -213,7 +339,7 @@ rx_bit                  rcr     rx_data,#1              'rotate c into byte
 
 rx_pin                  long    SERIAL_RX
 tx_pin                  long    SERIAL_TX
-dirc_mask               long    1 << (SERIAL_TX - 64)
+dirc_mask               long    (1<<(SERIAL_TX-64)) | (1<<(FLASH_DI-64)) | (1<<(FLASH_CLK-64)) | (1<<(FLASH_CS-64))
 base_addr               long    BASE
 word_mask               long    0xffff
 
@@ -292,7 +418,6 @@ txcode                  res     1
 rcv_state               res     1
 rcv_length              res     1
 rcv_chk                 res     1
-rcv_base                res     1
 rcv_ptr                 res     1
 rcv_cnt                 res     1
 crc                     res     1
