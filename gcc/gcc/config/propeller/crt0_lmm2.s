@@ -302,8 +302,9 @@ __MASK_FFFFFFFF long    0xFFFFFFFF
         '' math support functions
         ''
         .global __TMP0
-        
 __TMP0  long    0
+
+        .global __TMP1
 __TMP1
         long    0
         
