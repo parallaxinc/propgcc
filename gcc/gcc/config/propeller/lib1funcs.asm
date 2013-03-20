@@ -133,7 +133,13 @@ __FPack
 	   if_nz_or_c	or	manA, #1
 			add	manA, #0x0f
 			shr	manA, #5
+#ifdef __PROPELLER2__
+			'' max works differently in P2!
+			cmp	expA, #255 wc
+			max	expA, #255
+#else
 			max	expA, #255 wc
+#endif
 	   if_nc	mov	manA, #0
 			shl	expA, #23
 			add	manA, expA
@@ -148,12 +154,13 @@ __FPack_ret             ret
 '-------------------- constant values -----------------------------------------
 
 Mask23                  long    $007FFFFF
-Bit28                   long    $10000000
 
 
 endfloat
 
 			.section .kernel
+Bit28                   long    $10000000
+
 			.global	__Bit31
 __Bit31                 long    $80000000
 	
@@ -718,7 +725,12 @@ __DPack
 		cmps	expA, #0 wz, wc
 	if_be	brw	#dpack_denorm
 ddenorm_done
+#ifdef __PROPELLER2__
+		cmp	expA, DMAX_EXP wc
+		max	expA, DMAX_EXP
+#else
 		max	expA, DMAX_EXP wc
+#endif
 	if_nc	brw	#dpack_excep
 
 		'' round here
