@@ -427,7 +427,13 @@ is_identifier:
     ast = NewAST(AST_IDENTIFIER, NULL, NULL);
     /* make sure identifiers do not conflict with C keywords by giving them
        an upper case first letter */
-    idstr[0] = toupper(idstr[0]);
+    {
+      char *p = idstr;
+      while (*p && *p == '_')
+	p++;
+      if (*p)
+	*p = toupper(*p);
+    }
     ast->d.string = idstr;
     *ast_ptr = ast;
     return T_IDENTIFIER;

@@ -1,3 +1,7 @@
+Version 1.04
+
+- Rename constants that start with an _ to avoid conflicts with C.
+
 Version 1.03
 
 - Use for() loop instead of do/while for simple counting loops

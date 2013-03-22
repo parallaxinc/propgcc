@@ -196,7 +196,7 @@ main()
     testFloat("3.14e5", 314000.0f);
 
     testIdentifier("x99+8", "X99");
-    testIdentifier("_a_b", "_a_b");
+    testIdentifier("_a_b", "_A_b");
     printf("all tests passed\n");
     return 0;
 }
