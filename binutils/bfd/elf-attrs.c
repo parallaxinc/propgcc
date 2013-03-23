@@ -1,5 +1,5 @@
 /* ELF attributes support (based on ARM EABI attributes).
-   Copyright 2005, 2006, 2007, 2009, 2010
+   Copyright 2005, 2006, 2007, 2009, 2010, 2012
    Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -428,7 +428,7 @@ _bfd_elf_parse_attributes (bfd *abfd, Elf_Internal_Shdr * hdr)
   bfd_byte *contents;
   bfd_byte *p;
   bfd_vma len;
-  const char *std_section;
+  const char *std_sec;
 
   contents = (bfd_byte *) bfd_malloc (hdr->sh_size);
   if (!contents)
@@ -440,7 +440,7 @@ _bfd_elf_parse_attributes (bfd *abfd, Elf_Internal_Shdr * hdr)
       return;
     }
   p = contents;
-  std_section = get_elf_backend_data (abfd)->obj_attrs_vendor;
+  std_sec = get_elf_backend_data (abfd)->obj_attrs_vendor;
   if (*(p++) == 'A')
     {
       len = hdr->sh_size - 1;
@@ -455,11 +455,11 @@ _bfd_elf_parse_attributes (bfd *abfd, Elf_Internal_Shdr * hdr)
 	  if (section_len > len)
 	    section_len = len;
 	  len -= section_len;
-	  namelen = strlen ((char *)p) + 1;
+	  namelen = strlen ((char *) p) + 1;
 	  section_len -= namelen + 4;
-	  if (std_section && strcmp ((char *)p, std_section) == 0)
+	  if (std_sec && strcmp ((char *) p, std_sec) == 0)
 	    vendor = OBJ_ATTR_PROC;
-	  else if (strcmp ((char *)p, "gnu") == 0)
+	  else if (strcmp ((char *) p, "gnu") == 0)
 	    vendor = OBJ_ATTR_GNU;
 	  else
 	    {
@@ -613,7 +613,7 @@ _bfd_elf_merge_unknown_attribute_low (bfd *ibfd, bfd *obfd, int tag)
 
   /* Only pass on attributes that match in both inputs.  */
   if (in_attr[tag].i != out_attr[tag].i
-      || in_attr[tag].s != out_attr[tag].s
+      || (in_attr[tag].s == NULL) != (out_attr[tag].s == NULL)
       || (in_attr[tag].s != NULL && out_attr[tag].s != NULL
 	  && strcmp (in_attr[tag].s, out_attr[tag].s) != 0))
     {
@@ -673,7 +673,7 @@ _bfd_elf_merge_unknown_attribute_list (bfd *ibfd, bfd *obfd)
 
 	  /*  Only pass on attributes that match in both inputs.  */
 	  if (in_list->attr.i != out_list->attr.i
-	      || in_list->attr.s != out_list->attr.s
+	      || (in_list->attr.s == NULL) != (out_list->attr.s == NULL)
 	      || (in_list->attr.s && out_list->attr.s
 		  && strcmp (in_list->attr.s, out_list->attr.s) != 0))
 	    {

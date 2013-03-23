@@ -1306,8 +1306,7 @@ This macro controls resolution of fixup expressions involving the
 difference of two symbols in the same section.  If this macro returns zero,
 the subtrahend will be resolved and @code{fx_subsy} set to @code{NULL} for
 @code{md_apply_fix}.  If undefined, the default of
-@w{@code{! SEG_NORMAL (@var{seg}) || TC_FORCE_RELOCATION (@var{fix})}} will
-be used.
+@w{@code{! SEG_NORMAL (@var{seg})}} will be used.
 
 @item TC_FORCE_RELOCATION_SUB_ABS (@var{fix}, @var{seg})
 @cindex TC_FORCE_RELOCATION_SUB_ABS
@@ -1394,6 +1393,11 @@ that @code{md_pcrel_from} does not take a section argument.
 @item tc_frob_label
 @cindex tc_frob_label
 If you define this macro, GAS will call it each time a label is defined.
+
+@item tc_new_dot_label
+@cindex tc_new_dot_label
+If you define this macro, GAS will call it each time a fake label is created
+off the special dot symbol.
 
 @item md_section_align
 @cindex md_section_align

@@ -1,6 +1,6 @@
 // icf.cc -- Identical Code Folding.
 //
-// Copyright 2009, 2010 Free Software Foundation, Inc.
+// Copyright 2009, 2010, 2011 Free Software Foundation, Inc.
 // Written by Sriraman Tallam <tmsriram@google.com>.
 
 // This file is part of gold.
@@ -182,6 +182,11 @@ preprocess_for_unique_sections(const std::vector<Section_id>& id_section,
       section_size_type plen;
       if (section_contents == NULL)
         {
+          // Lock the object so we can read from it.  This is only called
+          // single-threaded from queue_middle_tasks, so it is OK to lock.
+          // Unfortunately we have no way to pass in a Task token.
+          const Task* dummy_task = reinterpret_cast<const Task*>(-1);
+          Task_lock_obj<Object> tl(dummy_task, secn.first);
           const unsigned char* contents;
           contents = secn.first->section_contents(secn.second,
                                                   &plen,
@@ -232,15 +237,16 @@ get_section_contents(bool first_iteration,
                      const std::vector<unsigned int>& kept_section_id,
                      std::vector<std::string>* section_contents)
 {
+  // Lock the object so we can read from it.  This is only called
+  // single-threaded from queue_middle_tasks, so it is OK to lock.
+  // Unfortunately we have no way to pass in a Task token.
+  const Task* dummy_task = reinterpret_cast<const Task*>(-1);
+  Task_lock_obj<Object> tl(dummy_task, secn.first);
+
   section_size_type plen;
   const unsigned char* contents = NULL;
-
   if (first_iteration)
-    {
-      contents = secn.first->section_contents(secn.second,
-                                              &plen,
-                                              false);
-    }
+    contents = secn.first->section_contents(secn.second, &plen, false);
 
   // The buffer to hold all the contents including relocs.  A checksum
   // is then computed on this buffer.
@@ -283,7 +289,7 @@ get_section_contents(bool first_iteration,
       for (; it_v != v.end(); ++it_v, ++it_s, ++it_a, ++it_o, ++it_addend_size)
         {
           // ADDEND_STR stores the symbol value and addend and offset,
-          // each atmost 16 hex digits long.  it_a points to a pair
+          // each at most 16 hex digits long.  it_a points to a pair
           // where first is the symbol value and second is the
           // addend.
           char addend_str[50];
@@ -367,7 +373,7 @@ get_section_contents(bool first_iteration,
               // This reloc points to a merge section.  Hash the
               // contents of this section.
               if ((secn_flags & elfcpp::SHF_MERGE) != 0
-		  && parameters->target().can_icf_inline_merge_sections ())
+		  && parameters->target().can_icf_inline_merge_sections())
                 {
                   uint64_t entsize =
                     (it_v->first)->section_entsize(it_v->second);
@@ -534,7 +540,7 @@ get_section_contents(bool first_iteration,
 // KEPT_SECTION_ID    : Vector which maps folded sections to kept sections.
 // ID_SECTION         : Vector mapping a section to an unique integer.
 // IS_SECN_OR_GROUP_UNIQUE : To check if a section or a group of identical
-//                            sectionsis already known to be unique.
+//                            sections is already known to be unique.
 // SECTION_CONTENTS   : Store the section's text and relocs to non-ICF
 //                      sections.
 
@@ -646,16 +652,17 @@ match_sections(unsigned int iteration_num,
 }
 
 // During safe icf (--icf=safe), only fold functions that are ctors or dtors.
-// This function returns true if the mangled function name is a ctor or a
-// dtor.
+// This function returns true if the section name is that of a ctor or a dtor.
 
 static bool
-is_function_ctor_or_dtor(const char* mangled_func_name)
+is_function_ctor_or_dtor(const std::string& section_name)
 {
-  if ((is_prefix_of("_ZN", mangled_func_name)
-       || is_prefix_of("_ZZ", mangled_func_name))
-      && (is_gnu_v3_mangled_ctor(mangled_func_name)
-          || is_gnu_v3_mangled_dtor(mangled_func_name)))
+  const char* mangled_func_name = strrchr(section_name.c_str(), '.');
+  gold_assert(mangled_func_name != NULL);
+  if ((is_prefix_of("._ZN", mangled_func_name)
+       || is_prefix_of("._ZZ", mangled_func_name))
+      && (is_gnu_v3_mangled_ctor(mangled_func_name + 1)
+          || is_gnu_v3_mangled_dtor(mangled_func_name + 1)))
     {
       return true;
     }
@@ -682,9 +689,15 @@ Icf::find_identical_sections(const Input_objects* input_objects,
        p != input_objects->relobj_end();
        ++p)
     {
+      // Lock the object so we can read from it.  This is only called
+      // single-threaded from queue_middle_tasks, so it is OK to lock.
+      // Unfortunately we have no way to pass in a Task token.
+      const Task* dummy_task = reinterpret_cast<const Task*>(-1);
+      Task_lock_obj<Object> tl(dummy_task, *p);
+
       for (unsigned int i = 0;i < (*p)->shnum(); ++i)
         {
-	  const char* section_name = (*p)->section_name(i).c_str();
+	  const std::string section_name = (*p)->section_name(i);
           if (!is_section_foldable_candidate(section_name))
             continue;
           if (!(*p)->is_section_included(i))
@@ -692,13 +705,11 @@ Icf::find_identical_sections(const Input_objects* input_objects,
           if (parameters->options().gc_sections()
               && symtab->gc()->is_section_garbage(*p, i))
               continue;
-	  const char* mangled_func_name = strrchr(section_name, '.');
-	  gold_assert(mangled_func_name != NULL);
 	  // With --icf=safe, check if the mangled function name is a ctor
 	  // or a dtor.  The mangled function name can be obtained from the
 	  // section name by stripping the section prefix.
 	  if (parameters->options().icf_safe_folding()
-              && !is_function_ctor_or_dtor(mangled_func_name + 1)
+              && !is_function_ctor_or_dtor(section_name)
 	      && (!target.can_check_for_function_pointers()
                   || section_has_function_pointers(*p, i)))
             {
