@@ -83,6 +83,7 @@ static const tag_name_t tag_names[] =
   ADDENTRY(LDPT_REGISTER_CLEANUP_HOOK),
   ADDENTRY(LDPT_ADD_SYMBOLS),
   ADDENTRY(LDPT_GET_SYMBOLS),
+  ADDENTRY(LDPT_GET_SYMBOLS_V2),
   ADDENTRY(LDPT_ADD_INPUT_FILE),
   ADDENTRY(LDPT_MESSAGE),
   ADDENTRY(LDPT_GET_INPUT_FILE),
@@ -99,6 +100,7 @@ static ld_plugin_register_all_symbols_read tv_register_all_symbols_read = 0;
 static ld_plugin_register_cleanup tv_register_cleanup = 0;
 static ld_plugin_add_symbols tv_add_symbols = 0;
 static ld_plugin_get_symbols tv_get_symbols = 0;
+static ld_plugin_get_symbols tv_get_symbols_v2 = 0;
 static ld_plugin_add_input_file tv_add_input_file = 0;
 static ld_plugin_message tv_message = 0;
 static ld_plugin_get_input_file tv_get_input_file = 0;
@@ -349,26 +351,27 @@ dump_tv_tag (size_t n, struct ld_plugin_tv *tv)
       break;
   sprintf (unknownbuf, "unknown tag #%d", tv->tv_tag);
   name = (tag < ARRAY_SIZE (tag_names)) ? tag_names[tag].name : unknownbuf;
-  TV_MESSAGE (LDPL_INFO, "tv[%d]: %s ", n, name);
   switch (tv->tv_tag)
     {
       case LDPT_OPTION:
       case LDPT_OUTPUT_NAME:
-	TV_MESSAGE (LDPL_INFO, "'%s'\n", tv->tv_u.tv_string);
+	TV_MESSAGE (LDPL_INFO, "tv[%d]: %s '%s'", n, name,
+		    tv->tv_u.tv_string);
         break;
       case LDPT_REGISTER_CLAIM_FILE_HOOK:
       case LDPT_REGISTER_ALL_SYMBOLS_READ_HOOK:
       case LDPT_REGISTER_CLEANUP_HOOK:
       case LDPT_ADD_SYMBOLS:
       case LDPT_GET_SYMBOLS:
+      case LDPT_GET_SYMBOLS_V2:
       case LDPT_ADD_INPUT_FILE:
       case LDPT_MESSAGE:
       case LDPT_GET_INPUT_FILE:
       case LDPT_RELEASE_INPUT_FILE:
       case LDPT_ADD_INPUT_LIBRARY:
       case LDPT_SET_EXTRA_LIBRARY_PATH:
-	TV_MESSAGE (LDPL_INFO, "func@0x%p\n",
-			(void *)(tv->tv_u.tv_message));
+	TV_MESSAGE (LDPL_INFO, "tv[%d]: %s func@0x%p", n, name,
+		    (void *)(tv->tv_u.tv_message));
         break;
       case LDPT_NULL:
       case LDPT_API_VERSION:
@@ -376,8 +379,8 @@ dump_tv_tag (size_t n, struct ld_plugin_tv *tv)
       case LDPT_LINKER_OUTPUT:
       case LDPT_GNU_LD_VERSION:
       default:
-	TV_MESSAGE (LDPL_INFO, "value %W (%d)\n",
-			(bfd_vma)tv->tv_u.tv_val, tv->tv_u.tv_val);
+	TV_MESSAGE (LDPL_INFO, "tv[%d]: %s value %W (%d)", n, name,
+		    (bfd_vma)tv->tv_u.tv_val, tv->tv_u.tv_val);
 	break;
     }
 }
@@ -417,6 +420,9 @@ parse_tv_tag (struct ld_plugin_tv *tv)
 	break;
       case LDPT_GET_SYMBOLS:
 	SETVAR(tv_get_symbols);
+	break;
+      case LDPT_GET_SYMBOLS_V2:
+	tv_get_symbols_v2 = tv->tv_u.tv_get_symbols;
 	break;
       case LDPT_ADD_INPUT_FILE:
 	SETVAR(tv_add_input_file);
@@ -469,21 +475,19 @@ onload (struct ld_plugin_tv *tv)
     tv_message = tv[0].tv_u.tv_message;
 
   fflush (NULL);
-  TV_MESSAGE (LDPL_INFO, "Hello from testplugin.\n");
+  TV_MESSAGE (LDPL_INFO, "Hello from testplugin.");
 
   do
     if ((rv = parse_and_dump_tv_tag (n++, tv)) != LDPS_OK)
       return rv;
   while ((tv++)->tv_tag != LDPT_NULL);
 
-  TV_MESSAGE (LDPL_INFO, "\n");
-
   /* Register hooks only if instructed by options.  */
   if (register_claimfile_hook)
     {
       if (!tv_register_claim_file)
 	{
-	  TV_MESSAGE (LDPL_FATAL, "No register_claim_file hook\n");
+	  TV_MESSAGE (LDPL_FATAL, "No register_claim_file hook");
 	  fflush (NULL);
 	  return LDPS_ERR;
 	}
@@ -493,7 +497,7 @@ onload (struct ld_plugin_tv *tv)
     {
       if (!tv_register_all_symbols_read)
 	{
-	  TV_MESSAGE (LDPL_FATAL, "No register_all_symbols_read hook\n");
+	  TV_MESSAGE (LDPL_FATAL, "No register_all_symbols_read hook");
 	  fflush (NULL);
 	  return LDPS_ERR;
 	}
@@ -503,7 +507,7 @@ onload (struct ld_plugin_tv *tv)
     {
       if (!tv_register_cleanup)
 	{
-	  TV_MESSAGE (LDPL_FATAL, "No register_cleanup hook\n");
+	  TV_MESSAGE (LDPL_FATAL, "No register_cleanup hook");
 	  fflush (NULL);
 	  return LDPS_ERR;
 	}
@@ -527,9 +531,9 @@ onclaim_file (const struct ld_plugin_input_file *file, int *claimed)
     }
 
   /* Inform the user/testsuite.  */
-  TV_MESSAGE (LDPL_INFO, "hook called: claim_file %s [@%ld/%ld] %s\n",
-      file->name, (long)file->offset, (long)file->filesize,
-      claimfile ? "CLAIMED" : "not claimed");
+  TV_MESSAGE (LDPL_INFO, "hook called: claim_file %s [@%ld/%ld] %s",
+	      file->name, (long)file->offset, (long)file->filesize,
+	      claimfile ? "CLAIMED" : "not claimed");
   fflush (NULL);
 
   /* If we decided to claim it, record that fact, and add any symbols
@@ -564,29 +568,30 @@ onall_symbols_read (void)
       "LDPR_RESOLVED_IR",
       "LDPR_RESOLVED_EXEC",
       "LDPR_RESOLVED_DYN",
+      "LDPR_PREVAILING_DEF_IRONLY_EXP",
     };
   claim_file_t *claimfile = dumpresolutions ? claimfiles_list : NULL;
   add_file_t *addfile = addfiles_list;
-  TV_MESSAGE (LDPL_INFO, "hook called: all symbols read.\n");
+  TV_MESSAGE (LDPL_INFO, "hook called: all symbols read.");
   for ( ; claimfile; claimfile = claimfile->next)
     {
       enum ld_plugin_status rv;
       int n;
-      if (claimfile->n_syms_used && !tv_get_symbols)
+      if (claimfile->n_syms_used && !tv_get_symbols_v2)
 	return LDPS_ERR;
       else if (!claimfile->n_syms_used)
         continue;
-      rv = tv_get_symbols (claimfile->file.handle, claimfile->n_syms_used,
-				claimfile->symbols);
+      rv = tv_get_symbols_v2 (claimfile->file.handle, claimfile->n_syms_used,
+			      claimfile->symbols);
       if (rv != LDPS_OK)
 	return rv;
       for (n = 0; n < claimfile->n_syms_used; n++)
-	TV_MESSAGE (LDPL_INFO, "Sym: '%s%s%s' Resolution: %s\n",
-		claimfile->symbols[n].name,
-		claimfile->symbols[n].version ? "@" : "",
-		claimfile->symbols[n].version ? claimfile->symbols[n].version
-					      : "",
-		resolutions[claimfile->symbols[n].resolution]);
+	TV_MESSAGE (LDPL_INFO, "Sym: '%s%s%s' Resolution: %s",
+		    claimfile->symbols[n].name,
+		    claimfile->symbols[n].version ? "@" : "",
+		    (claimfile->symbols[n].version
+		     ? claimfile->symbols[n].version : ""),
+		    resolutions[claimfile->symbols[n].resolution]);
     }
   for ( ; addfile ; addfile = addfile->next)
     {
@@ -610,8 +615,7 @@ onall_symbols_read (void)
 static enum ld_plugin_status
 oncleanup (void)
 {
-  TV_MESSAGE (LDPL_INFO, "hook called: cleanup.\n");
+  TV_MESSAGE (LDPL_INFO, "hook called: cleanup.");
   fflush (NULL);
   return cleanup_ret;
 }
-

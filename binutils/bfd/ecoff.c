@@ -1,6 +1,6 @@
 /* Generic ECOFF (Extended-COFF) routines.
    Copyright 1990, 1991, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+   2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012
    Free Software Foundation, Inc.
    Original version by Per Bothner.
    Full support added by Ian Lance Taylor, ian@cygnus.com.
@@ -234,9 +234,7 @@ _bfd_ecoff_set_arch_mach_hook (bfd *abfd, void * filehdr)
 }
 
 bfd_boolean
-_bfd_ecoff_no_long_sections (abfd, enable)
-     bfd *abfd;
-     int enable;
+_bfd_ecoff_no_long_sections (bfd *abfd, int enable)
 {
   (void) abfd;
   (void) enable;
@@ -3231,14 +3229,6 @@ _bfd_ecoff_bfd_link_hash_table_create (bfd *abfd)
   ((struct ecoff_link_hash_entry *) \
    bfd_link_hash_lookup (&(table)->root, (string), (create), (copy), (follow)))
 
-/* Traverse an ECOFF link hash table.  */
-
-#define ecoff_link_hash_traverse(table, func, info)			\
-  (bfd_link_hash_traverse						\
-   (&(table)->root,							\
-    (bfd_boolean (*) (struct bfd_link_hash_entry *, void *)) (func),	\
-    (info)))
-
 /* Get the ECOFF link hash table from the info structure.  This is
    just a cast.  */
 
@@ -3600,7 +3590,7 @@ ecoff_link_check_archive_element (bfd *abfd,
       EXTR esym;
       bfd_boolean def;
       const char *name;
-      bfd *subsbfd;
+      bfd *oldbfd;
       struct bfd_link_hash_entry *h;
 
       (*swap_ext_in) (abfd, (void *) ext_ptr, &esym);
@@ -3645,18 +3635,17 @@ ecoff_link_check_archive_element (bfd *abfd,
 	continue;
 
       /* Include this element.  */
-      subsbfd = NULL;
-      if (! (*info->callbacks->add_archive_element)
-					(info, abfd, name, &subsbfd))
+      oldbfd = abfd;
+      if (!(*info->callbacks
+	    ->add_archive_element) (info, abfd, name, &abfd))
 	goto error_return;
       /* Potentially, the add_archive_element hook may have set a
 	 substitute BFD for us.  */
-      if (subsbfd
+      if (abfd != oldbfd
 	  && !reread_ext_syms_and_strs (&symhdr, &external_ext_size, &esize,
-				&external_ext, &ssext, subsbfd, backend))
+					&external_ext, &ssext, abfd, backend))
 	goto error_return;
-      if (! ecoff_link_add_externals (subsbfd ? subsbfd : abfd, info,
-				external_ext, ssext))
+      if (! ecoff_link_add_externals (abfd, info, external_ext, ssext))
 	goto error_return;
 
       *pneeded = TRUE;
@@ -3733,7 +3722,6 @@ ecoff_link_add_archive_symbols (bfd *abfd, struct bfd_link_info *info)
       unsigned int file_offset;
       const char *name;
       bfd *element;
-      bfd *subsbfd;
 
       h = *pundef;
 
@@ -3820,13 +3808,10 @@ ecoff_link_add_archive_symbols (bfd *abfd, struct bfd_link_info *info)
       /* Unlike the generic linker, we know that this element provides
 	 a definition for an undefined symbol and we know that we want
 	 to include it.  We don't need to check anything.  */
-      subsbfd = NULL;
-      if (! (*info->callbacks->add_archive_element)
-					(info, element, name, &subsbfd))
+      if (!(*info->callbacks
+	    ->add_archive_element) (info, element, name, &element))
 	return FALSE;
-      /* Potentially, the add_archive_element hook may have set a
-	 substitute BFD for us.  */
-      if (! ecoff_link_add_object_symbols (subsbfd ? subsbfd : element, info))
+      if (! ecoff_link_add_object_symbols (element, info))
 	return FALSE;
 
       pundef = &(*pundef)->u.undef.next;
@@ -4264,8 +4249,9 @@ ecoff_reloc_link_order (bfd *output_bfd,
    the hash table.  */
 
 static bfd_boolean
-ecoff_link_write_external (struct ecoff_link_hash_entry *h, void * data)
+ecoff_link_write_external (struct bfd_hash_entry *bh, void * data)
 {
+  struct ecoff_link_hash_entry *h = (struct ecoff_link_hash_entry *) bh;
   struct extsym_info *einfo = (struct extsym_info *) data;
   bfd *output_bfd = einfo->abfd;
   bfd_boolean strip;
@@ -4496,9 +4482,7 @@ _bfd_ecoff_bfd_final_link (bfd *abfd, struct bfd_link_info *info)
   /* Write out the external symbols.  */
   einfo.abfd = abfd;
   einfo.info = info;
-  ecoff_link_hash_traverse (ecoff_hash_table (info),
-			    ecoff_link_write_external,
-			    (void *) &einfo);
+  bfd_hash_traverse (&info->hash->table, ecoff_link_write_external, &einfo);
 
   if (info->relocatable)
     {

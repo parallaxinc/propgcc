@@ -1,6 +1,6 @@
 /* mri.c -- handle MRI style linker scripts
    Copyright 1991, 1992, 1993, 1994, 1996, 1997, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2005, 2007 Free Software Foundation, Inc.
+   2002, 2003, 2004, 2005, 2007, 2011 Free Software Foundation, Inc.
    Contributed by Steve Chamberlain <sac@cygnus.com>.
 
    This file is part of the GNU Binutils.
@@ -215,6 +215,7 @@ mri_draw_tree (void)
 	  tmp->spec.name = p->name;
 	  tmp->spec.exclude_name_list = NULL;
 	  tmp->spec.sorted = none;
+	  tmp->spec.section_flag_list = NULL;
 	  lang_add_wild (NULL, tmp, FALSE);
 
 	  /* If there is an alias for this section, add it too.  */
@@ -226,6 +227,7 @@ mri_draw_tree (void)
 		tmp->spec.name = aptr->name;
 		tmp->spec.exclude_name_list = NULL;
 		tmp->spec.sorted = none;
+		tmp->spec.section_flag_list = NULL;
 		lang_add_wild (NULL, tmp, FALSE);
 	      }
 
@@ -295,7 +297,7 @@ mri_format (const char *name)
 void
 mri_public (const char *name, etree_type *exp)
 {
-  lang_add_assignment (exp_assop ('=', name, exp));
+  lang_add_assignment (exp_assign (name, exp, FALSE));
 }
 
 void
