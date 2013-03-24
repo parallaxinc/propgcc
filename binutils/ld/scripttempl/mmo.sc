@@ -20,12 +20,12 @@ SECTIONS
     /* FIXME: Move .init, .fini, .ctors and .dtors to their own sections.  */
     ${RELOCATING+ PROVIDE (_init_start = .);}
     ${RELOCATING+ PROVIDE (_init = .);}
-    ${RELOCATING+ KEEP (*(.init))}
+    ${RELOCATING+ KEEP (*(SORT_NONE(.init)))}
     ${RELOCATING+ PROVIDE (_init_end = .);}
 
     ${RELOCATING+ PROVIDE (_fini_start = .);}
     ${RELOCATING+ PROVIDE (_fini = .);}
-    ${RELOCATING+ KEEP (*(.fini))}
+    ${RELOCATING+ KEEP (*(SORT_NONE(.fini)))}
     ${RELOCATING+ PROVIDE (_fini_end = .);}
 
     /* FIXME: Align ctors, dtors, ehframe.  */
@@ -57,28 +57,17 @@ SECTIONS
     ${RELOCATING+KEEP (*(.eh_frame))}
     ${RELOCATING+*(.gcc_except_table)}
 
-    ${RELOCATING+ PROVIDE(etext = .);}
-    ${RELOCATING+ PROVIDE(_etext = .);}
-    ${RELOCATING+ PROVIDE(__etext = .);}
     ${RELOCATING+Main = DEFINED (Main) ? Main : (DEFINED (_start) ? _start : ADDR (.text));}
   }
 
-  .stab 0 : { *(.stab) }
-  .stabstr 0 : { *(.stabstr) }
-  .stab.excl 0 : { *(.stab.excl) }
-  .stab.exclstr 0 : { *(.stab.exclstr) }
-  .stab.index 0 : { *(.stab.index) }
-  .stab.indexstr 0 : { *(.stab.indexstr) }
-  .debug_aranges  0 : { *(.debug_aranges .zdebug_aranges) }
-  .debug_pubnames 0 : { *(.debug_pubnames .zdebug_pubnames) }
-  .debug_info     0 : { *(.debug_info${RELOCATING+ .gnu.linkonce.wi.*} .zdebug_info) }
-  .debug_abbrev   0 : { *(.debug_abbrev .zdebug_abbrev) }
-  .debug_line     0 : { *(.debug_line .zdebug_line) }
-  .debug_frame    0 : { *(.debug_frame .zdebug_frame) }
-  .debug_str      0 : { *(.debug_str .zdebug_str) }
-  .debug_loc      0 : { *(.debug_loc .zdebug_loc) }
-  .debug_macinfo  0 : { *(.debug_macinfo .zdebug_macinfo) }
-  .debug_ranges   0 : { *(.debug_ranges .zdebug_ranges) }
+  /* The following NOP assignment and those after .data and .bss, are
+     necessary to get orphan sections adopted by the .text inserted before
+     the following end-section symbols.  An output section would also serve
+     this purpose, but we can't do that.  */
+  . = .;
+  ${RELOCATING+ PROVIDE(etext = .);}
+  ${RELOCATING+ PROVIDE(_etext = .);}
+  ${RELOCATING+ PROVIDE(__etext = .);}
 
   .data ${RELOCATING+ ${DATA_ADDR}}:
   {
@@ -87,14 +76,13 @@ SECTIONS
     *(.data);
     ${RELOCATING+*(.data.*)}
     ${RELOCATING+*(.gnu.linkonce.d*)}
-
-    ${RELOCATING+ PROVIDE(__Edata = .);}
-
-    /* Deprecated, use __Edata.  */
-    ${RELOCATING+ PROVIDE(edata = .);}
-    ${RELOCATING+ PROVIDE(_edata = .);}
-    ${RELOCATING+ PROVIDE(__edata = .);}
   }
+  . = .;
+  ${RELOCATING+ PROVIDE(__Edata = .);}
+  /* Deprecated, use __Edata.  */
+  ${RELOCATING+ PROVIDE(edata = .);}
+  ${RELOCATING+ PROVIDE(_edata = .);}
+  ${RELOCATING+ PROVIDE(__edata = .);}
 
   /* At the moment, although perhaps we should, we can't map sections
      without contents to sections *with* contents due to FIXME: a BFD bug.
@@ -108,14 +96,39 @@ SECTIONS
     ${RELOCATING+ *(.bss);}
     ${RELOCATING+*(.bss.*)}
     ${RELOCATING+ *(COMMON);}
-    ${RELOCATING+ PROVIDE(__Ebss = .);}
   }
+  . = .;
+  ${RELOCATING+ PROVIDE(__Ebss = .);}
 
   /* Deprecated, use __Ebss or __Eall as appropriate.  */
   ${RELOCATING+ PROVIDE(end = .);}
   ${RELOCATING+ PROVIDE(_end = .);}
   ${RELOCATING+ PROVIDE(__end = .);}
   ${RELOCATING+ PROVIDE(__Eall = .);}
+
+  .stab 0 : { *(.stab) }
+  .stabstr 0 : { *(.stabstr) }
+  .stab.excl 0 : { *(.stab.excl) }
+  .stab.exclstr 0 : { *(.stab.exclstr) }
+  .stab.index 0 : { *(.stab.index) }
+  .stab.indexstr 0 : { *(.stab.indexstr) }
+  .debug_aranges  0 : { *(.debug_aranges) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
+  .debug_info     0 : { *(.debug_info) *(.gnu.linkonce.wi.*) }
+  .debug_abbrev   0 : { *(.debug_abbrev) }
+  .debug_line     0 : { *(.debug_line) }
+  .debug_frame    0 : { *(.debug_frame) }
+  .debug_str      0 : { *(.debug_str) }
+  .debug_loc      0 : { *(.debug_loc) }
+  .debug_macinfo  0 : { *(.debug_macinfo) }
+  .debug_ranges   0 : { *(.debug_ranges) }
+
+  /* DWARF 3 */
+  .debug_pubtypes 0 : { *(.debug_pubtypes) }
+  .debug_ranges   0 : { *(.debug_ranges) }
+
+  /* DWARF Extension.  */
+  .debug_macro    0 : { *(.debug_macro) }
 
   .MMIX.reg_contents :
   {
@@ -133,5 +146,7 @@ SECTIONS
      It can probably be fixed with some amount of work.  */
   /DISCARD/ :
   { ${RELOCATING+ *(.gnu.warning.*);} }
+
+  .gnu.attributes 0 : { KEEP (*(.gnu.attributes)) }
 }
 EOF

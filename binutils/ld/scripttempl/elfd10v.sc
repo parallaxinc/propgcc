@@ -87,10 +87,10 @@ SECTIONS
   .text ${RELOCATING+${TEXT_START_ADDR}} :
   {
     ${RELOCATING+${TEXT_START_SYMBOLS}}
-    KEEP (*(.init))
-    KEEP (*(.init.*))
-    KEEP (*(.fini))
-    KEEP (*(.fini.*))
+    KEEP (*(SORT_NONE(.init)))
+    KEEP (*(SORT_NONE(.init.*)))
+    KEEP (*(SORT_NONE(.fini)))
+    KEEP (*(SORT_NONE(.fini.*)))
     *(.text)
     *(.text.*)
     /* .gnu.warning sections are handled specially by elf32.em.  */
@@ -173,26 +173,34 @@ SECTIONS
   .line           0 : { *(.line) }
 
   /* GNU DWARF 1 extensions */
-  .debug_srcinfo  0 : { *(.debug_srcinfo .zdebug_srcinfo) }
-  .debug_sfnames  0 : { *(.debug_sfnames .zdebug_sfnames) }
+  .debug_srcinfo  0 : { *(.debug_srcinfo) }
+  .debug_sfnames  0 : { *(.debug_sfnames) }
 
   /* DWARF 1.1 and DWARF 2 */
-  .debug_aranges  0 : { *(.debug_aranges .zdebug_aranges) }
-  .debug_pubnames 0 : { *(.debug_pubnames .zdebug_pubnames) }
+  .debug_aranges  0 : { *(.debug_aranges) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
 
   /* DWARF 2 */
-  .debug_info     0 : { *(.debug_info${RELOCATING+ .gnu.linkonce.wi.*} .zdebug_info) }
-  .debug_abbrev   0 : { *(.debug_abbrev .zdebug_abbrev) }
-  .debug_line     0 : { *(.debug_line .zdebug_line) }
-  .debug_frame    0 : { *(.debug_frame .zdebug_frame) }
-  .debug_str      0 : { *(.debug_str .zdebug_str) }
-  .debug_loc      0 : { *(.debug_loc .zdebug_loc) }
-  .debug_macinfo  0 : { *(.debug_macinfo .zdebug_macinfo) }
+  .debug_info     0 : { *(.debug_info) *(.gnu.linkonce.wi.*) }
+  .debug_abbrev   0 : { *(.debug_abbrev) }
+  .debug_line     0 : { *(.debug_line) }
+  .debug_frame    0 : { *(.debug_frame) }
+  .debug_str      0 : { *(.debug_str) }
+  .debug_loc      0 : { *(.debug_loc) }
+  .debug_macinfo  0 : { *(.debug_macinfo) }
 
   /* SGI/MIPS DWARF 2 extensions */
-  .debug_weaknames 0 : { *(.debug_weaknames .zdebug_weaknames) }
-  .debug_funcnames 0 : { *(.debug_funcnames .zdebug_funcnames) }
-  .debug_typenames 0 : { *(.debug_typenames .zdebug_typenames) }
-  .debug_varnames  0 : { *(.debug_varnames .zdebug_varnames) }
+  .debug_weaknames 0 : { *(.debug_weaknames) }
+  .debug_funcnames 0 : { *(.debug_funcnames) }
+  .debug_typenames 0 : { *(.debug_typenames) }
+  .debug_varnames  0 : { *(.debug_varnames) }
+
+  /* DWARF 3 */
+  .debug_pubtypes 0 : { *(.debug_pubtypes) }
+  .debug_ranges   0 : { *(.debug_ranges) }
+
+  /* DWARF Extension.  */
+  .debug_macro    0 : { *(.debug_macro) } 
+  
 }
 EOF

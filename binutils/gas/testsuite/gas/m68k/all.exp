@@ -51,6 +51,9 @@ if { [istarget m68*-*-*] || [istarget fido*-*-*] } then {
     run_dump_test mcf-mov3q
     run_dump_test mcf-movsr
     run_dump_test mode5
+    run_dump_test mode5 "{name {cf}} {as {-mcpu=5200}}"
+    run_dump_test movem-offset
+    run_dump_test movem-offset "{name {cf}} {as {-mcpu=5485}}"
     run_dump_test mcf-mac
     run_dump_test mcf-emac
     run_dump_test mcf-coproc
@@ -71,9 +74,10 @@ if { [istarget m68*-*-*] || [istarget fido*-*-*] } then {
 
     gas_test_error "p11673.s" "-march=isab" "movel immediate with offset unsupported on isab"
 
-    if { [istarget *-*-netbsd] } then {
+    if { [istarget *-*-*aout] || [istarget *-*-netbsd] || [istarget *-*-openbsd*] } then {
       run_dump_test p3041
       run_dump_test p3041data
+      run_dump_test p3041pcrel
     }
 
     set testname "68000 operands"
@@ -83,7 +87,7 @@ if { [istarget m68*-*-*] || [istarget fido*-*-*] } then {
 	verbose "$comp_output" 3
 	fail $testname
     } else {
-	if [regexp_diff "err.out" "$srcdir/$subdir/op68000.d" ""] then {
+	if [regexp_diff "err.out" "$srcdir/$subdir/op68000.d"] then {
 	    fail $testname
 	} else {
 	    pass $testname
@@ -95,6 +99,8 @@ if { [istarget m68*-*-*] || [istarget fido*-*-*] } then {
     }
 
     run_dump_test pr11676
+
+    run_dump_test pmove
 }
 if [info exists errorInfo] then {
     unset errorInfo

@@ -18,7 +18,6 @@
    Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston,
    MA 02110-1301, USA.  */
 
-#include <stdio.h>
 #include "sysdep.h"
 #include "dis-asm.h"
 #include "opcode/propeller.h"
@@ -324,7 +323,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
     }
   else if (condition != 15)
     {
-      FPRINTF (F, propeller_conditions[condition].name);
+      FPRINTF (F, "%s", propeller_conditions[condition].name);
       for (i = 0; i < propeller_conditions[condition].tabs; i++)
         {
           FPRINTF (F, "\t");
@@ -343,10 +342,10 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
         switch (OP.format)
           {
           case PROPELLER_OPERAND_NO_OPS:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             goto done;
           case PROPELLER_OPERAND_SOURCE_ONLY:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
             if (immediate)
               {
@@ -364,7 +363,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
               }
             goto done;
           case PROPELLER_OPERAND_JMP:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
             {
               if (immediate) FPRINTF (F, "#");
@@ -380,7 +379,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             }
             goto done;
           case PROPELLER_OPERAND_PTRD_OPS:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
 	    if (set & 0x01)
 	      {
@@ -393,7 +392,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 	      }
             goto done;
           case PROPELLER_OPERAND_DEST_ONLY:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
 	    if (dstindirect)
 	      {
@@ -406,7 +405,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 	      }
             goto done;
           case PROPELLER_OPERAND_DESTIMM:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
 	    immediate_dst = (set & 0x1);
 	    set &= 0x4;
@@ -437,7 +436,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_JMPRET:
           case PROPELLER_OPERAND_MOVA:
 	  two_ops:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
 	    if (immediate_dst) 
 	      {
@@ -479,7 +478,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
               continue;
             if (memaddr < 2048)
               continue; /* could be in COG memory */
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
             if ((unsigned)OP.opcode == 0x80000000U)
               info->target = memaddr + src;
@@ -493,7 +492,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
             /* disassembly not implemented yet */
             continue;
           case PROPELLER_OPERAND_PTRS_OPS:
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             FPRINTF (F, AFTER_INSTRUCTION);
 	    if (dstindirect)
 	      {
@@ -527,7 +526,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
 		FPRINTF (F, "nop");
 		goto done;
 	      }
-	      FPRINTF (F, OP.name);
+	      FPRINTF (F, "%s", OP.name);
 	      FPRINTF (F, AFTER_INSTRUCTION);
 	      if (setb) {
 		needcomma = ", ";
@@ -543,7 +542,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
           case PROPELLER_OPERAND_DESTIMM_SRCIMM:
           case PROPELLER_OPERAND_JMPTASK:
             /* disassembly not implemented yet */
-            FPRINTF (F, OP.name);
+            FPRINTF (F, "%s", OP.name);
             goto done;
           default:
             /* TODO: is this a proper way of signalling an error? */

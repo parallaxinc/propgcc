@@ -7,6 +7,9 @@ MEMORY
   text   (rx)   : ORIGIN = 0, LENGTH = $TEXT_LENGTH
   data   (rw!x) : ORIGIN = $DATA_ORIGIN, LENGTH = $DATA_LENGTH
   eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = 64K
+  fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = 1K
+  lock      (rw!x) : ORIGIN = 0x830000, LENGTH = 1K
+  signature (rw!x) : ORIGIN = 0x840000, LENGTH = 1K
 }
 
 SECTIONS
@@ -158,7 +161,10 @@ SECTIONS
   .data	${RELOCATING-0} : ${RELOCATING+AT (ADDR (.text) + SIZEOF (.text))}
   {
     ${RELOCATING+ PROVIDE (__data_start = .) ; }
-    *(.data)
+    /* --gc-sections will delete empty .data. This leads to wrong start
+       addresses for subsequent sections because -Tdata= from the command
+       line will have no effect, see PR13697.  Thus, keep .data  */
+    KEEP (*(.data))    
     *(.data*)
     *(.rodata)  /* We need to include .rodata here if gcc is used */
     *(.rodata*) /* with -fdata-sections.  */
@@ -196,6 +202,24 @@ SECTIONS
     ${RELOCATING+ __eeprom_end = . ; }
   } ${RELOCATING+ > eeprom}
 
+  .fuse ${RELOCATING-0}:
+  {
+    KEEP(*(.fuse))
+    KEEP(*(.lfuse))
+    KEEP(*(.hfuse))
+    KEEP(*(.efuse))
+  } ${RELOCATING+ > fuse}
+
+  .lock ${RELOCATING-0}:
+  {
+    KEEP(*(.lock*))
+  } ${RELOCATING+ > lock}
+
+  .signature ${RELOCATING-0}:
+  {
+    KEEP(*(.signature*))
+  } ${RELOCATING+ > signature}
+
   /* Stabs debugging sections.  */
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
@@ -214,21 +238,28 @@ SECTIONS
   .line           0 : { *(.line) }
 
   /* GNU DWARF 1 extensions */
-  .debug_srcinfo  0 : { *(.debug_srcinfo .zdebug_srcinfo) }
-  .debug_sfnames  0 : { *(.debug_sfnames .zdebug_sfnames) }
+  .debug_srcinfo  0 : { *(.debug_srcinfo) }
+  .debug_sfnames  0 : { *(.debug_sfnames) }
 
   /* DWARF 1.1 and DWARF 2 */
-  .debug_aranges  0 : { *(.debug_aranges .zdebug_aranges) }
-  .debug_pubnames 0 : { *(.debug_pubnames .zdebug_pubnames) }
+  .debug_aranges  0 : { *(.debug_aranges) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
 
   /* DWARF 2 */
-  .debug_info     0 : { *(.debug_info${RELOCATING+ .gnu.linkonce.wi.*} .zdebug_info) }
-  .debug_abbrev   0 : { *(.debug_abbrev .zdebug_abbrev) }
-  .debug_line     0 : { *(.debug_line .zdebug_line) }
-  .debug_frame    0 : { *(.debug_frame .zdebug_frame) }
-  .debug_str      0 : { *(.debug_str .zdebug_str) }
-  .debug_loc      0 : { *(.debug_loc .zdebug_loc) }
-  .debug_macinfo  0 : { *(.debug_macinfo .zdebug_macinfo) }
+  .debug_info     0 : { *(.debug_info) *(.gnu.linkonce.wi.*) }
+  .debug_abbrev   0 : { *(.debug_abbrev) }
+  .debug_line     0 : { *(.debug_line) }
+  .debug_frame    0 : { *(.debug_frame) }
+  .debug_str      0 : { *(.debug_str) }
+  .debug_loc      0 : { *(.debug_loc) }
+  .debug_macinfo  0 : { *(.debug_macinfo) }
+
+  /* DWARF 3 */
+  .debug_pubtypes 0 : { *(.debug_pubtypes) }
+  .debug_ranges   0 : { *(.debug_ranges) }
+
+  /* DWARF Extension.  */
+  .debug_macro    0 : { *(.debug_macro) } 
 }
 EOF
 
