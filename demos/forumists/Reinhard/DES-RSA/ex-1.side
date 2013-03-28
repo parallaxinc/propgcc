@@ -1,0 +1,9 @@
+ex-1.c
+bit.c
+des.c
+rsa.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>BOARD::HUB

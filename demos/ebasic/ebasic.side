@@ -1,0 +1,23 @@
+ebasic.c
+db_compiler.c
+db_edit.c
+db_expr.c
+db_generate.c
+db_image.c
+db_scan.c
+db_statement.c
+db_strings.c
+db_symbols.c
+db_system.c
+db_vmdebug.c
+db_vmfcn.c
+db_vmint.c
+editbuf.c
+osint_propgcc.c
+scratchbuf.c
+>compiler=C
+>memtype=xmmc
+>optimize=-Os
+>-fno-exceptions
+>defs::-DPROPELLER_GCC -DUSE_FDS -DLOAD_SAVE
+>BOARD::C3F
