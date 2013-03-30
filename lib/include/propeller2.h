@@ -114,7 +114,7 @@ static __inline__ int getpin(int pin)
 static __inline__ void setpin(int pin, int value)
 {
     __asm__ volatile (
-        "rcr %[_value], #1 wc\n\t"
+        "rcr %[_value], #1 wc,nr\n\t"
         "setpc %[_pin]"
     : /* outputs */
         "=r" (value)
