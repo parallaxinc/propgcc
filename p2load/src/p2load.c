@@ -82,8 +82,8 @@ int main(int argc, char *argv[])
     char actualPort[PATH_MAX], *port, *p, *p2;
     int baudRate, baudRate2, verbose, strip, startMonitor, terminalMode, err, i;
     uint32_t loadAddr = BASE;
-    uint32_t cogImage = COGIMAGE_LO;
-    uint32_t stackTop = 0x20000;
+    uint32_t runAddr = COGIMAGE_LO;
+    uint32_t runParam = 0x20000;
     
     /* initialize */
     baudRate = baudRate2 = BAUD_RATE;
@@ -119,13 +119,13 @@ int main(int argc, char *argv[])
                     Usage();
                 break;
             case 'h':
-                cogImage = COGIMAGE_HI;
+                runAddr = COGIMAGE_HI;
                 break;
             case 'm':
                 startMonitor = TRUE;
                 break;
             case 'n':
-                stackTop = 0x8000;
+                runParam = 0x8000;
                 break;
             case 'p':
                 if (argv[i][2])
@@ -158,6 +158,17 @@ int main(int argc, char *argv[])
                 break;
             case 'P':
                 ShowPorts(PORT_PREFIX);
+                break;
+            case 'r':
+                if (argv[i][2])
+                    p = &argv[i][2];
+                else if (++i < argc)
+                    p = argv[i];
+                if ((p2 = strchr(p, ':')) == NULL)
+                    Usage();
+                *p2++ = '\0';
+                runAddr = (uint32_t)strtoul(p, NULL, 16);
+                runParam = (uint32_t)strtoul(p2, NULL,16);
                 break;
             case 's':
                 /* handle this later with the position-dependent options */
@@ -239,7 +250,7 @@ int main(int argc, char *argv[])
                 loadAddr = strtoul(p, &p, 16);
             }
             printf("Loading '%s' at 0x%08x\n", infile, loadAddr);
-            if ((err = LoadFile(infile, loadAddr, strip, &cogImage)) != 0)
+            if ((err = LoadFile(infile, loadAddr, strip, &runAddr)) != 0)
                 return err;
             loadAddr = BASE;
             strip = FALSE;
@@ -251,7 +262,7 @@ int main(int argc, char *argv[])
             return err;
     }
     else {
-        if ((err = p2_StartImage(cogImage, stackTop)) != 0)
+        if ((err = p2_StartImage(runAddr, runParam)) != 0)
             return err;
     }
     
@@ -359,6 +370,7 @@ usage: p2load\n\
          [ -n ]            set stack top to $8000 for the DE0-Nano\n\
          [ -p <port> ]     serial port (default is to auto-detect the port)\n\
          [ -P ]            list available serial ports\n\
+         [ -r addr:param ] run program from addr with parameter param\n\
          [ -s ]            strip $0e80 bytes from the start of the file before loading\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -v ]            verbose output\n\
