@@ -363,7 +363,7 @@ usage: p2load\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -v ]            verbose output\n\
          [ -? ]            display a usage message and exit\n\
-         <name>            file to load\n", BAUD_RATE);
+         <name>[,addr]...  files to load\n", BAUD_RATE);
     exit(1);
 }
 
