@@ -61,6 +61,7 @@ enum {
 static int version;
 
 /* prototypes */
+static int LoadFile(char *infile, uint32_t loadAddr, int strip, uint32_t *pCogImage);
 static void Usage(void);
 static void *LoadElfFile(FILE *fp, ElfHdr *hdr, int *pImageSize);
 
@@ -72,30 +73,28 @@ static int OpenPort(const char* port, int baud);
 
 int main(int argc, char *argv[])
 {
-    char actualPort[PATH_MAX], *port, *infile, *p;
-    int baudRate, baudRate2, verbose, strip, terminalMode, imageSize, err, i;
+    char actualPort[PATH_MAX], *port, *p, *p2;
+    int baudRate, baudRate2, verbose, strip, terminalMode, err, i;
+    uint32_t loadAddr = BASE;
     uint32_t cogImage = COGIMAGE_LO;
     uint32_t stackTop = 0x20000;
-    uint8_t *imageBuf, *ptr;
-    ElfHdr elfHdr;
-    FILE *fp;
     
     /* initialize */
     baudRate = baudRate2 = BAUD_RATE;
-    port = infile = NULL;
     verbose = strip = terminalMode = FALSE;
+    port = NULL;
     
-    /* get the arguments */
-    for(i = 1; i < argc; ++i) {
+    /* process the position-independent arguments */
+    for (i = 1; i < argc; ++i) {
 
         /* handle switches */
-        if(argv[i][0] == '-') {
-            switch(argv[i][1]) {
+        if (argv[i][0] == '-') {
+            switch (argv[i][1]) {
             case 'b':
-                if(argv[i][2])
+                if (argv[i][2])
                     p = &argv[i][2];
-                else if(++i < argc)
-                    p= argv[i];
+                else if (++i < argc)
+                    p = argv[i];
                 else
                     Usage();
                 if (*p != ':')
@@ -105,6 +104,14 @@ int main(int argc, char *argv[])
                         baudRate2 = atoi(p);
                 }
                 break;
+            case 'c':
+                if (argv[i][2])
+                    p = &argv[i][2];
+                else if (++i < argc)
+                    p = argv[i];
+                else
+                    Usage();
+                break;
             case 'h':
                 cogImage = COGIMAGE_HI;
                 break;
@@ -112,9 +119,9 @@ int main(int argc, char *argv[])
                 stackTop = 0x8000;
                 break;
             case 'p':
-                if(argv[i][2])
+                if (argv[i][2])
                     port = &argv[i][2];
-                else if(++i < argc)
+                else if (++i < argc)
                     port = argv[i];
                 else
                     Usage();
@@ -144,7 +151,7 @@ int main(int argc, char *argv[])
                 ShowPorts(PORT_PREFIX);
                 break;
             case 's':
-                strip = TRUE;
+                /* handle this later with the position-dependent options */
                 break;
             case 't':
                 terminalMode = TRUE;
@@ -159,22 +166,11 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-
-        /* handle the input filename */
-        else {
-            if (infile)
-                Usage();
-            infile = argv[i];
-        }
     }
-    
-    /* exit early if there is no file to load */
-    if (!infile)
-        return 0;
     
     switch (InitPort(PORT_PREFIX, port, baudRate, verbose, actualPort)) {
     case CHECK_PORT_OK:
-        printf("Found propeller version %d\n", version);
+        printf("Found propeller version %d on %s\n", version, actualPort);
         break;
     case CHECK_PORT_OPEN_FAILED:
         printf("error: opening serial port '%s'\n", port);
@@ -188,7 +184,74 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    printf("Loading '%s' on port %s\n", infile, actualPort);
+    /* load the image */
+    if ((err = p2_InitLoader(baudRate)) != 0)
+        return err;
+    
+    /* process the position-dependent arguments */
+    for (i = 1; i < argc; ++i) {
+
+        /* handle switches */
+        if (argv[i][0] == '-') {
+            switch (argv[i][1]) {
+            case 'c':
+                if (argv[i][2])
+                    p = &argv[i][2];
+                else if (++i < argc)
+                    p = argv[i];
+                if ((p2 = strchr(p, ':')) == NULL)
+                    Usage();
+                *p2++ = '\0';
+                if ((err = p2_StartCog((uint32_t)strtoul(p, NULL, 16), (uint32_t)strtoul(p2, NULL,16))) != 0)
+                    return err;
+                break;
+            case 's':
+                strip = TRUE;
+                break;
+            default:
+                /* bad options detected with the position-independent options */
+                break;
+            }
+        }
+
+        /* handle the input filename */
+        else {
+            char *infile, *p;
+            infile = argv[i];
+            if ((p = strchr(infile, ',')) != NULL) {
+                *p++ = '\0';
+                loadAddr = strtoul(p, &p, 16);
+            }
+            printf("Loading '%s' at 0x%08x\n", infile, loadAddr);
+            if ((err = LoadFile(infile, loadAddr, strip, &cogImage)) != 0)
+                return err;
+            loadAddr = BASE;
+            strip = FALSE;
+        }
+    }
+
+
+    if ((err = p2_StartImage(cogImage, stackTop)) != 0)
+        return err;
+    
+    /* enter terminal mode if requested */
+    if (terminalMode) {
+        printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
+        fflush(stdout);
+        if (baudRate2 != baudRate)
+            serial_baud(baudRate2);
+        terminal_mode(FALSE);
+    }
+
+    return 0;
+}
+
+static int LoadFile(char *infile, uint32_t loadAddr, int strip, uint32_t *pCogImage)
+{
+    uint8_t *imageBuf, *ptr;
+    int imageSize, err;
+    ElfHdr elfHdr;
+    FILE *fp;
     
     /* open the binary */
     if (!(fp = fopen(infile, "rb"))) {
@@ -210,7 +273,7 @@ int main(int argc, char *argv[])
         imageSize -= BASE;
         
         /* propgcc always creates images that start at 0x1000 */
-        cogImage = COGIMAGE_HI;
+        *pCogImage = COGIMAGE_HI;
     }
     
     /* load a binary file */
@@ -227,7 +290,7 @@ int main(int argc, char *argv[])
                 return 1;
             }
             if ((imageSize -= BASE) < 0) {
-                printf("error: file too small\n");
+                printf("error: file too small to strip\n");
                 return 1;
             }
         }
@@ -254,22 +317,12 @@ int main(int argc, char *argv[])
         fclose(fp);
     }
     
-    /* load the image */
-    if ((err = p2_LoadImage(ptr, imageSize, cogImage, stackTop, baudRate)) != 0)
+    if ((err = p2_LoadImage(ptr, loadAddr, imageSize)) != 0)
         return err;
-    
+        
     /* free the image buffer */
     free(imageBuf);
         
-    /* enter terminal mode if requested */
-    if (terminalMode) {
-        printf("[ Entering terminal mode. Type ESC or Control-C to exit. ]\n");
-        fflush(stdout);
-        if (baudRate2 != baudRate)
-            serial_baud(baudRate2);
-        terminal_mode(FALSE);
-    }
-
     return 0;
 }
 
@@ -279,6 +332,7 @@ static void Usage(void)
 printf("\
 usage: p2load\n\
          [ -b <baud> ]     baud rate (default is %d)\n\
+         [ -c addr:param ] load COG image at addr with parameter param\n\
          [ -h ]            cog image is at $1000 instead of $0e80\n\
          [ -n ]            set stack top to $8000 for the DE0-Nano\n\
          [ -p <port> ]     serial port (default is to auto-detect the port)\n\
