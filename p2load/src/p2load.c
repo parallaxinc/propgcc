@@ -368,6 +368,7 @@ static int LoadFile(char *infile, uint32_t loadAddr, int strip, uint32_t *pCogIm
 static void Usage(void)
 {
 printf("\
+p2load - a loader for the propeller 2 - version 0.001, 2013-03-30\n\
 usage: p2load\n\
          [ -b <baud> ]     baud rate (default is %d)\n\
          [ -c addr:param ] load COG image at addr with parameter param\n\
