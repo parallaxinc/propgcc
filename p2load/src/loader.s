@@ -17,7 +17,6 @@
   CMD_START = 2
   CMD_COGNEW = 3
 
-
   ' character codes
   SOH = 0x01             ' start of a packet
   ACK = 0x06
