@@ -82,8 +82,10 @@ int main(int argc, char *argv[])
     char actualPort[PATH_MAX], *port, *p, *p2;
     int baudRate, baudRate2, verbose, strip, startMonitor, terminalMode, err, i;
     uint32_t loadAddr = BASE;
+    uint32_t cogAddr = COGIMAGE_LO;
     uint32_t runAddr = COGIMAGE_LO;
-    uint32_t runParam = 0x20000;
+    uint32_t runParam = 0x20000; // top of hub memory for C stack pointer
+    int runParamsSet = FALSE;
     
     /* initialize */
     baudRate = baudRate2 = BAUD_RATE;
@@ -169,6 +171,7 @@ int main(int argc, char *argv[])
                 *p2++ = '\0';
                 runAddr = (uint32_t)strtoul(p, NULL, 16);
                 runParam = (uint32_t)strtoul(p2, NULL,16);
+                runParamsSet = TRUE;
                 break;
             case 's':
                 /* handle this later with the position-dependent options */
@@ -216,6 +219,7 @@ int main(int argc, char *argv[])
             switch (argv[i][1]) {
             case 'b':   /* skip over the arguments for these options */
             case 'p':
+            case 'r':
                 if (argv[i][2])
                     p = &argv[i][2];
                 else if (++i < argc)
@@ -250,7 +254,7 @@ int main(int argc, char *argv[])
                 loadAddr = strtoul(p, &p, 16);
             }
             printf("Loading '%s' at 0x%08x\n", infile, loadAddr);
-            if ((err = LoadFile(infile, loadAddr, strip, &runAddr)) != 0)
+            if ((err = LoadFile(infile, loadAddr, strip, &cogAddr)) != 0)
                 return err;
             loadAddr = BASE;
             strip = FALSE;
@@ -262,6 +266,8 @@ int main(int argc, char *argv[])
             return err;
     }
     else {
+        if (!runParamsSet)
+            runAddr = cogAddr;
         if ((err = p2_StartImage(runAddr, runParam)) != 0)
             return err;
     }
