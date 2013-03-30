@@ -1,3 +1,9 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'' lib1funcs.asm: general assembly language helper routines for libgcc
+'' most notable are the floating point routines (float is based on F32,
+'' double is original) and some miscellaneous memory functions
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 ''        F32 - Concise floating point code for the Propeller
 ''        Copyright (c) 2011 Jonathan "lonesock" Dummer
 ''
@@ -1071,9 +1077,109 @@ doint_ret
 		LMMRET
 #endif
 
+#ifdef L_memkernel
 /*
+ * memory functions for LMM kernels
+ * not currently used
+ */
+	.global __loadmem
+	.global __loadmem_ret
+	.section .kernel, "ax"
+__loadmem
+	mov	__TMP1,__mem_kernel_ptr
+	call	#__load_extension
+__loadmem_ret
+	ret
+__mem_kernel_ptr
+	long	__load_start_memory_kerext
 
+	''
+	'' memory related functions
+	''
 
+	.section .memory.kerext, "ax"
+startmem
+	long	endmem - startmem
+	''
+	'' memcpy(r0, r1, r2)
+	'' copy from r1 to r0
+	'' trashes r3
+	''
+	.global __Memcpy
+	.global __Memcpy_ret
+__Memcpy
+	mov	r3,r0
+	or	r3,r1
+	and	r3,#3 nr,wz	'' check alignment
+  if_nz jmp	#.slocpy
+
+	'' get number of longs to copy
+	mov	__TMP0,r2
+	shr	__TMP0,#2 wz
+  if_z  jmp	.slocpy
+
+.fastcopy
+	rdlong	r3,r1
+	add	r1,#4
+	sub	r2,#4
+	wrlong	r3,r0
+	add	r0,#4
+        djnz    __TMP0,#.fastcopy
+	
+.slocpy
+	cmps	r2,#0 wz
+  if_z  jmp	__Memcpy_ret
+
+.slolp
+	rdbyte	r3,r1
+	add	r1,#1
+	wrbyte	r3,r0
+	add	r0,#1
+	djnz	r2,#.slolp
+
+__Memcpy_ret
+	ret
+
+	''
+	'' memclr:
+	'' r0 == address
+	'' r1 == count
+	'' fills memory with 0
+	''
+	'' clobbers r2, r3
+	''
+	.global __Memclr
+	.global __Memclr_ret
+
+__Memclr
+	mov	r2,#0
+	mov	r3,r1 wz	'' check for zero size
+  if_z  jmp	__Memclr_ret
+	and	r0,#3 nr,wz	'' check alignment
+  if_nz jmp	#.sloset
+  	'' get number of longs to set
+	shr    r3,#2 wz
+  if_z	jmp    #.sloset
+  	shl    r3,#2
+	sub    r1,r3
+	shr    r3,#2
+.fastset
+	wrlong	r2, r0
+	add	r0,#4
+	djnz	r3, #.fastset
+
+.sloset
+	wrbyte	r2, r0
+	add	r0,#1
+	djnz	r1, #.sloset
+__Memclr_ret
+	ret
+
+endmem
+
+#endif
+
+/*
 +------------------------------------------------------------------------------------------------------------------------------+
 |                                                   TERMS OF USE: MIT License                                                  |                                                            
 +------------------------------------------------------------------------------------------------------------------------------+
