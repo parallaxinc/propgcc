@@ -20,11 +20,26 @@
 /* second-stage loader header structure */
 typedef struct {
     uint32_t jmpinit;
-    uint32_t clkfreq;
     uint32_t period;    // clkfreq / baudrate
-    uint32_t cogimage;  // address of the cog image
-    uint32_t stacktop;  // address of the top of stack
 } Stage2Hdr;
+
+#define CMD_LOAD    1
+#define CMD_START   2
+#define CMD_COGNEW  3
+
+/* load command packet */
+typedef struct {
+    uint32_t cmd;   // CMD_LOAD
+    uint32_t addr;
+    uint32_t count;
+} LoadCmd;
+
+/* start command packet */
+typedef struct {
+    uint32_t cmd;   // CMD_START
+    uint32_t addr;
+    uint32_t param;
+} StartCmd;
 
 static uint8_t txbuf[1024];
 static int txcnt;
@@ -43,16 +58,15 @@ static int WaitForInitialAck(void);
 static int SendPacket(uint8_t *buf, int len);
 static int WaitForAckNak(int timeout);
 
-/* p2_LoadImage - load a binary hub image into a propeller 2 */
-int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t stackTop, int baudRate)
+/* p2_InitLoader - initialize the loader */
+int p2_InitLoader(int baudRate)
 {
     extern uint8_t loader_array[];
     extern int loader_size;
     uint8_t loader_image[512*sizeof(uint32_t)];
     Stage2Hdr *hdr;
-    uint32_t *ptr32;
-    uint8_t *ptr;
-    int cnt, i;
+    uint32_t *ptr;
+    int i;
 
     /* build the loader image */
     memset(loader_image, 0, sizeof(loader_image));
@@ -60,18 +74,15 @@ int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t s
         
     /* patch the binary loader with the baud rate information */
     hdr = (Stage2Hdr *)loader_image;
-    hdr->clkfreq = CLOCK_FREQ;
-    hdr->period = hdr->clkfreq / baudRate;
-    hdr->cogimage = cogImage;
-    hdr->stacktop = stackTop;
+    hdr->period = CLOCK_FREQ / baudRate;
     
     /* add the (dummy) signature */
-    ptr32 = (uint32_t *)loader_image;
+    ptr = (uint32_t *)loader_image;
     for (i = 0; i < 8; ++i)
-        ptr32[SIG_OFFSET + i] = 0x00000001;
+        ptr[SIG_OFFSET + i] = 0x00000001;
         
     /* download the second-stage loader binary */
-    for (i = 0; i < 2048; i += 4)
+    for (i = 0; i < sizeof(loader_image); i += 4)
         TLong(loader_image[i]
             | (loader_image[i + 1] << 8)
             | (loader_image[i + 2] << 16)
@@ -87,26 +98,76 @@ int p2_LoadImage(uint8_t *imageBuf, int imageSize, uint32_t cogImage, uint32_t s
         return 1;
     }
     
+    /* return successfully */
+    return 0;
+}
+
+/* p2_LoadImage - load a binary hub image into a propeller 2 */
+int p2_LoadImage(uint8_t *imageBuf, uint32_t addr, uint32_t size)
+{
+    LoadCmd loadCmd;
+    uint8_t *ptr;
+    int cnt;
+
+    /* send the load command */
+    loadCmd.cmd = CMD_LOAD;
+    loadCmd.addr = addr;
+    loadCmd.count = size;
+    if (!SendPacket((uint8_t *)&loadCmd, sizeof(loadCmd))) {
+        printf("error: send load packet failed\n");
+        return 1;
+    }
+    
     /* load the binary image */
-    for (ptr = imageBuf; (cnt = imageSize) > 0; ptr += cnt) {
+    for (ptr = imageBuf; (cnt = size) > 0; ptr += cnt) {
         if (cnt > PKTMAXLEN)
             cnt = PKTMAXLEN;
         if (!SendPacket(ptr, cnt)) {
-            printf("error: send packet failed\n");
+            printf("error: send data packet failed\n");
             return 1;
         }
-        imageSize -= cnt;
+        size -= cnt;
         printf(".");
         fflush(stdout);
     }
     printf("\n");
     
-    /* terminate the transfer and start the program */
-    if (!SendPacket(NULL, 0)) {
+    /* return successfully */
+    return 0;
+}
+
+/* p2_StartImage - start the loaded image */
+int p2_StartImage(uint32_t addr, uint32_t param)
+{    
+    StartCmd startCmd;
+
+    /* send the start command */
+    startCmd.cmd = CMD_START;
+    startCmd.addr = addr;
+    startCmd.param = param;
+    if (!SendPacket((uint8_t *)&startCmd, sizeof(startCmd))) {
         printf("error: send start packet failed\n");
         return 1;
     }
-    
+
+    /* return successfully */
+    return 0;
+}
+
+/* p2_StartCog - start a COG image */
+int p2_StartCog(uint32_t addr, uint32_t param)
+{    
+    StartCmd startCmd;
+
+    /* send the start command */
+    startCmd.cmd = CMD_COGNEW;
+    startCmd.addr = addr;
+    startCmd.param = param;
+    if (!SendPacket((uint8_t *)&startCmd, sizeof(startCmd))) {
+        printf("error: send cognew packet failed\n");
+        return 1;
+    }
+
     /* return successfully */
     return 0;
 }
