@@ -71,7 +71,7 @@ $(OBJDIR)/spin.tab.c $(OBJDIR)/spin.tab.h: spin.y
 
 lexer.c: $(OBJDIR)/spin.tab.h
 
-clean: $(OBJDIR)
+clean:
 	$(RM) -r $(OBJDIR)
 
 test: $(PROGS)
