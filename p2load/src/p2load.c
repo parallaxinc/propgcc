@@ -37,8 +37,14 @@
 
 /* base of hub ram */
 #define BASE        0x0e80
+
+/* hub address of main program COG image */
 #define COGIMAGE_LO BASE
 #define COGIMAGE_HI 0x1000
+
+/* parameters for starting the ROM MONITOR_ADDR */
+#define MONITOR_ADDR    0x70c
+#define MONITOR_PARAM   ((90 << 9) | 91)                        
 
 /* defaults */
 #define BAUD_RATE   115200
@@ -74,14 +80,14 @@ static int OpenPort(const char* port, int baud);
 int main(int argc, char *argv[])
 {
     char actualPort[PATH_MAX], *port, *p, *p2;
-    int baudRate, baudRate2, verbose, strip, terminalMode, err, i;
+    int baudRate, baudRate2, verbose, strip, startMonitor, terminalMode, err, i;
     uint32_t loadAddr = BASE;
     uint32_t cogImage = COGIMAGE_LO;
     uint32_t stackTop = 0x20000;
     
     /* initialize */
     baudRate = baudRate2 = BAUD_RATE;
-    verbose = strip = terminalMode = FALSE;
+    verbose = strip = startMonitor = terminalMode = FALSE;
     port = NULL;
     
     /* process the position-independent arguments */
@@ -114,6 +120,9 @@ int main(int argc, char *argv[])
                 break;
             case 'h':
                 cogImage = COGIMAGE_HI;
+                break;
+            case 'm':
+                startMonitor = TRUE;
                 break;
             case 'n':
                 stackTop = 0x8000;
@@ -194,6 +203,13 @@ int main(int argc, char *argv[])
         /* handle switches */
         if (argv[i][0] == '-') {
             switch (argv[i][1]) {
+            case 'b':   /* skip over the arguments for these options */
+            case 'p':
+                if (argv[i][2])
+                    p = &argv[i][2];
+                else if (++i < argc)
+                    p = argv[i];
+                break;
             case 'c':
                 if (argv[i][2])
                     p = &argv[i][2];
@@ -230,9 +246,14 @@ int main(int argc, char *argv[])
         }
     }
 
-
-    if ((err = p2_StartImage(cogImage, stackTop)) != 0)
-        return err;
+    if (startMonitor) {
+        if ((err = p2_StartImage(MONITOR_ADDR, MONITOR_PARAM)) != 0)
+            return err;
+    }
+    else {
+        if ((err = p2_StartImage(cogImage, stackTop)) != 0)
+            return err;
+    }
     
     /* enter terminal mode if requested */
     if (terminalMode) {
@@ -334,6 +355,7 @@ usage: p2load\n\
          [ -b <baud> ]     baud rate (default is %d)\n\
          [ -c addr:param ] load COG image at addr with parameter param\n\
          [ -h ]            cog image is at $1000 instead of $0e80\n\
+         [ -m ]            start the ROM monitor instead of the program\n\
          [ -n ]            set stack top to $8000 for the DE0-Nano\n\
          [ -p <port> ]     serial port (default is to auto-detect the port)\n\
          [ -P ]            list available serial ports\n\
