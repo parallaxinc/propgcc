@@ -133,14 +133,16 @@ cmd_handler             mov     t1, cmd0
                         jmp     #next_packet
 cmd_handler_1           cmp     t1, #CMD_START wz    'check for CMD_START
                  if_nz  jmp     #cmd_handler_2
-                        cogid   t1                   'relaunch cog0 with loaded program
+                        cogid   t1                   'relaunch current cog
                         setcog  t1
                         coginit cmd1, cmd2
+                        ' should never return
 cmd_handler_2           cmp     t1, #CMD_COGINIT wz  'check for CMD_COGINIT
                  if_nz  jmp     #next_packet
                         shr     cmd0, #8
                         setcog  cmd0
-                        coginit cmd1, cmd2           'relaunch cog0 with loaded program
+                        coginit cmd1, cmd2           'launch a cog
+                        jmp     #next_packet
                         
 data_start              mov     rcv_state, #do_data
                         mov     rcv_ptr, rcv_base
