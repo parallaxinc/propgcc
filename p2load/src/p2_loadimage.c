@@ -25,7 +25,7 @@ typedef struct {
 
 #define CMD_LOAD    1
 #define CMD_START   2
-#define CMD_COGNEW  3
+#define CMD_COGINIT 3
 
 /* load command packet */
 typedef struct {
@@ -155,12 +155,12 @@ int p2_StartImage(uint32_t addr, uint32_t param)
 }
 
 /* p2_StartCog - start a COG image */
-int p2_StartCog(uint32_t addr, uint32_t param)
+int p2_StartCog(int id, uint32_t addr, uint32_t param)
 {    
     StartCmd startCmd;
 
     /* send the start command */
-    startCmd.cmd = CMD_COGNEW;
+    startCmd.cmd = (id << 8) | CMD_COGINIT;
     startCmd.addr = addr;
     startCmd.param = param;
     if (!SendPacket((uint8_t *)&startCmd, sizeof(startCmd))) {
