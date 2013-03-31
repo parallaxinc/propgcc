@@ -15,7 +15,7 @@
   
   CMD_LOAD = 1
   CMD_START = 2
-  CMD_COGNEW = 3
+  CMD_COGINIT = 3
 
   ' character codes
   SOH = 0x01             ' start of a packet
@@ -122,22 +122,25 @@ do_cmd2                 or      cmd2, x
                         mov     rcv_state, #payload_update
                         jmp     #payload_update
                         
-cmd_handler             cmp     cmd0, #CMD_LOAD wz  'check for CMD_LOAD
+cmd_handler             mov     t1, cmd0
+                        and     t1, #0xff
+                        cmp     t1, #CMD_LOAD wz     'check for CMD_LOAD
                 if_nz   jmp     #cmd_handler_1
                         mov     rcv_base, cmd1
                         mov     data_cnt, cmd2
                         mov     payload_state, #data_start
                         mov     payload_handler, #data_handler
                         jmp     #next_packet
-cmd_handler_1           cmp     cmd0, #CMD_START wz  'check for CMD_START
+cmd_handler_1           cmp     t1, #CMD_START wz    'check for CMD_START
                  if_nz  jmp     #cmd_handler_2
                         'cogid   t1                  'this doesn't seem to work
                         mov     t1, #0
                         setcog  t1
                         coginit cmd1, cmd2           'relaunch cog0 with loaded program
-cmd_handler_2           cmp     cmd0, #CMD_COGNEW wz 'check for CMD_COGNEW
+cmd_handler_2           cmp     t1, #CMD_COGINIT wz  'check for CMD_COGINIT
                  if_nz  jmp     #next_packet
-                        setcog  #8
+                        shr     cmd0, #8
+                        setcog  cmd0
                         coginit cmd1, cmd2           'relaunch cog0 with loaded program
                         
 data_start              mov     rcv_state, #do_data
