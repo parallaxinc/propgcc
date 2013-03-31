@@ -133,10 +133,9 @@ cmd_handler             mov     t1, cmd0
                         jmp     #next_packet
 cmd_handler_1           cmp     t1, #CMD_START wz    'check for CMD_START
                  if_nz  jmp     #cmd_handler_2
-                        'cogid   t1                  'this doesn't seem to work
-                        mov     t1, #0
+                        cogid   t1                   'relaunch cog0 with loaded program
                         setcog  t1
-                        coginit cmd1, cmd2           'relaunch cog0 with loaded program
+                        coginit cmd1, cmd2
 cmd_handler_2           cmp     t1, #CMD_COGINIT wz  'check for CMD_COGINIT
                  if_nz  jmp     #next_packet
                         shr     cmd0, #8
