@@ -245,8 +245,15 @@ int main(int argc, char *argv[])
                     param = (uint32_t)strtoul(p2, NULL,16);
                 }
                 addr = (uint32_t)strtoul(p, NULL, 16);
-                if ((err = p2_StartCog(id, addr, param)) != 0)
-                    return err;
+                if (id == 0) {
+                    runAddr = addr;
+                    runParam = param;
+                    runParamsSet = TRUE;
+                }
+                else {
+                    if ((err = p2_StartCog(id, addr, param)) != 0)
+                        return err;
+                }
                 break;
             case 's':
                 strip = TRUE;
@@ -302,20 +309,20 @@ static void Usage(void)
 printf("\
 p2load - a loader for the propeller 2 - version 0.003, 2013-03-31\n\
 usage: p2load\n\
-         [ -b <baud> ]          baud rate (default is %d)\n\
+         [ -b baud ]            baud rate (default is %d)\n\
          [ -c addr[:param] ]    load a free COG with image at addr and parameter param\n\
          [ -c n,addr[:param] ]  load COG n with image at addr and parameter param\n\
          [ -h ]                 cog image is at $1000 instead of $0e80\n\
          [ -m ]                 start the ROM monitor instead of the program\n\
          [ -n ]                 set stack top to $8000 for the DE0-Nano\n\
-         [ -p <port> ]          serial port (default is to auto-detect the port)\n\
+         [ -p port ]            serial port (default is to auto-detect the port)\n\
          [ -P ]                 list available serial ports\n\
          [ -r addr:param ]      run program from addr with parameter param\n\
          [ -s ]                 strip $e80 bytes from start of the file before loading\n\
          [ -t ]                 enter terminal mode after running the program\n\
          [ -v ]                 verbose output\n\
          [ -? ]                 display a usage message and exit\n\
-         <name>[,addr]...       files to load\n", BAUD_RATE);
+         file[,addr]...         files to load\n", BAUD_RATE);
     exit(1);
 }
 
