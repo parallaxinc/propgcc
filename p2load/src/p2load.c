@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
 static void Usage(void)
 {
 printf("\
-p2load - a loader for the propeller 2 - version 0.003, 2013-03-31\n\
+p2load - a loader for the propeller 2 - version 0.004, 2013-04-01\n\
 usage: p2load\n\
          [ -b baud ]            baud rate (default is %d)\n\
          [ -c addr[:param] ]    load a free COG with image at addr and parameter param\n\
