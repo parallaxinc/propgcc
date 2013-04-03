@@ -549,13 +549,13 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"settask", 0x0c4000cb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
   
 /* cfgdac0   000011 zcn1 cccc nnnnnnnnn 011001100 */
-  {"cfgdac0", 0x0c40000cc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"cfgdac0", 0x0c4000cc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* cfgdac1   000011 zcn1 cccc nnnnnnnnn 011001101 */
   {"cfgdac1", 0x0c4000cd, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* cfgdac2   000011 zcn1 cccc nnnnnnnnn 011001110 */
   {"cfgdac2", 0x0c4000ce, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* cfgdac3   000011 zcn1 cccc nnnnnnnnn 011001111 */
-  {"crgdac3", 0x0c4000cf, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+  {"cfgdac3", 0x0c4000cf, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
   
 /* setdac0   000011 zcn1 cccc nnnnnnnnn 011010000 */
   {"setdac0", 0x0c4000d0, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
@@ -725,15 +725,6 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* calld     010111 zc11 cccc DDDDDDDDD sssssssss *//* too. */
   {"calld", 0x5c000000, 0xfc000000, PROPELLER_OPERAND_CALL, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 
-/* subr   111000 zc1i cccc ddddddddd sssssssss */
-  {"subr", 0xe0800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
-/* cmpsub   111001 zc1i cccc ddddddddd sssssssss */
-  {"cmpsub", 0xe4800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
-/* incmod   111010 zcri cccc ddddddddd sssssssss */
-  {"incmod", 0xe8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
-/* decmod   111011 zcri cccc ddddddddd sssssssss */
-  {"decmod", 0xec000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
-
 /* setinda   111000 0000 0001 000000000 aaaaaaaaa */
   {"setinda", 0xe0040000, 0xfff7fe00, PROPELLER_OPERAND_SETINDA, 0, PROP_2, NO_COMPRESSED, 0},
 /* setindb   111000 0000 0100 bbbbbbbbb 000000000 */
@@ -750,6 +741,15 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"cfgpins", 0xe8000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, CC, PROP_2, NO_COMPRESSED, 0},
 /* waitvid  111011 000i cccc ddddddddd sssssssss */
   {"waitvid", 0xec000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, CC, PROP_2, NO_COMPRESSED, 0},
+
+/* subr   111000 zc1i cccc ddddddddd sssssssss */
+  {"subr", 0xe0800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
+/* cmpsub   111001 zc1i cccc ddddddddd sssssssss */
+  {"cmpsub", 0xe4800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
+/* incmod   111010 zcri cccc ddddddddd sssssssss */
+  {"incmod", 0xe8000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
+/* decmod   111011 zcri cccc ddddddddd sssssssss */
+  {"decmod", 0xec000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 
 /* ijz     111100 00ri cccc ddddddddd sssssssss */
   {"ijz", 0xf0000000, 0xff000000, PROPELLER_OPERAND_JMPRET, CCWR, PROP_2, NO_COMPRESSED, 0},
