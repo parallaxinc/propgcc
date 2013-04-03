@@ -80,7 +80,7 @@ static int OpenPort(const char* port, int baud);
 int main(int argc, char *argv[])
 {
     char actualPort[PATH_MAX], *port, *p, *p2;
-    int baudRate, baudRate2, verbose, strip, startMonitor, terminalMode, err, i;
+    int baudRate, baudRate2, verbose, strip, startMonitor, terminalMode, pstMode, err, i;
     uint32_t loadAddr = BASE;
     uint32_t cogAddr = COGIMAGE_LO;
     uint32_t runAddr = COGIMAGE_LO;
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     
     /* initialize */
     baudRate = baudRate2 = BAUD_RATE;
-    verbose = strip = startMonitor = terminalMode = FALSE;
+    verbose = strip = startMonitor = terminalMode = pstMode = FALSE;
     port = NULL;
     
     /* process the position-independent arguments */
@@ -176,6 +176,9 @@ int main(int argc, char *argv[])
             case 's':
                 /* handle this later with the position-dependent options */
                 break;
+            case 'T':
+                pstMode = TRUE;
+                // fall through
             case 't':
                 terminalMode = TRUE;
                 break;
@@ -297,7 +300,7 @@ int main(int argc, char *argv[])
         fflush(stdout);
         if (baudRate2 != baudRate)
             serial_baud(baudRate2);
-        terminal_mode(FALSE);
+        terminal_mode(FALSE, pstMode);
     }
 
     return 0;
@@ -307,7 +310,7 @@ int main(int argc, char *argv[])
 static void Usage(void)
 {
 printf("\
-p2load - a loader for the propeller 2 - version 0.005, 2013-04-01\n\
+p2load - a loader for the propeller 2 - version 0.006, 2013-04-03\n\
 usage: p2load\n\
          [ -b baud ]            baud rate (default is %d)\n\
          [ -c addr[:param] ]    load a free COG with image at addr and parameter param\n\
@@ -320,6 +323,7 @@ usage: p2load\n\
          [ -r addr:param ]      run program from addr with parameter param\n\
          [ -s ]                 strip $e80 bytes from start of the file before loading\n\
          [ -t ]                 enter terminal mode after running the program\n\
+         [ -T ]                 enter PST-compatible terminal mode\n\
          [ -v ]                 verbose output\n\
          [ -? ]                 display a usage message and exit\n\
          file[,addr]...         files to load\n", BAUD_RATE);

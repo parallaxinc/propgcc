@@ -332,7 +332,7 @@ static void console_putch(int ch)
 */
 #define EXIT_CHAR 0xff
 
-void terminal_mode(int check_for_exit)
+void terminal_mode(int check_for_exit, int pst_mode)
 {
     int sawexit_char = 0;
     int sawexit_valid = 0;
@@ -360,6 +360,8 @@ void terminal_mode(int check_for_exit)
 	        }
 	        else {
                 console_putch(buf[0]);
+                if (pst_mode && buf[0] == '\r')
+                    console_putch('\n');
 	        }
         }
         else if (console_kbhit()) {
