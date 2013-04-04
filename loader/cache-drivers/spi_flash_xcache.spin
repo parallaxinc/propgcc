@@ -1,110 +1,12 @@
 CON
 
-  ' protocol bits
-  CS_CLR_PIN_MASK       = $01
-  INC_PIN_MASK          = $02   ' for C3-style CS
-  MUX_START_BIT_MASK    = $04   ' low order bit of mux field
-  MUX_WIDTH_MASK        = $08   ' width of mux field
-  ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
-  QUAD_SPI_HACK_MASK    = $20   ' set /WE and /HOLD for testing on Quad SPI chips
- 
-' $0c: 0xooiiccee - oo=mosi ii=miso cc=sck pp=protocol
-' $10: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
-' $14: jedec id
-' note that $4 must be at least 2^($8+$a)*2 bytes in size
-' the protocol byte is a bit mask with the bits defined above
-'   if CS_CLR_PIN_MASK ($01) is set, then byte aa contains the CS or C3-style CLR pin number
-'   if INC_PIN_MASK ($02) is set, then byte bb contains the C3-style INC pin number
-'   if MUX_START_BIT_MASK ($04) is set, then byte bb contains the starting bit number of the mux field
-'   if MUX_WIDTH_MASK ($08) is set, then byte cc contains the width of the mux field
-'   if ADDR_MASK ($10) is set, then byte dd contains either the C3-style address or the value to write to the mux field
-'   if QUAD_SPI_HACK_MASK ($20) is set, assume that pins miso+1 and miso+2 are /WP and /HOLD and assert them
-' example:
-'   for a simple single pin CS you should set the protocol byte to $01 and place the CS pin number in byte aa.
-
 #define FLASH
 #undef RW
 #include "cache_common.spin"
+#include "cache_spi_pins.spin"
 
 init
-        ' get the pin definitions (cache-param2)
-        rdlong  t2, t1
-        add     t1, #4
-
-        ' build the mosi mask
-        mov     mosi_pin, t2
-        shr     mosi_pin, #24
-        mov     mosi_mask, #1
-        shl     mosi_mask, mosi_pin
-        or      pindir, mosi_mask
-        
-        ' build the miso mask
-        mov     miso_pin, t2
-        shr     miso_pin, #16
-        and     miso_pin, #$ff
-        mov     miso_mask, #1
-        shl     miso_mask, miso_pin
-        
-        ' make the sio2 and sio3 pins outputs in single spi mode to assert /WP and /HOLD
-        test    t2, #QUAD_SPI_HACK_MASK wz
-  if_nz mov     t3, #$06
-  if_nz shl     t3, miso_pin
-  if_nz or      pindir, t3
-  if_nz or      pinout, t3
-        
-        ' build the sck mask
-        mov     sck_pin, t2
-        shr     sck_pin, #8
-        and     sck_pin, #$ff
-        mov     sck_mask, #1
-        shl     sck_mask, sck_pin
-        or      pindir, sck_mask
-        
-        ' get the cs protocol selector bits (cache-param3)
-        rdlong  t3, t1
-        add		t1, #4
-        
-        ' handle the CS or C3-style CLR pins
-        test    t2, #CS_CLR_PIN_MASK wz
-  if_nz mov     t4, t3
-  if_nz shr     t4, #24
-  if_nz mov     cs_clr, #1
-  if_nz shl     cs_clr, t4
-  if_nz or      pindir, cs_clr
-  if_nz or      pinout, cs_clr
-  
-        ' handle the mux width
-        test    t2, #MUX_WIDTH_MASK wz
-  if_nz mov     t4, t3
-  if_nz shr     t4, #8
-  if_nz and     t4, #$ff
-  if_nz mov     mask_inc, #1
-  if_nz shl     mask_inc, t4
-  if_nz sub     mask_inc, #1
-  if_nz or      pindir, mask_inc
-  
-        ' handle the C3-style address or mux value
-        test    t2, #ADDR_MASK wz
-  if_nz mov     select_addr, t3
-  if_nz and     select_addr, #$ff
-
-        ' handle the C3-style INC pin
-        mov     t4, t3
-        shr     t4, #16
-        and     t4, #$ff
-        test    t2, #INC_PIN_MASK wz
-  if_nz mov     mask_inc, #1
-  if_nz shl     mask_inc, t4
-  if_nz mov     select, c3_select_jmp       ' We're in C3 mode, so replace select/release
-  if_nz mov     release, c3_release_jmp     ' with the C3-aware routines
-  if_nz or      pindir, mask_inc
- 
-        ' handle the mux start bit (must follow setting of select_addr and mask_inc)
-        test    t2, #MUX_START_BIT_MASK wz
-  if_nz shl     select_addr, t4
-  if_nz shl     mask_inc, t4
-  if_nz or      pindir, mask_inc
-  
+        call    #get_spi_pins
         call    #spiInit
 
         ' get the jedec id (cache-param4)
@@ -139,7 +41,7 @@ init_ret
 erase_4k_block
         call    #write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, flash_mask
         or      cmd, ferase4kblk
         mov     bytes, #4
         call    #start_spi_cmd
@@ -164,7 +66,7 @@ erase_4k_block_ret
 write_block
 :loop   call    #write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, flash_mask
         or      cmd, fprogram
         mov     bytes, #4
         call    #start_spi_cmd
@@ -187,7 +89,7 @@ wloop   test    vmaddr, #$ff wz
 write_block
         call    #write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, flash_mask
         or      cmd, fprogram
         mov     bytes, #4
         call    #start_spi_cmd
@@ -286,13 +188,13 @@ t4              long    0       ' temporary variable
 ' on input:
 '   vmaddr is the virtual memory address to read
 '   hubaddr is the hub memory address to write
-'   count is the number of longs to read
+'   count is the number of bytes to read
 '
 '----------------------------------------------------------------------------------------------------
 
 BREAD
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, flash_mask
         or      cmd, fread
         mov     bytes, #5
         call    #start_spi_cmd
@@ -303,44 +205,6 @@ BREAD
         call    #release
 BREAD_RET
         ret
-
-'----------------------------------------------------------------------------------------------------
-' SPI routines
-'----------------------------------------------------------------------------------------------------
-
-select                              ' Single-SPI and Parallel-DeMUX
-        andn    outa, mask_inc
-        or      outa, select_addr
-        andn    outa, cs_clr
-select_ret
-        ret
-
-release                             ' Single-SPI and Parallel-DeMUX
-        or      outa, cs_clr
-        andn    outa, mask_inc
-release_ret
-        ret
-
-c3_select_jmp                       ' Serial-DeMUX Jumps
-        jmp     #c3_select          ' Initialization copies these jumps
-c3_release_jmp                      '   over the select and release
-        jmp     #c3_release         '   when in C3 mode.
-
-c3_select                           ' Serial-DeMUX
-        andn    outa, cs_clr
-        or      outa, cs_clr
-        mov     c3tmp, select_addr
-:loop   or      outa, mask_inc
-        andn    outa, mask_inc
-        djnz    c3tmp, #:loop
-        jmp     select_ret
-
-c3_release                          ' Serial-DeMUX
-        andn    outa, cs_clr
-        or      outa, cs_clr
-        jmp     release_ret
-
-c3tmp   long    0
 
 #ifdef FAST
 
@@ -456,10 +320,6 @@ miso_mask       long    0
 sck_pin         long    0
 sck_mask        long    0
 
-cs_clr          long    0
-mask_inc        long    0
-select_addr     long    0
-
 ' variables used by the spi send/receive functions
 cmd         long    0
 bytes       long    0
@@ -485,6 +345,6 @@ frdstatus   long    $05000000       ' flash read status
 fwrstatus   long    $01000000       ' flash write status
 fwrenable   long    $06000000       ' flash write enable
 
-flashmask   long    $00ffffff       ' mask to isolate the flash offset bits
+flash_mask  long    $00ffffff       ' mask to isolate the flash offset bits
 
             fit     496             ' out of 496
