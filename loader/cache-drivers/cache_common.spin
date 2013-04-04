@@ -149,7 +149,6 @@ miss    mov     tagptr, vmpage          ' get the tag index into way
         shl     t1, index_count
         and     t1, way_mask wz
         or      tagptr, t1
-        call	#show
         mov     hubaddr, tagptr  
         shl     hubaddr, offset_width   ' get the address of the cache line
         add     hubaddr, cacheptr
@@ -266,6 +265,7 @@ zero            long    0       ' zero constant
 t1              long    0       ' temporary variable
 t2              long    0       ' temporary variable
 t3              long    0       ' temporary variable
+t4              long    0       ' temporary variable
 
 tag_mask        long    (1<<DIRTY_BIT)-1    ' includes EMPTY_BIT
 empty_mask      long    1<<EMPTY_BIT
@@ -349,14 +349,3 @@ count       long    0           ' number of longs to read or write
 ' Note: only required if RW is defined
 '
 '----------------------------------------------------------------------------------------------------
-
-show    mov     t2, #$ff
-        shl     t2, #16
-        andn    outa, t2
-        shl     t1, #16
-        or      outa, t1
-        or      dira, t2
-show_ret
-		ret
-		
-:halt   jmp     #:halt
