@@ -1,5 +1,6 @@
 Version 1.04
 
+- Produce an error for redefined labels in DAT sections.
 - Rename constants that start with an _ to avoid conflicts with C.
 
 Version 1.03
