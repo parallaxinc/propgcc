@@ -29,11 +29,12 @@ init_ret
 '
 ' on input:
 '   vmaddr is the sram transfer address
+'   hubaddr is the hub address
 '
 '----------------------------------------------------------------------------------------------------
 
 BSTART
-        call    #select          ' select SRAM chip
+        call    #select
         mov     data, vmaddr
 '        shl     data, #8          ' move it into position for transmission
         and     data, sram_mask
@@ -89,8 +90,6 @@ BWRITE
 BWRITE_RET
         ret
 
-fn      long    0
-
 spiSendByte
         shl     data, #24
         mov     bits, #8
@@ -113,6 +112,7 @@ recv    or      outa, sck_mask
         andn    outa, sck_mask
         djnz    bits, #recv
 spiRecvByte_ret
+recv_ret
         ret
 
 pindir      long    0
@@ -126,6 +126,7 @@ sck_pin     long    0
 sck_mask    long    0
 
 ' variables used by the spi send/receive functions
+fn          long    0
 cmd         long    0
 data        long    0
 bits        long    0
@@ -138,4 +139,4 @@ ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential 
 
 sram_mask   long    $00ffffff       ' mask to isolate the sram offset bits
 
-            FIT     496             ' out of 496
+            FIT     496
