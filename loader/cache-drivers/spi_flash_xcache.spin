@@ -332,8 +332,6 @@ jedec_id    long    $001440ef       ' value of t1 after read_jedec_id routine (W
 #endif
 
 ' spi commands
-
-' spi commands
 fprogram    long    $02000000       ' flash program byte/page
 fread       long    $0b000000       ' flash read command
 frdjedecid  long    $9f000000       ' read the manufacturers id, device type and device id
@@ -347,4 +345,4 @@ fwrenable   long    $06000000       ' flash write enable
 
 flash_mask  long    $00ffffff       ' mask to isolate the flash offset bits
 
-            fit     496             ' out of 496
+            fit     496
