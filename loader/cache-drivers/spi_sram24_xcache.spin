@@ -34,9 +34,9 @@ init_ret
 BSTART
         call    #select
         mov     data, vmaddr
-        shl     data, #8
+        and     data, sram_mask
         or      data, fn
-        mov     bits, #24
+        mov     bits, #32
         call    #send
         mov     ptr, hubaddr
 BSTART_RET
@@ -132,5 +132,7 @@ ptr         long    0
 read        long    $03000000       ' read command
 write       long    $02000000       ' write command
 ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
+
+sram_mask   long    $00ffffff       ' mask to isolate the sram offset bits
 
             FIT     496
