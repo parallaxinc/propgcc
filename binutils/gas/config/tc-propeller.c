@@ -26,6 +26,7 @@
 #include "opcode/propeller.h"
 #include "elf/propeller.h"
 #include "dwarf2dbg.h"
+#include "obstack.h"
 
 /* "always" condition code */
 #define CC_ALWAYS   (0xf << 18)
@@ -64,16 +65,21 @@ const char EXP_CHARS[] = "eE";
 /* or    0H1.234E-12 (see exp chars above).  */
 const char FLT_CHARS[] = "dDfF";
 
+/* extra characters that could be part of symbols */
+const char propeller_symbol_chars[] = ":@";
+
+/* forward declarations */
 static void pseudo_fit (int);
 static void pseudo_res (int);
-static void pseudo_hub_ram (int);
-static void pseudo_cog_ram (int);
+static void pseudo_gas (int);
+static void pseudo_pasm (int);
 static void pseudo_compress (int);
 static char *skip_whitespace (char *str);
 static char *find_whitespace (char *str);
 static char *find_whitespace_or_separator (char *str);
+static int  pasm_replace_expression (expressionS *exp);
 
-static int cog_ram = 0;         /* Use Cog ram if 1 */
+static int pasm_default = 0;    /* Use PASM addressing if 1 */
 static int lmm = 0;             /* Enable LMM pseudo-instructions */
 static int compress = 0;        /* Enable compressed (16 bit) instructions */
 static int prop2 = 0;           /* Enable Propeller 2 instructions */
@@ -85,8 +91,8 @@ static int cc_cleared;          /* set if the condition code field has been clea
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
   {"res", pseudo_res, 0},
-  {"hub_ram", pseudo_hub_ram, 0},
-  {"cog_ram", pseudo_cog_ram, 0},
+  {"gas", pseudo_gas, 0},
+  {"pasm", pseudo_pasm, 0},
   {"compress", pseudo_compress, 0},
   {0, 0, 0},
 };
@@ -100,13 +106,15 @@ const char *md_shortopts = "";
 enum {
     OPTION_MD_LMM = OPTION_MD_BASE,
     OPTION_MD_CMM,
-    OPTION_MD_P2
+    OPTION_MD_P2,
+    OPTION_MD_PASM
 };
 
 struct option md_longopts[] = {
   {"lmm", no_argument, NULL, OPTION_MD_LMM},
   {"cmm", no_argument, NULL, OPTION_MD_CMM},
   {"p2", no_argument, NULL, OPTION_MD_P2},
+  {"pasm", no_argument, NULL, OPTION_MD_PASM},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -276,15 +284,30 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
       shift = 0;
       rshift = 0;
       break;
+    case BFD_RELOC_PROPELLER_32_DIV4:
+      mask = 0xffffffff;
+      shift = 0;
+      rshift = 2;
+      break;
     case BFD_RELOC_16:
       mask = 0x0000ffff;
       shift = 0;
       rshift = 0;
       break;
+    case BFD_RELOC_PROPELLER_16_DIV4:
+      mask = 0x0000ffff;
+      shift = 0;
+      rshift = 2;
+      break;
     case BFD_RELOC_8:
       mask = 0x000000ff;
       shift = 0;
       rshift = 0;
+      break;
+    case BFD_RELOC_PROPELLER_8_DIV4:
+      mask = 0x000000ff;
+      shift = 0;
+      rshift = 2;
       break;
     case BFD_RELOC_8_PCREL:
       mask = 0x0000007f;
@@ -365,9 +388,14 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_PROPELLER_SRC:
     case BFD_RELOC_PROPELLER_SRC_IMM:
     case BFD_RELOC_PROPELLER_DST:
+    case BFD_RELOC_PROPELLER_DST_IMM:
     case BFD_RELOC_PROPELLER_23:
     case BFD_RELOC_PROPELLER_PCREL10:
     case BFD_RELOC_PROPELLER_REPINSCNT:
+    case BFD_RELOC_PROPELLER_REPS:
+    case BFD_RELOC_PROPELLER_32_DIV4:
+    case BFD_RELOC_PROPELLER_16_DIV4:
+    case BFD_RELOC_PROPELLER_8_DIV4:
       code = fixp->fx_r_type;
       break;
 
@@ -393,10 +421,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
 char *
 md_atof (int type, char *litP, int *sizeP)
 {
-  (void) type;
-  (void) litP;
-  (void) sizeP;
-  return 0;
+  return ieee_md_atof (type, litP, sizeP, FALSE);
 }
 
 /* Pseudo-op processing */
@@ -453,15 +478,15 @@ pseudo_res (int c ATTRIBUTE_UNUSED)
 }
 
 static void
-pseudo_hub_ram (int c ATTRIBUTE_UNUSED)
+pseudo_gas (int c ATTRIBUTE_UNUSED)
 {
-  cog_ram = 0;
+  pasm_default = 0;
 }
 
 static void
-pseudo_cog_ram (int c ATTRIBUTE_UNUSED)
+pseudo_pasm (int c ATTRIBUTE_UNUSED)
 {
-  cog_ram = 1;
+  pasm_default = 1;
 }
 
 /* Instruction processing */
@@ -898,6 +923,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
   int pcrel_reloc = 0;
   int immediate = 0;
   int val;
+  int pasm_expr = pasm_default;
 
   str = skip_whitespace (str);
   if (*str == '#')
@@ -907,6 +933,14 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
           return str;
       }
       str++;
+      str = skip_whitespace(str);
+      if (*str == '@') {
+          str++;
+          pasm_expr = 0;
+      } else if (*str == '&') {
+          str++;
+          pasm_expr = 1;
+      }
       insn->code |= 1 << 22;
       if (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA)
         {
@@ -951,22 +985,22 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     case O_register:
       val = operand->reloc.exp.X_add_number;
       if (format == PROPELLER_OPERAND_REPD)
-	{
-	  val -= 1;
-	  if (val & ~0x3f)
-	    {
-	      operand->error = _("6-bit value out of range");
-	      break;
-	    }
-	}
+      {
+          val -= 1;
+          if (val & ~0x3f)
+          {
+              operand->error = _("6-bit value out of range");
+              break;
+          }
+      }
       else
-	{
-	  if (val & ~0x1ff)
-	    {
-	      operand->error = _("9-bit value out of range");
-	      break;
-	    }
-	}
+      {
+          if (val & ~0x1ff)
+          {
+              operand->error = _("9-bit value out of range");
+              break;
+          }
+      }
       insn->code |= val;
       break;
     case O_symbol:
@@ -993,9 +1027,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
       operand->error = _("Illegal operand in source");
       break;
     default:
-      if (cog_ram)
-        operand->error = _("Source operand too complicated for .cog_ram");
-      else if (pcrel_reloc)
+      if (pcrel_reloc)
         operand->error = _("Source operand too complicated for brs instruction");
       else
         {
@@ -1010,6 +1042,11 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
         }
       break;
     }
+  if (pasm_expr && operand->reloc.type == BFD_RELOC_PROPELLER_SRC_IMM
+      && pasm_replace_expression (&operand->reloc.exp))
+  {
+      operand->reloc.type = BFD_RELOC_PROPELLER_SRC;
+  }
   return str;
 }
 
@@ -1057,9 +1094,6 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
       operand->error = _("Illegal operand in source");
       break;
     default:
-      if (cog_ram)
-        operand->error = _("Source operand too complicated for .cog_ram");
-      else
         {
           operand->reloc.type = default_reloc;
           operand->reloc.pc_rel = 0;
@@ -1121,14 +1155,8 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
 			 : "Illegal operand in source");
       break;
     default:
-      if (cog_ram)
-        operand->error = _(isdest ? "Destination operand in .cog_ram too complicated"
-			   : "Source operand in .cog_ram too complicated");
-      else
-        {
-          operand->reloc.type = type;
-          operand->reloc.pc_rel = 0;
-        }
+      operand->reloc.type = type;
+      operand->reloc.pc_rel = 0;
       break;
     }
   return str;
@@ -1286,13 +1314,8 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
       operand->error = _(type == BFD_RELOC_PROPELLER_DST ? "Illegal operand in destination" : "Illegal operand in source");
       break;
     default:
-      if (cog_ram)
-        operand->error = _(type == BFD_RELOC_PROPELLER_DST ? "Destination operand in .cog_ram too complicated" : "Source operand in .cog_ram too complicated");
-      else
-        {
-          operand->reloc.type = type;
-          operand->reloc.pc_rel = 0;
-        }
+      operand->reloc.type = type;
+      operand->reloc.pc_rel = 0;
       break;
     }
   return str;
@@ -2636,9 +2659,6 @@ propeller_frob_label (symbolS * sym)
   unsigned int flag = 0;
   static const int null_flag = 0;
 
-  if (cog_ram) {
-    flag |= PROPELLER_OTHER_COG_RAM;
-  }
   if (compress) {
     flag |= PROPELLER_OTHER_COMPRESSED;
   }
@@ -2647,18 +2667,6 @@ propeller_frob_label (symbolS * sym)
     symbol_set_tc (sym, (int *)&null_flag);
     S_SET_OTHER (sym, S_GET_OTHER (sym) | flag); 
   }
-}
-
-
-valueT
-propeller_s_get_value (symbolS *s)
-{
-  valueT val = S_GET_VALUE(s);
-  unsigned int flag = S_GET_OTHER(s);
-  if(flag & PROPELLER_OTHER_COG_RAM){
-    val /= 4;
-  }
-  return val;
 }
 
 int md_short_jump_size = 4;
@@ -2700,6 +2708,9 @@ md_parse_option (int c, char *arg)
       break;
     case OPTION_MD_P2:
       prop2 = 1;
+      break;
+    case OPTION_MD_PASM:
+      pasm_default = 1;
       break;
     default:
       return 0;
@@ -2748,4 +2759,222 @@ propeller_elf_final_processing (void)
 {
   /* set various flags in the elf header if necessary */
   elf_elfheader (stdoutput)->e_flags |= elf_flags;
+}
+
+static int propeller_pasm_cons_reloc;
+/*
+ * constant parsing code
+ */
+void
+propeller_cons (expressionS *exp, int size)
+{
+    (void)size;
+
+    propeller_pasm_cons_reloc = pasm_default;
+    SKIP_WHITESPACE ();
+    if (input_line_pointer[0] == '@')
+      {
+        propeller_pasm_cons_reloc = 0;
+        input_line_pointer++;
+      }
+    else if (input_line_pointer[0] == '&')
+      {
+        propeller_pasm_cons_reloc = 1;
+        input_line_pointer++;
+      }
+    expression (exp);
+}
+
+/* This is called by emit_expr via TC_CONS_FIX_NEW when creating a
+   reloc for a cons.  */
+
+void
+propeller_cons_fix_new (struct frag *frag, int where, unsigned int nbytes, struct expressionS *exp)
+{
+  bfd_reloc_code_real_type r;
+
+  r = (nbytes == 1 ? BFD_RELOC_8 :
+       (nbytes == 2 ? BFD_RELOC_16 : BFD_RELOC_32));
+
+  if (propeller_pasm_cons_reloc && pasm_replace_expression (exp))
+    {
+      r = (nbytes == 1 ? BFD_RELOC_PROPELLER_8_DIV4 :
+           (nbytes == 2 ? BFD_RELOC_PROPELLER_16_DIV4 : BFD_RELOC_PROPELLER_32_DIV4));
+
+    }
+  fix_new_exp (frag, where, (int) nbytes, exp, 0, r);
+  propeller_pasm_cons_reloc = 0;
+}
+
+/*
+ * replace constants in an expression to make it PASM compatible;
+ * since pasm uses longword addressing, we have to multiply offsets
+ * by 4 to convert to byte addressing (e.g. n+1 -> n+4)
+ * If the expression is a simple immediate constant, make no changes and
+ *   return 0
+ * Returns 1 if changes were made, 0 if no changes necessary
+ */
+static int pasm_replace_expression (expressionS *exp)
+{
+    switch (exp->X_op)
+    {
+    case O_constant:
+    case O_register:
+        /* make no change */
+        return 0;
+    default:
+        break;
+    }
+    exp->X_add_number *= 4;
+    return 1;
+}
+
+
+typedef struct prop_localsym {
+    struct prop_localsym *next;
+    char *name;
+    int defined;
+    int value;
+} Prop_LocalSym;
+
+static Prop_LocalSym *colonsyms = 0;
+static int colonval = 0;
+
+/*
+ * free and clear the list of local symbols
+ * also reports any that were never defined
+ */
+static void
+clear_colonsyms(void)
+{
+    Prop_LocalSym *cur, *next;
+    cur = colonsyms;
+    while (cur) {
+        next = cur->next;
+        if (!cur->defined) {
+            as_bad (_("Local symbol `%s' never defined"), cur->name);
+        }
+        xfree(cur->name);
+        xfree(cur);
+        cur = next;
+    }
+    colonsyms = 0;
+    colonval = 0;
+}
+
+/*
+ * look up a local sym, allocating it if necessary
+ */
+static Prop_LocalSym *
+lookup_colonsym(const char *s)
+{
+    Prop_LocalSym *r;
+
+    for (r = colonsyms; r; r = r->next) {
+        if (!strcmp(s, r->name)) {
+            return r;
+        }
+    }
+    /* if we get here, allocate a new one */
+    r = (Prop_LocalSym *)xmalloc (sizeof(*r));
+    r->name = xstrdup (s);
+    r->defined = 0;
+    r->value = colonval++;
+    r->next = colonsyms;
+    colonsyms = r;
+    return r;
+}
+
+/*
+ * read a name from *input_ptr; include the ':'
+ */
+
+static char *
+get_colon_name(char *input_ptr)
+{
+    char *name = input_ptr++;
+    char save_c;
+    while (is_part_of_name (*input_ptr))
+        input_ptr++;
+    save_c = *input_ptr;
+    *input_ptr = 0;
+    name = xstrdup (name);
+    *input_ptr = save_c;
+    return name;
+}
+
+static char *
+handle_colon(char *s, int start_of_line)
+{
+    char *p;
+    char *name;
+    Prop_LocalSym *sym;
+    char buf[80];
+    int i;
+
+    name = get_colon_name (s);
+    sym = lookup_colonsym (name);
+    if (start_of_line) {
+        if (sym->defined) {
+            as_bad (_("Symbol `%s' redefined"), name);
+            xfree (name);
+        }
+        sym->defined = 1;
+    }
+
+    // now rewrite s into "val$:"
+    p = s;
+    s += strlen(name);
+    while (*s != '\n' && ISSPACE (*s)) {
+        s++;
+    }
+    sprintf (buf, "%d", sym->value);
+    if ((size_t)(strlen(buf)+1+start_of_line) > (size_t)(s - p)) {
+        as_bad (_("Not enough space for temporary label `%s'"), name);
+    } else {
+        for (i = 0; buf[i]; i++) {
+            *p++ = buf[i];
+        }
+        *p++ = '$';
+        if (start_of_line)
+            *p++ = ':';
+        while (!ISSPACE (*p) && p != s) {
+            *p++ = ' ';
+        }
+    }
+    xfree (name);
+
+    return s;
+}
+
+/*
+ * re-write a line to adapt PASM style local labels (":foo") into
+ * GAS style ones ("1$")
+ */
+
+void
+propeller_start_line_hook (void)
+{
+    char *s = input_line_pointer;
+
+    if (!pasm_default)
+        return;
+
+    if (*s != ':' && is_name_beginner (*s)) {
+        clear_colonsyms();
+    }
+    while (*s && *s != '\n') {
+        if (*s == ':' && is_part_of_name (s[1])) {
+            s = handle_colon(s, s == input_line_pointer);
+        } else if (s > input_line_pointer && s[0] == '$' 
+                   && !ISALNUM (s[1]) && !ISALNUM (s[-1]) )
+        {
+            /* PASM uses '$' as the location counter, but also
+               in hex constants, and we use it for local labels
+            */
+            *s++ = '.';
+        } else {
+            s++;
+        }
+    }
 }
