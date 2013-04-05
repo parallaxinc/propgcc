@@ -895,13 +895,6 @@ adjust_reloc_syms (bfd *abfd ATTRIBUTE_UNUSED,
    handle the remaining fixS's that we couldn't completely handle here.
    These will be output later by emit_relocations().  */
 
-/* TC_S_GET_VALUE alters a symbol's value when it is used in a fixup.
-   The Parallax Propeller, for example, uses this to convert COG
-   addresses (expressed in bytes internally) to word addresses for 
-   patching into instructions. */
-#ifndef TC_S_GET_VALUE
-#define TC_S_GET_VALUE S_GET_VALUE
-#endif
 static long
 fixup_segment (fixS *fixP, segT this_segment)
 {
@@ -969,8 +962,8 @@ fixup_segment (fixS *fixP, segT this_segment)
 	      && !S_FORCE_RELOC (fixP->fx_subsy, 0)
 	      && !TC_FORCE_RELOCATION_SUB_SAME (fixP, add_symbol_segment))
 	    {
-	      add_number += TC_S_GET_VALUE (fixP->fx_addsy);
-	      add_number -= TC_S_GET_VALUE (fixP->fx_subsy);
+	      add_number += S_GET_VALUE (fixP->fx_addsy);
+	      add_number -= S_GET_VALUE (fixP->fx_subsy);
 	      fixP->fx_offset = add_number;
 	      fixP->fx_addsy = NULL;
 	      fixP->fx_subsy = NULL;
@@ -983,7 +976,7 @@ fixup_segment (fixS *fixP, segT this_segment)
 		   && !S_FORCE_RELOC (fixP->fx_subsy, 0)
 		   && !TC_FORCE_RELOCATION_SUB_ABS (fixP, add_symbol_segment))
 	    {
-	      add_number -= TC_S_GET_VALUE (fixP->fx_subsy);
+	      add_number -= S_GET_VALUE (fixP->fx_subsy);
 	      fixP->fx_offset = add_number;
 	      fixP->fx_subsy = NULL;
 	    }
@@ -991,7 +984,7 @@ fixup_segment (fixS *fixP, segT this_segment)
 		   && !S_FORCE_RELOC (fixP->fx_subsy, 0)
 		   && !TC_FORCE_RELOCATION_SUB_LOCAL (fixP, add_symbol_segment))
 	    {
-	      add_number -= TC_S_GET_VALUE (fixP->fx_subsy);
+	      add_number -= S_GET_VALUE (fixP->fx_subsy);
 	      fixP->fx_offset = (add_number + fixP->fx_dot_value
 				 + fixP->fx_frag->fr_address);
 
@@ -1041,7 +1034,7 @@ fixup_segment (fixS *fixP, segT this_segment)
 	      /* This fixup was made when the symbol's segment was
 		 SEG_UNKNOWN, but it is now in the local segment.
 		 So we know how to do the address without relocation.  */
-	      add_number += TC_S_GET_VALUE (fixP->fx_addsy);
+	      add_number += S_GET_VALUE (fixP->fx_addsy);
 	      fixP->fx_offset = add_number;
 	      if (fixP->fx_pcrel)
 		add_number -= MD_PCREL_FROM_SECTION (fixP, this_segment);
@@ -1052,14 +1045,14 @@ fixup_segment (fixS *fixP, segT this_segment)
 		   && !S_FORCE_RELOC (fixP->fx_addsy, 0)
 		   && !TC_FORCE_RELOCATION_ABS (fixP))
 	    {
-	      add_number += TC_S_GET_VALUE (fixP->fx_addsy);
+	      add_number += S_GET_VALUE (fixP->fx_addsy);
 	      fixP->fx_offset = add_number;
 	      fixP->fx_addsy = NULL;
 	    }
 	  else if (add_symbol_segment != undefined_section
 		   && ! bfd_is_com_section (add_symbol_segment)
 		   && MD_APPLY_SYM_VALUE (fixP))
-	    add_number += TC_S_GET_VALUE (fixP->fx_addsy);
+	    add_number += S_GET_VALUE (fixP->fx_addsy);
 	}
 
       if (fixP->fx_pcrel)
