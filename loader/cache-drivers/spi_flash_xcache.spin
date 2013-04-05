@@ -178,9 +178,6 @@ start_spi_cmd_1_ret
 start_spi_cmd_ret
         ret
         
-' t1-t3 are defined in cache_common.spin
-t4              long    0       ' temporary variable
-
 '----------------------------------------------------------------------------------------------------
 '
 ' BREAD
