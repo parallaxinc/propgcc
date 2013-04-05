@@ -10,35 +10,26 @@
   BASE = 0x0e80
   CLOCK_FREQ = 60000000
   BAUD = 115200
-  SERIAL_TX = 90        ' must be in the port c
+  SERIAL_TX = 90
   SERIAL_RX = 91
+  
+  CMD_LOAD = 1
+  CMD_START = 2
+  CMD_COGINIT = 3
 
   ' character codes
   SOH = 0x01             ' start of a packet
   ACK = 0x06
   NAK = 0x15
 
-  STATE_SOH = 0
-  STATE_LEN_HI = 1
-  STATE_LEN_LO = 2
-  STATE_CHK = 3
-  STATE_DATA = 4
-  STATE_CRC_HI = 5
-  STATE_CRC_LO = 6
-  
-  dirc = 0x1fe
-  
                         .cog_ram
                         org     0
                         
                         jmp     #init
                         
 ' these values will be patched by the loader based on user options
-freq                    long    CLOCK_FREQ
 period                  long    CLOCK_FREQ / BAUD
-cogimage                long    BASE
-stacktop                long    0x20000
-                        
+
 init                    repd    reserves_cnt_m1, #1     'clear reserves
                         setinda #reserves
                         nop
@@ -46,46 +37,35 @@ init                    repd    reserves_cnt_m1, #1     'clear reserves
                         mov     inda++,#0
         
                         setp    tx_pin
-                        mov     dirc,dirc_mask          'make tx pin an output
         
                         jmptask #rx_task,#%0010         'enable serial receiver task
                         settask #0x44 '%%1010
 
-                        mov     rcv_state, #STATE_SOH   'initialize the packet receive state
-                        mov     rcv_base, base_addr     'initialize the start of packet
-                        mov     rcv_ptr, base_addr      'initialize the hub memory pointer
+                        mov     rcv_state, #do_soh      'initialize the packet receive state
+                        mov     payload_state, #cmd_start
+                        mov     payload_handler, #cmd_handler
 
                         'there must be space in the transmit buffer for this character
                         mov     x, #ACK                 'tell the sender we're ready
                         
 ack_nak                 call    #tx
-next_packet             mov     rcv_state, #STATE_SOH
+next_packet             mov     rcv_state, #do_soh
 receive                 call    #rx
-                        mov     t1, rcv_state
-                        add     t1, #dispatch
-                        jmp     t1
-
-dispatch                jmp     #do_soh
-                        jmp     #do_len_hi
-                        jmp     #do_len_lo
-                        jmp     #do_chk
-                        jmp     #do_data
-                        jmp     #do_crc_hi
-                        jmp     #do_crc_lo
+                        jmp     rcv_state
 
 do_soh                  cmp     x, #SOH wz
-              if_z      mov     rcv_state, #STATE_LEN_HI
+              if_z      mov     rcv_state, #do_len_hi
                         jmp     #receive              'byte done, receive next byte
 
 do_len_hi               mov     rcv_length, x
                         shl     rcv_length, #8
                         mov     rcv_chk, x
-                        mov     rcv_state, #STATE_LEN_LO
+                        mov     rcv_state, #do_len_lo
                         jmp     #receive              'byte done, receive next byte
 
 do_len_lo               or      rcv_length, x
                         add     rcv_chk, x
-                        mov     rcv_state, #STATE_CHK
+                        mov     rcv_state, #do_chk
                         jmp     #receive              'byte done, receive next byte
 
 do_chk                  and     rcv_chk, #0xff
@@ -93,35 +73,92 @@ do_chk                  and     rcv_chk, #0xff
               if_nz     jmp     #send_nak
                         mov     crc, #0
                         mov     rcv_cnt, rcv_length wz
-              if_z      mov     rcv_state, #STATE_CRC_HI
-              if_nz     mov     rcv_state, #STATE_DATA
+              if_z      mov     rcv_state, #do_crc_hi
+              if_nz     mov     rcv_state, payload_state
                         jmp     #receive              'byte done, receive next byte
-
-do_data                 call    #updcrc               'update the crc
-                        wrbyte  x, rcv_ptr
-                        add     rcv_ptr, #1
+                        
+payload_update          call    #updcrc               'update the crc
                         djnz    rcv_cnt, #receive
-                        mov     rcv_state, #STATE_CRC_HI
+                        mov     rcv_state, #do_crc_hi
                         jmp     #receive              'byte done, receive next byte
 
 do_crc_hi               call    #updcrc               'update the crc
-                        mov     rcv_state, #STATE_CRC_LO
+                        mov     rcv_state, #do_crc_lo
                         jmp     #receive              'byte done, receive next byte
 
 do_crc_lo               call    #updcrc               'update the crc
                         cmp     crc, #0 wz            'check the crc
               if_nz     jmp     #send_nak
-                        mov     rcv_base, rcv_ptr     'move to the next packet
                         mov     x, #ACK
                         call    #tx
-                        tjz     rcv_length, #start    'start the program on a zero-length packet
-                        mov     rcv_state, #STATE_SOH
-                        jmp     #next_packet          'byte done, receive next byte
+                        jmp     payload_handler       'otherwise handle the packet payload
 
-send_nak                mov     rcv_ptr, rcv_base     'reset to the start of the packet
-                        mov     x, #NAK
+send_nak                mov     x, #NAK
                         jmp     #ack_nak              'look for the next packet
 
+cmd_start               mov     rcv_state, #do_cmd0
+                        mov     cmd0, #0
+                        mov     cmd_cnt, #4
+                        
+do_cmd0                 or      cmd0, x
+                        ror     cmd0, #8
+                        djnz    cmd_cnt, #payload_update
+                        mov     rcv_state, #do_cmd1
+                        mov     cmd1, #0
+                        mov     cmd_cnt, #4
+                        jmp     #payload_update
+
+do_cmd1                 or      cmd1, x
+                        ror     cmd1, #8
+                        djnz    cmd_cnt, #payload_update
+                        mov     rcv_state, #do_cmd2
+                        mov     cmd2, #0
+                        mov     cmd_cnt, #4
+                        jmp     #payload_update
+
+do_cmd2                 or      cmd2, x
+                        ror     cmd2, #8
+                        djnz    cmd_cnt, #payload_update
+                        mov     rcv_state, #payload_update
+                        jmp     #payload_update
+                        
+cmd_handler             mov     t1, cmd0
+                        and     t1, #0xff
+                        cmp     t1, #CMD_LOAD wz     'check for CMD_LOAD
+                if_nz   jmp     #cmd_handler_1
+                        mov     rcv_base, cmd1
+                        mov     data_cnt, cmd2
+                        mov     payload_state, #data_start
+                        mov     payload_handler, #data_handler
+                        jmp     #next_packet
+cmd_handler_1           cmp     t1, #CMD_START wz    'check for CMD_START
+                 if_nz  jmp     #cmd_handler_2
+                        cogid   t1                   'relaunch current cog
+                        setcog  t1
+                        coginit cmd1, cmd2
+                        ' should never return
+cmd_handler_2           cmp     t1, #CMD_COGINIT wz  'check for CMD_COGINIT
+                 if_nz  jmp     #next_packet
+                        shr     cmd0, #8
+                        setcog  cmd0
+                        coginit cmd1, cmd2           'launch a cog
+                        jmp     #next_packet
+                        
+data_start              mov     rcv_state, #do_data
+                        mov     rcv_ptr, rcv_base
+
+do_data                 wrbyte  x, rcv_ptr
+                        add     rcv_ptr, #1
+                        djnz    data_cnt, #payload_update
+                        mov     rcv_state, #payload_update
+                        jmp     #payload_update
+
+data_handler            mov     rcv_base, rcv_ptr     'move to the next packet
+                        tjnz    data_cnt, #next_packet
+                        mov     payload_state, #cmd_start
+                        mov     payload_handler, #cmd_handler
+                        jmp     #next_packet
+                        
 updcrc                  mov     t1, crc
                         test    t1, #0x100 wz
                         shr     t1, #9
@@ -134,9 +171,6 @@ _load                   mov     t1, 0-0
                         xor     crc, x
                         and     crc, word_mask
 updcrc_ret              ret
-
-start                   coginit cogimage, stacktop
-      'relaunch cog0 with loaded program
 
 '
 '
@@ -215,8 +249,6 @@ rx_bit                  rcr     rx_data,#1              'rotate c into byte
 
 rx_pin                  long    SERIAL_RX
 tx_pin                  long    SERIAL_TX
-dirc_mask               long    1 << (SERIAL_TX - 64)
-base_addr               long    BASE
 word_mask               long    0xffff
 
 crctab
@@ -298,6 +330,14 @@ rcv_base                res     1
 rcv_ptr                 res     1
 rcv_cnt                 res     1
 crc                     res     1
+
+payload_state           res     1
+payload_handler         res     1
+cmd0                    res     1
+cmd1                    res     1
+cmd2                    res     1
+cmd_cnt                 res     1
+data_cnt                res     1
 
 end_reserves
 

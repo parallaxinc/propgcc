@@ -82,7 +82,7 @@ SPIN_DAT=spin2cpp --dat
 
 .PHONY:	all
 
-all:	info propeller-load drivers sd-loader
+all:	info propeller-load drivers sd-loader propeller-elf-image-size
 
 ##########################
 # SHOW BUILD INFORMATION #
@@ -136,6 +136,10 @@ $(OBJDIR)/port.o \
 $(OBJDIR)/serial_helper.o \
 $(OBJDIR)/flash_loader.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
+
+IMAGE_SIZE_OBJS=\
+$(OBJDIR)/propeller-elf-image-size.o \
+$(OBJDIR)/loadelf.o
 
 HDRS=\
 $(SRCDIR)/PLoadLib.h \
@@ -309,6 +313,13 @@ $(BINDIR)/propeller-load$(EXT):	$(BINDIR) $(OBJDIR) bin2c $(OBJS)
 	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	@$(ECHO) $@
 
+.PHONY:	propeller-elf-image-size
+propeller-elf-image-size:		$(BINDIR)/propeller-elf-image-size$(EXT)
+
+$(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR) $(OBJDIR) $(IMAGE_SIZE_OBJS)
+	@$(CC) $(LDFLAGS) -o $@ $(IMAGE_SIZE_OBJS)
+	@$(ECHO) $@
+
 #########
 # RULES #
 #########
@@ -346,6 +357,7 @@ $(DIRS):
 .PHONY:	install
 install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
 	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
+	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size $(INSTALLBINDIR)
 	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
 	$(CP) -f include/* $(INSTALLLIBDIR)
 

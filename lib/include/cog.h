@@ -42,6 +42,10 @@
 #ifndef PROPELLER_COG_H_
 #define PROPELLER_COG_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @brief Can be used in per-variable declarations to tell compiler that a variable should go in COG memory. */
 
 /* for variables that should go in cog memory */
@@ -106,5 +110,8 @@ extern unsigned char _clkmode; /* in the spin boot code */
  */
 #define _CLKMODE _clkmode
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

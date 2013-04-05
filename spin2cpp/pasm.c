@@ -254,8 +254,9 @@ align(unsigned pc, int size)
  * enter a label
  */
 void
-EnterLabel(ParserState *P, const char *name, long offset, long asmpc, AST *ltype)
+EnterLabel(ParserState *P, AST *origLabel, long offset, long asmpc, AST *ltype)
 {
+    const char *name;
     Label *labelref;
 
     labelref = calloc(1, sizeof(*labelref));
@@ -263,10 +264,13 @@ EnterLabel(ParserState *P, const char *name, long offset, long asmpc, AST *ltype
         fprintf(stderr, "out of memory\n");
         exit(1);
     }
+    name = origLabel->left->d.string;
     labelref->offset = offset;
     labelref->asmval = asmpc;
     labelref->type = ltype;
-    AddSymbol(&P->objsyms, name, SYM_LABEL, labelref);
+    if (!AddSymbol(&P->objsyms, name, SYM_LABEL, labelref)) {
+      ERROR(origLabel, "Duplicate definition of label %s", name);
+    }
 }
 
 /*
@@ -276,7 +280,7 @@ AST *
 emitPendingLabels(ParserState *P, AST *label, unsigned pc, unsigned asmpc, AST *ltype)
 {
     while (label) {
-        EnterLabel(P, label->left->d.string, pc, asmpc, ltype);
+        EnterLabel(P, label, pc, asmpc, ltype);
         label = label->right;
     }
     return NULL;
