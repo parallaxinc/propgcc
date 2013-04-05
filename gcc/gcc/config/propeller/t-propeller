@@ -1,0 +1,95 @@
+# Copyright (C) 2011 Parallax, Inc.
+# Copyright (C) 2008 Free Software Foundation, Inc.
+#
+# This file is part of GCC.
+#
+# GCC is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+#
+# GCC is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+
+# Compile the extra library functions.
+
+LIB2FUNCS_EXTRA = 
+
+# prevent some of the more complicated libgcc functions from being
+# compiled; these are pretty big anyway, and not often used
+# also, we do have a few assembly things as well
+
+FLOATASMFUNCS = _subsf3 _addsf3 _mulsf3 _divsf3 _floatsisf _loadfloat \
+	      _subdf3 _adddf3 _muldf3 _divdf3 _floatsidf _loaddouble \
+	      _floatsfdf _floatunssidf
+
+FAKEASMFUNCS = _multc3 _divtc3
+LIB1ASMFUNCS = $(FAKEASMFUNCS) $(FLOATASMFUNCS)
+LIB1ASMSRC = propeller/lib1funcs.asm
+
+LIBGCC2_CFLAGS += -Os
+TARGET_LIBGCC2_CFLAGS = -Os -fomit-frame-pointer
+
+# floating point emulation libraries
+# uncomment the following if necessary
+#FPBIT = fp-bit.c
+#DPBIT = dp-bit.c
+#
+#fp-bit.c: $(srcdir)/config/fp-bit.c
+#	echo '#define FLOAT'				> fp-bit.c
+#	cat $(srcdir)/config/fp-bit.c			>> fp-bit.c
+#
+#dp-bit.c: $(srcdir)/config/fp-bit.c
+#	cat $(srcdir)/config/fp-bit.c > dp-bit.c
+
+# Build all combinations of library for various compiler switches
+# for now we'll just build with the default switches (for LMM based systems)
+# because -mcog is so restricted that much of libgcc would not fit in it
+# anyway!
+
+MULTILIB_OPTIONS = mxmm/mxmmc/mcmm mp2 m32bit-doubles
+MULTILIB_MATCHES = mxmm=mxmm-single mxmm=mxmm-split
+MULTILIB_DIRNAMES = xmm xmmc cmm p2 short-doubles
+
+# dunno if this is necessary
+MULTILIB_EXCEPTIONS = *mxmm*/*mp2* *mxmmc*/*mp2*
+#
+#don't think we need these
+#EXTRA_MULTILIB_PARTS = crtbegin.o crtend.o
+
+EXTRA_PARTS += spinboot.o hubstart_xmm.o _crt0.o _crt0_debug.o _crtbegin.o _crtend.o
+EXTRA_PARTS += p2vectors.o
+
+#
+# Assemble startup files
+#
+
+PROPDIR = $(srcdir)/config/propeller
+
+$(T)spinboot.o: $(PROPDIR)/spinboot.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)_crt0.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm.s $(PROPDIR)/crt0_lmm2.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_cog2.s $(PROPDIR)/crt0_xmm.s $(PROPDIR)/crt0_cmm.s $(PROPDIR)/kernel.ext
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
+
+$(T)_crt0_debug.o: $(PROPDIR)/crt0.S $(PROPDIR)/crt0_lmm2_debug.s $(PROPDIR)/crt0_cog.s $(PROPDIR)/crt0_cog2.s $(PROPDIR)/crt0_xmm.s $(PROPDIR)/crt0_cmm.s $(PROPDIR)/kernel.ext $(PROPDIR)/cogdebug.ext
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -DDEBUG_KERNEL -o $@ -c $<
+
+$(T)_crtbegin.o: $(PROPDIR)/crtbegin.S
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
+
+$(T)_crtend.o: $(PROPDIR)/crtend.S
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
+
+$(T)hubstart_xmm.o: $(PROPDIR)/hubstart_xmm.s
+	$(GCC_FOR_TARGET) -o $@ -c $<
+
+$(T)p2vectors.o: $(PROPDIR)/p2vectors.s
+	$(GCC_FOR_TARGET) -mp2 -o $@ -c $<
+
