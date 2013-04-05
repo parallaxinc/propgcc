@@ -1,4 +1,4 @@
-CON
+#define SST
 
 #define FLASH
 #undef RW
@@ -276,7 +276,7 @@ spiRecvByte_ret
 #else
 
 spiInit
-		nop	' why is this needed?
+		nop
 spiInit_ret
         ret
 

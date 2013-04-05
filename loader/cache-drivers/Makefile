@@ -5,13 +5,11 @@ DEMO?=fibo.elf
 DRIVERS = \
 rampage2_xcache.dat \
 spi_flash_xcache.dat \
+sqi_flash_xcache.dat \
 spi_sram_xcache.dat \
 spi_sram24_xcache.dat \
 sqi_sram_xcache.dat \
 c3_xcache.dat
-
-# not working yet
-#sqi_flash_xcache.dat \
 
 all:	$(DRIVERS)
 
