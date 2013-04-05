@@ -45,8 +45,8 @@
 		'' (4 byte aligned) instead of HUB addresses (1 byte aligned),
 		'' so we use the .cog_ram directive. This is useful for porting
 		'' PASM code over, since PASM labels are always long addresses.
-		'' Never use .cog_ram for LMM code executing from HUB RAM.
-		.cog_ram
+		'' Never use .pasm for LMM code executing from HUB RAM.
+		.pasm
 
 		'' This code should never be compressed for CMM mode, since
 		'' it executes directly on the hardware
