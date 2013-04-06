@@ -70,7 +70,6 @@ const char propeller_symbol_chars[] = ":@";
 
 /* forward declarations */
 static void pseudo_fit (int);
-static void pseudo_res (int);
 static void pseudo_gas (int);
 static void pseudo_pasm (int);
 static void pseudo_compress (int);
@@ -90,11 +89,49 @@ static int cc_cleared;          /* set if the condition code field has been clea
 
 const pseudo_typeS md_pseudo_table[] = {
   {"fit", pseudo_fit, 0},
-  {"res", pseudo_res, 0},
+  {"res", s_space, 4},
   {"gas", pseudo_gas, 0},
   {"pasm", pseudo_pasm, 0},
   {"compress", pseudo_compress, 0},
   {0, 0, 0},
+};
+
+typedef struct regdef {
+    const char *name;
+    int val;
+} Prop_regdef;
+
+Prop_regdef p1_regs[] = {
+    { "par", 0x1f0 },
+    { "cnt", 0x1f1 },
+    { "ina", 0x1f2 },
+    { "inb", 0x1f3 },
+    { "outa", 0x1f4 },
+    { "outb", 0x1f5 },
+    { "dira", 0x1f6 },
+    { "dirb", 0x1f7 },
+    { "ctra", 0x1f8 },
+    { "ctrb", 0x1f9 },
+    { "frqa", 0x1fa },
+    { "frqb", 0x1fb },
+    { "phsa", 0x1fc },
+    { "phsb", 0x1fd },
+    { "vcfg", 0x1fe },
+    { "vscl", 0x1ff },
+    { 0, 0 } };
+
+Prop_regdef p2_regs[] = {
+    { "inda", 0x1f6 },
+    { "indb", 0x1f7 },
+    { "pina", 0x1f8 },
+    { "pinb", 0x1f9 },
+    { "pinc", 0x1fa },
+    { "pind", 0x1fb },
+    { "dira", 0x1fc },
+    { "dirb", 0x1fd },
+    { "dirc", 0x1fe },
+    { "dird", 0x1ff },
+    { 0, 0 }
 };
 
 static struct hash_control *insn_hash = NULL;
@@ -136,6 +173,7 @@ void
 md_begin (void)
 {
   int i;
+  Prop_regdef *regs;
 
   init_defaults ();
 
@@ -178,6 +216,16 @@ md_begin (void)
     hash_insert (eff_hash, propeller_effects[i].name,
                  (void *) (propeller_effects + i));
 
+  /* insert symbols for predefined registers */
+  if (prop2)
+      regs = p2_regs;
+  else
+      regs = p1_regs;
+  while (regs->name)
+  {
+      symbol_table_insert (symbol_new (regs->name, reg_section, regs->val, &zero_address_frag));
+      regs++;
+  }
   /* make sure data and bss are longword aligned */
   record_alignment(data_section, 2);
   record_alignment(bss_section, 2);
@@ -470,13 +518,7 @@ pseudo_compress (int x ATTRIBUTE_UNUSED)
   demand_empty_rest_of_line ();
 }
 
-/* reserve space */
-static void
-pseudo_res (int c ATTRIBUTE_UNUSED)
-{
-  s_space(4);
-}
-
+/* switch pasm mode off/on */
 static void
 pseudo_gas (int c ATTRIBUTE_UNUSED)
 {
@@ -989,7 +1031,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
           val -= 1;
           if (val & ~0x3f)
           {
-              operand->error = _("6-bit value out of range");
+              operand->error = _("6-bit constant out of range");
               break;
           }
       }
@@ -997,7 +1039,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
       {
           if (val & ~0x1ff)
           {
-              operand->error = _("9-bit value out of range");
+              operand->error = _("9-bit constant out of range");
               break;
           }
       }
@@ -1103,6 +1145,11 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
   return str;
 }
 
+/*
+ * delta is normally 0, but is -1 for 1 based instructions that have repeat
+ * counts and such
+ */
+
 static char *
 parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_code *insn, int type, int delta){
 
@@ -1139,7 +1186,7 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
     case O_register:
       if (operand->reloc.exp.X_add_number & ~0x1ff)
         {
-          operand->error = _("9-bit value out of range");
+          operand->error = _("9-bit destination out of range");
           break;
         }
       insn->code |= operand->reloc.exp.X_add_number << (isdest ? 9 : 0);
@@ -2947,10 +2994,49 @@ handle_colon(char *s, int start_of_line)
     return s;
 }
 
+static void
+erase_line(void)
+{
+    char *s;
+
+    s = input_line_pointer;
+    while (*s && *s != '\n') {
+        *s++ = ' ';
+    }
+}
+
+/*
+ * case-insensitive compare
+ */
+static int
+matchword(const char *line, const char *word)
+{
+    int a, b;
+
+    while (*word) {
+        a = *line++;
+        b = *word++;
+        a = TOUPPER (a);
+        b = TOUPPER (b);
+        if (a != b)
+            return 0;
+    }
+    return 1;
+}
+
 /*
  * re-write a line to adapt PASM style local labels (":foo") into
  * GAS style ones ("1$")
+ * Also processes multi-line PASM style comments { ... },
+ * handles the CON and DAT declarations,
+ * ignores PUB and PRI spin code,
+ * converts "current location" from $ to .
  */
+
+static int is_spin_file = 0;
+static int skip_spin_code;
+static int in_comment;
+static int in_quote;
 
 void
 propeller_start_line_hook (void)
@@ -2960,21 +3046,81 @@ propeller_start_line_hook (void)
     if (!pasm_default)
         return;
 
-    if (*s != ':' && is_name_beginner (*s)) {
+    if (*s != ':' && is_name_beginner (*s))
+      {
         clear_colonsyms();
+      }
+
+    /* check some things at start of line */
+    if (matchword (s, "con") || matchword (s, "dat")) {
+        erase_line ();
+        is_spin_file = 1;
+        skip_spin_code = 0;
+        return;
     }
-    while (*s && *s != '\n') {
-        if (*s == ':' && is_part_of_name (s[1])) {
+    if (is_spin_file
+        && (matchword (s, "pub")
+            || matchword (s, "pri")
+            || matchword (s, "var")
+            || matchword (s, "obj")
+            ))
+      {
+        skip_spin_code = 1;
+      }
+    if (skip_spin_code)
+      {
+        erase_line ();
+        return;
+      }
+
+    /* process the rest of the line */
+    while (*s && *s != '\n')
+      {
+        if (in_comment)
+          {
+            if (*s == '{')
+                in_comment++;
+            else if (*s == '}')
+                in_comment--;
+            *s++ = ' ';
+          }
+        else if (in_quote)
+          {
+            if (*s == '"')
+                in_quote = 0;
+            s++;
+          }
+        else if (*s == ':' && is_part_of_name (s[1]))
+          {
             s = handle_colon(s, s == input_line_pointer);
-        } else if (s > input_line_pointer && s[0] == '$' 
+          }
+        else if (s > input_line_pointer && s[0] == '$' 
                    && !ISALNUM (s[1]) && !ISALNUM (s[-1]) )
-        {
+          {
             /* PASM uses '$' as the location counter, but also
                in hex constants, and we use it for local labels
             */
             *s++ = '.';
-        } else {
+          }
+        else if (*s == '"')
+          {
+            in_quote = 1;
             s++;
-        }
-    }
+          }
+        else if (*s == '{')
+          {
+            in_comment = 1;
+            *s++ = ' ';
+          }
+        else
+          {
+            s++;
+          }
+      }
+
+    if (in_quote)
+      {
+        as_bad (_("Unterminated quote"));
+        in_quote = 0;
+      }
 }
