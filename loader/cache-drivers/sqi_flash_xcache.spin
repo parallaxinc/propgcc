@@ -1,4 +1,5 @@
-#define SST
+#define WINBOND
+'#define SST
 
 #define FLASH
 #undef RW
