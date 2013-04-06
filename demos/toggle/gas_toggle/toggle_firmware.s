@@ -77,5 +77,9 @@ waitdelay       long    0                   ' read from hub to int
 nextcnt         long    0
 
 		'' addresses of C variables
-wait_addr	long	_wait_time
-pins_addr	long	_pins
+		'' NOTE: we are in .pasm mode, so we have to
+		'' prefix symbols in hub memory with "@"
+		'' this would not be necessary in the default
+		'' .gas mode
+wait_addr	long	@_wait_time
+pins_addr	long	@_pins
