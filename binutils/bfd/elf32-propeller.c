@@ -401,6 +401,52 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0x00000000,		/* src_mask */
 	 0x0000003F,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
+
+  /* A 32 bit absolute relocation, shifted right by 2 */
+  HOWTO (R_PROPELLER_32_DIV4,	/* type */
+	 2,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 32,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_dont,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_32_DIV4",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0xffffffff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* A 16 bit absolute relocation, shifted right by 2 */
+  HOWTO (R_PROPELLER_16_DIV4,	/* type */
+	 2,			/* rightshift */
+	 1,			/* size (0 = byte, 1 = short, 2 = long) */
+	 16,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_16_DIV4",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0000ffff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* An 8 bit absolute relocation, shifted right by 2 */
+  HOWTO (R_PROPELLER_8_DIV4,	        /* type */
+	 2,			/* rightshift */
+	 0,			/* size (0 = byte, 1 = short, 2 = long) */
+	 8,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_8_DIV4",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x000000ff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
 };
 
 /* Map BFD reloc types to Propeller ELF reloc types. */
@@ -424,6 +470,10 @@ static const struct propeller_reloc_map propeller_reloc_map[] = {
   {BFD_RELOC_PROPELLER_PCREL10, R_PROPELLER_PCREL10},
   {BFD_RELOC_PROPELLER_REPS, R_PROPELLER_REPS},
   {BFD_RELOC_PROPELLER_REPINSCNT, R_PROPELLER_REPINSCNT},
+  {BFD_RELOC_PROPELLER_32_DIV4, R_PROPELLER_32_DIV4},
+  {BFD_RELOC_PROPELLER_16_DIV4, R_PROPELLER_16_DIV4},
+  {BFD_RELOC_PROPELLER_8_DIV4, R_PROPELLER_8_DIV4},
+
 };
 
 static reloc_howto_type *
@@ -496,6 +546,9 @@ propeller_final_link_relocate (reloc_howto_type * howto,
     case R_PROPELLER_32:
     case R_PROPELLER_16:
     case R_PROPELLER_8:
+    case R_PROPELLER_32_DIV4:
+    case R_PROPELLER_16_DIV4:
+    case R_PROPELLER_8_DIV4:
       r = _bfd_final_link_relocate (howto, input_bfd, input_section,
 				    contents, rel->r_offset,
 				    relocation, rel->r_addend);
