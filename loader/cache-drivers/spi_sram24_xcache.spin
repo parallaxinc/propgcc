@@ -2,6 +2,7 @@
 #define RW
 #include "cache_common.spin"
 #include "cache_spi_pins.spin"
+#include "cache_spi.spin"
 
 init
         call    #get_spi_pins
@@ -15,7 +16,7 @@ init
         call    #select
         mov     data, ramseq
         mov     bits, #16
-        call    #send
+        call    #spiSend
 init_ret
         ret
         
@@ -37,7 +38,7 @@ BSTART
         and     data, sram_mask
         or      data, fn
         mov     bits, #32
-        call    #send
+        call    #spiSend
         mov     ptr, hubaddr
 BSTART_RET
         ret
@@ -86,46 +87,12 @@ BWRITE
 BWRITE_RET
         ret
 
-spiSendByte
-        shl     data, #24
-        mov     bits, #8
-send    rol     data, #1 wc
-        muxc    outa, mosi_mask
-        or      outa, sck_mask
-        andn    outa, sck_mask
-        djnz    bits, #send
-        or      outa, mosi_mask
-spiSendByte_ret
-send_ret
-        ret
-
-spiRecvByte
-        mov     data, #0
-        mov     bits, #8
-recv    or      outa, sck_mask
-        test    miso_mask, ina wc
-        rcl     data, #1
-        andn    outa, sck_mask
-        djnz    bits, #recv
-spiRecvByte_ret
-recv_ret
-        ret
-
 pindir      long    0
 pinout      long    0
-
-mosi_pin    long    0
-mosi_mask   long    0
-miso_pin    long    0
-miso_mask   long    0
-sck_pin     long    0
-sck_mask    long    0
 
 ' variables used by the spi send/receive functions
 fn          long    0
 cmd         long    0
-data        long    0
-bits        long    0
 ptr         long    0
 
 ' spi commands

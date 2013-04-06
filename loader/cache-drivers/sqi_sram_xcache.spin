@@ -2,6 +2,7 @@
 #define RW
 #include "cache_common.spin"
 #include "cache_sqi_pins.spin"
+#include "cache_sqi.spin"
 
 init
         call    #get_sqi_pins
@@ -15,14 +16,14 @@ init
         call    #select
         mov     data, ramseq
         mov     bits, #16
-        call    #send
+        call    #spiSend
         call    #release
         
         ' switch to quad mode
         call    #select
         mov     data, eqio
         mov     bits, #8
-        call    #send
+        call    #spiSend
         call    #release
 init_ret
         ret
@@ -108,78 +109,12 @@ BWRITE
 BWRITE_RET
         ret
 
-spiSendByte
-        shl     data, #24
-        mov     bits, #8
-send    rol     data, #1 wc
-        muxc    outa, mosi_mask
-        or      outa, sck_mask
-        andn    outa, sck_mask
-        djnz    bits, #send
-        or      outa, mosi_mask
-spiSendByte_ret
-send_ret
-        ret
-
-spiRecvByte
-        mov     data, #0
-        mov     bits, #8
-:loop   or      outa, sck_mask
-        test    miso_mask, ina wc
-        rcl     data, #1
-        andn    outa, sck_mask
-        djnz    bits, #:loop
-spiRecvByte_ret
-        ret
-
-sqiSendByte
-        mov     bits, data
-        ror     bits, #4
-        rol     bits, sio_shift
-        and     bits, sio_mask
-        andn    outa, sio_mask
-        or      outa, bits
-        or      outa, sck_mask
-        andn    outa, sck_mask
-        rol     data, sio_shift
-        and     data, sio_mask
-        andn    outa, sio_mask
-        or      outa, data
-        or      outa, sck_mask
-        andn    outa, sck_mask
-sqiSendByte_ret
-        ret
-
-sqiRecvByte
-        or      outa, sck_mask
-        mov     data, ina
-        and     data, sio_mask
-        rol     data, #4
-        andn    outa, sck_mask
-        or      outa, sck_mask
-        mov     bits, ina
-        and     bits, sio_mask
-        or      data, bits
-        ror     data, sio_shift
-        andn    outa, sck_mask
-sqiRecvByte_ret
-        ret
-
 pindir      long    0
 pinout      long    0
-
-mosi_mask   long    0
-miso_mask   long    0
-sck_pin     long    0
-sck_mask    long    0
-sio_shift   long    0
-sio_mask    long    0
 
 ' variables used by the spi send/receive functions
 fn          long    0
 cmd         long    0
-data        long    0
-bits        long    0
 ptr         long    0
 
 ' spi commands
