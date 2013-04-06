@@ -9,7 +9,7 @@
 PROPLIB = ../common
 
 CFLAGS = -Os
-CHIP = p2
+CHIP ?= p2
 
 #
 # objects for this program

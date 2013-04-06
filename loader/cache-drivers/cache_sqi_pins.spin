@@ -6,11 +6,10 @@ CON
   MUX_START_BIT_MASK    = $04   ' low order bit of mux field
   MUX_WIDTH_MASK        = $08   ' width of mux field
   ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
-  QUAD_SPI_HACK_MASK    = $20   ' set /WE and /HOLD for testing on Quad SPI chips
  
 DAT
 
-' param1: 0xooiiccee - oo=mosi ii=miso cc=sck pp=protocol
+' param1: 0xssxxccee - ss=sio0 xx=unused cc=sck pp=protocol
 ' param2: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' the protocol byte is a bit mask with the bits defined above
 '   if CS_CLR_PIN_MASK ($01) is set, then byte aa contains the CS or C3-style CLR pin number
@@ -18,11 +17,10 @@ DAT
 '   if MUX_START_BIT_MASK ($04) is set, then byte bb contains the starting bit number of the mux field
 '   if MUX_WIDTH_MASK ($08) is set, then byte cc contains the width of the mux field
 '   if ADDR_MASK ($10) is set, then byte dd contains either the C3-style address or the value to write to the mux field
-'   if QUAD_SPI_HACK_MASK ($20) is set, assume that pins miso+1 and miso+2 are /WP and /HOLD and assert them
 ' example:
 '   for a simple single pin CS you should set the protocol byte to $01 and place the CS pin number in byte aa.
 
-' get_spi_pins
+' get_sqi_pins
 '
 ' params:
 '       t1          - pointer to the next configuration parameter
@@ -37,32 +35,29 @@ DAT
 '       mosi_mask   - mosi pin mask
 '       miso_mask   - miso pin mask
 '       sck_mask    - clock pin mask
-get_spi_pins
+get_sqi_pins
         ' get the pin definitions (cache-param2)
         rdlong  t2, t1
         add     t1, #4
 
-        ' build the mosi mask
-        mov     t3, t2
-        shr     t3, #24
+        ' get the sio_shift and build the mosi, miso, and sio masks
+        mov     sio_shift, t2
+        shr     sio_shift, #24
         mov     mosi_mask, #1
-        shl     mosi_mask, t3
+        shl     mosi_mask, sio_shift
+        mov     miso_mask, mosi_mask
+        shl     miso_mask, #1
+        mov     sio_mask, #$f
+        shl     sio_mask, sio_shift
         or      pindir, mosi_mask
+        or      pinout, mosi_mask
         
-        ' make the sio2 and sio3 pins outputs in single spi mode to assert /WP and /HOLD
-        test    t2, #QUAD_SPI_HACK_MASK wz
-  if_nz mov     t4, #$0c
-  if_nz shl     t4, t3      ' mosi pin from above
-  if_nz or      pindir, t4
-  if_nz or      pinout, t4
-        
-        ' build the miso mask
-        mov     t3, t2
-        shr     t3, #16
-        and     t3, #$ff
-        mov     miso_mask, #1
-        shl     miso_mask, t3
-        
+        ' make the sio2 and sio3 pins outputs in single spi mode to assert /WE and /HOLD
+        mov     t3, #$0c
+        shl     t3, sio_shift
+        or      pindir, t3
+        or      pinout, t3
+                
         ' build the sck mask
         mov     t3, t2
         shr     t3, #8
@@ -116,7 +111,7 @@ get_spi_pins
   if_nz shl     mask_inc, t4
   if_nz or      pindir, mask_inc
   
-get_spi_pins_ret
+get_sqi_pins_ret
         ret
 
 '----------------------------------------------------------------------------------------------------
@@ -131,8 +126,8 @@ select_ret
         ret
 
 release                             ' Single-SPI and Parallel-DeMUX
-        or      outa, cs_clr
-        andn    outa, mask_inc
+        mov     outa, pinout
+        mov     dira, pindir
 release_ret
         ret
 

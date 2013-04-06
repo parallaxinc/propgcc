@@ -32,8 +32,8 @@
 CON
 
   ' default cache geometry
-  DEFAULT_WAY_WIDTH     = 1 ' number of bits in the way offset (way count is 2^n)
-  DEFAULT_INDEX_WIDTH   = 6 ' number of bits in the index offset (index size is 2^n)
+  DEFAULT_WAY_WIDTH     = 2 ' number of bits in the way offset (way count is 2^n)
+  DEFAULT_INDEX_WIDTH   = 5 ' number of bits in the index offset (index size is 2^n)
   DEFAULT_OFFSET_WIDTH  = 6 ' number of bits in the line offset (line size is 2^n)
 
   ' cache line tag flags
@@ -68,12 +68,12 @@ init_vm mov     t1, par                 ' get the address of the initialization 
         rdlong  t2, t1 wz               ' get the cache geometry
         add     t1, #4
   if_z  jmp     #:skip
-        mov     way_width, t2           ' way width in bits 23:16
+        mov     way_width, t2           ' way width in bits 31:24
         shr     way_width, #24
-        mov     index_width, t2         ' index width in bits 15:8
+        mov     index_width, t2         ' index width in bits 23:16
         shr     index_width, #16
         and     index_width, #$ff
-        mov     offset_width, t2        ' offset width in bits 7:0
+        mov     offset_width, t2        ' offset width in bits 15:8
         shr     offset_width, #8
         and     offset_width, #$ff
 :skip
@@ -94,8 +94,7 @@ init_vm mov     t1, par                 ' get the address of the initialization 
         
         mov     way_count, #1
         shl     way_count, way_width
-        mov     way_size, way_count
-        shl     way_size, index_width   ' multiply by index count
+        mov     way_size, index_count
         shl     way_size, #2            ' multiply by tag size in bytes
         mov     way_mask, way_count
         sub     way_mask, #1

@@ -1,11 +1,11 @@
 #undef FLASH
 #define RW
 #include "cache_common.spin"
-#include "cache_spi_pins.spin"
-#include "cache_spi.spin"
+#include "cache_sqi_pins.spin"
+#include "cache_sqi.spin"
 
 init
-        call    #get_spi_pins
+        call    #get_sqi_pins
 
         ' set the pin directions
         mov     outa, pinout
@@ -17,6 +17,14 @@ init
         mov     data, ramseq
         mov     bits, #16
         call    #spiSend
+        call    #release
+        
+        ' switch to quad mode
+        call    #select
+        mov     data, eqio
+        mov     bits, #8
+        call    #spiSend
+        call    #release
 init_ret
         ret
         
@@ -33,12 +41,23 @@ init_ret
 '----------------------------------------------------------------------------------------------------
 
 BSTART
+        mov     cmd, vmaddr
+        and     cmd, sram_mask
+        or      cmd, fn
+        or      dira, sio_mask
         call    #select
-        mov     data, vmaddr
-        shl     data, #8
-        or      data, fn
-        mov     bits, #24
-        call    #spiSend
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
         mov     ptr, hubaddr
 BSTART_RET
         ret
@@ -57,7 +76,10 @@ BSTART_RET
 BREAD
         mov     fn, read
         call    #BSTART 
-:loop   call    #spiRecvByte
+        mov     data, #0
+        call    #sqiSendByte
+        andn    dira, sio_mask
+:loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1
         djnz    count, #:loop
@@ -80,7 +102,7 @@ BWRITE
         mov     fn, write
         call    #BSTART
 :loop   rdbyte  data, ptr
-        call    #spiSendByte
+        call    #sqiSendByte
         add     ptr, #1
         djnz    count, #:loop
         call    #release
@@ -98,6 +120,10 @@ ptr         long    0
 ' spi commands
 read        long    $03000000       ' read command
 write       long    $02000000       ' write command
+eqio        long    $38000000       ' enter quad I/O mode
+rstio       long    $ffffffff       ' reset quad I/O mode
 ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
+
+sram_mask   long    $00ffffff       ' mask to isolate the sram offset bits
 
             FIT     496
