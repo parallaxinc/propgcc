@@ -28,7 +28,7 @@
   
   dirc = 0x1fe
   
-                        .cog_ram
+                        .pasm
                         org     0
                         
                         jmp     #init
