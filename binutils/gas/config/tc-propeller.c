@@ -3021,7 +3021,7 @@ matchword(const char *line, const char *word)
         if (a != b)
             return 0;
     }
-    return 1;
+    return *line == 0 || *line == '\n' || ISSPACE(*line);
 }
 
 /*

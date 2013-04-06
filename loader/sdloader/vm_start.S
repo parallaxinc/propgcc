@@ -1,7 +1,7 @@
 #include "vm_start.h"
     
                     .section .coguser3, "ax"
-                    .cog_ram
+                    .pasm
                        
 boot                mov     t1, PAR
                     rdlong  image_base, t1      ' params[0]
