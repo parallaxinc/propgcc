@@ -1,24 +1,81 @@
+' param2: 0xssccffrr - ss=sio0 cc=sck ff=flash-cs rr=sram-cs
+
 #define SST
 
 #define FLASH
-#undef RW
+#define RW
 #include "cache_common.spin"
-#include "cache_sqi_pins.spin"
 #include "cache_sqi.spin"
 
 init
-        call    #get_sqi_pins
+        ' get the pin definitions (cache-param2)
+        rdlong  t2, t1
+
+        ' get the sio_shift and build the mosi, miso, and sio masks
+        mov     sio_shift, t2
+        shr     sio_shift, #24
+        mov     mosi_mask, #1
+        shl     mosi_mask, sio_shift
+        mov     miso_mask, mosi_mask
+        shl     miso_mask, #1
+        mov     sio_mask, #$f
+        shl     sio_mask, sio_shift
+        or      pindir, mosi_mask
+        or      pinout, mosi_mask
         
+        ' make the sio2 and sio3 pins outputs in single spi mode to assert /WE and /HOLD
+        mov     t3, #$0c
+        shl     t3, sio_shift
+        or      pindir, t3
+        or      pinout, t3
+                
+        ' build the sck mask
+        mov     t3, t2
+        shr     t3, #16
+        and     t3, #$ff
+        mov     sck_mask, #1
+        shl     sck_mask, t3
+        or      pindir, sck_mask
+        
+        ' get the chip selects
+        mov     t3, t2
+        shr     t3, #8
+        and     t3, #$ff
+        mov     flash_cs_mask, #1
+        shl     flash_cs_mask, t3
+        and     t2, #$ff
+        mov     sram_cs_mask, #1
+        shl     sram_cs_mask, t2
+        or      pinout, flash_cs_mask
+        or      pindir, flash_cs_mask
+        or      pinout, sram_cs_mask
+        or      pindir, sram_cs_mask
+
         ' set the pin directions
         mov     outa, pinout
         mov     dira, pindir
         call    #release
-                        
+                
+        ' initialize the flash chip
         call    #flash_init
         
+        ' select sequential access mode for the SRAM chip
+        call    #select_sram
+        mov     data, sram_seq
+        mov     bits, #16
+        call    #spiSend
+        call    #release
+        
+        ' switch to quad mode for the SRAM chip
+        call    #select_sram
+        mov     data, sram_eqio
+        mov     bits, #8
+        call    #spiSend
+        call    #release
+
 init_ret
         ret
-        
+                
 '----------------------------------------------------------------------------------------------------
 '
 ' erase_4k_block
@@ -33,7 +90,7 @@ init_ret
 erase_4k_block
         call    #sst_write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         or      cmd, ferase4kblk
         mov     bytes, #4
         call    #sst_start_quad_spi_cmd
@@ -49,7 +106,7 @@ erase_4k_block_ret
 erase_4k_block
         call    #winbond_write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         or      cmd, ferase4kblk
         call    #winbond_start_quad_spi_cmd_1
         rol     cmd, #8
@@ -97,6 +154,40 @@ write_block_ret
         
 '----------------------------------------------------------------------------------------------------
 '
+' BSTART_sram
+'
+' select the chip and send the address for the read/write operation
+'
+' on input:
+'   vmaddr is the sram transfer address
+'   hubaddr is the hub address
+'
+'----------------------------------------------------------------------------------------------------
+
+BSTART_sram
+        mov     cmd, vmaddr
+        and     cmd, offset_bits
+        or      cmd, fn
+        or      dira, sio_mask
+        call    #select_sram
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        mov     ptr, hubaddr
+BSTART_sram_RET
+        ret
+
+'----------------------------------------------------------------------------------------------------
+'
 ' BREAD
 '
 ' on input:
@@ -107,6 +198,8 @@ write_block_ret
 '----------------------------------------------------------------------------------------------------
 
 BREAD
+        cmp     vmaddr, flash_base wc
+  if_b  jmp     #BREAD_sram
         call    #start_read
         mov     ptr, hubaddr      ' hubaddr = hub page address
         mov     count, line_size
@@ -114,9 +207,22 @@ BREAD
         wrbyte  data, ptr
         add     ptr, #1
         djnz    count, #:loop
+BREAD_done
         call    #release
 BREAD_RET
         ret
+
+BREAD_sram
+        mov     fn, sram_read
+        call    #BSTART_sram 
+        mov     data, #0
+        call    #sqiSendByte
+        andn    dira, sio_mask
+:loop   call    #sqiRecvByte
+        wrbyte  data, ptr
+        add     ptr, #1
+        djnz    count, #:loop
+        jmp     #BREAD_done
 
 '----------------------------------------------------------------------------------------------------
 '
@@ -130,14 +236,22 @@ BREAD_RET
 '----------------------------------------------------------------------------------------------------
 
 BWRITE
-        ' no writes to flash
+        cmp     vmaddr, flash_base wc
+  if_ae jmp     BWRITE_RET  ' no writes to flash
+        mov     fn, sram_write
+        call    #BSTART_sram
+:loop   rdbyte  data, ptr
+        call    #sqiSendByte
+        add     ptr, #1
+        djnz    count, #:loop
+        call    #release
 BWRITE_RET
         ret
 
 ' spi commands
 
 read_jedec_id
-        call    #select
+        call    #select_flash
         mov     data, frdjedecid
         call    #spiSendByte
         call    #spiRecvByte       ' manufacturer's id
@@ -150,7 +264,8 @@ read_jedec_id
 read_jedec_id_ret
         ret
 
-halt    jmp     #halt
+halt    cogid   t1
+        cogstop t1
         
 ' ****************************
 ' SST SST26VF016 SPI FUNCTIONS
@@ -165,7 +280,7 @@ flash_init
         call    #read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
-        call    #select
+        call    #select_flash
         mov     data, sst_quadmode
         call    #spiSendByte
         call    #release
@@ -188,7 +303,7 @@ flash_init_ret
 start_write
         call    #sst_write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         or      cmd, sst_program
         mov     bytes, #4
         call    #sst_start_quad_spi_cmd
@@ -197,7 +312,7 @@ start_write_ret
         
 start_read
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         or      cmd, sst_read
         mov     bytes, #4
         call    #sst_start_quad_spi_cmd
@@ -243,7 +358,7 @@ sst_start_quad_spi_cmd_1
         mov     bytes, #1
 sst_start_quad_spi_cmd
         or      dira, sio_mask
-        call    #select
+        call    #select_flash
 :loop   rol     cmd, #8
         mov     data, cmd
         call    #sqiSendByte
@@ -287,7 +402,7 @@ flash_init_ret
 start_write
         call    #winbond_write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         or      cmd, winbond_program
         call    #winbond_start_quad_spi_cmd_1
         rol     cmd, #8
@@ -305,7 +420,7 @@ start_write_ret
         
 start_read
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         or      cmd, winbond_read
         mov     bytes, #4
         call    #winbond_start_quad_spi_cmd
@@ -336,7 +451,7 @@ winbond_write_enable_ret
 winbond_start_quad_spi_cmd_1
         mov     bytes, #1
 winbond_start_quad_spi_cmd
-        call    #select
+        call    #select_flash
         rol     cmd, #8
         mov     data, cmd
         call    #spiSendByte
@@ -363,19 +478,48 @@ winbond_read        long    $e3000000    ' flash read command
 ' END OF CHIP SPECIFIC SPI FUNCTIONS
 ' **********************************
 
-frdjedecid          long    $9f          ' read the manufacturers id, device type and device id
-ferase4kblk         long    $20000000    ' flash erase a 4k block
-frdstatus           long    $05000000    ' flash read status
-fwrenable           long    $06000000    ' flash write enable
+select_flash
+        andn    outa, flash_cs_mask
+select_flash_ret
+        ret
+                
+select_sram
+        andn    outa, sram_cs_mask
+select_sram_ret
+        ret
+                
+release
+        mov     outa, pinout
+        mov     dira, pindir
+release_ret
+        ret
 
-pindir      long    0
-pinout      long    0
+' flash commands
+frdjedecid      long    $9f          ' read the manufacturers id, device type and device id
+ferase4kblk     long    $20000000    ' flash erase a 4k block
+frdstatus       long    $05000000    ' flash read status
+fwrenable       long    $06000000    ' flash write enable
+
+pindir          long    0
+pinout          long    0
+
+flash_cs_mask   long    0
+sram_cs_mask    long    0
 
 ' variables used by the spi send/receive functions
+fn          long    0
 cmd         long    0
 bytes       long    0
 ptr         long    0
 
-flashmask   long    $00ffffff       ' mask to isolate the flash offset bits
+' sram commands
+sram_read   long    $03000000       ' read command
+sram_write  long    $02000000       ' write command
+sram_eqio   long    $38000000       ' enter quad I/O mode
+sram_rstio  long    $ffffffff       ' reset quad I/O mode
+sram_seq    long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
+
+flash_base  long    $30000000       ' base address of flash memory
+offset_bits long    $00ffffff       ' mask to isolate the offset bits
 
             FIT     496

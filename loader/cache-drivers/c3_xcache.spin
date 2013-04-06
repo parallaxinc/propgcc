@@ -1,4 +1,3 @@
-
 #define ENABLE_RAM
 #define BYTE_TRANSFERS
 
@@ -13,13 +12,6 @@ CON
   MOSI_PIN              = 9
   MISO_PIN              = 10
 
-  ' SD commands
-  CMD0_GO_IDLE_STATE      = $40|0
-  CMD55_APP_CMD           = $40|55
-  CMD17_READ_SINGLE_BLOCK = $40|17
-  CMD24_WRITE_BLOCK       = $40|24
-  ACMD41_SD_APP_OP_COND   = $40|41
-  
 #define FLASH
 #define RW
 #include "cache_common.spin"
@@ -256,10 +248,6 @@ receive_ret
 ' spi select functions
 ' all trash t1
 
-sd_card
-        mov     t1, #5
-        jmp     #select
-
 sram_chip1
         mov     t1, #1
         jmp     #select
@@ -276,7 +264,6 @@ select  andn    outa, TCLR
 :loop   or      outa, TINC
         andn    outa, TINC
         djnz    t1, #:loop
-sd_card_ret
 sram_chip1_ret
 sram_chip2_ret
 flash_chip_ret

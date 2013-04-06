@@ -1,4 +1,4 @@
-CACHE_DRIVER_COMMON = cache_common.spin cache_interface.spin
+CACHE_DRIVER_COMMON = cache_common.spin cache_interface.spin cache_spi_pins.spin cache_sqi_pins.spin cache_spi.spin cache_sqi.spin
 
 DEMO?=fibo.elf
 
@@ -9,6 +9,7 @@ sqi_flash_xcache.dat \
 spi_sram_xcache.dat \
 spi_sram24_xcache.dat \
 sqi_sram_xcache.dat \
+sqi_flash_sram_xcache.dat \
 c3_xcache.dat
 
 all:	$(DRIVERS)

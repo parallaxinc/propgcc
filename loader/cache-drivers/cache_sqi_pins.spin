@@ -32,11 +32,8 @@ DAT
 ' outputs:
 '       pindir      - pin direction bits for dira
 '       pinout      - idle value for output pins
-'       mosi_pin    - mosi pin number
 '       mosi_mask   - mosi pin mask
-'       miso_pin    - miso pin number
 '       miso_mask   - miso pin mask
-'       sck_pin     - clock pin
 '       sck_mask    - clock pin mask
 get_sqi_pins
         ' get the pin definitions (cache-param2)
@@ -62,11 +59,11 @@ get_sqi_pins
         or      pinout, t3
                 
         ' build the sck mask
-        mov     sck_pin, t2
-        shr     sck_pin, #8
-        and     sck_pin, #$ff
+        mov     t3, t2
+        shr     t3, #8
+        and     t3, #$ff
         mov     sck_mask, #1
-        shl     sck_mask, sck_pin
+        shl     sck_mask, t3
         or      pindir, sck_mask
         
         ' get the cs protocol selector bits (cache-param3)
@@ -129,8 +126,8 @@ select_ret
         ret
 
 release                             ' Single-SPI and Parallel-DeMUX
-        or      outa, cs_clr
-        andn    outa, mask_inc
+        mov     outa, pinout
+        mov     dira, pindir
 release_ret
         ret
 

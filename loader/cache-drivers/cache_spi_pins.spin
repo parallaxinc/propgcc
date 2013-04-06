@@ -34,11 +34,8 @@ DAT
 ' outputs:
 '       pindir      - pin direction bits for dira
 '       pinout      - idle value for output pins
-'       mosi_pin    - mosi pin number
 '       mosi_mask   - mosi pin mask
-'       miso_pin    - miso pin number
 '       miso_mask   - miso pin mask
-'       sck_pin     - clock pin
 '       sck_mask    - clock pin mask
 get_spi_pins
         ' get the pin definitions (cache-param2)
@@ -46,32 +43,32 @@ get_spi_pins
         add     t1, #4
 
         ' build the mosi mask
-        mov     mosi_pin, t2
-        shr     mosi_pin, #24
+        mov     t3, t2
+        shr     t3, #24
         mov     mosi_mask, #1
-        shl     mosi_mask, mosi_pin
+        shl     mosi_mask, t3
         or      pindir, mosi_mask
-        
-        ' build the miso mask
-        mov     miso_pin, t2
-        shr     miso_pin, #16
-        and     miso_pin, #$ff
-        mov     miso_mask, #1
-        shl     miso_mask, miso_pin
         
         ' make the sio2 and sio3 pins outputs in single spi mode to assert /WP and /HOLD
         test    t2, #QUAD_SPI_HACK_MASK wz
-  if_nz mov     t3, #$0c
-  if_nz shl     t3, mosi_pin
+  if_nz mov     t4, #$0c
+  if_nz shl     t4, t3      ' mosi pin from above
   if_nz or      pindir, t3
   if_nz or      pinout, t3
         
+        ' build the miso mask
+        mov     t3, t2
+        shr     t3, #16
+        and     t3, #$ff
+        mov     miso_mask, #1
+        shl     miso_mask, t3
+        
         ' build the sck mask
-        mov     sck_pin, t2
-        shr     sck_pin, #8
-        and     sck_pin, #$ff
+        mov     t3, t2
+        shr     t3, #8
+        and     t3, #$ff
         mov     sck_mask, #1
-        shl     sck_mask, sck_pin
+        shl     sck_mask, t3
         or      pindir, sck_mask
         
         ' get the cs protocol selector bits (cache-param3)

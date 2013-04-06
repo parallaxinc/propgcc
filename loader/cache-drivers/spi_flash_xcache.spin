@@ -4,10 +4,10 @@
 #undef RW
 #include "cache_common.spin"
 #include "cache_spi_pins.spin"
+#include "cache_spi.spin"
 
 init
         call    #get_spi_pins
-        call    #spiInit
 
         ' get the jedec id (cache-param4)
         rdlong  t2, t1 wz
@@ -203,124 +203,12 @@ BREAD
 BREAD_RET
         ret
 
-#ifdef FAST
-
-{{
-  Counter-based SPI code based on code from:
-  
-  SPI interface routines for SD & SDHC & MMC cards
-
-  Jonathan "lonesock" Dummer
-  version 0.3.0  2009 July 19
-}}
-
-spiInit
-        or writeMode,mosi_pin
-        or clockLineMode,sck_pin
-        mov ctra,writeMode      ' Counter A drives data out
-        mov ctrb,clockLineMode  ' Counter B will always drive my clock line
-spiInit_ret
-        ret
-        
-clockLineMode   long    %00100 << 26
-writeMode       long    %00100 << 26
-        
-spiSendByte
-        mov phsa,data
-        shl phsa,#24
-        andn outa,mosi_mask 
-        'movi phsb,#%11_0000000
-        mov phsb,#0
-        movi frqb,#%01_0000000        
-        rol phsa,#1
-        rol phsa,#1
-        rol phsa,#1
-        rol phsa,#1
-        rol phsa,#1
-        rol phsa,#1
-        rol phsa,#1
-        mov frqb,#0
-        ' don't shift out the final bit...already sent, but be aware 
-        ' of this when sending consecutive bytes (send_cmd, for e.g.) 
-spiSendByte_ret
-        ret
-
-spiRecvByte
-        neg phsa,#1' DI high
-        mov data,#0
-        ' set up my clock, and start it
-        movi phsb,#%011_000000
-        movi frqb,#%001_000000
-        ' keep reading in my value
-        test miso_mask,ina wc
-        rcl data,#1
-        test miso_mask,ina wc
-        rcl data,#1
-        test miso_mask,ina wc
-        rcl data,#1
-        test miso_mask,ina wc
-        rcl data,#1
-        test miso_mask,ina wc
-        rcl data,#1
-        test miso_mask,ina wc
-        rcl data,#1
-        test miso_mask,ina wc
-        rcl data,#1
-        test miso_mask,ina wc
-        mov frqb,#0 ' stop the clock
-        rcl data,#1
-        mov phsa,#0 'DI low
-spiRecvByte_ret
-        ret
-
-#else
-
-spiInit
-		nop
-spiInit_ret
-        ret
-
-spiSendByte
-        shl     data, #24
-        mov     bits, #8
-:loop   rol     data, #1 wc
-        muxc    outa, mosi_mask
-        or      outa, sck_mask
-        andn    outa, sck_mask
-        djnz    bits, #:loop
-        or      outa, mosi_mask
-spiSendByte_ret
-        ret
-
-spiRecvByte
-        mov     data, #0
-        mov     bits, #8
-:loop   or      outa, sck_mask
-        test    miso_mask, ina wc
-        rcl     data, #1
-        andn    outa, sck_mask
-        djnz    bits, #:loop
-spiRecvByte_ret
-        ret
-
-bits    long    0
-
-#endif
-
 pindir          long    0
 pinout          long    0
-
-mosi_pin        long    0
-mosi_mask       long    0
-miso_pin        long    0
-miso_mask       long    0
-sck_pin         long    0
-sck_mask        long    0
 
 ' variables used by the spi send/receive functions
 cmd         long    0
 bytes       long    0
-data        long    0
 
 #ifdef SST
 jedec_id    long    $004a25bf       ' value of t1 after read_jedec_id routine (SST25VF032B)
