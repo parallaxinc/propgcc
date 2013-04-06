@@ -53,8 +53,8 @@ get_spi_pins
         test    t2, #QUAD_SPI_HACK_MASK wz
   if_nz mov     t4, #$0c
   if_nz shl     t4, t3      ' mosi pin from above
-  if_nz or      pindir, t3
-  if_nz or      pinout, t3
+  if_nz or      pindir, t4
+  if_nz or      pinout, t4
         
         ' build the miso mask
         mov     t3, t2
