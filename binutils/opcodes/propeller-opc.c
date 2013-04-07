@@ -742,8 +742,10 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* waitvid  111011 000i cccc ddddddddd sssssssss */
   {"waitvid", 0xec000000, 0xff800000, PROPELLER_OPERAND_TWO_OPS, CC, PROP_2, NO_COMPRESSED, 0},
 
+/* cmpr   111000 zc0i cccc ddddddddd sssssssss */
+  {"cmpr", 0xe0000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
 /* subr   111000 zc1i cccc ddddddddd sssssssss */
-  {"subr", 0xe0800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
+  {"subr", 0xe0800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_2, NO_COMPRESSED, 0},
 /* cmpsub   111001 zc1i cccc ddddddddd sssssssss */
   {"cmpsub", 0xe4800000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_2, NO_COMPRESSED, 0},
 /* incmod   111010 zcri cccc ddddddddd sssssssss */

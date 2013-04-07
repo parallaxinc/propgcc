@@ -299,7 +299,7 @@ print_insn_propeller32 (bfd_vma memaddr, struct disassemble_info *info, int opco
       dst = (opcode >> 9) & 0x1fff;
       if (opcode & 0x02000000)
 	dst |= 0x2000;
-      dst -= 1;
+      dst += 1;
       condition = 15;
       need_zcr = 0;
       immediate_dst = 1;

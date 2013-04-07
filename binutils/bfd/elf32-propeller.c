@@ -95,19 +95,36 @@ propeller_elf_do_inscnt_reloc (
   /* Sanity check the address (offset in section).  */
   if (offset > bfd_get_section_limit (abfd, input_section))
     return bfd_reloc_outofrange;
+  /* Make it pc relative, if necessary */
+  if (howto->pc_relative)
+      relocation -= (input_section->output_section->vma + input_section->output_offset);
 
   relocation = symbol_value + addend;
-  /* subtract 1  */
-  relocation -=	1;
+  /* subtract appropriate offset  */
+  switch (howto->type) {
+  case R_PROPELLER_REPINSCNT:
+      relocation -=	1;
+      break;
+  case R_PROPELLER_REPSREL:
+      relocation -= 4;
+      break;
+  default:
+      break;
+  }
 
+  if (relocation < 0) {
+      relocation = 0;
+      status = bfd_reloc_overflow;
+  }
+
+  relocation >>= howto->rightshift;
   /* only 6 bits */
-  if (relocation < 0 || relocation > 0x3f)
+  if (relocation & 0x1f)
     status = bfd_reloc_overflow;
   else
     status = bfd_reloc_ok;
 
   x = bfd_get_32 (abfd, data + offset);
-  relocation >>= howto->rightshift;
   relocation <<= howto->bitpos;
   x = (x & ~howto->dst_mask) | (((x & howto->src_mask) + relocation) & howto->dst_mask);
   bfd_put_32 (abfd, (bfd_vma) x, data + offset);
@@ -149,6 +166,7 @@ propeller_specific_reloc (bfd *abfd,
 					    + symbol->section->output_offset),
 					   reloc_entry->addend);
   case R_PROPELLER_REPINSCNT:
+  case R_PROPELLER_REPSREL:
     return propeller_elf_do_inscnt_reloc (reloc_entry->howto, abfd,
 					   input_section,
 					   data, reloc_entry->address,
@@ -385,7 +403,7 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0x023FFE00,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* a 6 bit instruction repeat count; 1 is subtracted from the
+  /* a 6 bit absolute instruction repeat count; 1 is subtracted from the
      constant
   */
   HOWTO (R_PROPELLER_REPINSCNT,	/* type */
@@ -447,6 +465,68 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0x000000ff,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
+  /* A 32 bit pc-relative relocation. */
+  HOWTO (R_PROPELLER_PCREL32,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 32,			/* bitsize */
+	 TRUE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_PCREL32",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0xffffffff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* A 16 bit pc-relative relocation. */
+  HOWTO (R_PROPELLER_PCREL16,	/* type */
+	 0,			/* rightshift */
+	 1,			/* size (0 = byte, 1 = short, 2 = long) */
+	 16,			/* bitsize */
+	 TRUE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_PCREL16",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0000ffff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* An 8 bit pc-relative relocation. */
+  HOWTO (R_PROPELLER_PCREL32,	/* type */
+	 0,			/* rightshift */
+	 0,			/* size (0 = byte, 1 = short, 2 = long) */
+	 8,			/* bitsize */
+	 TRUE,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_PCREL8",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x000000ff,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* a 6 bit pcrelative instruction repeat count; 1 is subtracted from the
+     constant
+  */
+  HOWTO (R_PROPELLER_REPSREL,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 7,			/* bitsize */
+	 TRUE,		/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 propeller_specific_reloc,	/* special_function */
+	 "R_PROPELLER_REPSREL",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0000007F,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
 };
 
 /* Map BFD reloc types to Propeller ELF reloc types. */
@@ -473,7 +553,10 @@ static const struct propeller_reloc_map propeller_reloc_map[] = {
   {BFD_RELOC_PROPELLER_32_DIV4, R_PROPELLER_32_DIV4},
   {BFD_RELOC_PROPELLER_16_DIV4, R_PROPELLER_16_DIV4},
   {BFD_RELOC_PROPELLER_8_DIV4, R_PROPELLER_8_DIV4},
-
+  {BFD_RELOC_32_PCREL, R_PROPELLER_PCREL32},
+  {BFD_RELOC_16_PCREL, R_PROPELLER_PCREL16},
+  {BFD_RELOC_8_PCREL, R_PROPELLER_PCREL8},
+  {BFD_RELOC_PROPELLER_REPSREL, R_PROPELLER_REPSREL},
 };
 
 static reloc_howto_type *

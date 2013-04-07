@@ -381,6 +381,12 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
         mask |= 0x04000000;
       }
       break;
+    case BFD_RELOC_PROPELLER_REPSREL:
+      val -= 1;
+      mask = 0x0000003f;
+      shift = 0;
+      rshift = 2;
+      break;
     default:
       BAD_CASE (fixP->fx_r_type);
     }
@@ -432,6 +438,8 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_32:
     case BFD_RELOC_16:
     case BFD_RELOC_8:
+    case BFD_RELOC_32_PCREL:
+    case BFD_RELOC_16_PCREL:
     case BFD_RELOC_8_PCREL:
     case BFD_RELOC_PROPELLER_SRC:
     case BFD_RELOC_PROPELLER_SRC_IMM:
@@ -444,6 +452,7 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_PROPELLER_32_DIV4:
     case BFD_RELOC_PROPELLER_16_DIV4:
     case BFD_RELOC_PROPELLER_8_DIV4:
+    case BFD_RELOC_PROPELLER_REPSREL:
       code = fixp->fx_r_type;
       break;
 
@@ -1015,8 +1024,9 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     }
   }
   
-  if (format == PROPELLER_OPERAND_BRS)
-    pcrel_reloc = 1;
+  if (format == PROPELLER_OPERAND_BRS) {
+    pcrel_reloc = compress ? BFD_RELOC_8_PCREL : BFD_RELOC_PROPELLER_PCREL10;
+  }
 
   str = parse_expression (str, operand);
   if (operand->error)
@@ -1050,7 +1060,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
     case O_subtract:
       if (pcrel_reloc)
         {
-          operand->reloc.type = compress ? BFD_RELOC_8_PCREL : BFD_RELOC_PROPELLER_PCREL10;
+          operand->reloc.type = pcrel_reloc;
           operand->reloc.pc_rel = 1;
         }
       else
@@ -1070,7 +1080,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
       break;
     default:
       if (pcrel_reloc)
-        operand->error = _("Source operand too complicated for brs instruction");
+        operand->error = _("Source operand too complicated for relative instruction");
       else
         {
 	  if (format == PROPELLER_OPERAND_REPD) {
@@ -1093,24 +1103,8 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
 }
 
 static char *
-parse_src_n(char *str, struct propeller_code *operand, int nbits){
-
-  int default_reloc = BFD_RELOC_PROPELLER_23;
-
-  if (nbits == 32)
-    default_reloc = BFD_RELOC_32;
-  else if (nbits == 16)
-    default_reloc = BFD_RELOC_16;
-  else if (nbits == 8)
-    default_reloc = BFD_RELOC_8;
-
-  str = skip_whitespace (str);
-  if (*str++ != '#')
-    {
-      operand->error = _("immediate operand required");
-      return str;
-    }
-
+parse_src_reloc(char *str, struct propeller_code *operand, int default_reloc, int pcrel, int nbits)
+{
   str = parse_expression (str, operand);
   if (operand->error)
     return str;
@@ -1130,7 +1124,7 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
     case O_add:
     case O_subtract:
       operand->reloc.type = default_reloc;
-      operand->reloc.pc_rel = 0;
+      operand->reloc.pc_rel = pcrel;
       break;
     case O_illegal:
       operand->error = _("Illegal operand in source");
@@ -1138,11 +1132,34 @@ parse_src_n(char *str, struct propeller_code *operand, int nbits){
     default:
         {
           operand->reloc.type = default_reloc;
-          operand->reloc.pc_rel = 0;
+          operand->reloc.pc_rel = pcrel;
         }
       break;
     }
   return str;
+}
+
+static char *
+parse_src_n(char *str, struct propeller_code *operand, int nbits){
+
+  int default_reloc = BFD_RELOC_PROPELLER_23;
+  int c;
+
+  if (nbits == 32)
+    default_reloc = BFD_RELOC_32;
+  else if (nbits == 16)
+    default_reloc = BFD_RELOC_16;
+  else if (nbits == 8)
+    default_reloc = BFD_RELOC_8;
+
+  str = skip_whitespace (str);
+  c = *str++;
+  if (c != '#')
+    {
+      operand->error = _("immediate operand required");
+      return str;
+    }
+  return parse_src_reloc (str, operand, default_reloc, 0, nbits);
 }
 
 /*
@@ -1297,6 +1314,7 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
 
   int incflag = 0;
   int decflag = 0;
+  int mask = 0x1ff;
 
   str = skip_whitespace(str);
 
@@ -1307,10 +1325,12 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
   else if (strncmp(str, "++", 2) == 0) {
     incflag = 1;
     str += 2;
+    mask = 0xff;
   }
   else if (strncmp(str, "--", 2) == 0) {
     decflag = 1;
     str += 2;
+    mask = 0xff;
   }
 
   str = skip_whitespace (str);
@@ -1320,14 +1340,14 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
   switch (operand->reloc.exp.X_op)
     {
     case O_constant:
-      if (operand->reloc.exp.X_add_number & ~0x1ff)
+      if (operand->reloc.exp.X_add_number & ~mask)
         {
           operand->error = _("9-bit value out of range");
           break;
         }
       if (incflag || decflag) {
         if (decflag) {
-          operand->reloc.exp.X_add_number = -operand->reloc.exp.X_add_number;
+          operand->reloc.exp.X_add_number = 512-operand->reloc.exp.X_add_number;
         }
         insn->code |= 1 << (type == BFD_RELOC_PROPELLER_DST ? 21 : 19);
       }
@@ -1339,7 +1359,7 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
           operand->error = _("Must be a constant expression");
           break;
         }
-      if (operand->reloc.exp.X_add_number & ~0x1ff)
+      if (operand->reloc.exp.X_add_number & ~mask)
         {
           operand->error = _("9-bit value out of range");
           break;
@@ -1401,7 +1421,7 @@ parse_reps(char *str, struct propeller_code *op1, struct propeller_code *op2, st
   str = skip_whitespace (str);
   if (*str++ != '#')
     {
-      op1->error = _("immediate operand required");
+      op1->error = _("immediate operand required for reps count");
       return str;
     }
 
@@ -1436,15 +1456,24 @@ parse_reps(char *str, struct propeller_code *op1, struct propeller_code *op2, st
     }
   
   str = skip_whitespace (str);
-  if (*str++ != '#')
+  if (*str == '#')
     {
-      op2->error = _("immediate operand required");
+      str++;
+      str = parse_src(str, op2, insn, PROPELLER_OPERAND_REPD);
+      if (op2->error)
+        return str;
+    }
+  else if (*str == '@')
+    {
+      str++;
+      str = parse_src_reloc (str, op2, BFD_RELOC_PROPELLER_REPSREL, 1, 6);
+    }
+  else
+    {
+      op2->error = _("immediate operand required for reps range");
       return str;
     }
 
-  str = parse_src(str, op2, insn, PROPELLER_OPERAND_REPD);
-  if (op2->error)
-    return str;
     
   return str;
 }
@@ -3053,10 +3082,11 @@ propeller_start_line_hook (void)
 
     /* check some things at start of line */
     if (matchword (s, "con") || matchword (s, "dat")) {
-        erase_line ();
+        // erase the word, but keep processing the line
+        // in case they put code after it
+        s[0] = s[1] = s[2] = ' ';
         is_spin_file = 1;
         skip_spin_code = 0;
-        return;
     }
     if (is_spin_file
         && (matchword (s, "pub")
