@@ -1,4 +1,4 @@
-#define WINBOND
+'#define WINBOND
 '#define SST
 
 #define FLASH
