@@ -1,6 +1,7 @@
 ' param2: 0xssccffrr - ss=sio0 cc=sck ff=flash-cs rr=sram-cs
 
-#define SST
+'#define WINBOND
+'#define SST
 
 #define FLASH
 #define RW
