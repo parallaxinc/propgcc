@@ -148,7 +148,7 @@ __DIVSI_impl
        setdiva	r0
        setdivb	r1
        getdivq	r0
-       getdivq	r1
+       getdivr	r1
 #else
 	mov	__DIVSGN, r0
 	xor	__DIVSGN, r1
