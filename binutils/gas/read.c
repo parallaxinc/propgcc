@@ -5594,6 +5594,10 @@ get_segmented_expression (expressionS *expP)
       || expP->X_op == O_absent
       || expP->X_op == O_big)
     {
+#ifdef TC_PROPELLER
+      // propeller allows .org to mean .org 0
+      if (expP->X_op != O_absent)
+#endif
       as_bad (_("expected address expression"));
       expP->X_op = O_constant;
       expP->X_add_number = 0;

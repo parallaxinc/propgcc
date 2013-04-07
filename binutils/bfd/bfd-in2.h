@@ -3219,18 +3219,41 @@ instruction.  */
   BFD_RELOC_PPC64_DTPREL16_HIGHEST,
   BFD_RELOC_PPC64_DTPREL16_HIGHESTA,
 
-/* Propeller ELF relocations for addresses and immediate values.  */
+/* Propeller ELF relocations for addresses and immediate values. Normally
+the 2 least significant bits are not stored (the hardware forces all
+register accesses to longword boundaries) but SRC_IMM overrides this.  */
   BFD_RELOC_PROPELLER_SRC_IMM,
   BFD_RELOC_PROPELLER_SRC,
   BFD_RELOC_PROPELLER_DST,
+
+/* Propeller relocation for a constant stored inline in LMM mode; this must
+be such that the conditional execution bits are 0 so it will not be
+executed.  */
   BFD_RELOC_PROPELLER_23,
+
+/* Propeller relocation for aPC relative offset that turns into add or
+sub of a 9 bit quantity and the LMM program counter.  */
   BFD_RELOC_PROPELLER_PCREL10,
+
+/* The loop repeat count of the Propeller REPS instruction, which is spread across a number
+of fields in the instruction since REPS is interpreted very unusally by the
+hardware.  */
   BFD_RELOC_PROPELLER_REPS,
+
+/* Propeller 6 bit count giving the number of instructions to repeat for REPS or REPD.  */
   BFD_RELOC_PROPELLER_REPINSCNT,
+
+/* Propeller relocation for an immediate in the destination field; used for certain Prop2 instructions.  */
   BFD_RELOC_PROPELLER_DST_IMM,
+
+/* Propeller constant relocations that are divided by 4; used for turning
+byte address constants into longword address constants.  */
   BFD_RELOC_PROPELLER_32_DIV4,
   BFD_RELOC_PROPELLER_16_DIV4,
   BFD_RELOC_PROPELLER_8_DIV4,
+
+/* Propeller PC relative address used as a REPS instruction count.  */
+  BFD_RELOC_PROPELLER_REPSREL,
 
 /* IBM 370/390 relocations  */
   BFD_RELOC_I370_D12,
