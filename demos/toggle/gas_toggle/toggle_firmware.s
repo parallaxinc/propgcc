@@ -45,8 +45,8 @@
 		'' (4 byte aligned) instead of HUB addresses (1 byte aligned),
 		'' so we use the .cog_ram directive. This is useful for porting
 		'' PASM code over, since PASM labels are always long addresses.
-		'' Never use .cog_ram for LMM code executing from HUB RAM.
-		.cog_ram
+		'' Never use .pasm for LMM code executing from HUB RAM.
+		.pasm
 
 		'' This code should never be compressed for CMM mode, since
 		'' it executes directly on the hardware
@@ -77,5 +77,9 @@ waitdelay       long    0                   ' read from hub to int
 nextcnt         long    0
 
 		'' addresses of C variables
-wait_addr	long	_wait_time
-pins_addr	long	_pins
+		'' NOTE: we are in .pasm mode, so we have to
+		'' prefix symbols in hub memory with "@"
+		'' this would not be necessary in the default
+		'' .gas mode
+wait_addr	long	@_wait_time
+pins_addr	long	@_pins

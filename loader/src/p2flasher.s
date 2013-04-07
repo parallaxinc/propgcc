@@ -37,7 +37,7 @@
   
   PAGE_SIZE = 4096
   
-                        .cog_ram
+                        .pasm
                         org     0
                         
                         jmp     #init
