@@ -119,6 +119,7 @@ then
   cp ../tools/make-3.81/make.exe ${PACKROOT}/bin
   cp libiconv-2.dll ${PACKROOT}/bin
   cp libintl-8.dll ${PACKROOT}/bin
+  cp libgcc_s_dw2-1.dll ${PACKROOT}/bin
   cp ../tools/remove.exe ${PACKROOT}/bin/rm.exe
   zip ${ARCHIVE} -r ${PACKROOT}
 
