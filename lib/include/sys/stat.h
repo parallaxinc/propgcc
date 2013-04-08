@@ -3,6 +3,10 @@
 
 #include <sys/types.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #define S_IWUSR   0400
 #define S_IRUSR   0200
 #define S_IXUSR   0100
@@ -28,5 +32,9 @@
 int mkdir(const char *path, int mode);
 int stat(const char *path, struct stat *buf);
 int fstat(int fd, struct stat *buf);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif
