@@ -1315,12 +1315,15 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
   int incflag = 0;
   int decflag = 0;
   int mask = 0x1ff;
+  int fixup = 0;
+  int pasm_expr = pasm_default;
 
   str = skip_whitespace(str);
 
   // check for operand type
   if (strncmp(str, "#", 1) == 0) {
     str += 1;
+    fixup = 1;
   }
   else if (strncmp(str, "++", 2) == 0) {
     incflag = 1;
@@ -1376,6 +1379,10 @@ parse_setind_operand(char *str, struct propeller_code *operand, struct propeller
         }
       operand->reloc.type = type;
       operand->reloc.pc_rel = 0;
+      if (pasm_expr && fixup)
+        {
+          pasm_replace_expression (&operand->reloc.exp);
+        }
       break;
     case O_illegal:
       operand->error = _(type == BFD_RELOC_PROPELLER_DST ? "Illegal operand in destination" : "Illegal operand in source");
