@@ -1809,7 +1809,17 @@ md_assemble (char *instruction_string)
             strcpy(arg, "#__LMM_JMP");
 
             parse_src(arg, &op2, &insn, PROPELLER_OPERAND_JMP);
-            str = parse_src_n(str, &insn2, 23);
+	    // The address is stored as data after the jmp. If this
+	    // is an unconditional jump then no problem, but for
+	    // conditionals we have to make sure that the data will
+	    // be interpreted as a no-op (i.e. have its condition code
+	    // bits set to 0). That's what the 23 relocation does.
+	    if (condmask == 0xf) {
+	      // unconditional jump
+	      str = parse_src_n(str, &insn2, 32);
+	    } else {
+	      str = parse_src_n(str, &insn2, 23);
+	    }
             insn2_compressed = 1;
             size = 8;
           }
