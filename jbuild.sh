@@ -141,84 +141,82 @@ mkdir -p ../build/binutils
 mkdir -p ../build/binutils/etc
 cp gnu-oids.texi ../build/binutils/etc
 
-PROPGCC=`pwd`
-
 cd ../build/binutils
-$PROPGCC/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-shared ${CONFIG_OPTIONS}
+../../propgcc/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-shared ${CONFIG_OPTIONS}
 if test $? != 0
 then
    echo "binutils configure failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 make ${JOBS} all
 if test $? != 0
 then
    echo "binutils make failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 make install
 if test $? != 0
 then
    echo "binutils make install failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
-cd $PROPGCC
+cd ../../propgcc
 
 #
 # build gcc
 #
 mkdir -p ../build/gcc
 cd ../build/gcc
-$PROPGCC/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto --disable-shared ${CONFIG_OPTIONS}
+../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto --disable-shared ${CONFIG_OPTIONS}
 if test $? != 0
 then
    echo "gcc configure failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 make ${JOBS} all-gcc
 if test $? != 0
 then
    echo "gcc make all-gcc failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 make install-gcc
 if test $? != 0
 then
    echo "gcc make install-gcc failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
-cd $PROPGCC
+cd ../../propgcc
 
 #
 # build newlibs
 #
 #mkdir -p ../build/newlib
 #cd ../build/newlib
-#$PROPGCC/newlib/src/configure --target=propeller-elf --prefix=$PREFIX --enable-target-optspace
+#../../propgcc/newlib/src/configure --target=propeller-elf --prefix=$PREFIX --enable-target-optspace
 #if test $? != 0
 #then
 #   echo "newlib configure failed."
-#   cd $PROPGCC
+#   cd ../../propgcc
 #   exit 1
 #fi
 #make all
 #if test $? != 0
 #then
 #   echo "newlib make all failed."
-#   cd $PROPGCC
+#   cd ../../propgcc
 #   exit 1
 #fi
 #make install
 #if test $? != 0
 #then
 #   echo "newlib make install failed."
-#   cd $PROPGCC
+#   cd ../../propgcc
 #   exit 1
 #fi
 
@@ -252,17 +250,17 @@ make ${JOBS} all-target-libgcc
 if test $? != 0
 then
    echo "gcc make all-target-libgcc failed"
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 make install-target-libgcc
 if test $? != 0
 then
    echo "gcc make install-target-libgcc failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
-cd $PROPGCC
+cd ../../propgcc
 
 #
 # build library
@@ -327,17 +325,17 @@ make ${JOBS} all
 if test $? != 0
 then
    echo "gcc libstdc++ make all failed"
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 make install
 if test $? != 0
 then
    echo "gcc libstdc++ make install failed."
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
-cd $PROPGCC
+cd ../../propgcc
 
 #
 # build tiny library
@@ -420,11 +418,11 @@ fi
 #
 mkdir -p ../build/gdb
 cd ../build/gdb
-$PROPGCC/gdb/configure --target=propeller-elf --prefix=${PREFIX} --with-system-gdbinit=${PREFIX}/lib/gdb/gdbinit
+../../propgcc/gdb/configure --target=propeller-elf --prefix=${PREFIX} --with-system-gdbinit=${PREFIX}/lib/gdb/gdbinit
 if test $? != 0
 then
    echo "gdb configure failed"
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 
@@ -432,7 +430,7 @@ make ${JOBS} all
 if test $? != 0
 then
    echo "gdb make all failed"
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 if [ ${OS} != "msys" ]
@@ -443,7 +441,7 @@ else
 fi
 mkdir -p ${PREFIX}/lib/gdb
 
-cd $PROPGCC
+cd ../../propgcc
 cp -f gdbstub/gdbinit.propeller ${PREFIX}/lib/gdb/gdbinit
 
 #
@@ -455,14 +453,14 @@ make clean
 if test $? != 0
 then
    echo "spinsim clean failed"
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 make
 if test $? != 0
 then
    echo "spinsim make failed"
-   cd $PROPGCC
+   cd ../../propgcc
    exit 1
 fi
 if [ ${OS} != "msys" ]
@@ -471,7 +469,7 @@ then
 else
     cp -f spinsim.exe ${PREFIX}/bin/.
 fi
-cd $PROPGCC
+cd ../../propgcc
 
 #
 # build gdbstub
@@ -497,7 +495,7 @@ then
 else
     cp -f gdbstub.exe ${PREFIX}/bin/.
 fi
-cd $PROPGCC
+cd ../../propgcc
 
 echo "Build complete."
 exit 0
