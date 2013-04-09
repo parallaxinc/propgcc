@@ -171,7 +171,7 @@ Bit28                   long    $10000000
 __Bit31                 long    $80000000
 	
 			.compress default
-			.text
+			.section .hubtext, "ax"
 
 ''
 '' make sure everything needed for floats is loaded
@@ -412,9 +412,9 @@ __mul_excep
 			test	__TMP0, #NaNFlag wz
 		if_nz	brw	#__return_nan
 			test	flagA, #ZeroFlag wz
-		if_nz	brw	#.mulzeroA
+		if_nz	brs	#.mulzeroA
 			test	flagA, #InfFlag wz
-		if_nz	brw	#.mulinfA
+		if_nz	brs	#.mulinfA
 			'' ok, A is a normal (nonzero) number
 			test	flagB, #ZeroFlag wz
 		if_nz	brw	#__return_signed_zero
@@ -444,7 +444,7 @@ ___divsf3
 			mov	__TMP0, flagA
 			or	__TMP0, flagB
 			test	__TMP0, #(ZeroFlag|InfFlag|NaNFlag) wz
-          if_nz         brw     #__div_excep
+          if_nz         brs     #__div_excep
         
 			jmpret	  __LMM_RET, #__LMM_FCACHE_START + (.FCdiv - .FCfloatstart)
 _FDiv_ret               mov	pc,lr
@@ -456,9 +456,9 @@ __div_excep
 			test	__TMP0, #NaNFlag wz
 		if_nz	brw	#__return_nan
 			test	flagA, #ZeroFlag wz
-		if_nz	brw	#.divzeroA
+		if_nz	brs	#.divzeroA
 			test	flagA, #InfFlag wz
-		if_nz	brw	#.divinfA
+		if_nz	brs	#.divinfA
 			'' ok, A is normal, so either B is inf or 0
 			test   flagB, #ZeroFlag wz
 			'' A / 0 == infinity
@@ -611,7 +611,7 @@ enddouble
 #define LFLABEL(x) (__LMM_FCACHE_START + (x-.LFstart))
 
 		.compress default
-		.text
+		.section .hubtext, "ax"
 
 		.global __load_double_code
 __load_double_code
@@ -1067,7 +1067,7 @@ ___floatsidf
 	if_c	or	Aflag, #FLAG_SIGN
 .doconv
 	if_z	mov	r1, #0
-	if_z	brw	#doint_ret		'' 0 -> 0
+	if_z	brs	#doint_ret		'' 0 -> 0
 		mov	Alo, #0
 		mov	expA,#28	'' set the exponent
 		lcall	#__load_double_code
