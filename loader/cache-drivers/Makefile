@@ -13,7 +13,8 @@ spi_sram24_xcache.dat \
 sqi_sram_xcache.dat \
 winbond_sqi_flash_sram_xcache.dat \
 sst_sqi_flash_sram_xcache.dat \
-c3_xcache.dat
+c3_xcache.dat \
+synapse_xcache.dat
 
 all:	$(DRIVERS)
 
