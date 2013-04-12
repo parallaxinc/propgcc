@@ -770,6 +770,8 @@ print_macro (bfd_vma memaddr, struct disassemble_info *info, int which)
       break;
     case MACRO_LCALL:
       if (read_halfword (memaddr, &src, info) != 0) return -1;
+      if (is_p2)
+	src = src*4;
       print_opstring (info, "\t\tlcall\t%a", 0, src, 1);
       r = 2;
       break;
@@ -882,8 +884,8 @@ do_compressed_insn (bfd_vma memaddr, struct disassemble_info *info)
     break;
   case PREFIX_LEASP:
     FPRINTF (F, "\t\t");
-    if (read_halfword (memaddr, &src, info) != 0) return -1;
-    memaddr += 2;
+    if (read_byte (memaddr, &src, info) != 0) return -1;
+    memaddr += 1;
     print_opstring (info, "leasp\t%d,%s", dst, src, 1);
     break;
   case PREFIX_PACK_NATIVE:
@@ -903,13 +905,15 @@ do_compressed_insn (bfd_vma memaddr, struct disassemble_info *info)
     FPRINTF (F, "\t%s\t", propeller_conditions[dst].name);
     if (read_halfword (memaddr, &src, info) != 0) return -1;
     memaddr += 2;
+    if (src >= 0x8000) src = src - 0x10000;
+    src += memaddr;
     print_opstring (info, "brw\t%a", 0, src, 1);
     break;
   case PREFIX_BRS:
     FPRINTF (F, "\t%s\t", propeller_conditions[dst].name);
     if (read_byte (memaddr, &src, info) != 0) return -1;
     memaddr += 1;
-    if (src > 0x80) src = src - 0x100;
+    if (src >= 0x80) src = src - 0x100;
     src += memaddr;
     print_opstring (info, "brs\t%a", 0, src, 1);
     break;

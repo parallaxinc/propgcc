@@ -54,9 +54,14 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"ldi", 0x09800000, 0xfd800000, PROPELLER_OPERAND_LDI, CCZCWR, PROP_2_LMM, NO_COMPRESSED, 0},
 
 /* brw is made of a jmp and a constant.  We may shrink it later. */
+/* brl is the same; the only difference is how they expand in compressed mode
+   (brw becomes a 16 bit relative branch, brl is a 32 bit absolute
+*/
 /* brw       000010 zc1i cccc ddddddddd sssssssss */
   {"brw", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_BRW, CCZCNR, PROP_1_LMM, NO_COMPRESSED, 0},
   {"brw", 0x1c000000, 0xffffffff, PROPELLER_OPERAND_BRW, CCZCNR, PROP_2_LMM, NO_COMPRESSED, 0},
+  {"brl", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_BRL, CCZCNR, PROP_1_LMM, NO_COMPRESSED, 0},
+  {"brl", 0x1c000000, 0xffffffff, PROPELLER_OPERAND_BRL, CCZCNR, PROP_2_LMM, NO_COMPRESSED, 0},
 
 /* xmmio is made up of a mov immediate followed by a call; the first part
    is mov, so that's what we give here
