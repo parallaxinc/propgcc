@@ -2048,7 +2048,7 @@
   ]
   "TARGET_LMM"
   "@
-   brw\t#%0
+   brl\t#%0
    jmp\t#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
@@ -2143,7 +2143,7 @@
   ]
   "TARGET_LMM"
   "@
-   brw\t#%1
+   brl\t#%1
    jmp\t#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
