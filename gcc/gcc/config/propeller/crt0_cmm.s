@@ -168,7 +168,7 @@ macro_tab_base
 	jmp	#__macro_mvreg	' macro A -- register register move
 	jmp	#__macro_xmvreg	' macro B -- two register register moves
 	jmp	#__macro_addsp	' macro C -- add a constant to SP
-	jmp	#__LMM_loop	' macro D -- loop
+	jmp	#__macro_ljmp	' macro D -- long jump
 	jmp	#__macro_fcache	' macro E -- FCACHE
 	jmp	#__macro_native	' macro F -- NATIVE
 
@@ -479,7 +479,11 @@ cond_mask long (0xf<<18)
 	
 brw
 	call	#get_word
-do_branch
+	'' sign extend
+	shl	sfield, #16
+	sar	sfield, #16
+do_relbranch
+	add	sfield,pc
 	andn	.brwins,cond_mask
 	shl	dfield,#18	'' get dfield into the cond field
 	or	.brwins,dfield
@@ -492,18 +496,16 @@ do_branch
 
 brs
 	call	#get_sbyte
-rel_branch
-	add	sfield,pc
-	jmp	#do_branch
+	jmp	#do_relbranch
 
 skip2
 	mov	sfield,#2
-	jmp	#rel_branch
+	jmp	#do_relbranch
 	
 
 skip3
 	mov	sfield,#3
-	jmp	#rel_branch
+	jmp	#do_relbranch
 
 	''
 	'' packed native instructions
@@ -548,25 +550,30 @@ __LMM_CALL
 	jmp	#do_call
 __macro_lcall
 	call	#get_word
+#if defined(__PROPELLER2__)
+	'' in order to extend the address space, we require that
+	'' subroutines be on longword boundaries
+	shl	sfield,#2
+#endif
 do_call
 	mov	lr,pc
+do_jmp
 	mov	pc,sfield
 	jmp	#__LMM_loop
+
+	''
+	'' long unconditional jump to anywhere in the address space
+	''
+	.global __LMM_JMP
+__LMM_JMP
+__macro_ljmp
+	call	#get_long
+	jmp	#do_jmp
 
 __LMM_CALL_INDIRECT
 	mov	sfield,__TMP0
 	jmp	#do_call
 
-#if 0
-	''
-	'' direct jmp
-	''
-	.global __LMM_JMP
-__LMM_JMP
-	call	#get_long
-	mov	pc,sfield
-	jmp	#__LMM_loop
-#endif
 
 	''
 	'' push and pop multiple macros
@@ -634,6 +641,11 @@ __MASK_0000FFFF	long	0x0000FFFF
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
+#if defined(__PROPELLER2__)
+        setmula r0
+        setmulb r1
+        getmull r0
+#else
 	mov	__TMP0, r0
 	min	__TMP0, r1
 	max	r1, r0
@@ -643,6 +655,7 @@ __MULSI_loop
  IF_C	add	r0, __TMP0
 	add	__TMP0, __TMP0
  IF_NZ	jmp	#__MULSI_loop
+#endif
 __MULSI_ret
 	ret
 

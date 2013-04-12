@@ -369,6 +369,18 @@ md_apply_fix (fixS * fixP, valueT * valP, segT seg ATTRIBUTE_UNUSED)
         }
       }
       break;
+    case BFD_RELOC_16_PCREL:
+      mask = 0x00007fff;
+      shift = 0;
+      rshift = 0;
+      if ((val & 0x80000000)) {
+        /* negative */
+        if ( (val & 0xFFFF8000) == 0xFFFF8000 ) {
+          mask |= 0x8000;
+          val &= 0xFFFF;
+        }
+      }
+      break;
     case BFD_RELOC_PROPELLER_PCREL10:
       mask = 0x000001ff;
       shift = 0;
@@ -435,24 +447,32 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
 
   switch (fixp->fx_r_type)
     {
-    case BFD_RELOC_32:
-    case BFD_RELOC_16:
-    case BFD_RELOC_8:
     case BFD_RELOC_32_PCREL:
     case BFD_RELOC_16_PCREL:
     case BFD_RELOC_8_PCREL:
+    case BFD_RELOC_PROPELLER_PCREL10:
+    case BFD_RELOC_PROPELLER_REPSREL:
+      // special hack:
+      // on the propeller, all PCREL relocations should be
+      // relative to the size of the fixup
+      // it's a terrible hack to put this here, it should be
+      // in the instruction generation
+      reloc->addend -= fixp->fx_size;
+      code = fixp->fx_r_type;
+      break;
+    case BFD_RELOC_32:
+    case BFD_RELOC_16:
+    case BFD_RELOC_8:
     case BFD_RELOC_PROPELLER_SRC:
     case BFD_RELOC_PROPELLER_SRC_IMM:
     case BFD_RELOC_PROPELLER_DST:
     case BFD_RELOC_PROPELLER_DST_IMM:
     case BFD_RELOC_PROPELLER_23:
-    case BFD_RELOC_PROPELLER_PCREL10:
     case BFD_RELOC_PROPELLER_REPINSCNT:
     case BFD_RELOC_PROPELLER_REPS:
     case BFD_RELOC_PROPELLER_32_DIV4:
     case BFD_RELOC_PROPELLER_16_DIV4:
     case BFD_RELOC_PROPELLER_8_DIV4:
-    case BFD_RELOC_PROPELLER_REPSREL:
       code = fixp->fx_r_type;
       break;
 
@@ -1790,19 +1810,35 @@ md_assemble (char *instruction_string)
       }
       break;
     case PROPELLER_OPERAND_BRW:
+    case PROPELLER_OPERAND_BRL:
       {
         str = skip_whitespace(str);
 
         if (compress)
           {
             unsigned byte0;
-            str = parse_src_n(str, &op2, 16);
-            byte0 = PREFIX_BRW | ((insn.code >> 18) & 0xf);
-            reloc_prefix = 1;
-            insn.code = byte0;
-            size = 3;
-            insn_compressed = 1;
-          }
+	    if (op->format == PROPELLER_OPERAND_BRW)
+	      {
+		if (*str == '#') str++; /* skip optional immediate symbol */
+		/* parse a 16 bit pc relative destination */
+		str = parse_src_reloc (str, &op2, BFD_RELOC_16_PCREL, 1, 16);
+		byte0 = PREFIX_BRW | (condmask);
+		insn.code = byte0;
+		size = 3;
+	      }
+	    else
+	      {
+		if (condmask != 0xf)
+		  {
+		    as_bad (_("conditional brl not allowed"));
+		  }
+		str = parse_src_n (str, &op2, 32);
+		byte0 = PREFIX_MACRO | MACRO_LJMP;
+		size = 5;
+	      }
+	    reloc_prefix = 1;
+	    insn_compressed = 1;
+	  }
         else
           {
             char arg[16];
@@ -2198,6 +2234,18 @@ md_assemble (char *instruction_string)
             insn.code = MACRO_LCALL | (op2.code << 8);
             if (op2.reloc.type == BFD_RELOC_PROPELLER_23)
               op2.reloc.type = BFD_RELOC_16;
+	    if (prop2)
+	      {
+		// have to divide address by 4 
+		switch (op2.reloc.type)
+		  {
+		  case BFD_RELOC_16:
+		    op2.reloc.type = BFD_RELOC_PROPELLER_16_DIV4;
+		    break;
+		  default:
+		    break;
+		  }
+	      }
             insn_compressed = 1;
             reloc_prefix = 1;
             size = 3;

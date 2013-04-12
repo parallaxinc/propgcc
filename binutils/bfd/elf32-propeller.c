@@ -54,9 +54,8 @@ propeller_elf_do_pcrel10_reloc (
   /* Make it pc relative.  */
   relocation -=	(input_section->output_section->vma
 		 + input_section->output_offset);
-
-  /* Has to be relative to the next instruction, actually */
-  relocation += 4;
+  if (howto->pcrel_offset)
+    relocation -= offset;
 
   if (relocation < -0x1ff || relocation > 0x1ff)
     status = bfd_reloc_overflow;
@@ -95,11 +94,14 @@ propeller_elf_do_inscnt_reloc (
   /* Sanity check the address (offset in section).  */
   if (offset > bfd_get_section_limit (abfd, input_section))
     return bfd_reloc_outofrange;
+
+  relocation = symbol_value + addend;
   /* Make it pc relative, if necessary */
   if (howto->pc_relative)
       relocation -= (input_section->output_section->vma + input_section->output_offset);
+  if (howto->pcrel_offset)
+    relocation -= offset;
 
-  relocation = symbol_value + addend;
   /* subtract appropriate offset  */
   switch (howto->type) {
   case R_PROPELLER_REPINSCNT:
@@ -352,21 +354,6 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0x0003FE00,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
-  /* A 9 bit relocation of the DST field of an instruction */
-  HOWTO (R_PROPELLER_DST_IMM,	/* type */
-	 0,			/* rightshift */
-	 2,			/* size (0 = byte, 1 = short, 2 = long) */
-	 9,			/* bitsize */
-	 FALSE,			/* pc_relative */
-	 9,			/* bitpos */
-	 complain_overflow_bitfield,	/* complain_on_overflow */
-	 bfd_elf_generic_reloc,	/* special_function */
-	 "R_PROPELLER_DST",	/* name */
-	 FALSE,			/* partial_inplace */
-	 0x00000000,		/* src_mask */
-	 0x0003FE00,		/* dst_mask */
-	 FALSE),		/* pcrel_offset */
-
   /* a pc-relative offset between -511 and +511; the sign bit actually
      has to toggle between the "add" and "sub" instructions */
   HOWTO (R_PROPELLER_PCREL10,	/* type */
@@ -380,8 +367,8 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 "R_PROPELLER_PCREL10",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
-	 0x000003FF,		/* dst_mask */
-	 FALSE),		/* pcrel_offset */
+	 0x000001FF,		/* dst_mask */
+	 TRUE),		        /* pcrel_offset */
 
   /* count for REPS instruction
    * REPS uses not only the normal 9 bit dest field for the count, but adds
@@ -418,6 +405,21 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
 	 0x0000003F,		/* dst_mask */
+	 FALSE),		/* pcrel_offset */
+
+  /* A 9 bit relocation of the DST field of an instruction */
+  HOWTO (R_PROPELLER_DST_IMM,	/* type */
+	 0,			/* rightshift */
+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
+	 9,			/* bitsize */
+	 FALSE,			/* pc_relative */
+	 9,			/* bitpos */
+	 complain_overflow_bitfield,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,	/* special_function */
+	 "R_PROPELLER_DST",	/* name */
+	 FALSE,			/* partial_inplace */
+	 0x00000000,		/* src_mask */
+	 0x0003FE00,		/* dst_mask */
 	 FALSE),		/* pcrel_offset */
 
   /* A 32 bit absolute relocation, shifted right by 2 */
@@ -478,7 +480,7 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
 	 0xffffffff,		/* dst_mask */
-	 FALSE),		/* pcrel_offset */
+	 TRUE),		        /* pcrel_offset */
 
   /* A 16 bit pc-relative relocation. */
   HOWTO (R_PROPELLER_PCREL16,	/* type */
@@ -493,10 +495,10 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
 	 0x0000ffff,		/* dst_mask */
-	 FALSE),		/* pcrel_offset */
+	 TRUE),		        /* pcrel_offset */
 
   /* An 8 bit pc-relative relocation. */
-  HOWTO (R_PROPELLER_PCREL32,	/* type */
+  HOWTO (R_PROPELLER_PCREL8,	/* type */
 	 0,			/* rightshift */
 	 0,			/* size (0 = byte, 1 = short, 2 = long) */
 	 8,			/* bitsize */
@@ -508,7 +510,7 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
 	 0x000000ff,		/* dst_mask */
-	 FALSE),		/* pcrel_offset */
+	 TRUE), 		/* pcrel_offset */
 
   /* a 6 bit pcrelative instruction repeat count; 1 is subtracted from the
      constant
@@ -517,15 +519,15 @@ static reloc_howto_type propeller_elf_howto_table[] = {
 	 0,			/* rightshift */
 	 2,			/* size (0 = byte, 1 = short, 2 = long) */
 	 7,			/* bitsize */
-	 TRUE,		/* pc_relative */
+	 TRUE,	        	/* pc_relative */
 	 0,			/* bitpos */
 	 complain_overflow_signed,	/* complain_on_overflow */
 	 propeller_specific_reloc,	/* special_function */
 	 "R_PROPELLER_REPSREL",	/* name */
 	 FALSE,			/* partial_inplace */
 	 0x00000000,		/* src_mask */
-	 0x0000007F,		/* dst_mask */
-	 FALSE),		/* pcrel_offset */
+	 0x0000003F,		/* dst_mask */
+	 TRUE),  		/* pcrel_offset */
 
 };
 
@@ -632,6 +634,9 @@ propeller_final_link_relocate (reloc_howto_type * howto,
     case R_PROPELLER_32_DIV4:
     case R_PROPELLER_16_DIV4:
     case R_PROPELLER_8_DIV4:
+    case R_PROPELLER_PCREL32:
+    case R_PROPELLER_PCREL16:
+    case R_PROPELLER_PCREL8:
       r = _bfd_final_link_relocate (howto, input_bfd, input_section,
 				    contents, rel->r_offset,
 				    relocation, rel->r_addend);
