@@ -1823,7 +1823,6 @@ md_assemble (char *instruction_string)
 		/* parse a 16 bit pc relative destination */
 		str = parse_src_reloc (str, &op2, BFD_RELOC_16_PCREL, 1, 16);
 		byte0 = PREFIX_BRW | (condmask);
-		insn.code = byte0;
 		size = 3;
 	      }
 	    else
@@ -1832,10 +1831,11 @@ md_assemble (char *instruction_string)
 		  {
 		    as_bad (_("conditional brl not allowed"));
 		  }
-		str = parse_src_n (str, &op2, 32);
+		str = parse_src_n (str, &insn2, 32);
 		byte0 = PREFIX_MACRO | MACRO_LJMP;
 		size = 5;
 	      }
+	    insn.code = byte0;
 	    reloc_prefix = 1;
 	    insn_compressed = 1;
 	  }

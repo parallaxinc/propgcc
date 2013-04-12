@@ -792,6 +792,12 @@ print_macro (bfd_vma memaddr, struct disassemble_info *info, int which)
         print_opstring (info, "\t\tadd\tsp, %s", 0, src, 1);
       }
       break;
+    case MACRO_LJMP:
+      if (read_word (memaddr, &src, info) != 0)
+	return -1;
+      print_opstring (info, "\t\tbrl\t%a", 0, src, 1);
+      r = 4;
+      break;
     default:
       FPRINTF (F, "\t\t???");
       break;
