@@ -1824,6 +1824,7 @@ md_assemble (char *instruction_string)
 		str = parse_src_reloc (str, &op2, BFD_RELOC_16_PCREL, 1, 16);
 		byte0 = PREFIX_BRW | (condmask);
 		size = 3;
+		reloc_prefix = 1;
 	      }
 	    else
 	      {
@@ -1834,9 +1835,9 @@ md_assemble (char *instruction_string)
 		str = parse_src_n (str, &insn2, 32);
 		byte0 = PREFIX_MACRO | MACRO_LJMP;
 		size = 5;
+		reloc_prefix = 0;  /* relocation is in insn2 */
 	      }
 	    insn.code = byte0;
-	    reloc_prefix = 1;
 	    insn_compressed = 1;
 	  }
         else
