@@ -131,7 +131,7 @@ do {                                                    \
 
 #define BIGGEST_ALIGNMENT 32
 
-#define FUNCTION_BOUNDARY  (TARGET_CMM ? 8 : 32)
+#define FUNCTION_BOUNDARY  ((TARGET_CMM && !TARGET_P2) ? 8 : 32)
 
 #define EMPTY_FIELD_BOUNDARY 32
 

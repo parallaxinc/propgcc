@@ -129,10 +129,11 @@
 
 ;; check for a CMM mode 16 bit constant
 ;; CMM is a subset of hub mode, so labels and symbols are assumed
-;; to fit in 16 bits
+;; to fit in 16 bits (for P1; not in P2)
 
 (define_predicate "propeller_cmm_const16"
   (and (match_operand 0 "immediate_operand")
+       (match_test "!TARGET_P2")
        (ior (match_code "symbol_ref,label_ref")
             (and (match_code "const_int")
 		 (match_test "IN_RANGE (INTVAL (op), 512, 0xFFFF)"))
