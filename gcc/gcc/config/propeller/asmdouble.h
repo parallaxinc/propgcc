@@ -60,7 +60,8 @@
 		.endm
 
 		.macro LMMRET
-		mov    pc,lr
+		lret
 		.endm
+
 
 

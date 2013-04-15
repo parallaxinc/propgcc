@@ -58,6 +58,7 @@
 #define PROPELLER_OPERAND_JMPTASK           30
 #define PROPELLER_OPERAND_BIT               31
 #define PROPELLER_OPERAND_LRET              32
+#define PROPELLER_OPERAND_BRL               33
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
@@ -146,6 +147,7 @@
 #define MACRO_MVREG  0x0A
 #define MACRO_XMVREG 0x0B
 #define MACRO_ADDSP  0x0C
+#define MACRO_LJMP   0x0D
 #define MACRO_FCACHE 0x0E
 #define MACRO_NATIVE 0x0F
 

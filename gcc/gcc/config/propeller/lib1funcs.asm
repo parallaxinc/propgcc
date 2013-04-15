@@ -177,6 +177,7 @@ __Bit31                 long    $80000000
 '' make sure everything needed for floats is loaded
 '' trashes: r6, TMP1
 ''
+			.balign 4
 			.global __loadfloat
 __loadfloat
 			mvi	r6, #__load_start_float_kerext
@@ -204,7 +205,7 @@ __loadfloat
 			.global __FUnpack2_ret
 			.equ	__FUnpack2, __LMM_FCACHE_START + (.FCunpack2 - .FCfloatstart)
 			.equ	__FUnpack2_ret, __LMM_FCACHE_START + (.FCunpack2_ret - .FCfloatstart)
-	
+
 .FCunpack2
         		mov     manA, r1            ' unpack B to A
                         call    #__FUnpack
@@ -217,7 +218,6 @@ __loadfloat
                         call    #__FUnpack
 
 .FCunpack2_ret          ret
-
 
 
 .FCadd
@@ -321,9 +321,10 @@ __return_signed_infinity
 '----------------------------
 			.global ___subsf3
 			.global ___addsf3
+			.balign 4
 ___subsf3
                         xor     r1, __Bit31            ' negate B
-
+			.balign 4
 ___addsf3
 			mov	r7,lr
 			lcall	#__loadfloat
@@ -388,6 +389,7 @@ __add_excep
 ' fnumA *= fnumB
 '----------------------------
 			.global	___mulsf3
+			.balign 4
 ___mulsf3
 			mov	r7,lr
 			lcall	#__loadfloat
@@ -435,6 +437,7 @@ __mul_excep
 ' fnumA /= fnumB
 '----------------------------
 			.global	___divsf3
+			.balign 4
 ___divsf3
 			mov	r7,lr
 			lcall	#__loadfloat
@@ -483,6 +486,7 @@ __div_excep
 
 #ifdef L_floatsisf
 			.global	___floatsisf
+			.balign 4
 ___floatsisf
 			mov	r7,lr
 			lcall	#__loadfloat
@@ -614,6 +618,7 @@ enddouble
 		.section .hubtext, "ax"
 
 		.global __load_double_code
+		.balign 4
 __load_double_code
 		mvi	r4,#__load_start_double_kerext
 		fcache	#(.LDend - .LDstart)
@@ -720,6 +725,7 @@ _Dnan
 		'' input is assumed to be normalized
 		''
 		.global __DPack
+		.balign 4
 __DPack
 		call	#Normalize
 
@@ -796,6 +802,7 @@ dpack_excep
 		'' assumes registers have already been saved
 		''
 		.global __DUnpack2
+		.balign 4
 __DUnpack2
 		mov	A,r3
 		mov	Alo,r2
@@ -817,9 +824,11 @@ __DUnpack2_ret
 		.global	___adddf3
 
 	'' addition and subtraction
+		.balign 4
 ___subdf3
 		xor	r3, __Bit31
 		'' fall through
+		.balign 4
 ___adddf3
 		SAVEREGS
 		lcall	#__load_double_code
@@ -848,6 +857,7 @@ dskipswap
 
 		.global	___muldf3
 		.global	___divdf3
+		.balign 4
 ___muldf3
 		SAVEREGS
 		lcall	#__load_double_code
@@ -857,6 +867,7 @@ ___muldf3
 		RESTOREREGS
 		LMMRET
 
+		.balign 4
 ___divdf3
 		SAVEREGS
 		lcall	#__load_double_code
@@ -876,6 +887,7 @@ ___divdf3
 		'' NOTE: this should be called with magnitude
 		'' of A being greater than the magnitude of B
 		''
+		.balign 4
 _Add
 		'' shift B down as necessary
 		mov	 tmp0,expA
@@ -916,6 +928,7 @@ _Add_ret
 		LMMRET
 
 		'' the actual multiply routine
+		.balign 4
 _Mul
 		mov	tmp0,Aflag
 		or	tmp0,Bflag
@@ -969,12 +982,16 @@ _mul_excep
 		''
 		'' DivSmall just does bottom 28 bits, Div does all
 		'' 61
+		''
+		.balign 4
 _DivSmall
 		'' we're given just 1.28 bits
 		'' make sure we produce a few extra bits for rounding
 		mov	count, #31
 		sub	expA, #2	'' compensate for rounding bits
 		brw	#_doDiv
+
+		.balign 4
 _Div
 		mov	count,#61
 _doDiv
@@ -1041,6 +1058,7 @@ _a_finite
 	'' conversion operations
 		'' single to double
 		.global ___floatsfdf
+		.balign 4
 ___floatsfdf
 		SAVEREGS
 		mov	A, r0
@@ -1055,11 +1073,13 @@ ___floatsfdf
 #include "asmdouble.h"
 		.global ___floatsidf
 		.global ___floatunssidf
+		.balign 4
 ___floatunssidf
 		SAVEREGS
 		mov	A, r0 wz
 		mov	Aflag, #0
 		brs	#.doconv
+		.balign 4
 ___floatsidf
 		SAVEREGS
 		abs	A, r0 wc, wz
