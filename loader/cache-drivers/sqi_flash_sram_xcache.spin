@@ -517,7 +517,6 @@ ptr         long    0
 sram_read   long    $03000000       ' read command
 sram_write  long    $02000000       ' write command
 sram_eqio   long    $38000000       ' enter quad I/O mode
-sram_rstio  long    $ffffffff       ' reset quad I/O mode
 sram_seq    long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
 
 flash_base  long    $30000000       ' base address of flash memory
