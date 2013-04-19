@@ -22,7 +22,7 @@
   ACK = 0x06
   NAK = 0x15
 
-                        .cog_ram
+                        .pasm
                         org     0
                         
                         jmp     #init
