@@ -3,10 +3,11 @@ CON
   ' SPI pins
   SIO0_PIN              = 0
   SCK_PIN               = 8
-  CS_PIN                = 9
+  FLASH_CS_PIN          = 9
+  SRAM_CS_PIN           = 10
   
 #define FLASH
-#undef RW
+#define RW
 #include "cache_common.spin"
 
 '----------------------------------------------------------------------------------------------------
@@ -17,6 +18,20 @@ CON
 
 init
         ' set the pin directions
+        call    #release
+
+        ' select sequential access mode for the SRAM chip
+        call    #sram_select
+        mov     data, sram_seq
+        mov     bits, #16
+        call    #spiSend
+        call    #release
+        
+        ' switch to quad mode for the SRAM chip
+        call    #sram_select
+        mov     data, sram_eqio
+        mov     bits, #8
+        call    #spiSend
         call    #release
                 
         ' initialize the flash
@@ -32,7 +47,7 @@ init
   if_nz jmp     #halt
         cmp     t2, jedec_id wz
   if_nz jmp     #halt
-        call    #select
+        call    #flash_select
         mov     data, sst_quadmode
         call    #spiSendByte
         call    #release
@@ -55,10 +70,32 @@ init
         call    #sst_sqi_write_word
         call    #sst_sqi_write_word
         call    #release
+
 init_ret
         ret
         
 halt    jmp     #halt
+
+'----------------------------------------------------------------------------------------------------
+'
+' BSTART_sram
+'
+' select the chip and send the address for the read/write operation
+'
+' on input:
+'   vmaddr is the sram transfer address
+'
+'----------------------------------------------------------------------------------------------------
+
+BSTART_sram
+        mov     cmd, vmaddr
+        and     cmd, offset_bits
+        shr     cmd, #1
+        or      cmd, fn
+        mov     bytes, #4
+        call    #sram_start_sqi_cmd
+BSTART_sram_RET
+        ret
 
 '----------------------------------------------------------------------------------------------------
 '
@@ -72,14 +109,46 @@ halt    jmp     #halt
 '----------------------------------------------------------------------------------------------------
 
 BREAD
+        mov     ptr, hubaddr
+        cmp     vmaddr, flash_base wc
+  if_b  jmp     #BREAD_sram
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         shr     cmd, #1
         or      cmd, sst_read
         mov     bytes, #4
         mov     dbytes, count
         call    #sst_sqi_read
 BREAD_RET
+        ret
+        
+BREAD_sram
+        mov     fn, sram_read
+        call    #BSTART_sram 
+        mov     dbytes, count
+        call    #sqi_read
+        jmp     BREAD_RET
+
+'----------------------------------------------------------------------------------------------------
+'
+' BWRITE
+'
+' on input:
+'   vmaddr is the virtual memory address to write
+'   hubaddr is the hub memory address to read
+'   count is the number of longs to write
+'
+'----------------------------------------------------------------------------------------------------
+
+BWRITE
+        mov     ptr, hubaddr
+        cmp     vmaddr, flash_base wc
+  if_ae jmp     BWRITE_RET  ' no writes to flash
+        mov     fn, sram_write
+        call    #BSTART_sram
+        mov     dbytes, count
+        call    #sqi_write
+BWRITE_RET
         ret
 
 '----------------------------------------------------------------------------------------------------
@@ -97,7 +166,7 @@ erase_4k_block
  if_nz  jmp     erase_4k_block_ret
         call    #sst_write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         or      cmd, ferase4kblk
         mov     bytes, #4
         call    #sst_start_sqi_cmd
@@ -120,6 +189,7 @@ mask_4k long    $00000fff
 '----------------------------------------------------------------------------------------------------
 
 write_block
+        mov     ptr, hubaddr
         add     count, #1               ' round to an even number of bytes
         andn    count, #1
         mov     t1, vmaddr
@@ -129,7 +199,7 @@ write_block
         max     t1, count
 wloop   call    #sst_write_enable
         mov     cmd, vmaddr
-        and     cmd, flashmask
+        and     cmd, offset_bits
         shr     cmd, #1
         or      cmd, sst_program
         mov     bytes, #4
@@ -145,7 +215,7 @@ write_block_ret
         jmp     #wloop
                 
 read_jedec_id
-        call    #select
+        call    #flash_select
         mov     data, frdjedecid
         call    #spiSendByte
         call    #spiRecvByte
@@ -207,10 +277,11 @@ sst_sqi_write_word_ret
 
 sst_sqi_write
         call    #sst_start_sqi_cmd
+sqi_write
         andn    outa, sck_mask
         tjz     dbytes, #:done
-:loop   rdbyte  data, hubaddr
-        add     hubaddr, #1
+:loop   rdbyte  data, ptr
+        add     ptr, #1
         shl     data, sio_shift
         andn    outa, sio_mask
         or      outa, data
@@ -219,6 +290,7 @@ sst_sqi_write
         djnz    dbytes, #:loop
 :done   call    #release
 sst_sqi_write_ret
+sqi_write_ret
         ret
 
 sst_sqi_read_word
@@ -239,6 +311,7 @@ sst_sqi_read_word_ret
 
 sst_sqi_read
         call    #sst_start_sqi_cmd
+sqi_read
         andn    outa, sck_mask
         andn    outa, sio_mask
         or      outa, sck_mask  ' hi dummy nibble
@@ -251,20 +324,26 @@ sst_sqi_read
         mov     data, ina
         andn    outa, sck_mask
         shr     data, sio_shift
-        wrbyte  data, hubaddr
-        add     hubaddr, #1
+        wrbyte  data, ptr
+        add     ptr, #1
         djnz    dbytes, #:loop
 :done   call    #release
 sst_sqi_read_ret
+sqi_read_ret
         ret
 
+sram_start_sqi_cmd
+        or      dira, sio_mask      ' set data pins to outputs
+        call    #sram_select
+        jmp     #sloop
+        
 sst_start_sqi_cmd_1
         mov     bytes, #1
         
 sst_start_sqi_cmd
         or      dira, sio_mask      ' set data pins to outputs
-        call    #select             ' select the chip
-:loop   rol     cmd, #8
+        call    #flash_select       ' select the chip
+sloop   rol     cmd, #8
         mov     sio_t1, cmd         ' send the high nibble
         and     sio_t1, #$f0
         shl     sio_t1, sio_shift
@@ -286,7 +365,8 @@ sst_start_sqi_cmd
         or      outa, sck_mask
         cmp     bytes, #1 wz
  if_nz  andn    outa, sck_mask
-        djnz    bytes, #:loop
+        djnz    bytes, #sloop
+sram_start_sqi_cmd_ret
 sst_start_sqi_cmd_1_ret
 sst_start_sqi_cmd_ret
         ret
@@ -327,9 +407,14 @@ fwrenable           long    $06000000    ' flash write enable
 ' SPI routines
 '----------------------------------------------------------------------------------------------------
 
-select
-        andn    outa, cs_mask
-select_ret
+flash_select
+        andn    outa, flash_cs_mask
+flash_select_ret
+        ret
+
+sram_select
+        andn    outa, sram_cs_mask
+sram_select_ret
         ret
 
 release
@@ -340,53 +425,65 @@ release_ret
         
 spiSendByte
         shl     data, #24
-        mov     sio_t1, #8
-:loop   rol     data, #1 wc
+        mov     bits, #8
+spiSend rol     data, #1 wc
         muxc    outa, mosi_lo_mask
         muxc    outa, mosi_hi_mask
         or      outa, sck_mask
         andn    outa, sck_mask
-        djnz    sio_t1, #:loop
+        djnz    bits, #spiSend
 spiSendByte_ret
+spiSend_ret
         ret
 
 spiRecvByte
         mov     data_lo, #0
         mov     data_hi, #0
-        mov     sio_t1, #8
+        mov     bits, #8
 :loop   or      outa, sck_mask
         test    miso_lo_mask, ina wc
         rcl     data_lo, #1
         test    miso_hi_mask, ina wc
         rcl     data_hi, #1
         andn    outa, sck_mask
-        djnz    sio_t1, #:loop
+        djnz    bits, #:loop
 spiRecvByte_ret
         ret
 
 ' mosi_lo, mosi_hi, sck, cs
-pindir          long    (1 << SIO0_PIN) | (1 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << CS_PIN)
+pindir          long    (1 << SIO0_PIN) | (1 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
 ' mosi_lo, mosi_hi, cs
-pinout          long    (1 << SIO0_PIN) | (1 << (SIO0_PIN + 4)) | (1 << CS_PIN)
+pinout          long    (1 << SIO0_PIN) | (1 << (SIO0_PIN + 4)) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
 mosi_lo_mask    long    1 << SIO0_PIN
 miso_lo_mask    long    2 << SIO0_PIN
 mosi_hi_mask    long    1 << (SIO0_PIN + 4)
 miso_hi_mask    long    2 << (SIO0_PIN + 4)
 sck_mask        long    1 << SCK_PIN
-cs_mask         long    1 << CS_PIN
+flash_cs_mask   long    1 << FLASH_CS_PIN
+sram_cs_mask    long    1 << SRAM_CS_PIN
 sio_mask        long    $ff << SIO0_PIN
 sio_shift       long    SIO0_PIN
 
 ' variables used by the spi send/receive functions
+fn              long    0
 cmd             long    0
+ptr             long    0
 bytes           long    0
 dbytes          long    0
 data            long    0
 data_lo         long    0
 data_hi         long    0
+bits            long    0
 
-flashmask       long    $00ffffff       ' mask to isolate the flash offset bits
+' sram commands
+sram_read       long    $03000000       ' read command
+sram_write      long    $02000000       ' write command
+sram_eqio       long    $38000000       ' enter quad I/O mode
+sram_seq        long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
+
+flash_base      long    $30000000       ' base address of flash memory
+offset_bits     long    $00ffffff       ' mask to isolate the flash offset bits
 
         fit     496             ' out of 496
