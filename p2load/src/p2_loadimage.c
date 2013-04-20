@@ -26,6 +26,7 @@ typedef struct {
 #define CMD_LOAD    1
 #define CMD_START   2
 #define CMD_COGINIT 3
+#define CMD_FLASH   4
 
 /* load command packet */
 typedef struct {
@@ -185,7 +186,7 @@ int p2_Flash(uint32_t flashaddr, uint32_t hubaddr, uint32_t count)
     FlashCmd flashCmd;
 
     /* send the start command */
-    flashCmd.cmd = (count << 8) | CMD_COGINIT;
+    flashCmd.cmd = (count << 8) | CMD_FLASH;
     flashCmd.flashaddr = flashaddr;
     flashCmd.hubaddr = hubaddr;
     if (!SendPacket((uint8_t *)&flashCmd, sizeof(flashCmd))) {
