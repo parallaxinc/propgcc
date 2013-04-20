@@ -10,12 +10,19 @@
   BASE = 0x0e80
   CLOCK_FREQ = 60000000
   BAUD = 115200
-  SERIAL_TX = 90
+  SERIAL_TX = 90        ' serial pins
   SERIAL_RX = 91
+  FLASH_DO = 86         ' SPI flash pins
+  FLASH_DI = 87
+  FLASH_CLK = 88
+  FLASH_CS = 89
   
+  PAGE_SIZE = 4096
+
   CMD_LOAD = 1
   CMD_START = 2
   CMD_COGINIT = 3
+  CMD_FLASH = 4
 
   ' character codes
   SOH = 0x01             ' start of a packet
@@ -37,6 +44,7 @@ init                    repd    reserves_cnt_m1, #1     'clear reserves
                         mov     inda++,#0
         
                         setp    tx_pin
+                        setp    #FLASH_CS
         
                         jmptask #rx_task,#%0010         'enable serial receiver task
                         settask #0x44 '%%1010
@@ -146,12 +154,22 @@ cmd_handler_1           cmp     t1, #CMD_START wz
                         
                         'check for CMD_COGINIT
 cmd_handler_2           cmp     t1, #CMD_COGINIT wz
-                 if_nz  jmp     #next_packet
+                 if_nz  jmp     #cmd_handler_3
                         shr     cmd0, #8
                         setcog  cmd0
                         coginit cmd1, cmd2           'launch a cog
                         jmp     #next_packet
                         
+                        'check for CMD_FLASH
+cmd_handler_3           cmp     t1, #CMD_COGINIT wz
+                 if_nz  jmp     #next_packet
+                        mov     count, cmd0
+                        shr     count, #8
+                        mov     vmaddr, cmd1
+                        mov     hubaddr, cmd2
+                        call    #write_block
+                        jmp     #next_packet
+
 data_start              mov     rcv_state, #do_data
                         mov     rcv_ptr, rcv_base
 
@@ -179,6 +197,115 @@ _load                   mov     t1, 0-0
                         xor     crc, x
                         and     crc, word_mask
 updcrc_ret              ret
+
+' write_block
+'   parameters:
+'     vmaddr contains the target flash address
+'     hubaddr contains the hup address of the data to write
+'     count contains the number of bytes to write
+'
+wloop   test    vmaddr, #$ff wz
+  if_nz jmp     #wdata
+        setp    #FLASH_CS       ' release
+        call    #wait_until_done
+write_block
+        test    vmaddr, pagemask wz
+  if_z  call    #erase_4k_block
+        call    #write_enable
+        mov     cmd, vmaddr
+        or      cmd, fprogram
+        mov     bytes, #4
+        call    #start_spi_cmd
+wdata   rdbyte  data, hubaddr
+        call    #spiSendByte
+        add     hubaddr, #1
+        add     vmaddr, #1
+        djnz    count, #wloop
+        setp    #FLASH_CS       ' release
+        call    #wait_until_done
+write_block_ret
+        ret
+
+erase_4k_block
+        call    #write_enable
+        mov     cmd, vmaddr
+        or      cmd, ferase4kblk
+        mov     bytes, #4
+        call    #start_spi_cmd
+        setp    #FLASH_CS       ' release
+        call    #wait_until_done
+erase_4k_block_ret
+        ret
+
+write_enable
+        mov     cmd, fwrenable
+        call    #start_spi_cmd_1
+        setp    #FLASH_CS       ' release
+write_enable_ret
+        ret
+
+wait_until_done
+        mov     cmd, frdstatus
+        call    #start_spi_cmd_1
+_wait   call    #spiRecvByte
+        test    data, #1 wz
+  if_nz jmp     #_wait
+        setp    #FLASH_CS       ' release
+wait_until_done_ret
+        ret
+
+start_spi_cmd_1
+        mov     bytes, #1
+start_spi_cmd
+        clrp    #FLASH_CS       ' select
+_loop   rol     cmd, #8
+        mov     data, cmd
+        call    #spiSendByte
+        djnz    bytes, #_loop
+start_spi_cmd_1_ret
+start_spi_cmd_ret
+        ret
+
+spiSendByte
+        shl     data, #24
+        mov     bits, #8
+spiSend rol     data, #1 wc
+        setpc   #FLASH_DI
+        setp    #FLASH_CLK
+        clrp    #FLASH_CLK
+        djnz    bits, #spiSend
+        setp    #FLASH_DI
+spiSendByte_ret
+        ret
+
+spiRecvByte
+        mov     bits, #8
+spiRecv mov     data, #0
+_rloop  setp    #FLASH_CLK
+        getp    #FLASH_DO wc
+        rcl     data, #1
+        clrp    #FLASH_CLK
+        djnz    bits, #_rloop
+spiRecvByte_ret
+        ret
+
+' input parameters to BREAD and BWRITE
+vmaddr      long    0       ' virtual address
+hubaddr     long    0       ' hub memory address to read from or write to
+count       long    0
+
+' variables used by the spi send/receive functions
+pagemask    long    PAGE_SIZE - 1
+cmd         long    0
+bytes       long    0
+bits        long    0
+data        long    0
+
+' spi commands
+fprogram    long    $02000000       ' flash program byte/page
+ferase4kblk long    $20000000       ' flash erase a 4k block
+frdstatus   long    $05000000       ' flash read status
+fwrenable   long    $06000000       ' flash write enable
 
 '
 '

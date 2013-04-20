@@ -41,6 +41,13 @@ typedef struct {
     uint32_t param;
 } StartCmd;
 
+/* flash command packet */
+typedef struct {
+    uint32_t cmd;   // CMD_FLASH
+    uint32_t flashaddr;
+    uint32_t hubaddr;
+} FlashCmd;
+
 static uint8_t txbuf[1024];
 static int txcnt;
 static uint8_t rxbuf[1024];
@@ -164,7 +171,25 @@ int p2_StartCog(int id, uint32_t addr, uint32_t param)
     startCmd.addr = addr;
     startCmd.param = param;
     if (!SendPacket((uint8_t *)&startCmd, sizeof(startCmd))) {
-        printf("error: send cognew packet failed\n");
+        printf("error: send coginit packet failed\n");
+        return 1;
+    }
+
+    /* return successfully */
+    return 0;
+}
+
+/* p2_Flash - write data from hub memory to flash */
+int p2_Flash(uint32_t flashaddr, uint32_t hubaddr, uint32_t count)
+{    
+    FlashCmd flashCmd;
+
+    /* send the start command */
+    flashCmd.cmd = (count << 8) | CMD_COGINIT;
+    flashCmd.flashaddr = flashaddr;
+    flashCmd.hubaddr = hubaddr;
+    if (!SendPacket((uint8_t *)&flashCmd, sizeof(flashCmd))) {
+        printf("error: send flash packet failed\n");
         return 1;
     }
 
