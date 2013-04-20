@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
 {
     char actualPort[PATH_MAX], *port, *p, *p2;
     int baudRate, baudRate2, verbose, strip, startMonitor, terminalMode, pstMode, err, i;
+    uint32_t flashaddr, hubaddr, count;
     uint32_t loadAddr = BASE;
     uint32_t cogAddr = COGIMAGE_LO;
     uint32_t runAddr = COGIMAGE_LO;
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 'c':
+            case 'f':
                 if (argv[i][2])
                     p = &argv[i][2];
                 else if (++i < argc)
@@ -167,10 +169,8 @@ int main(int argc, char *argv[])
                     p = &argv[i][2];
                 else if (++i < argc)
                     p = argv[i];
-                if (argv[i][2])
-                    p = &argv[i][2];
-                else if (++i < argc)
-                    p = argv[i];
+                else
+                    Usage();
                 if (!(p2 = strchr(p, ',')))
                     cogId = 0; // lets hope the ROM always launches the loader in COG 0!
                 else {
@@ -272,6 +272,23 @@ int main(int argc, char *argv[])
                         return err;
                 }
                 break;
+            case 'f':
+                if (argv[i][2])
+                    p = &argv[i][2];
+                else if (++i < argc)
+                    p = argv[i];
+                if (!(p = strchr(p, ',')))
+                    Usage();
+                *p++ = '\0';
+                flashaddr = (uint32_t)strtoul(p, NULL,16);
+                if (!(p = strchr(p, ',')))
+                    Usage();
+                *p++ = '\0';
+                hubaddr = (uint32_t)strtoul(p, NULL,16);
+                count = (uint32_t)strtoul(p, NULL, 16);
+                if ((err = p2_Flash(flashaddr, hubaddr, count)) != 0)
+                    return err;
+                break;
             case 's':
                 strip = TRUE;
                 break;
@@ -326,23 +343,24 @@ static void Usage(void)
 printf("\
 p2load - a loader for the propeller 2 - version 0.006, 2013-04-03\n\
 usage: p2load\n\
-         [ -b baud ]            baud rate (default is %d)\n\
-         [ -c addr[:param] ]    load a free COG with image at addr and parameter param\n\
-         [ -c n,addr[:param] ]  load COG n with image at addr and parameter param\n\
-         [ -h ]                 cog image is at $1000 instead of $0e80\n\
-         [ -m ]                 start the ROM monitor instead of the program\n\
-         [ -n ]                 set stack top to $8000 for the DE0-Nano\n\
-         [ -p port ]            serial port (default is to auto-detect the port)\n\
-         [ -P ]                 list available serial ports\n\
-         [ -r addr[:param] ]    run program in COG 0 from addr with parameter param\n\
-         [ -r n, ]              run program in COG n\n\
-         [ -r n,addr[:param] ]  run program in COG n from addr with parameter param\n\
-         [ -s ]                 strip $e80 bytes from start of the file before loading\n\
-         [ -t ]                 enter terminal mode after running the program\n\
-         [ -T ]                 enter PST-compatible terminal mode\n\
-         [ -v ]                 verbose output\n\
-         [ -? ]                 display a usage message and exit\n\
-         file[,addr]...         files to load\n", BAUD_RATE);
+         [ -b baud ]               baud rate (default is %d)\n\
+         [ -c addr[:param] ]       load a free COG with image at addr and parameter param\n\
+         [ -c n,addr[:param] ]     load COG n with image at addr and parameter param\n\
+         [ -f faddr,haddr,count ]  write count bytes of hub data at haddr to flash at faddr\n\
+         [ -h ]                    cog image is at $1000 instead of $0e80\n\
+         [ -m ]                    start the ROM monitor instead of the program\n\
+         [ -n ]                    set stack top to $8000 for the DE0-Nano\n\
+         [ -p port ]               serial port (default is to auto-detect the port)\n\
+         [ -P ]                    list available serial ports\n\
+         [ -r addr[:param] ]       run program in COG 0 from addr with parameter param\n\
+         [ -r n, ]                 run program in COG n\n\
+         [ -r n,addr[:param] ]     run program in COG n from addr with parameter param\n\
+         [ -s ]                    strip $e80 bytes from start of the file before loading\n\
+         [ -t ]                    enter terminal mode after running the program\n\
+         [ -T ]                    enter PST-compatible terminal mode\n\
+         [ -v ]                    verbose output\n\
+         [ -? ]                    display a usage message and exit\n\
+         file[,addr]...            files to load\n", BAUD_RATE);
     exit(1);
 }
 
