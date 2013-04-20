@@ -137,12 +137,12 @@ int p2_LoadImage(uint8_t *imageBuf, uint32_t addr, uint32_t size)
 }
 
 /* p2_StartImage - start the loaded image */
-int p2_StartImage(uint32_t addr, uint32_t param)
+int p2_StartImage(int id, uint32_t addr, uint32_t param)
 {    
     StartCmd startCmd;
 
     /* send the start command */
-    startCmd.cmd = CMD_START;
+    startCmd.cmd = (id << 8) | CMD_START;
     startCmd.addr = addr;
     startCmd.param = param;
     if (!SendPacket((uint8_t *)&startCmd, sizeof(startCmd))) {
