@@ -214,6 +214,7 @@ int serial_baud(unsigned long baud)
             break;
         default:
             printf("Unsupported baudrate. Use ");
+            tbaud = baud; break;
 #ifdef B921600
             printf("921600, ");
 #endif

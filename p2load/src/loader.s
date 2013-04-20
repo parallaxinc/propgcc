@@ -124,20 +124,28 @@ do_cmd2                 or      cmd2, x
                         
 cmd_handler             mov     t1, cmd0
                         and     t1, #0xff
-                        cmp     t1, #CMD_LOAD wz     'check for CMD_LOAD
+                        
+                        'check for CMD_LOAD
+                        cmp     t1, #CMD_LOAD wz
                 if_nz   jmp     #cmd_handler_1
                         mov     rcv_base, cmd1
                         mov     data_cnt, cmd2
                         mov     payload_state, #data_start
                         mov     payload_handler, #data_handler
                         jmp     #next_packet
-cmd_handler_1           cmp     t1, #CMD_START wz    'check for CMD_START
+                        
+                        'check for CMD_START
+cmd_handler_1           cmp     t1, #CMD_START wz
                  if_nz  jmp     #cmd_handler_2
-                        cogid   t1                   'relaunch current cog
-                        setcog  t1
-                        coginit cmd1, cmd2
-                        ' should never return
-cmd_handler_2           cmp     t1, #CMD_COGINIT wz  'check for CMD_COGINIT
+                        shr     cmd0, #8 wz
+                        setcog  cmd0
+                        coginit cmd1, cmd2           'launch a cog
+                 if_nz  mov     t1, #0
+                 if_nz  cogstop t1
+                        ' should never reach here
+                        
+                        'check for CMD_COGINIT
+cmd_handler_2           cmp     t1, #CMD_COGINIT wz
                  if_nz  jmp     #next_packet
                         shr     cmd0, #8
                         setcog  cmd0

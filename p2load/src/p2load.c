@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
     uint32_t runAddr = COGIMAGE_LO;
     uint32_t runParam = 0x20000; // top of hub memory for C stack pointer
     int runParamsSet = FALSE;
+    int cogId = 0;
     
     /* initialize */
     baudRate = baudRate2 = BAUD_RATE;
@@ -166,12 +167,25 @@ int main(int argc, char *argv[])
                     p = &argv[i][2];
                 else if (++i < argc)
                     p = argv[i];
-                if ((p2 = strchr(p, ':')) == NULL)
-                    Usage();
-                *p2++ = '\0';
-                runAddr = (uint32_t)strtoul(p, NULL, 16);
-                runParam = (uint32_t)strtoul(p2, NULL,16);
-                runParamsSet = TRUE;
+                if (argv[i][2])
+                    p = &argv[i][2];
+                else if (++i < argc)
+                    p = argv[i];
+                if (!(p2 = strchr(p, ',')))
+                    cogId = 0; // lets hope the ROM always launches the loader in COG 0!
+                else {
+                    *p2++ = '\0';
+                    cogId = atoi(p);
+                    p = p2;
+                }
+                if (*p != '\0') {
+                    if ((p2 = strchr(p, ':')) == NULL)
+                        Usage();
+                    *p2++ = '\0';
+                    runAddr = (uint32_t)strtoul(p, NULL, 16);
+                    runParam = (uint32_t)strtoul(p2, NULL,16);
+                    runParamsSet = TRUE;
+                }
                 break;
             case 's':
                 /* handle this later with the position-dependent options */
@@ -284,13 +298,13 @@ int main(int argc, char *argv[])
     }
 
     if (startMonitor) {
-        if ((err = p2_StartImage(MONITOR_ADDR, MONITOR_PARAM)) != 0)
+        if ((err = p2_StartImage(cogId, MONITOR_ADDR, MONITOR_PARAM)) != 0)
             return err;
     }
     else {
         if (!runParamsSet)
             runAddr = cogAddr;
-        if ((err = p2_StartImage(runAddr, runParam)) != 0)
+        if ((err = p2_StartImage(cogId, runAddr, runParam)) != 0)
             return err;
     }
     
@@ -320,7 +334,9 @@ usage: p2load\n\
          [ -n ]                 set stack top to $8000 for the DE0-Nano\n\
          [ -p port ]            serial port (default is to auto-detect the port)\n\
          [ -P ]                 list available serial ports\n\
-         [ -r addr:param ]      run program from addr with parameter param\n\
+         [ -r addr[:param] ]    run program in COG 0 from addr with parameter param\n\
+         [ -r n, ]              run program in COG n\n\
+         [ -r n,addr[:param] ]  run program in COG n from addr with parameter param\n\
          [ -s ]                 strip $e80 bytes from start of the file before loading\n\
          [ -t ]                 enter terminal mode after running the program\n\
          [ -T ]                 enter PST-compatible terminal mode\n\
