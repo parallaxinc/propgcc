@@ -451,10 +451,10 @@ spiRecvByte_ret
         ret
 
 ' mosi_lo, mosi_hi, sck, cs
-pindir          long    (1 << SIO0_PIN) | (1 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
+pindir          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
 ' mosi_lo, mosi_hi, cs
-pinout          long    (1 << SIO0_PIN) | (1 << (SIO0_PIN + 4)) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
+pinout          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
 mosi_lo_mask    long    1 << SIO0_PIN
 miso_lo_mask    long    2 << SIO0_PIN
