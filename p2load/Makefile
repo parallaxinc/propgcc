@@ -55,6 +55,7 @@ $(OBJDIR)/p2load.o \
 $(OBJDIR)/loadelf.o \
 $(OBJDIR)/p2_loadimage.o \
 $(OBJDIR)/loader.o \
+$(OBJDIR)/booter.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
 
 CFLAGS+=-Wall
