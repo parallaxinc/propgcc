@@ -17,6 +17,10 @@
 /* offset of signature in image */
 #define SIG_OFFSET  0x1f8
 
+/* hub memory buffer for writing files to flash */
+#define FLASH_BUF_START 0x1000
+#define FLASH_BUF_SIZE  (16 * 1024)
+
 /* second-stage loader header structure */
 typedef struct {
     uint32_t jmpinit;
@@ -194,6 +198,20 @@ int p2_Flash(uint32_t flashaddr, uint32_t hubaddr, uint32_t count)
         return 1;
     }
 
+    /* return successfully */
+    return 0;
+}
+
+/* p2_FlashBuffer - write data from a file to flash using a hub memory buffer */
+int p2_FlashBuffer(uint8_t *buffer, int size, uint32_t flashaddr)
+{
+    /* return successfully */
+    return 0;
+}
+
+/* p2_FlashFile - write data from a file to flash using a hub memory buffer */
+int p2_FlashFile(char *file, uint32_t flashaddr)
+{
     /* return successfully */
     return 0;
 }

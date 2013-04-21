@@ -79,7 +79,7 @@ static int OpenPort(const char* port, int baud);
 
 int main(int argc, char *argv[])
 {
-    char actualPort[PATH_MAX], *port, *p, *p2;
+    char actualPort[PATH_MAX], *port, *p, *p2, *p3;
     int baudRate, baudRate2, verbose, strip, startMonitor, terminalMode, pstMode, err, i;
     uint32_t flashaddr, hubaddr, count;
     uint32_t loadAddr = BASE;
@@ -277,17 +277,26 @@ int main(int argc, char *argv[])
                     p = &argv[i][2];
                 else if (++i < argc)
                     p = argv[i];
-                if (!(p = strchr(p, ',')))
+                if (!(p2 = strchr(p, ',')))
                     Usage();
-                *p++ = '\0';
-                flashaddr = (uint32_t)strtoul(p, NULL,16);
-                if (!(p = strchr(p, ',')))
-                    Usage();
-                *p++ = '\0';
-                hubaddr = (uint32_t)strtoul(p, NULL,16);
-                count = (uint32_t)strtoul(p, NULL, 16);
-                if ((err = p2_Flash(flashaddr, hubaddr, count)) != 0)
-                    return err;
+                *p2++ = '\0';
+                if (!(p3 = strchr(p, ','))) {
+                    flashaddr = (uint32_t)strtoul(p2, NULL, 16);
+                    if ((err = p2_FlashFile(p, flashaddr)) != 0)
+                        return err;
+                    // open file
+                    // get file size
+                    // write file to hub memory a block at a time
+                    // write each block to flash
+                }
+                else {
+                    *p3++ = '\0';
+                    flashaddr = (uint32_t)strtoul(p, NULL, 16);
+                    hubaddr = (uint32_t)strtoul(p2, NULL, 16);
+                    count = (uint32_t)strtoul(p3, NULL, 16);
+                    if ((err = p2_Flash(flashaddr, hubaddr, count)) != 0)
+                        return err;
+                }
                 break;
             case 's':
                 strip = TRUE;
@@ -346,6 +355,7 @@ usage: p2load\n\
          [ -b baud ]               baud rate (default is %d)\n\
          [ -c addr[:param] ]       load a free COG with image at addr and parameter param\n\
          [ -c n,addr[:param] ]     load COG n with image at addr and parameter param\n\
+         [ -f file,faddr ]         write contents of file to flash at faddr\n\
          [ -f faddr,haddr,count ]  write count bytes of hub data at haddr to flash at faddr\n\
          [ -h ]                    cog image is at $1000 instead of $0e80\n\
          [ -m ]                    start the ROM monitor instead of the program\n\
