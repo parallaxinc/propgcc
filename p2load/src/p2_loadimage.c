@@ -171,7 +171,7 @@ int p2_StartCog(int id, uint32_t addr, uint32_t param)
 {    
     StartCmd startCmd;
 
-    /* send the start command */
+    /* send the coginit command */
     startCmd.cmd = (id << 8) | CMD_COGINIT;
     startCmd.addr = addr;
     startCmd.param = param;
@@ -189,7 +189,7 @@ int p2_Flash(uint32_t flashaddr, uint32_t hubaddr, uint32_t count)
 {    
     FlashCmd flashCmd;
 
-    /* send the start command */
+    /* send the flash command */
     flashCmd.cmd = (count << 8) | CMD_FLASH;
     flashCmd.flashaddr = flashaddr;
     flashCmd.hubaddr = hubaddr;
@@ -212,6 +212,60 @@ int p2_FlashBuffer(uint8_t *buffer, int size, uint32_t flashaddr)
 /* p2_FlashFile - write data from a file to flash using a hub memory buffer */
 int p2_FlashFile(char *file, uint32_t flashaddr)
 {
+    uint8_t buf[FLASH_BUF_SIZE];
+    int size, remaining, cnt;
+    LoadCmd loadCmd;
+    FlashCmd flashCmd;
+    uint8_t *ptr;
+    FILE *fp;
+
+    if (!(fp = fopen(file, "rb"))) {
+        printf("error: can't open '%s'\n", file);
+        return 1;
+    }
+    
+    /* load the binary image */
+    while ((size = fread(buf, 1, sizeof(buf), fp)) > 0) {
+
+        /* send the load command */
+        loadCmd.cmd = CMD_LOAD;
+        loadCmd.addr = FLASH_BUF_START;
+        loadCmd.count = size;
+        if (!SendPacket((uint8_t *)&loadCmd, sizeof(loadCmd))) {
+            printf("error: send load packet failed\n");
+            return 1;
+        }
+
+        /* load the binary image */
+        for (ptr = buf, remaining = size; (cnt = remaining) > 0; ptr += cnt) {
+            if (cnt > PKTMAXLEN)
+                cnt = PKTMAXLEN;
+            if (!SendPacket(ptr, cnt)) {
+                printf("error: send data packet failed\n");
+                return 1;
+            }
+            remaining -= cnt;
+            printf(".");
+            fflush(stdout);
+        }
+        
+        /* send the flash command */
+        flashCmd.cmd = (size << 8) | CMD_FLASH;
+        flashCmd.flashaddr = flashaddr;
+        flashCmd.hubaddr = FLASH_BUF_START;
+        if (!SendPacket((uint8_t *)&flashCmd, sizeof(flashCmd))) {
+            printf("error: send flash packet failed\n");
+            return 1;
+        }
+        
+        /* move ahead in the flash */
+        flashaddr += size;
+    }
+    printf("\n");
+    
+    /* close the file */
+    fclose(fp);
+    
     /* return successfully */
     return 0;
 }

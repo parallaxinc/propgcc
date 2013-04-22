@@ -284,10 +284,6 @@ int main(int argc, char *argv[])
                     flashaddr = (uint32_t)strtoul(p2, NULL, 16);
                     if ((err = p2_FlashFile(p, flashaddr)) != 0)
                         return err;
-                    // open file
-                    // get file size
-                    // write file to hub memory a block at a time
-                    // write each block to flash
                 }
                 else {
                     *p3++ = '\0';
