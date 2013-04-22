@@ -205,6 +205,42 @@ int p2_Flash(uint32_t flashaddr, uint32_t hubaddr, uint32_t count)
 /* p2_FlashBuffer - write data from a file to flash using a hub memory buffer */
 int p2_FlashBuffer(uint8_t *buffer, int size, uint32_t flashaddr)
 {
+    int remaining, cnt;
+    LoadCmd loadCmd;
+    FlashCmd flashCmd;
+    uint8_t *ptr;
+
+    /* send the load command */
+    loadCmd.cmd = CMD_LOAD;
+    loadCmd.addr = FLASH_BUF_START;
+    loadCmd.count = size;
+    if (!SendPacket((uint8_t *)&loadCmd, sizeof(loadCmd))) {
+        printf("error: send load packet failed\n");
+        return 1;
+    }
+
+    /* load the binary image */
+    for (ptr = buffer, remaining = size; (cnt = remaining) > 0; ptr += cnt) {
+        if (cnt > PKTMAXLEN)
+            cnt = PKTMAXLEN;
+        if (!SendPacket(ptr, cnt)) {
+            printf("error: send data packet failed\n");
+            return 1;
+        }
+        remaining -= cnt;
+        printf(".");
+        fflush(stdout);
+    }
+    
+    /* send the flash command */
+    flashCmd.cmd = (size << 8) | CMD_FLASH;
+    flashCmd.flashaddr = flashaddr;
+    flashCmd.hubaddr = FLASH_BUF_START;
+    if (!SendPacket((uint8_t *)&flashCmd, sizeof(flashCmd))) {
+        printf("error: send flash packet failed\n");
+        return 1;
+    }
+
     /* return successfully */
     return 0;
 }
@@ -213,10 +249,7 @@ int p2_FlashBuffer(uint8_t *buffer, int size, uint32_t flashaddr)
 int p2_FlashFile(char *file, uint32_t flashaddr)
 {
     uint8_t buf[FLASH_BUF_SIZE];
-    int size, remaining, cnt;
-    LoadCmd loadCmd;
-    FlashCmd flashCmd;
-    uint8_t *ptr;
+    int size, err;
     FILE *fp;
 
     if (!(fp = fopen(file, "rb"))) {
@@ -226,39 +259,8 @@ int p2_FlashFile(char *file, uint32_t flashaddr)
     
     /* load the binary image */
     while ((size = fread(buf, 1, sizeof(buf), fp)) > 0) {
-
-        /* send the load command */
-        loadCmd.cmd = CMD_LOAD;
-        loadCmd.addr = FLASH_BUF_START;
-        loadCmd.count = size;
-        if (!SendPacket((uint8_t *)&loadCmd, sizeof(loadCmd))) {
-            printf("error: send load packet failed\n");
-            return 1;
-        }
-
-        /* load the binary image */
-        for (ptr = buf, remaining = size; (cnt = remaining) > 0; ptr += cnt) {
-            if (cnt > PKTMAXLEN)
-                cnt = PKTMAXLEN;
-            if (!SendPacket(ptr, cnt)) {
-                printf("error: send data packet failed\n");
-                return 1;
-            }
-            remaining -= cnt;
-            printf(".");
-            fflush(stdout);
-        }
-        
-        /* send the flash command */
-        flashCmd.cmd = (size << 8) | CMD_FLASH;
-        flashCmd.flashaddr = flashaddr;
-        flashCmd.hubaddr = FLASH_BUF_START;
-        if (!SendPacket((uint8_t *)&flashCmd, sizeof(flashCmd))) {
-            printf("error: send flash packet failed\n");
-            return 1;
-        }
-        
-        /* move ahead in the flash */
+        if ((err = p2_FlashBuffer(buf, size, flashaddr)) != 0)
+            return err;
         flashaddr += size;
     }
     printf("\n");
