@@ -9,17 +9,20 @@
 #endif
 
 /* maximum packet size for the second-stage loader */
-#define PKTMAXLEN   1024
+#define PKTMAXLEN       1024
 
 /* clock frequency (for Propeller 2 FPGA boards) */
-#define CLOCK_FREQ  60000000
+#define CLOCK_FREQ      60000000
 
 /* offset of signature in image */
-#define SIG_OFFSET  0x1f8
+#define SIG_OFFSET      0x1f8
 
 /* hub memory buffer for writing files to flash */
 #define FLASH_BUF_START 0x1000
 #define FLASH_BUF_SIZE  (16 * 1024)
+
+/* size of a COG image */
+#define COG_IMAGE_SIZE  (512 * sizeof(uint32_t))
 
 /* second-stage loader header structure */
 typedef struct {
@@ -27,31 +30,7 @@ typedef struct {
     uint32_t period;    // clkfreq / baudrate
 } Stage2Hdr;
 
-#define CMD_LOAD    1
-#define CMD_START   2
-#define CMD_COGINIT 3
-#define CMD_FLASH   4
-
-/* load command packet */
-typedef struct {
-    uint32_t cmd;   // CMD_LOAD
-    uint32_t addr;
-    uint32_t count;
-} LoadCmd;
-
-/* start command packet */
-typedef struct {
-    uint32_t cmd;   // CMD_START
-    uint32_t addr;
-    uint32_t param;
-} StartCmd;
-
-/* flash command packet */
-typedef struct {
-    uint32_t cmd;   // CMD_FLASH
-    uint32_t flashaddr;
-    uint32_t hubaddr;
-} FlashCmd;
+static void p2_CreateSignedImage(int baudRate, uint8_t *image, uint8_t *array, int size);
 
 static uint8_t txbuf[1024];
 static int txcnt;
@@ -75,27 +54,15 @@ int p2_InitLoader(int baudRate)
 {
     extern uint8_t loader_array[];
     extern int loader_size;
-    uint8_t loader_image[512*sizeof(uint32_t)];
-    Stage2Hdr *hdr;
-    uint32_t *ptr;
+    uint8_t loader_image[COG_IMAGE_SIZE];
     int i;
 
-    /* build the loader image */
-    memset(loader_image, 0, sizeof(loader_image));
-    memcpy(loader_image, loader_array, loader_size);
-        
-    /* patch the binary loader with the baud rate information */
-    hdr = (Stage2Hdr *)loader_image;
-    hdr->period = CLOCK_FREQ / baudRate;
-    
-    /* add the (dummy) signature */
-    ptr = (uint32_t *)loader_image;
-    for (i = 0; i < 8; ++i)
-        ptr[SIG_OFFSET + i] = 0x00000001;
+    /* create a signed image for the ROM loader */
+    p2_CreateSignedImage(baudRate, loader_image, loader_array, loader_size);
         
     /* download the second-stage loader binary */
     for (i = 0; i < sizeof(loader_image); i += 4)
-        TLong(loader_image[i]
+        TLong( loader_image[i    ]
             | (loader_image[i + 1] << 8)
             | (loader_image[i + 2] << 16)
             | (loader_image[i + 3] << 24));
@@ -114,12 +81,31 @@ int p2_InitLoader(int baudRate)
     return 0;
 }
 
+/* p2_CreateSignedImage - create a signed COG image */
+static void p2_CreateSignedImage(int baudRate, uint8_t *image, uint8_t *array, int size)
+{
+    Stage2Hdr *hdr;
+    uint32_t *ptr;
+    int i;
+
+    /* build the loader image */
+    memset(image, 0, COG_IMAGE_SIZE);
+    memcpy(image, array, size);
+        
+    /* patch the binary loader with the baud rate information */
+    hdr = (Stage2Hdr *)image;
+    hdr->period = CLOCK_FREQ / baudRate;
+    
+    /* add the (dummy) signature */
+    ptr = (uint32_t *)image;
+    for (i = 0; i < 8; ++i)
+        ptr[SIG_OFFSET + i] = 0x00000001;
+}
+
 /* p2_LoadImage - load a binary hub image into a propeller 2 */
 int p2_LoadImage(uint8_t *imageBuf, uint32_t addr, uint32_t size)
 {
     LoadCmd loadCmd;
-    uint8_t *ptr;
-    int cnt;
 
     /* send the load command */
     loadCmd.cmd = CMD_LOAD;
@@ -130,6 +116,16 @@ int p2_LoadImage(uint8_t *imageBuf, uint32_t addr, uint32_t size)
         return 1;
     }
     
+    /* send the data */
+    return p2_SendBuffer(imageBuf, size);
+}
+    
+/* p2_SendBuffer - send a buffer to the helper */
+int p2_SendBuffer(uint8_t *imageBuf, uint32_t size)
+{
+    uint8_t *ptr;
+    int cnt;
+
     /* load the binary image */
     for (ptr = imageBuf; (cnt = size) > 0; ptr += cnt) {
         if (cnt > PKTMAXLEN)
@@ -202,8 +198,33 @@ int p2_Flash(uint32_t flashaddr, uint32_t hubaddr, uint32_t count)
     return 0;
 }
 
+/* p2_FlashBooter - write a boot image to flash */
+int p2_FlashBooter(int baudRate)
+{
+    extern uint8_t booter_array[];
+    extern int booter_size;
+    uint8_t booter_image[COG_IMAGE_SIZE];
+    int i;
+
+    /* create a signed image for the ROM loader */
+    p2_CreateSignedImage(baudRate, booter_image, booter_array, booter_size);
+    
+    /* make it big-endian for the rom loader */
+    for (i = 0; i < sizeof(booter_image); i += 4) {
+        int tmp = booter_image[i];
+        booter_image[i] = booter_image[i + 3];
+        booter_image[i + 3] = tmp;
+        tmp = booter_image[i + 1];
+        booter_image[i + 1] = booter_image[i + 2];
+        booter_image[i + 2] = tmp;
+    }
+
+    /* write the booter to flash */
+    return p2_FlashBuffer(booter_image, sizeof(booter_image), 0, FALSE);
+}
+
 /* p2_FlashBuffer - write data from a file to flash using a hub memory buffer */
-int p2_FlashBuffer(uint8_t *buffer, int size, uint32_t flashaddr)
+int p2_FlashBuffer(uint8_t *buffer, int size, uint32_t flashaddr, int progress)
 {
     int remaining, cnt;
     LoadCmd loadCmd;
@@ -228,9 +249,13 @@ int p2_FlashBuffer(uint8_t *buffer, int size, uint32_t flashaddr)
             return 1;
         }
         remaining -= cnt;
-        printf(".");
-        fflush(stdout);
+        if (progress) {
+            printf(".");
+            fflush(stdout);
+        }
     }
+    if (progress)
+        printf("\n");
     
     /* send the flash command */
     flashCmd.cmd = (size << 8) | CMD_FLASH;
@@ -259,7 +284,7 @@ int p2_FlashFile(char *file, uint32_t flashaddr)
     
     /* load the binary image */
     while ((size = fread(buf, 1, sizeof(buf), fp)) > 0) {
-        if ((err = p2_FlashBuffer(buf, size, flashaddr)) != 0)
+        if ((err = p2_FlashBuffer(buf, size, flashaddr, TRUE)) != 0)
             return err;
         flashaddr += size;
     }

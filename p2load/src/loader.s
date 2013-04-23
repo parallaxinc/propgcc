@@ -42,9 +42,10 @@ init                    repd    reserves_cnt_m1, #1     'clear reserves
                         nop
                         nop
                         mov     inda++,#0
-        
+                        
                         setp    tx_pin
                         setp    #FLASH_CS
+                        mov     dirc,dirc_mask          'setup output pins
         
                         jmptask #rx_task,#%0010         'enable serial receiver task
                         settask #0x44 '%%1010
@@ -161,7 +162,7 @@ cmd_handler_2           cmp     t1, #CMD_COGINIT wz
                         jmp     #next_packet
                         
                         'check for CMD_FLASH
-cmd_handler_3           cmp     t1, #CMD_COGINIT wz
+cmd_handler_3           cmp     t1, #CMD_FLASH wz
                  if_nz  jmp     #next_packet
                         mov     count, cmd0
                         shr     count, #8
@@ -384,6 +385,7 @@ rx_bit                  rcr     rx_data,#1              'rotate c into byte
 
 rx_pin                  long    SERIAL_RX
 tx_pin                  long    SERIAL_TX
+dirc_mask               long    (1<<(SERIAL_TX-64)) | (1<<(FLASH_DI-64)) | (1<<(FLASH_CLK-64)) | (1<<(FLASH_CS-64))
 word_mask               long    0xffff
 
 crctab
