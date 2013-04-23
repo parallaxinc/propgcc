@@ -58,7 +58,7 @@ PUB start | type, packet, len, ok
 
 #ifdef TV_DEBUG
   tv.start(p_tvpin)
-  tv.str(string("elfload v0.1", CR))
+  tv.str(string("Serial Helper v0.1", CR))
 #endif
 
   ' initialize
@@ -111,12 +111,16 @@ PRI CACHE_INIT_handler(packet) | cache_size, param1, param2, param3, param4, ext
 #ifdef TV_DEBUG
   tv.str(string("CACHE_INIT: "))
   tv.dec(cache_size)
-  crlf
 #endif
   cache_lines := hub_memory_size - cache_size
   p_cache_mbox := cache_lines - cache_mbox_size - extra * 4
   p_cache_line_mask := cache.start(@mm_data, p_cache_mbox, cache_lines, param1, param2, param3, param4)
   p_vm_mbox := p_cache_mbox - vm_mbox_size
+#ifdef TV_DEBUG
+  tv.str(string(" "))
+  tv.hex(p_cache_line_mask, 4)
+  crlf
+#endif
 
 PRI FILE_WRITE_handler(name) | err
   mountSD
