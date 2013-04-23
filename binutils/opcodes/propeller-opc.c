@@ -67,7 +67,7 @@ const struct propeller_opcode propeller_opcodes[] = {
    is mov, so that's what we give here
 */
 /* xmmio      101000 zcri cccc ddddddddd sssssssss */
-  {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, CCZCWR, PROP_1_LMM, NO_COMPRESSED, 0},
+  {"xmmio", 0xa0000000, 0xfc000000, PROPELLER_OPERAND_XMMIO, CCZCWR, PROP_1_LMM|PROP_2_LMM, NO_COMPRESSED, 0},
 
 /* fcache is a jmp followed by a 32 bit constant */
   {"fcache", 0x5c000000, 0xffffffff, PROPELLER_OPERAND_FCACHE, CCZCNR, PROP_1_LMM, COMPRESS_MACRO, MACRO_FCACHE},
