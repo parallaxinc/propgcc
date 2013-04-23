@@ -26,7 +26,6 @@
 
   COG_IMAGE_SIZE = 2048
   HEADER_OFFSET = COG_IMAGE_SIZE
-  IMAGE_OFFSET = HEADER_OFFSET + 512
 
   dirc = 0x1fe
   
@@ -37,23 +36,30 @@
                         
 ' these values will be patched by the loader based on user options
 period                  long    CLOCK_FREQ / BAUD
-                        long    0   ' unused
-                        long    0   ' unused
 
 init                    setp    #FLASH_CS
 
                         mov     vmaddr, header_off
                         
-get_cmd
+get_cmd                 setptra base_addr       'save hub buffer contents
+                        rdlong  save0, ptra++
+                        rdlong  save1, ptra++
+                        rdlong  save2, ptra++
+                        
                         mov     hubaddr, base_addr
                         mov     count, #12
                         call    #read_block
                         add     vmaddr, #12
                         
-                        setptra base_addr
+                        setptra base_addr       'load the command
                         rdlong  cmd0, ptra++
                         rdlong  cmd1, ptra++
                         rdlong  cmd2, ptra++
+                        
+                        setptra base_addr       'restore the hub buffer contents
+                        wrlong  save0, ptra++
+                        wrlong  save1, ptra++
+                        wrlong  save2, ptra++
                         
 cmd_handler             mov     t1, cmd0
                         and     t1, #0xff
@@ -85,35 +91,15 @@ cmd_handler_2           cmp     t1, #CMD_COGINIT wz
                         coginit cmd1, cmd2           'launch a cog
                         jmp     #get_cmd
 
-/*
-                        mov     data, image_size
-                        call    #hex
-                        call    #crlf
-                        mov     data, cogimage
-                        call    #hex
-                        call    #crlf
-                        mov     data, stacktop
-                        call    #hex
-                        call    #crlf
-*/
-                        
-                        mov     vmaddr, image_off
-                        mov     hubaddr, base_addr
-                        mov     count, image_size
-                        call    #read_block
-                        
-start                   coginit cogimage, stacktop   'relaunch cog0 with loaded program
-
 t1                      long    0
+save0                   long    0
+save1                   long    0
+save2                   long    0
 cmd0                    long    0
 cmd1                    long    0
 cmd2                    long    0
 base_addr               long    BASE
 header_off              long    HEADER_OFFSET
-image_off               long    IMAGE_OFFSET
-image_size              long    0
-cogimage                long    0
-stacktop                long    0
 
 /*
 

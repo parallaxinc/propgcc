@@ -67,7 +67,7 @@ enum {
 static int version;
 
 /* prototypes */
-static int LoadFile(char *infile, uint32_t loadAddr, int strip, uint32_t *pCogImage);
+static int LoadFile(char *infile, uint32_t loadAddr, int strip, int writeBootImage, uint32_t flashAddr, uint32_t *pSize, uint32_t *pCogImage);
 static void Usage(void);
 static void *LoadElfFile(FILE *fp, ElfHdr *hdr, int *pImageSize);
 
@@ -86,7 +86,9 @@ int main(int argc, char *argv[])
     uint32_t cogAddr = COGIMAGE_LO;
     uint32_t runAddr = COGIMAGE_LO;
     uint32_t runParam = 0x20000; // top of hub memory for C stack pointer
+    uint32_t flashAddr;
     int runParamsSet = FALSE;
+    int writeBootImage = FALSE;
     int cogId = 0;
     
     /* initialize */
@@ -199,6 +201,9 @@ int main(int argc, char *argv[])
             case 'v':
                 verbose = TRUE;
                 break;
+            case 'w':
+                writeBootImage = TRUE;
+                break;
             case '?':
                 /* fall through */
             default:
@@ -224,10 +229,17 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    /* load the image */
+    /* load the helper */
     if ((err = p2_InitLoader(baudRate)) != 0)
         return err;
-    
+
+    /* write the booter image to flash if we're creating a bootable image */
+    if (writeBootImage) {
+        if ((err = p2_FlashBooter(baudRate)) != 0)
+            return err;
+        flashAddr = 0x800; // just past the booter COG image
+    }
+            
     /* process the position-dependent arguments */
     for (i = 1; i < argc; ++i) {
         int id, addr, param;
@@ -268,8 +280,19 @@ int main(int argc, char *argv[])
                     runParamsSet = TRUE;
                 }
                 else {
-                    if ((err = p2_StartCog(id, addr, param)) != 0)
-                        return err;
+                    if (writeBootImage) {
+                        StartCmd startCmd;
+                        startCmd.cmd = (id << 8) | CMD_COGINIT;
+                        startCmd.addr = addr;
+                        startCmd.param = param;
+                        if ((err = p2_FlashBuffer((uint8_t *)&startCmd, sizeof(startCmd), flashAddr, FALSE)))
+                            return err;
+                        flashAddr += sizeof(startCmd);
+                    }
+                    else {
+                        if ((err = p2_StartCog(id, addr, param)) != 0)
+                            return err;
+                    }
                 }
                 break;
             case 'f':
@@ -306,28 +329,52 @@ int main(int argc, char *argv[])
         /* handle the input filename */
         else {
             char *infile, *p;
+            uint32_t size;
             infile = argv[i];
             if ((p = strchr(infile, ',')) != NULL) {
                 *p++ = '\0';
                 loadAddr = strtoul(p, &p, 16);
             }
             printf("Loading '%s' at 0x%08x\n", infile, loadAddr);
-            if ((err = LoadFile(infile, loadAddr, strip, &cogAddr)) != 0)
+            if ((err = LoadFile(infile, loadAddr, strip, writeBootImage, flashAddr, &size, &cogAddr)) != 0)
                 return err;
+            flashAddr += size;
             loadAddr = BASE;
             strip = FALSE;
         }
     }
 
     if (startMonitor) {
-        if ((err = p2_StartImage(cogId, MONITOR_ADDR, MONITOR_PARAM)) != 0)
-            return err;
+        if (writeBootImage) {
+            StartCmd startCmd;
+            startCmd.cmd = (cogId << 8) | CMD_START;
+            startCmd.addr = MONITOR_ADDR;
+            startCmd.param = MONITOR_PARAM;
+            if ((err = p2_FlashBuffer((uint8_t *)&startCmd, sizeof(startCmd), flashAddr, FALSE)))
+                return err;
+            flashAddr += sizeof(startCmd);
+        }
+        else {
+            if ((err = p2_StartImage(cogId, MONITOR_ADDR, MONITOR_PARAM)) != 0)
+                return err;
+        }
     }
     else {
         if (!runParamsSet)
             runAddr = cogAddr;
-        if ((err = p2_StartImage(cogId, runAddr, runParam)) != 0)
-            return err;
+        if (writeBootImage) {
+            StartCmd startCmd;
+            startCmd.cmd = (cogId << 8) | CMD_START;
+            startCmd.addr = runAddr;
+            startCmd.param = runParam;
+            if ((err = p2_FlashBuffer((uint8_t *)&startCmd, sizeof(startCmd), flashAddr, FALSE)))
+                return err;
+            flashAddr += sizeof(startCmd);
+        }
+        else {
+            if ((err = p2_StartImage(cogId, runAddr, runParam)) != 0)
+                return err;
+        }
     }
     
     /* enter terminal mode if requested */
@@ -365,12 +412,13 @@ usage: p2load\n\
          [ -t ]                    enter terminal mode after running the program\n\
          [ -T ]                    enter PST-compatible terminal mode\n\
          [ -v ]                    verbose output\n\
+         [ -w ]                    write a bootable image to flash\n\
          [ -? ]                    display a usage message and exit\n\
          file[,addr]...            files to load\n", BAUD_RATE);
     exit(1);
 }
 
-static int LoadFile(char *infile, uint32_t loadAddr, int strip, uint32_t *pCogImage)
+static int LoadFile(char *infile, uint32_t loadAddr, int strip, int writeBootImage, uint32_t flashAddr, uint32_t *pSize, uint32_t *pCogImage)
 {
     uint8_t *imageBuf, *ptr;
     int imageSize, err;
@@ -441,9 +489,23 @@ static int LoadFile(char *infile, uint32_t loadAddr, int strip, uint32_t *pCogIm
         fclose(fp);
     }
     
-    if ((err = p2_LoadImage(ptr, loadAddr, imageSize)) != 0)
-        return err;
-        
+    if (writeBootImage) {
+        LoadCmd loadCmd;
+        loadCmd.cmd = CMD_LOAD;
+        loadCmd.addr = loadAddr;
+        loadCmd.count = imageSize;
+        if ((err = p2_FlashBuffer((uint8_t *)&loadCmd, sizeof(loadCmd), flashAddr, FALSE)) != 0)
+            return err;
+        flashAddr += sizeof(loadCmd);
+        if ((err = p2_FlashBuffer(ptr, imageSize, flashAddr, TRUE)) != 0)
+            return err;
+        *pSize = sizeof(loadCmd) + imageSize;
+    }
+    else {
+        if ((err = p2_LoadImage(ptr, loadAddr, imageSize)) != 0)
+            return err;
+    }
+    
     /* free the image buffer */
     free(imageBuf);
         
