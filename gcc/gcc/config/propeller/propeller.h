@@ -52,8 +52,8 @@
 #undef LINK_SPEC
 #define LINK_SPEC "                                             \
 %{mrelax:-relax}                                                \
-%{mp2: %{mcog:-mpropeller_cog; :-mpropeller2};                   \
-  : %{mcog:-mpropeller_cog; mxmmc:-mpropeller_xmmc; mxmm:-mpropeller_xmm; mxmm-single:-mpropeller_xmm_single; mxmm-split:-mpropeller_xmm_split; :-mpropeller}} \
+%{mp2: %{mcog:-mpropeller_cog; mxmmc:-mpropeller2_xmmc; mxmm:-mpropeller2_xmm; :-mpropeller2};                   \
+     : %{mcog:-mpropeller_cog; mxmmc:-mpropeller_xmmc; mxmm:-mpropeller_xmm; mxmm-single:-mpropeller_xmm_single; mxmm-split:-mpropeller_xmm_split; :-mpropeller}} \
 "
 
 #define TARGET_DEFAULT (MASK_LMM | MASK_64BIT_DOUBLES)

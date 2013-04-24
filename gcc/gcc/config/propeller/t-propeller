@@ -58,7 +58,8 @@ MULTILIB_MATCHES = mxmm=mxmm-single mxmm=mxmm-split
 MULTILIB_DIRNAMES = xmm xmmc cmm p2 short-doubles
 
 # dunno if this is necessary
-MULTILIB_EXCEPTIONS = *mxmm*/*mp2* *mxmmc*/*mp2*
+#MULTILIB_EXCEPTIONS = *mxmm*/*mp2* *mxmmc*/*mp2*
+
 #
 #don't think we need these
 #EXTRA_MULTILIB_PARTS = crtbegin.o crtend.o
@@ -88,7 +89,7 @@ $(T)_crtend.o: $(PROPDIR)/crtend.S
 	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
 
 $(T)hubstart_xmm.o: $(PROPDIR)/hubstart_xmm.s
-	$(GCC_FOR_TARGET) -o $@ -c $<
+	$(GCC_FOR_TARGET) $(MULTILIB_CFLAGS) -o $@ -c $<
 
 $(T)p2vectors.o: $(PROPDIR)/p2vectors.s
 	$(GCC_FOR_TARGET) -mp2 -o $@ -c $<
