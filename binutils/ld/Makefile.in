@@ -726,6 +726,10 @@ ALL_EMULATION_SOURCES = \
 	epropeller_xmm_single.c \
 	epropeller_xmm_split.c \
 	epropeller_xmmc.c \
+	epropeller2_xmm.c \
+	epropeller2_xmm_single.c \
+	epropeller2_xmm_split.c \
+	epropeller2_xmmc.c \
 	eriscix.c \
 	escore3_elf.c \
 	escore7_elf.c \
@@ -1387,6 +1391,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epropeller_xmm_split.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epropeller_xmm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epropeller_xmmc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epropeller2_xmm_single.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epropeller2_xmm_split.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epropeller2_xmm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epropeller2_xmmc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eriscix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/escore3_elf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/escore7_elf.Po@am__quote@
@@ -3274,6 +3282,18 @@ epropeller_xmm_split.c: $(srcdir)/emulparams/propeller_xmm_split.sh \
 epropeller_xmmc.c: $(srcdir)/emulparams/propeller_xmmc.sh \
   $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} propeller_xmmc "$(tdir_propeller)"
+epropeller2_xmm.c: $(srcdir)/emulparams/propeller2_xmm.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller2_xmm "$(tdir_propeller)"
+epropeller2_xmm_single.c: $(srcdir)/emulparams/propeller2_xmm_single.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller2_xmm_single "$(tdir_propeller)"
+epropeller2_xmm_split.c: $(srcdir)/emulparams/propeller2_xmm_split.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller2_xmm_split "$(tdir_propeller)"
+epropeller2_xmmc.c: $(srcdir)/emulparams/propeller2_xmmc.sh \
+  $(srcdir)/emultempl/propeller.em $(srcdir)/scripttempl/propeller.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} propeller2_xmmc "$(tdir_propeller)"
 eriscix.c: $(srcdir)/emulparams/riscix.sh \
   $(srcdir)/emultempl/generic.em $(srcdir)/scripttempl/aout.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} riscix "$(tdir_riscix)"
