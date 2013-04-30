@@ -117,27 +117,33 @@ do { \
 int cogstart(void (*func)(void *), void *par, void *stack, size_t stacksize);
 
 /**
- * @brief Get a new lock
- * @returns new lockid
+ * @brief Get a new lock  from the pool of Propeller hardware locks. 
+ * @note this function follows the Spin semantics described in the Propeller Manual.
+ * @warning The lock my be in either the set or cleared state: a new lock is not guarenteed to be cleared.
+ * @returns new lockid  (0 through 7) on success, -1 on failure (result is int type)
  */
 #define locknew() __builtin_propeller_locknew()
 
 /**
  * @brief Return lock to pool
- * @param lockid
+ * @note this function follows the Spin semantics described in the Propeller Manual.
+ * @warning The lock is returned in it's current state (set or cleared).
+ * @param lockid (0 through 7, int type)
  */
 #define lockret(lockid) __builtin_propeller_lockret((lockid))
 
 /**
  * @brief Set a lock
- * @param lockid
- * @returns true on success
+ * @note this function follows the Spin semantics described in the Propeller Manual.
+ * @param lockid (0 through 7, int type)
+ * @returns int with the previous state of the lock: -1 (0xFFFFFFFF) when the previous state was set, 0 when the previous state was not set.
  */
 #define lockset(lockid) __builtin_propeller_lockset((lockid))
 
 /**
  * @brief Clear lock
- * @param lockid
+ * @warning This function does not precisely follow the Spin semantics described in the Propeller Manual. In particular, it does not return a value.
+ * @param lockid (0 through 7, int type)
  */
 #define lockclr(lockid) __builtin_propeller_lockclr((lockid))
 
