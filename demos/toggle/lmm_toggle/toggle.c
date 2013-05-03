@@ -31,14 +31,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "propeller.h"
 
+#if defined(__PROPELLER2__)
+#define DIR DIRB
+#define OUT PINB
+#else
+#define DIR DIRA
+#define OUT OUTA
+#endif
+
 int main(int argc, char* argv[])
 {
     int mask = 0x3fffffff;
     int freq = CLKFREQ>>1;
-    DIRA = mask;
+    DIR = mask;
     for(;;) {
-        OUTA ^= DIRA;
-        waitcnt(freq+CNT);
+        OUT ^= mask;
+        waitcnt(freq+getcnt());
     }    
 }
 
