@@ -55,7 +55,7 @@ SPINDIR=.
 
 
 $(NAME).elf: $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS) -s
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ -c $<
