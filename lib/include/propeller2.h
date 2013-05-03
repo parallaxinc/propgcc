@@ -42,13 +42,12 @@ static __inline__ int coginit(int id, void *image, void *par)
 {
     __asm__ volatile (
         "setcog %[_id]\n\t"
-        "coginit %[_image], %[_par] wc\n\t"
-        "if_c neg %[_value], #1"
+        "coginit %[_image], %[_par] wr,wc\n\t"
+        "if_c neg %[_image], #1"
     : /* outputs */
-        [_value] "=r" (image)
+        [_image] "+r" (image)
     : /* inputs */
         [_id] "r" (id),
-        [_image] "0" (image),
         [_par] "r" (par)
     : /* no clobbered registers */
     );
