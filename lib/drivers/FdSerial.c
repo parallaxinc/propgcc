@@ -1,5 +1,3 @@
-#if !defined(__PROPELLER2__)
-
 /**
  * @file FdSerial.c
  * Full Duplex Serial adapter module.
@@ -270,4 +268,3 @@ _Driver _FullDuplexSerialDriver =
 ¦ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         ¦
 +------------------------------------------------------------------------------------------------------------------------------+
 */
-#endif

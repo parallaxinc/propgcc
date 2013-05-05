@@ -27,34 +27,30 @@ extern unsigned int _baud;
  * drvarg[3] = bitcycles
  */
 
-#ifdef __PROPELLER2__
-__attribute__((native)) void _TX(int ch);
-__attribute__((native)) int _RX(void);
-#endif
-
 /*
  * We need _serial_putbyte to always be fcached so that the timing is
  * OK.
  */
 #ifdef __PROPELLER2__
-#define TX_PIN  90
 __attribute__((fcache))
 static int
 _serial_putbyte(int c, FILE *fp)
 {
   unsigned int bitcycles = fp->drvarg[3];
+  unsigned int txpin = fp->drvarg[1];
+
   unsigned int waitcycles;
   int i, value;
 
   /* set output */
-  setpin(TX_PIN, 1);
+  setpin(txpin, 1);
 
   value = (c | 256) << 1;
   waitcycles = getcnt() + bitcycles;
   for (i = 0; i < 10; i++)
     {
       waitcycles = waitcnt2(waitcycles, bitcycles);
-      setpin(TX_PIN, (value & 1) ? 1 : 0);
+      setpin(txpin, (value & 1) ? 1 : 0);
       value >>= 1;
     }
   // if we turn off DIRA, then some boards (like QuickStart) are left with
@@ -103,12 +99,12 @@ _serial_putbyte(int c, FILE *fp)
 /* and here is getbyte */
 /* we need to put it in fcache to get it to work in XMM and CMM modes */
 #ifdef __PROPELLER2__
-#define RX_PIN  91
 __attribute__((fcache))
 static int
 _serial_getbyte(FILE *fp)
 {
   unsigned int bitcycles = fp->drvarg[3];
+  unsigned int rxpin = fp->drvarg[0];
   unsigned int waitcycles;
   int value;
   int i;
@@ -116,10 +112,10 @@ _serial_getbyte(FILE *fp)
   /* wait for a start bit */
   if (fp->_flag & _IONONBLOCK) {
     /* if non-blocking I/O, return immediately if no data */
-    if ( 0 != getpin(RX_PIN) )
+    if ( 0 != getpin(rxpin) )
       return -1;
   } else {
-    while (getpin(RX_PIN))
+    while (getpin(rxpin))
       ;
   }
   /* sync for one half bit */
@@ -127,10 +123,10 @@ _serial_getbyte(FILE *fp)
   value = 0;
   for (i = 0; i < 8; i++) {
     waitcycles = waitcnt2(waitcycles, bitcycles);
-    value = (getpin(RX_PIN) << 7) | (value >> 1);
+    value = (getpin(rxpin) << 7) | (value >> 1);
   }
   /* wait for the line to go high (as it will when the stop bit arrives) */
-    while (!getpin(RX_PIN))
+    while (!getpin(rxpin))
       ;
   return value;
 }
@@ -202,8 +198,13 @@ static int _serial_fopen(FILE *fp, const char *name, const char *mode)
   bitcycles = _clkfreq / baud;
 
   /* set up the array */
+#if defined(__PROPELLER2__)
+  fp->drvarg[0] = (rxpin);
+  fp->drvarg[1] = (txpin);
+#else
   fp->drvarg[0] = (1U<<rxpin);
   fp->drvarg[1] = (1U<<txpin);
+#endif
   fp->drvarg[2] = baud;
   fp->drvarg[3] = bitcycles;
 
