@@ -26,8 +26,8 @@ void
 busywait(unsigned int usecs)
 {
   unsigned long cycles = usecs * (_clkfreq/1000000);
-  unsigned long then = _CNT + cycles;
-  while ((long)(then - _CNT) > 0)
+  unsigned long then = getcnt() + cycles;
+  while ((long)(then - getcnt()) > 0)
     pthread_yield();
 }
 
