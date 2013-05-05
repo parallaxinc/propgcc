@@ -34,11 +34,19 @@ do_toggle(void *arg)
   pthread_detach(pthread_self());
 
   /* set up the hardware registers */
+#if defined(__PROPELLER2__)
+  _DIRB |= pins;
+#else
   _DIRA |= pins;
   _OUTA |= pins;
+#endif
 
   for(;;) {
+#if defined(__PROPELLER2__)
+    _PINB ^= pins; /* update the pins */
+#else
     _OUTA ^= pins; /* update the pins */
+#endif
     printf("toggled %x on cog %d\n", pins, __builtin_propeller_cogid());
     sleep(1);      /* nap for 1 second */
   }

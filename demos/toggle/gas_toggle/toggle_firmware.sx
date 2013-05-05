@@ -27,6 +27,12 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # +--------------------------------------------------------------------
 
+#if defined(__PROPELLER2__)
+		'' use PINB (hooked up to LEDs on the DE2-115)
+		'' instead of PINA
+#define dira dirb
+#define outa pinb
+#endif
 		''
 		'' Any section starting or ending in ".cog" is special to
 		'' the linker: it knows that these need to be relocated to
@@ -64,8 +70,14 @@
                 mov     dira, pins          ' set pins to output
 		mov	outa, pins
 	
-                mov     nextcnt, waitdelay
-                add     nextcnt, cnt        ' best to add cnt last
+#if defined(__PROPELLER2__)
+		getcnt	nextcnt
+		add	nextcnt,waitdelay
+#else
+		mov	nextcnt, cnt
+                add     nextcnt, waitdelay
+#endif
+
 .loop
                 xor     outa, pins          ' toggle pins
                 waitcnt nextcnt, waitdelay  ' wait for half second
