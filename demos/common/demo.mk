@@ -63,6 +63,9 @@ $(NAME).elf: $(OBJS)
 %.o: %.s
 	$(CC) -o $@ -c $<
 
+%.o: %.sx
+	$(CC) $(CFLAGS) -o $@ -c $<
+
 %.binary: %.elf
 	$(LOADER) -s $<
 
