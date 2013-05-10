@@ -2,6 +2,7 @@ Version 1.04
 
 - Produce an error for redefined labels in DAT sections.
 - Rename constants that start with an _ to avoid conflicts with C.
+- Fix "reversed" range expressions like OUTA[9..10].
 
 Version 1.03
 
