@@ -32,7 +32,7 @@ r2  IF_NE    jmp    #not_first_cog      ' if not, skip some stuff
 r3      locknew __TMP0 wc       ' allocate a lock
 r4      or      __TMP0, #256    ' in case lock is 0, make the 32 bit value nonzero
 r5      wrlong __TMP0, __C_LOCK_PTR     ' save it to ram
-r6      jmp     #__LMM_start
+r6      jmp     #__LMM_loop
 
 not_first_cog
 	'' initialization for non-primary cogs
@@ -42,7 +42,7 @@ r9      rdlong r0,sp		' pop the argument for the function
 r10     add	sp,#4
 r11     rdlong __TLS,sp	' and the _TLS variable
 r12     add	sp,#4
-r13	jmp	#__LMM_start
+r13	jmp	#__LMM_loop
 r14	nop
 r15     '' alias for link register lr
 lr      long    __exit
@@ -54,102 +54,6 @@ pc      long    entry       ' default pc
         '' main LMM loop -- read instructions from hub memory
         '' and executes them
         ''
-__LMM_start
-/*
-__LMM_loop
-        rdlongc L_ins1,pc   'read instruction
-        jmpd #__LMM_loop
-          add pc,#4         'point to next instr
-L_ins1    nop               'execute instruction
-          nop               '3 delay slots for jumpd
-        jmp #__LMM_loop     'loop in case jmpd got cancelled by LMM code
-*/
-
-/*
-__LMM_loop
-        reps #512,#5
-        nop
-          rdlongc L_ins1,pc
-          add pc,#4
-          rdlongc L_ins2,pc
-L_ins1    nop
-          add pc,#4
-L_ins2    nop
-        jmp #__LMM_loop
-*/
-
-/*
-__LMM_loop
-        rdlongc L_ins1,pc   'read instruction 1
-        add pc,#4           'point to ins1+1
-        rdlongc L_ins2,pc   'read instruction 2
-        jmpd #__LMM_loop
-L_ins1    nop               'execute instruction 1
-          add pc,#4         'point to ins2+1
-L_ins2    nop               'execute instruction 2
-        jmp #__LMM_loop
-*/
-
-/*
-__LMM_loop
-        rdlong  L_ins0,pc
-        add     pc,#4
-        nop
-L_ins0  nop
-        jmp     #__LMM_loop
-*/
-
-
-/*
-__LMM_loop
-        reps #$4000,#3
-        nop
-        rdlongc L_ins1,pc
-        add pc,#4
-        nop
-L_ins1  nop
-        jmp #__LMM_loop
-*/
-
-/*
-__LMM_loop
-        reps #$4000,#7
-        nop
-        rdlongc L_ins1,pc
-        add pc,#4
-        nop
-L_ins1  nop
-        rdlongc L_ins2,pc
-        add pc,#4
-        nop
-L_ins2  nop
-        jmp #__LMM_loop
-*/
-
-
-//#define OLD_LMM
-	
-#ifdef OLD_LMM
-__LMM_loop
-	rdlongc	L_ins0,pc
-	add	pc,#4
-	nop
-L_ins0	nop
-	rdlongc	L_ins1,pc
-	add	pc,#4
-	nop
-L_ins1	nop
-	rdlongc	L_ins2,pc
-	add	pc,#4
-	nop
-L_ins2	nop
-	rdlongc	L_ins3,pc
-	add	pc,#4
-	nop
-L_ins3	nop
-	jmp	#__LMM_loop
-
-#else
 __LMM_loop
         repd #$200,#8
         nop
@@ -164,7 +68,6 @@ L_ins1  nop
         nop
 L_ins2  nop
         jmp #__LMM_loop
-#endif
         
         ''
         '' LMM support functions
@@ -255,23 +158,14 @@ inc_dest1
         .global __LMM_POPRET_ret
 
 
-#ifdef OLD_LMM
 __LMM_POPRET
         call    #__LMM_POPM
         mov     pc,lr
-__LMM_POPRET_ret
-        ret
-#else
-
-__LMM_POPRET
-        call    #__LMM_POPM
-        mov     pc,lr
-	mov	L_ins2, dec_pc	'compensate 2nd inc_pc if popret is executed in L_ins1
+	    mov	    L_ins2, dec_pc	'compensate 2nd inc_pc if popret is executed in L_ins1
 __LMM_POPRET_ret
         ret
 
 dec_pc  sub  pc,#4
-#endif
 
         
 __LMM_POPM
