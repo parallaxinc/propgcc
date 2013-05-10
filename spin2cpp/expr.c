@@ -685,11 +685,22 @@ static void
 RangeBitSet(FILE *f, AST *dst, uint32_t mask, int bitset)
 {
     AST *loexpr;
+    AST *hiexpr;
 
-    if (dst->right->right) {
-        loexpr = dst->right->right;
-    } else {
+    if (dst->right->right == NULL) {
         loexpr = dst->right->left;
+    } else {
+        int hi, lo;
+        loexpr = dst->right->right;
+	hiexpr = dst->right->left;
+	lo = EvalConstExpr(loexpr);
+	hi = EvalConstExpr(hiexpr);
+	if (hi < lo) {
+	  AST *tmp = loexpr;
+	  loexpr = hiexpr;
+	  hiexpr = tmp;
+	}
+
     }
     PrintLHS(f, dst->left, 1, 0);
     if (bitset) {
