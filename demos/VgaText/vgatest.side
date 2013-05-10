@@ -1,0 +1,9 @@
+vgatest.c
+vga_text.c
+VGA.spin
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>defs::-DC3
+>BOARD::C3F
