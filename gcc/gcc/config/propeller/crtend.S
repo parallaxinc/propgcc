@@ -8,7 +8,7 @@
 	add	sp,#4
 	rdlong	lr,sp
 	add	sp,#4
-	mov	pc,lr
+	lret
 
 	.section .fini
 	.global __Exit
@@ -17,22 +17,23 @@
 	'' finish up the exit function
 	mov	r0,r12		' restore exit status
 	'' fall through
+	.balign 4
 __Exit
 __exit
 	'' provide for a special hook to do something like send
 	'' a message to the host to indicate we have stopped
-	jmp	#__LMM_CALL
-	long	__ExitHook
+	lcall	#__ExitHook
 	
 	'' terminate by putting cog to sleep so QuickStart serial port stays quiet
 	'' (pins & 0) == nonzero will always be false, so cog
 	'' will sleep forever
 	waitpeq __MASK_FFFFFFFF, #0
 
+	.balign 4
 	'' this is a weak reference so the user can override it
 	.weak __ExitHook
 __ExitHook
-	mov	pc,lr
+	lret
 
 	'' make sure the ctors and dtors are null terminated
 	''
@@ -59,6 +60,10 @@ __environ
 	.weak __clkfreqval
 	.weak __clkmodeval
 
+#ifdef __PROPELLER2__
+	__clkfreqval = 60000000
+	__clkmodeval = 0x6f
+#else
 	__clkfreqval = 80000000
 	__clkmodeval = 0x6f
-
+#endif

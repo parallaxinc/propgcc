@@ -11,6 +11,8 @@ extern unsigned int _baud;
 
 void _serial_break(void)
 {
+#ifdef __PROPELLER2__
+#else
   int delay = _clkfreq/2;
   int waitcycles = _CNT + delay;
   int txpin = _txpin;
@@ -24,4 +26,5 @@ void _serial_break(void)
   /* send a break */
   _OUTA = 0;
   __builtin_propeller_waitcnt(waitcycles, delay);
+#endif
 }

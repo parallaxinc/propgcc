@@ -28,6 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "loader.h"
 #include "packet.h"
 #include "PLoadLib.h"
+#include "p2image.h"
 #include "osint.h"
 #include "pex.h"
 #include "../sdloader/sd_loader.h"
@@ -277,6 +278,41 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
     return ploadbuf(path, image, size, mode) == 0;
 }
 
+#define CCR_FLAG_LMMSTEP 0x80
+
+static int PatchSectionForDebug(uint8_t *imagebuf, int imageSize, int offset, ElfContext *c)
+{
+    ElfSymbol symbol;
+    if (!FindElfSymbol(c, "__ccr__", &symbol) ) {
+      return Error("unable to debug this ELF file: __ccr__ symbol missing");
+    }
+    offset += symbol.value;
+
+    printf("patching for debug at offset 0x%x\n", offset);
+    if (offset < 0 || offset > imageSize) {
+      return Error("Bad offset for debug symbol __ccr__");
+    }
+
+    /* set the flag to enter the debugger immediately */
+    imagebuf[offset] |= CCR_FLAG_LMMSTEP;
+    return TRUE;
+}
+
+static int PatchLMMImageForDebug(uint8_t *imagebuf, int imageSize, ElfContext *c)
+{
+    ElfProgramHdr kernel;
+    int err;
+
+    if (FindProgramSegment(c, ".lmmkernel", &kernel) < 0) {
+      return Error(".lmmkernel section not found");
+    }
+    err = PatchSectionForDebug(imagebuf, imageSize, kernel.paddr, c);
+
+    /* recompute the checksum */
+    UpdateChecksum(imagebuf, imageSize);
+    return err;
+}
+
 static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c)
 {
     uint32_t start;
@@ -287,7 +323,12 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
     /* build the .binary image */
     if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, &cogImagesSize)))
         return FALSE;
-    
+
+    if ( (flags & LFLAG_DEBUG) != 0) {
+      if (!PatchLMMImageForDebug(imagebuf, imageSize, c))
+	return FALSE;
+    }
+
     /* load the eeprom cache driver if we need to write cog images to eeprom */
     if (cogImagesSize > 0) {
         char *cacheDriver = "eeprom_cache.dat";
@@ -340,18 +381,32 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
         free(cogimagesbuf);
     }
 
-    /* determine the download mode */
-    if (flags & LFLAG_WRITE_EEPROM)
-        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
-    else if (flags & LFLAG_RUN)
-        mode = DOWNLOAD_RUN_BINARY;
-    else
-        mode = SHUTDOWN_CMD;
+    /* handle propeller 2 loads */
+    if (ELF_CHIP(&c->hdr) == ELF_CHIP_P2) {
+        int baudrate;
+        GetNumericConfigField(config, "baudrate", &baudrate);
+        if (flags & LFLAG_WRITE_EEPROM)
+            p2_FlashImage(imagebuf, imageSize, 0x1000, 0x20000, baudrate);
+        else
+            p2_LoadImage(imagebuf, imageSize, 0x1000, 0x20000, baudrate);
+    }
     
-    /* load the internal image */
-    if (mode != SHUTDOWN_CMD && ploadbuf(path, imagebuf, imageSize, mode) != 0) {
-        free(imagebuf);
-        return Error("load failed");
+    /* otherwise, handle propeller 1 loads */
+    else {
+    
+        /* determine the download mode */
+        if (flags & LFLAG_WRITE_EEPROM)
+            mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+        else if (flags & LFLAG_RUN)
+            mode = DOWNLOAD_RUN_BINARY;
+        else
+            mode = SHUTDOWN_CMD;
+    
+        /* load the internal image */
+        if (mode != SHUTDOWN_CMD && ploadbuf(path, imagebuf, imageSize, mode) != 0) {
+            free(imagebuf);
+            return Error("load failed");
+        }
     }
     
     /* free the image buffer */
@@ -615,6 +670,13 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     if (!(kernelbuf = LoadProgramSegment(c, &program_kernel))) {
         free(imagebuf);
         return Error("can't load .xmmkernel section");
+    }
+    /* if debugging requested, patch */
+    if ( (flags & LFLAG_DEBUG) != 0) {
+        if (!(PatchSectionForDebug(kernelbuf, program_kernel.filesz, 0, c))) {
+            free(imagebuf);
+	    return Error("can't patch .xmmkernel section");
+	}
     }
 
     /* handle downloads to eeprom that must be done before the external memory download */

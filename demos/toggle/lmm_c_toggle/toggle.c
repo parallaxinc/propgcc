@@ -12,6 +12,14 @@
 #include <propeller.h>
 #include <sys/thread.h>
 
+#ifdef __PROPELLER2__
+#define DIR DIRB
+#define OUT PINB
+#else
+#define DIR DIRA
+#define OUT OUTA
+#endif
+
 #define STACK_SIZE 16
 
 /* stack for cog 1 */
@@ -32,16 +40,16 @@ void
 do_toggle(void *arg __attribute__((unused)) )
 {
   unsigned int nextcnt;
-
-  /* get a half second delay from parameters */
-  _DIRA = pins;
+  unsigned tmppins = pins;
 
   /* figure out how long to wait the first time */
-  nextcnt = _CNT + wait_time;
+  nextcnt = getcnt() + wait_time;
 
   /* loop forever, updating the wait time from the mailbox */
   for(;;) {
-    _OUTA ^= pins; /* update the pins */
+    tmppins = pins;
+    DIR = tmppins;
+    OUT ^= tmppins; /* update the pins */
 
     /* sleep until _CNT == nextcnt, and return the new _CNT + wait_time */
     nextcnt = __builtin_propeller_waitcnt(nextcnt, wait_time);
@@ -69,7 +77,11 @@ void main (int argc,  char* argv[])
 
     /* set up the parameters for the C cog */
     pins = 0x3fffffff;
+#if defined(__PROPELLER2__)
+    wait_time = 30000000;
+#else
     wait_time = _clkfreq;  /* start by waiting for 1 second */
+#endif
 
     /* start the new cog */
     n = _start_cog_thread(cog1_stack + STACK_SIZE, do_toggle, NULL, &thread_data);

@@ -2,6 +2,27 @@
 	'' some definitions for the standard
 	'' COG registers
 	''
+#ifdef __PROPELLER2__
+
+	.global PINA
+	.global PINB
+	.global PINC
+	.global PIND
+	.global DIRA
+	.global DIRB
+	.global DIRC
+	.global DIRD
+
+	PINA = (4*0x1F8)
+	PINB = (4*0x1F9)
+	PINC = (4*0x1FA)
+	PIND = (4*0x1FB)
+	DIRA = (4*0x1FC)
+	DIRB = (4*0x1FD)
+	DIRC = (4*0x1FE)
+	DIRD = (4*0x1FF)
+#else
+
 	.global PAR
 	.global CNT
 	.global INA
@@ -35,3 +56,5 @@
 	PHSB = (4*0x1FD)
 	VCFG = (4*0x1FE)
 	VSCL = (4*0x1FF)
+
+#endif

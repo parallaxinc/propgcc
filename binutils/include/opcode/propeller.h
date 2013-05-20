@@ -20,31 +20,45 @@
 
 /* List of possible hardware types, including any pseudo-types like
  * LMM on Propeller-1, */
-#define PROP_1 0
-#define PROP_2 1
-#define PROP_1_LMM 2
+#define PROP_1          1
+#define PROP_2          2
+#define PROP_1_LMM      (PROP_1 | 4)
+#define PROP_2_LMM      (PROP_2 | 8)
 
 /* List of instruction formats */
-#define PROPELLER_OPERAND_NO_OPS      0
-#define PROPELLER_OPERAND_SOURCE_ONLY 1
-#define PROPELLER_OPERAND_DEST_ONLY   2
-#define PROPELLER_OPERAND_TWO_OPS     3
-#define PROPELLER_OPERAND_CALL        4
-#define PROPELLER_OPERAND_IGNORE      5
-#define PROPELLER_OPERAND_JMP         6
-#define PROPELLER_OPERAND_JMPRET      7
-#define PROPELLER_OPERAND_MOVA        8
-#define PROPELLER_OPERAND_LDI         9
-#define PROPELLER_OPERAND_BRW         10
-#define PROPELLER_OPERAND_BRS         11
-#define PROPELLER_OPERAND_XMMIO       12
-#define PROPELLER_OPERAND_FCACHE      13
-#define PROPELLER_OPERAND_MVI         14
-#define PROPELLER_OPERAND_LCALL       15
-#define PROPELLER_OPERAND_MACRO_8     16
-#define PROPELLER_OPERAND_MACRO_0     17
-#define PROPELLER_OPERAND_LEASP       18
-#define PROPELLER_OPERAND_XMOV        19
+#define PROPELLER_OPERAND_NO_OPS            0
+#define PROPELLER_OPERAND_SOURCE_ONLY       1
+#define PROPELLER_OPERAND_DEST_ONLY         2
+#define PROPELLER_OPERAND_TWO_OPS           3
+#define PROPELLER_OPERAND_CALL              4
+#define PROPELLER_OPERAND_IGNORE            5
+#define PROPELLER_OPERAND_JMP               6
+#define PROPELLER_OPERAND_JMPRET            7
+#define PROPELLER_OPERAND_MOVA              8
+#define PROPELLER_OPERAND_LDI               9
+#define PROPELLER_OPERAND_BRW               10
+#define PROPELLER_OPERAND_BRS               11
+#define PROPELLER_OPERAND_XMMIO             12
+#define PROPELLER_OPERAND_FCACHE            13
+#define PROPELLER_OPERAND_MVI               14
+#define PROPELLER_OPERAND_LCALL             15
+#define PROPELLER_OPERAND_MACRO_8           16
+#define PROPELLER_OPERAND_MACRO_0           17
+#define PROPELLER_OPERAND_LEASP             18
+#define PROPELLER_OPERAND_XMOV              19
+#define PROPELLER_OPERAND_PTRS_OPS          20
+#define PROPELLER_OPERAND_PTRD_OPS          21
+#define PROPELLER_OPERAND_DESTIMM           23
+#define PROPELLER_OPERAND_DESTIMM_SRCIMM    24
+#define PROPELLER_OPERAND_SETINDA           25
+#define PROPELLER_OPERAND_SETINDB           26
+#define PROPELLER_OPERAND_SETINDS           27
+#define PROPELLER_OPERAND_REPD              28
+#define PROPELLER_OPERAND_REPS              29
+#define PROPELLER_OPERAND_JMPTASK           30
+#define PROPELLER_OPERAND_BIT               31
+#define PROPELLER_OPERAND_LRET              32
+#define PROPELLER_OPERAND_BRL               33
 
 /* types of compressed instructions available */
 /* normally instructions take 32 bits each; however, we provide
@@ -133,8 +147,16 @@
 #define MACRO_MVREG  0x0A
 #define MACRO_XMVREG 0x0B
 #define MACRO_ADDSP  0x0C
+#define MACRO_LJMP   0x0D
 #define MACRO_FCACHE 0x0E
 #define MACRO_NATIVE 0x0F
+
+/* flags allowed in this instruction */
+#define FLAG_CC         0x01
+#define FLAG_Z          0x02
+#define FLAG_C          0x04
+#define FLAG_R          0x08
+#define FLAG_R_DEF      0x10
 
 /* opcode structure */
 struct propeller_opcode
@@ -143,7 +165,7 @@ struct propeller_opcode
   int opcode;
   int mask;
   int format;
-  int result;
+  int flags;
   int hardware;
   int compress_type;
   int copc;  /* compressed opcode */
@@ -161,6 +183,7 @@ struct propeller_effect
   const char *name;
   int or;
   int and;
+  int flag;
 };
 
 

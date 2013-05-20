@@ -71,6 +71,10 @@ Enable support for loading external code into the cog memory fcache.
 This is enabled by default in optimization levels -O2 and higher, but
 may be disabled with an explicit -mno-fcache.
 
+mp2
+Target RejectNegative Mask(P2) Report
+Select Propeller 2 code generation.
+
 mexperimental
 Target Mask(EXPERIMENTAL)
 Enable experimental optimizations which may or may not work correctly.

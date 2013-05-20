@@ -79,12 +79,12 @@ static section * kernel_section;
  */
 struct GTY(()) propeller_frame_info
 {
-  HOST_WIDE_INT total_size;	/* number of bytes of entire frame.  */
-  HOST_WIDE_INT callee_size;	/* number of bytes to save callee saves.  */
-  HOST_WIDE_INT locals_size;	/* number of bytes for local variables.  */
-  HOST_WIDE_INT args_size;	/* number of bytes for outgoing arguments.  */
-  HOST_WIDE_INT pretend_size;	/* number of bytes we pretend caller pushed.  */
-  unsigned int reg_save_mask;	/* mask of saved registers.  */
+  HOST_WIDE_INT total_size;     /* number of bytes of entire frame.  */
+  HOST_WIDE_INT callee_size;    /* number of bytes to save callee saves.  */
+  HOST_WIDE_INT locals_size;    /* number of bytes for local variables.  */
+  HOST_WIDE_INT args_size;      /* number of bytes for outgoing arguments.  */
+  HOST_WIDE_INT pretend_size;   /* number of bytes we pretend caller pushed.  */
+  unsigned int reg_save_mask;   /* mask of saved registers.  */
 };
 
 /*
@@ -93,6 +93,8 @@ struct GTY(()) propeller_frame_info
 struct GTY(()) machine_function {
   /* the current frame information, calculated by propeller_compute_frame_info */
   struct propeller_frame_info frame;
+  /* a flag to indicate the save of the link register can be eliminated */
+  bool lr_save_eliminated;
 };
 
 static HOST_WIDE_INT propeller_compute_frame_info (void);
@@ -131,6 +133,11 @@ static int propeller_base_target_flags;
 /* true if -mcog is the default mode */
 bool propeller_base_cog;
 
+/* CPU to generate code for */
+enum processor propeller_cpu;
+
+/* true if we should use delayed forms of branches */
+int propeller_use_delay_slots = 0;
 
 /*
  * options handling
@@ -167,12 +174,12 @@ propeller_optimization_options (int level, int size)
   if (level >= FCACHE_DEFAULT_OPTLEVEL && !(TARGET_CMM && size))
     {
       if (propeller_fcache_enable != 0)
-	do_fcache = 1;
+        do_fcache = 1;
     }
   else
     {
       if (propeller_fcache_enable == 1)
-	do_fcache = 1;
+        do_fcache = 1;
     }
 #else
   /* this code turns on fcache only when explicitly requested */
@@ -209,12 +216,19 @@ propeller_return_addr (int count, rtx frame ATTRIBUTE_UNUSED)
 static void
 propeller_option_override (void)
 {
+    propeller_cpu = PROCESSOR_P1;
+    if (TARGET_P2)
+      {
+	propeller_cpu = PROCESSOR_P2;
+	if (TARGET_EXPERIMENTAL)
+	  propeller_use_delay_slots = 1;
+      }
+
     if (flag_pic)
     {
         error ("-fPIC and -fpic are not supported");
         flag_pic = 0;
     }
-
     /* -mcmm implies -mlmm */
     if (TARGET_CMM)
       target_flags |= MASK_LMM;
@@ -241,30 +255,30 @@ propeller_option_override (void)
      */
     if (TARGET_OUTPUT_SPINCODE)
       {
-	target_flags |= MASK_PASM;
-	target_flags &= ~MASK_LMM;
+        target_flags |= MASK_PASM;
+        target_flags &= ~MASK_LMM;
       }
 
     hex_prefix = "0x"; /* default to gas syntax */
     /* set up the assembly output */
     if (TARGET_PASM)
       {
-	propeller_text_asm_op = "\t'.text";
-	propeller_data_asm_op = "\t'.data";
-	propeller_bss_asm_op = "\t'.section\t.bss";
-	hex_prefix = "$";
+        propeller_text_asm_op = "\t'.text";
+        propeller_data_asm_op = "\t'.data";
+        propeller_bss_asm_op = "\t'.section\t.bss";
+        hex_prefix = "$";
       }
     else if (TARGET_LMM || !USE_HUBCOG_DIRECTIVES)
       {
-	propeller_text_asm_op = "\t.text";
-	propeller_data_asm_op = "\t.data";
-	propeller_bss_asm_op = "\t.section\t.bss";
+        propeller_text_asm_op = "\t.text";
+        propeller_data_asm_op = "\t.data";
+        propeller_bss_asm_op = "\t.section\t.bss";
       }
     else
       {
-	propeller_text_asm_op = "\t.text\n\t.cog_ram";
-	propeller_data_asm_op = "\t.data\n\t.hub_ram";
-	propeller_bss_asm_op = "\t.section\t.bss\n\t.hub_ram";
+        propeller_text_asm_op = "\t.text\n\t.cog_ram";
+        propeller_data_asm_op = "\t.data\n\t.hub_ram";
+        propeller_bss_asm_op = "\t.section\t.bss\n\t.hub_ram";
       }
 
     propeller_optimization_options (optimize, optimize_size);
@@ -300,7 +314,9 @@ has_func_attr (tree decl, const char * func_attr)
 {
   tree attrs, a;
 
-  if (!decl) return false;
+  if (decl == NULL_TREE) {
+    decl = current_function_decl;
+  }
   attrs = DECL_ATTRIBUTES (decl);
   a = lookup_attribute (func_attr, attrs);
   return a != NULL_TREE;
@@ -329,14 +345,14 @@ is_fcache_function (tree decl)
 
 static tree
 propeller_handle_func_attribute (tree *node, tree name,
-				      tree args ATTRIBUTE_UNUSED,
-				      int flags ATTRIBUTE_UNUSED,
-				      bool *no_add_attrs)
+                                      tree args ATTRIBUTE_UNUSED,
+                                      int flags ATTRIBUTE_UNUSED,
+                                      bool *no_add_attrs)
 {
   if (TREE_CODE (*node) != FUNCTION_DECL)
     {
       warning (OPT_Wattributes, "%qE attribute only applies to functions",
-	       name);
+               name);
       *no_add_attrs = true;
     }
   return NULL_TREE;
@@ -346,10 +362,10 @@ propeller_handle_func_attribute (tree *node, tree name,
 
 static tree
 propeller_handle_cogmem_attribute (tree *node,
-				     tree name ATTRIBUTE_UNUSED,
-				     tree args,
-				     int flags ATTRIBUTE_UNUSED,
-				     bool *no_add_attrs)
+                                     tree name ATTRIBUTE_UNUSED,
+                                     tree args,
+                                     int flags ATTRIBUTE_UNUSED,
+                                     bool *no_add_attrs)
 {
   tree decl = *node;
 
@@ -364,17 +380,17 @@ propeller_handle_cogmem_attribute (tree *node,
   if (TREE_CODE (decl) != VAR_DECL)
     {
       warning (OPT_Wattributes,
-	       "%<__COGMEM__%> attribute only applies to variables");
+               "%<__COGMEM__%> attribute only applies to variables");
       *no_add_attrs = true;
     }
   else if (args == NULL_TREE && TREE_CODE (decl) == VAR_DECL)
     {
       if (! (TREE_PUBLIC (*node) || TREE_STATIC (*node)))
-	{
-	  warning (OPT_Wattributes, "__COGMEM__ attribute not allowed "
-		   "with auto storage class");
-	  *no_add_attrs = true;
-	}
+        {
+          warning (OPT_Wattributes, "__COGMEM__ attribute not allowed "
+                   "with auto storage class");
+          *no_add_attrs = true;
+        }
     }
   
   if (*no_add_attrs == false)
@@ -413,9 +429,9 @@ propeller_set_cog_mode (int cog_p)
       /* switch to COG mode */
       target_flags &= ~(MASK_LMM|MASK_XMM|MASK_XMM_CODE|MASK_CMM);
       if (!propeller_cog_globals)
-	propeller_cog_globals = save_target_globals ();
+        propeller_cog_globals = save_target_globals ();
       else
-	restore_target_globals (propeller_cog_globals);
+        restore_target_globals (propeller_cog_globals);
     }
   else
     {
@@ -433,12 +449,12 @@ propeller_use_cog_mode_p (tree decl)
   if (decl)
     {
       /* Nested functions must use the same frame pointer as their
-	 parent and must therefore use the same ISA mode.  */
+         parent and must therefore use the same ISA mode.  */
       tree parent = decl_function_context (decl);
       if (parent)
-	decl = parent;
+        decl = parent;
       if (is_native_function (decl))
-	return true;
+        return true;
     }
   return propeller_base_cog;
 }
@@ -484,10 +500,10 @@ propeller_cogaddr_p (rtx x)
 #endif
   if (!TARGET_LMM 
       && ( code == LABEL_REF
-	   || (code == CONST
-	       && GET_CODE (XEXP (x, 0)) == PLUS
-	       && GET_CODE (XEXP (XEXP (x, 0), 1)) == CONST_INT
-	       && propeller_cogaddr_p (XEXP (XEXP (x, 0), 0)) ) ))
+           || (code == CONST
+               && GET_CODE (XEXP (x, 0)) == PLUS
+               && GET_CODE (XEXP (XEXP (x, 0), 1)) == CONST_INT
+               && propeller_cogaddr_p (XEXP (XEXP (x, 0), 0)) ) ))
     {
       return true;
     }
@@ -582,8 +598,8 @@ propeller_asm_file_start (void)
 {
     if (!TARGET_OUTPUT_SPINCODE) {
         default_file_start ();
-	if (TARGET_LMM && USE_HUBCOG_DIRECTIVES)
-	  fprintf (asm_out_file, "\t.hub_ram\n");
+        if (TARGET_LMM && USE_HUBCOG_DIRECTIVES)
+          fprintf (asm_out_file, "\t.hub_ram\n");
         return;
     }
     fprintf (asm_out_file, "%s", spin_prologue);
@@ -734,7 +750,7 @@ pasm_divsi(FILE *f) {
   fprintf(f, "__DIVSI_ret\tret\n");
 }
 /*
- * implement signed division by using udivsi
+ * implement compare and swap
  */
 static void
 pasm_cmpswapsi(FILE *f ATTRIBUTE_UNUSED)
@@ -822,11 +838,11 @@ propeller_weaken_label (FILE *file, const char *name)
 
 void
 propeller_asm_output_aligned_common (FILE *stream,
-				     tree decl,
-				     const char *name,
-				     int size,
-				     int align,
-				     int global)
+                                     tree decl,
+                                     const char *name,
+                                     int size,
+                                     int align,
+                                     int global)
 {
   rtx mem = decl == NULL_TREE ? NULL_RTX : DECL_RTL (decl);
   rtx symbol;
@@ -859,15 +875,15 @@ propeller_asm_output_aligned_common (FILE *stream,
       assemble_name (stream, name);
       fprintf (stream, "\n");
       if (i > 4) {
-	fprintf (stream, "\tlong\t0[%d]\n", i / 4);
-	i = i % 4;
+        fprintf (stream, "\tlong\t0[%d]\n", i / 4);
+        i = i % 4;
       } else if (i == 4) {
-	fprintf (stream, "\tlong\t0\n");
-	i = 0;
+        fprintf (stream, "\tlong\t0\n");
+        i = 0;
       }
       while (i > 0) {
-	fprintf (stream, "\tbyte\t0\n");
-	i--;
+        fprintf (stream, "\tbyte\t0\n");
+        i--;
       }
     }
   else
@@ -875,17 +891,41 @@ propeller_asm_output_aligned_common (FILE *stream,
       fprintf (stream, "\t.comm\t");
       assemble_name (stream, name);
       if (align)
-	fprintf (stream, ",%u,%u\n", size, align / BITS_PER_UNIT);
+        fprintf (stream, ",%u,%u\n", size, align / BITS_PER_UNIT);
       else
-	fprintf (stream, ",%u\n", size);
+        fprintf (stream, ",%u\n", size);
     }
 }
 
-/* test whether punctuation is valid in operand output */
+/*
+ * punctuation:
+ * the punctuation characters we use are:
+ * '~': prints a D if this is a delayed branch sequence
+ */
+
 bool
-propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
+propeller_print_operand_punct_valid_p (unsigned char code)
 {
-    return false;
+  if (code == '~')
+    return true;
+  return false;
+}
+
+static void
+propeller_print_operand_punctuation (FILE *file, int ch)
+{
+  switch (ch)
+    {
+    case '~':
+      if (final_sequence != 0)
+	{
+	  fputc ('d', file);
+	}
+      break;
+    default:
+      gcc_unreachable ();
+      break;
+    }
 }
 
 /* The PRINT_OPERAND worker; prints an operand to an assembler
@@ -898,7 +938,9 @@ propeller_print_operand_punct_valid_p (unsigned char code ATTRIBUTE_UNUSED)
  *   S   Print a mask (1<<n) where n is a constant
  *   B   Print a cog memory reference; note that the hardware wants
  *       these to be treated as long addresses, so they have to be divided by 4
- *         
+ *   I   Print the instruction opcode for a mathematical operation
+ *   Q   The register containing the least significant part of a 64 bit value
+ *   R   The register containing the most significant part of a 64 bit value
  */
 
 #define PREDLETTER(YES, REV)  (letter == 'p') ? (YES) : (REV)
@@ -909,6 +951,11 @@ propeller_print_operand (FILE * file, rtx op, int letter)
   enum rtx_code code;
   const char *str;
 
+  if (propeller_print_operand_punct_valid_p (letter))
+    {
+      propeller_print_operand_punctuation (file, letter);
+      return;
+    }
   code = GET_CODE (op);
   if (letter == 'p' || letter == 'P') {
       switch (code) {
@@ -940,7 +987,7 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       fprintf (file, "IF_%s", str);
       return;
   }
-  if (letter == 'Q') {
+  if (letter == 'I') {
     switch (code) {
     case PLUS: str = "add"; break;
     case MINUS: str = "sub"; break;
@@ -980,13 +1027,53 @@ propeller_print_operand (FILE * file, rtx op, int letter)
   if (letter == 'B') {
     if (code != SYMBOL_REF && code != LABEL_REF)
       {
-	gcc_unreachable();
+        gcc_unreachable();
       }
     fprintf (file, "(");
     output_addr_const (file, op);
     fprintf (file, "/4)");
     return;
   }
+  if (letter == 'Q') {
+      if (code == CONST_INT || code == CONST_DOUBLE)
+	{
+	  rtx part = gen_lowpart (SImode, op);
+	  fprintf (file, "#" HOST_WIDE_INT_PRINT_DEC, INTVAL (part));
+	  return;
+	}
+
+      if (code != REG || REGNO (op) > PROP_SP_REGNUM)
+	{
+	  output_operand_lossage ("invalid operand for code '%c'", letter);
+	  return;
+	}
+
+      asm_fprintf (file, "%r", REGNO (op));
+      return;
+  }
+  if (letter == 'R') {
+      if (code == CONST_INT || code == CONST_DOUBLE)
+	{
+	  enum machine_mode mode = GET_MODE (op);
+	  rtx part;
+
+	  if (mode == VOIDmode)
+	    mode = DImode;
+	  part = gen_highpart_mode (SImode, mode, op);
+	  fprintf (file, "#" HOST_WIDE_INT_PRINT_DEC, INTVAL (part));
+	  return;
+	}
+
+      if (code != REG || REGNO (op) > PROP_SP_REGNUM)
+	{
+	  output_operand_lossage ("invalid operand for code '%c'", letter);
+	  return;
+	}
+
+      asm_fprintf (file, "%r", REGNO (op) + 1);
+      return;
+  }
+
   if (code == SIGN_EXTEND)
     op = XEXP (op, 0), code = GET_CODE (op);
   else if (code == REG || code == SUBREG)
@@ -994,9 +1081,9 @@ propeller_print_operand (FILE * file, rtx op, int letter)
       int regnum;
 
       if (code == REG)
-	regnum = REGNO (op);
+        regnum = REGNO (op);
       else
-	regnum = true_regnum (op);
+        regnum = true_regnum (op);
 
       fprintf (file, "%s", reg_names[regnum]);
     }
@@ -1007,9 +1094,9 @@ propeller_print_operand (FILE * file, rtx op, int letter)
   else if (code == CONST_DOUBLE)
     {
       if ((CONST_DOUBLE_LOW (op) != 0) || (CONST_DOUBLE_HIGH (op) != 0))
-	output_operand_lossage ("only 0.0 can be loaded as an immediate");
+        output_operand_lossage ("only 0.0 can be loaded as an immediate");
       else
-	fprintf (file, "#0");
+        fprintf (file, "#0");
     }
   else if (code == EQ)
     fprintf (file, "E  ");
@@ -1132,9 +1219,9 @@ propeller_legitimate_address_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx add
 
 static reg_class_t
 propeller_secondary_reload (bool in_p ATTRIBUTE_UNUSED, rtx x ATTRIBUTE_UNUSED,
-			    reg_class_t reload_class,
-			    enum machine_mode reload_mode ATTRIBUTE_UNUSED,
-			    secondary_reload_info *sri ATTRIBUTE_UNUSED)
+                            reg_class_t reload_class,
+                            enum machine_mode reload_mode ATTRIBUTE_UNUSED,
+                            secondary_reload_info *sri ATTRIBUTE_UNUSED)
 {
   enum reg_class rclass = (enum reg_class) reload_class;
 
@@ -1205,9 +1292,9 @@ propeller_rtx_costs (rtx x, int code, int outer_code ATTRIBUTE_UNUSED, int *tota
 
     case MEM:
         total = propeller_address_cost (XEXP (x, 0), speed);
-	total += COSTS_N_INSNS(4);
-	if (TARGET_XMM)
-	  total += COSTS_N_INSNS(20); /* memory is hideously expensive in XMM mode */
+        total += COSTS_N_INSNS(4);
+        if (TARGET_XMM)
+          total += COSTS_N_INSNS(20); /* memory is hideously expensive in XMM mode */
         done = true;
         break;
 
@@ -1279,7 +1366,7 @@ emit_add (rtx dest, rtx src0, rtx src1)
 
 static rtx
 propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
-		   const_tree type, bool named)
+                   const_tree type, bool named)
 {
   if (mode == VOIDmode)
     /* Compute operand 2 of the call insn.  */
@@ -1296,9 +1383,36 @@ propeller_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 
 static void
 propeller_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
-			   const_tree type, bool named ATTRIBUTE_UNUSED)
+                           const_tree type, bool named ATTRIBUTE_UNUSED)
 {
   *cum += PROP_NUM_REGS (mode, type);
+}
+
+/*
+ * check to see if a function can be called as a "sibling" call
+ * "decl" is a function_decl or NULL if this is an indirect call
+ * (in which case "exp" is the expression for it)
+ */
+static bool
+propeller_function_ok_for_sibcall (tree decl, tree exp ATTRIBUTE_UNUSED)
+{
+  /* do not allow indirect tail calls; we don't know if the target
+   * is naked, native, or whatever
+   */
+  if (decl == NULL)
+    return false;
+
+  /* do not allow tail calls to/from native functions (the calling convention
+   * won't allow it) or from naked functions
+   */
+  if (is_naked_function (current_function_decl)
+      || is_native_function (current_function_decl)
+      || is_native_function (decl))
+    {
+      return false;
+    }
+
+  return true;
 }
 
 
@@ -1399,34 +1513,34 @@ propeller_canonicalize_comparison (enum rtx_code code, rtx *op0, rtx *op1)
        * e.g. x > N => x >= N+1
        */
       if ( GET_CODE (*op1) == CONST_INT )
-	{
-	  i = INTVAL (*op1);
-	  switch (code)
-	    {
-	    case GT:
-	    case LE:
-	      if (i != maxval)
-		{
-		  *op1 = GEN_INT (i+1);
-		  return code == GT ? GE : LT;
-		}
-	      break;
-	    case GTU:
-	    case LEU:
-	      if (i != maxval)
-		{
-		  *op1 = GEN_INT (i+1);
-		  return code == GTU ? GEU : LTU;
-		}
-	      break;
-	    default:
-	      gcc_unreachable ();
-	    }
-	  /* give up if it was a constant integer, better to just
-	     compare and accept that some optimization opportunities are
-	     missed */
-	  return code;
-	}
+        {
+          i = INTVAL (*op1);
+          switch (code)
+            {
+            case GT:
+            case LE:
+              if (i != maxval)
+                {
+                  *op1 = GEN_INT (i+1);
+                  return code == GT ? GE : LT;
+                }
+              break;
+            case GTU:
+            case LEU:
+              if (i != maxval)
+                {
+                  *op1 = GEN_INT (i+1);
+                  return code == GTU ? GEU : LTU;
+                }
+              break;
+            default:
+              gcc_unreachable ();
+            }
+          /* give up if it was a constant integer, better to just
+             compare and accept that some optimization opportunities are
+             missed */
+          return code;
+        }
       /* otherwise, reverse the condition */
       temp = *op0;
       *op0 = *op1;
@@ -1534,7 +1648,7 @@ mark_frame_related (rtx insn)
       unsigned int i;
 
       for (i = 0; i < (unsigned) XVECLEN (insn, 0); i++)
-	RTX_FRAME_RELATED_P (XVECEXP (insn, 0, i)) = 1;
+        RTX_FRAME_RELATED_P (XVECEXP (insn, 0, i)) = 1;
     }
 }
 
@@ -1580,20 +1694,20 @@ propeller_initial_elimination_offset (int from, int to)
   if (from == ARG_POINTER_REGNUM)
     {
       if (to == STACK_POINTER_REGNUM)
-	offset = base;
+        offset = base;
       else if (to == HARD_FRAME_POINTER_REGNUM)
-	offset = cfun->machine->frame.callee_size - UNITS_PER_WORD;
+        offset = cfun->machine->frame.callee_size - UNITS_PER_WORD;
       else
-	gcc_unreachable ();
+        gcc_unreachable ();
     }
   else if (from == FRAME_POINTER_REGNUM)
     {
       if (to == STACK_POINTER_REGNUM)
-	offset = base - (cfun->machine->frame.callee_size + cfun->machine->frame.locals_size);
+        offset = base - (cfun->machine->frame.callee_size + cfun->machine->frame.locals_size);
       else if (to == HARD_FRAME_POINTER_REGNUM)
-	offset = -(cfun->machine->frame.locals_size+UNITS_PER_WORD);
+        offset = -(cfun->machine->frame.locals_size+UNITS_PER_WORD);
       else
-	gcc_unreachable ();
+        gcc_unreachable ();
     }
   else
     gcc_unreachable();
@@ -1624,14 +1738,14 @@ propeller_emit_stack_pushm (rtx * operands)
   if (TARGET_CMM)
     {
       asm_fprintf (asm_out_file, "\tlpushm\t#(%ld<<4)+%ld\n",
-		   (long)reg_count,
-		   (long)start_reg);
+                   (long)reg_count,
+                   (long)start_reg);
     }
   else
     {
       asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_PUSHM\n",
-		   (long)reg_count,
-		   (long)start_reg);
+                   (long)reg_count,
+                   (long)start_reg);
     }
 }
 
@@ -1659,19 +1773,19 @@ propeller_emit_stack_popm (rtx * operands, int doret)
     {
       popfunc = doret ? "lpopret" : "lpopm";
       asm_fprintf (asm_out_file, "\t%s\t#(%ld<<4)+%ld\n",
-		   popfunc,
-		   (long)reg_count,
-		   (long)start_reg);
+                   popfunc,
+                   (long)reg_count,
+                   (long)start_reg);
     }
   else
     {
       popfunc = doret ? "POPRET" : "POPM";
       asm_fprintf (asm_out_file, "\tmov\t__TMP0,#(%ld<<4)+%ld\n\tcall\t#__LMM_%s\n",
-		   (long)reg_count,
-		   (long)start_reg,
-		   popfunc);
+                   (long)reg_count,
+                   (long)start_reg,
+                   popfunc);
       if (doret)
-	asm_fprintf (asm_out_file, "\t'' never returns\n");
+        asm_fprintf (asm_out_file, "\t'' never returns\n");
     }
 }
 
@@ -1689,16 +1803,16 @@ gen_propeller_store_vector (unsigned int low, unsigned int reg_count)
 
   XVECEXP (vector, 0, 0) =
     gen_rtx_SET (VOIDmode, stack_pointer_rtx,
-		 gen_rtx_MINUS (SImode, stack_pointer_rtx,
-				GEN_INT ((count - 1) * UNITS_PER_WORD)));
+                 gen_rtx_MINUS (SImode, stack_pointer_rtx,
+                                GEN_INT ((count - 1) * UNITS_PER_WORD)));
 
   for (i = 0; i < count - 1; i++)
     XVECEXP (vector, 0, i + 1) =
       gen_rtx_SET (VOIDmode,
-		   gen_rtx_MEM (SImode,
-				gen_rtx_MINUS (SImode, stack_pointer_rtx,
-					       GEN_INT ((i + 1) * UNITS_PER_WORD))),
-		   gen_rtx_REG (SImode, low + i));
+                   gen_rtx_MEM (SImode,
+                                gen_rtx_MINUS (SImode, stack_pointer_rtx,
+                                               GEN_INT ((i + 1) * UNITS_PER_WORD))),
+                   gen_rtx_REG (SImode, low + i));
   return vector;
 }
 
@@ -1716,17 +1830,17 @@ gen_propeller_popm_vector (unsigned int high, unsigned int reg_count)
 
   XVECEXP (vector, 0, 0) =
     gen_rtx_SET (VOIDmode, stack_pointer_rtx,
-		 plus_constant (stack_pointer_rtx,
-				(count - 1) * UNITS_PER_WORD));
+                 plus_constant (stack_pointer_rtx,
+                                (count - 1) * UNITS_PER_WORD));
 
   for (i = 0; i < count - 1; i++)
     XVECEXP (vector, 0, i + 1) =
       gen_rtx_SET (VOIDmode,
-		   gen_rtx_REG (SImode, high - i),
-		   gen_rtx_MEM (SImode,
-				i == 0 ? stack_pointer_rtx
-				: plus_constant (stack_pointer_rtx,
-						 i * UNITS_PER_WORD)));
+                   gen_rtx_REG (SImode, high - i),
+                   gen_rtx_MEM (SImode,
+                                i == 0 ? stack_pointer_rtx
+                                : plus_constant (stack_pointer_rtx,
+                                                 i * UNITS_PER_WORD)));
 
   return vector;
 }
@@ -1745,7 +1859,7 @@ push_multiple (int first_reg, int reg_count)
     gcc_unreachable ();
   if (TARGET_LMM && reg_count > 1) {
     insn = gen_stack_pushm ( GEN_INT(reg_count * UNITS_PER_WORD),
-			     gen_propeller_store_vector(first_reg, reg_count) );
+                             gen_propeller_store_vector(first_reg, reg_count) );
     insn = emit_insn ( insn );
     mark_frame_related ( insn );
     return reg_count * UNITS_PER_WORD;
@@ -1788,16 +1902,16 @@ expand_save_registers (struct propeller_frame_info *info)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
-	if (last_reg == regno-1) {
-	  reg_count++;
-	} else {
-	  /* spit out a single push or a sequence of push multiples */
-	  if (reg_start > 0)
-	    pushed += push_multiple (reg_start, reg_count);
-	  reg_count = 1;
-	  reg_start = regno;
-	}
-	last_reg = regno;
+        if (last_reg == regno-1) {
+          reg_count++;
+        } else {
+          /* spit out a single push or a sequence of push multiples */
+          if (reg_start > 0)
+            pushed += push_multiple (reg_start, reg_count);
+          reg_count = 1;
+          reg_start = regno;
+        }
+        last_reg = regno;
       }
     }
   if (reg_count > 0) {
@@ -1819,7 +1933,7 @@ pop_multiple (int last_reg, int reg_count)
     gcc_unreachable ();
   if (TARGET_LMM && reg_count > 1) {
     insn = gen_stack_popm ( GEN_INT(reg_count * UNITS_PER_WORD), 
-			    gen_propeller_popm_vector( last_reg, reg_count ) );
+                            gen_propeller_popm_vector( last_reg, reg_count ) );
     insn = emit_insn ( insn );
     return;
   }
@@ -1857,21 +1971,21 @@ expand_restore_registers (struct propeller_frame_info *info)
     {
       if ((reg_save_mask & (1 << regno)) != 0)
       {
-	if (last_reg == regno+1)
-	  {
-	    reg_count++;
-	  }
-	else
-	  {
-	    /* spit out a single pop or pop multiple */
-	    if (reg_end > 0)
-	      {
-		pop_multiple (reg_end, reg_count);
-	      }
-	    reg_count = 1;
-	    reg_end = regno;
-	  }
-	last_reg = regno;
+        if (last_reg == regno+1)
+          {
+            reg_count++;
+          }
+        else
+          {
+            /* spit out a single pop or pop multiple */
+            if (reg_end > 0)
+              {
+                pop_multiple (reg_end, reg_count);
+              }
+            reg_count = 1;
+            reg_end = regno;
+          }
+        last_reg = regno;
       }
     }
 
@@ -1892,17 +2006,17 @@ stack_adjust (HOST_WIDE_INT amount)
       r7 = gen_rtx_REG (word_mode, 7);
       insn = emit_move_insn (r7, GEN_INT (amount));
       if (amount < 0)
-	RTX_FRAME_RELATED_P (insn) = 1;
+        RTX_FRAME_RELATED_P (insn) = 1;
       insn = emit_add (stack_pointer_rtx, stack_pointer_rtx, r7);
       if (amount < 0)
-	RTX_FRAME_RELATED_P (insn) = 1;
+        RTX_FRAME_RELATED_P (insn) = 1;
     }
   else
     {
       insn = emit_add (stack_pointer_rtx,
-		       stack_pointer_rtx, GEN_INT (amount));
+                       stack_pointer_rtx, GEN_INT (amount));
       if (amount < 0)
-	RTX_FRAME_RELATED_P (insn) = 1;
+        RTX_FRAME_RELATED_P (insn) = 1;
     }
 }
 
@@ -1930,10 +2044,10 @@ propeller_compute_frame_info (void)
   for (regno = 0; regno <= PROP_FP_REGNUM; regno++)
     {
       if (df_regs_ever_live_p (regno) && !call_used_regs[regno])
-	{
-	  reg_save_mask |= 1 << regno;
-	  callee_size += UNITS_PER_WORD;
-	}
+        {
+          reg_save_mask |= 1 << regno;
+          callee_size += UNITS_PER_WORD;
+        }
     }
   if (!(reg_save_mask & (1 << PROP_FP_REGNUM)) && propeller_use_frame_pointer())
     {
@@ -1963,10 +2077,25 @@ propeller_compute_frame_info (void)
   return total_size;
 }
 
+bool
+propeller_epilogue_uses(int regno ATTRIBUTE_UNUSED)
+{
+  /* We acutally lie about this and say that the epilogue does not
+     use lr (although it does). The reason is that the prologue will
+     arrange to push lr if it is ever live in the function, so the
+     epilogue will pop it and use the popped version.
+  */
+#if 0
+  if (regno == PROP_LR_REGNUM)
+    return true;
+#endif
+  return false;
+}
+
 /* set to 1 to keep scheduling from moving around stuff in the prologue
  * and epilogue
  */
-#define PROLOGUE_BLOCKAGE 1
+#define PROLOGUE_BLOCKAGE (!TARGET_EXPERIMENTAL)
 
 /* Create and emit instructions for a functions prologue.  */
 void
@@ -1991,7 +2120,7 @@ propeller_expand_prologue (void)
       /* Setup frame pointer if it's needed.  */
       if (propeller_use_frame_pointer())
       {
-	  /* Move sp to fp.  */
+          /* Move sp to fp.  */
           hardfp = gen_rtx_REG (Pmode, PROP_FP_REGNUM);
           insn = emit_move_insn (hardfp, stack_pointer_rtx);
           RTX_FRAME_RELATED_P (insn) = 1; 
@@ -2001,10 +2130,11 @@ propeller_expand_prologue (void)
       stack_adjust (-(cfun->machine->frame.total_size - pushed));
 
 
-#ifdef PROLOGUE_BLOCKAGE
-      /* Prevent prologue from being scheduled into function body.  */
-      emit_insn (gen_blockage ());
-#endif
+      if (PROLOGUE_BLOCKAGE)
+	{
+	  /* Prevent prologue from being scheduled into function body.  */
+	  emit_insn (gen_blockage ());
+	}
     }
 }
 
@@ -2043,10 +2173,11 @@ propeller_expand_epilogue (bool is_sibcall)
 
   if (cfun->machine->frame.total_size > 0)
     {
-#ifdef PROLOGUE_BLOCKAGE
-      /* Prevent stack code from being reordered.  */
-      emit_insn (gen_blockage ());
-#endif
+      if (PROLOGUE_BLOCKAGE)
+	{
+	  /* Prevent stack code from being reordered.  */
+	  emit_insn (gen_blockage ());
+	}
 
       /* Deallocate stack.  */
       if (propeller_use_frame_pointer ())
@@ -2073,9 +2204,12 @@ propeller_expand_epilogue (bool is_sibcall)
     rtx current_func_sym = XEXP (DECL_RTL (current_function_decl), 0);
     emit_jump_insn (gen_native_return (current_func_sym));
   }
-  else
+  else if (!is_sibcall)
   {
-    emit_jump_insn (gen_return_internal (lr_rtx));
+    if (TARGET_LMM)
+      emit_jump_insn (gen_return_lmm (lr_rtx));
+    else
+      emit_jump_insn (gen_return_cog (lr_rtx));
   }
 }
 
@@ -2108,7 +2242,7 @@ propeller_can_use_return (void)
  * matching needs to be done
  */
 bool
-propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
+propeller_expand_call (rtx setreg, rtx dest, rtx numargs, bool sibcall)
 {
     rtx callee = XEXP (dest, 0);
     if (GET_CODE (callee) == SYMBOL_REF)
@@ -2121,6 +2255,9 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
             {
                 error("native function cannot be recursive");
             }
+	    if (sibcall) {
+	      return false;  /* no sibcalls from native functions */
+	    }
             if (setreg == NULL_RTX) {
                 pat = gen_call_native (callee, numargs);
             } else {
@@ -2129,13 +2266,13 @@ propeller_expand_call (rtx setreg, rtx dest, rtx numargs)
             emit_call_insn (pat);
             return true;
         } else if (is_native_function (current_function_decl) && !propeller_base_cog) {
-	  /* native function cannot call non-native in LMM mode */
-	  /* this is because the non-native function has to be interpreted
-	     from hub (or external) memory, the native is internal to
-	     cog memory
-	  */
-	  error("native function can call non-native only in -mcog mode");
-	}
+          /* native function cannot call non-native in LMM mode */
+          /* this is because the non-native function has to be interpreted
+             from hub (or external) memory, the native is internal to
+             cog memory
+          */
+          error("native function can call non-native only in -mcog mode");
+        }
     }
     return false;
 }
@@ -2149,7 +2286,7 @@ propeller_legitimate_constant_p (rtx x)
       return true;
     case CONST_DOUBLE:
       if (GET_MODE (x) == VOIDmode)
-	return true;
+        return true;
       return false;
     case SYMBOL_REF:
       return TARGET_LMM || SYMBOL_REF_FUNCTION_P (x);
@@ -2170,7 +2307,7 @@ propeller_const_ok_for_letter_p (HOST_WIDE_INT value, int c)
     case 'I': return value >= 0 && value <= 511;
     case 'M': return value >= -512 && value < 0;
     case 'N': return value >= -511 && value <= 0;
-    case 'W': return value < 0 && value > 511;
+    case 'W': return value < 0 || value > 511;
     default:
         gcc_unreachable();
     }
@@ -2184,8 +2321,8 @@ static void
 propeller_asm_init_sections (void)
 {
   kernel_section = get_unnamed_section(SECTION_WRITE|SECTION_CODE,
-				       output_section_asm_op,
-				       "\t.section .kernel,\"aw\",@progbits");
+                                       output_section_asm_op,
+                                       "\t.section .kernel,\"aw\",@progbits");
 }
 
 /* where should we put a constant?
@@ -2195,15 +2332,20 @@ propeller_asm_init_sections (void)
  */
 static section *
 propeller_select_rtx_section (enum machine_mode mode, rtx x,
-			      unsigned HOST_WIDE_INT align)
+                              unsigned HOST_WIDE_INT align)
 {
+  if (is_native_function (current_function_decl) && !propeller_base_cog)
+    {
+      if (GET_MODE_SIZE (mode) <= BITS_PER_UNIT && mode != BLKmode)
+	return kernel_section;
+    }
   if (!TARGET_LMM)
     {
       if (GET_MODE_SIZE (mode) <= BITS_PER_UNIT
-	  && mode != BLKmode)
-	{
-	  return text_section;
-	}
+          && mode != BLKmode)
+        {
+          return text_section;
+        }
     }
   return default_elf_select_rtx_section (mode, x, align);
 }
@@ -2219,11 +2361,11 @@ propeller_select_section (tree decl, int reloc, unsigned HOST_WIDE_INT align)
     {
     case VAR_DECL:
       if (lookup_attribute ("cogmem", DECL_ATTRIBUTES (decl)))
-	return propeller_base_cog ? text_section : kernel_section;
-	  break;
+        return propeller_base_cog ? text_section : kernel_section;
+          break;
     case FUNCTION_DECL:
       if (is_native_function (decl) && !propeller_base_cog)
-	return kernel_section;
+        return kernel_section;
     default:
       break;
     }
@@ -2555,8 +2697,8 @@ propeller_expand_builtin_1op(enum insn_code icode, rtx target)
 /* Expand a call to a builtin function */
 static rtx
 propeller_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
-			 enum machine_mode mode ATTRIBUTE_UNUSED,
-			 int ignore ATTRIBUTE_UNUSED)
+                         enum machine_mode mode ATTRIBUTE_UNUSED,
+                         int ignore ATTRIBUTE_UNUSED)
 {
   tree fndecl = TREE_OPERAND (CALL_EXPR_FN (exp), 0);
   int fcode = DECL_FUNCTION_CODE (fndecl);
@@ -2613,9 +2755,9 @@ propeller_forward_branch_p (rtx insn)
   while (insn)
     {
       if (insn == lab)
-	return true;
+        return true;
       else
-	insn = NEXT_INSN (insn);
+        insn = NEXT_INSN (insn);
     }
 
   return false;
@@ -2630,6 +2772,10 @@ get_call_dest(rtx branch)
 {
   rtx call;
   call = PATTERN (branch);
+
+  if (GET_CODE (call) == COND_EXEC)
+    call = COND_EXEC_CODE (call);
+
   /* there might be a parallel in here with a clobber */
   if (GET_CODE (call) == PARALLEL)
     call = XVECEXP (call, 0, 0);
@@ -2678,7 +2824,12 @@ get_jump_dest(rtx branch)
   if (extract_asm_operands (call) != NULL)
     return NULL;
 
-  set = single_set (branch);
+  if (GET_CODE (call) == SET)
+    {
+      set = call;
+    }
+  else
+    set = single_set (branch);
   if (!set)
     return NULL;
 
@@ -2689,9 +2840,9 @@ get_jump_dest(rtx branch)
   if (GET_CODE (src) == IF_THEN_ELSE)
     {
       if (GET_CODE (XEXP (src, 1)) != PC)
-	src = XEXP (src, 1);
+        src = XEXP (src, 1);
       else
-	src = XEXP (src, 2);
+        src = XEXP (src, 2);
     }
 
   return src;
@@ -2735,19 +2886,19 @@ fcache_jump_dest_in_block (rtx jump, rtx first, rtx last)
       first_addr = INSN_ADDRESSES (INSN_UID (first));
       last_addr = INSN_ADDRESSES (INSN_UID (last));
       if (dump_file)
-	{
-	  fprintf (dump_file, "checking destination label for: ");
-	  print_rtl_single (dump_file, jump);
-	  fprintf (dump_file, ">>>address (first, dest, last): (%lx,%lx,%lx)\n",
-		   first_addr, label_addr, last_addr);
-	}
+        {
+          fprintf (dump_file, "checking destination label for: ");
+          print_rtl_single (dump_file, jump);
+          fprintf (dump_file, ">>>address (first, dest, last): (%lx,%lx,%lx)\n",
+                   first_addr, label_addr, last_addr);
+        }
       return (label_addr >= first_addr) && (label_addr <= last_addr);
     }
   last = NEXT_INSN (last);
   for (insn = first; insn != last; insn = NEXT_INSN (insn))
     {
       if (insn == label)
-	return true;
+        return true;
     }
   return false;
 }
@@ -2766,10 +2917,10 @@ fcache_label_refs_in_block (rtx lab, rtx first, rtx last)
   while (insn && insn != last)
     {
       if ( (GET_CODE (insn) == JUMP_INSN)
-	   && (lab == JUMP_LABEL(insn)) )
-	{
-	  count++;
-	}
+           && (lab == JUMP_LABEL(insn)) )
+        {
+          count++;
+        }
       insn = NEXT_INSN (insn);
     }
   
@@ -2789,7 +2940,7 @@ propeller_unlikely_branch_p (rtx jump)
     {
       HOST_WIDE_INT prob = INTVAL (XEXP (note, 0));
       if (prob < (REG_BR_PROB_BASE * 4 / 10))
-	return true;
+        return true;
     }
   /* branch is not known to be unlikely */
   return false;
@@ -2808,8 +2959,6 @@ propeller_unlikely_branch_p (rtx jump)
  * or recursive calls
  */
 
-#define MAX_FCACHE_SIZE ( TARGET_CMM ? 252 : 508 )
-
 static bool
 fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 {
@@ -2825,181 +2974,184 @@ fcache_block_ok (rtx first, rtx last, bool func_p, bool force_p)
 
   if (dump_file)
     fprintf (dump_file, "checking block, func_p = %s\n",
-	     func_p ? "TRUE" : "FALSE");
+             func_p ? "TRUE" : "FALSE");
 
-  fcache_size = MAX_FCACHE_SIZE;
+  if (TARGET_CMM || TARGET_XMM_CODE)
+    fcache_size = 252;
+  else
+    fcache_size = 508;
 
   /* quick check for block too big */
   if (INSN_ADDRESSES_SET_P ())
     {
       total_len = INSN_ADDRESSES (INSN_UID (last)) - INSN_ADDRESSES (INSN_UID (first));
       if (total_len > fcache_size)
-	{
-	  if (print_msgs)
-	    {
-	      warning (0, "function %s is too large for fcache", current_function_name ());
-	    }
-	  if (dump_file)
-	    {
-	      fprintf (dump_file, "...block too long to fit in fcache\n");
-	    }
-	  return false;
-	}
+        {
+          if (print_msgs)
+            {
+              warning (0, "function %s is too large for fcache", current_function_name ());
+            }
+          if (dump_file)
+            {
+              fprintf (dump_file, "...block too long to fit in fcache\n");
+            }
+          return false;
+        }
     }
   total_len = 0;
   last_next = NEXT_INSN (last);
   for (insn = first; insn && insn != last_next; insn = NEXT_INSN (insn))
     {
       if (!INSN_P (insn) && !LABEL_P (insn))
-	continue;
+        continue;
 
       if (GET_CODE (insn) == CALL_INSN)
-	{
-	  /* check for recursive call */
-	  dest = get_call_dest (insn);
-	  if (!dest || GET_CODE(dest) != SYMBOL_REF)
-	    {
-	      if (dump_file)
-		{
-		  fprintf (dump_file, "...call not to a symbol:\n");
-		  print_rtl_single (dump_file, insn);
-		}
-	      if (print_msgs)
-		{
-		  warning (0, "could not place function %s in fcache: it contains unknown call", current_function_name ());
-		}
-	      return false;
-	    }
-	  /* allow recursive functions */
-	  if (func_p && dest == XEXP (DECL_RTL (current_function_decl), 0))
-	    {
-	      loop_count++;
-	    }
-	  else if ( !is_native_function (SYMBOL_REF_DECL (dest)) )
-	    {	  
-	      if (dump_file)
-		{
-		  fprintf (dump_file, "...call inside block\n");
-		}
-	      if (print_msgs)
-		{
-		  warning (0, "could not place function %s in fcache: contains call to non-NATIVE function", current_function_name ());
-		}
-	      return false;
-	    }
-	}
+        {
+          /* check for recursive call */
+          dest = get_call_dest (insn);
+          if (!dest || GET_CODE(dest) != SYMBOL_REF)
+            {
+              if (dump_file)
+                {
+                  fprintf (dump_file, "...call not to a symbol:\n");
+                  print_rtl_single (dump_file, insn);
+                }
+              if (print_msgs)
+                {
+                  warning (0, "could not place function %s in fcache: it contains unknown call", current_function_name ());
+                }
+              return false;
+            }
+          /* allow recursive functions */
+          if (func_p && dest == XEXP (DECL_RTL (current_function_decl), 0))
+            {
+              loop_count++;
+            }
+          else if ( !is_native_function (SYMBOL_REF_DECL (dest)) )
+            {     
+              if (dump_file)
+                {
+                  fprintf (dump_file, "...call inside block\n");
+                }
+              if (print_msgs)
+                {
+                  warning (0, "could not place function %s in fcache: contains call to non-NATIVE function", current_function_name ());
+                }
+              return false;
+            }
+        }
       else if (GET_CODE (insn) == JUMP_INSN)
-	{
-	  dest = get_jump_dest (insn);
-	  /* we probably already checked all jumps earlier, but
-	     at the time we did not know whether the whole function
-	     was being cached or not (func_p); check again
-	  */
-	  if (!dest_ok_for_fcache (dest, func_p))
-	    {
-	      if (dump_file)
-		{
-		  fprintf (dump_file, "...jump not to a label\n");
-		}
-	      if (print_msgs)
-		{
-		  warning (0, "could not place function %s in fcache: it contains a jump not to a label", current_function_name ());
-		}
-	      return false;
-	    }
-	  if (GET_CODE (dest) == LABEL_REF)
-	    {
-	      /* if it's a function, we want to see at least one loop */
-	      if (func_p)
-		{
-		  if (!propeller_forward_branch_p (insn)
-		      && !propeller_unlikely_branch_p (insn)
-		      )
-		    {
-		      loop_count++;
-		    }
-		}
-	      else
-		{
-		  /* not a function: verify that the jump stays inside
-		     the block */
-		  if (!fcache_jump_dest_in_block (insn, first, last))
-		    {
-		      if (dump_file)
-			{
-			  fprintf (dump_file, "...jump outside block:\n");
-			  print_rtl_single (dump_file, insn);
-			}
-		      if (print_msgs)
-			{
-			  warning (0, "could not place function %s in fcache: contains a branch outside the function", current_function_name ());
-			}
-		      return false;
-		    }
-		}
-	    }
-	}
+        {
+          dest = get_jump_dest (insn);
+          /* we probably already checked all jumps earlier, but
+             at the time we did not know whether the whole function
+             was being cached or not (func_p); check again
+          */
+          if (!dest_ok_for_fcache (dest, func_p))
+            {
+              if (dump_file)
+                {
+                  fprintf (dump_file, "...jump not to a label\n");
+                }
+              if (print_msgs)
+                {
+                  warning (0, "could not place function %s in fcache: it contains a jump not to a label", current_function_name ());
+                }
+              return false;
+            }
+          if (GET_CODE (dest) == LABEL_REF)
+            {
+              /* if it's a function, we want to see at least one loop */
+              if (func_p)
+                {
+                  if (!propeller_forward_branch_p (insn)
+                      && !propeller_unlikely_branch_p (insn)
+                      )
+                    {
+                      loop_count++;
+                    }
+                }
+              else
+                {
+                  /* not a function: verify that the jump stays inside
+                     the block */
+                  if (!fcache_jump_dest_in_block (insn, first, last))
+                    {
+                      if (dump_file)
+                        {
+                          fprintf (dump_file, "...jump outside block:\n");
+                          print_rtl_single (dump_file, insn);
+                        }
+                      if (print_msgs)
+                        {
+                          warning (0, "could not place function %s in fcache: contains a branch outside the function", current_function_name ());
+                        }
+                      return false;
+                    }
+                }
+            }
+        }
       else if (LABEL_P (insn))
-	{
-	  /* check here to make sure all references to the label are inside the block */
-	  int label_uses = LABEL_NUSES (insn);
-	  int uses_in_block;
-	  if (label_uses <= 0)
-	    {
-	      if (dump_file)
-		{
-		  fprintf (dump_file, "...unable to find uses of label: ");
-		  print_rtl_single (dump_file, insn);
-		}
-	      if (print_msgs)
-		{
-		  warning (0, "could not place function in fcache: unable to resolve all uses of a label");
-		}
-	      return false;
-	    }
+        {
+          /* check here to make sure all references to the label are inside the block */
+          int label_uses = LABEL_NUSES (insn);
+          int uses_in_block;
+          if (label_uses <= 0)
+            {
+              if (dump_file)
+                {
+                  fprintf (dump_file, "...unable to find uses of label: ");
+                  print_rtl_single (dump_file, insn);
+                }
+              if (print_msgs)
+                {
+                  warning (0, "could not place function in fcache: unable to resolve all uses of a label");
+                }
+              return false;
+            }
 
-	  uses_in_block = fcache_label_refs_in_block (insn, first, last);
-	  if (dump_file)
-	    {
-	      fprintf (dump_file, "label refs=%d, in block=%d for label",
-		       label_uses, uses_in_block);
-	      print_rtl_single (dump_file, insn);
-	    }
-	  if (label_uses != uses_in_block)
-	    {
-	      if (dump_file)
-		{
-		  fprintf (dump_file, "...label used outside block: ");
-		  print_rtl_single (dump_file, insn);
-		}
-	      if (print_msgs)
-		{
-		  warning (0, "could not place function in fcache: a label in the function is used outside of it", current_function_name ());
-		}
-	      return false;
-	    }
-	}
+          uses_in_block = fcache_label_refs_in_block (insn, first, last);
+          if (dump_file)
+            {
+              fprintf (dump_file, "label refs=%d, in block=%d for label",
+                       label_uses, uses_in_block);
+              print_rtl_single (dump_file, insn);
+            }
+          if (label_uses != uses_in_block)
+            {
+              if (dump_file)
+                {
+                  fprintf (dump_file, "...label used outside block: ");
+                  print_rtl_single (dump_file, insn);
+                }
+              if (print_msgs)
+                {
+                  warning (0, "could not place function %s in fcache: a label in the function is used outside of it", current_function_name ());
+                }
+              return false;
+            }
+        }
       total_len += get_attr_length (insn);
-      if (total_len > MAX_FCACHE_SIZE)
-	{
-	  if (dump_file)
-	    {
-	      fprintf (dump_file, "...block too long to fit in fcache\n");
-	    }
-	  if (print_msgs)
-	    {
-	      warning (0, "function %s is too large for fcache", current_function_name ());
-	    }
+      if (total_len > fcache_size)
+        {
+          if (dump_file)
+            {
+              fprintf (dump_file, "...block too long to fit in fcache\n");
+            }
+          if (print_msgs)
+            {
+              warning (0, "function %s is too large for fcache", current_function_name ());
+            }
 
-	  return false;
-	}
+          return false;
+        }
     } 
 
 
   if (func_p && loop_count == 0)
     {
       if (dump_file)
-	fprintf (dump_file, "no loops in function\n");
+        fprintf (dump_file, "no loops in function\n");
       return false;
     }
 
@@ -3040,26 +3192,58 @@ fcache_convert_call (rtx insn)
   if (GET_CODE (pattern) == CALL)
     {
       if (GET_CODE (pattern) == SET)
-	pattern = SET_SRC (pattern);
+        pattern = SET_SRC (pattern);
       if (GET_CODE (pattern) != CALL)
-	gcc_unreachable ();
+        gcc_unreachable ();
       pattern = XEXP (pattern, 0);
       if (GET_CODE (pattern) != MEM)
-	gcc_unreachable ();
+        gcc_unreachable ();
       dest = XEXP (pattern, 0);
       if (GET_CODE(dest) != SYMBOL_REF)
-	gcc_unreachable ();
+        gcc_unreachable ();
       if ( !is_native_function (SYMBOL_REF_DECL (dest)) )
-	{
-	  if (dump_file) fprintf (dump_file, "replacing call\n");
-	  addr = gen_rtx_UNSPEC ( Pmode, gen_rtvec (1, dest),
-			      UNSPEC_FCACHE_CALL );
-	  XEXP (pattern, 0) = addr;
-	}
+        {
+          if (dump_file) fprintf (dump_file, "replacing call\n");
+          addr = gen_rtx_UNSPEC ( Pmode, gen_rtvec (1, dest),
+                              UNSPEC_FCACHE_CALL );
+          XEXP (pattern, 0) = addr;
+        }
     }
   else
     {
       gcc_unreachable ();
+    }
+}
+
+/*
+ * replace a label with an UNSPEC_FCACHE_LABEL
+ */
+static void
+fcache_replace_label(rtx pattern, rtx fcache_base)
+{
+  rtx src;
+  rtx addr;
+
+  src = SET_SRC (pattern);
+
+  if (GET_CODE (SET_DEST (pattern)) != PC)
+    abort ();
+  if (GET_CODE (src) == IF_THEN_ELSE)
+    {
+      if (GET_CODE (XEXP (src, 1)) != PC)
+	{
+	  addr = XEXP (src, 1);
+	  XEXP (src, 1) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	}
+      else
+	{
+	  addr = XEXP (src, 2);
+	  XEXP (src, 2) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
+	}
+    }
+  else
+    {
+      SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, src, fcache_base), UNSPEC_FCACHE_LABEL_REF);
     }
 }
 
@@ -3092,46 +3276,32 @@ fcache_convert_jump(rtx orig_insn, rtx fcache_base)
     {
       src = XVECEXP (pattern, 0, 0);
       if (GET_CODE (src) == RETURN)
+        {
+          addr = gen_rtx_UNSPEC (Pmode, gen_rtvec (1, src),
+                                 UNSPEC_FCACHE_RET);
+          XVECEXP (pattern, 0, 0) = addr;
+        }
+      else if (GET_CODE (src) == SET)
 	{
-	  addr = gen_rtx_UNSPEC (Pmode, gen_rtvec (1, src),
-				 UNSPEC_FCACHE_RET);
-	  XVECEXP (pattern, 0, 0) = addr;
+	  fcache_replace_label(src, fcache_base);
 	}
+      else
+	gcc_unreachable ();
     }
   else if (GET_CODE (pattern) == RETURN)
     {
       pattern = gen_rtx_UNSPEC (Pmode, gen_rtvec (1, pattern),
-				UNSPEC_FCACHE_RET);
+                                UNSPEC_FCACHE_RET);
     }
   else if (GET_CODE (pattern) == ADDR_VEC
-	   || GET_CODE (pattern) == ADDR_DIFF_VEC
-	   || extract_asm_operands (pattern) != NULL)
+           || GET_CODE (pattern) == ADDR_DIFF_VEC
+           || extract_asm_operands (pattern) != NULL)
     {
       gcc_unreachable ();
     }
   else
     {
-      src = SET_SRC (pattern);
-
-      if (GET_CODE (SET_DEST (pattern)) != PC)
-	abort ();
-      if (GET_CODE (src) == IF_THEN_ELSE)
-	{
-	  if (GET_CODE (XEXP (src, 1)) != PC)
-	    {
-	      addr = XEXP (src, 1);
-	      XEXP (src, 1) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-	    }
-	  else
-	    {
-	      addr = XEXP (src, 2);
-	      XEXP (src, 2) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, addr, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-	    }
-	}
-      else
-	{
-	  SET_SRC (pattern) = gen_rtx_UNSPEC (Pmode, gen_rtvec (2, src, fcache_base), UNSPEC_FCACHE_LABEL_REF);
-	}
+      fcache_replace_label(pattern, fcache_base);
     }
 
   /* generate a new insn with the given pattern */
@@ -3178,7 +3348,7 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
 
   /* now add in the FCACHE_LOAD */
   fcache_insn = gen_rtx_UNSPEC_VOLATILE (VOIDmode, gen_rtvec (2, start_label, end_label),
-			 UNSPEC_FCACHE_LOAD);
+                         UNSPEC_FCACHE_LOAD);
 
   fcache_insn = emit_insn_before (fcache_insn, first);
   INSN_ADDRESSES_NEW (fcache_insn, -1);
@@ -3216,53 +3386,53 @@ fcache_convert_block (rtx first, rtx last, bool func_p)
       if (!INSN_P (insn)) continue;
 
       if (GET_CODE (insn) == CALL_INSN)
-	{
-	  fcache_convert_call (insn);
-	}
+        {
+          fcache_convert_call (insn);
+        }
       else if (GET_CODE (insn) == JUMP_INSN)
-	{
-	  fcache_convert_jump (insn, start_label);
-	}
+        {
+          fcache_convert_jump (insn, start_label);
+        }
       else
-	{
-	  pattern = PATTERN (insn);
-	  if ( GET_CODE (pattern) == SET
-	       && propeller_big_const (SET_SRC (pattern), SImode) )
-	    
-	    {
-	      /* we have to split this up */
-	      /* normally in LMM mode the constant immediately
-		 follows the move (as part of the instruction)
-		 but now we need it to go to the end of the
-		 fcache section
-	      */
-	      rtx const_label;
-	      rtx const_insn;
-	      rtx next;
-	      rtx mov_insn = insn;
-	      int mode;
+        {
+          pattern = PATTERN (insn);
+          if ( GET_CODE (pattern) == SET
+               && propeller_big_const (SET_SRC (pattern), SImode) )
+            
+            {
+              /* we have to split this up */
+              /* normally in LMM mode the constant immediately
+                 follows the move (as part of the instruction)
+                 but now we need it to go to the end of the
+                 fcache section
+              */
+              rtx const_label;
+              rtx const_insn;
+              rtx next;
+              rtx mov_insn = insn;
+              enum machine_mode mode;
 
-	      const_label = gen_label_rtx ();
-	      LABEL_NUSES (const_label)++;
-	      LABEL_PRESERVE_P (const_label) = 1;
+              const_label = gen_label_rtx ();
+              LABEL_NUSES (const_label)++;
+              LABEL_PRESERVE_P (const_label) = 1;
 
-	      last = emit_label_after (const_label, last);
-	      INSN_ADDRESSES_NEW (last, -1);
-	      const_label = gen_rtx_LABEL_REF (SImode, const_label);
-	      mode = GET_MODE (SET_DEST (pattern));
-	      /* now the actual word */
-	      const_insn = gen_fcache_const_word (SET_SRC (pattern));
-	      last = emit_insn_after (const_insn, last);
-	      INSN_ADDRESSES_NEW (last, -1);
+              last = emit_label_after (const_label, last);
+              INSN_ADDRESSES_NEW (last, -1);
+              const_label = gen_rtx_LABEL_REF (SImode, const_label);
+              mode = GET_MODE (SET_DEST (pattern));
+              /* now the actual word */
+              const_insn = gen_fcache_const_word (SET_SRC (pattern));
+              last = emit_insn_after (const_insn, last);
+              INSN_ADDRESSES_NEW (last, -1);
 
-	      /* finally, modify the existing move instruction */
-	      /* delete it */
-	      next = delete_insn (mov_insn);
-	      /* update the pattern */
-	      SET_SRC (pattern) = gen_rtx_UNSPEC (mode, gen_rtvec (2, const_label, start_label), UNSPEC_FCACHE_LABEL_REF);
-	      emit_jump_insn_before (pattern, next);
-	    }
-	}
+              /* finally, modify the existing move instruction */
+              /* delete it */
+              next = delete_insn (mov_insn);
+              /* update the pattern */
+              SET_SRC (pattern) = gen_rtx_UNSPEC (mode, gen_rtvec (2, const_label, start_label), UNSPEC_FCACHE_LABEL_REF);
+              emit_jump_insn_before (pattern, next);
+            }
+        }
     }
   return fcache_insn;
 }
@@ -3279,21 +3449,21 @@ current_func_has_indirect_jumps (void)
   for (insn = get_insns(); insn; insn = next_real_insn (insn))
     {
       if (!INSN_P (insn))
-	continue;
+        continue;
       if (GET_CODE (insn) == JUMP_INSN)
-	{
-	  dest = get_jump_dest (insn);
-	  /* initially assume that return instructions are OK */
-	  if (!dest_ok_for_fcache (dest, true))
-	    {
-	      if (dump_file)
-		{
-		  fprintf (dump_file, " cannot determine destination address for:\n");
-		  print_rtl_single (dump_file, insn);
-		}
-	      return true;
-	    }
-	}
+        {
+          dest = get_jump_dest (insn);
+          /* initially assume that return instructions are OK */
+          if (!dest_ok_for_fcache (dest, true))
+            {
+              if (dump_file)
+                {
+                  fprintf (dump_file, " cannot determine destination address for:\n");
+                  print_rtl_single (dump_file, insn);
+                }
+              return true;
+            }
+        }
     }
 
   if (dump_file)
@@ -3344,10 +3514,10 @@ try_convert_loop (rtx *first_ptr, rtx *last_ptr)
     {
       rtx dest = get_jump_dest (prev);
       if (GET_CODE (dest) == LABEL_REF
-	  && fcache_jump_dest_in_block (prev, first, last))
-	{
-	  first = prev;
-	}
+          && fcache_jump_dest_in_block (prev, first, last))
+        {
+          first = prev;
+        }
     }
 
   /* Another interesting case: if there is a label immediately
@@ -3360,16 +3530,16 @@ try_convert_loop (rtx *first_ptr, rtx *last_ptr)
       /* is it referenced only in the block? */
       int uses = fcache_label_refs_in_block (next, first, last);
       if (uses == LABEL_NUSES (next))
-	last = next;
+        last = next;
       else if (uses > 0)
-	{
-	  if (dump_file)
-	    {
-	      fprintf (dump_file, "...label referenced outside block: ");
-	      print_rtl_single (dump_file, next);
-	    }
-	  return false;
-	}
+        {
+          if (dump_file)
+            {
+              fprintf (dump_file, "...label referenced outside block: ");
+              print_rtl_single (dump_file, next);
+            }
+          return false;
+        }
     }
 
   /* validate that there are no bad constructs in the loop */
@@ -3409,25 +3579,25 @@ fcache_convert_loops (void)
   for (; last; last = prev_real_insn (last))
     {
       if (GET_CODE (last) == JUMP_INSN)
-	{
-	  dest = get_jump_dest (last);
-	  if ( dest_ok_for_fcache (dest, false)
-	       && GET_CODE (dest) == LABEL_REF
-	       && !propeller_forward_branch_p (last) 
-	       && !propeller_unlikely_branch_p (last)
-	     )
-	    {
-	      first = JUMP_LABEL (last);
-	      gotit = try_convert_loop (&first, &last);
-	      if (gotit)
-		{
-		  /* we got the whole loop into fcache, so skip
-		     over it */
-		  last = first;
-		  done_some = true;
-		}
-	    }
-	}
+        {
+          dest = get_jump_dest (last);
+          if ( dest_ok_for_fcache (dest, false)
+               && GET_CODE (dest) == LABEL_REF
+               && !propeller_forward_branch_p (last) 
+               && !propeller_unlikely_branch_p (last)
+             )
+            {
+              first = JUMP_LABEL (last);
+              gotit = try_convert_loop (&first, &last);
+              if (gotit)
+                {
+                  /* we got the whole loop into fcache, so skip
+                     over it */
+                  last = first;
+                  done_some = true;
+                }
+            }
+        }
     }
 
   return done_some;
@@ -3461,24 +3631,24 @@ propeller_reg_dead_peep (rtx first, rtx reg)
   for (insn = NEXT_INSN (first); insn; insn = NEXT_INSN (insn))
     {
       if (GET_CODE (insn) == JUMP_INSN)
-	return 0;	/* We lose track, assume it is alive.  */
+        return 0;       /* We lose track, assume it is alive.  */
 
       else if (GET_CODE(insn) == CALL_INSN)
-	{
-	  /* Call's might use it for target or register parms.  */
-	  if (reg_referenced_p (reg, PATTERN (insn))
-	      || find_reg_fusage (insn, USE, reg))
-	    return 0;
-	  else if (dead_or_set_p (insn, reg))
-            return 1;
-	}
-      else if (GET_CODE (insn) == INSN)
-	{
-	  if (reg_referenced_p (reg, PATTERN (insn)))
+        {
+          /* Call's might use it for target or register parms.  */
+          if (reg_referenced_p (reg, PATTERN (insn))
+              || find_reg_fusage (insn, USE, reg))
             return 0;
-	  else if (dead_or_set_p (insn, reg))
+          else if (dead_or_set_p (insn, reg))
             return 1;
-	}
+        }
+      else if (GET_CODE (insn) == INSN)
+        {
+          if (reg_referenced_p (reg, PATTERN (insn)))
+            return 0;
+          else if (dead_or_set_p (insn, reg))
+            return 1;
+        }
     }
 
   /* No conclusive evidence either way, we cannot take the chance
@@ -3502,33 +3672,55 @@ propeller_reorg(void)
   if (TARGET_LMM && (do_fcache || fcache_func))
     {
       if (!fcache_func)
-	{
-	  if (dump_file)
-	    fprintf (dump_file, " *** Checking fcache for jumps\n");
-	  /* if the current function contains indirect jumps do not
-	     try to process it (too risky) */
-	  done = current_func_has_indirect_jumps ();
+        {
+          if (dump_file)
+            fprintf (dump_file, " *** Checking fcache for jumps\n");
+          /* if the current function contains indirect jumps do not
+             try to process it (too risky) */
+          done = current_func_has_indirect_jumps ();
 
-	  /* scan to see if there are any loops in the current function
-	     that we can convert to fcache mode
-	  */
-	  if (!done)
-	    {
-	      if (dump_file)
-		fprintf (dump_file, " *** Trying to convert loops to fcache\n");
-	      done = fcache_convert_loops();
-	    }
-	}
+          /* scan to see if there are any loops in the current function
+             that we can convert to fcache mode
+          */
+          if (!done)
+            {
+              if (dump_file)
+                fprintf (dump_file, " *** Trying to convert loops to fcache\n");
+              done = fcache_convert_loops();
+            }
+        }
 
       /* if we converted some loops, don't bother trying the whole
-	 function */
+         function */
       if (!done && fcache_func_ok (fcache_func))
-	{
-	  if (dump_file)
-	    fprintf (dump_file, " *** Trying to place whole function in fcache\n");
-	  fcache_func_reorg ();
-	}
+        {
+          if (dump_file)
+            fprintf (dump_file, " *** Trying to place whole function in fcache\n");
+          fcache_func_reorg ();
+        }
     }
+}
+
+
+/* output a sequence of delay slots */
+void
+propeller_output_seqend(FILE *file)
+{
+  int need_nops = 0;
+
+  need_nops = dbr_sequence_length();
+
+  need_nops = 3 - need_nops;
+  if (need_nops < 0) {
+    gcc_unreachable();
+  } else if (need_nops == 0) {
+    /* nothing to do */
+  } else if (need_nops == 1) {
+    fprintf (file, "\tnop\n");
+  } else {
+    fprintf (file, "\tnopx\t#%d\n", need_nops - 1);
+  }
+  fprintf (file, "\t''end delay slot\n");
 }
 
 
@@ -3562,6 +3754,8 @@ propeller_reorg(void)
 #define TARGET_FUNCTION_ARG propeller_function_arg
 #undef TARGET_FUNCTION_ARG_ADVANCE
 #define TARGET_FUNCTION_ARG_ADVANCE propeller_function_arg_advance
+#undef TARGET_FUNCTION_OK_FOR_SIBCALL
+#define TARGET_FUNCTION_OK_FOR_SIBCALL propeller_function_ok_for_sibcall
 #undef TARGET_PROMOTE_PROTOTYPES
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_false
 #undef TARGET_LEGITIMATE_ADDRESS_P

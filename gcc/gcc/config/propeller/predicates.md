@@ -30,6 +30,13 @@
   (ior (match_code "symbol_ref")
        (match_operand 0 "register_operand")))
 
+;;
+;; for sibcall operations we allow only symbolic addresses (for now)
+;;
+(define_predicate "sibcall_operand"
+  (match_code "symbol_ref")
+)
+
 ;; True if OP refers to any kind of symbol.
 ;; For roughly the same reasons that pmode_register_operand exists, this
 ;; predicate ignores its mode argument.
@@ -104,6 +111,11 @@
 (define_special_predicate "propeller_math_op1"
   (match_code "neg,not,abs"))
 
+;; true if this operator is a math operator with 1 argument that
+;; sets flags based on source
+(define_special_predicate "propeller_math_op1srcflags"
+  (match_code "neg,not,abs"))
+
 ;; true if this operator can be paired in CMM mode
 (define_special_predicate "propeller_pair_op2"
   (match_code "plus,minus,and,ior,xor,ashift,ashiftrt,lshiftrt"))
@@ -117,10 +129,11 @@
 
 ;; check for a CMM mode 16 bit constant
 ;; CMM is a subset of hub mode, so labels and symbols are assumed
-;; to fit in 16 bits
+;; to fit in 16 bits (for P1; not in P2)
 
 (define_predicate "propeller_cmm_const16"
   (and (match_operand 0 "immediate_operand")
+       (match_test "!TARGET_P2")
        (ior (match_code "symbol_ref,label_ref")
             (and (match_code "const_int")
 		 (match_test "IN_RANGE (INTVAL (op), 512, 0xFFFF)"))

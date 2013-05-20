@@ -57,7 +57,7 @@ argc_cnt
 	add	r3,#4
 	cmp	r2,#0 wz
   IF_NZ add	r0,#1
-  IF_NZ sub	pc,#(.+4)-argc_cnt
+  IF_NZ brs	#argc_cnt
 	
 	mvi	r2,#__environ   ' set environment pointer
 
@@ -76,6 +76,7 @@ argc_cnt
 	'' we are making subroutine calls
 	''
 	.global ___init
+	.balign 4
 ___init
 	sub	sp,#4
 	wrlong	lr,sp
@@ -105,6 +106,7 @@ L_loopend
 	'' per-function initializers can be added here
 
 	.section .fini
+	.balign 4
 _exit
 	mov	r12,r0		' save exit status
 	mvi	r8,#___DTOR_LIST__

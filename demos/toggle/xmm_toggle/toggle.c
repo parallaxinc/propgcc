@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char* argv[])
 {
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC)
+#if defined(__USE_XMM__)
     int mask = 0x00008000;  /* only toggle the C3 board LED */
 #else
     int mask = 0x3fffffff;  /* toggle all pins except the serial */

@@ -153,7 +153,7 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
         }
         if (i != ki && program.paddr >= program_header.paddr) {
             if (program.filesz > 0) {
-                if (i == si || (program.vaddr != program.paddr && program.vaddr != 0)) {
+	      if (i == si || (program.vaddr != program.paddr && program.vaddr != 0 && !(program.flags & SF_COGDATA) ) ) {
                     initSection->vaddr = program.vaddr;
                     initSection->paddr = program.paddr;
                     initSection->size = program.filesz;

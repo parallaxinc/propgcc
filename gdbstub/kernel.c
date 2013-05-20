@@ -21,19 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #include <stdint.h>
 #include "propeller.h"
+#include "cogdebug.h"
 
-/* attention byte sent before a command is sent */
-#define ATTN        0x01
-#define ACK         0x40
-
-/* serial debug kernel function codes */
-#define FCN_STEP    0x01
-#define FCN_RUN     0x02
-#define FCN_READ    0x03
-#define FCN_WRITE   0x04
-
-/* code received from the serial debug kernel when the program halts due to a breakpoint or single step */
-#define HALT        '!'
+/* address of the condition code register should be register 18 */
+/* however, it has to be offset by the start of the LMM kernel */
+#define COGFLAGS ((uint32_t *)(0x20))[18]
 
 static unsigned int txmask = 1 << 30;
 static unsigned int rxmask = 1 << 31;
@@ -43,9 +35,11 @@ static _COGMEM uint32_t addr;
 static _COGMEM uint32_t len;
 static _COGMEM uint32_t chksum;
 static _COGMEM uint32_t byte;
+static _COGMEM uint32_t cmd;
 
-static _NATIVE void rx_packet(void);
-static _NATIVE void tx_packet(void);
+static _NATIVE void tx_status(void);
+static _NATIVE void rx_packet(int addrsiz);
+static _NATIVE void tx_packet(int addrsiz);
 static _NATIVE void txbyte(int c);
 static _NATIVE int rxbyte(void);
 
@@ -55,25 +49,36 @@ _NAKED int main(void)
     _OUTA |= txmask;
     _DIRA |= txmask;
     _DIRA &= ~rxmask;
-    
+
+    tx_status();
+
     for (;;) {
-        
-        txbyte(HALT);
-        
-        while (rxbyte() != ATTN)
+        while (rxbyte() != HOST_PACKET)
             ;
-        txbyte(ACK);
-        
-        switch (rxbyte()) {
-            case FCN_STEP:
-            case FCN_RUN:
+	cmd = rxbyte() & 0xf0;
+        len = rxbyte();
+
+        switch (cmd) {
+            case DBG_CMD_LMMSTEP:
+	        rxbyte();  // skip number of steps
+		/* fall through */
+            case DBG_CMD_RESUME:
+	        /* modify memory so that the loaded kernel will step once */
+	        COGFLAGS = COGFLAGS_STEP;
+		/* restart the cog */
                 coginit(cogid(), 0xf004, 0x4);
                 break;
-            case FCN_READ:
-                tx_packet();
+            case DBG_CMD_READHUB:
+                tx_packet(4);
                 break;
-            case FCN_WRITE:
-                rx_packet();
+	    case DBG_CMD_READCOG:
+ 	        tx_packet(2);
+		break;
+            case DBG_CMD_WRITEHUB:
+                rx_packet(4);
+                break;
+            case DBG_CMD_STATUS:
+	        tx_status();
                 break;
         }
     }
@@ -81,50 +86,52 @@ _NAKED int main(void)
     return 0;
 }
 
-static _NATIVE void get_addr_len(void)
+static _NATIVE void tx_status(void)
+{
+    txbyte(RESPOND_STATUS);
+    txbyte(cogid()); txbyte(0); txbyte(0); txbyte(0);
+}
+
+static _NATIVE void get_addr(int addrsize)
 {
     addr = rxbyte();
     byte = rxbyte();
     addr |= byte << 8;
-    len = rxbyte();
-    chksum = len;
+    if (addrsize == 4) {
+      byte = rxbyte();
+      addr |= byte << 16;
+      byte = rxbyte();
+      addr |= byte << 24;
+    }
 }
 
-static _NATIVE void rx_packet(void)
+static _NATIVE void rx_packet(int addrsize)
 {
-    get_addr_len();
+    chksum = 0;
+    get_addr(addrsize);
+    len -= 4;
     for (; len > 0; --len) {
         byte = rxbyte();
         *(uint8_t *)addr = byte;
         chksum += byte;
         ++addr;
     }
+    txbyte(RESPOND_ACK);
+    txbyte(cogid());
     txbyte(chksum);
 }
 
-static _NATIVE void hex(uint32_t value)
+static _NATIVE void tx_packet(int addrsize)
 {
-    int shift = 28;
-    do {
-        uint8_t nibble = (value >> shift) & 0xf;
-        txbyte((nibble < 10 ? '0' : 'a' - 10) + nibble);
-        shift -= 4;
-    } while (shift >= 0);
-    
-    txbyte('\r');
-    txbyte('\n');
-}
-
-static _NATIVE void tx_packet(void)
-{
-    get_addr_len();
+    len = rxbyte();
+    get_addr(addrsize);
+    txbyte(RESPOND_DATA);
+    txbyte(cogid());
     for (; len > 0; --len) {
         byte = *(uint8_t *)addr;
-        chksum += byte;
         txbyte(byte);
         ++addr;
     }
-    txbyte(chksum);
 }
 
 static _NATIVE void txbyte(int c)

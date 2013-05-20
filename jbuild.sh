@@ -249,14 +249,14 @@ cd ../build/gcc
 make ${JOBS} all-target-libgcc
 if test $? != 0
 then
-   echo "gcc make all failed"
+   echo "gcc make all-target-libgcc failed"
    cd ../../propgcc
    exit 1
 fi
 make install-target-libgcc
 if test $? != 0
 then
-   echo "gcc make install failed."
+   echo "gcc make install-target-libgcc failed."
    cd ../../propgcc
    exit 1
 fi
@@ -324,14 +324,14 @@ cd ../build/gcc
 make ${JOBS} all
 if test $? != 0
 then
-   echo "gcc make all failed"
+   echo "gcc libstdc++ make all failed"
    cd ../../propgcc
    exit 1
 fi
 make install
 if test $? != 0
 then
-   echo "gcc make install failed."
+   echo "gcc libstdc++ make install failed."
    cd ../../propgcc
    exit 1
 fi
@@ -365,6 +365,30 @@ fi
 cd ..
 
 #
+# build spin2cpp
+#
+make -C spin2cpp clean
+if test $? != 0
+then
+   echo "spin2cpp make clean failed"
+   exit 1
+fi
+
+make -C spin2cpp TARGET=$PREFIX BUILDROOT=../../build/spin2cpp
+if test $? != 0
+then
+   echo "spin2cpp make failed"
+   exit 1
+fi
+
+make -C spin2cpp TARGET=$PREFIX BUILDROOT=../../build/spin2cpp install
+if test $? != 0
+then
+   echo "spin2cpp install failed"
+   exit 1
+fi
+
+#
 # build propeller-load ... before gdb
 # gdbstub relies on a loader library
 #
@@ -394,7 +418,7 @@ fi
 #
 mkdir -p ../build/gdb
 cd ../build/gdb
-../../propgcc/gdb/configure --target=propeller-elf
+../../propgcc/gdb/configure --target=propeller-elf --prefix=${PREFIX} --with-system-gdbinit=${PREFIX}/lib/gdb/gdbinit
 if test $? != 0
 then
    echo "gdb configure failed"
@@ -415,7 +439,10 @@ then
 else
     cp -f gdb/gdb.exe ${PREFIX}/bin/propeller-elf-gdb.exe
 fi
+mkdir -p ${PREFIX}/lib/gdb
+
 cd ../../propgcc
+cp -f gdbstub/gdbinit.propeller ${PREFIX}/lib/gdb/gdbinit
 
 #
 # build spinsim

@@ -4,7 +4,7 @@ CFLAGS=-m$(MODEL) -Os -mfcache
 LDFLAGS=-m$(MODEL) -fno-exceptions -fno-rtti
 OBJDIR=./
 SRCDIR=./
-BOARD=$(PROPELLER_LOAD_BOARD)
+BOARD?=$(PROPELLER_LOAD_BOARD)
 
 OBJS = filetest.o
 HDRS =
@@ -21,8 +21,12 @@ ifeq ($(MODEL),lmm)
 OBJS += printf.o
 endif
 
+ifneq ($(CHIP),)
+CHIPFLAG = -m$(CHIP)
+endif
+
 filetest.elf:	$(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) -o $@
+	$(CC) $(LDFLAGS) $(CHIPFLAG) $(OBJS) -o $@
 
 run:
 	propeller-load $(BOARDFLAG) filetest.elf -r -t
@@ -31,4 +35,4 @@ clean:
 	rm -f *.o *.elf
 
 $(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(CHIPFLAG) -c $< -o $@

@@ -459,14 +459,17 @@ static int upload(const char* file, const uint8_t* dlbuf, int count, int type)
     return 0;
 }
 
-int popenport(const char* port, int baud)
+int popenport(const char* port, int baud, int noreset)
 {
     //
     // open the port
     //
     if (serial_init(port, baud) == 0)
         return PLOAD_STATUS_OPEN_FAILED;
-        
+    
+    if (noreset)
+      return PLOAD_STATUS_OK;
+
     //
     // find propeller
     //
@@ -570,7 +573,7 @@ int main(int argc, char *argv[])
                 break;
         }
     }
-    if (popenport(argv[1], 115200)) {
+    if (popenport(argv[1], 115200, PLOAD_RESET_DEVICE)) {
         printf("Error opening port\n");
         return 1;
     }

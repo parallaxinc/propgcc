@@ -1,7 +1,8 @@
+#include <propeller.h>
 #include "cog.h"
 
 unsigned int
 clock(void)
 {
-    return _CNT;
+    return getcnt();
 }

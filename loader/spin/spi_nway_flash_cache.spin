@@ -228,10 +228,10 @@ loop    movs    :ld, line       ' get ready to check the current line address
         djnz    t1, #loop
     
 miss    and line, index_mask    ' mask out the way bits
-        mov t1, CNT         ' use low bits of CNT to choose a random way
-        shl t1, index_count
-        and t1, way_mask
-        or  line, t1
+        mov     t1, CNT         ' use low bits of CNT to choose a random way
+        shl     t1, index_count
+        and     t1, way_mask
+        or      line, t1
         mov     hubaddr, line           ' get the address of the cache line
         shl     hubaddr, offset_width
         add     hubaddr, cacheptr

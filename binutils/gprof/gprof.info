@@ -28,7 +28,7 @@ to determine which parts of a program are taking most of the execution
 time.  We assume that you know how to write, compile, and execute
 programs.  GNU `gprof' was written by Jay Fenlason.
 
-   This manual is for `gprof' (GNU Binutils) version 2.21.
+   This manual is for `gprof' (GNU Binutils) version 2.23.1.
 
    This document is distributed under the terms of the GNU Free
 Documentation License version 1.3.  A copy of the license is included
@@ -2441,34 +2441,34 @@ permit their use in free software.
 
 Tag Table:
 Node: Top777
-Node: Introduction2100
-Node: Compiling4592
-Node: Executing8648
-Node: Invoking11436
-Node: Output Options12851
-Node: Analysis Options19940
-Node: Miscellaneous Options23638
-Node: Deprecated Options24893
-Node: Symspecs26962
-Node: Output28788
-Node: Flat Profile29828
-Node: Call Graph34781
-Node: Primary38013
-Node: Callers40601
-Node: Subroutines42718
-Node: Cycles44559
-Node: Line-by-line51336
-Node: Annotated Source55409
-Node: Inaccuracy58408
-Node: Sampling Error58666
-Node: Assumptions61570
-Node: How do I?63040
-Node: Incompatibilities64594
-Node: Details66088
-Node: Implementation66481
-Node: File Format72378
-Node: Internals76668
-Node: Debugging85163
-Node: GNU Free Documentation License86764
+Node: Introduction2102
+Node: Compiling4594
+Node: Executing8650
+Node: Invoking11438
+Node: Output Options12853
+Node: Analysis Options19942
+Node: Miscellaneous Options23640
+Node: Deprecated Options24895
+Node: Symspecs26964
+Node: Output28790
+Node: Flat Profile29830
+Node: Call Graph34783
+Node: Primary38015
+Node: Callers40603
+Node: Subroutines42720
+Node: Cycles44561
+Node: Line-by-line51338
+Node: Annotated Source55411
+Node: Inaccuracy58410
+Node: Sampling Error58668
+Node: Assumptions61572
+Node: How do I?63042
+Node: Incompatibilities64596
+Node: Details66090
+Node: Implementation66483
+Node: File Format72380
+Node: Internals76670
+Node: Debugging85165
+Node: GNU Free Documentation License86766
 
 End Tag Table

@@ -139,9 +139,9 @@ Leave it as is for now and only use 8K Cache.
 ' CACHESIZE   =  $800>>2          ' power of 2 2K cache
 
 con
-    TAGCOUNT    = CACHESIZE/LINELEN ' cache with linelen bytes
     LINESHFT    = 5                 ' this must match the size of the buffer operations
     LINELEN     = 1<<LINESHFT       ' CACHELINE SIZE = 32 bytes
+    TAGCOUNT    = CACHESIZE/LINELEN ' cache with linelen bytes
 
     TAGMASK     = $003F_FFFF        ' $3FFFFF*512 = 2GB $3FFFFF*32 = 128MB
     DIRTYSHFT   = 31                ' shift by N to get dirty bit   test tag,DIRTYMASK wc

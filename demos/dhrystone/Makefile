@@ -14,6 +14,14 @@
 # Common make
 COMMON = ../common
 
+ifndef OPT
+OPT=-O0
+endif
+
+ifndef PASSES
+PASSES=3000
+endif
+
 #
 # objects for this program
 #
@@ -29,8 +37,8 @@ all: $(NAME).elf
 # printf=__simple_printf makes sure we use the small printf
 # -DINTEGER_ONLY removes floating point
 
-DEFINES = -Dprintf=__simple_printf -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=2000
-CFLAGS = -O0 -mfcache $(DEFINES)
+DEFINES = -Dprintf=__simple_printf -DMSC_CLOCK -DINTEGER_ONLY -DFIXED_NUMBER_OF_PASSES=$(PASSES)
+CFLAGS = $(OPT) $(DEFINES)
 
 #
 # include the fragment that defines most of everything

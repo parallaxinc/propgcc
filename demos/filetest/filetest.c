@@ -33,7 +33,13 @@
 #undef  SPINNERET_CARD
 #undef  PROP_BOE
 #undef  C3_CARD
+#undef  DE2_115
 #undef  PARALLEL_SPI
+
+#ifdef __PROPELLER2__
+#define CALL_MOUNT
+#define DE2_115
+#endif
 
 extern _Driver _SimpleSerialDriver;
 extern _Driver _FileDriver;
@@ -479,6 +485,24 @@ void mount()
     mountParams = &params;
 #endif
 
+#ifdef DE2_115
+    static _SD_Params params =
+    {
+        AttachmentType: _SDA_SerialDeMUX,
+        pins:
+        {
+            SingleSPI:
+            {
+                MISO: 60,   // The pin attached to the SD card's MISO or DO output
+                CLK:  58,   // The pin attached to the SD card's CLK or SCLK input
+                MOSI: 59,   // The pin attached to the SD card's MOSI or DI input
+                CS:   63    // The pin attached to the SD card's CS input
+            }
+        }
+    };
+    mountParams = &params;
+#endif
+
 #ifdef PARALLEL_SPI /* This is a hypothetical example - modify to suit your needs */
     static _SD_Params params =
     {
@@ -536,7 +560,7 @@ int main()
     stdoutfile = stdout;
 
     // Wait for the serial terminal to start
-    waitcnt(CNT + CLKFREQ);
+    waitcnt(getcnt()+ CLKFREQ);
 
 #ifdef CALL_MOUNT
     mount();

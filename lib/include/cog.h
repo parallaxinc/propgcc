@@ -42,6 +42,10 @@
 #ifndef PROPELLER_COG_H_
 #define PROPELLER_COG_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @brief Can be used in per-variable declarations to tell compiler that a variable should go in COG memory. */
 
 /* for variables that should go in cog memory */
@@ -62,6 +66,16 @@
 
 /* useful variables */
 
+#ifdef __PROPELLER2__
+extern _COGMEM volatile unsigned int _PINA __asm__("PINA");
+extern _COGMEM volatile unsigned int _PINB __asm__("PINB");
+extern _COGMEM volatile unsigned int _PINC __asm__("PINC");
+extern _COGMEM volatile unsigned int _PIND __asm__("PIND");
+extern _COGMEM volatile unsigned int _DIRA __asm__("DIRA");
+extern _COGMEM volatile unsigned int _DIRB __asm__("DIRB");
+extern _COGMEM volatile unsigned int _DIRC __asm__("DIRC");
+extern _COGMEM volatile unsigned int _DIRD __asm__("DIRD");
+#else
 extern _COGMEM volatile unsigned int _PAR __asm__("PAR");
 extern _COGMEM volatile unsigned int _CNT __asm__("CNT");
 extern _COGMEM volatile unsigned int _INA __asm__("INA");
@@ -78,6 +92,7 @@ extern _COGMEM volatile unsigned int _PHSA __asm__("PHSA");
 extern _COGMEM volatile unsigned int _PHSB __asm__("PHSB");
 extern _COGMEM volatile unsigned int _VCFG __asm__("VCFG");
 extern _COGMEM volatile unsigned int _VSCL __asm__("VSCL");
+#endif
 
 /* boot parameters */
 
@@ -95,5 +110,8 @@ extern unsigned char _clkmode; /* in the spin boot code */
  */
 #define _CLKMODE _clkmode
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

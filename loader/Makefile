@@ -18,7 +18,7 @@ DRVDIR=$(BUILDROOT)/include
 INSTALLBINDIR=$(TARGET)/bin
 INSTALLLIBDIR=$(TARGET)/propeller-load
 
-DIRS = $(OBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
+DIRS = $(OBJDIR) $(PROPOBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
 
 CC=gcc
 ECHO=echo
@@ -26,9 +26,14 @@ MKDIR=mkdir -p
 CP=cp
 RM=rm
 
+PROPCC=propeller-elf-gcc
+PROPOBJCOPY=propeller-elf-objcopy
+PROPCFLAGS=-mp2
+PROPOBJDIR=$(BUILDROOT)/obj/propeller
+
 ifeq ($(OS),linux)
 CFLAGS += -DLINUX
-BSTC=bstc.linux
+BSTC_OS=bstc.linux
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -36,7 +41,7 @@ endif
 
 ifeq ($(OS),cygwin)
 CFLAGS += -DCYGWIN
-BSTC=bstc
+BSTC_OS=bstc
 EXT=.exe
 OSINT=osint_cygwin enumcom
 LIBS=-lsetupapi
@@ -44,7 +49,7 @@ endif
 
 ifeq ($(OS),msys)
 CFLAGS += -DMINGW
-BSTC=bstc
+BSTC_OS=bstc
 EXT=.exe
 OSINT=osint_mingw enumcom
 LIBS=-lsetupapi
@@ -52,16 +57,7 @@ endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
-BSTC=bstc.osx
-EXT=
-OSINT=osint_linux
-LIBS=
-endif
-
-ifeq ($(OS),macosx32)
-OS=macosx
-CFLAGS += -DMACOSX -m32
-BSTC=bstc.osx
+BSTC_OS=bstc.osx
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -69,7 +65,16 @@ endif
 
 CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
-SPINFLAGS=-Ogxr
+
+#
+# Use the next two lines for bstc
+#
+SPIN=$(BSTC_OS) -Ogxr
+SPINBFLAGS=
+#SPIN=spin2cpp
+#SPINBFLAGS=-mcmm -O
+
+SPIN_DAT=spin2cpp --dat
 
 ##################
 # DEFAULT TARGET #
@@ -77,7 +82,7 @@ SPINFLAGS=-Ogxr
 
 .PHONY:	all
 
-all:	info propeller-load drivers sd-loader
+all:	info propeller-load drivers sd-loader propeller-elf-image-size
 
 ##########################
 # SHOW BUILD INFORMATION #
@@ -86,7 +91,7 @@ all:	info propeller-load drivers sd-loader
 info:
 	@$(ECHO) CFLAGS: $(CFLAGS)
 	@$(ECHO) LDFLAGS: $(LDFLAGS)
-	@$(ECHO) SPINFLAGS: $(SPINFLAGS)
+	@$(ECHO) SPIN: $(SPIN)
 
 #################
 # CLEAN TARGETS #
@@ -98,14 +103,14 @@ clean:
 	@$(RM) -f -r $(BINDIR)
 	@$(RM) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf
 	@$(RM) -f *.binary
-	
+
 .PHONY:
 clean-all:	clean
 	@$(RM) -f -r $(BUILDROOT)/obj
 	@$(RM) -f -r $(BUILDROOT)/bin
 	@$(RM) -f $(DRVDIR)/*.dat
 	@$(RM) -f *.binary
-	
+
 #####################
 # OBJECT FILE LISTS #
 #####################
@@ -119,6 +124,11 @@ $(OBJDIR)/pex-image.o \
 $(OBJDIR)/loadelf.o \
 $(OBJDIR)/packet.o \
 $(OBJDIR)/PLoadLib.o \
+$(OBJDIR)/p1image.o \
+$(OBJDIR)/p2image.o \
+$(OBJDIR)/p2loader.o \
+$(OBJDIR)/p2booter.o \
+$(OBJDIR)/p2flasher.o \
 $(OBJDIR)/config.o \
 $(OBJDIR)/expr.o \
 $(OBJDIR)/system.o \
@@ -126,6 +136,10 @@ $(OBJDIR)/port.o \
 $(OBJDIR)/serial_helper.o \
 $(OBJDIR)/flash_loader.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
+
+IMAGE_SIZE_OBJS=\
+$(OBJDIR)/propeller-elf-image-size.o \
+$(OBJDIR)/loadelf.o
 
 HDRS=\
 $(SRCDIR)/PLoadLib.h \
@@ -180,6 +194,7 @@ $(DRVDIR)/spi_nway_flash_cache.dat \
 $(DRVDIR)/sst_sqi_flash_cache.dat \
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat \
 $(DRVDIR)/spi_sram_cache.dat \
+$(DRVDIR)/spi_sram24_cache.dat \
 $(DRVDIR)/spi_nway_sram_cache.dat \
 $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
@@ -205,11 +220,11 @@ sd-loader:	$(DRVDIR)
 ##################
 
 $(OBJDIR)/serial_helper.binary:	$(SPINDIR)/serial_helper.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%_loader.binary:	$(SPINDIR)/%_loader.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
@@ -221,43 +236,43 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 ###############
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DENABLE_RAM -o $(basename $@) $<
+	@$(SPIN_DAT) -DENABLE_RAM -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DFAST -o $(basename $@) $<
+	@$(SPIN_DAT) -DFAST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -DFAST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -DFAST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DWINBOND -o $(basename $@) $<
+	@$(SPIN_DAT) -DWINBOND -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DWINBOND -o $(basename $@) $<
+	@$(SPIN_DAT) -DWINBOND -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
 ############
@@ -268,6 +283,26 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.dat
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) $@
 
+############
+# GAS TO C #
+############
+
+$(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)
+	@$(PROPCC) $(PROPCFLAGS) -nostdlib $< -o $@
+	@$(ECHO) $(PROPCC) $@
+
+$(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
+	@$(PROPOBJCOPY) -O binary $< $@
+	@$(ECHO) cc $@
+
+$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)
+	@$(BINDIR)/bin2c$(EXT) $< $@
+	@$(ECHO) bin2c $@
+
+$(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
+	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(ECHO) $(CC) $@
+
 ################
 # MAIN TARGETS #
 ################
@@ -277,6 +312,13 @@ propeller-load:		$(BINDIR)/propeller-load$(EXT)
 
 $(BINDIR)/propeller-load$(EXT):	$(BINDIR) $(OBJDIR) bin2c $(OBJS)
 	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	@$(ECHO) $@
+
+.PHONY:	propeller-elf-image-size
+propeller-elf-image-size:		$(BINDIR)/propeller-elf-image-size$(EXT)
+
+$(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR) $(OBJDIR) $(IMAGE_SIZE_OBJS)
+	@$(CC) $(LDFLAGS) -o $@ $(IMAGE_SIZE_OBJS)
 	@$(ECHO) $@
 
 #########
@@ -308,7 +350,7 @@ $(BINDIR)/bin2c$(EXT):	$(OBJDIR) $(SRCDIR)/tools/bin2c.c
 
 $(DIRS):
 	$(MKDIR) $@
-	
+
 ##################
 # INSTALL TARGET #
 ##################
@@ -316,6 +358,7 @@ $(DIRS):
 .PHONY:	install
 install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
 	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
+	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size $(INSTALLBINDIR)
 	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
 	$(CP) -f include/* $(INSTALLLIBDIR)
 

@@ -42,7 +42,7 @@ HUBTEXT int putchar(int origval)
                      : [_mask] "r" (txmask));
     
     int bitcycles = _setBitCycles();
-    int waitcycles = CNT + bitcycles;
+    int waitcycles = getcnt() + bitcycles;
     
     int i;
     for (i = 0; i < 10; i++)

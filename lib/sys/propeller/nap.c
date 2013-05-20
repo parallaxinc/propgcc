@@ -6,6 +6,7 @@
  */
 #include <cog.h>
 #include <sys/thread.h>
+#include <propeller.h>
 
 void
 __napuntil(unsigned int newcnt)
@@ -14,7 +15,7 @@ __napuntil(unsigned int newcnt)
     (*__napuntil_ptr)(newcnt);
   else
     {
-      while ((int)(_CNT - newcnt) < 0)
+      while ((int)(getcnt() - newcnt) < 0)
 	(*__yield_ptr)();
     }
 }
