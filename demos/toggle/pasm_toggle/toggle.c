@@ -47,7 +47,7 @@ void usleep(int t)
 {
     if(t < 10)  // very small t values will cause a hang
         return; // don't bother function delay is likely enough
-    waitcnt((CLKFREQ/1000000)*t+CNT);
+    waitcnt((CLKFREQ/1000000)*t+getcnt());
 }
 // C main function
 // LMM model

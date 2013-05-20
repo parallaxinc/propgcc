@@ -1,7 +1,7 @@
 \input texinfo
 @setfilename ld.info
 @c Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-@c 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+@c 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012
 @c Free Software Foundation, Inc.
 @syncodeindex ky cp
 @c man begin INCLUDE
@@ -22,6 +22,7 @@
 @set UsesEnvVars
 @set GENERIC
 @set ARM
+@set C6X
 @set H8300
 @set HPPA
 @set I960
@@ -1257,21 +1258,20 @@ option.
 @itemx --no-copy-dt-needed-entries
 This option affects the treatment of dynamic libraries referred to 
 by DT_NEEDED tags @emph{inside} ELF dynamic libraries mentioned on the
-command line.  Normally the linker will add a DT_NEEDED tag to the
+command line.  Normally the linker won't add a DT_NEEDED tag to the
 output binary for each library mentioned in a DT_NEEDED tag in an
-input dynamic library.  With @option{--no-copy-dt-needed-entries}
+input dynamic library.  With @option{--copy-dt-needed-entries}
 specified on the command line however any dynamic libraries that
-follow it will have their DT_NEEDED entries ignored.  The default
-behaviour can be restored with @option{--copy-dt-needed-entries}.
+follow it will have their DT_NEEDED entries added.  The default
+behaviour can be restored with @option{--no-copy-dt-needed-entries}.
 
 This option also has an effect on the resolution of symbols in dynamic
-libraries.  With the default setting dynamic libraries mentioned on
-the command line will be recursively searched, following their
-DT_NEEDED tags to other libraries, in order to resolve symbols
-required by the output binary.  With
-@option{--no-copy-dt-needed-entries} specified however the searching
-of dynamic libraries that follow it will stop with the dynamic
-library itself.  No DT_NEEDED links will be traversed to resolve
+libraries.  With @option{--copy-dt-needed-entries} dynamic libraries
+mentioned on the command line will be recursively searched, following
+their DT_NEEDED tags to other libraries, in order to resolve symbols
+required by the output binary.  With the default setting however
+the searching of dynamic libraries that follow it will stop with the
+dynamic library itself.  No DT_NEEDED links will be traversed to resolve
 symbols.
 
 @cindex cross reference table
@@ -1399,6 +1399,13 @@ collection has been enabled via the @samp{--gc-sections}) option.  The
 default behaviour (of not listing the sections that are removed) can
 be restored by specifying @samp{--no-print-gc-sections} on the command
 line.
+
+@kindex --print-output-format
+@cindex output format
+@item --print-output-format
+Print the name of the default output format (perhaps influenced by
+other command-line options).  This is the string that would appear
+in an @code{OUTPUT_FORMAT} linker script command (@pxref{File Commands}).
 
 @cindex help
 @cindex usage
@@ -1851,13 +1858,14 @@ Normally the linker will generate an error message for each reported
 unresolved symbol but the option @option{--warn-unresolved-symbols}
 can change this to a warning.
 
-@kindex --verbose
-@cindex verbose
+@kindex --verbose[=@var{NUMBER}]
+@cindex verbose[=@var{NUMBER}]
 @item --dll-verbose
-@itemx --verbose
+@itemx --verbose[=@var{NUMBER}]
 Display the version number for @command{ld} and list the linker emulations
 supported.  Display which input files can and cannot be opened.  Display
-the linker script being used by the linker.
+the linker script being used by the linker. If the optional @var{NUMBER}
+argument > 1, plugin symbol status will also be displayed.
 
 @kindex --version-script=@var{version-scriptfile}
 @cindex version script, symbol versions
@@ -2066,6 +2074,12 @@ call before the linker has a chance to wrap it to @code{malloc}.
 @item --eh-frame-hdr
 Request creation of @code{.eh_frame_hdr} section and ELF
 @code{PT_GNU_EH_FRAME} segment header.
+
+@kindex --ld-generated-unwind-info
+@item --no-ld-generated-unwind-info
+Request creation of @code{.eh_frame} unwind info for linker
+generated code sections like PLT.  This option is on by default
+if linker generated unwind info is supported.
 
 @kindex --enable-new-dtags
 @kindex --disable-new-dtags
@@ -2610,6 +2624,39 @@ The image is Terminal Server aware.
 @end table
 
 @c man end
+
+@ifset C6X
+@subsection Options specific to C6X uClinux targets
+
+@c man begin OPTIONS
+
+The C6X uClinux target uses a binary format called DSBT to support shared
+libraries.  Each shared library in the system needs to have a unique index;
+all executables use an index of 0.
+
+@table @gcctabopt
+
+@kindex --dsbt-size
+@item --dsbt-size @var{size}
+This option sets the number of entires in the DSBT of the current executable
+or shared library to @var{size}.  The default is to create a table with 64
+entries.
+
+@kindex --dsbt-index
+@item --dsbt-index @var{index}
+This option sets the DSBT index of the current executable or shared library
+to @var{index}.  The default is 0, which is appropriate for generating
+executables.  If a shared library is generated with a DSBT index of 0, the
+@code{R_C6000_DSBT_INDEX} relocs are copied into the output file.
+
+@kindex --no-merge-exidx-entries
+The @samp{--no-merge-exidx-entries} switch disables the merging of adjacent
+exidx entries in frame unwind info.
+
+@end table
+
+@c man end
+@end ifset
 
 @ifset M68HC11
 @subsection Options specific to Motorola 68HC11 and 68HC12 targets
@@ -3344,6 +3391,13 @@ of the names used by the BFD library (@pxref{BFD}).  You can see the
 architecture of an object file by using the @code{objdump} program with
 the @samp{-f} option.
 @end ifclear
+
+@item LD_FEATURE(@var{string})
+@kindex LD_FEATURE(@var{string})
+This command may be used to modify @command{ld} behavior.  If
+@var{string} is @code{"SANE_EXPR"} then absolute symbols and numbers
+in a script are simply treated as numbers everywhere.
+@xref{Expression Section}.
 @end table
 
 @node Assignments
@@ -3356,6 +3410,7 @@ the symbol and place it into the symbol table with a global scope.
 
 @menu
 * Simple Assignments::		Simple Assignments
+* HIDDEN::			HIDDEN
 * PROVIDE::			PROVIDE
 * PROVIDE_HIDDEN::		PROVIDE_HIDDEN
 * Source Code Reference::	How to use a linker script defined symbol in source code
@@ -3418,6 +3473,31 @@ zero.  The symbol @samp{_etext} will be defined as the address following
 the last @samp{.text} input section.  The symbol @samp{_bdata} will be
 defined as the address following the @samp{.text} output section aligned
 upward to a 4 byte boundary.
+
+@node HIDDEN
+@subsection HIDDEN
+@cindex HIDDEN
+For ELF targeted ports, define a symbol that will be hidden and won't be
+exported.  The syntax is @code{HIDDEN(@var{symbol} = @var{expression})}.
+
+Here is the example from @ref{Simple Assignments}, rewritten to use
+@code{HIDDEN}:
+
+@smallexample
+HIDDEN(floating_point = 0);
+SECTIONS
+@{
+  .text :
+    @{
+      *(.text)
+      HIDDEN(_etext = .);
+    @}
+  HIDDEN(_bdata = (. + 3) & ~ 3);
+  .data : @{ *(.data) @}
+@}
+@end smallexample
+@noindent
+In this case none of the three symbols will be visible outside this module.
 
 @node PROVIDE
 @subsection PROVIDE
@@ -3811,6 +3891,26 @@ needs to be at a particular location in memory.  For example:
 data.o(.data)
 @end smallexample
 
+To refine the sections that are included based on the section flags
+of an input section, INPUT_SECTION_FLAGS may be used.
+
+Here is a simple example for using Section header flags for ELF sections:
+
+@smallexample
+@group
+SECTIONS @{
+  .text : @{ INPUT_SECTION_FLAGS (SHF_MERGE & SHF_STRINGS) *(.text) @}
+  .text2 :  @{ INPUT_SECTION_FLAGS (!SHF_WRITE) *(.text) @}
+@}
+@end group
+@end smallexample
+
+In this example, the output section @samp{.text} will be comprised of any
+input section matching the name *(.text) whose section header flags
+@code{SHF_MERGE} and @code{SHF_STRINGS} are set.  The output section
+@samp{.text2} will be comprised of any input section matching the name *(.text)
+whose section header flag @code{SHF_WRITE} is clear.
+
 You can also specify files within archives by writing a pattern
 matching the archive, a colon, then the pattern matching the file,
 with no whitespace around the colon.
@@ -3911,6 +4011,12 @@ into ascending order by name before placing them in the output file.
 difference is @code{SORT_BY_ALIGNMENT} will sort sections into
 ascending order by alignment before placing them in the output file.
 
+@cindex SORT_BY_INIT_PRIORITY
+@code{SORT_BY_INIT_PRIORITY} is very similar to @code{SORT_BY_NAME}. The
+difference is @code{SORT_BY_INIT_PRIORITY} will sort sections into
+ascending order by numerical value of the GCC init_priority attribute
+encoded in the section name before placing them in the output file.
+
 @cindex SORT
 @code{SORT} is an alias for @code{SORT_BY_NAME}.
 
@@ -3957,6 +4063,10 @@ treated as nested sorting command.
 
 If the section sorting command in linker script is nested, the
 command line option will be ignored.
+
+@cindex SORT_NONE
+@code{SORT_NONE} disables section sorting by ignoring the command line
+section sorting option.
 
 If you ever get confused about where input sections are going, use the
 @samp{-M} linker option to generate a map file.  The map file shows
@@ -5220,7 +5330,7 @@ well as section flag.
 
 If an orphaned section's name is representable as a C identifier then
 the linker will automatically @pxref{PROVIDE} two symbols:
-__start_SECNAME and __end_SECNAME, where SECNAME is the name of the
+__start_SECNAME and __stop_SECNAME, where SECNAME is the name of the
 section.  These indicate the start address and end address of the
 orphaned section respectively.  Note: most section names are not
 representable as C identifiers because they contain a @samp{.}
@@ -5497,17 +5607,17 @@ section relative symbols and for builtin functions that return an
 address, such as @code{ADDR}, @code{LOADADDR}, @code{ORIGIN} and
 @code{SEGMENT_START}.  Other terms are simply numbers, or are builtin
 functions that return a non-address value, such as @code{LENGTH}.
+One complication is that unless you set @code{LD_FEATURE ("SANE_EXPR")}
+(@pxref{Miscellaneous Commands}), numbers and absolute symbols are treated
+differently depending on their location, for compatibility with older
+versions of @code{ld}.  Expressions appearing outside an output
+section definition treat all numbers as absolute addresses.
+Expressions appearing inside an output section definition treat
+absolute symbols as numbers.  If @code{LD_FEATURE ("SANE_EXPR")} is
+given, then absolute symbols and numbers are simply treated as numbers
+everywhere.
 
-When the linker evaluates an expression, the result depends on where
-the expression is located in a linker script.  Expressions appearing
-outside an output section definitions are evaluated with all terms
-first being converted to absolute addresses before applying operators,
-and evaluate to an absolute address result.  Expressions appearing
-inside an output section definition are evaluated with more complex
-rules, but the aim is to treat terms as relative addresses and produce
-a relative address result.  In particular, an assignment of a number
-to a symbol results in a symbol relative to the output section with an
-offset given by the number.  So, in the following simple example,
+In the following simple example,
 
 @smallexample
 @group
@@ -5531,9 +5641,8 @@ address 0x100 in the first two assignments, then both @code{.} and
 @code{__data_start} are set to 0x10 relative to the @code{.data}
 section in the second two assignments.
 
-For expressions appearing inside an output section definition
-involving numbers, relative addresses and absolute addresses, ld
-follows these rules to evaluate terms:
+For expressions involving numbers, relative addresses and absolute
+addresses, ld follows these rules to evaluate terms:
 
 @itemize @bullet
 @item
@@ -5555,8 +5664,13 @@ An operation involving only numbers results in a number.
 @item
 The result of comparisons, @samp{&&} and @samp{||} is also a number.
 @item
-The result of other operations on relative addresses (after above
-conversions) is a relative address in the same section as the operand(s).
+The result of other binary arithmetic and logical operations on two
+relative addresses in the same section or two absolute addresess
+(after above conversions) is also a number.
+@item
+The result of other operations on relative addresses or one
+relative address and a number, is a relative address in the same
+section as the relative operand(s).
 @item
 The result of other operations on absolute addresses (after above
 conversions) is an absolute address.
@@ -6236,6 +6350,18 @@ instruction. The original instruction is then replaced with a branch to
 the veneer. The extra cycles required to call and return from the veneer
 are sufficient to avoid the erratum in both the scalar and vector cases.
 
+@cindex ARM1176 erratum workaround
+@kindex --fix-arm1176
+@kindex --no-fix-arm1176
+The @samp{--fix-arm1176} switch enables a link-time workaround for an erratum 
+in certain ARM1176 processors.  The workaround is enabled by default if you 
+are targetting ARM v6 (excluding ARM v6T2) or earlier.  It can be disabled 
+unconditionally by specifying @samp{--no-fix-arm1176}.
+
+Further information is available in the ``ARM1176JZ-S and ARM1176JZF-S 
+Programmer Advice Notice'' available on the ARM documentaion website at:
+http://infocenter.arm.com/.
+
 @cindex NO_ENUM_SIZE_WARNING
 @kindex --no-enum-size-warning
 The @option{--no-enum-size-warning} switch prevents the linker from
@@ -6614,7 +6740,9 @@ optimization.
 @cindex PowerPC64 multi-TOC
 @kindex --no-multi-toc
 @item --no-multi-toc
-By default, PowerPC64 GCC generates code for a TOC model where TOC
+If given any toc option besides @code{-mcmodel=medium} or
+@code{-mcmodel=large}, PowerPC64 GCC generates code for a TOC model
+where TOC
 entries are accessed with a 16-bit offset from r2.  This limits the
 total TOC size to 64K.  PowerPC64 @command{ld} extends this limit by
 grouping code sections such that each group uses less than 64K for its
@@ -6623,6 +6751,52 @@ calls.  @command{ld} does not split apart input sections, so cannot
 help if a single input file has a @code{.toc} section that exceeds
 64K, most likely from linking multiple files with @command{ld -r}.
 Use this option to turn off this feature.
+
+@cindex PowerPC64 TOC sorting
+@kindex --no-toc-sort
+@item --no-toc-sort
+By default, @command{ld} sorts TOC sections so that those whose file
+happens to have a section called @code{.init} or @code{.fini} are
+placed first, followed by TOC sections referenced by code generated
+with PowerPC64 gcc's @code{-mcmodel=small}, and lastly TOC sections
+referenced only by code generated with PowerPC64 gcc's
+@code{-mcmodel=medium} or @code{-mcmodel=large} options.  Doing this
+results in better TOC grouping for multi-TOC.  Use this option to turn
+off this feature.
+
+@cindex PowerPC64 PLT stub alignment
+@kindex --plt-align
+@kindex --no-plt-align
+@item --plt-align
+@itemx --no-plt-align
+Use these options to control whether individual PLT call stubs are
+aligned to a 32-byte boundary, or to the specified power of two
+boundary when using @code{--plt-align=}.  By default PLT call stubs
+are packed tightly.
+
+@cindex PowerPC64 PLT call stub static chain
+@kindex --plt-static-chain
+@kindex --no-plt-static-chain
+@item --plt-static-chain
+@itemx --no-plt-static-chain
+Use these options to control whether PLT call stubs load the static
+chain pointer (r11).  @code{ld} defaults to not loading the static
+chain since there is never any need to do so on a PLT call.
+
+@cindex PowerPC64 PLT call stub thread safety
+@kindex --plt-thread-safe
+@kindex --no-plt-thread-safe
+@item --plt-thread-safe
+@itemx --no-thread-safe
+With power7's weakly ordered memory model, it is possible when using
+lazy binding for ld.so to update a plt entry in one thread and have
+another thread see the individual plt entry words update in the wrong
+order, despite ld.so carefully writing in the correct order and using
+memory write barriers.  To avoid this we need some sort of read
+barrier in the call stub, or use LD_BIND_NOW=1.  By default, @code{ld}
+looks for calls to commonly used functions that create threads, and if
+seen, adds the necessary barriers.  Use these options to change the
+default behaviour.
 @end table
 
 @ifclear GENERIC

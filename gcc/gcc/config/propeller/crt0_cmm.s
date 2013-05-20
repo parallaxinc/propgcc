@@ -1,4 +1,13 @@
-	.section .lmmkernel, "ax"
+#ifdef DEBUG_KERNEL
+#include "cogdebug.h"
+#endif
+
+#if defined(__PROPELLER2__)
+#define RDBYTEC rdbytec
+#else
+#define RDBYTEC rdbyte
+#endif
+	.section .kernel, "ax"
 	.compress off
 	.global r0
 	.global r1
@@ -21,7 +30,11 @@
 
 	.global __LMM_entry
 __LMM_entry
+#if defined(__PROPELLER2__)
+r0	getptra sp
+#else
 r0	mov	sp, PAR
+#endif
 r1	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
 r2      IF_NE    jmp    #not_first_cog	' if not, skip some stuff
 	
@@ -29,7 +42,7 @@ r2      IF_NE    jmp    #not_first_cog	' if not, skip some stuff
 r3      locknew	__TMP0 wc	' allocate a lock
 r4	or	__TMP0, #256	' in case lock is 0, make the 32 bit value nonzero
 r5      wrlong __TMP0, __C_LOCK_PTR	' save it to ram
-r6      jmp    #__LMM_loop
+r6      jmp    #__LMM_start
 
 not_first_cog
 	'' initialization for non-primary cogs
@@ -39,19 +52,35 @@ r9      rdlong r0,sp		' pop the argument for the function
 r10     add	sp,#4
 r11     rdlong __TLS,sp	' and the _TLS variable
 r12     add	sp,#4
-r13	jmp	#__LMM_loop
+r13	jmp	#__LMM_start
 r14	nop
 	
 r15	'' alias for link register lr
 lr	long	__exit
 sp	long	0
 pc	long	entry		' default pc
-	'' constant FFFFFFFF should come after the pc
+#ifdef DEBUG_KERNEL
+	global __ccr__
+__ccr__
+#endif
+ccr	long	0		' condition codes
+	
+	'' the assembler actually relies on _MASK_FFFFFFFF being at register
+	'' 19
 	.global __MASK_FFFFFFFF
 __MASK_FFFFFFFF	long	0xFFFFFFFF
 
+#ifdef DEBUG_KERNEL
+	'' gdb relies on register 20 being a breakpoint command
+Breakpoint
+	call	#__EnterLMMBreakpoint
+#endif
+	
 	.global __TMP0
 __TMP0	long	0
+	.global __TMP1
+__TMP1	long	0
+
 
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -66,16 +95,30 @@ xfield  long 0
 	'' note, place sfield last so that if NATIVE code jumps here
 	'' it falls through into __LMM_loop
 sfield  long 0
-	
+
 __LMM_loop
-	rdbyte	ifield,pc
+#ifdef DEBUG_KERNEL
+	muxc	ccr,#1
+	muxnz	ccr,#2
+	test	ccr, #COGFLAGS_STEP wz
+  if_nz call	#__EnterDebugger
+	shr	ccr,#1 wc,wz,nr		'' restore flags
+#endif
+	RDBYTEC	ifield,pc
 	add	pc,#1
 	mov	dfield,ifield
 	shr	ifield,#4
 	and	dfield,#15
+#if defined(__PROPELLER2__)
+	setspa	ifield
+	popar	ifield
+	jmp	ifield
+	.data
+	'' for jmptable
+#else
 	add	ifield,#(jmptab_base-r0)/4
 	jmp	ifield
-
+#endif
 	
 jmptab_base
 	jmp	#macro	' instruction 0x
@@ -95,13 +138,25 @@ jmptab_base
 	jmp	#xmov_imm	' instruction Ed
 	jmp	#pack_native	' instruction Fd
 
+#if defined(__PROPELLER2__)
+	.section .kernel
+#endif
 macro
 	add	dfield,#(macro_tab_base-r0)/4
 	jmp	dfield
 
+#ifdef DEBUG_KERNEL
+__macro_brk
+	call	#__EnterLMMBreakpoint
+	'' fall through to macro_tab_base
+#endif
 macro_tab_base
 	jmp	#__LMM_loop	' macro 0 -- NOP
+#ifdef DEBUG_KERNEL
+	jmp	#__macro_brk
+#else
 	jmp	#__LMM_loop	' macro 1 -- BREAK
+#endif
 	jmp	#__macro_ret	' macro 2 -- RET
 	jmp	#__macro_pushm	' macro 3 -- PUSHM
 	jmp	#__macro_popm	' macro 4 -- POPM
@@ -113,56 +168,59 @@ macro_tab_base
 	jmp	#__macro_mvreg	' macro A -- register register move
 	jmp	#__macro_xmvreg	' macro B -- two register register moves
 	jmp	#__macro_addsp	' macro C -- add a constant to SP
-	jmp	#__LMM_loop	' macro D -- NOP
+	jmp	#__macro_ljmp	' macro D -- long jump
 	jmp	#__macro_fcache	' macro E -- FCACHE
 	jmp	#__macro_native	' macro F -- NATIVE
-
-	'' utility routine
-	'' read a long into sfield
-	'' trashes ifield,xfield
-get_long
-	rdbyte	sfield,pc
-	add	pc,#1
-	rdbyte	xfield,pc
-	add	pc,#1
-	shl	xfield,#8
-	rdbyte	ifield,pc
-	add	pc,#1
-	shl	ifield,#16
-	rdbyte	itemp,pc
-	add	pc,#1
-	shl	itemp,#24
-	or	sfield,itemp
-	or	sfield,xfield
-	or	sfield,ifield
-get_long_ret
-	ret
 
 	'' utility routine
 	'' read a word into sfield
 	'' trashes xfield
 get_word
-	rdbyte	sfield,pc
+	RDBYTEC	sfield,pc
 	add	pc,#1
-	rdbyte	xfield,pc
+	RDBYTEC	xfield,pc
 	add	pc,#1
 	shl	xfield,#8
 	or	sfield,xfield
 get_word_ret
 	ret
 
+	'' utility routine
+	'' read a long into sfield
+	'' trashes ifield,xfield
+get_long
+	call	#get_word
+	mov	ifield, sfield
+	call	#get_word
+	shl	sfield, #16
+	or	sfield,ifield
+get_long_ret
+	ret
+
+	''
+	'' read a signed byte into sfield
+	''
+get_sbyte
+	call	#get_byte
+	shl	sfield,#24
+	sar	sfield,#24
+get_sbyte_ret
+	ret
+
+	''
+	'' read an unsigned byte
+	''
+get_byte
+	RDBYTEC	sfield, pc
+	add	pc, #1
+get_byte_ret
+	ret
+	
 __macro_native
 	call	#get_long
 	jmp	#sfield
 
-__macro_fcache
-	rdbyte	__TMP0,pc
-	add	pc,#1
-	rdbyte  sfield,pc
-	shl	sfield,#8
-	or	__TMP0,sfield
-	add	pc,#1
-	jmp	#__LMM_FCACHE_DO
+	'' see later for __macro_fcache
 	
 __macro_ret
 	mov	pc,lr
@@ -178,28 +236,25 @@ __macro_div
 	call	#__DIVSI
 	jmp	#__LMM_loop
 
-__macro_pushm
-	rdbyte	__TMP0,pc
+__fetch_TMP0
+	RDBYTEC	__TMP0,pc
 	add	pc,#1
+__fetch_TMP0_ret
+	ret
+	
+__macro_pushm
+	call	#__fetch_TMP0
 	call	#__LMM_PUSHM
 	jmp	#__LMM_loop
 
 __macro_popret
-	rdbyte	__TMP0,pc
-	add	pc,#1
+	call	#__fetch_TMP0
 	call	#__LMM_POPRET
 	jmp	#__LMM_loop
 
 __macro_popm
-	rdbyte	__TMP0,pc
-	add	pc,#1
+	call	#__fetch_TMP0
 	call	#__LMM_POPM
-	jmp	#__LMM_loop
-
-__macro_lcall
-	call	#get_word
-	mov	lr,pc
-	mov	pc,sfield
 	jmp	#__LMM_loop
 
 	''
@@ -223,10 +278,7 @@ __macro_mvreg
 	'' add a signed 8 bit constant to sp
 	''
 __macro_addsp
-	rdbyte	sfield,pc
-	add	pc,#1
-	shl	sfield,#24
-	sar	sfield,#24
+	call	#get_sbyte
 	add	sp,sfield
 	jmp	#__LMM_loop
 
@@ -239,9 +291,9 @@ __macro_addsp
 	''' move immediate of a 32 bit value
 	'''
 mvi32
-	movd	.domvi32,dfield
+	movd	mvi_set,dfield
 	call	#get_long
-.domvi32
+mvi_set
 	mov	0-0,sfield
 	jmp	#__LMM_loop
 
@@ -249,37 +301,25 @@ mvi32
 	''' move immediate of a 16 bit value
 	'''
 mvi16
-	rdbyte	sfield,pc
-	movd	.domvi16,dfield
-	add	pc,#1
-	rdbyte	xfield,pc
-	add	pc,#1
-	shl	xfield,#8
-	or	sfield,xfield
-.domvi16
-	mov	0-0,sfield
-	jmp	#__LMM_loop
+	movd	mvi_set,dfield
+	call	#get_word
+	jmp	#mvi_set
 
 	'''
 	''' move immediate of an 8 bit value
 	'''
 mvi8
-	rdbyte	sfield,pc
-	movd	.domvi8,dfield
-	add	pc,#1
-.domvi8
-	mov	0-0,sfield
-	jmp	#__LMM_loop
+	movd	mvi_set,dfield
+	call	#get_byte
+	jmp	#mvi_set
 
 	'''
 	''' zero a register
 	'''
 mvi0
-	movd	.domvi0,dfield
-	nop
-.domvi0
-	mov	0-0,#0
-	jmp	#__LMM_loop
+	movd	mvi_set,dfield
+	mov	sfield,#0
+	jmp	#mvi_set
 
 
 	'''
@@ -287,10 +327,9 @@ mvi0
 	''' sets dst = sp + x
 	''' 
 leasp
-	rdbyte	sfield,pc
 	movd	.doleasp1,dfield
 	movd	.doleasp2,dfield
-	add	pc,#1
+	call	#get_byte
 .doleasp1
 	mov	0-0,sp
 .doleasp2
@@ -299,20 +338,33 @@ leasp
 
 
 	'''
+	''' helper function:
+	''' loads xfield and sfield with next byte
+	''' with sfield having upper 4 bits
+	''' and xfield having lower 4 bits
+	'''
+reg_helper
+	call	#get_byte
+	mov	xfield,sfield
+	shr	sfield,#4
+	and	xfield, #15
+reg_helper_ret
+	ret
+	
+	'''
 	''' 16 bit compressed forms of instructions
 	''' register-register operations encoded as
 	'''    iiii dddd ssss xxxx
 	'''
 regreg
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	sfield,#4
+	call	#reg_helper
 doreg
-	add	pc,#1
-	and	xfield,#15
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_rr,xfield
 	movd	sfield,dfield
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .ins_rr	or	sfield,0-0
 	jmp	#sfield
 
@@ -320,13 +372,16 @@ doreg
 	''' decode an embedded move instruction
 	''' dddd ssss
 xmov
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	xfield,#4
-	and	sfield,#15
-	movs	.xmov,sfield
-	movd	.xmov,xfield
-	add	pc,#1
+	call	#reg_helper
+	'' note reg-helper assumes sfield is upper 4 bits, xfield is lower
+	'' 4, which is kind of the reverse of what xmov wants
+	'' (the dest is in the upper, src in the lower)
+	movs	.xmov,xfield
+	movd	.xmov,sfield
+	nop
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .xmov	mov	0-0,0-0
 xmov_ret
 	ret
@@ -350,9 +405,7 @@ xmov_imm
 	''' register plus 4 bit immediate
 	'''
 regimm4
-	rdbyte	xfield,pc
-	mov	sfield,xfield
-	shr	sfield,#4
+	call	#reg_helper
 	or	sfield,__IMM_BIT
 	jmp	#doreg
 
@@ -369,10 +422,10 @@ __IMM_BIT	long (1<<22)
 	''' instead of xor r0,__MASK_FFFFFFFF
 	'''
 regimm12
-	rdbyte	itemp,pc		'' read low 8 bits
+	RDBYTEC	itemp,pc		'' read low 8 bits
 	add	pc,#1
 	mov	.ins2,#(sfield-r0)/4	'' set the source to "sfield" register
-	rdbyte	xfield,pc
+	RDBYTEC	xfield,pc
 	movd	.ins2,dfield
 	mov	sfield,xfield
 	and	sfield,#15		'' get the high 4 bits of sfield
@@ -382,9 +435,14 @@ regimm12
 	add	xfield,#(xtable-r0)/4
 	movs	.ins_ri,xfield
 	or	sfield,itemp
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .ins_ri	or	.ins2,0-0
 	add	pc,#1
-
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .ins2
 	nop
 	jmp	#__LMM_loop
@@ -420,45 +478,34 @@ xtable
 cond_mask long (0xf<<18)
 	
 brw
-	rdbyte	sfield,pc
+	call	#get_word
+	'' sign extend
+	shl	sfield, #16
+	sar	sfield, #16
+do_relbranch
+	add	sfield,pc
 	andn	.brwins,cond_mask
-	add	pc,#1
-	rdbyte	xfield,pc
-	shl	dfield,#18	'' get it into the cond field
+	shl	dfield,#18	'' get dfield into the cond field
 	or	.brwins,dfield
-	add	pc,#1
-	shl	xfield,#8
-	or	sfield,xfield
+	nop
+#if defined(__PROPELLER2__)
+	nop
+#endif
 .brwins	mov	pc,sfield
 	jmp	#__LMM_loop
 
 brs
-	rdbyte	sfield,pc
-	andn	.brsins,cond_mask
-	add	pc,#1
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.brsins,dfield
-	shl	sfield,#24
-	sar	sfield,#24
-.brsins	add	pc,sfield
-	jmp	#__LMM_loop
+	call	#get_sbyte
+	jmp	#do_relbranch
 
 skip2
-	andn	.skip2ins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip2ins,dfield
-	nop
-.skip2ins	add	pc,#2
-	jmp	#__LMM_loop
+	mov	sfield,#2
+	jmp	#do_relbranch
+	
 
 skip3
-	andn	.skip3ins,cond_mask
-	shl	dfield,#18	'' get dfield into the cond field
-	or	.skip3ins,dfield
-	nop
-.skip3ins
-	add	pc,#3
-	jmp	#__LMM_loop
+	mov	sfield,#3
+	jmp	#do_relbranch
 
 	''
 	'' packed native instructions
@@ -478,14 +525,9 @@ skip3
 	'' on entry to this function eeeI is in dfield
 	''
 pack_native
-	rdbyte	sfield,pc
+	call	#get_word	'' set sfield to first 16 bits
+	RDBYTEC	xfield,pc
 	add	pc,#1
-	rdbyte	itemp,pc
-	add	pc,#1
-	shl	itemp,#8
-	rdbyte	xfield,pc
-	add	pc,#1
-	or	sfield,itemp
 	mov	itemp,xfield   '' get the opcodes
 	and	xfield,#3
 	or	xfield,#0x3C   '' set condition bits
@@ -505,20 +547,33 @@ pack_native
 	.global __LMM_CALL_INDIRECT
 __LMM_CALL
 	call	#get_long
-	mov	__TMP0,sfield
-__LMM_CALL_INDIRECT
+	jmp	#do_call
+__macro_lcall
+	call	#get_word
+#if defined(__PROPELLER2__)
+	'' in order to extend the address space, we require that
+	'' subroutines be on longword boundaries
+	shl	sfield,#2
+#endif
+do_call
 	mov	lr,pc
-	mov	pc,__TMP0
+do_jmp
+	mov	pc,sfield
 	jmp	#__LMM_loop
 
 	''
-	'' direct jmp
+	'' long unconditional jump to anywhere in the address space
 	''
 	.global __LMM_JMP
 __LMM_JMP
+__macro_ljmp
 	call	#get_long
-	mov	pc,sfield
-	jmp	#__LMM_loop
+	jmp	#do_jmp
+
+__LMM_CALL_INDIRECT
+	mov	sfield,__TMP0
+	jmp	#do_call
+
 
 	''
 	'' push and pop multiple macros
@@ -563,6 +618,9 @@ __LMM_POPM
 	and	__TMP1,#0x0f
 	movd	L_poploop,__TMP1
 	shr	__TMP0,#4
+#if defined(__PROPELLER2__)
+	nop
+#endif
 L_poploop
 	rdlong	0-0,sp
 	add	sp,#4
@@ -580,88 +638,14 @@ __LMM_POPM_ret
 
 __MASK_0000FFFF	long	0x0000FFFF
 
-	''
-	'' math support functions
-	''
-	.global __DIVSI
-	.global __DIVSI_ret
-	.global __UDIVSI
-	.global __UDIVSI_ret
-	.global __CLZSI
-	.global __CLZSI_ret
-	.global __CTZSI
-__MASK_00FF00FF	long	0x00FF00FF
-__MASK_0F0F0F0F	long	0x0F0F0F0F
-__MASK_33333333	long	0x33333333
-__MASK_55555555	long	0x55555555
-__CLZSI	rev	r0, #0
-__CTZSI	neg	__TMP0, r0
-	and	__TMP0, r0	wz
-	mov	r0, #0
- IF_Z	mov	r0, #1
-	test	__TMP0, __MASK_0000FFFF	wz
- IF_Z	add	r0, #16
-	test	__TMP0, __MASK_00FF00FF	wz
- IF_Z	add	r0, #8
-	test	__TMP0, __MASK_0F0F0F0F	wz
- IF_Z	add	r0, #4
-	test	__TMP0, __MASK_33333333	wz
- IF_Z	add	r0, #2
-	test	__TMP0, __MASK_55555555	wz
- IF_Z	add	r0, #1
-__CLZSI_ret	ret
-__DIVR	long	0
-__TMP1
-__DIVCNT
-	long	0
-	''
-	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
-	''
-__UDIVSI
-	mov	__DIVR, r0
-	call	#__CLZSI
-	neg	__DIVCNT, r0
-	mov	r0, r1 wz
- IF_Z   jmp	#__UDIV_BY_ZERO
-	call	#__CLZSI
-	add	__DIVCNT, r0
-	mov	r0, #0
-	cmps	__DIVCNT, #0	wz, wc
- IF_C	jmp	#__UDIVSI_done
-	shl	r1, __DIVCNT
-	add	__DIVCNT, #1
-__UDIVSI_loop
-	cmpsub	__DIVR, r1	wz, wc
-	addx	r0, r0
-	shr	r1, #1
-	djnz	__DIVCNT, #__UDIVSI_loop
-__UDIVSI_done
-	mov	r1, __DIVR
-__UDIVSI_ret	ret
-__DIVSGN	long	0
-__DIVSI	mov	__DIVSGN, r0
-	xor	__DIVSGN, r1
-	abs	r0, r0 wc
-	muxc	__DIVSGN, #1	' save original sign of r0
-	abs	r1, r1
-	call	#__UDIVSI
-	cmps	__DIVSGN, #0	wz, wc
- IF_B	neg	r0, r0
-	test	__DIVSGN, #1 wz	' check original sign of r0
- IF_NZ	neg	r1, r1		' make the modulus result match
-__DIVSI_ret	ret
-
-	'' come here on divide by zero
-	'' we probably should raise a signal
-__UDIV_BY_ZERO
-	neg	r0,#1
-	mov	r1,#0
-	jmp	#__UDIVSI_ret
-	
 	.global __MULSI
 	.global __MULSI_ret
 __MULSI
-__MULSI
+#if defined(__PROPELLER2__)
+        setmula r0
+        setmulb r1
+        getmull r0
+#else
 	mov	__TMP0, r0
 	min	__TMP0, r1
 	max	r1, r0
@@ -671,7 +655,9 @@ __MULSI_loop
  IF_C	add	r0, __TMP0
 	add	__TMP0, __TMP0
  IF_NZ	jmp	#__MULSI_loop
-__MULSI_ret	ret
+#endif
+__MULSI_ret
+	ret
 
 	''
 	'' code for atomic compare and swap
@@ -708,6 +694,30 @@ __CMPSWAPSI_ret
 	ret
 	
 	''
+	'' code to load a buffer from hub memory into cog memory
+	''
+	'' parameters: __TMP0 = count of bytes
+	''             __TMP1 = hub address
+	''             __COGA = COG address
+	''
+	''
+__COGA	long 0
+	
+loadbuf
+	movd	.ldlp,__COGA
+	shr	__TMP0,#2	'' convert to longs
+#if defined(__PROPELLER2__)
+	nop
+#endif
+.ldlp
+	rdlong	0-0,__TMP1
+	add	__TMP1,#4
+	add	.ldlp,inc_dest1
+	djnz	__TMP0,#.ldlp
+
+loadbuf_ret
+	ret
+	''
 	'' FCACHE region
 	'' The FCACHE is an area where we can
 	'' execute small functions or loops entirely
@@ -717,12 +727,14 @@ __CMPSWAPSI_ret
 
 __LMM_FCACHE_ADDR
 	long 0
-inc_dest4
-	long (4<<9)
 	
 	.global	__LMM_RET
 __LMM_RET
 	long 0
+
+__macro_fcache
+	call	#get_word
+	mov	__TMP0, sfield
 
 __LMM_FCACHE_DO
 	add	pc,#3		'' round up to next longword boundary
@@ -733,46 +745,50 @@ __LMM_FCACHE_DO
   IF_Z	jmp	#Lmm_fcache_doit
 
 	mov	__LMM_FCACHE_ADDR, __TMP1
-	
-	'' assembler awkwardness here
-	'' we would like to just write
-	'' movd	Lmm_fcache_loop,#__LMM_FCACHE_START
-	'' but binutils doesn't work right with this now
-	movd Lmm_fcache_loop,#(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop2,#1+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop3,#2+(__LMM_FCACHE_START-__LMM_entry)/4
-	movd Lmm_fcache_loop4,#3+(__LMM_FCACHE_START-__LMM_entry)/4
-	add  __TMP0,#15		'' round up to next multiple of 16
-	shr  __TMP0,#4		'' we process 16 bytes per loop iteration
-Lmm_fcache_loop
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop,inc_dest4
-Lmm_fcache_loop2
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop2,inc_dest4
-Lmm_fcache_loop3
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop3,inc_dest4
-Lmm_fcache_loop4
-	rdlong	0-0,__TMP1
-	add	__TMP1,#4
-	add	Lmm_fcache_loop4,inc_dest4
-
-	djnz	__TMP0,#Lmm_fcache_loop
-
+	mova	__COGA, #__LMM_FCACHE_START
+	call	#loadbuf
 Lmm_fcache_doit
 	jmpret	__LMM_RET,#__LMM_FCACHE_START
 	jmp	#__LMM_loop
 
 
 	''
-	'' the fcache area should come last in the file
+	'' the fcache area 
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	64	'' reserve 64 longs = 256 bytes
 
+	'' initialization code can go here and be overwritten later
+__LMM_start
+#if defined(__PROPELLER2__)
+#ifdef DEBUG_KERNEL
+	call	#rxtx_init
+#else
+	nop
+#endif
+	'' copy jmptab_base into the CLUT/STACK area
+	setspa	#0
+	mov	r5, #16
+.inilp
+	rdlong	r4, __jmptab_ptr
+	add	__jmptab_ptr, #4
+	pusha	r4
+	djnz	r5, #.inilp
+	
+	jmp	#__LMM_loop
+__jmptab_ptr
+	long	jmptab_base
+	res	54	'' reserve 64 longs = 256 bytes
+#else
+	jmp	#__LMM_loop
+	res	63	'' reserve 64 longs = 256 bytes
+#endif
 
+	''
+	'' include various kernel extensions
+	''
+#include "kernel.ext"
+
+#ifdef DEBUG_KERNEL
+#include "cogdebug.ext"
+#endif

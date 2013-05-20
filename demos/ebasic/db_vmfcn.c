@@ -47,7 +47,7 @@ IntrinsicFcn * FLASH_SPACE Intrinsics[] = {
     fcn_printTab,
     fcn_printNL,
     fcn_printFlush,
-#ifdef PROPELLER
+#if defined(PROPELLER) && !defined(__PROPELLER2__)
     fcn_IN,
     fcn_OUT,
     fcn_HIGH,
@@ -120,7 +120,7 @@ static void fcn_printFlush(Interpreter *i)
     VM_flush();
 }
 
-#ifdef PROPELLER
+#if defined(PROPELLER) && !defined(__PROPELLER2__)
 
 static void fcn_IN(Interpreter *i)
 {

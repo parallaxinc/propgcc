@@ -48,6 +48,7 @@
 typedef int HANDLE;
 static HANDLE hSerial = -1;
 static struct termios old_sparm;
+static int continue_terminal = 1;
 
 /* normally we use DTR for reset but setting this variable to non-zero will use RTS instead */
 static int use_rts_for_reset = 0;
@@ -90,6 +91,7 @@ int serial_find(const char* prefix, int (*check)(const char* port, void* data), 
 static void sigint_handler(int signum)
 {
 	serial_done();
+	continue_terminal = 0;
 }
 
 /**
@@ -345,7 +347,6 @@ void terminal_mode(int check_for_exit)
     int sawexit_char = 0;
     int sawexit_valid = 0; 
     int exitcode = 0;
-    int continue_terminal = 1;
 
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;

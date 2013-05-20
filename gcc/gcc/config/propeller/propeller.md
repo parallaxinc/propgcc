@@ -25,6 +25,16 @@
 ;; Propeller specific constraints, predicates and attributes
 ;; -------------------------------------------------------------------------
 
+;;
+;; CPU types
+;; currently we support p1 (original Propeller) and p2 (Propeller 2)
+;;
+(define_enum "processor" [ p1 p2 ])
+
+;; attribute describing the processor
+(define_enum_attr "cpu" "processor"
+  (const (symbol_ref "propeller_cpu")))
+
 ;; defines for specific registers of interest
 ;; some of these are also used in propeller.h
 
@@ -94,8 +104,10 @@
 ;; hub  == instruction that references hub memory
 ;; wait == a wait instruction
 ;; multi == an insn that expands to multiple instructions
+;; dbranch == core branch that may have a delay slot added
+;; dcall == subroutine call that may have a delay slot added
 ;;
-(define_attr "type" "core,call,hub,wait,multi" (const_string "core"))
+(define_attr "type" "core,call,dbranch,dcall,hub,wait,multi" (const_string "core"))
 
 ; condition codes: this one is used by final_prescan_insn to speed up
 ; conditionalizing instructions.  It saves having to scan the rtl to see if
@@ -121,6 +133,7 @@
 	(if_then_else
 	 (ior
            (eq_attr "type" "call")
+           (eq_attr "type" "dcall")
            (eq_attr "type" "multi"))
 	 (const_string "clob")
          (const_string "nocond")))
@@ -142,6 +155,23 @@
 
 
 ;; -------------------------------------------------------------------------
+;; delay slots
+;; branches have 3 delay slots, which may be filled by any core (non-branch)
+;; instruction
+;; -------------------------------------------------------------------------
+(define_delay (and (eq_attr "type" "dbranch")
+                   (eq (symbol_ref "propeller_use_delay_slots")(const_int 1)))
+  [(ior (eq_attr "type" "core") 
+        (eq_attr "type" "hub"))
+          (nil) (nil)
+   (ior (eq_attr "type" "core")
+        (eq_attr "type" "hub"))
+          (nil) (nil)
+   (ior (eq_attr "type" "core")(eq_attr "type" "hub"))
+          (nil) (nil)]
+)
+
+;; ---------------------------- ---------------------------------------------
 ;; machine model for instruction scheduling
 ;; the tricky part here is that hub memory operations are only available
 ;; every 16 cycles (4 instructions) and that 16 cycle period is independent
@@ -158,7 +188,7 @@
 (define_reservation "use_slot3" "(issue+slot3),slot3*3")
 (define_reservation "use_slot4" "(issue+slot4),slot4*3")
 
-(define_insn_reservation "coreop" 1 (eq_attr "type" "core")
+(define_insn_reservation "coreop" 1 (eq_attr "type" "core,dbranch,dcall")
 			 "use_slot1 | use_slot2 | use_slot3 | use_slot4")
 (define_insn_reservation "hubop" 1 (eq_attr "type" "hub,wait")
 			 "(issue+slot1+slot2),(slot1+slot2)*3")
@@ -189,6 +219,8 @@
 			])
 (define_code_iterator minmaxop
 		      [(umax "")(umin "") (smax "")(smin "")])
+(define_code_iterator oneop
+		      [(abs "")(neg "")])
 
 ;; instructions that can pair together in CMM mode
 (define_code_iterator pair2op
@@ -203,6 +235,8 @@
 			 ;; propeller has backwards max and min names
 			 (umax "min") (umin "max")
 			 (smax "mins") (smin "maxs")
+			 ;; abs and neg
+			 (abs "abs") (neg "neg")
 			 ])
 
 (define_code_iterator muxcond [ne eq lt ge ltu geu])
@@ -632,6 +666,36 @@
   [(set_attr "predicable" "yes")]
 )
 
+(define_insn "*<oneop:code>si2_comparesrc"
+  [
+    (set (reg:CC CC_REG)
+         (compare:CC 
+	    (match_operand:SI 1 "propeller_src_operand" "rCI")
+	    (const_int 0)))
+    (set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	     (oneop:SI (match_dup 1)))
+  ]
+  ""
+  "<opcode>\t%0, %1 wz, wc"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
+(define_insn "*<oneop:code>si2_compare0"
+  [
+    (set (reg:CC_Z CC_REG)
+         (compare:CC_Z 
+	    (oneop:SI (match_operand:SI 1 "propeller_src_operand" "rCI"))
+	    (const_int 0)))
+    (set (match_operand:SI         0 "propeller_dst_operand" "=rC")
+	     (oneop:SI (match_dup 1)))
+  ]
+  ""
+  "<opcode>\t%0, %1 wz"
+  [(set_attr "conds" "set")
+   (set_attr "predicable" "yes")]
+)
+
 ;;
 ;; the instruction set doesn't actually have a NOT instruction, so synthesize
 ;; it from XOR; we'll just put a handy 0xFFFFFFFF somewhere in cog memory
@@ -640,6 +704,19 @@
 (define_insn "one_cmplsi2"
   [ (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
          (not:SI (match_operand:SI 1 "propeller_src_operand" "0")))]
+  ""
+{
+  propeller_need_maskffffffff = true; /* make sure we generate the FFFFFFFF */
+  return "xor\t%0,__MASK_FFFFFFFF";
+})
+
+(define_insn "*one_cmplsi2_compare0"
+  [ (set (reg:CC_Z CC_REG)
+         (compare:CC_Z
+           (not:SI (match_operand:SI 1 "propeller_src_operand" "0"))
+	   (const_int 0)))
+    (set (match_operand:SI 0 "propeller_dst_operand" "=rC")
+         (not:SI (match_dup 1)))]
   ""
 {
   propeller_need_maskffffffff = true; /* make sure we generate the FFFFFFFF */
@@ -1753,9 +1830,10 @@
 		      (pc)))]
   "!TARGET_LMM"
 {
-  return "%p1\tjmp\t#%l0";
+  return "%p1\tjmp%~\t#%l0";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1768,9 +1846,10 @@
         ))]	      
   "!TARGET_LMM"
 {
-  return "%P1\tjmp\t#%l0";
+  return "%P1\tjmp%~\t#%l0";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1874,9 +1953,10 @@
 		      (pc)))]
   ""
 {
-  return "%p2\tjmp\t#__LMM_FCACHE_START+(%l0-%l1)";
+  return "%p2\tjmp%~\t#__LMM_FCACHE_START+(%l0-%l1)";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1891,9 +1971,10 @@
         ))]
   ""
 {
-  return "%P2\tjmp\t#__LMM_FCACHE_START+(%l0-%l1)";
+  return "%P2\tjmp%~\t#__LMM_FCACHE_START+(%l0-%l1)";
 }
 [(set_attr "conds" "use")
+ (set_attr "type" "dbranch")
 ]
 )
 
@@ -1907,10 +1988,20 @@
 	      (clobber (reg:SI LINK_REG))])]
   ""
 {
-  if (propeller_expand_call(NULL, operands[0], operands[1]))
+  if (propeller_expand_call(NULL, operands[0], operands[1], false))
     DONE;
 })
 
+(define_expand "sibcall"
+  [(parallel [(call (match_operand:SI 0 "memory_operand" "")
+		    (match_operand 1 "general_operand" ""))
+	      (return)]
+   )]
+  ""
+{
+  if (propeller_expand_call(NULL, operands[0], operands[1], true))
+    DONE;
+})
 
 (define_insn "call_std"
   [(call (mem:SI (match_operand:SI 0 "call_operand" "i,r"))
@@ -1919,9 +2010,20 @@
   ]
   "!TARGET_LMM"
   "@
-   jmpret\tlr,#%0
-   jmpret\tlr,%0"
-  [(set_attr "type" "call")
+   jmpret%~\tlr,#%0
+   jmpret%~\tlr,%0"
+  [(set_attr "type" "dcall")
+   (set_attr "predicable" "yes")]
+)
+
+(define_insn "sibcall_std"
+  [(call (mem:SI (match_operand:SI 0 "sibcall_operand" "i"))
+	         (match_operand 1 "" ""))
+   (return)
+  ]
+  "!TARGET_LMM"
+  "jmp%~\t#%0"
+  [(set_attr "type" "dcall")
    (set_attr "predicable" "yes")]
 )
 
@@ -1935,6 +2037,19 @@
    lcall\t#%0
    mov\t__TMP0,%0\n\tjmp\t#__LMM_CALL_INDIRECT
    jmpret\tlr,#__LMM_FCACHE_START+8"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
+)
+
+(define_insn "sibcall_std_lmm"
+  [(call (mem:SI (match_operand:SI 0 "sibcall_operand" "i,U"))
+	         (match_operand 1 "" ""))
+   (return)
+  ]
+  "TARGET_LMM"
+  "@
+   brl\t#%0
+   jmp\t#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
 )
@@ -1963,7 +2078,19 @@
               (clobber (reg:SI LINK_REG))])]
   ""
 {
-  if (propeller_expand_call(operands[0], operands[1], operands[2]))
+  if (propeller_expand_call(operands[0], operands[1], operands[2], false))
+    DONE;
+})
+
+(define_expand "sibcall_value"
+  [(parallel [(set (match_operand 0 "" "")
+		     (call (match_operand:SI 1 "memory_operand" "")
+		           (match_operand 2 "" "")))
+              (return)]
+    )]
+  ""
+{
+  if (propeller_expand_call(operands[0], operands[1], operands[2], true))
     DONE;
 })
 
@@ -1975,9 +2102,21 @@
   ]
   "!TARGET_LMM"
   "@
-   jmpret\tlr,#%1
-   jmpret\tlr,%1"
-  [(set_attr "type" "call")
+   jmpret%~\tlr,#%1
+   jmpret%~\tlr,%1"
+  [(set_attr "type" "dcall")
+   (set_attr "predicable" "yes")]
+ )
+
+(define_insn "*sibcall_value"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC")
+	(call (mem:SI (match_operand:SI 1 "sibcall_operand" "i"))
+	      (match_operand 2 "" "")))
+   (return)
+  ]
+  "!TARGET_LMM"
+  "jmp%~\t#%1"
+  [(set_attr "type" "dcall")
    (set_attr "predicable" "yes")]
  )
 
@@ -1992,6 +2131,20 @@
    lcall\t#%1
    mov\t__TMP0,%1\n\tjmp\t#__LMM_CALL_INDIRECT
    jmpret\tlr,#__LMM_FCACHE_START+8"
+  [(set_attr "type" "call")
+   (set_attr "length" "8")]
+ )
+
+(define_insn "*sibcall_value_lmm"
+  [(set (match_operand 0 "propeller_dst_operand" "=rC,rC")
+	(call (mem:SI (match_operand:SI 1 "sibcall_operand" "i,U"))
+	      (match_operand 2 "" "")))
+   (return)
+  ]
+  "TARGET_LMM"
+  "@
+   brl\t#%1
+   jmp\t#__LMM_FCACHE_START+8"
   [(set_attr "type" "call")
    (set_attr "length" "8")]
  )
@@ -2030,7 +2183,10 @@
   [(set (pc)
 	(label_ref (match_operand 0 "" "")))]
   "!TARGET_LMM"
-  "jmp\t#%0"
+  "jmp%~\t#%0"
+[
+  (set_attr "type" "dbranch")
+]
 )
 
 ;;
@@ -2042,7 +2198,10 @@
 	         (label_ref (match_operand 1 "" ""))]
 		UNSPEC_FCACHE_LABEL_REF))]
   ""
-  "jmp\t#__LMM_FCACHE_START+(%0-%1)"
+  "jmp%~\t#__LMM_FCACHE_START+(%0-%1)"
+[
+  (set_attr "type" "dbranch")
+]
 )
 
 (define_insn "*jump_cmm"
@@ -2150,22 +2309,26 @@
   ]
   ""
 {
-    return "jmp\t%0";
+    return "jmp%~\t%0";
 }
+[(set_attr "type" "dbranch")]
 )
 
-(define_insn "return_internal"
+(define_insn "return_cog"
   [(return)
    (use (match_operand:SI 0 "register_operand" "r"))
   ]
-  ""
-{ if (TARGET_CMM)
-    return "lret";
-  else if (TARGET_LMM)
-    return "mov\tpc,%0";
-  else
-    return "jmp\t%0";
-}
+  "!TARGET_LMM"
+  "jmp%~\t%0";
+[(set_attr "type" "dbranch")]
+)
+
+(define_insn "return_lmm"
+  [(return)
+   (use (match_operand:SI 0 "register_operand" "r"))
+  ]
+  "TARGET_LMM"
+  "lret"
 )
 
 (define_insn "naked_return"
@@ -2183,7 +2346,8 @@
    (use (reg:SI LINK_REG))
   ]
   ""
-  "'native return\n%0_ret\n\tret"
+  "'native return\n%0_ret\n\tret%~"
+[(set_attr "type" "dbranch")]
 )
 
 (define_expand "return"
@@ -2208,7 +2372,7 @@
   ]
 ""
 {
-  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+  if (GET_MODE (operands[0]) == SImode && !TARGET_CMM)
     {
       if (INTVAL (operands[3]) > 1)
       	 FAIL;
@@ -2238,11 +2402,14 @@
    (use (match_operand 4 "" ""))]	; label
 ""
 {
-  if (GET_MODE (operands[0]) == SImode && !TARGET_LMM)
+  if (GET_MODE (operands[0]) == SImode && !TARGET_CMM)
     {
       if (INTVAL (operands[3]) > 1)
       	 FAIL;
-      emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
+      if (TARGET_LMM)
+        emit_jump_insn (gen_djnz_lmm (operands[4], operands[0], operands[0]));
+      else
+        emit_jump_insn (gen_djnz (operands[4], operands[0], operands[0]));
     }
   else
     FAIL;
@@ -2269,7 +2436,7 @@
 {
  if (which_alternative != 0)
    return "#";
- return "djnz\t%1,#%l0";
+ return "djnz%~\t%1,#%l0";
 }
  "&& reload_completed
   && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
@@ -2284,8 +2451,80 @@
                           (label_ref (match_dup 0))
                           (pc)))]
  ""
- [(set_attr "type" "core,multi,multi")
-  (set_attr "length" "4,8,8")
+ [(set_attr "type" "dbranch,multi,multi")
+  (set_attr "length" "4,16,16")
+ ]
+)
+
+(define_insn_and_split "djnz_lmm"
+  [(set (pc)
+        (if_then_else
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC,rC")
+	      (const_int 1))
+	  (label_ref (match_operand 0 "" ""))
+	  (pc)))
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,?X,?X")
+        (plus:SI (match_dup 1)(const_int -1)))
+   (clobber (match_scratch:SI 3 "=X,&1,&?r"))
+  ]
+"TARGET_LMM && !TARGET_CMM"
+{
+ if (which_alternative != 0)
+   return "#";
+ return "djnz\\t%1,#__LMM_JMP\\n\\tlong\\t%l0";
+}
+ "&& reload_completed
+  && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
+ [(set (match_dup 3)(match_dup 1))
+  (parallel
+    [(set (reg:CC_Z CC_REG)
+          (compare:CC_Z (plus:SI (match_dup 3)(const_int -1))
+	                (const_int 0)))
+      (set (match_dup 3)(plus:SI (match_dup 3)(const_int -1)))])
+  (set (match_dup 2)(match_dup 3))
+  (set (pc) (if_then_else (ne (reg:CC_Z CC_REG)(const_int 0))
+                          (label_ref (match_dup 0))
+                          (pc)))]
+ ""
+ [(set_attr "type" "multi,multi,multi")
+  (set_attr "length" "8,16,16")
+ ]
+)
+
+(define_insn_and_split "*djnz_fcache"
+  [(set (pc)
+        (if_then_else
+	  (ne (match_operand:SI 1 "propeller_dst_operand" "rC,rC,rC")
+	      (const_int 1))
+	  (unspec [(label_ref (match_operand 0 "" ""))
+                   (label_ref (match_operand 4 "" ""))]
+                  UNSPEC_FCACHE_LABEL_REF)
+	  (pc)))
+   (set (match_operand:SI 2 "nonimmediate_operand" "=1,?X,?X")
+        (plus:SI (match_dup 1)(const_int -1)))
+   (clobber (match_scratch:SI 3 "=X,&1,&?r"))
+  ]
+""
+{
+ if (which_alternative != 0)
+   return "#";
+ return "djnz%~\\t%1,#__LMM_FCACHE_START+(%l0-%l4)";
+}
+ "&& reload_completed
+  && (! REG_P (operands[2]) || ! rtx_equal_p (operands[1], operands[2]))"
+ [(set (match_dup 3)(match_dup 1))
+  (parallel
+    [(set (reg:CC_Z CC_REG)
+          (compare:CC_Z (plus:SI (match_dup 3)(const_int -1))
+	                (const_int 0)))
+      (set (match_dup 3)(plus:SI (match_dup 3)(const_int -1)))])
+  (set (match_dup 2)(match_dup 3))
+  (set (pc) (if_then_else (ne (reg:CC_Z CC_REG)(const_int 0))
+                          (label_ref (match_dup 0))
+                          (pc)))]
+ ""
+ [(set_attr "type" "dbranch,multi,multi")
+  (set_attr "length" "4,16,16")
  ]
 )
 
@@ -2779,6 +3018,18 @@
   ""
 )
 
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operand:SI 1 "propeller_src_operand" ""))
+   (set (reg:CC CC_REG)(compare:CC (match_dup 0) (const_int 0)))
+  ]
+  ""
+  [(parallel
+     [(set (reg:CC CC_REG)(compare:CC (match_dup 1)(const_int 0)))
+      (set (match_dup 0)(match_dup 1))])]
+  ""
+)
+
 ;;
 ;; sometimes the combiner will miss redundant compares
 ;;
@@ -2797,6 +3048,53 @@
 	                   (const_int 0)))
       (set (match_dup 0)
            (match_op_dup 2 [(match_dup 0)(match_dup 1)]))
+     ])]
+  ""
+)
+
+;;
+;; abs and neg set their flags based on source input rather than
+;; on output; for 0 comparisons this actually works for the output
+;; too, since abs(0) = neg(0) = 0
+;;
+
+;; set flags based on source; note that we require that operands[1]
+;; become dead so as to avoid the case where operands[0] and operands[1]
+;; are the same
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operator:SI 2 "propeller_math_op1srcflags"
+	   [
+	    (match_operand:SI 1 "propeller_src_operand" "")
+	   ]))
+   (set (reg:CC CC_REG)(compare:CC (match_dup 1) (const_int 0)))
+  ]
+  "peep2_reg_dead_p (2, operands[1])"
+  [(parallel
+     [(set (reg:CC CC_REG)
+             (compare:CC   (match_dup 1)
+	                   (const_int 0)))
+      (set (match_dup 0)
+           (match_op_dup 2 [(match_dup 1)]))
+     ])]
+  ""
+)
+
+(define_peephole2
+  [(set (match_operand:SI 0 "propeller_dst_operand" "")
+        (match_operator:SI 2 "propeller_math_op1"
+	   [
+	    (match_operand:SI 1 "propeller_src_operand" "")
+	   ]))
+   (set (reg:CC_Z CC_REG)(compare:CC_Z (match_dup 1) (const_int 0)))
+  ]
+  ""
+  [(parallel
+     [(set (reg:CC_Z CC_REG)
+             (compare:CC_Z (match_op_dup 2 [(match_dup 1)])
+	                   (const_int 0)))
+      (set (match_dup 0)
+           (match_op_dup 2 [(match_dup 1)]))
      ])]
   ""
 )
@@ -2930,7 +3228,33 @@
     (set (match_dup 1)(match_dup 0))
    ]
   "propeller_reg_dead_peep (insn, operands[0])"
-  "%Q3 %1,%2"
+  "%I3\t%1,%2"
+)
+
+(define_peephole
+  [
+    (set (match_operand:SI 0 "propeller_dst_operand" "")
+         (match_operand:SI 1 "propeller_dst_operand" ""))
+    (set (match_dup 0)
+         (and:SI (match_dup 0)
+	         (not:SI (match_operand:SI 2 "propeller_src_operand" ""))))
+    (set (match_dup 1)(match_dup 0))
+   ]
+  "propeller_reg_dead_peep (insn, operands[0])"
+  "andn\t%1,%2"
+)
+
+(define_peephole
+  [
+    (set (match_operand:SI 0 "propeller_dst_operand" "")
+         (match_operand:SI 1 "propeller_dst_operand" ""))
+    (set (match_dup 0)
+         (and:SI (match_dup 0)
+	         (match_operand:SI 2 "const_int_operand" "")))
+    (set (match_dup 1)(match_dup 0))
+   ]
+  "propeller_reg_dead_peep (insn, operands[0]) && propeller_const_ok_for_letter_p (INTVAL (operands[2]), 'M')"
+  "andn\t%1, %M2"
 )
 
 ;;
@@ -2946,7 +3270,7 @@
           (match_operand:SI 3 "propeller_cmm_src_operand" "ri")]))
   ]
   "TARGET_CMM"
-  "xmov\t%0,%1 %Q4 %2,%3"
+  "xmov\t%0,%1 %I4 %2,%3"
 )
 
 ;; we have to special case sub r0,#1, it gets turned into add r0,#-1

@@ -33,10 +33,14 @@ ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)
 endif
 
-CFLAGS_NO_MODEL := $(CFLAGS)
-CFLAGS += -m$(MODEL)
+ifneq ($(CHIP),)
+CHIPFLAG = -m$(CHIP)
+endif
+
+CFLAGS_NO_MODEL := $(CFLAGS) $(CHIPFLAG)
+CFLAGS += -m$(MODEL) $(CHIPFLAG)
 CXXFLAGS += $(CFLAGS)
-LDFLAGS += -m$(MODEL) -fno-exceptions -fno-rtti
+LDFLAGS += $(CFLAGS) -fno-exceptions -fno-rtti
 
 ifneq ($(LDSCRIPT),)
 LDFLAGS += -T $(LDSCRIPT)
@@ -50,6 +54,7 @@ AS = propeller-elf-as
 AR = propeller-elf-ar
 OBJCOPY = propeller-elf-objcopy
 LOADER = propeller-load
+LOADER2 = p2load
 
 # BSTC program
 BSTC=bstc
@@ -115,6 +120,9 @@ clean:
 
 #
 # how to run
-#
 run: $(NAME).elf
 	$(LOADER) $(BOARDFLAG) $(NAME).elf -r -t
+
+run2: $(NAME).elf
+	$(LOADER2) $(NAME).elf -t
+#

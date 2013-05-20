@@ -1,0 +1,2 @@
+target remote |gdbstub
+set remote hardware-breakpoint-limit 1

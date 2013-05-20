@@ -72,8 +72,10 @@ LOBJS = serialparam.o \
         getldec.o \
         getludec.o \
         getlfnum.o \
-        c++-alloc.o \
-        tinystream.o
+
+# these require c++ which isn't working yet on the propeller 2
+#        c++-alloc.o \
+#        tinystream.o
 
 TINYDIR = $(MODELDIR)/tiny
 TINY_LOBJS = $(addprefix $(TINYDIR)/, $(LOBJS))

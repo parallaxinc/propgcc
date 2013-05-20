@@ -90,7 +90,7 @@
 (define_constraint "W"
   "A wide integer (does not fit in 9 bits)"
   (and (match_code "const_int")
-       (match_test "ival < 0 && ival >= 511")))
+       (match_test "ival < 0 || ival >= 511")))
 
 ;;
 ;; some register constraints

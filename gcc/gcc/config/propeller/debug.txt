@@ -1,0 +1,88 @@
+Cog debug protocol:
+
+Packets from the host to the device are always at least 3 bytes long.
+
+  - The first byte is 0xFD
+
+  - The next byte has the command in the high nybble, and target COG in
+    the low nybble. If the target COG is 0x0F then it is a "broadcast"
+    packet intended for all COGs.
+
+  - The next byte is a count of how many bytes are left.
+
+Packets from the device back to the host may be a variable number of
+bytes, but always start with 0xF8-0xFF followed by the COG id.
+
+The following commands are understood:
+
+  - 0x00: DBG_CMD_STATUS: request cog id, flags, and PC
+    device responds with 5 bytes:
+      0xF8 II FF YY XX
+    where
+        II is the cog number
+        FF is the current cog status bits (see below)
+        XXYY is the current cog PC
+    This command is intended to assist with debugging COG code
+    
+    cog status bits:
+    bit 0:  carry flag (C)
+    bit 1:  nz flag (!Z)
+    bits 4-5:  propeller version: 0=prop1, 1 = prop2
+    bit 7:  single step bit (LMM kernel only)
+    all other bits are reserved
+
+  - 0x10: DBG_CMD_RESUME: resume execution
+    device does not immediately respond, but sends a status byte when
+    a breakpoint is hit
+
+  - 0x20: DBG_CMD_READCOG: read cog data
+    This request has a length of 3 (3 additional bytes), consisting
+    of the number of bytes to read (1 byte) plus the number of the COG
+    register to start reading at (note that this is a COG register
+    number, not a byte address). The number of bytes to read must be a
+    multiple of 4. So for example to read register 16 (the C stack
+    pointer) from COG 1, the device would send:
+       0xFD 0x21 0x03 0x04 0x00 0x10
+    which is "read 4 bytes from register 16"
+
+    The device responds with
+      0xF9 II XX XX XX ...
+    where II is the COG number, and XX...XX are the N bytes of data
+    requested by the read.
+
+  - 0x30: DBG_CMD_WRITECOG: write cog data
+    This request has a length of at least 6 (the COG address followed
+    by 4 bytes of data). The length will be 2 + number of bytes. So
+    for example to write 0x12345678 to register 1 in COG 7, the device
+    would send:
+      0xFD 0x37 0x06 0x00 0x01 0x78 0x56 0x34 0x12
+
+    The device responds with 0xFA (ack), followed by the COG number,
+    followed by a single byte checksum of data received (at present
+    the checksum is always 0, so should be ignored)
+
+  - 0x40: DBG_CMD_READHUB: read hub data
+    Very similar to DBG_CMD_READCOG, except the address is 4 bytes (so
+    the command length is 5, 1 byte data length plus 4 bytes
+    addres). The address is a hub byte address, and any number of
+    bytes between 1 and 255 may be sent.
+
+  - 0x50: DBG_CMD_WRITEHUB: write hub data
+
+  - 0x60: DBG_CMD_QUERYBP: query the breakpoint command
+    Requests 4 bytes that may be used as a breakpoint. The device
+    response is 0xF9 II ww zz yy xx, where xxyyzzww is a breakpoint
+    instruction.
+
+  - 0x70: DBG_CMD_LMMSTEP: single step the LMM interpreter
+    The device response happens after the step, and is the same as for
+    DBG_CMD_STATUS.
+
+  - 0x80: DBG_CMD_LMMBRK: set the hardware breakpoint address
+    This requests that the LMM interpreter break when the PC gets to a
+    certain value. The length is 4 (4 additional bytes) consisting of
+    the 4 byte PC value to break at.
+
+    The response is 0xFA (ack) followed by cog number and a checksum
+    of the address (not implemented yet, checksum is always 0).
+

@@ -19,7 +19,7 @@ KERNEL="
   {
     *(.lmmkernel)
     *(.kernel)
-  } >cog AT>hub
+  } >kermem AT>hub
 "
 KERNEL_NAME=.lmmkernel
 HUB_DATA="

@@ -149,6 +149,9 @@ int main(int argc, char *argv[])
             case 'q':
                 check_for_exit = 1;
                 break;
+	    case 'g':
+	        flags |= LFLAG_DEBUG;
+		break;
             case 'D':
                 if(argv[i][2])
                     p = &argv[i][2];
@@ -344,6 +347,7 @@ usage: propeller-load\n\
          [ -D var=value ]  define a board configuration variable\n\
          [ -e ]            write the program into EEPROM\n\
          [ -r ]            run the program after loading\n\
+         [ -g ]            set up the program for debugging after loading\n\
          [ -s ]            write a spin .binary file for use with the Propeller Tool\n\
          [ -x ]            write a .pex binary file for use with the SD loader or SD cache\n\
          [ -l ]            write a program to the sd card and use the SD loader\n\

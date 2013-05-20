@@ -32,6 +32,9 @@
 #define LITERAL_PREFIXDOLLAR_HEX
 #define LITERAL_PREFIXPERCENT_BIN
 
+/* allow Sun style dollar labels */
+#define LOCAL_LABELS_DOLLAR 1
+
 /* special hack to ignore underscores in constants */
 #define IGNORE_UNDERSCORES_IN_INTEGER_CONSTANTS 1
 
@@ -45,17 +48,22 @@ long md_chars_to_number (unsigned char *, int);
 
 void propeller_frob_label (symbolS * s);
 
-#define TC_S_GET_VALUE propeller_s_get_value
-valueT propeller_s_get_value (symbolS *s);
-
 #define tc_fix_adjustable(f) 0
+
+#define elf_tc_final_processing propeller_elf_final_processing
+void propeller_elf_final_processing (void);
+
+#define TC_PARSE_CONS_EXPRESSION(EXP, NBYTES) propeller_cons (EXP, NBYTES)
+#define TC_CONS_FIX_NEW propeller_cons_fix_new
+
+void propeller_cons (expressionS *, int);
+void propeller_cons_fix_new (struct frag *, int, unsigned int, struct expressionS *);
+
+#define md_start_line_hook propeller_start_line_hook
+void propeller_start_line_hook (void);
+
+extern const char propeller_symbol_chars[];
+#define tc_symbol_chars propeller_symbol_chars
 
 /* end of tc-propeller.h */
 
-/* Stuff for experiments or debugging.  This should all
- * be gone for release */
-//#define DEBUG 1
-//#define DEBUG2 1
-//#define DEBUG3 1
-//#define DEBUG4 1
-//#define DEBUG5 1

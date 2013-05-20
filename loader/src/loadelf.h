@@ -44,6 +44,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define SF_ALLOC    2
 #define SF_EXECUTE  4
 
+/* Propeller specific section flags */
+#define SF_COGDATA 0x10000000
+
 #define ELFNAMEMAX  128
 
 typedef struct {
@@ -62,6 +65,12 @@ typedef struct {
     uint16_t    shnum;
     uint16_t    shstrndx;
 } ElfHdr;
+
+#define ELF_CHIP(h) ((h)->flags & 0xff)
+
+#define ELF_CHIP_UNKNOWN    0
+#define ELF_CHIP_P1         1
+#define ELF_CHIP_P2         2
 
 typedef struct {
     uint32_t    name;

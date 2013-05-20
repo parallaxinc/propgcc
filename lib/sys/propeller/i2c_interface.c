@@ -1,3 +1,4 @@
+#if !defined(__PROPELLER2__)
 /* i2c_interface.c - i2c functions
 
 Copyright (c) 2012 David Michael Betz
@@ -71,3 +72,4 @@ static int cog_i2cClose(I2C *dev)
     cogstop(cdev->cog);
     return 0;
 }
+#endif

@@ -44,9 +44,12 @@
 #define PLOAD_STATUS_OPEN_FAILED    -1
 #define PLOAD_STATUS_NO_PROPELLER   -2
 
+#define PLOAD_RESET_DEVICE   0
+#define PLOAD_NORESET        1
+
 void psetverbose(int verbose);
 void psetdelay(int delay);
-int popenport(const char* port, int baud);
+int popenport(const char* port, int baud, int noreset);
 int preset(void);
 int pload(const char* file, int type);
 int ploadfp(const char* file, FILE *fp, int type);

@@ -2,21 +2,27 @@
  * @file include/propeller.h
  * @brief Provides Propeller specific functions.
  *
- * Copyright (c) 2011-2012 by Parallax, Inc.
+ * Copyright (c) 2011-2013 by Parallax, Inc.
  * MIT Licensed
  */
 
 #ifndef _PROPELLER_H_
 #define _PROPELLER_H_
 
+#include "cog.h"
+#include <stdint.h>
+#include <string.h>
+
+#ifdef __PROPELLER2__
+#include "propeller2.h"
+#else
+#include "propeller1.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" 
 {
 #endif
-
-#include "cog.h"
-#include <stdint.h>
-#include <string.h>
 
 /**
  * @brief HUBDATA tells compiler to put data into HUB RAM section.
@@ -34,39 +40,6 @@ extern "C"
  * unpredictable across platforms.
  */
 #define HUBTEXT __attribute__((section(".hubtext")))
-
-/// Parameter register is used for sharing HUB RAM address info with the COG.
-#define PAR     _PAR
-/// The system clock count
-#define CNT     _CNT
-/// Use to read the pins when corresponding DIRA bits are 0.
-#define INA     _INA
-/// Unused in P8X32A
-#define INB     _INB
-/// Use to set output pin states when corresponding DIRA bits are 1.
-#define OUTA    _OUTA
-/// Unused in P8X32A
-#define OUTB    _OUTB
-/// Use to set pins to input (0) or output (1).
-#define DIRA    _DIRA
-/// Unused in P8X32A
-#define DIRB    _DIRB
-/// Counter A control register.
-#define CTRA    _CTRA
-/// Counter B control register.
-#define CTRB    _CTRB
-/// Counter A frequency register.
-#define FRQA    _FRQA
-/// Counter B frequency register.
-#define FRQB    _FRQB
-/// Counter A phase accumulation register.
-#define PHSA    _PHSA
-/// Counter B phase accumulation register.
-#define PHSB    _PHSB
-/// Video Configuration register can be used for other special output.
-#define VCFG    _VCFG
-/// Video Scale register for setting pixel and frame clocks.
-#define VSCL    _VSCL
 
 /** @brief Returns the current clock frequency */
 #define CLKFREQ _CLKFREQ
@@ -100,33 +73,6 @@ do { \
  * @returns ID number of current COG
  */
 #define cogid()                  __builtin_propeller_cogid()
-
-/**
- * @brief Start a cog with a parameter
- *
- * @details
- * The fields in parameters are:
- *
- * @li 31:18   = 14-bit Long address for PAR Register
- * @li 17:4    = 14-bit Long address of CODE to load
- * @li 3       = New bit
- * @li 2:0     = Cog ID. New bit 3 is 0.
- *
- * It is important to realize that a 14 bit address means that
- * long aligned addresses or pointers should be use.
- * That is if you pass a value to the PAR such as 3, the value
- * will be truncated to 0. A value 5 will be interpreted as 4.
- *
- * @param id The COG id to initialize
- * @param code Start address of PASM code to load.
- * @param param PAR address
- *
- * @returns COG ID provided by the builtin function or -1 on failure.
- */
-#define coginit(id, code, param) __builtin_propeller_coginit( \
-                                 (((uint32_t)(param) << 16) & 0xfffc0000) \
-                                 |(((uint32_t)(code) <<  2) & 0x0003fff0) \
-                                 |(((id)                  ) & 0x0000000f) )
 
 /**
  * @brief Start a new Propeller PASM COG
@@ -171,27 +117,33 @@ do { \
 int cogstart(void (*func)(void *), void *par, void *stack, size_t stacksize);
 
 /**
- * @brief Get a new lock
- * @returns new lockid
+ * @brief Get a new lock  from the pool of Propeller hardware locks. 
+ * @note this function follows the Spin semantics described in the Propeller Manual.
+ * @warning The lock my be in either the set or cleared state: a new lock is not guarenteed to be cleared.
+ * @returns new lockid  (0 through 7) on success, -1 on failure (result is int type)
  */
 #define locknew() __builtin_propeller_locknew()
 
 /**
  * @brief Return lock to pool
- * @param lockid
+ * @note this function follows the Spin semantics described in the Propeller Manual.
+ * @warning The lock is returned in it's current state (set or cleared).
+ * @param lockid (0 through 7, int type)
  */
 #define lockret(lockid) __builtin_propeller_lockret((lockid))
 
 /**
  * @brief Set a lock
- * @param lockid
- * @returns true on success
+ * @note this function follows the Spin semantics described in the Propeller Manual.
+ * @param lockid (0 through 7, int type)
+ * @returns int with the previous state of the lock: -1 (0xFFFFFFFF) when the previous state was set, 0 when the previous state was not set.
  */
 #define lockset(lockid) __builtin_propeller_lockset((lockid))
 
 /**
  * @brief Clear lock
- * @param lockid
+ * @warning This function does not precisely follow the Spin semantics described in the Propeller Manual. In particular, it does not return a value.
+ * @param lockid (0 through 7, int type)
  */
 #define lockclr(lockid) __builtin_propeller_lockclr((lockid))
 
