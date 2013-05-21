@@ -13,4 +13,4 @@
 #
 # As of June 2012 we don't use the propgcc_v*.txt files.
 #
-propellergcc_v1_0_0
+propellergcc-alpha_v1_9_0
