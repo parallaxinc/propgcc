@@ -1,0 +1,723 @@
+	
+	''
+	'' debug stub
+	''
+	.section .kernel
+
+#if defined(__PROPELLER2__)
+rxpin		long	91
+txpin		long	90
+#else
+rxbit		long	0x80000000
+txbit		long	0x40000000
+#endif
+now		long	0
+ch		long	0
+zero		long 	0
+
+#if defined(__PROPELLER2__)
+clkfreq_ptr	long	__clkfreq
+baud_ptr	long	__baud
+
+rxtx_init
+	'' calculate halfbit based on clock frequency
+	rdlong	halfbit, clkfreq_ptr
+	rdlong	r1, baud_ptr
+	setdivu	halfbit
+	setdivb	r1		// calculate clock frequency / baud
+	getdivq	onebit
+	mov	halfbit, onebit
+	shr	halfbit, #1
+
+rxtx_init_ret
+	ret
+
+'--------------------------------------------------------------------
+' rx8bits	Receive 8 bits
+'--------------------------------------------------------------------
+
+bits		long	0
+
+rx8bits	mov	bits,#8
+	'' wait for rxpin to go low
+rxwaitstart
+	getp	rxpin	wz
+  if_nz jmp	#rxwaitstart
+
+  	'' and start
+	getcnt	now
+	add	now,halfbit
+	sub	now,#8
+	waitcnt	now,onebit
+
+rxloop
+	waitcnt	now,onebit
+	getp	rxpin wc
+	rcr	ch,#1
+	djnz	bits,#rxloop
+
+	'' wait for the line to go high (as it will when the stop bit arrives)
+	waitcnt	now,onebit
+rxwaitstop
+	getp	rxpin wz
+  if_z	jmp	#rxwaitstop
+
+rx8bits_ret
+	ret
+
+' 115200
+halfbit	long	694  '1600000000 / (2*115200) = 347.2222
+onebit		long	1389
+
+' 57600
+'halfbit		long	1041 
+'onebit		long	2083
+
+' 38400
+'halfbit		long	2083 
+'onebit		long	4167
+
+' 19200
+'halfbit		long	2083-11 
+'onebit		long	4166-16 
+#else
+'--------------------------------------------------------------------
+' rx8bits	Receive 8 bits
+'--------------------------------------------------------------------
+
+'' uses the INB shadow register for bits count
+
+rx8bits	mov	INB,#8
+	waitpeq	zero,rxbit	' wait for startbit
+	mov	now,CNT
+	add	now,halfbit
+	sub	now,#8
+	waitcnt	now,#0
+
+rxloop	mov	now,CNT
+	add	now,onebit
+	waitcnt	now,#0
+	test	rxbit,ina wc
+	rcr	ch,#1
+	djnz	INB,#rxloop
+
+	'' wait for the line to go high (as it will when the stop bit arrives)
+	waitpeq	rxbit,rxbit
+
+rx8bits_ret
+	ret
+
+' 115200
+halfbit	long	347  '80000000 / (2*115200) = 347.2222
+onebit		long	694
+
+' 57600
+'halfbit	long	694  
+'onebit		long	1389
+
+' 38400
+'halfbit		long	1041 
+'onebit		long	2083
+
+' 19200
+'halfbit		long	2083 
+'onebit		long	4167
+
+' 9600
+'halfbit		long	2083-11 
+'onebit		long	4166-16 
+#endif
+
+'--------------------------------------------------------------------
+' rxbyte	Receive byte into ch
+'--------------------------------------------------------------------
+
+rxbyte	call	#rx8bits
+	shr	ch,#24
+rxbyte_ret
+	ret
+
+'--------------------------------------------------------------------
+' debugger control variables
+'--------------------------------------------------------------------
+
+	.global	__EnterDebugger
+	.global __EnterDebugger_ret
+__EnterDebugger_ret
+__EnterBreakpoint_ret
+__EnterLMMBreakpoint_ret
+cogpc
+	long 0
+cogflags
+	long 0
+cogid
+	long 0
+debugpc
+	long 0
+
+
+__debug_kernel_ptr
+	long	__load_start_debug_kerext
+
+__EnterBreakpoint
+	sub	cogpc, #1
+	jmp	#__EnterDebugger
+__EnterLMMBreakpoint
+#if defined(__PROPELLER_CMM__)
+	sub	pc, #1	'' do we want the PC left pointing at the last instruction??
+#else
+	sub	pc, #4	'' do we want the PC left pointing at the last instruction??
+#endif
+	'' fall through
+__EnterDebugger
+dbgstart
+	mov	__TMP1,__debug_kernel_ptr
+	call	#__load_extension
+	jmp	#debug
+
+	'' resume execution
+	'' no response expected/required
+LeaveDebugger
+#if defined(__PROPELLER2__)
+	cachex		'' invalidate cache
+#endif
+	shr	cogflags,#1 wz,wc,nr
+	jmp	cogpc
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'' debug kernel extension: loaded when we enter the debug kernel
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+	.section .debug.kerext, "ax"
+startdebug
+	long	enddebug - startdebug
+
+cmd
+	long 0	
+cmdlen
+	long 0
+tmp0
+	long 0
+dbgcnt
+	long 0
+respond1
+	long 0
+respond2
+	long 0
+
+#if defined(__PROPELLER2__)
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,#0x100
+	shl	ch,#1
+	mov	bits,#10   ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+	setpc	txpin
+	getcnt	now
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+	djnz	bits,#txloop
+
+txbyte_ret
+	ret
+
+#else
+'--------------------------------------------------------------------
+' txbyte	Send one byte using kernel serial code
+'--------------------------------------------------------------------
+
+txbyte	or	ch,#0x100
+	shl	ch,#1
+	mov	INB,#10   ' 10 for one stop bit, 11 for two stop bits, 22 for one char delay between chars
+
+txloop	shr	ch,#1 wc
+	muxc	outa, txbit ' 22
+	mov	now, CNT
+	add	now,onebit
+	sub	now,#18	' tuned for 78us for 9 bits (should be 78.125us) so 0.26% too slow
+	waitcnt	now,#0
+	djnz	INB,#txloop
+
+txbyte_ret
+	ret
+#endif
+
+DebugLMM
+
+dbg_lmm_loop
+	rdlong	ldbg, debugpc
+	add	debugpc, #4
+#if defined(__PROPELLER2__)
+	nop
+#endif
+ldbg
+	nop
+	jmp	#dbg_lmm_loop
+DebugLMM_ret
+	ret
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'' main entry point for debug extension
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+debug
+	andn	ccr, #COGFLAGS_STEP
+#if defined(__PROPELLER2__)
+	setp	txpin
+#else
+	or	DIRA, txbit
+	or	OUTA, txbit
+#endif
+	mov	debugpc, hub_start_ptr
+	call	#DebugLMM
+cmdloop
+	mov	debugpc, hub_cmdloop_ptr
+	call	#DebugLMM
+	jmp	#cmdloop
+
+
+	'' skip over a command not for us
+skip_cmd
+	call	#rxbyte
+	djnz	cmdlen, #skip_cmd
+skip_cmd_ret
+	ret
+
+	''
+	'' loop to read data from a cog and send it back to the host
+	'' "dbgcnt" contains a count of the number of bytes to send
+	''
+read_cog_loop
+rcsrc
+	mov	tmp0, 0-0
+	call	#txlong
+	add	rcsrc,#1
+	djnz	dbgcnt, #read_cog_loop
+read_cog_loop_ret
+	ret
+
+  	'' read longs from the serial and write them to cog memory
+write_cog_loop
+	call	#rxlong
+wcdst
+	mov	0-0, ch
+	add	wcdst,inc_dest1
+	sub	cmdlen, #4 wz
+ if_nz  jmp	#write_cog_loop
+write_cog_loop_ret
+	ret
+
+'--------------------------------------------------------------------
+' transmit long word in tmp0
+'--------------------------------------------------------------------
+txtmp	long 0
+txlong
+	mov	txtmp,#4
+txlloop
+	mov	ch, tmp0
+	shr	tmp0,#8
+	and	ch, #0xff
+	call	#txbyte
+	djnz	txtmp, #txlloop
+txlong_ret
+	ret
+
+
+
+'--------------------------------------------------------------------
+' rxword	Receive word into ch
+'--------------------------------------------------------------------
+rxword	call	#rx8bits
+	call	#rx8bits
+	shr	ch, #16
+rxword_ret
+	ret
+
+'--------------------------------------------------------------------
+' rxlong	Receive long into ch
+'--------------------------------------------------------------------
+rxlong	call	#rx8bits
+	call	#rx8bits
+	call	#rx8bits
+	call	#rx8bits
+rxlong_ret
+	ret
+
+
+
+hub_start_ptr
+	long	hub_debug_start
+hub_cmdloop_ptr
+	long	hub_cmdloop
+
+enddebug
+
+'--------------------------------------------------------------------
+' 
+' Here is where we put code in HUB memory that can be interpreted by
+' our very simple debug-specific LMM engine
+'
+'--------------------------------------------------------------------
+
+	.section .hub
+
+	''
+	'' here's where we start debugging
+	''
+hub_debug_start
+  	muxnz	cogflags, #2
+	muxc	cogflags, #1
+#if defined(__PROPELLER2__)
+        or      cogflags, #COGFLAGS_P2
+#endif
+#if defined(__PROPELLER_CMM__)
+	or	cogflags, #COGFLAGS_CMM
+#endif
+	'' fall through to send the status command
+
+	''
+	'' here's what we send back to the host
+	'' COGID COGFLAGS COGPCLO COGPCHI
+	''
+	'' NOTE that COGFLAGS is not the same as the LMM condition
+	'' code register (CCR) which is saved at a different point in
+	'' the LMM loop
+	''
+hub_cmd_status
+	mov	ch, #RESPOND_STATUS
+	call	#txbyte
+	cogid	ch
+	mov	cogid, ch
+	call	#txbyte
+	mov	ch, cogflags
+	call	#txbyte
+	mov	ch, cogpc
+	and	ch, #255
+	call	#txbyte
+	mov	ch, cogpc
+	shr	ch, #8
+	call	#txbyte
+
+	'' fall through to the command loop
+
+hub_cmdloop
+	''
+	'' now wait for a command from the host
+	''
+	call	#rxbyte
+
+	'' make sure it really is a command
+	cmp	ch, #HOST_PACKET wz
+  if_ne	rdlong	debugpc,debugpc	 ''jmp	#notcmd
+  	long	hub_notcmd
+
+  	'' retreive the command
+	call	#rxbyte
+	mov	cmd, ch
+	'' retrieve the length
+	call	#rxbyte
+	mov	cmdlen, ch
+
+#if 0
+	'' now check to see if the command is for us
+	mov    tmp0, cmd
+	and    tmp0, #0x0f
+	cmp    tmp0, #0x0f wz	'' 0x0f == broadcast
+  if_e	rdlong debugpc,debugpc
+  	long   hub_decode_cmd
+
+	cmp    tmp0, cogid wz	'' if not broadcast, check cog id
+  if_e	rdlong debugpc,debugpc  ''jmp    #decode_cmd
+  	long   hub_decode_cmd
+
+  	call   #skip_cmd
+	jmp    #cmdloop
+#endif
+
+	'' fall through
+
+hub_decode_cmd
+	'' decode command
+	mov	respond2, #0
+	and	cmd, #0xf0
+	shr	cmd, #2
+	add	cmd, hub_cmdloop_ptr
+	add	cmd, #(hub_cmd_table - hub_cmdloop)
+	rdlong	debugpc,cmd
+	nop
+	'' the above branches to the desired command
+
+hub_cmd_bad
+	'' fall through to error if command not recognized
+	mov	respond2, #ERR_NOCMD
+hub_cmderr
+	mov	respond1, #RESPOND_ERR
+
+	'' fall through
+hub_donecmd
+	'' read any remaining bytes
+	cmp	cmdlen, #0 wz
+  if_ne	call	#skip_cmd
+
+	'' send the response
+	mov	ch, respond1
+	call	#txbyte
+	mov	ch, cogid
+	call	#txbyte
+	mov	ch,respond2
+	call	#txbyte
+	jmp	#cmdloop
+
+	'' need a table of commands here
+hub_cmd_table
+	long	hub_cmd_status
+	long	hub_cmd_resume
+	long	hub_cmd_readcogmem
+	long	hub_cmd_writecogmem
+
+	long	hub_cmd_readhubmem
+	long	hub_cmd_writehubmem
+	long	hub_cmd_querybp
+	long	hub_cmd_lmmstep
+
+	long	hub_cmd_lmmbrk
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+	long	hub_cmd_bad
+
+
+	''
+	'' received a byte that was not a command
+	'' just ignore it and start the command loop
+	''
+hub_notcmd
+	jmp	#cmdloop
+
+
+	''
+	'' resume execution
+	''
+hub_cmd_resume
+	jmp	#LeaveDebugger
+
+	''
+	'' read cog memory
+	''
+hub_cmd_readcogmem
+	'' must be exactly 3 more bytes left (len + cog address)
+	cmp	cmdlen, #3 wz
+  if_ne	rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+  	'' read the length (number of bytes to read)
+	call	#rxbyte
+	mov	dbgcnt, ch
+	shr	dbgcnt, #2 wz
+  if_e  rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+	'' read the address
+	call	#rxword
+	movs	rcsrc, ch
+  	sub	cmdlen, #3
+
+	'' now start our response
+	mov     ch, #RESPOND_DATA
+	call    #txbyte
+	mov     ch, cogid
+	call    #txbyte
+
+	call    #read_cog_loop
+	jmp     #cmdloop
+
+hub_cmd_writecogmem
+	'' must be at least 2 bytes (the address) left
+	cmps	cmdlen, #2 wz,wc
+  if_b	rdlong	debugpc,debugpc		'jmp	#cmderr
+  	long	hub_cmderr
+
+  	call	#rxword
+	movd	wcdst,ch
+	sub	cmdlen, #2 wz
+  if_e	jmp	#cmdloop
+
+	'' make sure the number of longs is even
+	test	cmdlen, #3 wz
+  if_nz	rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+  	call	#write_cog_loop
+
+  	'' send the ack
+	mov	respond1, #RESPOND_ACK
+
+	rdlong	debugpc,debugpc		'jmp	#donecmd
+	long	hub_donecmd
+
+
+hub_cmd_readhubmem
+	'' must be exactly 5 more bytes left (len + hub address)
+	mov	respond2, #ERR_READLEN
+	cmp	cmdlen, #5 wz
+  if_ne	rdlong	debugpc, debugpc	'jmp	#cmderr
+  	long	hub_cmderr
+
+	'' read the length (number of bytes to read)
+	call	#rxbyte
+	mov	dbgcnt, ch
+
+	'' read the address
+	call	#rxlong
+	mov	tmp0, ch
+
+	sub	cmdlen, #5
+
+	'' now start the response
+	mov    ch, #RESPOND_DATA
+	call   #txbyte
+	mov    ch, cogid
+	call   #txbyte
+
+read_hub_loop
+#if defined(__PROPELLER_USE_XMM__)
+        mov	t1, tmp0
+	test	t1, extern_mem_mask wz
+  if_z 	mov	memp,t1 
+  if_nz	call	#cache_read
+	rdbyte	ch, memp
+#else
+	rdbyte	ch, tmp0
+#endif
+	add	tmp0, #1
+	call	#txbyte
+	sub	dbgcnt, #1 wz
+  if_nz	rdlong	debugpc,debugpc
+  	long	read_hub_loop
+
+	jmp	#cmdloop
+
+hub_cmd_writehubmem
+	'' must be at least 5 bytes (the address + a byte of data) left
+	cmps	cmdlen, #5 wz,wc
+  if_b	rdlong	debugpc,debugpc
+  	long	hub_cmderr
+
+	call	#rxlong
+  	mov	tmp0, ch	' save address
+	sub	cmdlen, #4
+write_hub_loop
+	call	#rxbyte
+#if defined(__PROPELLER_USE_XMM__)
+        mov	t1, tmp0
+	test	t1, extern_mem_mask wz
+  if_z 	mov	memp,t1 
+  if_nz	call	#cache_read
+	wrbyte	ch, memp
+#else
+	wrbyte	ch, tmp0
+#endif
+	add	tmp0, #1
+	sub	cmdlen, #1 wz
+  if_nz rdlong	debugpc,debugpc
+  	long	write_hub_loop
+
+	'' now send a response
+	mov	respond1, #RESPOND_ACK
+
+	rdlong	debugpc,debugpc		'jmp	#donecmd
+	long	hub_donecmd
+
+	''
+	'' find the instruction to use for a software breakpoint
+	''
+hub_cmd_querybp
+	mov	ch, #RESPOND_DATA
+	call	#txbyte
+	mov	ch, cogid
+	call	#txbyte
+
+	mov	ch, #4	'length of breakpoint
+	call	#txbyte
+	'' now the actual breakpoint data
+	mov	tmp0, Breakpoint
+	call	#txlong
+	jmp	#cmdloop
+
+hub_cmd_lmmstep
+	or	ccr, #COGFLAGS_STEP
+	jmp	#LeaveDebugger
+
+	''
+	'' place a hardware breakpoint
+	'' 
+hub_cmd_lmmbrk
+	'' must have 5 bytes left in command (1 byte bkpt number, 4 bytes address for LMM breakpoint)
+	cmp	cmdlen, #5 wz
+  if_ne	mov	respond2, #ERR_BRKLEN
+  if_ne	rdlong	debugpc, debugpc
+        long    hub_cmderr
+
+	call	#rxbyte
+	sub	cmdlen, #1
+	mov	tmp0, ch	'' save breakpoint number
+	'' read the address
+	call	#rxlong
+	mov	cmdlen, #0
+
+	mov	respond1, #RESPOND_ACK
+#if defined(__PROPELLER_USE_XMM__)
+	'' in XMM mode there are 2 hardware breakpoints available, 0 and 1
+	cmp	tmp0, #1 wz
+  if_z	mov	hwbkpt1, ch
+  if_z  rdlong	debugpc, debugpc
+  	long	hub_donecmd
+#endif
+#if defined(__PROPELLER_CMM__)
+	'' in CMM mode no hardware breakpoint is available
+	mov   respond2, #ERR_BRKNUM
+#else
+	'' in other modes only 1 hardware breakpoint is available
+	cmp	tmp0, #0 wz
+ if_nz	mov   	respond2, #ERR_BRKNUM
+ if_nz	rdlong	debugpc, debugpc
+ 	long	hub_cmderr
+	mov	hwbkpt0, ch
+#endif
+	rdlong	debugpc, debugpc
+	long	hub_donecmd
+
+
+
+#ifdef HEXDEBUG
+	.section .kernel
+hexcnt	long 0
+hexch	long 0
+	
+txhex
+	mov	hexcnt, #8
+hexlp
+	mov	ch, hexch
+	rol	hexch, #4
+	shr	ch,#28
+	cmp	ch,#0x09 wz,wc
+	add	ch,#0x30
+  if_a	add	ch,#(0x41-0x3A)  '' 3A -> 41
+	call	#txbyte
+	djnz	hexcnt, #hexlp
+
+txhex_ret
+	ret
+#endif
+
