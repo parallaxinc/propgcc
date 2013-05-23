@@ -1,5 +1,7 @@
 Version 1.04
 
+- Fix precedence of NOT operator
+- Add quoting for spaces inside file names
 - Produce an error for redefined labels in DAT sections.
 - Rename constants that start with an _ to avoid conflicts with C.
 - Fix "reversed" range expressions like OUTA[9..10].
