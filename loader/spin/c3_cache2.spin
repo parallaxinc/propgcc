@@ -285,7 +285,7 @@ erase_4k_block_handler
 read_data_handler
         rdlong  hubaddr, vmaddr ' get the buffer pointer
         add     vmaddr, #4
-        rdlong  count, vmaddr wz ' get the byte count
+        rdlong  line_size, vmaddr wz ' get the byte count
   if_z  jmp     #:done
         add     vmaddr, #4
         rdlong  vmaddr, vmaddr  ' get the flash address
@@ -482,7 +482,7 @@ FLASH_READ
         call    #send
 
         mov     ptr, hubaddr      ' hubaddr = hub page address
-        'mov     count, line_size
+        mov     count, line_size
         jmp     #BREAD_DATA
 
 '----------------------------------------------------------------------------------------------------
