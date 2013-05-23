@@ -180,6 +180,7 @@ $(SPINDIR)/vm_start.spin
 
 DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
+$(DRVDIR)/c3_cache2.dat \
 $(DRVDIR)/c3_cache_flash.dat \
 $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \

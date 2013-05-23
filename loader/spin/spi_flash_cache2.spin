@@ -194,7 +194,7 @@ init_vm mov     t1, par             ' get the address of the initialization stru
 fillme  long    0[128-fillme]           ' first 128 cog locations are used for a direct mapped page table
 
         fit   128
-
+        
         ' initialize the cache lines
 vmflush movd    :flush, #0
         mov     t1, index_count
@@ -207,7 +207,7 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
         wrlong  zero, pvmcmd
 :wait   rdlong  vmpage, pvmcmd wz
   if_z  jmp     #:wait
-
+  
         test    vmpage, #int#EXTEND_MASK wz ' test for an extended command
   if_z  jmp     #extend
 

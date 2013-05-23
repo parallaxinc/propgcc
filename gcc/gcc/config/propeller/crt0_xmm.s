@@ -42,7 +42,6 @@ sp	long	0
 pc	long	0
 ccr	long	0
 
-led long    1<<16
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
