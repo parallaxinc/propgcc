@@ -187,6 +187,7 @@ $(DRVDIR)/sdram_cache.dat \
 $(DRVDIR)/eeprom_cache.dat \
 $(DRVDIR)/sd_cache.dat \
 $(DRVDIR)/spi_flash_cache.dat \
+$(DRVDIR)/spi_flash_cache2.dat \
 $(DRVDIR)/sst_spi_flash_cache.dat \
 $(DRVDIR)/fast_spi_flash_cache.dat \
 $(DRVDIR)/fast_sst_spi_flash_cache.dat \

@@ -42,6 +42,7 @@ sp	long	0
 pc	long	0
 ccr	long	0
 
+led long    1<<16
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
@@ -122,7 +123,7 @@ __LMM_JMP
     .set WRLONG_OPCODE, 0x010
 
     ''
-    '' intermediate memory read instructions
+    '' memory read instructions
     ''
     '' JMP #__LMM_RDxxxx
     '' the low order bits of __TMP0 are encoded as iddddssss
@@ -174,7 +175,7 @@ __LMM_RDBYTEI_ret
     ret
     
     ''
-    '' intermediate memory write instructions
+    '' memory write instructions
     ''
     '' JMP iddddssss,#__LMM_WRxxxx
     '' the low order bits of __TMP0 are encoded as iddddssss
