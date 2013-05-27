@@ -174,3 +174,5 @@ __UDIV_BY_ZERO
 
 endmath
 
+
+#include "init.ext"
