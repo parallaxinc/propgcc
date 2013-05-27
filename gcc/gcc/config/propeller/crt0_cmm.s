@@ -760,29 +760,7 @@ __LMM_FCACHE_START
 
 	'' initialization code can go here and be overwritten later
 __LMM_start
-#if defined(__PROPELLER2__)
-#ifdef DEBUG_KERNEL
-	call	#rxtx_init
-#else
-	nop
-#endif
-	'' copy jmptab_base into the CLUT/STACK area
-	setspa	#0
-	mov	r5, #16
-.inilp
-	rdlong	r4, __jmptab_ptr
-	add	__jmptab_ptr, #4
-	pusha	r4
-	djnz	r5, #.inilp
-	
-	jmp	#__LMM_loop
-__jmptab_ptr
-	long	jmptab_base
-	res	54	'' reserve 64 longs = 256 bytes
-#else
-	jmp	#__LMM_loop
-	res	63	'' reserve 64 longs = 256 bytes
-#endif
+	res	64	'' reserve 64 longs = 256 bytes
 
 	''
 	'' include various kernel extensions
