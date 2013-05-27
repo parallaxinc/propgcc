@@ -589,6 +589,40 @@ propeller_elf_is_local_label_name (bfd *abfd, const char *name)
   return _bfd_elf_is_local_label_name (abfd, name);
 }
 
+static void
+propeller_elf_gc_keep (struct bfd_link_info *info)
+{
+  bfd *in;
+  struct bfd_section *sec;
+  /*
+  look for sections starting or ending with ".cog";
+  these should never be garbage collected
+  (actually we could do even better and KEEP them only
+  if the corresponding _load_start_xxx symbol is referenced,
+  but for now just keep them all)
+  */
+  for (in = info->input_bfds; in; in = in->link_next)
+    {
+      for (sec = in->sections; sec; sec = sec->next)
+	{
+	  const char *name = sec->name;
+	  size_t namelen = strlen(name);
+	  int keep = 0;
+	  
+	  if (namelen > 4 && !strcmp(name+namelen-4, ".cog"))
+	    keep = 1;
+	  else if (!strncmp(name, ".cog", 4))
+	    keep = 1;
+	  if (keep)
+	    sec->flags |= SEC_KEEP;
+ 	}
+    }
+  /* do the usual marking of sections containing entry symbol and
+     symbols undefined on the command-line
+  */
+  _bfd_elf_gc_keep (info);
+}
+
 #define ELF_ARCH		bfd_arch_propeller
 #define ELF_MACHINE_CODE	EM_PROPELLER
 #define ELF_MAXPAGESIZE		0x1
@@ -603,6 +637,7 @@ propeller_elf_is_local_label_name (bfd *abfd, const char *name)
 #define elf_backend_check_relocs                propeller_elf_check_relocs
 #define elf_backend_merge_symbol_attribute      propeller_elf_merge_symbol_attribute
 
+#define elf_backend_gc_keep			propeller_elf_gc_keep
 #define elf_backend_can_gc_sections		1
 #define elf_backend_rela_normal			1
 

@@ -29,7 +29,7 @@ SECTIONS
   /* the initial startup code (including constructors) */
   .init ${RELOCATING-0} :
   {
-    *(.init*)
+    KEEP(*(.init*))
   } ${RELOCATING+ ${TEXT_MEMORY}}
 
   /* Internal text space or external memory.  */
@@ -58,12 +58,12 @@ SECTIONS
 
   .ctors ${RELOCATING-0} :
   {
-    *(.ctors*)
+    KEEP(*(.ctors*))
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
 
   .dtors ${RELOCATING-0} :
   {
-    *(.dtors*)
+    KEEP(*(.dtors*))
   } ${RELOCATING+ ${HUBTEXT_MEMORY}}
 
   .data	${RELOCATING-0} :
