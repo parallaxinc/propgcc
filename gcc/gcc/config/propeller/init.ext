@@ -20,6 +20,16 @@ __LMM_init
 #else
 	mov	sp, PAR
 #endif
+#if defined(__PROPELLER_USE_XMM__)
+	tjz	sp, __LMM_init		' wait for cache mbox to be set up
+	rdlong	cache_mboxcmd, sp
+	add	sp, #4
+	nop
+	add	sp, #4
+	rdlong	pc, sp
+	add	sp, #4
+	call	#cache_flush
+#endif
 	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
   IF_NE    jmp    #not_first_cog	' if not, skip some stuff
 	
