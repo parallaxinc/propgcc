@@ -21,32 +21,35 @@
 
 	.global __LMM_entry
 __LMM_entry
-r0	rdlong	sp, PAR
-r1	tjz	sp, #__LMM_entry
-r2	rdlong	cache_mboxcmd, sp
-r3	add	sp, #4
+r0	mov	__TMP1, r6	'' get pointer to initialization
+r1	call	#__load_extension
+r2  	jmp	#__LMM_init
+	
+
+r3      nop
 r4	nop
-r5	nop
-r6	nop
-r7	add	sp, #4
-r8	rdlong	pc, sp
-r9	add	sp, #4
-r10	locknew	r2 wc
-r11	or	r2,#256
-r12 IF_NC wrlong r2,__C_LOCK_PTR
-r13	call #cache_flush
-r14 jmp	#__LMM_start
-r15	'' alias for lr
-lr	long	0
+r5      nop
+r6      long __load_start_start_kerext
+
+r7      nop
+r8      nop
+r9      nop
+r10     nop
+r11     nop
+r12     nop
+r13	nop
+r14	nop
+	
+r15	'' alias for link register lr
+lr	long	__exit
 sp	long	0
-pc	long	0
+pc	long	entry		' default pc
 ccr	long	0
 
 	''
 	'' main LMM loop -- read instructions from hub memory
 	'' and executes them
 	''
-__LMM_start
 
 __LMM_loop
 	call	#read_code
