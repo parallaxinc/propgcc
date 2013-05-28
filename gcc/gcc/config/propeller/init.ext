@@ -28,7 +28,10 @@ __LMM_init
 	add	sp, #4
 	rdlong	pc, sp
 	add	sp, #4
+#if !defined(DEBUG_KERNEL)
+    '' FIXME: crt0_xmm_debug.s does not yet have cache_flush code
 	call	#cache_flush
+#endif
 #endif
 	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
   IF_NE    jmp    #not_first_cog	' if not, skip some stuff
@@ -54,7 +57,7 @@ __LMM_start
 	mov	lr, init_lr
 	mov	pc, init_pc
 
-#ifdef DEBUG_KERNEL
+#if defined(DEBUG_KERNEL) && defined(__PROPELLER2__)
 	call	#rxtx_init
 #endif
 #if defined(__PROPELLER2__) && defined(__PROPELLER_CMM__)
