@@ -21,7 +21,7 @@
 
 	.global __LMM_entry
 __LMM_entry
-#if 1 // Eric's changes
+#if 0 // Eric's changes
 r0	mov	__TMP1, r6	'' get pointer to initialization
 r1	call	#__load_extension
 r2  	jmp	#__LMM_init
@@ -60,7 +60,7 @@ r10     locknew r2 wc
 r11     or      r2,#256
 r12 IF_NC wrlong r2,__C_LOCK_PTR
 r13     call    #cache_init
-r14     jmp     #__LMM_start
+r14     jmp     #__LMM_loop
 r15     '' alias for lr
 lr      long    0
 sp      long    0
