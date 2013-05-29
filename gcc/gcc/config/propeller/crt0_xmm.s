@@ -21,6 +21,7 @@
 
 	.global __LMM_entry
 __LMM_entry
+#if 1 // Eric's changes
 r0	mov	__TMP1, r6	'' get pointer to initialization
 r1	call	#__load_extension
 r2  	jmp	#__LMM_init
@@ -37,14 +38,35 @@ r9      nop
 r10     nop
 r11     nop
 r12     nop
-r13	nop
-r14	nop
-	
-r15	'' alias for link register lr
-lr	long	__exit
-sp	long	0
-pc	long	entry		' default pc
-ccr	long	0
+r13     nop
+r14     nop
+        
+r15     '' alias for link register lr
+lr      long    __exit
+sp      long    0
+pc      long    entry           ' default pc
+#else
+r0      rdlong  sp, PAR
+r1      tjz     sp, #__LMM_entry
+r2      rdlong  cache_mboxcmd, sp
+r3      add     sp, #4
+r4      nop
+r5      nop
+r6      nop
+r7      add     sp, #4
+r8      rdlong  pc, sp
+r9      add     sp, #4
+r10     locknew r2 wc
+r11     or      r2,#256
+r12 IF_NC wrlong r2,__C_LOCK_PTR
+r13     call    #cache_init
+r14     jmp     #__LMM_start
+r15     '' alias for lr
+lr      long    0
+sp      long    0
+pc      long    0
+#endif
+ccr     long    0
 
 	''
 	'' main LMM loop -- read instructions from hub memory
@@ -338,6 +360,19 @@ read_code_ret           ret
   .set EMPTY_BIT, 30
   .set DIRTY_BIT, 31
 
+        ' initialize the cache variables
+cache_init
+        mov     index_count, #1
+        shl     index_count, index_width
+        mov     index_mask, index_count
+        sub     index_mask, #1
+        mov     line_size, #1
+        shl     line_size, offset_width
+        mov     offset_mask, line_size
+        sub     offset_mask, #1
+        mov     offset_shift, offset_width
+        sub     offset_shift, #2
+
         ' initialize the cache lines
 cache_flush
         mov     t1, index_count
@@ -345,6 +380,7 @@ cache_flush
 flush   wrlong  empty_mask, t2
         add     t2, #4
         djnz    t1, #flush
+cache_init_ret
 cache_flush_ret
         ret
         
@@ -419,13 +455,14 @@ cache_mboxcmd   long    0
 cmdptr          long    0x8000 - 8192 - 512 - 12
 tagsptr         long    0x8000 - 8192 - 512
 cacheptr        long    0x8000 - 8192
+
 index_width     long    DEFAULT_INDEX_WIDTH
-index_mask      long    (1 << DEFAULT_INDEX_WIDTH) - 1
-index_count     long    1 << DEFAULT_INDEX_WIDTH
 offset_width    long    DEFAULT_OFFSET_WIDTH
-offset_mask     long    (1 << DEFAULT_OFFSET_WIDTH) - 1
-offset_shift    long    DEFAULT_OFFSET_WIDTH - 2
-line_size       long    1 << DEFAULT_OFFSET_WIDTH
+index_mask      long    0
+index_count     long    0
+offset_mask     long    0
+offset_shift    long    0
+line_size       long    0
 
 tag_mask        long    (1 << DIRTY_BIT) - 1    ' includes EMPTY_BIT
 empty_mask      long    1 << EMPTY_BIT
