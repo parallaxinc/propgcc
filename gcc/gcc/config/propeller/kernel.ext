@@ -174,5 +174,6 @@ __UDIV_BY_ZERO
 
 endmath
 
-
+#if !defined(__PROPELLER_USE_XMM__)
 #include "init.ext"
+#endif
