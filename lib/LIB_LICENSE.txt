@@ -1,0 +1,241 @@
+The libraries (libc, libm, libsubc++, libstdc++, libpthread) are all
+redistributable both in source and binary form. Most of the
+code is under an MIT style license and copyrighted by Parallax. Some
+is public domain, some is BSD, and the C++ code and libgcc are GPL
+with a special exception.
+
+The copyright for most of the library code is:
+
+ * Copyright (c) 2011 Parallax, Inc.
+ * +--------------------------------------------------------------------
+ * ¦  TERMS OF USE: MIT License
+ * +--------------------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---------------------------------------------------------------------
+Some 32 bit floating point code is derived from Jonathon "lonesock"
+Dummer's F32 package:
+
+''        F32 - Concise floating point code for the Propeller
+''        Copyright (c) 2011 Jonathan "lonesock" Dummer
+''
+''        Released under the MIT License (see above for details)
+
+---------------------------------------------------------------------
+The math libraries are based on the OpenBSD math libraries, which are
+in turn based on fdlibm. The fdlibm copyright notice is:
+
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice 
+ * is preserved.
+ * ====================================================
+
+OpenBSD specific changes are under the BSD license:
+
+ * Copyright (c) 1992, 1993 The Regents of the University of California
+ * Copyright (c) 2003, 2007 Steven G. Kargl
+ * Copyright (c) 2004 Matthias Drochner
+ * Copyright (c) 2004, 2005 David Schultz <das@FreeBSD.ORG>
+ * Copyright (c) 2008 Stephen L. Moshier <steve@moshier.net>
+ * Copyright (c) 2008, 2011 Martynas Venckus <martynas@openbsd.org>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+
+
+---------------------------------------------------------------------
+
+The string library is mostly from Henry Spencer's string library,
+posted to Usenet and placed by him in the public domain.
+
+---------------------------------------------------------------------
+
+The scanf functions and some of the string functions are from the
+libnix library for the Amiga, written by Matthias Fleischer
+and Gunther Nikl and placed in the public domain.
+
+---------------------------------------------------------------------
+
+The printf functions were based on code with the following copyright:
+/*
+ * Copyright (c) 1995 Patrick Powell.
+ *
+ * This code is based on code written by Patrick Powell <papowell@astart.com>.
+ * It may be used for any purpose as long as this notice remains intact on all
+ * source code distributions.
+ */
+
+/*
+ * Copyright (c) 2008 Holger Weiss.
+ *
+ * This version of the code is maintained by Holger Weiss <holger@jhweiss.de>.
+ * My changes to the code may freely be used, modified and/or redistributed for
+ * any purpose.  It would be nice if additions and fixes to this file (including
+ * trivial code cleanups) would be sent back in order to let me include them in
+ * the version available at <http://www.jhweiss.de/software/snprintf.html>.
+ * However, this is not a requirement for using or redistributing (possibly
+ * modified) versions of this file, nor is leaving this notice intact mandatory.
+ */
+
+---------------------------------------------------------------------
+A few stdio and miscellaneous functions are from the dLibs library by
+Dale Schumacher, which is in the public domain and comes with the
+following notice:
+  I'd like to see these routines distributed as widely as possible as I
+feel they will be a benefit to many people.  The only restriction I'd
+like to place on the use of dLibs is this.  If you modify the source
+code, please don't redistribute it under the name "dLibs".  I encourage
+people to look at, play with, modify and improve the source code as
+much as they want, and would gladly accept suggestions (preferrably
+with source code) for changes/additions to dLibs.  I simply want to
+avoid the problem of digressive versions of dLibs.
+
+Some other functions are from the MiNT library, a derivative of
+dLibs by Eric Smith and others, and also in the public domain.
+---------------------------------------------------------------------
+
+The libgcc, libstdc++, and libsupc++ code is copyrighted by the Free
+Software Foundation. The source code for these is in the gcc tree. The
+exact copyright notice is:
+
+   Copyright (C) 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
+   2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009, 2010
+   Free Software Foundation, Inc.
+
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 3, or (at your option) any later
+version.
+
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
+
+Under Section 7 of GPL version 3, you are granted additional
+permissions described in the GCC Runtime Library Exception, version
+3.1, as published by the Free Software Foundation.
+
+You should have received a copy of the GNU General Public License and
+a copy of the GCC Runtime Library Exception along with this program;
+see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+<http://www.gnu.org/licenses/>.
+
+For PropGCC, these files are contained in the "gcc" directory; the
+text of COPYING.RUNTIME is reproduced below:
+
+GCC RUNTIME LIBRARY EXCEPTION
+
+Version 3.1, 31 March 2009
+
+Copyright (C) 2009 Free Software Foundation, Inc. <http://fsf.org/>
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+This GCC Runtime Library Exception ("Exception") is an additional
+permission under section 7 of the GNU General Public License, version
+3 ("GPLv3"). It applies to a given file (the "Runtime Library") that
+bears a notice placed by the copyright holder of the file stating that
+the file is governed by GPLv3 along with this Exception.
+
+When you use GCC to compile a program, GCC may combine portions of
+certain GCC header files and runtime libraries with the compiled
+program. The purpose of this Exception is to allow compilation of
+non-GPL (including proprietary) programs to use, in this way, the
+header files and runtime libraries covered by this Exception.
+
+0. Definitions.
+
+A file is an "Independent Module" if it either requires the Runtime
+Library for execution after a Compilation Process, or makes use of an
+interface provided by the Runtime Library, but is not otherwise based
+on the Runtime Library.
+
+"GCC" means a version of the GNU Compiler Collection, with or without
+modifications, governed by version 3 (or a specified later version) of
+the GNU General Public License (GPL) with the option of using any
+subsequent versions published by the FSF.
+
+"GPL-compatible Software" is software whose conditions of propagation,
+modification and use would permit combination with GCC in accord with
+the license of GCC.
+
+"Target Code" refers to output from any compiler for a real or virtual
+target processor architecture, in executable form or suitable for
+input to an assembler, loader, linker and/or execution
+phase. Notwithstanding that, Target Code does not include data in any
+format that is used as a compiler intermediate representation, or used
+for producing a compiler intermediate representation.
+
+The "Compilation Process" transforms code entirely represented in
+non-intermediate languages designed for human-written code, and/or in
+Java Virtual Machine byte code, into Target Code. Thus, for example,
+use of source code generators and preprocessors need not be considered
+part of the Compilation Process, since the Compilation Process can be
+understood as starting with the output of the generators or
+preprocessors.
+
+A Compilation Process is "Eligible" if it is done using GCC, alone or
+with other GPL-compatible software, or if it is done without using any
+work based on GCC. For example, using non-GPL-compatible Software to
+optimize any GCC intermediate representations would not qualify as an
+Eligible Compilation Process.
+
+1. Grant of Additional Permission.
+
+You have permission to propagate a work of Target Code formed by
+combining the Runtime Library with Independent Modules, even if such
+propagation would otherwise violate the terms of GPLv3, provided that
+all Target Code was generated by Eligible Compilation Processes. You
+may then convey such a combination under terms of your choice,
+consistent with the licensing of the Independent Modules.
+
+2. No Weakening of GCC Copyleft.
+
+The availability of this Exception does not imply any general
+presumption that third-party software is unaffected by the copyleft
+requirements of the license of GCC.
+
