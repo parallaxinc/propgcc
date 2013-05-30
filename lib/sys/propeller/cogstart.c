@@ -2,6 +2,13 @@
 #include <sys/thread.h>
 #include <errno.h>
 
+/* assembly function that copies COG internal memory to
+   a buffer
+   the buffer needs to be bit enough for the RAM
+   (0x7C0, or 1984 bytes)
+*/
+extern void _clone_cog(void *buf);
+
 /*
  * start C code running in another cog
  * returns -1 on failure, otherwise the
@@ -16,11 +23,11 @@
 int
 cogstart(void (*func)(void *), void *arg, void *stack, size_t stack_size)
 {
-#if !defined(__PROPELLER2__) && (defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__))
-  extern unsigned int _load_start_kernel[];
+#if (defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__))
   _thread_state_t *tls;
   unsigned int *sp;
-  
+  void *tmp;
+
   /* check the stack size */
   if (stack_size < sizeof(_thread_state_t) + 3 * sizeof(unsigned int)) {
     errno = EINVAL;
@@ -40,8 +47,13 @@ cogstart(void (*func)(void *), void *arg, void *stack, size_t stack_size)
   /* push the code address */
   *--sp = (unsigned int)func;
 
+  /* allocate enough space on the caller's stack for the kernel image */
+  /* this will be in HUB memory */
+  tmp = __builtin_alloca(1984);  
+  _clone_cog(tmp);
+
   /* now start the kernel */
-  return cognew(_load_start_kernel, sp);
+  return cognew(tmp, sp);
 #else
   errno = ENOSYS;
   return -1;

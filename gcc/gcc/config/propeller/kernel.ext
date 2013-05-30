@@ -34,7 +34,7 @@ __load_extension_ret
 __loadmath_ret
 	ret
 
-	
+	.global __kernel_ext
 __kernel_ext
 	long	0
 __math_kernel_ptr

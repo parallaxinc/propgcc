@@ -20,16 +20,14 @@
 
 	.global __LMM_entry
 __LMM_entry
-r0	mov	__TMP1, r6	'' get pointer to initialization
+r0	mov	__TMP1, r3	'' get pointer to initialization
 r1	call	#__load_extension
 r2  	jmp	#__LMM_init
-	
+r3      long __load_start_start_kerext
 
-r3      nop
-r4	nop
-r5      nop
-r6      long __load_start_start_kerext
-
+r4      nop
+r5	nop
+r6      nop
 r7      nop
 r8      nop
 r9      nop
@@ -306,6 +304,7 @@ i2s7	long	(2<<23) | 7
 	'' speedup.
 	''
 
+	.global	__LMM_FCACHE_ADDR
 __LMM_FCACHE_ADDR
 	long 0
 	
