@@ -23,6 +23,10 @@ __clone_cog
 	add	r0,r2
 
 .Lloop
+	movd	(.Ltmp-.Lstart)+__LMM_FCACHE_START,r1
+	nop
+	nop
+.Ltmp
 	wrlong	r1,r0
 	sub	r0,#4
 	djnz	r1,#(.Lloop-.Lstart)+__LMM_FCACHE_START
