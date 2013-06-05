@@ -18,7 +18,8 @@ KERNEL="
   /* the LMM kernel that is loaded into the cog */
   .xmmkernel ${RELOCATING-0} :
   {
-    *(.xmmkernel) *(.kernel)
+    *(.xmmkernel)
+    *(.kernel)
   } >kermem AT>dummy
 "
 KERNEL_NAME=.xmmkernel
