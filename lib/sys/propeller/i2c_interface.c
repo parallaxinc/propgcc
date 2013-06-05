@@ -27,7 +27,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 extern int _i2c_driver;
 int _i2c_driver_loaded = (int)&_i2c_driver;
 
-extern unsigned int _load_start_i2c_driver_cog[];
 
 static int cog_i2cClose(I2C *dev);
 
@@ -39,6 +38,7 @@ static I2C_OPS cog_i2c_ops = {
 
 I2C *i2cOpen(I2C_COGDRIVER *dev, int scl, int sda, int freq)
 {
+    use_cog_driverx(i2c_driver_cog);
     I2C_INIT init;
     int id;
     
@@ -53,7 +53,7 @@ I2C *i2cOpen(I2C_COGDRIVER *dev, int scl, int sda, int freq)
     
     dev->mailbox.cmd = I2C_CMD_INIT;
     
-    if ((id = cognew(_load_start_i2c_driver_cog, &init)) < 0)
+    if ((id = load_cog_driverx(i2c_driver_cog, &init)) < 0)
         return NULL;
     
     dev->cog = id;

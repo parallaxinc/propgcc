@@ -11,9 +11,9 @@
 #include <string.h>
 #include <cog.h>
 #include <sys/driver.h>
+#include <propeller.h>
 
 #include "FdSerial.h"
-#include "propdev.h"
 
 static FdSerial_t *coglist;
 

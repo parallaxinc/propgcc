@@ -258,5 +258,69 @@ void kernel_use_lock(uint32_t lockId);
 }
 #endif
 
+#if defined(__PROPELLER_USE_XMM__)
+
+/**
+ * @brief Make the load symbols available for a driver
+ * @param id The COG driver name
+ */
+#define use_cog_driver(id)      extern uint32_t _load_start_##id[], _load_stop_##id[]
+#define use_cog_driverx(id)     use_cog_driver(id)
+
+/**
+ * @brief Load a COG driver
+ * @param code The address of the driver image
+ * @param id The COG driver name
+ * @param param Parameter to pass to the driver
+ * @returns the id of the COG that was loaded
+ */
+#define load_cog_driver(code, id, param)            \
+            load_cog_driver_xmm(                    \
+                code,                               \
+                _load_stop_##id - _load_start_##id, \
+                (uint32_t *)(param))
+    
+/**
+ * @brief Load a COG driver
+ * @param id The COG driver name
+ * @param param Parameter to pass to the driver
+ * @returns the id of the COG that was loaded
+ */
+#define load_cog_driverx(id, param)                 \
+            load_cog_driver_xmm(                    \
+                _load_start_##id,                   \
+                _load_stop_##id - _load_start_##id, \
+                (uint32_t *)(param))
+    
+int load_cog_driver_xmm(uint32_t *code, uint32_t codelen, uint32_t *params);
+
+#else
+    
+/**
+ * @brief Make the load symbols available for a driver
+ * @param id The COG driver name
+ */
+#define use_cog_driver(id)
+#define use_cog_driverx(id)     extern uint32_t _load_start_##id[]
+
+/**
+ * @brief Load a COG driver
+ * @param code The address of the driver image
+ * @param id The COG driver name
+ * @param param Parameter to pass to the driver
+ * @returns the id of the COG that was loaded
+ */
+#define load_cog_driver(code, id, param) cognew(code, (uint32_t *)(param))
+    
+/**
+ * @brief Load a COG driver
+ * @param id The COG driver name
+ * @param param Parameter to pass to the driver
+ * @returns the id of the COG that was loaded
+ */
+#define load_cog_driverx(id, param) cognew(_load_start_##id, (uint32_t *)(param))
+    
+#endif
+
 #endif
 // _PROPELLER_H_
