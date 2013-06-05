@@ -18,7 +18,7 @@
 #include <cog.h>
 #include <sys/driver.h>
 #include <sys/sd.h>
-#include "propdev.h"
+#include <propeller.h>
 
 extern uint32_t *_sd_mbox_p;
 static volatile uint32_t __attribute__((section(".hub"))) sd_mbox[2];
@@ -29,7 +29,6 @@ extern uint32_t __attribute__ ((section(".hub"))) _hub_buffer[496];
 // This routine starts the SD driver cog
 void LoadSDDriver(uint32_t configwords[2])
 {
-    use_cog_driver(cogsys1);
     extern void *sd_driver_array;
 #if defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__)
     void* driver_array = sd_driver_array;
@@ -37,6 +36,7 @@ void LoadSDDriver(uint32_t configwords[2])
     // The sd_driver_array is in the text segment.  We need a copy in the data
     // or hub segment (so we can modify the driver); therefore we poach the
     // copy used by log_cog_driver.
+    use_cog_driver(cogsys1);
     void* driver_array = _hub_buffer;
     memcpy(driver_array, sd_driver_array, (_load_stop_cogsys1 - _load_start_cogsys1) * 4);
 #endif
@@ -45,7 +45,7 @@ void LoadSDDriver(uint32_t configwords[2])
 
     _sd_mbox_p = (uint32_t *)sd_mbox;
     sd_mbox[0] = 1;
-    load_cog_driver(driver_array, cogsys1, (uint32_t *)sd_mbox);
+    cognew(driver_array, (uint32_t *)sd_mbox);
     while (sd_mbox[0]);
 }
 
