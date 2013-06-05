@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "propdev.h"
+#include <propeller.h>
 
 #define BUS_LOCK_CMD 0x1D
 
