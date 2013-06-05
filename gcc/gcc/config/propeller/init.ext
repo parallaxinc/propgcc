@@ -1,0 +1,86 @@
+	''
+	'' this file is intended to be #included into kernels
+	'' to define the initialization code
+	''
+	'' initialization is put into a kernel extension, so that
+	'' we can load it back into a cloned kernel
+	''
+	'' originally this was to be named .init.kerext, but that
+	'' conflicts with the .init.* section rules
+
+	.section	.start.kerext, "ax"
+
+startinit
+	.long	endinit - startinit
+
+	.global __LMM_init
+__LMM_init
+#if defined(__PROPELLER2__)
+	getptra sp
+#else
+	mov	sp, PAR
+#endif
+#if defined(__PROPELLER_USE_XMM__)
+	tjz	sp, __LMM_init		' wait for cache mbox to be set up
+	rdlong	cache_mboxcmd, sp
+	add	sp, #4
+	nop
+	add	sp, #4
+	rdlong	pc, sp
+	add	sp, #4
+#if !defined(DEBUG_KERNEL)
+    '' FIXME: crt0_xmm_debug.s does not yet have cache_flush code
+	call	#cache_flush
+#endif
+#endif
+	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
+  IF_NE    jmp    #not_first_cog	' if not, skip some stuff
+	
+	'' initialization for first time run
+      	locknew	__TMP0 wc	' allocate a lock
+	or	__TMP0, #256	' in case lock is 0, make the 32 bit value nonzero
+        wrlong __TMP0, __C_LOCK_PTR	' save it to ram
+        jmp    #__LMM_start
+
+not_first_cog
+	'' initialization for non-primary cogs
+        rdlong pc,sp		' if user stack, pop the pc
+        add	sp,#4
+        rdlong r0,sp		' pop the argument for the function
+        add	sp,#4
+        rdlong __TLS,sp	' and the _TLS variable
+        add	sp,#4
+
+	'' fall through
+
+__LMM_start
+	mov	lr, init_lr
+	mov	pc, init_pc
+
+#if defined(DEBUG_KERNEL) && defined(__PROPELLER2__)
+	call	#rxtx_init
+#endif
+#if defined(__PROPELLER2__) && defined(__PROPELLER_CMM__)
+	'' copy jmptab_base into the CLUT/STACK area
+	setspa	#0
+	mov	r5, #16
+.inilp
+	rdlong	r4, __jmptab_ptr
+	add	__jmptab_ptr, #4
+	pusha	r4
+	djnz	r5, #.inilp
+	
+	jmp	#__LMM_loop
+__jmptab_ptr
+	long	jmptab_base
+#else
+	jmp	#__LMM_loop
+#endif
+
+
+init_lr
+	long	__exit
+init_pc
+	long	entry
+
+endinit

@@ -1,0 +1,7 @@
+fibo.c
+>compiler=C
+>memtype=lmm
+>optimize=-Os
+>-fno-exceptions
+>-Dprintf=__simple_printf
+>BOARD::C3
