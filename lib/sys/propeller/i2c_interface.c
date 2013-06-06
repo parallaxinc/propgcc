@@ -23,11 +23,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include <propeller.h>
 #include "i2c.h"
 
-/* we need to reference this symbol to get the driver linked */
-extern int _i2c_driver;
-int _i2c_driver_loaded = (int)&_i2c_driver;
-
-
 static int cog_i2cClose(I2C *dev);
 
 static I2C_OPS cog_i2c_ops = {
@@ -38,7 +33,7 @@ static I2C_OPS cog_i2c_ops = {
 
 I2C *i2cOpen(I2C_COGDRIVER *dev, int scl, int sda, int freq)
 {
-    use_cog_driverx(i2c_driver_cog);
+    use_cog_driverx(i2c_driver);
     I2C_INIT init;
     int id;
     
@@ -53,7 +48,7 @@ I2C *i2cOpen(I2C_COGDRIVER *dev, int scl, int sda, int freq)
     
     dev->mailbox.cmd = I2C_CMD_INIT;
     
-    if ((id = load_cog_driverx(i2c_driver_cog, &init)) < 0)
+    if ((id = load_cog_driverx(i2c_driver, &init)) < 0)
         return NULL;
     
     dev->cog = id;
