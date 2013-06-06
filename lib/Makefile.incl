@@ -194,9 +194,18 @@ $(MODELDIR)/%_boot.cog: %.c
 	$(CC) $(BASEFLAGS) -DPARALLAX_I2C_BUS -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
 	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) --pad-to 1984 $@
 
-$(MODELDIR)/%.cog: %.c
-	$(CC) $(BASEFLAGS) -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
-	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) $@
+#$(MODELDIR)/%.cog: %.c
+#	$(CC) $(BASEFLAGS) -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
+#	$(OBJCOPY) --keep-global-symbol __$(basename $(notdir $@)) --rename-section .text=$(notdir $@) $@
+
+$(MODELDIR)/%_firmware.o: %.c
+	$(CC) $(BASEFLAGS) -mcog -o $@ $<
+	
+$(MODELDIR)/%.dat: $(MODELDIR)/%_firmware.o
+	$(OBJCOPY) -O binary -j .text $< $@
+	
+$(MODELDIR)/%.cog: $(MODELDIR)/%.dat
+	cd $(MODELDIR); $(OBJCOPY) -I binary -B propeller -O $(CC) $(notdir $<) $(notdir $@)
 
 $(MODELDIR)/%.ecog: %.c
 	$(CC) $(BASEFLAGS) -r -mcog -Wl,--defsym,__$(basename $(notdir $@))=1 -o $@ $<
