@@ -22,24 +22,12 @@
 
 extern uint32_t *_sd_mbox_p;
 static volatile uint32_t __attribute__((section(".hub"))) sd_mbox[2];
-#ifdef __PROPELLER_USE_XMM__
-extern uint32_t __attribute__ ((section(".hub"))) _hub_buffer[496];
-#endif
 
 // This routine starts the SD driver cog
 void LoadSDDriver(uint32_t configwords[2])
 {
-    extern void *sd_driver_array;
-#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_CMM__)
-    void* driver_array = sd_driver_array;
-#else
-    // The sd_driver_array is in the text segment.  We need a copy in the data
-    // or hub segment (so we can modify the driver); therefore we poach the
-    // copy used by log_cog_driver.
-    use_cog_driver(cogsys1);
-    void* driver_array = _hub_buffer;
-    memcpy(driver_array, sd_driver_array, (_load_stop_cogsys1 - _load_start_cogsys1) * 4);
-#endif
+    use_cog_driverx(sd_driver);
+    uint8_t *driver_array = (uint8_t *)get_cog_driverx(sd_driver);
     
     memcpy(driver_array + 4, configwords, sizeof(uint32_t) * 2);
 

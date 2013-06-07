@@ -59,12 +59,7 @@
         .equ MUX_WIDTH_MASK,          $08   ' width of mux field
         .equ ADDR_MASK,               $10   ' device number for C3-style CS or value to write to the mux
 
-        .section .data
-        .global  _sd_driver_array
-_sd_driver_array
-        long __load_start_cogsys1
-
-        .section .cogsys1, "ax"
+        .section .text, "ax"
 	.compress off
         org     0
 
@@ -72,7 +67,7 @@ _sd_driver_array
 ' Driver initialization
 '----------------------------------------------------------------------------------------------------
 
-init    jmp     #init2
+entry   jmp     #init2
 
 ' sdspi_config1: 0xiiooccpp - ii=mosi oo=miso cc=sck pp=protocol
 ' sdspi_config2: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
