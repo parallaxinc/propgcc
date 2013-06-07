@@ -213,13 +213,12 @@ $(MODELDIR)/%_firmware.o: %.sx
 	
 $(MODELDIR)/%_boot.dat: $(MODELDIR)/%_boot.o
 	$(OBJCOPY) -O binary -j .text $< $@
-	$(OBJCOPY) -I binary -O binary --pad-to 0x7c0 $@
 	
 $(MODELDIR)/%.dat: $(MODELDIR)/%_firmware.o
 	$(OBJCOPY) -O binary -j .text $< $@
 	
 $(MODELDIR)/%_boot.cog: $(MODELDIR)/%_boot.dat
-	cd $(MODELDIR); $(OBJCOPY) -I binary -B propeller -O $(CC) --rename-section .data=.hub $(notdir $<) $(notdir $@)
+	cd $(MODELDIR); $(OBJCOPY) -I binary -B propeller -O $(CC) --rename-section .data=.hub --pad-to 0x7c0 $(notdir $<) $(notdir $@)
 
 $(MODELDIR)/%.cog: $(MODELDIR)/%.dat
 	cd $(MODELDIR); $(OBJCOPY) -I binary -B propeller -O $(CC) --rename-section .data=.text $(notdir $<) $(notdir $@)

@@ -27,7 +27,7 @@ static FdSerial_t *coglist;
  */
 int _FdSerial_start(FdSerial_t *data, int rxpin, int txpin, int mode, int baudrate)
 {
-    use_cog_driverx(FullDuplexSerial);
+    use_cog_driver(FullDuplexSerial);
 
     memset(data, 0, sizeof(FdSerial_t));
     data->rx_pin  = rxpin;                  // receive pin
@@ -35,7 +35,7 @@ int _FdSerial_start(FdSerial_t *data, int rxpin, int txpin, int mode, int baudra
     data->mode    = mode;                   // interface mode
     data->ticks   = _clkfreq / baudrate;    // baud
     data->buffptr = (int)&data->rxbuff[0];
-    data->cogId = load_cog_driverx(FullDuplexSerial, data) + 1;
+    data->cogId = load_cog_driver(FullDuplexSerial, data) + 1;
     data->users = 1;
 
     //waitcnt(_clkfreq + _CNT);
