@@ -26,8 +26,8 @@ static volatile uint32_t __attribute__((section(".hub"))) sd_mbox[2];
 // This routine starts the SD driver cog
 void LoadSDDriver(uint32_t configwords[2])
 {
-    use_cog_driverx(sd_driver);
-    uint8_t *driver_array = (uint8_t *)get_cog_driverx(sd_driver);
+    use_cog_driver(sd_driver);
+    uint8_t *driver_array = (uint8_t *)get_cog_driver(sd_driver);
     
     memcpy(driver_array + 4, configwords, sizeof(uint32_t) * 2);
 
