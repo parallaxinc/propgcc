@@ -16,8 +16,7 @@
 #define SDA_PIN         29
 
 /* we need to reference this symbol to get the driver linked */
-extern int _i2c_driver_boot;
-int _i2c_driver_boot_loaded = (int)&_i2c_driver_boot;
+int _i2c_driver_boot_loaded = TRUE;
 
 extern unsigned int _load_start_i2c_driver_boot_cog[];
 
@@ -70,7 +69,7 @@ static int cog_i2cBootClose(I2C *dev)
 
 void *i2cBootBuffer(void)
 {
-    _i2c_driver_boot_loaded = 0;
+    _i2c_driver_boot_loaded = FALSE;
     return (void *)_load_start_i2c_driver_boot_cog;
 }
 
