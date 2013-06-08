@@ -54,8 +54,6 @@ not_first_cog
 	'' fall through
 
 __LMM_start
-	mov	lr, init_lr
-	mov	pc, init_pc
 
 #if defined(DEBUG_KERNEL) && defined(__PROPELLER2__)
 	call	#rxtx_init
