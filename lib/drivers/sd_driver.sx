@@ -62,12 +62,7 @@
         .equ MUX_WIDTH_MASK,          $08   ' width of mux field
         .equ ADDR_MASK,               $10   ' device number for C3-style CS or value to write to the mux
 
-        .section .data
-        .global  _sd_driver_array
-_sd_driver_array
-        long __load_start_cogsys1
-
-        .section .cogsys1, "ax"
+        .section .text, "ax"
 	.compress off
         org     0
 
@@ -75,7 +70,7 @@ _sd_driver_array
 ' Driver initialization
 '----------------------------------------------------------------------------------------------------
 
-init    jmp     #init2
+entry   jmp     #init2
 
 ' sdspi_config1: 0xiiooccpp - ii=mosi oo=miso cc=sck pp=protocol
 ' sdspi_config2: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
@@ -584,6 +579,44 @@ count           long    0       ' The block count
 ' Temporaries used by send/recv
 bits            long    0       ' # bits to send/receive
 data            long    0       ' Current data being sent/received
+
+	''
+	'' and finally some definitions for the standard
+	'' COG registers
+	''
+	.global PAR
+	.global CNT
+	.global INA
+	.global INB
+	.global OUTA
+	.global OUTB
+	.global DIRA
+	.global DIRB
+	.global CTRA
+	.global CTRB
+	.global FRQA
+	.global FRQB
+	.global PHSA
+	.global PHSB
+	.global VCFG
+	.global VSCL
+
+	PAR = (4*0x1F0)
+	CNT = (4*0x1F1)
+	INA = (4*0x1F2)
+	INB = (4*0x1F3)
+	OUTA = (4*0x1F4)
+	OUTB = (4*0x1F5)
+	DIRA = (4*0x1F6)
+	DIRB = (4*0x1F7)
+	CTRA = (4*0x1F8)
+	CTRB = (4*0x1F9)
+	FRQA = (4*0x1FA)
+	FRQB = (4*0x1FB)
+	PHSA = (4*0x1FC)
+	PHSB = (4*0x1FD)
+	VCFG = (4*0x1FE)
+	VSCL = (4*0x1FF)
 
                 fit     496
 

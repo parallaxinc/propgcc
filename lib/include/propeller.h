@@ -302,6 +302,62 @@ void kernel_use_lock(uint32_t lockId);
 
 #endif
 
+#if defined(__PROPELLER_USE_XMM__)
+
+/**
+ * @brief Make the load symbols available for a driver
+ * @param id The COG driver name
+ */
+#define use_cog_driver(id)     extern uint32_t binary_##id##_dat_start[], binary_##id##_dat_end[]
+
+/**
+ * @brief Get a hub memory buffer containing a driver image
+ * @param id The COG driver name
+ */
+#define get_cog_driver(id)                                              \
+            get_cog_driver_xmm(                                         \
+                binary_##id##_dat_start,                                \
+                binary_##id##_dat_end - binary_##id##_dat_start)
+                
+/**
+ * @brief Load a COG driver
+ * @param id The COG driver name
+ * @param param Parameter to pass to the driver
+ * @returns the id of the COG that was loaded
+ */
+#define load_cog_driver(id, param)                                      \
+            load_cog_driver_xmm(                                        \
+                binary_##id##_dat_start,                                \
+                binary_##id##_dat_end - binary_##id##_dat_start,        \
+                (uint32_t *)(param))
+    
+uint32_t *get_cog_driver_xmm(uint32_t *code, uint32_t codelen);
+int load_cog_driver_xmm(uint32_t *code, uint32_t codelen, uint32_t *params);
+
+#else
+    
+/**
+ * @brief Make the load symbols available for a driver
+ * @param id The COG driver name
+ */
+#define use_cog_driver(id)     extern uint32_t binary_##id##_dat_start[]
+
+/**
+ * @brief Get a hub memory buffer containing a driver image
+ * @param id The COG driver name
+ */
+#define get_cog_driver(id)     (binary_##id##_dat_start)                              \
+                
+/**
+ * @brief Load a COG driver
+ * @param id The COG driver name
+ * @param param Parameter to pass to the driver
+ * @returns the id of the COG that was loaded
+ */
+#define load_cog_driver(id, param) cognew(binary_##id##_dat_start, (uint32_t *)(param))
+    
+#endif
+
 #ifdef __cplusplus
 }
 #endif
