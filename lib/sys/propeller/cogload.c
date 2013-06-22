@@ -14,10 +14,9 @@
 #define SDA_PIN         29
 
 /* we need to reference this symbol to get the driver linked */
-extern int _i2c_driver_boot;
-int _i2c_driver_boot_loaded = (int)&_i2c_driver_boot;
+int _i2c_driver_boot_loaded = TRUE;
 
-extern unsigned int _load_start_i2c_driver_boot_cog[];
+use_cog_driver(i2c_driver_boot);
 
 static int cog_i2cBootClose(I2C *dev);
 
@@ -48,7 +47,7 @@ I2C *i2cBootOpen(void)
         
         _boot_i2c_data.mailbox.cmd = I2C_CMD_INIT;
         
-        if ((_boot_i2c_data.cog = cognew(_load_start_i2c_driver_boot_cog, &init)) < 0)
+        if ((_boot_i2c_data.cog = cognew(get_cog_driver(i2c_driver_boot), &init)) < 0)
             return NULL;
         
         while (_boot_i2c_data.mailbox.cmd != I2C_CMD_IDLE)
@@ -68,8 +67,8 @@ static int cog_i2cBootClose(I2C *dev)
 
 void *i2cBootBuffer(void)
 {
-    _i2c_driver_boot_loaded = 0;
-    return (void *)_load_start_i2c_driver_boot_cog;
+    _i2c_driver_boot_loaded = FALSE;
+    return (void *)get_cog_driver(i2c_driver_boot);
 }
 
 int cognewFromBootEeprom(void *code, size_t codeSize, void *param)
@@ -84,7 +83,7 @@ int coginitFromBootEeprom(int id, void *code, size_t codeSize, void *param)
     void *cogbuf;
     
     /* get the address of the boot i2c driver */
-    cogbuf = (void *)_load_start_i2c_driver_boot_cog;
+    cogbuf = (void *)get_cog_driver(i2c_driver_boot);
     
     /* open the boot i2c bus if it isn't already open */
     if (!_boot_i2c && !i2cBootOpen())
@@ -101,4 +100,3 @@ int coginitFromBootEeprom(int id, void *code, size_t codeSize, void *param)
         
     return coginit(id, cogbuf, param);
 }
-
