@@ -1,2 +1,6 @@
-PUB check(A, B)
-  return NOT A OR B
+VAR
+  long Totdelta
+
+PUB ReadDelta(EncID) : DeltaPos
+   DeltaPos := 0 + -(EncID < Totdelta)
+

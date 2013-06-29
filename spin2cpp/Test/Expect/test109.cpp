@@ -10,8 +10,10 @@ static int32_t tmp__;
 #define PostEffect__(X, Y) (tmp__ = (X), (X) = (Y), tmp__)
 #endif
 
-int32_t test109::Check(int32_t A, int32_t B)
+int32_t test109::Readdelta(int32_t Encid)
 {
-  return -(-(!A) || B);
+  int32_t Deltapos = 0;
+  Deltapos = (0 + (Encid < Totdelta));
+  return Deltapos;
 }
 
