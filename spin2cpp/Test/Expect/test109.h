@@ -5,8 +5,9 @@
 
 class test109 {
 public:
-  int32_t	Check(int32_t A, int32_t B);
+  int32_t	Readdelta(int32_t Encid);
 private:
+  int32_t	Totdelta;
 };
 
 #endif
