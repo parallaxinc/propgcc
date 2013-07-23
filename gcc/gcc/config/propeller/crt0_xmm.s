@@ -331,11 +331,6 @@ __MULSI_ret	ret
 
 ' the code below comes from the xbasic virtual machine which borrowed code from zog
 
-    .set EXTERNAL_MEMORY_START, 0x20000000
-    .set CACHE_CMD_MASK,        0x00000003
-    .set CACHE_WRITE_CMD,       0x00000002
-    .set CACHE_READ_CMD,        0x00000003
-
 ' read a long from the current pc
 read_code               muxc    save_z_c, #1                'save the c flag
                         cmp     pc, external_start wc       'check for normal memory access
@@ -349,9 +344,9 @@ read_hub_code           rdlong	L_ins0, pc
 read_restore_c          shr     save_z_c, #1 wc             'restore the c flag
 read_code_ret           ret
 
-  ' cache driver commands
-  .set READ_DATA_CMD, 0xd       ' SD_INIT_CMD repurposed for this test
-  
+  ' start of external memory
+  .set EXTERNAL_MEMORY_START, 0x40000000
+
   ' default cache geometry
   .set DEFAULT_INDEX_WIDTH, 7   ' number of bits in the index offset (index size is 2^n)
   .set DEFAULT_OFFSET_WIDTH, 6  ' number of bits in the line offset (line size is 2^n)
@@ -370,8 +365,6 @@ cache_init
         shl     line_size, offset_width
         mov     offset_mask, line_size
         sub     offset_mask, #1
-        mov     offset_shift, offset_width
-        sub     offset_shift, #2
 
         ' initialize the cache lines
 cache_flush
@@ -385,74 +378,99 @@ cache_flush_ret
         ret
         
 ' on call:
-'   t1 contains the address of the data in the cache line
+'   t1 contains the address to write
+'   z saved in save_z_c using the instruction "muxnz save_z_c, #2"
+' on return:
+'   memp contains a pointer to the data
+'   t1 is trashed
+'   z will be restored from save_z_c
+cache_write
+        mov     set_dirty_bit, dirty_mask
+        jmp     #rd_wr
+
+' on call:
+'   t1 contains the address to read
 '   z saved in save_z_c using the instruction "muxnz save_z_c, #2"
 ' on return:
 '   memp contains a pointer to the data
 '   t1 is trashed
 '   z will be restored from save_z_c
 cache_read
-        mov     t2, t1                  ' ptr + cache_mboxdat = hub address of byte to load
+        mov     t2, t1                  ' get the cache line address
         andn    t2, offset_mask
-        cmp     cacheaddr, t2 wz        ' if cacheaddr == addr, just pull form cache
- if_e   jmp     #skip                   ' memp gets overwriteen on a miss
-        mov     vmpage, t1
-        shr     vmpage, offset_width wc ' carry is now one for read and zero for write
-        mov     tagptr, vmpage          ' get the tag address
+        cmp     cacheaddr, t2 wz        ' check to see if it's the same cache line as last time
+ if_z   jmp     #skip                   ' if z, use the already translated cache line
+        mov     set_dirty_bit, #0       ' don't set the dirty bit in the tag
+
+rd_wr   mov     newtag, t1              ' get the new cache tag
+        shr     newtag, offset_width
+        mov     tagptr, newtag          ' get the tag line offset
         and     tagptr, index_mask
-        shl     tagptr, #2
-        add     tagptr, tagsptr
-        
-        ' get hub address of cache line
         mov     cacheline, tagptr
-        sub     cacheline, tagsptr
-        shl     cacheline, offset_shift
+        shl     tagptr, #2              ' get the tag address
+        add     tagptr, tagsptr
+        shl     cacheline, offset_width ' get the cache line address
         add     cacheline, cacheptr
-                
-        rdlong  t2, tagptr              ' get the cache line tag
+        
+        rdlong  tag, tagptr             ' get the cache line tag
+        mov     t2, tag
         and     t2, tag_mask
-        cmp     t2, vmpage wz           ' z set means there was a cache hit
+        cmp     t2, newtag wz           ' z set means there was a cache hit
   if_z  jmp     #hit                    ' handle a cache hit
   
-        mov     t2, cmdptr
-        wrlong  cacheline, t2
+miss    mov     t2, cmdptr              ' write old cache line if necessary and read new
+        wrlong  cacheline, t2           ' cache line address
         add     t2, #4
-        wrlong  line_size, t2
+        wrlong  line_size, t2           ' cache line size in bytes
         add     t2, #4
+        test    tag, dirty_mask wz      ' check to see if old cache line is dirty
+  if_z  mov     t3, #0                  ' no dirty line to write
+  if_nz mov     t3, tag                 ' address of dirty line to write
+  if_nz shl     t3, offset_width
+        wrlong  t3, t2                  ' external address of old cache line
         mov     t3, t1
         andn    t3, offset_mask
-        wrlong  t3, t2
-        mov     t2, cmdptr
-        shl     t2, #8
-        or      t2, #READ_DATA_CMD
-        wrlong  t2, cache_mboxcmd
+        wrlong  t3, t2                  ' external address of new cache line
+        wrlong  cmdptr, cache_mboxcmd   ' call the external memory driver
 wait    rdlong  t2, cache_mboxcmd wz
  if_nz  jmp     #wait
-        wrlong  vmpage, tagptr
 
-hit     mov     cacheaddr, t1               'save new cache address
+        mov     tag, newtag             ' setup the new tag
+ 
+hit     or      tag, set_dirty_bit      ' set the dirty bit on writes
+        wrlong  tag, tagptr             ' store the tag for the newly loaded cache line
+
+        mov     cacheaddr, t1           ' save new cache line address
         andn    cacheaddr, offset_mask
-skip    mov     memp, t1
+        
+skip    mov     memp, t1                ' get cache line offset
         and     memp, offset_mask
-        add     memp, cacheline
-cache_write
+        add     memp, cacheline         ' get address of data in cache line
         test    save_z_c, #2 wz         ' restore the z flag
 cache_read_ret
 cache_write_ret
         ret
         
+' external memory driver command syntax
+' long 0 - hub buffer address
+' long 1 - number of bytes to read/write
+' long 2 - external address to write or zero
+' long 3 - external address to read or zero
+        
 t1              long    0
 t2              long    0
 t3              long    0
-vmpage          long    0
 tagptr          long    0
+newtag          long    0
+tag             long    0
 memp            long    0
 save_z_c        long    0
 cacheaddr       long    0
 cacheline       long    0
+set_dirty_bit   long    0               ' DIRTY_BIT set on writes, clear on reads
 
 cache_mboxcmd   long    0
-cmdptr          long    0x8000 - 8192 - 512 - 12
+cmdptr          long    0x8000 - 8192 - 512 - 16
 tagsptr         long    0x8000 - 8192 - 512
 cacheptr        long    0x8000 - 8192
 
@@ -461,13 +479,13 @@ offset_width    long    DEFAULT_OFFSET_WIDTH
 index_mask      long    0
 index_count     long    0
 offset_mask     long    0
-offset_shift    long    0
 line_size       long    0
 
 tag_mask        long    (1 << DIRTY_BIT) - 1    ' includes EMPTY_BIT
 empty_mask      long    1 << EMPTY_BIT
+dirty_mask      long    1 << DIRTY_BIT
 
-external_start          long    EXTERNAL_MEMORY_START       'start of external memory access window
+external_start  long    EXTERNAL_MEMORY_START   ' start of external memory
 
 	''
 	'' code to load a buffer from hub memory into cog memory
