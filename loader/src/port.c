@@ -27,17 +27,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "PLoadLib.h"
 #include "osint.h"
 
-static int ShowPort(const char* port, void* data)
-{
-    printf("%s\n", port);
-    return 1;
-}
-
-void ShowPorts(char *prefix)
-{
-    serial_find(prefix, ShowPort, NULL);
-}
-
 typedef struct {
     int baud;
     int verbose;
@@ -45,9 +34,9 @@ typedef struct {
     int noreset;
 } CheckPortInfo;
 
-static int CheckPort(const char* port, void* data)
+static int CheckPort(const char *port, void *data)
 {
-    CheckPortInfo* info = (CheckPortInfo*)data;
+    CheckPortInfo* info = (CheckPortInfo *)data;
     int rc;
     if (info->verbose)
         printf("Trying %s                    \r", port); fflush(stdout);
@@ -58,6 +47,41 @@ static int CheckPort(const char* port, void* data)
         info->actualport[PATH_MAX - 1] = '\0';
     }
     return 0;
+}
+
+static int ShowPort(const char *port, void *data)
+{
+    if (!data)
+        printf("%s\n", port);
+    else {
+        CheckPortInfo *info = (CheckPortInfo *)data;
+        CheckPort(port, data);
+    }
+    return 1;
+}
+
+void ShowPorts(char *prefix)
+{
+    serial_find(prefix, ShowPort, NULL);
+}
+
+void ShowPortsAll(char *prefix, int baud, int flags)
+{
+    CheckPortInfo info;
+    int noreset = PLOAD_RESET_DEVICE;
+    int verbose = 0;
+
+    if (flags & IFLAG_VERBOSE)
+      verbose = 1;
+    if (flags & IFLAG_NORESET)
+      noreset = PLOAD_NORESET;
+
+    info.baud = baud;
+    info.verbose = verbose;
+    info.actualport = NULL;
+    info.noreset = noreset;
+    
+    serial_find(prefix, ShowPort, &info);
 }
 
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
@@ -83,7 +107,7 @@ int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
         info.baud = baud;
         info.verbose = verbose;
         info.actualport = actualport;
-	info.noreset = noreset;
+	    info.noreset = noreset;
         if (serial_find(prefix, CheckPort, &info) == 0)
             rc = PLOAD_STATUS_OK;
         else
