@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
         if (showAll)
             ShowPorts(PORT_PREFIX);
         else
-            ShowPortsAll(PORT_PREFIX, baud, portFlags);
+            ShowConnectedPorts(PORT_PREFIX, baud, portFlags);
         return 0;
     }
     
