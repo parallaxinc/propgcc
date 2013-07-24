@@ -51,12 +51,10 @@ static int CheckPort(const char *port, void *data)
 
 static int ShowPort(const char *port, void *data)
 {
-    if (!data)
-        printf("%s\n", port);
-    else {
-        CheckPortInfo *info = (CheckPortInfo *)data;
+    if (data)
         CheckPort(port, data);
-    }
+    else
+        printf("%s\n", port);
     return 1;
 }
 
@@ -65,7 +63,7 @@ void ShowPorts(char *prefix)
     serial_find(prefix, ShowPort, NULL);
 }
 
-void ShowPortsAll(char *prefix, int baud, int flags)
+void ShowConnectedPorts(char *prefix, int baud, int flags)
 {
     CheckPortInfo info;
     int noreset = PLOAD_RESET_DEVICE;

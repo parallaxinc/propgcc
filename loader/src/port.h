@@ -27,7 +27,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define IFLAG_NORESET               (1 << 1)
 
 void ShowPorts(char *prefix);
-void ShowPortsAll(char *prefix, int baud, int flags);
+void ShowConnectedPorts(char *prefix, int baud, int flags);
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 
 #endif
