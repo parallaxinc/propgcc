@@ -1,11 +1,21 @@
-TARGET = eeprom.elf
+TARGETS = eeprom-lmm.elf eeprom-xmmc.elf
 
-$(TARGET):	eeprom.c
+BOARD ?= c3
+
+all:	$(TARGETS)
+
+eeprom-lmm.elf:	eeprom.c
 	propeller-elf-gcc -Os -mlmm -o $@ eeprom.c
 
-run:
-	propeller-load $(TARGET) -r -t
+eeprom-xmmc.elf:	eeprom.c
+	propeller-elf-gcc -Os -mxmmc -o $@ eeprom.c
+
+run-lmm:
+	propeller-load eeprom-lmm.elf -r -t
+
+run-xmmc:
+	propeller-load -b $(BOARD) eeprom-xmmc.elf -r -t
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGETS)
 

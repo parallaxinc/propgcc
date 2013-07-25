@@ -19,13 +19,14 @@ int eepromWrite(EEPROM *eeprom, uint32_t address, uint8_t *buffer, int count);
 
 int main(void)
 {
+    I2C_COGDRIVER i2c;
     I2C *dev;
     uint8_t buf[128];
     EEPROM eeprom;
     int n;
     
-    if ((dev = i2cBootOpen()) == NULL) {
-        printf("i2cBootOpen failed\n");
+    if ((dev = i2cOpen(&i2c, 28, 29, 400000)) == NULL) {
+        printf("i2cOpen failed\n");
         return 1;
     }
     
