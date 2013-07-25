@@ -27,29 +27,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "PLoadLib.h"
 #include "osint.h"
 
-static int ShowPort(const char* port, void* data)
-{
-    printf("%s\n", port);
-    return 1;
-}
-
-void ShowPorts(char *prefix)
-{
-    serial_find(prefix, ShowPort, NULL);
-}
-
 typedef struct {
     int baud;
     int verbose;
     char *actualport;
 } CheckPortInfo;
 
-static int CheckPort(const char* port, void* data)
+static int CheckPort(const char *port, void *data)
 {
-    CheckPortInfo* info = (CheckPortInfo*)data;
+    CheckPortInfo* info = (CheckPortInfo *)data;
     int rc;
-    if (info->verbose)
-        printf("Trying %s                    \r", port); fflush(stdout);
+    if (info->verbose) {
+        printf("Trying %s                    \r", port);
+        fflush(stdout);
+    }
     if ((rc = popenport(port, info->baud)) != PLOAD_STATUS_OK)
         return rc;
     if (info->actualport) {
@@ -59,10 +50,43 @@ static int CheckPort(const char* port, void* data)
     return 0;
 }
 
-int InitPort(char *prefix, char *port, int baud, int verbose, char *actualport)
+static int ShowPort(const char *port, void *data)
+{
+    if (data)
+        CheckPort(port, data);
+    else
+        printf("%s\n", port);
+    return 1;
+}
+
+void ShowPorts(char *prefix)
+{
+    serial_find(prefix, ShowPort, NULL);
+}
+
+void ShowConnectedPorts(char *prefix, int baud, int flags)
+{
+    CheckPortInfo info;
+    int verbose = 0;
+
+    if (flags & IFLAG_VERBOSE)
+      verbose = 1;
+
+    info.baud = baud;
+    info.verbose = verbose;
+    info.actualport = NULL;
+    
+    serial_find(prefix, ShowPort, &info);
+}
+
+int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
 {
     int rc;
-    
+    int verbose = 0;
+
+    if (flags & IFLAG_VERBOSE)
+      verbose = 1;
+
     if (port) {
         if (actualport) {
             strncpy(actualport, port, PATH_MAX - 1);
