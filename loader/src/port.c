@@ -38,8 +38,10 @@ static int CheckPort(const char *port, void *data)
 {
     CheckPortInfo* info = (CheckPortInfo *)data;
     int rc;
-    if (info->verbose)
-        printf("Trying %s                    \r", port); fflush(stdout);
+    if (info->verbose) {
+        printf("Trying %s                    \r", port);
+        fflush(stdout);
+    }
     if ((rc = popenport(port, info->baud, info->noreset)) != PLOAD_STATUS_OK)
         return rc;
     if (info->actualport) {
