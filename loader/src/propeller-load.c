@@ -57,11 +57,13 @@ int main(int argc, char *argv[])
     System sys;
     int baud = 115200;
     int useRtsForReset = FALSE;
+    int portFlags = 0;
     int flags = 0;
-    int verbose = FALSE;
     int i;
     int terminalBaud = 0;
     int check_for_exit = 0; /* flag to terminal_mode to check for a certain sequence to indicate program exit */
+    int showPorts = FALSE;
+    int showAll = TRUE;
     
     /* make sure that the serial port gets closed on exit */
     atexit(serial_done);
@@ -121,7 +123,12 @@ int main(int argc, char *argv[])
 #endif
                 break;
             case 'P':
-                ShowPorts(PORT_PREFIX);
+                showPorts = TRUE;
+                showAll = FALSE;
+                break;
+            case 'Q':
+                showPorts = TRUE;
+                showAll = TRUE;
                 break;
             case 'e':
                 flags |= LFLAG_WRITE_EEPROM;
@@ -171,7 +178,7 @@ int main(int argc, char *argv[])
                 xbAddPath(p);
                 break;
             case 'v':
-                verbose = TRUE;
+                portFlags = IFLAG_VERBOSE;
                 break;
             case 'S':
                 psetdelay(argv[i][2] ? atoi(&argv[i][2]) : 5);
@@ -270,10 +277,18 @@ int main(int argc, char *argv[])
     }
     serial_use_rts_for_reset(useRtsForReset);
     
-
+    /* check for being asked to show ports */
+    if (showPorts) {
+        if (showAll)
+            ShowPorts(PORT_PREFIX);
+        else
+            ShowConnectedPorts(PORT_PREFIX, baud, portFlags);
+        return 0;
+    }
+    
     /* initialize the serial port */
     if ((flags & NEED_PORT) != 0 || terminalMode) {
-        int sts = InitPort(PORT_PREFIX, port, baud, verbose, actualport);
+        int sts = InitPort(PORT_PREFIX, port, baud, portFlags, actualport);
         switch (sts) {
         case PLOAD_STATUS_OK:
             // port initialized successfully
@@ -339,7 +354,8 @@ printf("\
 usage: propeller-load\n\
          [ -b <type> ]     select target board (default is 'default:default')\n\
          [ -p <port> ]     serial port (default is to auto-detect the port)\n\
-         [ -P ]            list available serial ports\n\
+         [ -P ]            list serial ports with Propeller chips\n\
+         [ -Q ]            list available serial ports\n\
          [ -I <path> ]     add a directory to the include path\n\
          [ -D var=value ]  define a board configuration variable\n\
          [ -e ]            write the program into EEPROM\n\

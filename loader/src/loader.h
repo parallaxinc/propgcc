@@ -25,10 +25,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "config.h"
 #include "system.h"
 #include "loadelf.h"
+#include "port.h"
 #include "PLoadLib.h"
-
-/* InitPort flags */
-#define IFLAG_VERBOSE               (1 << 0)
 
 /* LoadXXX flags */
 #define LFLAG_WRITE_EEPROM          (1 << 0)
@@ -69,8 +67,6 @@ typedef struct {
 typedef int PatchFcn(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
 
 /* loader.c */
-void ShowPorts(char *prefix);
-int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
