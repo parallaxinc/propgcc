@@ -1,3 +1,4 @@
+#if !defined(__PROPELLER2__)
 /* i2c_interface.c - i2c functions
 
 Copyright (c) 2012 David Michael Betz
@@ -27,7 +28,9 @@ static int cog_i2cClose(I2C *dev);
 static I2C_OPS cog_i2c_ops = {
     cog_i2cClose,
     cog_i2cRead,
-    cog_i2cWrite
+    cog_i2cReadMore,
+    cog_i2cWrite,
+    cog_i2cWriteMore
 };
 
 I2C *i2cOpen(I2C_COGDRIVER *dev, int scl, int sda, int freq)
@@ -66,3 +69,4 @@ static int cog_i2cClose(I2C *dev)
     cogstop(cdev->cog);
     return 0;
 }
+#endif

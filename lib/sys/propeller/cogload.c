@@ -1,3 +1,5 @@
+#if !defined(__PROPELLER2__)
+
 #include <propeller.h>
 #include "cogload.h"
 #include "i2c.h"
@@ -23,7 +25,9 @@ static int cog_i2cBootClose(I2C *dev);
 static I2C_OPS cog_i2c_ops = {
     cog_i2cBootClose,
     cog_i2cRead,
-    cog_i2cWrite
+    cog_i2cReadMore,
+    cog_i2cWrite,
+    cog_i2cWriteMore
 };
 
 static I2C_COGDRIVER _boot_i2c_data = {
@@ -100,3 +104,5 @@ int coginitFromBootEeprom(int id, void *code, size_t codeSize, void *param)
         
     return coginit(id, cogbuf, param);
 }
+
+#endif
