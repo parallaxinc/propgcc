@@ -19,6 +19,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 */
 
+#ifndef __PROPELLER2__
+
 #include <propeller.h>
 #include "i2c_driver.h"
 
@@ -104,41 +106,47 @@ _NAKED int main(void)
         /* dispatch on the command code */
         switch (cmd) {
         case I2C_CMD_SEND:
+        case I2C_CMD_SEND_MORE:
             p = mailbox->buffer;
             count = mailbox->count;
             sts = I2C_OK;
-            i2cStart();
-            if (i2cSendByte(mailbox->hdr) != 0)
-                sts = I2C_ERR_SEND_HDR;
-            else {
-                while (count > 0) {
-                    if (i2cSendByte(*p++) != 0) {
-                        sts = I2C_ERR_SEND;
-                        break;
-                    }
-                    --count;
+            if (cmd == I2C_CMD_SEND) {
+                i2cStart();
+                if (i2cSendByte(mailbox->hdr) != 0) {
+                    sts = I2C_ERR_SEND_HDR;
+                    break;
                 }
+            }
+            while (count > 0) {
+                if (i2cSendByte(*p++) != 0) {
+                    sts = I2C_ERR_SEND;
+                    break;
+                }
+                --count;
             }
             if (mailbox->stop)
                 i2cStop();
             break;
         case I2C_CMD_RECEIVE:
+        case I2C_CMD_RECEIVE_MORE:
             p = mailbox->buffer;
             count = mailbox->count;
             sts = I2C_OK;
-            i2cStart();
-            if (i2cSendByte(mailbox->hdr) != 0)
-                sts = I2C_ERR_RECEIVE_HDR;
-            else {
-                while (count > 0) {
-                    int byte = i2cReceiveByte(count != 1);
-                    if (byte < 0) {
-                        sts = I2C_ERR_RECEIVE;
-                        break;
-                    }
-                    *p++ = byte;
-                    --count;
+            if (cmd == I2C_CMD_RECEIVE) {
+                i2cStart();
+                if (i2cSendByte(mailbox->hdr) != 0) {
+                    sts = I2C_ERR_RECEIVE_HDR;
+                    break;
                 }
+            }
+            while (count > 0) {
+                int byte = i2cReceiveByte(count != 1);
+                if (byte < 0) {
+                    sts = I2C_ERR_RECEIVE;
+                    break;
+                }
+                *p++ = byte;
+                --count;
             }
             if (mailbox->stop)
                 i2cStop();
@@ -231,3 +239,5 @@ static _NATIVE uint8_t i2cReceiveByte(int acknowledge)
     
     return byte;
 }
+
+#endif // __PROPELLER2__
