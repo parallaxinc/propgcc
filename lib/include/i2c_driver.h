@@ -32,7 +32,9 @@ typedef enum {
     I2C_CMD_IDLE,
     I2C_CMD_INIT,
     I2C_CMD_SEND,
-    I2C_CMD_RECEIVE
+    I2C_CMD_SEND_MORE,
+    I2C_CMD_RECEIVE,
+    I2C_CMD_RECEIVE_MORE
 } I2C_CMD;
 
 typedef enum {

@@ -35,12 +35,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 static int simple_i2cClose(I2C *dev);
 static int simple_i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int stop);
+static int simple_i2cReadMore(I2C *dev, uint8_t *buffer, int count, int stop);
 static int simple_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, int stop);
+static int simple_i2cWriteMore(I2C *dev, uint8_t *buffer, int count, int stop);
 
 static I2C_OPS simple_i2c_ops = {
     simple_i2cClose,
     simple_i2cRead,
-    simple_i2cWrite
+    simple_i2cReadMore,
+    simple_i2cWrite,
+    simple_i2cWriteMore
 };
 
 /* local functions */
@@ -68,12 +72,17 @@ static int simple_i2cClose(I2C *dev)
 
 static int simple_i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int stop)
 {
-    int i;
-    
     i2cStart((I2C_SIMPLE *)dev);
         
     if (i2cSendByte((I2C_SIMPLE *)dev, address | I2C_READ) != 0)
         return -1;
+    
+    return simple_i2cReadMore(dev, buffer, count, stop);
+}
+
+static int simple_i2cReadMore(I2C *dev, uint8_t *buffer, int count, int stop)
+{
+    int i;
     
     for (i = 0; --count >= 0; ++i) {
         int byte = i2cReceiveByte((I2C_SIMPLE *)dev, count != 0);
@@ -90,12 +99,17 @@ static int simple_i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int
 
 static int simple_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, int stop)
 {
-    int i;
-    
     i2cStart((I2C_SIMPLE *)dev);
     
     if (i2cSendByte((I2C_SIMPLE *)dev, address | I2C_WRITE) != 0)
         return -1;
+    
+    return simple_i2cWriteMore(dev, buffer, count, stop);
+}
+
+static int simple_i2cWriteMore(I2C *dev, uint8_t *buffer, int count, int stop)
+{
+    int i;
     
     for (i = 0; i < count; ++i)
         if (i2cSendByte((I2C_SIMPLE *)dev, buffer[i]) != 0)
