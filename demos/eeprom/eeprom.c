@@ -42,7 +42,7 @@ int main(void)
         n = 0;
         
     sprintf(buf, "Testing %d\n", n);
-    puts(buf);
+    fputs(buf, stdout);
 
     if (eepromWrite(&eeprom, 0x8000, buf, sizeof(buf)) != 0) {
         printf("eepromWrite failed\n");
