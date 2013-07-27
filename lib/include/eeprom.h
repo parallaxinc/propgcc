@@ -9,6 +9,64 @@ typedef struct {
     int address;
 } EEPROM;
 
+typedef struct {
+    EEPROM state;
+    I2C_COGDRIVER dev;
+} EEPROM_COGDRIVER;
+
+typedef struct {
+    EEPROM state;
+    I2C_SIMPLE dev;
+} EEPROM_SIMPLE;
+
+typedef struct {
+    EEPROM state;
+} EEPROM_BOOT;
+
+/**
+ * @brief Open an i2c EEPROM device
+ *
+ * @details Open an I2C EEPROM device using a COG driver.
+ *
+ * @param dev I2C EEPROM device structure to initialize
+ * @param scl SCL pin number
+ * @param sda SDA pin number
+ * @param freq Bus frequency
+ * @param address I2C EEPROM address in bits 7:1, zero in bit 0
+ *
+ * @returns a pointer to the EEPROM structure on success, NULL on failure.
+ *
+ */
+EEPROM *eepromOpen(EEPROM_COGDRIVER *eeprom, int scl, int sda, int freq, int address);
+
+/**
+ * @brief Open an I2C EEPROM device
+ *
+ * @details Open an I2C EEPROM device using a simple driver that
+ * runs on the COG of the caller.
+ *
+ * @param dev I2C EEPROM device structure to initialize
+ * @param scl SCL pin number
+ * @param sda SDA pin number
+ * @param address I2C EEPROM address in bits 7:1, zero in bit 0
+ *
+ * @returns a pointer to the EEPROM structure on success, NULL on failure.
+ *
+ */
+EEPROM *simple_eepromOpen(EEPROM_SIMPLE *eeprom, int scl, int sda, int address);
+
+/**
+ * @brief Open an EEPROM on the boot i2c bus on Propeller pins 28/29
+ *
+ * @details Use this function to open an EEPROM the i2c bus on pins 28/29 used by the
+ * Propeller to boot from EEPROM.
+ *
+ * @param address I2C EEPROM address in bits 7:1, zero in bit 0
+ *
+ * @returns a pointer to an EEPROM structure or NULL on failure.
+ */
+EEPROM *eepromBootOpen(EEPROM_BOOT *eeprom, int address);
+
 /**
  * @brief Initialize an EEPROM state structure
  *

@@ -6,6 +6,33 @@
 #define FALSE   0
 #endif
 
+EEPROM *eepromOpen(EEPROM_COGDRIVER *eeprom, int scl, int sda, int freq, int address)
+{
+    I2C *dev;
+    if (!(dev = i2cOpen(&eeprom->dev, scl, sda, freq)))
+        return NULL;
+    eepromInit(&eeprom->state, dev, address);
+    return (EEPROM *)eeprom;
+}
+
+EEPROM *simple_eepromOpen(EEPROM_SIMPLE *eeprom, int scl, int sda, int address)
+{
+    I2C *dev;
+    if (!(dev = simple_i2cOpen(&eeprom->dev, scl, sda)))
+        return NULL;
+    eepromInit(&eeprom->state, dev, address);
+    return (EEPROM *)eeprom;
+}
+
+EEPROM *eepromBootOpen(EEPROM_BOOT *eeprom, int address)
+{
+    I2C *dev;
+    if (!(dev = i2cBootOpen()))
+        return NULL;
+    eepromInit(&eeprom->state, dev, address);
+    return (EEPROM *)eeprom;
+}
+
 void eepromInit(EEPROM *eeprom, I2C *dev, int address)
 {
     eeprom->dev = dev;
