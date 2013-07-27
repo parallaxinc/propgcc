@@ -2,13 +2,15 @@ TARGETS = eeprom-lmm.elf eeprom-xmmc.elf
 
 BOARD ?= c3
 
+HDRS = eeprom.h
+
 all:	$(TARGETS)
 
-eeprom-lmm.elf:	eeprom.c
-	propeller-elf-gcc -Os -mlmm -o $@ eeprom.c
+eeprom-lmm.elf:	$(HDRS) eepromdemo.c
+	propeller-elf-gcc -Os -mlmm -o $@ eepromdemo.c
 
-eeprom-xmmc.elf:	eeprom.c
-	propeller-elf-gcc -Os -mxmmc -o $@ eeprom.c
+eeprom-xmmc.elf:	$(HDRS) eepromdemo.c
+	propeller-elf-gcc -Os -mxmmc -o $@ eepromdemo.c
 
 run-lmm:
 	propeller-load eeprom-lmm.elf -r -t

@@ -103,7 +103,8 @@ DRIVERS = SimpleSerial.o serialparam.o serial_break.o serial_exit.o memory.o \
 	i2c_interface.o i2c_common.o \
 	boot_read.o boot_write.o \
 	i2c_driver.cog \
-	i2c_driver_boot.cog
+	i2c_driver_boot.cog \
+	eeprom.o
 
 LIBM = 	k_rem_pio2.o k_cos.o k_sin.o k_tan.o \
 	k_rem_pio2f.o k_cosf.o k_sinf.o k_tanf.o \
