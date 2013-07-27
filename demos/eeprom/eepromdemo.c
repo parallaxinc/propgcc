@@ -1,6 +1,5 @@
 #include <stdio.h>
-#include <i2c.h>
-#include "eeprom.h"
+#include <eeprom.h>
 
 #ifndef TRUE
 #define TRUE    1
@@ -11,20 +10,17 @@
 
 int main(void)
 {
-    I2C_COGDRIVER i2c;
-    I2C *dev;
+    EEPROM_COGDRIVER state;
+    EEPROM *eeprom;
     uint8_t buf[128];
-    EEPROM eeprom;
     int n;
     
-    if ((dev = i2cOpen(&i2c, 28, 29, 400000)) == NULL) {
-        printf("i2cOpen failed\n");
+    if ((eeprom = eepromOpen(&state, 28, 29, 400000, EEPROM_ADDR)) == NULL) {
+        printf("eepromOpen failed\n");
         return 1;
     }
     
-    eepromInit(&eeprom, dev, EEPROM_ADDR);
-    
-    if (eepromRead(&eeprom, 0x8000, buf, sizeof(buf)) != 0) {
+    if (eepromRead(eeprom, 0x8000, buf, sizeof(buf)) != 0) {
         printf("eepromRead failed\n");
         return 1;
     }
@@ -37,7 +33,7 @@ int main(void)
     sprintf(buf, "Testing %d\n", n);
     fputs(buf, stdout);
 
-    if (eepromWrite(&eeprom, 0x8000, buf, sizeof(buf)) != 0) {
+    if (eepromWrite(eeprom, 0x8000, buf, sizeof(buf)) != 0) {
         printf("eepromWrite failed\n");
         return 1;
     }    
