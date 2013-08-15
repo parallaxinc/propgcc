@@ -25,10 +25,8 @@ __LMM_entry
 r0	mov	__TMP1, r6	'' get pointer to initialization
 r1	call	#__load_extension
 r2  	jmp	#__LMM_init
-	
-
 r3      nop
-r4	nop
+r4      nop
 r5      nop
 r6      long __load_start_start_kerext
 
@@ -48,19 +46,19 @@ pc      long    entry           ' default pc
 #else
 r0      rdlong  sp, PAR
 r1      tjz     sp, #__LMM_entry
-r2      rdlong  cache_mboxcmd, sp
-r3      add     sp, #4
-r4      nop
-r5      nop
-r6      nop
-r7      add     sp, #4
-r8      rdlong  pc, sp
-r9      add     sp, #4
-r10     locknew r2 wc
-r11     or      r2,#256
-r12 IF_NC wrlong r2,__C_LOCK_PTR
-r13     call    #cache_init
-r14     jmp     #__LMM_loop
+r2      rdlong  xmem_hubaddrp, sp
+r3      mov     xmem_extaddrp, xmem_hubaddrp
+r4      add     xmem_extaddrp, #4
+r5      add     sp, #4
+r6      add     sp, #4
+r7      rdlong  pc, sp
+r8      add     sp, #4
+r9      locknew r2 wc
+r10     or      r2,#256
+r11 IF_NC wrlong r2,__C_LOCK_PTR
+r12     call    #cache_init
+r13     jmp     #__LMM_loop
+r14     long    0
 r15     '' alias for lr
 lr      long    0
 sp      long    0
@@ -361,20 +359,17 @@ cache_init
         shl     index_count, index_width
         mov     index_mask, index_count
         sub     index_mask, #1
-        mov     line_size, #1
-        shl     line_size, offset_width
-        mov     offset_mask, line_size
+        mov     offset_mask, #1
+        shl     offset_mask, offset_width
         sub     offset_mask, #1
-
-        ' initialize the cache lines
-cache_flush
+        mov     size_select, offset_width   ' memory driver supports minimum of 16 byte lines
+        sub     size_select, #3             ' 1=16, 2=32, 3=64 ... 7=1024
         mov     t1, index_count
         mov     t2, tagsptr
 flush   wrlong  empty_mask, t2
         add     t2, #4
         djnz    t1, #flush
 cache_init_ret
-cache_flush_ret
         ret
         
 ' on call:
@@ -382,9 +377,10 @@ cache_flush_ret
 '   z saved in save_z_c using the instruction "muxnz save_z_c, #2"
 ' on return:
 '   memp contains a pointer to the data
-'   t1 is trashed
 '   z will be restored from save_z_c
 cache_write
+        mov     t2, t1                  ' get the cache line address
+        andn    t2, offset_mask
         mov     set_dirty_bit, dirty_mask
         jmp     #rd_wr
 
@@ -393,7 +389,6 @@ cache_write
 '   z saved in save_z_c using the instruction "muxnz save_z_c, #2"
 ' on return:
 '   memp contains a pointer to the data
-'   t1 is trashed
 '   z will be restored from save_z_c
 cache_read
         mov     t2, t1                  ' get the cache line address
@@ -413,28 +408,33 @@ rd_wr   mov     newtag, t1              ' get the new cache tag
         add     cacheline, cacheptr
         
         rdlong  tag, tagptr             ' get the cache line tag
-        mov     t2, tag
-        and     t2, tag_mask
-        cmp     t2, newtag wz           ' z set means there was a cache hit
+        mov     t3, tag
+        and     t3, tag_mask
+        cmp     t3, newtag wz           ' z set means there was a cache hit
   if_z  jmp     #hit                    ' handle a cache hit
   
-miss    mov     t2, cmdptr              ' write old cache line if necessary and read new
-        wrlong  cacheline, t2           ' cache line address
-        add     t2, #4
-        wrlong  line_size, t2           ' cache line size in bytes
-        add     t2, #4
-        test    tag, dirty_mask wz      ' check to see if old cache line is dirty
-  if_z  mov     t3, #0                  ' no dirty line to write
-  if_nz mov     t3, tag                 ' address of dirty line to write
-  if_nz shl     t3, offset_width
-        wrlong  t3, t2                  ' external address of old cache line
-        mov     t3, t1
-        andn    t3, offset_mask
-        wrlong  t3, t2                  ' external address of new cache line
-        wrlong  cmdptr, cache_mboxcmd   ' call the external memory driver
-wait    rdlong  t2, cache_mboxcmd wz
- if_nz  jmp     #wait
+' t1 has the external address
+' t2 has the external address of the cache line
+miss    test    tag, dirty_mask wz      ' check to see if old cache line is dirty
+  if_z  jmp     #do_read                ' skip the write if the cache line isn't dirty
 
+        mov     t3, tag                 ' get current tag's external address
+        shl     t3, offset_width
+        wrlong  t3, xmem_extaddrp      ' setup the external address of the write
+        mov     t3, size_select         ' setup the hub address of the write
+        or      t3, cacheline
+        or      t3, #8                  ' set the write flag
+        wrlong  t3, xmem_hubaddrp       ' initiate the write
+wwait   rdlong  t3, xmem_hubaddrp wz    ' wait for the write to complete
+  if_nz jmp     #wwait
+
+do_read wrlong  t2, xmem_extaddrp
+        mov     t3, size_select         ' setup the hub address of the read
+        or      t3, cacheline
+        wrlong  t3, xmem_hubaddrp       ' initiate the read
+rwait   rdlong  t3, xmem_hubaddrp wz    ' wait for the read to complete
+  if_nz jmp     #rwait
+  
         mov     tag, newtag             ' setup the new tag
  
 hit     or      tag, set_dirty_bit      ' set the dirty bit on writes
@@ -452,12 +452,12 @@ cache_write_ret
         ret
         
 ' external memory driver command syntax
-' long 0 - hub buffer address
-' long 1 - number of bytes to read/write
-' long 2 - external address to write or zero
-' long 3 - external address to read or zero
+' long 0 (xmem_hubaddrp) - hub address, size selector, and write flag
+' long 1 (xmem_extaddrp) - external address
+' size selector in bits 2:0 are 1=16, 2=32, 3=64 ... 7=1024
+' write mask is $8
         
-t1              long    0
+t1              long    0               ' temporary variables
 t2              long    0
 t3              long    0
 tagptr          long    0
@@ -465,12 +465,12 @@ newtag          long    0
 tag             long    0
 memp            long    0
 save_z_c        long    0
-cacheaddr       long    0
-cacheline       long    0
+cacheaddr       long    0               ' external address of last matching cache line
+cacheline       long    0               ' hub address of last matching cache line
 set_dirty_bit   long    0               ' DIRTY_BIT set on writes, clear on reads
 
-cache_mboxcmd   long    0
-cmdptr          long    0x8000 - 8192 - 512 - 16
+xmem_hubaddrp   long    0
+xmem_extaddrp   long    0
 tagsptr         long    0x8000 - 8192 - 512
 cacheptr        long    0x8000 - 8192
 
@@ -479,7 +479,7 @@ offset_width    long    DEFAULT_OFFSET_WIDTH
 index_mask      long    0
 index_count     long    0
 offset_mask     long    0
-line_size       long    0
+size_select     long    0
 
 tag_mask        long    (1 << DIRTY_BIT) - 1    ' includes EMPTY_BIT
 empty_mask      long    1 << EMPTY_BIT
