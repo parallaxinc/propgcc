@@ -29,7 +29,6 @@ SECTIONS
   ${RELOCATING+ ".boot : \{ *(.boot) \} >hub" }
 
   ${KERNEL}
-  ${XMM_HEADER}
 
   /* the initial startup code (including constructors) */
   .init ${RELOCATING-0} :

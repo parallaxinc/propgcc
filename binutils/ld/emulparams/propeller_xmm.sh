@@ -23,13 +23,7 @@ KERNEL="
   } >kermem AT>dummy
 "
 KERNEL_NAME=.xmmkernel
-XMM_HEADER="
-    .header : {
-        LONG(entry)
-        LONG(0)
-        LONG(0)
-    } >rom
-"
+
 HUB_DATA="
 "
 DATA_DATA="
