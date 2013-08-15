@@ -1055,7 +1055,8 @@ propeller_elf_print_private_bfd_data (bfd * abfd, void * ptr)
     fprintf (file, _(" [cmm]"));
   if (flags & EF_PROPELLER_XMM)
     fprintf (file, _(" [xmm]"));
-
+  if (flags & EF_PROPELLER_ABI_VERS)
+    fprintf (file, _("[abi version %d]"), EF_PROPELLER_GET_ABI(flags));
   fputc ('\n', file);
   return TRUE;
 }
