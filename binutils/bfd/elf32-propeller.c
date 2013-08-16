@@ -995,18 +995,27 @@ propeller_elf_merge_private_bfd_data (bfd * ibfd, bfd * obfd)
     {
       flagword old_mach, new_mach;
       flagword old_ef, new_ef;
+      flagword old_ver, new_ver;
 
       /* we can check here for mismatches in bits */
       old_mach = old_flags & EF_PROPELLER_MACH;
       new_mach = new_flags & EF_PROPELLER_MACH;
-      old_ef = old_flags & (~EF_PROPELLER_MACH);
-      new_ef = new_flags & (~EF_PROPELLER_MACH);
+      old_ver = old_flags & EF_PROPELLER_ABI_VERS;
+      new_ver = new_flags & EF_PROPELLER_ABI_VERS;
+      old_ef = old_flags & ~(EF_PROPELLER_MACH|EF_PROPELLER_ABI_VERS);
+      new_ef = new_flags & ~(EF_PROPELLER_MACH|EF_PROPELLER_ABI_VERS);
 
       if (old_mach != 0 && new_mach != 0 && old_mach != new_mach)
 	{
 	      (*_bfd_error_handler)
 		("propeller architecture mismatch: old = 0x%.8lx, new = 0x%.8lx, filename = %s",
 		 old_mach, new_mach, bfd_get_filename (ibfd));
+	}
+      if (old_ver != 0 && new_ver != 0 && old_ver != new_ver)
+	{
+	      (*_bfd_error_handler)
+		("propeller version mismatch: old = 0x%.8lx, new = 0x%.8lx, filename = %s",
+		 old_ver, new_ver, bfd_get_filename (ibfd));
 	}
       if (old_ef != 0 && new_ef != 0)
 	{
