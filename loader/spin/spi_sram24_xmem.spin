@@ -143,6 +143,9 @@ init_xmem
   if_nz shl     select_addr, t4
   if_nz shl     mask_inc, t4
   if_nz or      spidir, mask_inc
+  
+        ' signal that we're done with initialization
+        wrlong  zero, PAR
         
         ' set the pin directions
         mov     outa, spiout
