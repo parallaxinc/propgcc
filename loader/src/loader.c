@@ -239,12 +239,12 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
     fseek(fp, 0, SEEK_END);
     size = ftell(fp);
     if (size > 32768)
-    	return Error(".binary file is larger than 32k");
-    	
+        return Error(".binary file is larger than 32k");
+        
     /* read the image */
     fseek(fp, 0, SEEK_SET);
     if (fread(image, 1, size, fp) != size)
-    	return Error("reading image file");
+        return Error("reading image file");
     
     /* close the image file */
     fclose(fp);
@@ -269,8 +269,8 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
             hdr->clkmode = ivalue;
         }
             
-    	/* recompute the checksum */
-    	UpdateChecksum(image, size);
+        /* recompute the checksum */
+        UpdateChecksum(image, size);
     }
 #endif
 
@@ -325,8 +325,8 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
         return FALSE;
 
     if ( (flags & LFLAG_DEBUG) != 0) {
-      if (!PatchLMMImageForDebug(imagebuf, imageSize, c))
-	return FALSE;
+        if (!PatchLMMImageForDebug(imagebuf, imageSize, c))
+            return FALSE;
     }
 
     /* load the eeprom cache driver if we need to write cog images to eeprom */
@@ -671,12 +671,13 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         free(imagebuf);
         return Error("can't load .xmmkernel section");
     }
+    
     /* if debugging requested, patch */
     if ( (flags & LFLAG_DEBUG) != 0) {
         if (!(PatchSectionForDebug(kernelbuf, program_kernel.filesz, 0, c))) {
             free(imagebuf);
-	    return Error("can't patch .xmmkernel section");
-	}
+            return Error("can't patch .xmmkernel section");
+        }
     }
 
     /* handle downloads to eeprom that must be done before the external memory download */
