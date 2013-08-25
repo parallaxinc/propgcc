@@ -204,18 +204,27 @@ extend  mov     vmaddr, vmpage
         jmp     vmpage
 
 dispatch
-        jmp     #waitcmd
+        jmp     #waitcmd                ' 0 - erase_chip
 #ifdef FLASH
-        jmp     #erase_block_handler
-        jmp     #write_data_handler
+        jmp     #erase_block_handler    ' 1 - erase_block
+        jmp     #write_data_handler     ' 2 - write_data
 #else
-        jmp     #waitcmd
-        jmp     #waitcmd
+        jmp     #waitcmd                ' 1 - erase block
+        jmp     #waitcmd                ' 2 - write_data
 #endif
-        jmp     #waitcmd
-        jmp     #waitcmd
-        jmp     #waitcmd
-'       jmp     #lock_set_handler - This is the next instruction - no need to waste a long
+#ifdef BLOCK_IO
+        jmp     #block_read_handler     ' 3 - block_read
+#ifdef RW
+        jmp     #block_write_handler    ' 4 - block_write
+#else
+        jmp     #waitcmd                ' 4 - block_write
+#endif
+#else
+        jmp     #waitcmd                ' 3 - block_read
+        jmp     #waitcmd                ' 4 - block_write
+#endif
+        jmp     #waitcmd                ' 5 - unused
+'       jmp     #lock_set_handler       ' 6 - lock_set - This is the next instruction - no need to waste a long
 
 ' Note that we only provide SD locks for the cache operations - the other
 ' operations are specific to the sd_cache_loader's use of the cache driver, and
@@ -240,16 +249,39 @@ erase_block_handler
         jmp     #waitcmd
 
 write_data_handler
-        rdlong  hubaddr, vmaddr         ' get the buffer pointer
+        rdlong  hubaddr, vmaddr         ' get the hub buffer pointer
         add     vmaddr, #4
-        rdlong  count, vmaddr wz        ' get the byte count
-  if_z  mov     data, #0
-  if_z  jmp     #:done
+        rdlong  count, vmaddr           ' get the byte count
         add     vmaddr, #4
         rdlong  vmaddr, vmaddr          ' get the flash address (zero based)
         call    #write_block
-:done   wrlong  data, pvmaddr
+        wrlong  data, pvmaddr
         jmp     #waitcmd
+#endif
+
+#ifdef BLOCK_IO
+
+block_read_handler
+        rdlong  hubaddr, vmaddr         ' get the hub buffer pointer
+        add     vmaddr, #4
+        rdlong  count, vmaddr           ' get the byte count
+        add     vmaddr, #4
+        rdlong  vmaddr, vmaddr          ' get the external address
+        call    #BREAD
+        jmp     #waitcmd
+
+#ifdef RW
+
+block_write_handler
+        rdlong  hubaddr, vmaddr         ' get the hub buffer pointer
+        add     vmaddr, #4
+        rdlong  count, vmaddr           ' get the byte count
+        add     vmaddr, #4
+        rdlong  vmaddr, vmaddr          ' get the external address
+        call    #BWRITE
+        jmp     #waitcmd
+
+#endif
 
 #endif
 
@@ -289,7 +321,7 @@ line_size       long    0
 ' input parameters to BREAD and BWRITE
 vmaddr      long    0           ' virtual address
 hubaddr     long    0           ' hub memory address to read from or write to
-count       long    0           ' number of longs to read or write
+count       long    0           ' number of bytes to read or write
 
 ' THE FOLLOWING FUNCTIONS AND VARIABLES ARE REQUIRED TO ACCESS EXTERNAL MEMORY
 
@@ -332,7 +364,7 @@ count       long    0           ' number of longs to read or write
 ' on input:
 '   vmaddr is the virtual memory address to read
 '   hubaddr is the hub memory address to write
-'   count is the number of longs to read
+'   count is the number of bytes to read
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -343,7 +375,7 @@ count       long    0           ' number of longs to read or write
 ' on input:
 '   vmaddr is the virtual memory address to write
 '   hubaddr is the hub memory address to read
-'   count is the number of longs to write
+'   count is the number of bytes to write
 '
 ' Note: only required if RW is defined
 '

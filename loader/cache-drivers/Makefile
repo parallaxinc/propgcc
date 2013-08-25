@@ -1,6 +1,11 @@
+CC=propeller-elf-gcc
+OBJCOPY=propeller-elf-objcopy
+
 CACHE_DRIVER_COMMON = cache_common.spin cache_interface.spin cache_spi_pins.spin cache_sqi_pins.spin cache_spi.spin cache_sqi.spin
 
 DEMO?=fibo-xmmc.elf
+
+TESTDRIVER?=rampage2_xcache
 
 DRIVERS = \
 rampage2_xcache.dat \
@@ -16,6 +21,7 @@ sst_sqi_flash_sram_xcache.dat \
 c3_xcache.dat \
 synapse_xcache.dat
 
+.PHONY:	all
 all:	$(DRIVERS)
 
 %.dat:	%.spin $(CACHE_DRIVER_COMMON)
@@ -53,6 +59,15 @@ dnax-ram:	spi_flash_xcache.dat
 
 c3x:	c3_xcache.dat
 	propeller-load -b c3x $(DEMO) -r -t
+
+.PHONY:	cachetest
+cachetest:	cachetest.elf
+
+cachetest.elf:	cachetest.c $(TESTDRIVER).o
+	$(CC) -D TESTDRIVER=binary_$(TESTDRIVER)_dat_start -mcmm -Os -mno-fcache -o $@ $^
+    
+%.o: %.dat
+	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 
 clean:
 	rm -f $(DRIVERS)

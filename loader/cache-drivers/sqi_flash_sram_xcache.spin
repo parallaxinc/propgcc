@@ -5,11 +5,14 @@
 
 #define FLASH
 #define RW
+#define BLOCK_IO
+
 #include "cache_common.spin"
 #include "cache_sqi.spin"
 
 init
         ' get the pin definitions (cache-param2)
+        ' 0xssccffrr where ss=sio0, cc=clk, ff=flash cs, ss=sram cs
         rdlong  t2, t1
 
         ' get the sio_shift and build the mosi, miso, and sio masks
@@ -194,7 +197,7 @@ BSTART_sram_RET
 ' on input:
 '   vmaddr is the virtual memory address to read
 '   hubaddr is the hub memory address to write
-'   count is the number of longs to read
+'   count is the number of bytes to read
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -232,7 +235,7 @@ BREAD_sram
 ' on input:
 '   vmaddr is the virtual memory address to write
 '   hubaddr is the hub memory address to read
-'   count is the number of longs to write
+'   count is the number of bytes to write
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -387,8 +390,10 @@ sst_read            long    $0b000000    ' flash read command
 flash_init
         call    #read_jedec_id
         cmp     t1, jedec_id wz
+  if_z  jmp     #id_ok
+        cmp     t1, jedec_id2 wz
   if_nz jmp     #halt
-        call    #winbond_write_enable
+id_ok   call    #winbond_write_enable
         mov     cmd, winbond_wrstatus
         call    #winbond_start_quad_spi_cmd_1
         mov     data, #$00
@@ -467,7 +472,8 @@ winbond_start_quad_spi_cmd_1_ret
 winbond_start_quad_spi_cmd_ret
         ret
         
-jedec_id            long    $000040ef    ' value of t1 after read_jedec_id routine (W25Q80BV)
+jedec_id            long    $000040ef    ' value of t1 after read_jedec_id routine (W25QxxBV, W25QxxFV)
+jedec_id2            long   $000060ef    ' value of t1 after read_jedec_id routine (W25Q80DW)
 
 winbond_wrstatus    long    $01000000    ' write status
 winbond_program     long    $32000000    ' flash program byte/page
