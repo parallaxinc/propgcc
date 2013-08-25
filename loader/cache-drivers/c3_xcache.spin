@@ -14,6 +14,8 @@ CON
 
 #define FLASH
 #define RW
+#define BLOCK_IO
+
 #include "cache_common.spin"
 
 init

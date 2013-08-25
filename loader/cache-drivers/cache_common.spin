@@ -257,6 +257,7 @@ write_data_handler
         call    #write_block
         wrlong  data, pvmaddr
         jmp     #waitcmd
+
 #endif
 
 #ifdef BLOCK_IO
@@ -319,9 +320,9 @@ offset_shift    long    0       ' offset_width - 2
 line_size       long    0
 
 ' input parameters to BREAD and BWRITE
-vmaddr      long    0           ' virtual address
-hubaddr     long    0           ' hub memory address to read from or write to
-count       long    0           ' number of bytes to read or write
+vmaddr          long    0       ' virtual address
+hubaddr         long    0       ' hub memory address to read from or write to
+count           long    0       ' number of bytes to read or write
 
 ' THE FOLLOWING FUNCTIONS AND VARIABLES ARE REQUIRED TO ACCESS EXTERNAL MEMORY
 
