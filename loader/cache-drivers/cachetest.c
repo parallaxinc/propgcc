@@ -68,15 +68,17 @@ typedef struct {
   BLOCK_WRITE_CMD       = %100_01  ' only if BLOCK_IO is defined
   UNUSED2_CMD           = %101_01  ' unused
   REINIT_CACHE_CMD      = %110_01  ' only for SD cache driver to reinitialize the cache
+  UNUSED3_CMD           = %111_01  ' unused
 */
 
-#define ERASE_CHIP_CMD      0x00000001
+#define UNUSED_CMD          0x00000001
 #define ERASE_BLOCK_CMD     0x00000005
 #define WRITE_DATA_CMD      0x00000009
 #define BLOCK_READ_CMD      0x0000000d
 #define BLOCK_WRITE_CMD     0x00000011
-#define UNUSED_CMD          0x00000015
+#define UNUSED2_CMD         0x00000015
 #define REINIT_CACHE_CMD    0x00000019
+#define UNUSED3_CMD         0x0000001d
 
 /*
   CMD_MASK              = %11
@@ -119,6 +121,22 @@ int main(void)
     
     cache_line_mask = cacheStart(TESTDRIVER, &cache_mbox, cache, CACHE_CONFIG1, CACHE_CONFIG2, CACHE_CONFIG3, CACHE_CONFIG4);
     
+#if 1
+
+    srand(CNT);
+    j = rand();
+    printf("Starting with %08x\n", j);
+    for (i = 0; i < BUF_SIZE; ++i)
+        buf[i] = j++;
+    eraseFlashBlock(0);
+    writeFlashBlock(0, buf, sizeof(buf));
+    memset(buf, 0, sizeof(buf));
+    readBlock(ROM_BASE, buf, sizeof(buf));
+    for (i = 0; i < BUF_SIZE; ++i)
+        printf("buf[%d] = %08x\n", i, buf[i]);
+
+#endif
+
 #if 0
 
     for (i = 0; i < BUF_SIZE; ++i)
@@ -133,7 +151,7 @@ int main(void)
 
 #endif
         
-#if 1
+#if 0
 
     printf("Filling RAM\n");
     addr = RAM_BASE;
@@ -248,18 +266,20 @@ void writeBlock(uint32_t extaddr, void *buf, uint32_t count)
     //printf("write returned %08x\n", cache_mbox.addr);
 }
 
-void eraseFlashBlock(uint32_t extaddr)
+/* offset - the byte offset from the start of flash */
+void eraseFlashBlock(uint32_t offset)
 {
-    cache_mbox.cmd = (extaddr << 8) | WRITE_DATA_CMD;
+    cache_mbox.cmd = (offset << 8) | ERASE_BLOCK_CMD;
     while (cache_mbox.cmd)
         ;
 }
 
-void writeFlashBlock(uint32_t extaddr, void *buf, uint32_t count)
+/* offset - the byte offset from the start of flash */
+void writeFlashBlock(uint32_t offset, void *buf, uint32_t count)
 {
     block_io_t block_io;
     block_io.hubaddr = buf;
-    block_io.extaddr = extaddr;
+    block_io.extaddr = offset;
     block_io.count = count;
     cache_mbox.cmd = ((uint32_t)&block_io << 8) | WRITE_DATA_CMD;
     while (cache_mbox.cmd)
