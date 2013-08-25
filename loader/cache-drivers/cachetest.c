@@ -104,10 +104,11 @@ uint32_t cacheStart(void *code, cache_mbox_t *mbox, uint8_t *cache, uint32_t con
 
 uint8_t readByte(uint32_t addr);
 uint32_t readLong(uint32_t addr);
-void readBlock(uint32_t extaddr, void *buf, uint32_t count);
 
 void writeByte(uint32_t addr, uint8_t val);
 void writeLong(uint32_t addr, uint32_t val);
+
+void readBlock(uint32_t extaddr, void *buf, uint32_t count);
 void writeBlock(uint32_t extaddr, void *buf, uint32_t count);
 
 void eraseFlashBlock(uint32_t extaddr);
@@ -142,8 +143,6 @@ int main(void)
     for (i = 0; i < BUF_SIZE; ++i)
         buf[i] = i;
     writeBlock(RAM_BASE, buf, sizeof(buf));
-    for (i = 0; i < BUF_SIZE; ++i)
-        printf("buf[%d] = %08x\n", i, buf[i]);
     memset(buf, 0, sizeof(buf));
     readBlock(RAM_BASE, buf, sizeof(buf));
     for (i = 0; i < BUF_SIZE; ++i)
@@ -175,15 +174,19 @@ int main(void)
 
 #endif
 
-    //for (i = 0; i < 64; ++i)
-    //    printf("%08x %02x\n", i, readByte(RAM_BASE + i * 256));
+#if 0
+
+    for (i = 0; i < 64; ++i)
+        printf("%08x %02x\n", i, readByte(RAM_BASE + i * 256));
     
-    //for (i = 0; i < 64; ++i)
-    //    writeByte(RAM_BASE + i * 256, i);
+    for (i = 0; i < 64; ++i)
+        writeByte(RAM_BASE + i * 256, i);
         
-    //for (i = 0; i < 64; ++i)
-    //    printf("%08x %02x\n", i, readByte(RAM_BASE + i * 256));
+    for (i = 0; i < 64; ++i)
+        printf("%08x %02x\n", i, readByte(RAM_BASE + i * 256));
     
+#endif
+
     printf("done\n");
     return 0;
 }
@@ -223,18 +226,6 @@ uint32_t readLong(uint32_t addr)
     return *(uint32_t *)getReadAddr(addr);
 }
 
-void readBlock(uint32_t extaddr, void *buf, uint32_t count)
-{
-    block_io_t block_io;
-    block_io.hubaddr = buf;
-    block_io.extaddr = extaddr;
-    block_io.count = count;
-    cache_mbox.cmd = ((uint32_t)&block_io << 8) | BLOCK_READ_CMD;
-    while (cache_mbox.cmd)
-        ;
-    printf("read returned %08x\n", cache_mbox.addr);
-}
-
 static void *getWriteAddr(uint32_t addr)
 {
     cache_mbox.cmd = (addr & ~CMD_MASK) | WRITE_CMD;
@@ -254,6 +245,18 @@ void writeLong(uint32_t addr, uint32_t val)
     *(uint32_t *)getWriteAddr(addr) = val;
 }
 
+void readBlock(uint32_t extaddr, void *buf, uint32_t count)
+{
+    block_io_t block_io;
+    block_io.hubaddr = buf;
+    block_io.extaddr = extaddr;
+    block_io.count = count;
+    cache_mbox.cmd = ((uint32_t)&block_io << 8) | BLOCK_READ_CMD;
+    while (cache_mbox.cmd)
+        ;
+    printf("read returned %08x\n", cache_mbox.addr);
+}
+
 void writeBlock(uint32_t extaddr, void *buf, uint32_t count)
 {
     block_io_t block_io;
@@ -266,7 +269,7 @@ void writeBlock(uint32_t extaddr, void *buf, uint32_t count)
     //printf("write returned %08x\n", cache_mbox.addr);
 }
 
-/* offset - the byte offset from the start of flash */
+/* offset is the byte offset from the start of flash */
 void eraseFlashBlock(uint32_t offset)
 {
     cache_mbox.cmd = (offset << 8) | ERASE_BLOCK_CMD;
@@ -274,7 +277,7 @@ void eraseFlashBlock(uint32_t offset)
         ;
 }
 
-/* offset - the byte offset from the start of flash */
+/* offset is the byte offset from the start of flash */
 void writeFlashBlock(uint32_t offset, void *buf, uint32_t count)
 {
     block_io_t block_io;

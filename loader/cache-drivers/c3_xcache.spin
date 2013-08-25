@@ -1,10 +1,4 @@
-#define ENABLE_RAM
-#define BYTE_TRANSFERS
-
 CON
-
-  FLASH_MASK            = $10000000
-  FLASH_OFFSET_MASK     = FLASH_MASK - 1
 
   CLR_PIN               = 25
   INC_PIN               = 8
@@ -23,7 +17,6 @@ init
         mov     outa, pinout
         mov     dira, pindir
 
-#ifdef ENABLE_RAM
         call    #deselect
 
         ' select sequential access mode for the first SRAM chip
@@ -37,7 +30,6 @@ init
         mov     data, ramseq
         mov     bits, #16
         call    #send
-#endif
 
         call    #deselect
 		
@@ -86,7 +78,6 @@ wdata   rdbyte  data, hubaddr
 write_block_ret
 		ret
 		
-#ifdef ENABLE_RAM
 '----------------------------------------------------------------------------------------------------
 '
 ' BSTART
@@ -115,8 +106,6 @@ BSTART
         call    #send
 BSTART_RET
         ret
-#endif
-
 '----------------------------------------------------------------------------------------------------
 '
 ' BREAD
@@ -131,42 +120,31 @@ BSTART_RET
 '----------------------------------------------------------------------------------------------------
 
 BREAD
-#ifdef ENABLE_RAM
-        test    vmaddr, flashbit wz
-  if_nz jmp     #FLASH_READ
-        mov     fn, read
-        call    #BSTART
-#else
-        jmp     #FLASH_READ
-#endif
+        mov     ptr, hubaddr
+        cmp     vmaddr, flash_base wc
+  if_b  jmp     #BREAD_sram
+        call    #flash_chip       ' select flash chip
+        mov     data, vmaddr
+        and     data, offset_bits
+        or      data, fread
+        mov     bits, #40         ' includes 8 dummy bits
+        call    #send
 
 BREAD_DATA
-#ifdef BYTE_TRANSFERS
-read0   call    #spiRecvByte
-        wrbyte  data, hubaddr
-        add     hubaddr, #1
-        djnz    count, #read0
-#else
-read0   mov     bits, #32
-        call    #receive
-        wrlong  data, hubaddr
-        add     hubaddr, #4
-        sub     count, #4
-        tjnz    count, #read0
-#endif
-
+:rloop  call    #spiRecvByte
+        wrbyte  data, ptr
+        add     ptr, #1
+        djnz    count, #:rloop
         call    #deselect
 BREAD_RET
         ret
 
-FLASH_READ
-        call    #flash_chip       ' select flash chip
-        mov     data, vmaddr
-        and     data, flashmask
-        or      data, fread
-        mov     bits, #40         ' includes 8 dummy bits
-        call    #send
+BREAD_sram
+        mov     fn, read
+        call    #BSTART
         jmp     #BREAD_DATA
+
+FLASH_READ
 
 '----------------------------------------------------------------------------------------------------
 '
@@ -182,34 +160,23 @@ FLASH_READ
 '----------------------------------------------------------------------------------------------------
 
 BWRITE
-#ifdef ENABLE_RAM
-        test    vmaddr, flashbit wz
-  if_nz jmp     BWRITE_RET
+        mov     ptr, hubaddr
+        cmp     vmaddr, flash_base wc
+  if_ae jmp     BWRITE_RET
+
+BWRITE_sram
         mov     fn, write
         call    #BSTART
-#else
-        jmp     BWRITE_RET
-#endif
-
-#ifdef BYTE_TRANSFERS
-pw      rdbyte  data, hubaddr
+:wloop  rdbyte  data, ptr
         call    #spiSendByte
-        add     hubaddr, #1
-        djnz    count, #pw
-#else
-pw      rdlong  data, hubaddr
-        mov     bits, #32
-        call    #send
-        add     hubaddr, #4
-        sub     count, #4
-        tjnz    count, #pw
-#endif
-
+        add     ptr, #1
+        djnz    count, #:wloop
         call    #deselect
 BWRITE_RET
         ret
 
 fn      long    0
+ptr     long    0
 
 '----------------------------------------------------------------------------------------------------
 ' SPI routines
@@ -337,9 +304,7 @@ frdstatus   long    $05000000       ' flash read status
 fwrstatus   long    $01000000       ' flash write status
 
 bit16       long    $00008000       ' mask to select the SRAM chip
-#ifdef ENABLE_RAM
-flashbit    long    FLASH_MASK      ' mask to select flash vs. SRAM
-#endif
-flashmask   long    FLASH_OFFSET_MASK ' mask to isolate the flash offset bits
+flash_base  long    $30000000       ' base address of flash memory
+offset_bits long    $00ffffff       ' mask to isolate the offset bits
 
             fit     496
