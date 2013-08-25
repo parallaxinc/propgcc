@@ -5,9 +5,12 @@ CON
   SCK_PIN               = 8
   FLASH_CS_PIN          = 9
   SRAM_CS_PIN           = 10
+  LED_PIN               = 11
   
 #define FLASH
 #define RW
+#define BLOCK_IO
+
 #include "cache_common.spin"
 
 '----------------------------------------------------------------------------------------------------
@@ -19,7 +22,7 @@ CON
 init
         ' set the pin directions
         call    #release
-
+        
         ' select sequential access mode for the SRAM chip
         call    #sram_select
         mov     data, sram_seq
@@ -104,7 +107,7 @@ BSTART_sram_RET
 ' on input:
 '   vmaddr is the virtual memory address to read
 '   hubaddr is the hub memory address to write
-'   count is the number of longs to read
+'   count is the number of bytes to read
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -136,7 +139,7 @@ BREAD_sram
 ' on input:
 '   vmaddr is the virtual memory address to write
 '   hubaddr is the hub memory address to read
-'   count is the number of longs to write
+'   count is the number of bytes to write
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -451,7 +454,7 @@ spiRecvByte_ret
         ret
 
 ' mosi_lo, mosi_hi, sck, cs
-pindir          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
+pindir          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN) | (1 << LED_PIN)
 
 ' mosi_lo, mosi_hi, cs
 pinout          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
