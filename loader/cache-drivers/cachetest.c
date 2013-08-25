@@ -16,7 +16,7 @@
 #define CACHE_CONFIG3   0
 #define CACHE_CONFIG4   0
 
-#define BUF_SIZE    32
+#define BUF_SIZE        32
 
 /*
   INIT_MBOX             = 0     ' cache line mask should be returned here
@@ -121,7 +121,7 @@ int main(void)
     
     cache_line_mask = cacheStart(TESTDRIVER, &cache_mbox, cache, CACHE_CONFIG1, CACHE_CONFIG2, CACHE_CONFIG3, CACHE_CONFIG4);
     
-#if 1
+#if 0
 
     srand(CNT);
     j = rand();
@@ -137,7 +137,7 @@ int main(void)
 
 #endif
 
-#if 0
+#if 1
 
     for (i = 0; i < BUF_SIZE; ++i)
         buf[i] = i;
