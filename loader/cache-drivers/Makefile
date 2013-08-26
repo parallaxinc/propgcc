@@ -64,7 +64,7 @@ c3x:	c3_xcache.dat
 cachetest:	cachetest.elf
 
 cachetest.elf:	cachetest.c $(TESTDRIVER).o
-	$(CC) -D TESTDRIVER=binary_$(TESTDRIVER)_dat_start -mcmm -Os -mno-fcache -o $@ $^
+	$(CC) -Wall -D TESTDRIVER=binary_$(TESTDRIVER)_dat_start -mcmm -Os -mno-fcache -o $@ $^
     
 %.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
