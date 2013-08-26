@@ -243,49 +243,60 @@ lock_id long    0               ' lock id for optional bus interlock
 
 #ifdef FLASH
 
+#ifndef NEED_BLOCK_SETUP
+#define NEED_BLOCK_SETUP
+#endif
+
 erase_block_handler
         call    #erase_4k_block
-        wrlong  data, pvmaddr
-        jmp     #waitcmd
+        jmp     #block_finish
 
 write_data_handler
-        rdlong  hubaddr, vmaddr         ' get the hub buffer pointer
-        add     vmaddr, #4
-        rdlong  count, vmaddr           ' get the byte count
-        add     vmaddr, #4
-        rdlong  vmaddr, vmaddr          ' get the flash address (zero based)
+        call    #block_setup
         call    #write_block
-        wrlong  data, pvmaddr
-        jmp     #waitcmd
+        jmp     #block_finish
 
 #endif
 
 #ifdef BLOCK_IO
 
+#ifndef NEED_BLOCK_SETUP
+#define NEED_BLOCK_SETUP
+#endif
+
 block_read_handler
-        rdlong  hubaddr, vmaddr         ' get the hub buffer pointer
-        add     vmaddr, #4
-        rdlong  count, vmaddr           ' get the byte count
-        add     vmaddr, #4
-        rdlong  vmaddr, vmaddr          ' get the external address
+        call    #block_setup
         call    #BREAD
-        jmp     #waitcmd
+        jmp     #block_finish
 
 #ifdef RW
 
 block_write_handler
+        call    #block_setup
+        call    #BWRITE
+        jmp     #block_finish
+
+#endif
+
+#endif
+
+#ifdef NEED_BLOCK_SETUP
+
+block_setup
         rdlong  hubaddr, vmaddr         ' get the hub buffer pointer
         add     vmaddr, #4
         rdlong  count, vmaddr           ' get the byte count
         add     vmaddr, #4
-        rdlong  vmaddr, vmaddr          ' get the external address
-        call    #BWRITE
+        rdlong  vmaddr, vmaddr          ' get the flash address (zero based)
+block_setup_ret
+        ret
+
+block_finish
+        wrlong  data, pvmaddr           ' return status
         jmp     #waitcmd
 
 #endif
-
-#endif
-
+        
 ' pointers to mailbox entries and cache hub space
 pvmcmd          long    0       ' on call this is the virtual address and read/write bit
 pvmaddr         long    0       ' on return this is the address of the cache line containing the virtual address

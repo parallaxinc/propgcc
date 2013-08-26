@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
+
 #include <propeller.h>
 
 #ifndef TESTDRIVER
@@ -176,14 +178,14 @@ int main(void)
 
 #if 0
 
-    for (i = 0; i < 64; ++i)
-        printf("%08x %02x\n", i, readByte(RAM_BASE + i * 256));
-    
-    for (i = 0; i < 64; ++i)
-        writeByte(RAM_BASE + i * 256, i);
+    for (i = 0; i < 32*1024; i += sizeof(uint32_t))
+        writeLong(RAM_BASE + i, i);
         
-    for (i = 0; i < 64; ++i)
-        printf("%08x %02x\n", i, readByte(RAM_BASE + i * 256));
+    for (i = 0; i < 32*1024; i += sizeof(uint32_t)) {
+        uint32_t data = readLong(RAM_BASE + i);
+        if (data != i)
+            printf("%08x: expected %08x, found %08x\n", RAM_BASE + i, i, data);
+    }
     
 #endif
 
@@ -248,44 +250,52 @@ void writeLong(uint32_t addr, uint32_t val)
 void readBlock(uint32_t extaddr, void *buf, uint32_t count)
 {
     block_io_t block_io;
+    //printf("read %08x %08x %d\n", extaddr, (uint32_t)buf, count);
     block_io.hubaddr = buf;
     block_io.extaddr = extaddr;
     block_io.count = count;
     cache_mbox.cmd = ((uint32_t)&block_io << 8) | BLOCK_READ_CMD;
     while (cache_mbox.cmd)
         ;
-    printf("read returned %08x\n", cache_mbox.addr);
+    usleep(1);
+    //printf("read returned %08x\n", cache_mbox.addr);
 }
 
 void writeBlock(uint32_t extaddr, void *buf, uint32_t count)
 {
     block_io_t block_io;
+    //printf("write %08x %08x %d\n", extaddr, (uint32_t)buf, count);
     block_io.hubaddr = buf;
     block_io.extaddr = extaddr;
     block_io.count = count;
     cache_mbox.cmd = ((uint32_t)&block_io << 8) | BLOCK_WRITE_CMD;
     while (cache_mbox.cmd)
         ;
+    usleep(1);
     //printf("write returned %08x\n", cache_mbox.addr);
 }
 
 /* offset is the byte offset from the start of flash */
 void eraseFlashBlock(uint32_t offset)
 {
+    printf("erase %08x\n", offset);
     cache_mbox.cmd = (offset << 8) | ERASE_BLOCK_CMD;
     while (cache_mbox.cmd)
         ;
+    printf("erase returned %08x\n", cache_mbox.addr);
 }
 
 /* offset is the byte offset from the start of flash */
 void writeFlashBlock(uint32_t offset, void *buf, uint32_t count)
 {
     block_io_t block_io;
+    printf("flash %08x %08x %d\n", offset, (uint32_t)buf, count);
     block_io.hubaddr = buf;
     block_io.extaddr = offset;
     block_io.count = count;
     cache_mbox.cmd = ((uint32_t)&block_io << 8) | WRITE_DATA_CMD;
     while (cache_mbox.cmd)
         ;
+    printf("flash returned %08x\n", cache_mbox.addr);
 }
 
