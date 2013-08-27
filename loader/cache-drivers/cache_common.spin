@@ -51,7 +51,7 @@ DAT
 
 ' initialization structure offsets
 ' $00: pointer to a two word mailbox
-' $04: pointer to where to store the cache lines in hub ram
+' $04: pointer to where to store the tags and cache lines in hub ram
 ' $08: geometry: (way_width << 24) | (index_width << 16) | (offset_width << 8)
 ' $0c: driver-specific parameter
 ' $10: driver-specific parameter
@@ -224,7 +224,8 @@ dispatch
         jmp     #waitcmd                ' 4 - block_write
 #endif
         jmp     #waitcmd                ' 5 - unused
-'       jmp     #lock_set_handler       ' 6 - lock_set - This is the next instruction - no need to waste a long
+        jmp     #lock_set_handler       ' 6 - lock_set
+        jmp     #waitcmd                ' 7 - unused
 
 ' Note that we only provide SD locks for the cache operations - the other
 ' operations are specific to the sd_cache_loader's use of the cache driver, and
@@ -287,7 +288,7 @@ block_setup
         add     vmaddr, #4
         rdlong  count, vmaddr           ' get the byte count
         add     vmaddr, #4
-        rdlong  vmaddr, vmaddr          ' get the flash address (zero based)
+        rdlong  vmaddr, vmaddr          ' get the address or offset
 block_setup_ret
         ret
 

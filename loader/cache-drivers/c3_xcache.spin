@@ -115,7 +115,7 @@ BSTART_RET
 '   hubaddr is the hub memory address to write
 '   count is the number of longs to read
 '
-' trashes fn, count, bits, data, hubaddr, count, t1, c and z flags
+' trashes fn, count, bits, data, ptr, t1, c and z flags
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -144,8 +144,6 @@ BREAD_sram
         call    #BSTART
         jmp     #BREAD_DATA
 
-FLASH_READ
-
 '----------------------------------------------------------------------------------------------------
 '
 ' BWRITE
@@ -155,7 +153,7 @@ FLASH_READ
 '   hubaddr is the hub memory address to read
 '   count is the number of longs to write
 '
-' trashes fn, count, bits, data, hubaddr, count, z flag
+' trashes fn, count, bits, data, ptr, z flag
 '
 '----------------------------------------------------------------------------------------------------
 

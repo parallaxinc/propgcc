@@ -124,6 +124,9 @@ int main(void)
     
     cache_line_mask = cacheStart(TESTDRIVER, &cache_mbox, cache, CACHE_CONFIG1, CACHE_CONFIG2, CACHE_CONFIG3, CACHE_CONFIG4);
     
+    printf("mbox %08x\n", (uint32_t)&cache_mbox);
+    printf("buf %08x\n", (uint32_t)buf);
+    
 #if 0
 
     srand(CNT);
@@ -255,10 +258,13 @@ void readBlock(uint32_t extaddr, void *buf, uint32_t count)
     block_io.extaddr = extaddr;
     block_io.count = count;
     cache_mbox.cmd = ((uint32_t)&block_io << 8) | BLOCK_READ_CMD;
+    OUTA &= 1<<15;
+    DIRA |= 1<<15;
     while (cache_mbox.cmd)
         ;
-    usleep(1);
+    OUTA |= 1<<15;
     //printf("read returned %08x\n", cache_mbox.addr);
+    usleep(1);
 }
 
 void writeBlock(uint32_t extaddr, void *buf, uint32_t count)
@@ -269,10 +275,13 @@ void writeBlock(uint32_t extaddr, void *buf, uint32_t count)
     block_io.extaddr = extaddr;
     block_io.count = count;
     cache_mbox.cmd = ((uint32_t)&block_io << 8) | BLOCK_WRITE_CMD;
+    OUTA &= 1<<15;
+    DIRA |= 1<<15;
     while (cache_mbox.cmd)
         ;
-    usleep(1);
+    OUTA |= 1<<15;
     //printf("write returned %08x\n", cache_mbox.addr);
+    usleep(1);
 }
 
 /* offset is the byte offset from the start of flash */
