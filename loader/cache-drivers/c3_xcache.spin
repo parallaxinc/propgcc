@@ -1,10 +1,10 @@
 CON
 
-  CLR_PIN               = 25
   INC_PIN               = 8
-  CLK_PIN               = 11
   MOSI_PIN              = 9
   MISO_PIN              = 10
+  CLK_PIN               = 11
+  CLR_PIN               = 25
 
 #define FLASH
 #define RW
@@ -16,7 +16,6 @@ init
         ' set the pin directions
         mov     outa, pinout
         mov     dira, pindir
-
         call    #deselect
 
         ' select sequential access mode for the first SRAM chip
@@ -24,13 +23,13 @@ init
         mov     data, ramseq
         mov     bits, #16
         call    #send
+        call    #deselect
 
         ' select sequential access mode for the second SRAM chip
         call    #sram_chip2
         mov     data, ramseq
         mov     bits, #16
         call    #send
-
         call    #deselect
 		
         ' unprotect the entire flash chip
