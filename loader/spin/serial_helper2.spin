@@ -113,7 +113,7 @@ PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_siz
 #endif
   p_cache_lines := hub_memory_size - cache_size
   p_cache_tags := p_cache_lines - tags_size
-  p_cache_mbox := p_cache_tags - cache#_MBOX2_SIZE + 4
+  p_cache_mbox := p_cache_tags - cache#_MBOX2_SIZE - 4
   cogn := cache.start2(@mm_data, p_cache_mbox, 1, param1, param2, param3, param4)
 #ifdef TV_DEBUG
   tv.str(string(" -> "))
