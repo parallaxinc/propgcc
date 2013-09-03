@@ -308,7 +308,8 @@ __MULSI_ret	ret
 ' the code below comes from the xbasic virtual machine which borrowed code from zog
 
 ' read a long from the current pc
-read_code               muxc    save_z_c, #1                'save the c flag
+read_code
+                        muxc    save_z_c, #1                'save the c flag
                         cmp     pc, external_start wc       'check for normal memory access
             if_b        jmp     #read_hub_code
                         mov     t1, pc
@@ -321,7 +322,7 @@ read_restore_c          shr     save_z_c, #1 wc             'restore the c flag
 read_code_ret           ret
 
   ' start of external memory
-  .set EXTERNAL_MEMORY_START, 0x40000000
+  .set EXTERNAL_MEMORY_START, 20000000
 
   ' default cache geometry
   .set DEFAULT_INDEX_WIDTH, 7   ' number of bits in the index offset (index size is 2^n)
@@ -365,11 +366,6 @@ skip_geometry
 flush   wrlong  empty_mask, t2
         add     t2, #4
         djnz    t1, #flush
-        mov     r0, #1
-        shl     r0, #15
-        andn    outa, r0
-        or      dira, r0
-xxx     jmp     #xxx
 cache_init_ret
         ret
         
