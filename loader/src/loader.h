@@ -77,7 +77,7 @@ int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
 int WriteFileToSDCard(BoardConfig *config, char *path, char *target);
-int LoadSerialHelper(BoardConfig *config, int needsd);
+int LoadSerialHelper(BoardConfig *config, uint8_t  *image, int image_size, int needsd);
 void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase);
 int GetVariableValue(BoardConfig *config, const char *name, int *pValue);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);

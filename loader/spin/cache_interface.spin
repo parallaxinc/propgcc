@@ -29,14 +29,13 @@ CON
   INIT_CACHE            = 1
   INIT_CONFIG_1         = 2     ' driver specific configuration
   INIT_CONFIG_2         = 3     ' driver specific configuration
-  INIT_CONFIG_3		= 4
-  INIT_CONFIG_4		= 5
+  INIT_CONFIG_3         = 4
+  INIT_CONFIG_4         = 5
   _INIT_SIZE            = 6
 
-  ' mailbox offsets
   MBOX_CMD              = 0
   MBOX_ADDR             = 1
-  MBOX_EXTRA		= 2 	' extra space for debugging
+  MBOX_EXTRA            = 2     ' extra space for debugging
   _MBOX_SIZE            = 2
 
   ' cache access commands
@@ -54,12 +53,36 @@ CON
 
   CMD_MASK              = %11
   EXTEND_MASK           = %10   ' this bit must be zero for an extended command
+  
+  ' external memory driver initialization structure
+  INIT2_MBOX            = 0     ' cache line mask should be returned here
+  INIT2_CONFIG_1        = 1     ' driver specific configuration
+  INIT2_CONFIG_2        = 2     ' driver specific configuration
+  INIT2_CONFIG_3        = 3
+  INIT2_CONFIG_4        = 4
+  _INIT2_SIZE           = 5
+
+  ' external memory driver mailbox structure
+  MBOX2_HUBADDR         = 0
+  MBOX2_EXTADDR         = 1
+  _MBOX2_SIZE           = 2
+  
+  ' marker for the end of the mailbox array
+  MBOX2_END             = %1000
+
+  ' external memory driver interface
+  XMEM_WRITE            = %1000
+  XMEM_SIZE_16          = %0001
+  XMEM_SIZE_32          = %0010
+  XMEM_SIZE_64          = %0011
+  XMEM_SIZE_128         = %0100
+  XMEM_SIZE_256         = %0101
+  XMEM_SIZE_512         = %0110
+  XMEM_SIZE_1024        = %0111
 
 VAR
    long vm_mbox
    long vm_linemask
-
-'OBJ d : "BMAUtility"
 
 PUB start(code, mbox, cache, config1, config2, config3, config4) | params[_INIT_SIZE]
     vm_mbox := mbox
@@ -70,7 +93,21 @@ PUB start(code, mbox, cache, config1, config2, config3, config4) | params[_INIT_
     params[INIT_CONFIG_3] := config3
     params[INIT_CONFIG_4] := config4
     long[vm_mbox] := $ffffffff
-    'd.debug(code,@params)
+    cognew(code, @params)
+    repeat while long[vm_mbox]
+    vm_linemask := params[0]
+    return vm_linemask
+
+PUB start2(code, mboxes, count, config1, config2, config3, config4) | params[_INIT2_SIZE]
+    vm_mbox := mboxes ' use the first mailbox for now
+    longfill(mboxes, 0, count * _MBOX2_SIZE)
+    long[mboxes][count * _MBOX2_SIZE] := MBOX2_END
+    params[INIT2_MBOX] := mboxes
+    params[INIT2_CONFIG_1] := config1
+    params[INIT2_CONFIG_2] := config2
+    params[INIT2_CONFIG_3] := config3
+    params[INIT2_CONFIG_4] := config4
+    long[vm_mbox] := $ffffffff
     cognew(code, @params)
     repeat while long[vm_mbox]
     vm_linemask := params[0]
@@ -113,4 +150,15 @@ pub writeFlash(madr, buf, count_) | pbuf, pcnt, paddr
     repeat while long[vm_mbox][0] <> 0
     return long[vm_mbox][1]
 
+' external memory driver interface
+pub readBlock(madr, buf, size) | params[_INIT2_SIZE]
+    long[vm_mbox][1] := madr | size
+    long[vm_mbox][0] := buf
+    repeat while long[vm_mbox][0] <> 0
+
+' external memory driver interface
+pub writeBlock(madr, buf, size) | params[_INIT2_SIZE]
+    long[vm_mbox][1] := madr | XMEM_WRITE | size
+    long[vm_mbox][0] := buf
+    repeat while long[vm_mbox][0] <> 0
 

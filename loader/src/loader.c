@@ -98,6 +98,8 @@ typedef struct {
 
 extern uint8_t serial_helper_array[];
 extern int serial_helper_size;
+extern uint8_t serial_helper2_array[];
+extern int serial_helper2_size;
 extern uint8_t flash_loader_array[];
 extern int flash_loader_size;
 
@@ -146,8 +148,8 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
     if (!(c = OpenElfFile(fp, hdr)))
         return Error("failed to open elf file");
         
-    /* '.header' section used for external loads */
-    if (FindSectionTableEntry(c, ".header", &section)) {
+    /* '.xmmkernel' section used for external loads */
+    if (FindSectionTableEntry(c, ".xmmkernel", &section)) {
     
         if (flags & (LFLAG_WRITE_PEX | LFLAG_WRITE_SDLOADER | LFLAG_WRITE_SDCACHELOADER)) {
             char outfile[PATH_MAX];
@@ -191,7 +193,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
         }
     }
     
-    /* no '.header' section for internal loads */
+    /* no '.xmmkernel' section for internal loads */
     else {
     
         if (flags & LFLAG_WRITE_SDLOADER)
@@ -344,7 +346,7 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
         }
         
         /* load the serial helper program */
-        if (!LoadSerialHelper(config, FALSE)) {
+        if (!LoadSerialHelper(config, serial_helper_array, serial_helper_size, FALSE)) {
             free(cogimagesbuf);
             free(imagebuf);
             return FALSE;
@@ -637,7 +639,9 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     ElfProgramHdr program_kernel;
     char *cacheDriver, *value;
     int eepromFirst = FALSE;
-
+    uint8_t *helper_image;
+    int helper_size;
+    
     /* check for a cache driver for loading the external image */
     if (!(cacheDriver = GetConfigField(config, "cache-driver")))
         return Error("no cache driver to load external image");
@@ -695,20 +699,33 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
             return Error("no external ram eeprom loader is currently available");
     }
     
+    /* choose the serial helper program based on the elf version */
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        //printf("Using old serial helper\n");
+        helper_image = serial_helper_array;
+        helper_size = serial_helper_size;
+    }
+    else {
+        //printf("Using new serial helper\n");
+        helper_image = serial_helper2_array;
+        helper_size = serial_helper2_size;
+    }
+    
     /* load the serial helper program */
-    if (!LoadSerialHelper(config, FALSE)) {
+    if (!LoadSerialHelper(config, helper_image, helper_size, FALSE)) {
         free(kernelbuf);
         free(imagebuf);
         return FALSE;
     }
         
-    /* load the cache driver */
+    /* get the cache driver image */
     if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &cacheDriverImageSize)) {
         free(kernelbuf);
         free(imagebuf);
         return Error("reading cache driver image failed: %s", cacheDriver);
     }
-    printf("Loading cache driver '%s'\n", cacheDriver);
+    
+    /* setup the cache initialization parameters */
     memset(params, 0, sizeof(params));
     if (GetNumericConfigField(config, "cache-size", &ivalue))
         params[0] = ivalue;
@@ -720,8 +737,9 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         params[3] = ivalue;
     if (GetNumericConfigField(config, "cache-param4", &ivalue))
         params[4] = ivalue;
-    if (GetNumericConfigField(config, "cache-extra", &ivalue))
-        params[5] = ivalue;
+    
+    /* load the cache driver */
+    printf("Loading cache driver '%s'\n", cacheDriver);
     if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
     ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
     ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
@@ -775,11 +793,11 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     
     return TRUE;
 }
-    
-int LoadSerialHelper(BoardConfig *config, int needsd)
+
+int LoadSerialHelper(BoardConfig *config, uint8_t  *image, int image_size, int needsd)
 {
-    SpinHdr *hdr = (SpinHdr *)serial_helper_array;
-    SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
+    SpinHdr *hdr = (SpinHdr *)image;
+    SpinObj *obj = (SpinObj *)(image + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     int ivalue;
     
@@ -834,10 +852,10 @@ int LoadSerialHelper(BoardConfig *config, int needsd)
     }
         
     /* recompute the checksum */
-    UpdateChecksum(serial_helper_array, serial_helper_size);
+    UpdateChecksum(image, image_size);
     
     /* load the serial helper program */
-    if (ploadbuf("the serial helper", serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0)
+    if (ploadbuf("the serial helper", image, image_size, DOWNLOAD_RUN_BINARY) != 0)
         return Error("helper load failed");
 
     /* wait for the serial helper to complete initialization */
@@ -1066,7 +1084,7 @@ int WriteFileToSDCard(BoardConfig *config, char *path, char *target)
     if ((fp = fopen(path, "rb")) == NULL)
         return Error("can't open %s", path);
     
-    if (!LoadSerialHelper(config, TRUE)) {
+    if (!LoadSerialHelper(config, serial_helper_array, serial_helper_size, TRUE)) {
         fclose(fp);
         return Error("loading serial helper");
     }

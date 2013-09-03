@@ -63,7 +63,7 @@ OSINT=osint_linux
 LIBS=
 endif
 
-CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
+CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader -g
 LDFLAGS=$(CFLAGS)
 
 #
@@ -82,7 +82,10 @@ SPIN_DAT=spin2cpp --dat
 
 .PHONY:	all
 
-all:	info propeller-load drivers sd-loader propeller-elf-image-size
+all:	info propeller-load drivers sd-loader propeller-elf-image-size \
+$(OBJDIR)/serial_helper.binary \
+$(OBJDIR)/serial_helper2.binary
+
 
 ##########################
 # SHOW BUILD INFORMATION #
@@ -134,6 +137,7 @@ $(OBJDIR)/expr.o \
 $(OBJDIR)/system.o \
 $(OBJDIR)/port.o \
 $(OBJDIR)/serial_helper.o \
+$(OBJDIR)/serial_helper2.o \
 $(OBJDIR)/flash_loader.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
 
@@ -156,6 +160,7 @@ $(SRCDIR)/system.h
 
 HELPER_SRCS=\
 $(OBJDIR)/serial_helper.c \
+$(OBJDIR)/serial_helper2.c \
 $(OBJDIR)/flash_loader.c
 
 .PHONY:	spin-binaries
@@ -163,6 +168,7 @@ spin-binaries:	$(OBJDIR) bin2c $(HELPER_SRCS)
 
 SPIN_SRCS=\
 $(SPINDIR)/serial_helper.spin \
+$(SPINDIR)/serial_helper2.spin \
 $(SPINDIR)/flash_loader.spin \
 $(SPINDIR)/packet_driver.spin \
 $(SPINDIR)/cache_interface.spin \
@@ -222,11 +228,7 @@ sd-loader:	$(DRVDIR)
 # SPIN TO BINARY #
 ##################
 
-$(OBJDIR)/serial_helper.binary:	$(SPINDIR)/serial_helper.spin $(SPIN_SRCS)
-	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
-	@$(ECHO) $@
-
-$(OBJDIR)/%_loader.binary:	$(SPINDIR)/%_loader.spin $(SPIN_SRCS)
+$(OBJDIR)/%.binary:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
 	@$(ECHO) $@
 
