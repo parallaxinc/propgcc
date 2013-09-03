@@ -160,16 +160,11 @@ init_xmem
         
         ' start the command loop
 waitcmd mov     dira, #0                ' release the pins for other SPI clients
-        mov     cmdptr, cmdbase
-
+:reset  mov     cmdptr, cmdbase
 :loop   rdlong  t1, cmdptr wz
-  if_nz call    #handle_command
-        add     cmdptr, #8
-        jmp     #:loop
-
-handle_command
+  if_z  jmp     #:next                  ' skip this mailbox if it's zero
         cmp     t1, #$8 wz              ' check for the end of list marker
-  if_z  jmp     #reset_command_ptr
+  if_z  jmp     #:reset
         mov     hubaddr, t1             ' get the hub address
         andn    hubaddr, #$f
         mov     t2, cmdptr              ' get the external address
@@ -177,22 +172,18 @@ handle_command
         rdlong  extaddr, t2
         mov     t2, t1                  ' get the byte count
         and     t2, #7
-        mov     count, #$8
+        mov     count, #8
         shl     count, t2
         mov     dira, spidir            ' setup the pins so we can use them
         test    t1, #$8 wz              ' check the write flag
-  if_z  jmp     #do_read                ' do read if the flag is zero
+  if_z  jmp     #:read                  ' do read if the flag is zero
         call    #write_bytes            ' do write if the flag is one
-        jmp     #done
-do_read call    #read_bytes
-done    mov     dira, #0                ' release the pins for other SPI clients
+        jmp     #:done
+:read   call    #read_bytes
+:done   mov     dira, #0                ' release the pins for other SPI clients
         wrlong  zero, cmdptr
-handle_command_ret
-        ret
-        
-reset_command_ptr
-        mov     cmdptr, cmdbase
-        jmp     handle_command_ret
+:next   add     cmdptr, #8
+        jmp     #:loop
 
 ' pointers to mailbox array
 cmdbase         long    0       ' base of the array of mailboxes
@@ -333,17 +324,19 @@ recv    or      outa, sck_mask
 spiRecvByte_ret
         ret
 
-spidir          long    0
-spiout          long    0
+spidir      long    0
+spiout      long    0
 
-mosi_pin        long    0
-mosi_mask       long    0
-miso_mask       long    0
-sck_mask        long    0
+' spi pins
+mosi_pin    long    0
+mosi_mask   long    0
+miso_mask   long    0
+sck_mask    long    0
 
-cs_clr          long    0
-mask_inc        long    0
-select_addr     long    0
+' chip select variables
+cs_clr      long    0
+mask_inc    long    0
+select_addr long    0
 
 ' variables used by the spi send/receive functions
 cmd         long    0
@@ -352,8 +345,8 @@ data        long    0
 bits        long    0
 
 ' input parameters to read_bytes and write_bytes
-extaddr     long    0       ' external address
-hubaddr     long    0       ' hub memory address
+extaddr     long    0               ' external address
+hubaddr     long    0               ' hub address
 count       long    0
 
 ' spi commands
@@ -361,6 +354,7 @@ read        long    $03000000       ' read command
 write       long    $02000000       ' write command
 ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
 
+' mask off the base address of external memory
 sram_mask   long    $00ffffff
 
             FIT     496             ' out of 496

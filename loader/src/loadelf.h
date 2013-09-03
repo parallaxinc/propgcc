@@ -75,6 +75,10 @@ typedef struct {
 #define ELF_VERSION(h)      (((h)->flags >> 16) & 0xff)
 
 #define ELF_VERSION_UNKNOWN 0
+/* Version 1
+   Introduces a new external memory interface where the kernel contains the cache handling
+   code and the "cache driver" only reads/writes blocks of external memory.
+*/
 
 typedef struct {
     uint32_t    name;

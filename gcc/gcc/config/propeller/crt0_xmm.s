@@ -19,51 +19,29 @@
 	.global sp
 	.global pc
 
+' at start stack contains cache_mbox, cache_tags, cache_lines, cache_geometry, pc
+
 	.global __LMM_entry
 __LMM_entry
-#if 0 // Eric's changes
-r0	mov	__TMP1, r6	'' get pointer to initialization
-r1	call	#__load_extension
-r2  	jmp	#__LMM_init
-r3      nop
-r4      nop
-r5      nop
-r6      long __load_start_start_kerext
-
-r7      nop
-r8      nop
-r9      nop
-r10     nop
-r11     nop
-r12     nop
-r13     nop
-r14     nop
-        
-r15     '' alias for link register lr
-lr      long    __exit
-sp      long    0
-pc      long    entry           ' default pc
-#else
 r0      rdlong  sp, PAR
 r1      tjz     sp, #__LMM_entry
-r2      rdlong  xmem_hubaddrp, sp
-r3      mov     xmem_extaddrp, xmem_hubaddrp
-r4      add     xmem_extaddrp, #4
-r5      add     sp, #4
-r6      add     sp, #4
-r7      rdlong  pc, sp
-r8      add     sp, #4
-r9      locknew r2 wc
-r10     or      r2,#256
-r11 IF_NC wrlong r2,__C_LOCK_PTR
-r12     call    #cache_init
-r13     jmp     #__LMM_loop
+r2      call    #cache_init
+r3      rdlong  pc, sp
+r4      add     sp, #4
+r5      locknew r2 wc
+r6      or      r2,#256
+r7  IF_NC wrlong r2,__C_LOCK_PTR
+r8      jmp     #__LMM_loop
+r9      long    0
+r10     long    0
+r11     long    0
+r12     long    0
+r13     long    0
 r14     long    0
 r15     '' alias for lr
 lr      long    0
 sp      long    0
 pc      long    0
-#endif
 ccr     long    0
 
 	''
@@ -354,7 +332,25 @@ read_code_ret           ret
   .set DIRTY_BIT, 31
 
         ' initialize the cache variables
+        ' pops four longs off the stack to initialize the cache
+        ' mboxptr, tagsptr, cacheptr, geometry
 cache_init
+        rdlong  xmem_hubaddrp, sp           ' pop the external memory driver mailbox address
+        mov     xmem_extaddrp, xmem_hubaddrp
+        add     xmem_extaddrp, #4
+        add     sp, #4
+        rdlong  tagsptr, sp                 ' pop the hub address of the cache tags
+        add     sp, #4
+        rdlong  cacheptr, sp                ' pop the hub address of the cache lines
+        add     sp, #4
+        rdlong  t1, sp wz                   ' pop the cache geometry
+        add     sp, #4
+  if_z  jmp     #skip_geometry              ' skip cache geometry if zero
+        mov     index_width, t1
+        shr     index_width, #8
+        mov     offset_width, t1
+        and     offset_width, #$ff
+skip_geometry
         mov     index_count, #1
         shl     index_count, index_width
         mov     index_mask, index_count
@@ -471,11 +467,11 @@ set_dirty_bit   long    0               ' DIRTY_BIT set on writes, clear on read
 
 xmem_hubaddrp   long    0
 xmem_extaddrp   long    0
+
 tagsptr         long    0x8000 - 8192 - 512
 cacheptr        long    0x8000 - 8192
-
-index_width     long    DEFAULT_INDEX_WIDTH
 offset_width    long    DEFAULT_OFFSET_WIDTH
+
 index_mask      long    0
 index_count     long    0
 offset_mask     long    0
