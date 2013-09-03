@@ -246,7 +246,7 @@ PRI RUN_handler | sp
   long[sp] := p_cache_mbox
 
    ' start the xmm kernel boot code
-  coginit(cogid, mm_data, sp)
+  coginit(cogid, @mm_data, sp)
 
 PRI mountSD | err
   if sd_mounted == 0
