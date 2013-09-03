@@ -56,7 +56,7 @@ PUB start | type, packet, len, ok
 
 #ifdef TV_DEBUG
   tv.start(p_tvpin)
-  tv.str(string("Serial Helper v0.1", CR))
+  tv.str(string("Serial Helper v0.2", CR))
 #endif
 
   ' initialize
@@ -97,7 +97,7 @@ PRI VM_INIT_handler
   tv.str(string("VM_INIT", CR))
 #endif
 
-PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_size, param1, param2, param3, param4
+PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_size, param1, param2, param3, param4, cogn
   p_cache_geometry := long[packet]
   param1 := long[packet+4]
   param2 := long[packet+8]
@@ -110,12 +110,16 @@ PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_siz
 #ifdef TV_DEBUG
   tv.str(string("CACHE_INIT: "))
   tv.dec(tags_size + cache_size)
-  crlf
 #endif
   p_cache_lines := hub_memory_size - cache_size
   p_cache_tags := p_cache_lines - tags_size
   p_cache_mbox := p_cache_tags - cache#_MBOX2_SIZE + 4
-  cache.start2(@mm_data, p_cache_mbox, 1, param1, param2, param3, param4)
+  cogn := cache.start2(@mm_data, p_cache_mbox, 1, param1, param2, param3, param4)
+#ifdef TV_DEBUG
+  tv.str(string(" -> "))
+  tv.dec(cogn)
+  crlf
+#endif
 
 PRI FILE_WRITE_handler(name) | err
   mountSD

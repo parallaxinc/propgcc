@@ -63,7 +63,7 @@ OSINT=osint_linux
 LIBS=
 endif
 
-CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader -g
+CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 
 #
@@ -208,6 +208,7 @@ $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
 $(DRVDIR)/synapse_cache.dat \
 $(DRVDIR)/rampage2_cache.dat \
+$(DRVDIR)/spi_sram_xmem.dat \
 $(DRVDIR)/spi_sram24_xmem.dat
 
 #################

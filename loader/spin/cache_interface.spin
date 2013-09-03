@@ -98,7 +98,7 @@ PUB start(code, mbox, cache, config1, config2, config3, config4) | params[_INIT_
     vm_linemask := params[0]
     return vm_linemask
 
-PUB start2(code, mboxes, count, config1, config2, config3, config4) | params[_INIT2_SIZE]
+PUB start2(code, mboxes, count, config1, config2, config3, config4) | params[_INIT2_SIZE], cogn
     vm_mbox := mboxes ' use the first mailbox for now
     longfill(mboxes, 0, count * _MBOX2_SIZE)
     long[mboxes][count * _MBOX2_SIZE] := MBOX2_END
@@ -108,10 +108,9 @@ PUB start2(code, mboxes, count, config1, config2, config3, config4) | params[_IN
     params[INIT2_CONFIG_3] := config3
     params[INIT2_CONFIG_4] := config4
     long[vm_mbox] := $ffffffff
-    cognew(code, @params)
+    cogn := cognew(code, @params)
     repeat while long[vm_mbox]
-    vm_linemask := params[0]
-    return vm_linemask
+    return cogn
 
 pub readLong(madr)
     long[vm_mbox][0] := (madr&!CMD_MASK) | READ_CMD
