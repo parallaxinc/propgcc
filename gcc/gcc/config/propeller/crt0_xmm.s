@@ -23,15 +23,15 @@
 
 	.global __LMM_entry
 __LMM_entry
-r0      rdlong  sp, PAR
-r1      tjz     sp, #__LMM_entry
-r2      call    #cache_init
-r3      rdlong  pc, sp
-r4      add     sp, #4
-r5      locknew r2 wc
-r6      or      r2,#256
-r7  IF_NC wrlong r2,__C_LOCK_PTR
-r8      jmp     #__LMM_loop
+r0      mov     sp, PAR
+r1      call    #cache_init
+r2      rdlong  pc, sp
+r3      add     sp, #4
+r4      locknew r2 wc
+r5      or      r2,#256
+r6  IF_NC wrlong r2,__C_LOCK_PTR
+r7      jmp     #__LMM_loop
+r8      long    0
 r9      long    0
 r10     long    0
 r11     long    0
@@ -365,6 +365,11 @@ skip_geometry
 flush   wrlong  empty_mask, t2
         add     t2, #4
         djnz    t1, #flush
+        mov     r0, #1
+        shl     r0, #15
+        andn    outa, r0
+        or      dira, r0
+xxx     jmp     #xxx
 cache_init_ret
         ret
         
@@ -470,6 +475,7 @@ xmem_extaddrp   long    0
 
 tagsptr         long    0x8000 - 8192 - 512
 cacheptr        long    0x8000 - 8192
+index_width     long    DEFAULT_INDEX_WIDTH
 offset_width    long    DEFAULT_OFFSET_WIDTH
 
 index_mask      long    0
@@ -616,7 +622,8 @@ __CMPSWAPSI_ret
 	''
 	.global __LMM_FCACHE_START
 __LMM_FCACHE_START
-	res	64	'' reserve 64 longs = 256 bytes
+'	res	64	'' reserve 64 longs = 256 bytes
+	res	32	'' reserve 32 longs = 128 bytes
 
 	#include "kernel.ext"
 

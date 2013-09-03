@@ -51,11 +51,11 @@ start
     .global init_offset
     .global init_count
     
-    brs     #entry_continue
+        brs     #entry_continue
 init_count      ' count of section initializer structures
-    .long   0   ' at offset 4
+        .long   0   ' at offset 4
 init_offset     ' offset to first section initializer structure
-    .long   0   ' at offset 8
+        .long   0   ' at offset 8
 entry_continue
 
 #endif
@@ -92,6 +92,13 @@ argc_cnt
         .global ___init
         .balign 4
 ___init
+#if defined(__PROPELLER_USE_XMM__)
+        mov     r0, #1
+        shl     r0, #15
+        andn    outa, r0
+        or      dira, r0
+xxx     brs     #xxx
+#endif
         sub     sp,#4
         wrlong  lr,sp
         sub     sp,#4
