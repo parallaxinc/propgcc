@@ -62,7 +62,7 @@ PUB start | type, packet, len, ok
   ' initialize
   sd_mounted := 0
   write_mode := WRITE_NONE
-  mm_data_ptr := (@mm_data_padded + 15) & !15
+  mm_data_ptr := @mm_data_padded & !15
 
   ' handle packets
   repeat
@@ -298,6 +298,7 @@ p_cache_lines       long    0
 p_vm_mbox           long    0
 
 ' additional data
-mm_data_padded      byte    0[2048+15]
+                    byte    0[15]
+mm_data_padded      byte    0[2048]
 mm_data_ptr         long    0
 
