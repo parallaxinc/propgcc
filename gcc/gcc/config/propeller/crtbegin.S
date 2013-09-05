@@ -89,16 +89,15 @@ argc_cnt
         '' we do need to save the link register, though, since
         '' we are making subroutine calls
         ''
-        .global ___init
-        .balign 4
-___init
-#if defined(__PROPELLER_USE_XMM__)
         mov     r0, #1
         shl     r0, #15
         andn    outa, r0
         or      dira, r0
 xxx     brs     #xxx
-#endif
+
+        .global ___init
+        .balign 4
+___init
         sub     sp,#4
         wrlong  lr,sp
         sub     sp,#4

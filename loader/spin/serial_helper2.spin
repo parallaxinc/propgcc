@@ -62,6 +62,7 @@ PUB start | type, packet, len, ok
   ' initialize
   sd_mounted := 0
   write_mode := WRITE_NONE
+  mm_data_ptr := (@mm_data_padded + 15) & !15
 
   ' handle packets
   repeat
@@ -113,8 +114,8 @@ PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_siz
 #endif
   p_cache_lines := hub_memory_size - cache_size
   p_cache_tags := p_cache_lines - tags_size
-  p_cache_mbox := p_cache_tags - cache#_MBOX2_SIZE - 4
-  cogn := cache.start2(@mm_data, p_cache_mbox, 1, param1, param2, param3, param4)
+  p_cache_mbox := p_cache_tags - cache#_MBOX2_SIZE * 4 - 4
+  cogn := cache.start2(mm_data_ptr, p_cache_mbox, 1, param1, param2, param3, param4)
 #ifdef TV_DEBUG
   tv.str(string(" -> "))
   tv.dec(cogn)
@@ -179,7 +180,8 @@ PRI DATA_handler(packet, len) | i, val, buf, count, err
       if (load_address & $00000fff) == 0
         cache.eraseFlashBlock(load_address)
     WRITE_RAM:
-      buf := packet
+      bytemove(mm_data_ptr, packet, pkt#PKTMAXLEN) ' buffer has to be 16 byte aligned
+      buf := mm_data_ptr
       count := (len + 1023) >> 10 ' number of 1024 byte blocks
       repeat count
         cache.writeBlock(load_address, buf, cache#XMEM_SIZE_1024)
@@ -187,7 +189,7 @@ PRI DATA_handler(packet, len) | i, val, buf, count, err
         buf += 1024
     WRITE_HUB:
       repeat i from 0 to len - 1 step 4
-        long[@mm_data + load_address] := long[packet+i]
+        long[mm_data_ptr + load_address] := long[packet+i]
         load_address += 4
     other:
 #ifdef TV_DEBUG
@@ -246,7 +248,7 @@ PRI RUN_handler | sp
   long[sp] := p_cache_mbox
 
    ' start the xmm kernel boot code
-  coginit(cogid, @mm_data, sp)
+  coginit(cogid, mm_data_ptr, sp)
 
 PRI mountSD | err
   if sd_mounted == 0
@@ -262,6 +264,9 @@ PRI mountSD | err
 #ifdef TV_DEBUG
 PRI crlf
   tv.out(CR)
+  
+PRI space
+  tv.out(" ")
 
 PRI taghex8(tag, val)
   tv.str(tag)
@@ -293,5 +298,6 @@ p_cache_lines       long    0
 p_vm_mbox           long    0
 
 ' additional data
-mm_data       long      0[512]
+mm_data_padded      byte    0[2048+15]
+mm_data_ptr         long    0
 

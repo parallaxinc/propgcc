@@ -51,6 +51,13 @@ ccr     long    0
 
 __LMM_loop
 	call	#read_code
+'        cmp     L_ins0, target wz
+'        mov     r0, #1
+'        shl     r0, #15
+'  if_z  andn    outa, r0
+'  if_z  or      dira, r0
+'xxx     jmp     #xxx
+'target  long    $80fc2208
 	add	pc,#4
 L_ins0	nop
 	jmp	#__LMM_loop
@@ -309,17 +316,20 @@ __MULSI_ret	ret
 
 ' read a long from the current pc
 read_code
-                        muxc    save_z_c, #1                'save the c flag
-                        cmp     pc, external_start wc       'check for normal memory access
-            if_b        jmp     #read_hub_code
-                        mov     t1, pc
-                        muxnz   save_z_c, #2                'save the z flag
-                        call    #cache_read
-                        rdlong  L_ins0, memp
-                        jmp     #read_restore_c
-read_hub_code           rdlong	L_ins0, pc
-read_restore_c          shr     save_z_c, #1 wc             'restore the c flag
-read_code_ret           ret
+        muxc    save_z_c, #1                'save the c flag
+        cmp     pc, external_start wc       'check for normal memory access
+  if_b  jmp     #read_hub_code
+        mov     t1, pc
+        muxnz   save_z_c, #2                'save the z flag
+        call    #cache_read
+        rdlong  L_ins0, memp
+        jmp     #read_restore_c
+read_hub_code
+        rdlong	L_ins0, pc
+read_restore_c
+        shr     save_z_c, #1 wc             'restore the c flag
+read_code_ret
+        ret
 
   ' start of external memory
   .set EXTERNAL_MEMORY_START, 20000000
@@ -368,7 +378,7 @@ flush   wrlong  empty_mask, t2
         djnz    t1, #flush
 cache_init_ret
         ret
-        
+
 ' on call:
 '   t1 contains the address to write
 '   z saved in save_z_c using the instruction "muxnz save_z_c, #2"
@@ -417,7 +427,7 @@ miss    test    tag, dirty_mask wz      ' check to see if old cache line is dirt
 
         mov     t3, tag                 ' get current tag's external address
         shl     t3, offset_width
-        wrlong  t3, xmem_extaddrp      ' setup the external address of the write
+        wrlong  t3, xmem_extaddrp       ' setup the external address of the write
         mov     t3, size_select         ' setup the hub address of the write
         or      t3, cacheline
         or      t3, #8                  ' set the write flag
@@ -437,8 +447,7 @@ rwait   rdlong  t3, xmem_hubaddrp wz    ' wait for the read to complete
 hit     or      tag, set_dirty_bit      ' set the dirty bit on writes
         wrlong  tag, tagptr             ' store the tag for the newly loaded cache line
 
-        mov     cacheaddr, t1           ' save new cache line address
-        andn    cacheaddr, offset_mask
+        mov     cacheaddr, t2           ' save new cache line address
         
 skip    mov     memp, t1                ' get cache line offset
         and     memp, offset_mask
@@ -469,8 +478,8 @@ set_dirty_bit   long    0               ' DIRTY_BIT set on writes, clear on read
 xmem_hubaddrp   long    0
 xmem_extaddrp   long    0
 
-tagsptr         long    0x8000 - 8192 - 512
-cacheptr        long    0x8000 - 8192
+tagsptr         long    0
+cacheptr        long    0
 index_width     long    DEFAULT_INDEX_WIDTH
 offset_width    long    DEFAULT_OFFSET_WIDTH
 
