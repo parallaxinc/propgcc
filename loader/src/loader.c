@@ -700,12 +700,10 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     
     /* choose the serial helper program based on the elf version */
     if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
-        //printf("Using old serial helper\n");
         helper_image = serial_helper_array;
         helper_size = serial_helper_size;
     }
     else {
-        //printf("Using new serial helper\n");
         helper_image = serial_helper2_array;
         helper_size = serial_helper2_size;
     }
