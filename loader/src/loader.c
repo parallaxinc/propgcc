@@ -633,17 +633,16 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
 
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
 {
-    uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf;
+    uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf, *helper_image;
     int cacheDriverImageSize, imageSize, target, ivalue;
-    uint32_t loadAddress, params[6];
     ElfProgramHdr program_kernel;
     char *cacheDriver, *value;
     int eepromFirst = FALSE;
-    uint8_t *helper_image;
+    uint32_t loadAddress;
     int helper_size;
     
     /* check for a cache driver for loading the external image */
-    if (!(cacheDriver = GetConfigField(config, "cache-driver")))
+    if (!(cacheDriver = GetConfigField(config, ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN ? "cache-driver" : "xmem-driver")))
         return Error("no cache driver to load external image");
     
     /* build the external image */
@@ -726,26 +725,57 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     }
     
     /* setup the cache initialization parameters */
-    memset(params, 0, sizeof(params));
-    if (GetNumericConfigField(config, "cache-size", &ivalue))
-        params[0] = ivalue;
-    if (GetNumericConfigField(config, "cache-param1", &ivalue))
-        params[1] = ivalue;
-    if (GetNumericConfigField(config, "cache-param2", &ivalue))
-        params[2] = ivalue;
-    if (GetNumericConfigField(config, "cache-param3", &ivalue))
-        params[3] = ivalue;
-    if (GetNumericConfigField(config, "cache-param4", &ivalue))
-        params[4] = ivalue;
     
-    /* load the cache driver */
-    printf("Loading cache driver '%s'\n", cacheDriver);
-    if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
-    ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
-    ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
-        free(kernelbuf);
-        free(imagebuf);
-        return Error("Loading cache driver failed");
+    /* this branch handles the old cache drivers that include tag handling */
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        uint32_t params[5];
+        memset(params, 0, sizeof(params));
+        if (GetNumericConfigField(config, "cache-size", &ivalue))
+            params[0] = ivalue;
+        if (GetNumericConfigField(config, "cache-param1", &ivalue))
+            params[1] = ivalue;
+        if (GetNumericConfigField(config, "cache-param2", &ivalue))
+            params[2] = ivalue;
+        if (GetNumericConfigField(config, "cache-param3", &ivalue))
+            params[3] = ivalue;
+        if (GetNumericConfigField(config, "cache-param4", &ivalue))
+            params[4] = ivalue;
+    
+        /* load the cache driver */
+        printf("Loading cache driver '%s'\n", cacheDriver);
+        if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
+        ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
+        ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
+            free(kernelbuf);
+            free(imagebuf);
+            return Error("Loading cache driver failed");
+        }
+    }
+    
+    /* this branch handles the new external memory drivers where the tag handling is in the kernel */
+    else {
+        uint32_t params[5];
+        memset(params, 0, sizeof(params));
+        if (GetNumericConfigField(config, "xmem-geometry", &ivalue))
+            params[0] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+            params[1] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+            params[2] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+            params[3] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+            params[4] = ivalue;
+    
+        /* load the cache driver */
+        printf("Loading cache driver '%s'\n", cacheDriver);
+        if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
+        ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
+        ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
+            free(kernelbuf);
+            free(imagebuf);
+            return Error("Loading cache driver failed");
+        }
     }
             
     /* write the full image to memory */
