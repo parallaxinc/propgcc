@@ -30,8 +30,12 @@ all:	$(OBJDIR) cog .FORCE
 	make -f Makefile.incl MODEL=cmm CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=xmmc CHIP=p2 OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=xmmc CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR)
 	make -f Makefile.incl MODEL=xmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=xmm CHIP=p2 OBJDIR=$(OBJDIR)
+	make -f Makefile.incl MODEL=xmm CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR)
 	make -f Makefile.cog OBJDIR=$(OBJDIR)
 
 cog:	$(OBJDIR) install-includes
@@ -54,8 +58,13 @@ tiny:	$(OBJDIR)
 	make -f Makefile.incl MODEL=cmm CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmmc OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmmc SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmmc CHIP=p2 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmmc CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+
 	make -f Makefile.incl MODEL=xmm OBJDIR=$(OBJDIR) tiny
 	make -f Makefile.incl MODEL=xmm SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmm CHIP=p2 OBJDIR=$(OBJDIR) tiny
+	make -f Makefile.incl MODEL=xmm CHIP=p2 SHORTDOUBLES=1 OBJDIR=$(OBJDIR) tiny
 
 install-tiny:
 	cp $(OBJDIR)/lmm/libtiny.a $(DEST)/lib/
@@ -67,9 +76,13 @@ install-tiny:
 	cp $(OBJDIR)/cmm/p2/libtiny.a $(DEST)/lib/cmm/p2/
 	cp $(OBJDIR)/cmm/p2/short-doubles/libtiny.a $(DEST)/lib/cmm/p2/short-doubles/
 	cp $(OBJDIR)/xmmc/libtiny.a $(DEST)/lib/xmmc
-	cp $(OBJDIR)/xmmc/short-doubles/libtiny.a $(DEST)/lib/xmmc/short-doubles/
+	cp $(OBJDIR)/xmmc/short-doubles/libtiny.a $(DEST)/lib/xmmc/short-doubles
+	cp $(OBJDIR)/xmmc/p2/libtiny.a $(DEST)/lib/xmmc/p2/
+	cp $(OBJDIR)/xmmc/p2/short-doubles/libtiny.a $(DEST)/lib/xmmc/p2/short-doubles/
 	cp $(OBJDIR)/xmm/libtiny.a $(DEST)/lib/xmm/
 	cp $(OBJDIR)/xmm/short-doubles/libtiny.a $(DEST)/lib/xmm/short-doubles/
+	cp $(OBJDIR)/xmm/p2/libtiny.a $(DEST)/lib/xmm/p2/
+	cp $(OBJDIR)/xmm/p2/short-doubles/libtiny.a $(DEST)/lib/xmm/p2/short-doubles/
 	cp tiny/tinyio.h tiny/tinystream.h tiny/tinystream tiny/siodev.h $(DEST)/include
 
 hello.elf: hello.c
@@ -88,8 +101,12 @@ install: all install-dirs install-includes install-specs
 	cp $(addprefix $(OBJDIR)/cmm/p2/short-doubles/, $(SRCLIBS)) $(DEST)/lib/cmm/p2/short-doubles/
 	cp $(addprefix $(OBJDIR)/xmmc/, $(SRCLIBS)) $(DEST)/lib/xmmc/
 	cp $(addprefix $(OBJDIR)/xmmc/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmmc/short-doubles/
+	cp $(addprefix $(OBJDIR)/xmmc/p2/, $(SRCLIBS)) $(DEST)/lib/xmmc/p2/
+	cp $(addprefix $(OBJDIR)/xmmc/p2/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmmc/p2/short-doubles/
 	cp $(addprefix $(OBJDIR)/xmm/, $(SRCLIBS)) $(DEST)/lib/xmm/
 	cp $(addprefix $(OBJDIR)/xmm/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmm/short-doubles/
+	cp $(addprefix $(OBJDIR)/xmm/p2/, $(SRCLIBS)) $(DEST)/lib/xmm/p2/
+	cp $(addprefix $(OBJDIR)/xmm/p2/short-doubles/, $(SRCLIBS)) $(DEST)/lib/xmm/p2/short-doubles/
 	cp LIB_LICENSE.txt $(DEST)/lib/
 	cp ../gcc/COPYING3 ../gcc/COPYING.RUNTIME $(DEST)/lib/
 	cp $(OBJDIR)/cog/crt0_cog.o $(OBJDIR)/cog/crtend_cog.o $(DEST)/lib/
@@ -103,7 +120,9 @@ install-dirs:
 	mkdir -p $(DEST)/lib/cmm/short-doubles/
 	mkdir -p $(DEST)/lib/cmm/p2/short-doubles/
 	mkdir -p $(DEST)/lib/xmm/short-doubles/
+	mkdir -p $(DEST)/lib/xmm/p2/short-doubles/
 	mkdir -p $(DEST)/lib/xmmc/short-doubles/
+	mkdir -p $(DEST)/lib/xmmc/p2/short-doubles/
 
 LIBSPECS = libgomp.spec
 
@@ -116,8 +135,12 @@ install-specs:
 	cp $(LIBSPECS) $(DEST)/lib/p2/short-doubles/
 	cp $(LIBSPECS) $(DEST)/lib/xmm/
 	cp $(LIBSPECS) $(DEST)/lib/xmm/short-doubles/
+	cp $(LIBSPECS) $(DEST)/lib/xmm/p2/
+	cp $(LIBSPECS) $(DEST)/lib/xmm/p2/short-doubles/
 	cp $(LIBSPECS) $(DEST)/lib/xmmc/
 	cp $(LIBSPECS) $(DEST)/lib/xmmc/short-doubles/
+	cp $(LIBSPECS) $(DEST)/lib/xmmc/p2/
+	cp $(LIBSPECS) $(DEST)/lib/xmmc/p2/short-doubles/
 
 install-includes:
 	cp -r include $(DEST)
