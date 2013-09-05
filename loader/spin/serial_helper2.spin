@@ -62,6 +62,8 @@ PUB start | type, packet, len, ok
   ' initialize
   sd_mounted := 0
   write_mode := WRITE_NONE
+  
+  ' pointer to a buffer that is 16-byte aligned (thanks Ariba!)
   mm_data_ptr := @mm_data_padded & !15
 
   ' handle packets
