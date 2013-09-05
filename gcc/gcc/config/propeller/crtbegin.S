@@ -89,12 +89,6 @@ argc_cnt
         '' we do need to save the link register, though, since
         '' we are making subroutine calls
         ''
-        mov     r0, #1
-        shl     r0, #15
-        andn    outa, r0
-        or      dira, r0
-xxx     brs     #xxx
-
         .global ___init
         .balign 4
 ___init
@@ -106,6 +100,9 @@ ___init
 
 #if defined(__PROPELLER_XMM__)
 
+        rdlong  r10, #0     ' clkfreq
+        rdbyte  r11, #4     ' clkmode
+        
 ' initialization structure offsets:
 '   INIT_VADDR      0
 '   INIT_PADDR      4
@@ -129,7 +126,7 @@ X_loop  xmmio   rdlong, r0, r9  ' VADDR
         cmp     r2, #0 wz
   if_z  brs     #X_next
         cmp     r0, r1 wz
-  if_z  brs     #X_copy
+  if_nz brs     #X_copy
   
 X_clear
         mov     r1, #0
@@ -144,6 +141,9 @@ X_next
   if_nz brs     #X_loop
   
 X_loopend
+
+        wrlong  r10, #0     ' clkfreq
+        wrbyte  r11, #4     ' clkmode
 
 #else // LMM or CMM
 
