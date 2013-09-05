@@ -149,14 +149,14 @@ pub writeFlash(madr, buf, count_) | pbuf, pcnt, paddr
     return long[vm_mbox][1]
 
 ' external memory driver interface
-pub readBlock(madr, buf, size) | params[_INIT2_SIZE]
-    long[vm_mbox][1] := madr | size
-    long[vm_mbox][0] := buf
+pub readBlock(madr, buf, size)
+    long[vm_mbox][1] := madr
+    long[vm_mbox][0] := buf | size
     repeat while long[vm_mbox][0] <> 0
 
 ' external memory driver interface
-pub writeBlock(madr, buf, size) | params[_INIT2_SIZE]
-    long[vm_mbox][1] := madr | XMEM_WRITE | size
-    long[vm_mbox][0] := buf
+pub writeBlock(madr, buf, size)
+    long[vm_mbox][1] := madr
+    long[vm_mbox][0] := buf | XMEM_WRITE | size
     repeat while long[vm_mbox][0] <> 0
 
