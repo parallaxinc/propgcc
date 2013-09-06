@@ -208,6 +208,7 @@ $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
 $(DRVDIR)/synapse_cache.dat \
 $(DRVDIR)/rampage2_cache.dat \
+$(DRVDIR)/spi_flash_xmem.dat \
 $(DRVDIR)/spi_sram_xmem.dat \
 $(DRVDIR)/spi_sram24_xmem.dat
 

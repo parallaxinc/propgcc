@@ -1,5 +1,5 @@
 ' select debugging output to a TV
-'#define TV_DEBUG
+#define TV_DEBUG
 
 CON
   ' these will get overwritten with the correct values before loading
@@ -65,6 +65,11 @@ PUB start | type, packet, len, ok
   
   ' pointer to a buffer that is 16-byte aligned (thanks Ariba!)
   mm_data_ptr := @mm_data_padded & !15
+  tv.hex(@mm_data_padded, 8)
+  space
+  tv.hex(mm_data_ptr, 8)
+  crlf
+  repeat
 
   ' handle packets
   repeat
@@ -144,9 +149,8 @@ PRI FLASH_WRITE_handler
   tv.str(string("FLASH_WRITE", CR))
 #endif
   write_mode := WRITE_FLASH
-  load_address := $00000000 ' offset into flash
-  p_image_base := $30000000
-  cache.eraseFlashBlock(load_address)
+  load_address := $30000000
+  p_image_base := load_address
 
 PRI RAM_WRITE_handler
 #ifdef TV_DEBUG
@@ -177,10 +181,13 @@ PRI DATA_handler(packet, len) | i, val, buf, count, err
       err := \sd.pwrite(packet, len)
       load_address += len
     WRITE_FLASH:
-      cache.WriteFlash(load_address, packet, len)
-      load_address += len
-      if (load_address & $00000fff) == 0
-        cache.eraseFlashBlock(load_address)
+      bytemove(mm_data_ptr, packet, pkt#PKTMAXLEN) ' buffer has to be 16 byte aligned
+      buf := mm_data_ptr
+      count := (len + 1023) >> 10 ' number of 1024 byte blocks
+      repeat count
+        cache.writeBlock(load_address, buf, cache#XMEM_SIZE_1024)
+        load_address += 1024
+        buf += 1024
     WRITE_RAM:
       bytemove(mm_data_ptr, packet, pkt#PKTMAXLEN) ' buffer has to be 16 byte aligned
       buf := mm_data_ptr
@@ -300,7 +307,7 @@ p_cache_lines       long    0
 p_vm_mbox           long    0
 
 ' additional data
-                    byte    0[15]
-mm_data_padded      byte    0[2048]
+                    long    0[3]
+mm_data_padded      long    0[512]
 mm_data_ptr         long    0
 

@@ -16,10 +16,10 @@ NAME = fibo
 OBJS = fibo.o
 
 # memory model
-MODEL = xmm-single
+MODEL ?= xmm-single
 
 # flags to build with
-CFLAGS = -Os -mfcache
+CFLAGS = -Os -mno-fcache
 
 # default build target
 all: $(NAME).elf
