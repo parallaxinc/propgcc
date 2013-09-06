@@ -24,7 +24,7 @@ void main (int argc,  char* argv[])
     unsigned int executionTime;
     unsigned int rawTime;
 
-#if 1    
+#if 0
     OUTA &= ~(1<<15);
     DIRA |= 1<<15;
     while(1);
@@ -41,5 +41,11 @@ void main (int argc,  char* argv[])
         executionTime = rawTime / (CLKFREQ / 1000);
         printf ("%06d (%05ums) (%u ticks)\n", result, executionTime, rawTime);
     }
+
+#if 0  
+    OUTA &= ~(1<<15);
+    DIRA |= 1<<15;
+#endif
+
     while(1);
 }
