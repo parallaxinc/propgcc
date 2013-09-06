@@ -74,16 +74,8 @@ argc_cnt
   IF_NZ brs     #argc_cnt
         
         mvi     r2,#__environ   ' set environment pointer
-
         mov     r14,#0          ' set frame pointer to 0
-        
-'        mov     r0, #1
-'        shl     r0, #15
-'        andn    outa, r0
-'        or      dira, r0
-'xxx     brs     #xxx
-        
-        lcall   #_main  ' call main
+        lcall   #_main          ' call main
 
         '' and call _exit with whatever main returns
         lcall   #_exit
@@ -151,7 +143,7 @@ X_loopend
         wrlong  r10, #0     ' clkfreq
         wrbyte  r11, #4     ' clkmode
 
-#else // LMM or CMM
+#endif
 
         '' zero out bss
         mvi     r0,#__bss_start
@@ -159,8 +151,6 @@ X_loopend
         sub     r2,r0
         mov     r1,#0
         lcall   #_memset
-
-#endif
 
         '' call the constructors
         mvi     r8,#___CTOR_LIST__
