@@ -77,6 +77,12 @@ argc_cnt
 
         mov     r14,#0          ' set frame pointer to 0
         
+'        mov     r0, #1
+'        shl     r0, #15
+'        andn    outa, r0
+'        or      dira, r0
+'xxx     brs     #xxx
+        
         lcall   #_main  ' call main
 
         '' and call _exit with whatever main returns

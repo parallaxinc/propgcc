@@ -24,7 +24,7 @@ void main (int argc,  char* argv[])
     unsigned int executionTime;
     unsigned int rawTime;
 
-#if 0    
+#if 1    
     OUTA &= ~(1<<15);
     DIRA |= 1<<15;
     while(1);

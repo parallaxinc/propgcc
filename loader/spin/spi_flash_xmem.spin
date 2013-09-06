@@ -1,5 +1,5 @@
 {
-  SPI SRAM External Memory Driver (16 bit addresses)
+  SPI Flash External Memory Driver
   Copyright (c) 2013 by David Betz
   
   Based on code from VMCOG - virtual memory server for the Propeller
@@ -37,8 +37,8 @@
 CON
 
   ' protocol bits
-  CS_CLR_PIN_MASK       = $01
-  INC_PIN_MASK          = $02   ' for C3-style CS
+  CS_CLR_PIN_MASK       = $01   ' CS or C3-style clear pin
+  INC_PIN_MASK          = $02   ' C3-style increment
   MUX_START_BIT_MASK    = $04   ' low order bit of mux field
   MUX_WIDTH_MASK        = $08   ' width of mux field
   ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux

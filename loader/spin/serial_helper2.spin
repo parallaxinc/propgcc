@@ -1,5 +1,5 @@
 ' select debugging output to a TV
-#define TV_DEBUG
+'#define TV_DEBUG
 
 CON
   ' these will get overwritten with the correct values before loading
@@ -65,11 +65,6 @@ PUB start | type, packet, len, ok
   
   ' pointer to a buffer that is 16-byte aligned (thanks Ariba!)
   mm_data_ptr := @mm_data_padded & !15
-  tv.hex(@mm_data_padded, 8)
-  space
-  tv.hex(mm_data_ptr, 8)
-  crlf
-  repeat
 
   ' handle packets
   repeat
