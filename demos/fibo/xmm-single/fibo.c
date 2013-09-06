@@ -23,7 +23,13 @@ void main (int argc,  char* argv[])
     unsigned int endTime;
     unsigned int executionTime;
     unsigned int rawTime;
-    
+
+#if 0    
+    OUTA &= ~(1<<15);
+    DIRA |= 1<<15;
+    while(1);
+#endif
+
     printf("hello, world!\r\n");
     for (n = 0; n <= 26; n++)
     {
