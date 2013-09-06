@@ -26,7 +26,7 @@ SECTIONS
   ${RELOCATING- "/DISCARD/ : \{ *(.boot) \}" }
 
   /* the initial spin boot code, if any */
-  ${RELOCATING+ ".boot : \{ *(.boot) \} >hub" }
+  ${RELOCATING+ ".boot : \{ KEEP(*(.boot)) \} >hub" }
 
   ${KERNEL}
   ${XMM_HEADER}
