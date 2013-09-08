@@ -1,7 +1,8 @@
 CC=propeller-elf-gcc
 OBJCOPY=propeller-elf-objcopy
 
-TESTDRIVER?=spi_sram_xmem
+TESTDRIVER?=spi_flash_xmem
+#TESTDRIVER?=spi_sram_xmem
 
 CACHE_DRIVER_COMMON = cache_interface.spin
 

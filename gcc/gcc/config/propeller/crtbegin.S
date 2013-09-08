@@ -96,7 +96,7 @@ ___init
         wrlong  r14,sp
         mov     r14,sp
 
-#if defined(__PROPELLER_XMM__)
+#if defined(__PROPELLER_USE_XMM__)
 
         rdlong  r10, #0     ' clkfreq
         rdbyte  r11, #4     ' clkmode

@@ -47,6 +47,7 @@ VAR
 
   long sd_mounted
   long load_address
+  long initial_pc
   long write_mode
   
 PUB start | type, packet, len, ok
@@ -145,7 +146,7 @@ PRI FLASH_WRITE_handler
 #endif
   write_mode := WRITE_FLASH
   load_address := $30000000
-  p_image_base := load_address
+  initial_pc := load_address
 
 PRI RAM_WRITE_handler
 #ifdef TV_DEBUG
@@ -153,7 +154,7 @@ PRI RAM_WRITE_handler
 #endif
   write_mode := WRITE_RAM
   load_address := $20000000
-  p_image_base := load_address
+  initial_pc := load_address
 
 PRI HUB_WRITE_handler
 #ifdef TV_DEBUG
@@ -241,7 +242,7 @@ PRI RUN_handler | sp
   ' at start stack contains cache_mbox, cache_tags, cache_lines, cache_geometry, pc
   sp := p_cache_mbox
   sp -= 4
-  long[sp] := p_image_base
+  long[sp] := initial_pc
   sp -= 4
   long[sp] := p_cache_geometry
   sp -= 4
@@ -294,7 +295,6 @@ p_sel_inc           long    0
 p_sel_msk           long    0
 ' end of parameters that are filled in before downloading
 
-p_image_base        long    0
 p_cache_mbox        long    0
 p_cache_geometry    long    0
 p_cache_tags        long    0
