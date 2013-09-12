@@ -19,8 +19,14 @@ int WriteExecutableFile(char *path, BoardConfig *config, ElfContext *c, char *ou
     FILE *fp;
     
     /* build the external image */
-    if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
-        return FALSE;
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
+            return FALSE;
+    }
+    else {
+        if (!(imagebuf = BuildExternalImage2(config, c, &loadAddress, &imageSize)))
+            return FALSE;
+    }
         
     /* find the .xmmkernel segment */
     if (FindProgramSegment(c, ".xmmkernel", &program_kernel) < 0)

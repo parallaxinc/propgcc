@@ -92,6 +92,9 @@ void UpdateChecksum(uint8_t *imagebuf, int imageSize);
 /* xmm-image.c */
 uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 
+/* xmm-image2.c */
+uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
+
 /* pex-image.c */
 int WriteExecutableFile(char *path, BoardConfig *config, ElfContext *c, char *outfile);
 

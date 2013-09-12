@@ -8,7 +8,7 @@ EXTRA_EM_FILE=propeller
 TEXT_MEMORY=">ram AT>ram"
 DATA_MEMORY=">ram AT>ram"
 DATA_BSS_MEMORY=">ram AT>ram"
-HUBTEXT_MEMORY=">hub AT>ram"
+HUBTEXT_MEMORY=">hub AT>hub"
 DRIVER_MEMORY=">coguser AT>ram"
 
 HUB_HEAP=1
