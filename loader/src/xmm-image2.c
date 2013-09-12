@@ -50,7 +50,7 @@ typedef struct {
     uint32_t size;
 } InitSection;
 
-#define DEBUG_BUILD_EXTERNAL_IMAGE
+//#define DEBUG_BUILD_EXTERNAL_IMAGE
 
 uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
 {
@@ -91,8 +91,8 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
                 printf("  %d S: vaddr %08x, paddr %08x, filesz %08x, memsz %08x\n", i, program.vaddr, program.paddr, program.filesz, program.memsz);
 #endif
-                if (program.paddr + program.filesz > endAddress)
-                    endAddress = program.paddr + program.filesz;
+                if (program.paddr + program.memsz > endAddress)
+                    endAddress = program.paddr + program.memsz;
             }
         }
         
@@ -126,12 +126,6 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
         return NullError("insufficent memory for %d byte image", imageSize);
     memset(imagebuf, 0, imageSize);
     
-    /* fill in the image header */
-    image = (ImageHdr *)imagebuf;
-    image->initCount = initTableSize;
-    image->initTableOffset = textSize + dataSize;
-    initSectionTable = (InitSection *)(imagebuf + image->initTableOffset);
-    
     /* load the image text */
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
     printf("load text\n");
@@ -155,6 +149,12 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
             }
         }
     }
+    
+    /* fill in the image header */
+    image = (ImageHdr *)imagebuf;
+    image->initCount = initTableSize;
+    image->initTableOffset = textSize + dataSize;
+    initSectionTable = (InitSection *)(imagebuf + image->initTableOffset);
     
     /* load the image data */
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
@@ -198,6 +198,13 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
     
     /* patch user variables with values from the configuration file */
     PatchVariables(config, c, imagebuf, program_header.paddr);
+{
+    FILE *fp = fopen("image.xmm", "wb");
+    if (fp) {
+        fwrite(imagebuf, 1, imageSize, fp);
+        fclose(fp);
+    }
+}
 
     /* return the image */
     *pLoadAddress = program_header.paddr;
