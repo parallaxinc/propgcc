@@ -123,6 +123,7 @@ $(OBJDIR)/propeller-load.o \
 $(OBJDIR)/loader.o \
 $(OBJDIR)/lmm-image.o \
 $(OBJDIR)/xmm-image.o \
+$(OBJDIR)/xmm-image2.o \
 $(OBJDIR)/pex-image.o \
 $(OBJDIR)/loadelf.o \
 $(OBJDIR)/packet.o \

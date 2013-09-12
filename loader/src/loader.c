@@ -646,8 +646,14 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         return Error("no cache driver to load external image");
     
     /* build the external image */
-    if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
-        return FALSE;
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
+            return FALSE;
+    }
+    else {
+        if (!(imagebuf = BuildExternalImage2(config, c, &loadAddress, &imageSize)))
+            return FALSE;
+    }
         
     /* get the target memory space */
     if ((value = GetConfigField(config, "load-target")) != NULL) {

@@ -6,9 +6,9 @@ TEMPLATE_NAME=elf32
 EXTRA_EM_FILE=propeller
 
 TEXT_MEMORY=">rom AT>rom"
-DATA_MEMORY=">ram AT>rom"
+DATA_MEMORY=">ram AT>ram"
 DATA_BSS_MEMORY=">ram AT>ram"
-HUBTEXT_MEMORY=">hub AT>rom"
+HUBTEXT_MEMORY=">hub AT>hub"
 DRIVER_MEMORY=">coguser AT>rom"
 
 HUB_HEAP=1
