@@ -197,8 +197,6 @@ $(DRVDIR)/sd_cache.dat \
 $(DRVDIR)/spi_flash_cache.dat \
 $(DRVDIR)/spi_flash_cache2.dat \
 $(DRVDIR)/sst_spi_flash_cache.dat \
-$(DRVDIR)/fast_spi_flash_cache.dat \
-$(DRVDIR)/fast_sst_spi_flash_cache.dat \
 $(DRVDIR)/spi_nway_flash_cache.dat \
 $(DRVDIR)/sst_sqi_flash_cache.dat \
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat \
@@ -209,7 +207,8 @@ $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
 $(DRVDIR)/synapse_cache.dat \
 $(DRVDIR)/rampage2_cache.dat \
-$(DRVDIR)/spi_flash_xmem.dat \
+$(DRVDIR)/sst_spi_flash_xmem.dat \
+$(DRVDIR)/winbond_spi_flash_xmem.dat \
 $(DRVDIR)/spi_sram_xmem.dat \
 $(DRVDIR)/spi_sram24_xmem.dat
 
@@ -251,31 +250,11 @@ $(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
+$(DRVDIR)/sst_%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/fast_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DFAST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/fast_sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DSST -DFAST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DSST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DSST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
+$(DRVDIR)/winbond_%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(SPIN_DAT) -DWINBOND -o $@ $<
 	@$(ECHO) $@
 
