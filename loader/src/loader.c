@@ -991,15 +991,15 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
     SpinHdr *hdr = (SpinHdr *)flash_loader2_array;
     SpinObj *obj = (SpinObj *)(flash_loader2_array + hdr->pbase);
     FlashLoader2DatHdr *dat = (FlashLoader2DatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
-    uint8_t cacheDriverImage[COG_IMAGE_MAX];
+    uint8_t xmemDriverImage[COG_IMAGE_MAX];
     int imageSize, ivalue;
-    char *cacheDriver;
+    char *xmemDriver;
     
-    if (!(cacheDriver = GetConfigField(config, "xmem-driver")))
+    if (!(xmemDriver = GetConfigField(config, "xmem-driver")))
         return Error("no xmem driver in board configuration");
         
-    if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &imageSize))
-        return Error("reading xmem driver image failed: %s", cacheDriver);
+    if (!ReadCogImage(sys, xmemDriver, xmemDriverImage, &imageSize))
+        return Error("reading xmem driver image failed: %s", xmemDriver);
         
     /* patch flash loader for clock mode and frequency */
     GetNumericConfigField(config, "clkfreq", &ivalue);
@@ -1011,7 +1011,7 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
     memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
     
     /* copy the cache driver image to the binary file */
-    memcpy((uint8_t *)dat + dat->cache_code_off, cacheDriverImage, imageSize);
+    memcpy((uint8_t *)dat + dat->cache_code_off, xmemDriverImage, imageSize);
     
     /* get the cache size */
     if (GetNumericConfigField(config, "xmem-geometry", &ivalue))
