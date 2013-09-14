@@ -140,6 +140,7 @@ $(OBJDIR)/port.o \
 $(OBJDIR)/serial_helper.o \
 $(OBJDIR)/serial_helper2.o \
 $(OBJDIR)/flash_loader.o \
+$(OBJDIR)/flash_loader2.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
 
 IMAGE_SIZE_OBJS=\
@@ -171,6 +172,7 @@ SPIN_SRCS=\
 $(SPINDIR)/serial_helper.spin \
 $(SPINDIR)/serial_helper2.spin \
 $(SPINDIR)/flash_loader.spin \
+$(SPINDIR)/flash_loader2.spin \
 $(SPINDIR)/packet_driver.spin \
 $(SPINDIR)/cache_interface.spin \
 $(SPINDIR)/TV.spin \

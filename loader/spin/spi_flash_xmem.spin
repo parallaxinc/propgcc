@@ -153,7 +153,13 @@ init_xmem
         call    #release
         
         ' clear the status register
-        call    #clear_status_reg
+        'call    #clear_status_reg
+        call    #write_enable		
+        call    #select		
+        mov     data, fwrstatus ' write zero to the status register		
+        mov     bits, #16		
+        call    #send		
+        call    #release		
                 
         ' start the command loop
 waitcmd mov     dira, #0                ' release the pins for other SPI clients

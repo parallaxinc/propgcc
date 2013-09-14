@@ -68,6 +68,17 @@ typedef struct {
     uint32_t cache_code_off;
 } FlashLoaderDatHdr;
 
+/* DAT header in flash_loader2.spin */
+typedef struct {
+    uint32_t xmem_geometry;
+    uint32_t xmem_param1;
+    uint32_t xmem_param2;
+    uint32_t xmem_param3;
+    uint32_t xmem_param4;
+    uint32_t vm_code_off;
+    uint32_t cache_code_off;
+} FlashLoader2DatHdr;
+
 /* DAT header in sd_driver.spin */
 typedef struct {
     uint32_t jmp_init;
@@ -102,14 +113,17 @@ extern uint8_t serial_helper2_array[];
 extern int serial_helper2_size;
 extern uint8_t flash_loader_array[];
 extern int flash_loader_size;
+extern uint8_t flash_loader2_array[];
+extern int flash_loader2_size;
 
 static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp, ElfHdr *hdr);
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp);
 static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
-static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
+static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode, ElfContext *c);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
+static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
 static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
 static uint32_t Get_sdspi_config1(BoardConfig *config);
 static uint32_t Get_sdspi_config2(BoardConfig *config);
@@ -693,7 +707,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     GetNumericConfigField(config, "eeprom-first", &eepromFirst);
     if (eepromFirst && (flags & LFLAG_WRITE_EEPROM)) {
         if (target == TYPE_FLASH_WRITE) {
-            if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, DOWNLOAD_EEPROM)) {
+            if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, DOWNLOAD_EEPROM, c)) {
                 free(kernelbuf);
                 free(imagebuf);
                 return Error("can't load '.xmmkernel' section into eeprom");
@@ -801,7 +815,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         else {
             int mode = (flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM);
             if (target == TYPE_FLASH_WRITE) {
-                if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, mode)) {
+                if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, mode, c)) {
                     free(kernelbuf);
                     return Error("can't load '.xmmkernel' section into eeprom");
                 }
@@ -899,15 +913,28 @@ int LoadSerialHelper(BoardConfig *config, uint8_t  *image, int image_size, int n
     return TRUE;
 }
 
-static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
+static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode, ElfContext *c)
 {
-    /* build the flash loader image */
-    if (!BuildFlashLoaderImage(sys, config, vm_array, vm_size))
-        return Error("building flash loader image failed");
-        
+    uint8_t *loader_image;
+    int loader_size;
+
+    /* choose the flash loader based on the elf version */
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        if (!BuildFlashLoaderImage(sys, config, vm_array, vm_size))
+            return Error("building flash loader image failed");
+        loader_image = flash_loader_array;
+        loader_size = flash_loader_size;
+    }
+    else {
+        if (!BuildFlashLoader2Image(sys, config, vm_array, vm_size))
+            return Error("building flash loader image failed");
+        loader_image = flash_loader2_array;
+        loader_size = flash_loader2_size;
+    }
+    
     /* load the flash loader program */
-    if (preset() != 0 || ploadbuf("the flash loader", flash_loader_array, flash_loader_size, mode) != 0)
-        return Error("loader load failed");
+    if (preset() != 0 || ploadbuf("the flash loader", loader_image, loader_size, mode) != 0)
+        return Error("flash loader load failed");
     
     /* return successfully */
     return TRUE;
@@ -916,7 +943,7 @@ static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array,
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size)
 {
     SpinHdr *hdr = (SpinHdr *)flash_loader_array;
-    SpinObj *obj = ( SpinObj *)(flash_loader_array + hdr->pbase);
+    SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->pbase);
     FlashLoaderDatHdr *dat = (FlashLoaderDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX];
     int imageSize, ivalue;
@@ -954,6 +981,52 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     
     /* recompute the checksum */
     UpdateChecksum(flash_loader_array, flash_loader_size);
+    
+    /* return successfully */
+    return TRUE;
+}
+
+static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size)
+{
+    SpinHdr *hdr = (SpinHdr *)flash_loader2_array;
+    SpinObj *obj = (SpinObj *)(flash_loader2_array + hdr->pbase);
+    FlashLoader2DatHdr *dat = (FlashLoader2DatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
+    uint8_t cacheDriverImage[COG_IMAGE_MAX];
+    int imageSize, ivalue;
+    char *cacheDriver;
+    
+    if (!(cacheDriver = GetConfigField(config, "xmem-driver")))
+        return Error("no xmem driver in board configuration");
+        
+    if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &imageSize))
+        return Error("reading xmem driver image failed: %s", cacheDriver);
+        
+    /* patch flash loader for clock mode and frequency */
+    GetNumericConfigField(config, "clkfreq", &ivalue);
+    hdr->clkfreq = ivalue;
+    GetNumericConfigField(config, "clkmode", &ivalue);
+    hdr->clkmode = ivalue;
+    
+    /* copy the vm image to the binary file */
+    memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
+    
+    /* copy the cache driver image to the binary file */
+    memcpy((uint8_t *)dat + dat->cache_code_off, cacheDriverImage, imageSize);
+    
+    /* get the cache size */
+    if (GetNumericConfigField(config, "xmem-geometry", &ivalue))
+        dat->xmem_geometry = ivalue;
+    if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+        dat->xmem_param1 = ivalue;
+    if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+        dat->xmem_param2 = ivalue;
+    if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+        dat->xmem_param3 = ivalue;
+    if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+        dat->xmem_param4 = ivalue;
+    
+    /* recompute the checksum */
+    UpdateChecksum(flash_loader2_array, flash_loader2_size);
     
     /* return successfully */
     return TRUE;
