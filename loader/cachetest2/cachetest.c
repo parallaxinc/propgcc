@@ -7,10 +7,6 @@
 #define C3FLASH
 //#define C3SRAM
 
-#ifndef TESTDRIVER
-#define TESTDRIVER      binary_spi_sram_xmem_dat_start
-#endif
-
 #define INC_PIN     8
 #define MOSI_PIN    9
 #define MISO_PIN    10
@@ -24,9 +20,13 @@
 #if defined(C3FLASH)
 #define TESTDRIVER      binary_spi_flash_xmem_dat_start
 #define CHIP_ADDR       FLASH_ADDR
-#elif defined (C3SRAM)
+#elif defined(C3SRAM)
 #define TESTDRIVER      binary_spi_sram_xmem_dat_start
 #define CHIP_ADDR       SRAM1_ADDR
+#endif
+
+#ifndef TESTDRIVER
+#define TESTDRIVER      binary_spi_sram_xmem_dat_start
 #endif
 
 #define XMEM_CONFIG1   ((MOSI_PIN << 24) | (MISO_PIN << 16) | (CLK_PIN << 8) | CS_CLR_PIN_MASK | INC_PIN_MASK | ADDR_MASK)
@@ -121,14 +121,14 @@ int main(void)
     
     printf("Flash test\n");
     
-    base_addr = RAM_BASE;
+    base_addr = ROM_BASE;
     srand(CNT);
     base_value = rand();
     printf("Starting with %08x\n", base_value);
     
     addr = base_addr;
     value = base_value;
-    for (j = 0; j < 16; ++j) {
+    for (j = 0; j < 64; ++j) {
         for (i = 0; i < BUF_SIZE32; ++i)
             buf[i] = value++;
         writeBlock(addr, buf, XMEM_SIZE_1024);
@@ -137,11 +137,48 @@ int main(void)
     
     addr = base_addr;
     value = base_value;
-    for (j = 0; j < 16; ++j) {
+    for (j = 0; j < 64; ++j) {
         readBlock(addr, buf, XMEM_SIZE_1024);
         for (i = 0; i < BUF_SIZE32; ++i)
             if (buf[i] != value++)
                 printf("%08x: expected %08x, found %08x\n", addr + i * sizeof(uint32_t), value - 1, buf[i]);
+        addr += 1024;
+    }
+        
+    printf("done\n");
+}
+
+#endif
+
+#if 1
+
+{
+    uint32_t base_addr, addr, base_value, value;
+    int i, j;
+    
+    printf("Inverted flash test\n");
+    
+    base_addr = ROM_BASE;
+    srand(CNT);
+    base_value = rand();
+    printf("Starting with %08x\n", base_value);
+    
+    addr = base_addr;
+    value = base_value;
+    for (j = 0; j < 64; ++j) {
+        for (i = 0; i < BUF_SIZE32; ++i)
+            buf[i] = ~(value++);
+        writeBlock(addr, buf, XMEM_SIZE_1024);
+        addr += 1024;
+    }
+    
+    addr = base_addr;
+    value = base_value;
+    for (j = 0; j < 64; ++j) {
+        readBlock(addr, buf, XMEM_SIZE_1024);
+        for (i = 0; i < BUF_SIZE32; ++i)
+            if (buf[i] != ~(value++))
+                printf("%08x: expected %08x, found %08x\n", addr + i * sizeof(uint32_t), ~(value - 1), buf[i]);
         addr += 1024;
     }
         
@@ -231,7 +268,7 @@ int xmemStart(void *code, xmem_mbox_t *mboxes, int count, uint32_t config1, uint
 
 void readBlock(uint32_t extaddr, void *buf, uint32_t size)
 {
-    printf("Reading %08x\n", extaddr);
+    //printf("Reading %08x\n", extaddr);
     xmem_mbox->extaddr = extaddr;
     xmem_mbox->hubaddr = (uint32_t)buf | size;
     //LED_ON();
@@ -244,7 +281,7 @@ void readBlock(uint32_t extaddr, void *buf, uint32_t size)
 
 void writeBlock(uint32_t extaddr, void *buf, uint32_t size)
 {
-    printf("Writing %08x\n", extaddr);
+    //printf("Writing %08x\n", extaddr);
     xmem_mbox->extaddr = extaddr;
     xmem_mbox->hubaddr = (uint32_t)buf | XMEM_WRITE | size;
     //LED_ON();

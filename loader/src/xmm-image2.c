@@ -55,7 +55,7 @@ typedef struct {
 uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
 {
     char *initSectionName = ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN ? ".header" : ".init";
-    ElfProgramHdr program, program_kernel, program_header, program_hub;
+    ElfProgramHdr program, program_kernel, program_header;
     int initTableSize, ki, hi, i;
     InitSection *initSectionTable, *initSection;
     uint8_t *imagebuf, *buf;
@@ -198,6 +198,8 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
     
     /* patch user variables with values from the configuration file */
     PatchVariables(config, c, imagebuf, program_header.paddr);
+
+#if 0
 {
     FILE *fp = fopen("image.xmm", "wb");
     if (fp) {
@@ -205,6 +207,7 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
         fclose(fp);
     }
 }
+#endif
 
     /* return the image */
     *pLoadAddress = program_header.paddr;

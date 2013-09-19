@@ -647,9 +647,9 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
 
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
 {
-    uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf, *helper_image;
+    uint8_t cacheDriverImage[COG_IMAGE_MAX], kernelImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf, *helper_image;
     int cacheDriverImageSize, imageSize, target, ivalue;
-    ElfProgramHdr program_kernel;
+    ElfProgramHdr program_kernel, program_start;
     char *cacheDriver, *value;
     int eepromFirst = FALSE;
     uint32_t loadAddress;
@@ -695,9 +695,27 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         return Error("can't load .xmmkernel section");
     }
     
+    /* copy the kernel to a full size COG image buffer */
+    memset(kernelImage, 0, sizeof(kernelImage));
+    memcpy(kernelImage, kernelbuf, program_kernel.filesz);
+    free(kernelbuf);
+    
+    /* find the .start.kerext segment */
+    if (FindProgramSegment(c, ".start.kerext", &program_start) >= 0) {
+    
+        /* load the .start.kerext section */
+        if (!(kernelbuf = LoadProgramSegment(c, &program_start))) {
+            free(imagebuf);
+            return Error("can't load .start.kerext section");
+        }
+        
+        /* preload .start.kerext */
+        memcpy(&kernelImage[program_start.vaddr], kernelbuf, program_start.filesz);
+    }
+    
     /* if debugging requested, patch */
     if ( (flags & LFLAG_DEBUG) != 0) {
-        if (!(PatchSectionForDebug(kernelbuf, program_kernel.filesz, 0, c))) {
+        if (!(PatchSectionForDebug(kernelImage, sizeof(kernelImage), 0, c))) {
             free(imagebuf);
             return Error("can't patch .xmmkernel section");
         }
@@ -707,8 +725,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     GetNumericConfigField(config, "eeprom-first", &eepromFirst);
     if (eepromFirst && (flags & LFLAG_WRITE_EEPROM)) {
         if (target == TYPE_FLASH_WRITE) {
-            if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, DOWNLOAD_EEPROM, c)) {
-                free(kernelbuf);
+            if (!WriteFlashLoader(sys, config, kernelImage, sizeof(kernelImage), DOWNLOAD_EEPROM, c)) {
                 free(imagebuf);
                 return Error("can't load '.xmmkernel' section into eeprom");
             }
@@ -730,14 +747,12 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     
     /* load the serial helper program */
     if (!LoadSerialHelper(config, helper_image, helper_size, FALSE)) {
-        free(kernelbuf);
         free(imagebuf);
         return FALSE;
     }
         
     /* get the cache driver image */
     if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &cacheDriverImageSize)) {
-        free(kernelbuf);
         free(imagebuf);
         return Error("reading cache driver image failed: %s", cacheDriver);
     }
@@ -764,7 +779,6 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
         ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
         ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
-            free(kernelbuf);
             free(imagebuf);
             return Error("Loading cache driver failed");
         }
@@ -790,7 +804,6 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
         ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
         ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
-            free(kernelbuf);
             free(imagebuf);
             return Error("Loading cache driver failed");
         }
@@ -800,7 +813,6 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     printf("Loading program image to %s\n", target == TYPE_FLASH_WRITE ? "flash" : "RAM");
     if (!SendPacket(target, (uint8_t *)"", 0)
     ||  !WriteBuffer(imagebuf, imageSize)) {
-        free(kernelbuf);
         free(imagebuf);
         return Error("Loading program image failed");
     }
@@ -815,10 +827,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         else {
             int mode = (flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM);
             if (target == TYPE_FLASH_WRITE) {
-                if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, mode, c)) {
-                    free(kernelbuf);
+                if (!WriteFlashLoader(sys, config, kernelImage, sizeof(kernelImage), mode, c))
                     return Error("can't load '.xmmkernel' section into eeprom");
-                }
             }
             else
                 return Error("no external ram eeprom loader is currently available");
@@ -829,15 +839,12 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     else if (flags & LFLAG_RUN) {
         printf("Loading .xmmkernel\n");
         if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
-        ||  !WriteBuffer(kernelbuf, program_kernel.filesz)
+        ||  !WriteBuffer(kernelImage, sizeof(kernelImage))
         ||  !SendPacket(TYPE_VM_INIT, (uint8_t *)"", 0))
             return Error("can't loading xmm kernel");
         if (!SendPacket(TYPE_RUN, (uint8_t *)"", 0))
             return Error("can't run program");
     }
-    
-    /* free the '.xmmkernel' section data */
-    free(kernelbuf);
     
     return TRUE;
 }
