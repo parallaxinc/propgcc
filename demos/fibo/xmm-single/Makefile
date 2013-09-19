@@ -19,7 +19,7 @@ OBJS = fibo.o
 MODEL ?= xmm-single
 
 # flags to build with
-CFLAGS = -Os -mno-fcache
+CFLAGS = -Os
 
 # default build target
 all: $(NAME).elf

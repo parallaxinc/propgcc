@@ -18,11 +18,35 @@
         .global lr
         .global sp
         .global pc
+        
+#define USE_START_KEREXT
 
 ' at start stack contains cache_mbox, cache_tags, cache_lines, cache_geometry, pc
 
         .global __LMM_entry
 __LMM_entry
+#ifdef USE_START_KEREXT
+r0      jmp     #__LMM_init ' kernel extension .start.kerext is already in place
+r1      long    0
+r2      long    0
+r3      long    0
+r4      long    0
+r5      long    0
+r6      long    0
+r7      long    0
+r8      long    0
+r9      long    0
+r10     long    0
+r11     long    0
+r12     long    0
+r13     long    0
+r14     long    0
+r15     '' alias for lr
+lr      long    0
+sp      long    0
+pc      long    0
+ccr     long    0
+#else
 r0      mov     sp, PAR
 r1      call    #cache_init
 r2      rdlong  pc, sp
@@ -43,6 +67,7 @@ lr      long    0
 sp      long    0
 pc      long    0
 ccr     long    0
+#endif
 
         ''
         '' main LMM loop -- read instructions from hub memory
@@ -335,6 +360,7 @@ read_code_ret
   .set EMPTY_BIT, 30
   .set DIRTY_BIT, 31
 
+#ifndef USE_START_KEREXT
         ' initialize the cache variables
         ' pops four longs off the stack to initialize the cache
         ' mboxptr, tagsptr, cacheptr, geometry
@@ -371,6 +397,7 @@ flush   wrlong  empty_mask, t2
         djnz    t1, #flush
 cache_init_ret
         ret
+#endif
 
 ' on call:
 '   t1 contains the address to write
@@ -620,8 +647,11 @@ __CMPSWAPSI_ret
         ''
         .global __LMM_FCACHE_START
 __LMM_FCACHE_START
-'       res     64      '' reserve 64 longs = 256 bytes
-        res     32      '' reserve 32 longs = 128 bytes
+#ifdef USE_START_KEREXT
+        res     64      '' reserve 64 longs = 256 bytes
+#else
+        res     48      '' reserve 32 longs = 128 bytes
+#endif
 
         #include "kernel.ext"
 
