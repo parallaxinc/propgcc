@@ -711,6 +711,7 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         
         /* preload .start.kerext */
         memcpy(&kernelImage[program_start.vaddr], kernelbuf, program_start.filesz);
+        free(kernelbuf);
     }
     
     /* if debugging requested, patch */
