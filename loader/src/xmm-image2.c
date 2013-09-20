@@ -60,6 +60,8 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
     InitSection *initSectionTable, *initSection;
     uint8_t *imagebuf, *buf;
     uint32_t endAddress, textSize, dataSize, imageSize, dataOffset;
+    TranslateTable table;
+    TranslateEntry *entry;
     ImageHdr *image;
     
     /* find the .xmmkernel segment */
@@ -75,6 +77,7 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
 #endif
     endAddress = program_header.paddr;
     initTableSize = 0;
+    table.count = 0;
     dataSize = 0;
     
     /* determine the full image size including the hub/ram initializers */
@@ -104,6 +107,7 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
 #endif
                 dataSize += program.filesz;
                 ++initTableSize;
+                ++table.count;
             }
             if (program.memsz > program.filesz) {
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
@@ -113,6 +117,7 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
             }
         }
     }
+    
 
     /* compute the total file size */
     textSize = endAddress - program_header.paddr;
@@ -126,6 +131,12 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
         return NullError("insufficent memory for %d byte image", imageSize);
     memset(imagebuf, 0, imageSize);
     
+    /* allocate space for the translate table */
+    if (!(table.entries = (TranslateEntry *)malloc(sizeof(TranslateEntry) * table.count))) {
+        free(imagebuf);
+        return NullError("insufficent memory for %d byte image", imageSize);
+    }
+    
     /* load the image text */
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
     printf("load text\n");
@@ -133,12 +144,14 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program)) {
             free(imagebuf);
+            free(table.entries);
             return NullError("can't load program table entry %d", i);
         }
         if (i != ki && program.paddr >= program_header.paddr) {
             if (program.filesz > 0) {
                 if (!(buf = LoadProgramSegment(c, &program))) {
                     free(imagebuf);
+                    free(table.entries);
                     return NullError("can't load program section %d", i);
                 }
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
@@ -162,15 +175,18 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
 #endif
     initSection = initSectionTable;
     dataOffset = textSize;
+    entry = table.entries;
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (!LoadProgramTableEntry(c, i, &program)) {
             free(imagebuf);
+            free(table.entries);
             return NullError("can't load program table entry %d", i);
         }
         if (i != ki && program.paddr < program_header.paddr) {
             if (program.filesz > 0) {
                 if (!(buf = LoadProgramSegment(c, &program))) {
                     free(imagebuf);
+                    free(table.entries);
                     return NullError("can't load program section %d", i);
                 }
                 memcpy(&imagebuf[dataOffset], buf, program.filesz);
@@ -178,6 +194,10 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
                 initSection->vaddr = program.paddr;
                 initSection->paddr = program_header.paddr + dataOffset;
                 initSection->size = program.filesz;
+                entry->paddr = initSection->vaddr;
+                entry->laddr = initSection->paddr;
+                entry->size = program.filesz;
+                ++entry;
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
                 printf("  %d I: vaddr %08x, paddr %08x, laddr %08x, size %08x\n", i, program.vaddr, initSection->vaddr, initSection->paddr, initSection->size);
 #endif
@@ -197,7 +217,10 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
     }
     
     /* patch user variables with values from the configuration file */
-    PatchVariables(config, c, imagebuf, program_header.paddr);
+    PatchVariables(config, c, imagebuf, program_header.paddr, &table);
+    
+    /* free the address translation table */
+    free(table.entries);
 
 #if 0
 {

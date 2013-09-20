@@ -124,7 +124,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
 static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode, ElfContext *c);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
 static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
-static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value, TranslateTable *table);
+static uint32_t TranslateAddress(TranslateTable *table, uint32_t addr);
 static uint32_t Get_sdspi_config1(BoardConfig *config);
 static uint32_t Get_sdspi_config2(BoardConfig *config);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
@@ -1041,7 +1042,7 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
 }
 
 /* PatchVariables - patch user variables based on config file values */
-void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase)
+void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, TranslateTable *table)
 {
     int i;
     for (i = 1; i < c->symbolCnt; ++i) {
@@ -1061,7 +1062,7 @@ void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint3
             
             /* get the variable value */
             if (GetVariableValue(config, cname, &value)) {
-                if (PatchVariable(c, imagebuf, imagebase, symbol.value, value))
+                if (PatchVariable(c, imagebuf, imagebase, symbol.value, value, table))
                     printf("Patching %s with %08x\n", vname, value);
                 else
                     printf("Unable to patch %s\n", vname);
@@ -1075,14 +1076,14 @@ void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint3
 }
 
 /* PatchVariable - patch a single variable */
-static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value)
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value, TranslateTable *table)
 {
     ElfProgramHdr program;
     int i;
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (LoadProgramTableEntry(c, i, &program)) {
             if (addr >= program.vaddr && addr < program.vaddr + program.filesz) {
-                uint32_t offset = addr - program.vaddr + program.paddr - imagebase;
+                uint32_t offset = addr - program.vaddr + TranslateAddress(table, program.paddr) - imagebase;
                 *(uint32_t *)(imagebuf + offset) = value;
                 return TRUE;
             }
@@ -1106,6 +1107,22 @@ int GetVariableValue(BoardConfig *config, const char *name, int *pValue)
     else
         sts = GetNumericConfigField(config, name, pValue);
     return sts;
+}
+
+/* TranslateAddress - translate a paddr to an laddr */
+static uint32_t TranslateAddress(TranslateTable *table, uint32_t addr)
+{
+    if (table) {
+        TranslateEntry *entry = table->entries;
+        int count = table->count;
+        while (--count >= 0) {
+            if (addr >= entry->paddr && addr < entry->paddr + entry->size) {
+                addr = addr - entry->paddr + entry->laddr;
+                break;
+            }
+        }
+    }
+    return addr;
 }
 
 #define  CS_CLR_PIN_MASK       0x01   // either CS or CLR
