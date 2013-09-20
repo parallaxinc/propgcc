@@ -1,9 +1,6 @@
 #if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
-# if defined(DEBUG_KERNEL)
-#  include "crt0_xmm_debug.s"
-# else
+	/* both debug and regular ar in the same kernel */
 #  include "crt0_xmm.s"
-# endif
 #elif defined(__PROPELLER_CMM__)
 	/* note: at the moment the same CMM source is used for both P1 and P2 */
 	/* also, the debug source is the same as regular source, with */
