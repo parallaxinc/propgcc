@@ -168,7 +168,7 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
     }
     
     /* patch user variables with values from the configuration file */
-    PatchVariables(config, c, imagebuf, program_header.paddr);
+    PatchVariables(config, c, imagebuf, program_header.paddr, NULL);
 
     /* return the image */
     *pLoadAddress = program_header.paddr;
