@@ -54,9 +54,11 @@ flush   wrlong  empty_mask, t2
         rdlong  pc, sp
         add     sp, #4
 #endif
-' ERIC: please look at this
-'        rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
-'  IF_NE    jmp    #not_first_cog        ' if not, skip some stuff
+' broken in XMM mode for the moment
+#if !defined(__PROPELLER_USE_XMM__)
+        rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
+  IF_NE    jmp    #not_first_cog        ' if not, skip some stuff
+#endif
         
         '' initialization for first time run
         locknew __TMP0 wc       ' allocate a lock

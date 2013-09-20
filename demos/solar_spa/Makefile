@@ -6,7 +6,7 @@ spa.o
 
 MODEL ?= xmmc
 
-CFLAGS = -Os -lm
+CFLAGS = -Os
 LIBS = -lm
 
 include ../common/common.mk
