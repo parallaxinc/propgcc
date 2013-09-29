@@ -22,13 +22,10 @@
         .global sp
         .global pc
         
-#define USE_START_KEREXT
-
 ' at start stack contains cache_mbox, cache_tags, cache_lines, cache_geometry, pc
 
         .global __LMM_entry
 __LMM_entry
-#ifdef USE_START_KEREXT
 r0      jmp     #__LMM_init ' kernel extension .start.kerext is already in place
 r1      long    0	    ' note: subsequent COGs will start with different
 r2      long    0	    ' initialization code, set up by the clone routines
@@ -46,27 +43,6 @@ r13     long    0
 r14     long    0
 r15     '' alias for lr
 lr      long    0
-#else
-r0      mov     sp, PAR
-r1      call    #cache_init
-r2      rdlong  pc, sp
-r3      add     sp, #4
-r4      locknew r2 wc
-r5      or      r2,#256
-r6  IF_NC wrlong r2,__C_LOCK_PTR
-r7      jmp     #__LMM_loop
-r8      long    0
-r9      long    0
-r10     long    0
-r11     long    0
-r12     long    0
-r13     long    0
-r14     long    0
-r15     '' alias for lr
-lr      long    0
-#endif
-
-
 sp      long    0
 pc      long    0
 #if defined(DEBUG_KERNEL)
@@ -406,45 +382,6 @@ read_code_ret
   .set EMPTY_BIT, 30
   .set DIRTY_BIT, 31
 
-#ifndef USE_START_KEREXT
-        ' initialize the cache variables
-        ' pops four longs off the stack to initialize the cache
-        ' mboxptr, tagsptr, cacheptr, geometry
-cache_init
-        rdlong  xmem_hubaddrp, sp           ' pop the external memory driver mailbox address
-        mov     xmem_extaddrp, xmem_hubaddrp
-        add     xmem_extaddrp, #4
-        add     sp, #4
-        rdlong  tagsptr, sp                 ' pop the hub address of the cache tags
-        add     sp, #4
-        rdlong  cacheptr, sp                ' pop the hub address of the cache lines
-        add     sp, #4
-        rdlong  t1, sp wz                   ' pop the cache geometry
-        add     sp, #4
-  if_z  jmp     #skip_geometry              ' skip cache geometry if zero
-        mov     index_width, t1
-        shr     index_width, #8
-        mov     offset_width, t1
-        and     offset_width, #$ff
-skip_geometry
-        mov     index_count, #1
-        shl     index_count, index_width
-        mov     index_mask, index_count
-        sub     index_mask, #1
-        mov     offset_mask, #1
-        shl     offset_mask, offset_width
-        sub     offset_mask, #1
-        mov     size_select, offset_width   ' memory driver supports minimum of 16 byte lines
-        sub     size_select, #3             ' 1=16, 2=32, 3=64 ... 7=1024
-        mov     t1, index_count
-        mov     t2, tagsptr
-flush   wrlong  empty_mask, t2
-        add     t2, #4
-        djnz    t1, #flush
-cache_init_ret
-        ret
-#endif
-
 ' on call:
 '   t1 contains the address to write
 '   z saved in save_z_c using the instruction "muxnz save_z_c, #2"
@@ -695,10 +632,8 @@ __CMPSWAPSI_ret
 __LMM_FCACHE_START
 #if defined(DEBUG_KERNEL)
 	res	16	'' token amount, not really useful in debug
-#elif defined(USE_START_KEREXT)
-        res     64      '' reserve 64 longs = 256 bytes
 #else
-        res     48      '' reserve 32 longs = 128 bytes
+        res     64      '' reserve 64 longs = 256 bytes
 #endif
 
         #include "kernel.ext"

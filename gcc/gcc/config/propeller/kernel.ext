@@ -178,6 +178,4 @@ __UDIV_BY_ZERO
 
 endmath
 
-#if !defined(__PROPELLER_USE_XMM__) || defined(USE_START_KEREXT) || defined(DEBUG_KERNEL)
 #include "init.ext"
-#endif
