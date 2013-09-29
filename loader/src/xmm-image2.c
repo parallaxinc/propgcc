@@ -222,7 +222,7 @@ uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoad
     /* free the address translation table */
     free(table.entries);
 
-#if 0
+#ifdef DEBUG_BUILD_EXTERNAL_IMAGE
 {
     FILE *fp = fopen("image.xmm", "wb");
     if (fp) {

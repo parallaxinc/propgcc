@@ -396,7 +396,7 @@ read_code_ret
         ret
 
   ' start of external memory
-  .set EXTERNAL_MEMORY_START, 20000000
+  .set EXTERNAL_MEMORY_START, 0x20000000
 
   ' default cache geometry
   .set DEFAULT_INDEX_WIDTH, 7   ' number of bits in the index offset (index size is 2^n)
