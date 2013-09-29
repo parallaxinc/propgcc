@@ -142,8 +142,8 @@ X_loopend
 
         wrlong  r10, #0     ' clkfreq
         wrbyte  r11, #4     ' clkmode
-
-#endif
+        
+#else
 
         '' zero out bss
         mvi     r0,#__bss_start
@@ -151,6 +151,8 @@ X_loopend
         sub     r2,r0
         mov     r1,#0
         lcall   #_memset
+
+#endif
 
         '' call the constructors
         mvi     r8,#___CTOR_LIST__
