@@ -8,7 +8,7 @@
 ''*********************************************
 
   BASE = 0x0e80
-  CLOCK_FREQ = 60000000
+  CLOCK_FREQ = 160000000
   BAUD = 115200
   SERIAL_TX = 90        ' must be in the port c
   SERIAL_RX = 91
@@ -37,13 +37,15 @@
 period                  long    CLOCK_FREQ / BAUD
 cogimage                long    BASE
 stacktop                long    0x20000
+clkmode                 long    0xff '%1111_11_11       'PLL 16X
                         
-init                    repd    reserves_cnt_m1, #1     'clear reserves
+init		        clkset	clkmode
+                        repd    reserves_cnt_m1, #1     'clear reserves
                         setinda #reserves
                         nop
                         nop
                         mov     inda++,#0
-        
+
                         setp    tx_pin
                         mov     dirc,dirc_mask          'make tx pin an output
         

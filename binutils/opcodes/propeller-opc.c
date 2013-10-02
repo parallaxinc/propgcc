@@ -450,8 +450,10 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* reps  000011 n111 nnnn nnnnnnnnn 001iiiiii */
   {"reps", 0x0dc00040, 0xfdc001c0, PROPELLER_OPERAND_REPS, 0, PROP_2, NO_COMPRESSED, 0},
   
-/* jmptask  000011 zcn1 cccc nnnnnnnnn 01001tttt */
-  {"jmptask", 0x0c400090, 0xfc4001f0, PROPELLER_OPERAND_JMPTASK, CCZC, PROP_2, NO_COMPRESSED, 0},
+///* jmptask  000011 zcn1 cccc nnnnnnnnn 01001tttt */
+//  {"jmptask", 0x0c400090, 0xfc4001f0, PROPELLER_OPERAND_JMPTASK, CCZC, PROP_2, NO_COMPRESSED, 0},
+/* jmptask  000011 zcn1 cccc nnnnnnnnn 01000tttt */
+  {"jmptask", 0x0c400080, 0xfc4001f0, PROPELLER_OPERAND_JMPTASK, CCZC, PROP_2, NO_COMPRESSED, 0},
   
 /* nopx  000011 zcn1 cccc nnnnnnnnn 010100000 */
   {"nopx", 0x0c4000a0, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
@@ -550,8 +552,10 @@ const struct propeller_opcode propeller_opcodes[] = {
   {"qexp", 0x0c4000c9, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
 /* setf   000011 zcn1 cccc nnnnnnnnn 011001010 */
   {"setf", 0x0c4000ca, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
-/* settask   000011 zcn1 cccc nnnnnnnnn 011001011 */
-  {"settask", 0x0c4000cb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+///* settask   000011 zcn1 cccc nnnnnnnnn 011001011 */
+//  {"settask", 0x0c4000cb, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
+/* settask   000011 zcn1 cccc nnnnnnnnn 010010100 */
+  {"settask", 0x0c400094, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},
   
 /* cfgdac0   000011 zcn1 cccc nnnnnnnnn 011001100 */
   {"cfgdac0", 0x0c4000cc, 0xfc4001ff, PROPELLER_OPERAND_DESTIMM, CCZC, PROP_2, NO_COMPRESSED, 0},

@@ -8,7 +8,7 @@
 ''*********************************************
 
   BASE = 0x0e80
-  CLOCK_FREQ = 60000000
+  CLOCK_FREQ = 80000000
   BAUD = 115200
   SERIAL_TX = 90        ' serial pins
   SERIAL_RX = 91
