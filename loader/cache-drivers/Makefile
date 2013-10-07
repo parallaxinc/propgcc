@@ -69,5 +69,8 @@ cachetest.elf:	cachetest.c $(TESTDRIVER).o
 %.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 
+install:
+	cp *.dat *.cfg /opt/parallax/propeller-load
+
 clean:
 	rm -f $(DRIVERS)
