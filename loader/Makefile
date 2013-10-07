@@ -12,6 +12,7 @@ endif
 
 SRCDIR=src
 SPINDIR=spin
+CACHEDRIVERDIR=cache-drivers
 OBJDIR=$(BUILDROOT)/obj/$(OS)
 BINDIR=$(BUILDROOT)/bin/$(OS)
 DRVDIR=$(BUILDROOT)/include
@@ -201,6 +202,24 @@ $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
 $(DRVDIR)/synapse_cache.dat \
 $(DRVDIR)/rampage2_cache.dat
 
+#######################
+# NEWER CACHE DRIVERS #
+#######################
+
+DRIVERS+=\
+$(DRVDIR)/rampage2_xcache.dat \
+$(DRVDIR)/winbond_spi_flash_xcache.dat \
+$(DRVDIR)/sst_spi_flash_xcache.dat \
+$(DRVDIR)/winbond_sqi_flash_xcache.dat \
+$(DRVDIR)/sst_sqi_flash_xcache.dat \
+$(DRVDIR)/spi_sram_xcache.dat \
+$(DRVDIR)/spi_sram24_xcache.dat \
+$(DRVDIR)/sqi_sram_xcache.dat \
+$(DRVDIR)/winbond_sqi_flash_sram_xcache.dat \
+$(DRVDIR)/sst_sqi_flash_sram_xcache.dat \
+$(DRVDIR)/c3_xcache.dat \
+$(DRVDIR)/synapse_xcache.dat
+
 #################
 # OTHER DRIVERS #
 #################
@@ -273,6 +292,30 @@ $(DRVDIR)/winbond_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin
 
 $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(SPIN_DAT) -o $@ $<
+	@$(ECHO) $@
+
+######################################
+# RULES TO BUILD NEWER CACHE DRIVERS #
+######################################
+
+CACHE_DRIVER_COMMON=\
+$(CACHEDRIVERDIR)/cache_common.spin \
+$(CACHEDRIVERDIR)/cache_interface.spin \
+$(CACHEDRIVERDIR)/cache_spi_pins.spin \
+$(CACHEDRIVERDIR)/cache_sqi_pins.spin \
+$(CACHEDRIVERDIR)/cache_spi.spin \
+$(CACHEDRIVERDIR)/cache_sqi.spin
+
+$(DRVDIR)/%.dat:	$(CACHEDRIVERDIR)/%.spin $(CACHE_DRIVER_COMMON)
+	@$(SPIN_DAT) -o $@ $<
+	@$(ECHO) $@
+
+$(DRVDIR)/winbond_%.dat:	$(CACHEDRIVERDIR)/%.spin $(CACHE_DRIVER_COMMON)
+	@$(SPIN_DAT) -DWINBOND -o $@ $<
+	@$(ECHO) $@
+
+$(DRVDIR)/sst_%.dat:	$(CACHEDRIVERDIR)/%.spin $(CACHE_DRIVER_COMMON)
+	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 ############
