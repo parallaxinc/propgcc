@@ -268,7 +268,7 @@ int main(void)
 
 #endif
 
-#if 0
+#if 1
 
 {
     int i;
