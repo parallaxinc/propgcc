@@ -1,4 +1,5 @@
 ' param2: 0xssccffrr - ss=sio0 cc=sck ff=flash-cs rr=sram-cs
+' param3: 0xssxxxxxx - ss=sd-cs
 
 '#define WINBOND
 '#define SST
@@ -6,6 +7,11 @@
 #define FLASH
 #define RW
 #define BLOCK_IO
+
+CON
+
+  ' SD commands
+  CMD0_GO_IDLE_STATE      = $40|0
 
 #include "cache_common.spin"
 #include "cache_sqi.spin"
@@ -54,11 +60,32 @@ init
         or      pindir, flash_cs_mask
         or      pinout, sram_cs_mask
         or      pindir, sram_cs_mask
+        
+#ifdef INIT_SD
+        ' get the sd chip select
+        add     t1, #4
+        rdlong  t2, t1
+        shr     t2, #24
+        mov     sd_cs_mask, #1
+        shl     sd_cs_mask, t2
+        or      pinout, sd_cs_mask
+        or      pindir, sd_cs_mask
+#endif
 
         ' set the pin directions
         mov     outa, pinout
         mov     dira, pindir
         call    #release
+        
+#ifdef INIT_SD
+        ' put the SD card in SPI mode
+        mov     t1, #10
+:init   call    #spiRecvByte            ' Output a stream of 32K clocks
+        djnz    t1, #:init
+        mov     sdOp, #CMD0_GO_IDLE_STATE
+        mov     sdParam, #0
+        call    #sdSendCmd
+#endif
                 
         ' initialize the flash chip
         call    #flash_init
@@ -206,7 +233,7 @@ BREAD
   if_b  jmp     #BREAD_sram
         call    #start_read
         mov     ptr, hubaddr      ' hubaddr = hub page address
-        mov     count, line_size
+        mov     count, count
 :loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1
@@ -271,6 +298,45 @@ read_jedec_id_ret
 halt    cogid   t1
         cogstop t1
         
+#ifdef INIT_SD
+
+sdSendCmd
+        andn    outa, sd_cs_mask
+        mov     data, sdOp
+        call    #spiSendByte
+        mov     data, sdParam
+        call    #spiSendByte
+        mov     data, sdParam
+        shr     data, #8
+        call    #spiSendByte
+        mov     data, sdParam
+        shr     data, #16
+        call    #spiSendByte
+        mov     data, sdParam
+        shr     data, #24
+        call    #spiSendByte
+        mov     data, #$95           ' CRC (for 1st command only)
+        call    #spiSendByte
+        mov     data, #$ff
+        call    #spiSendByte
+        mov     sdCount, #20         ' try 20 times
+sdLoop  call    #spiRecvByte
+        test    data, #$80 wz
+  if_z  mov     sdResult, data
+  if_z  jmp     #sdDone
+        djnz    sdCount, #sdLoop
+        mov     sdResult, #$ff
+sdDone  andn    outa, sd_cs_mask
+sdSendCmd_ret
+        ret
+                
+sdOp        long    0
+sdParam     long    0
+sdResult    long    0
+sdCount     long    0
+
+#endif
+
 ' ****************************
 ' SST SST26VF016 SPI FUNCTIONS
 ' ****************************
@@ -512,6 +578,7 @@ pinout          long    0
 
 flash_cs_mask   long    0
 sram_cs_mask    long    0
+sd_cs_mask      long    0
 
 ' variables used by the spi send/receive functions
 fn          long    0

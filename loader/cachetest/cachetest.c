@@ -15,6 +15,7 @@
 #define CACHE_CONFIG4   0
 
 #define BUF_SIZE        32
+#define BUF_COUNT       (32768 / sizeof(buf))
 
 /* for the c3 */
 #define LED_PIN         15
@@ -65,6 +66,7 @@ typedef struct {
 /* external memory base addresses */
 #define RAM_BASE            0x20000000
 #define ROM_BASE            0x30000000
+#define BLOCK_MASK_4K       0x00000fff
 
 /* globals */
 static cache_mbox_t cache_mbox;
@@ -101,21 +103,90 @@ int main(void)
 #if 0
 
 {
-    int i, j;
+    int start, i, j;
     
     printf("Flash test\n");
     
     srand(CNT);
-    j = rand();
-    printf("Starting with %08x\n", j);
-    for (i = 0; i < BUF_SIZE; ++i)
+    start = rand();
+    printf("Starting with %08x\n", start);
+    for (i = 0, j = start; i < BUF_SIZE; ++i)
         buf[i] = j++;
     eraseFlashBlock(0);
     writeFlashBlock(0, buf, sizeof(buf));
     memset(buf, 0, sizeof(buf));
     readBlock(ROM_BASE, buf, sizeof(buf));
-    for (i = 0; i < BUF_SIZE; ++i)
-        printf("buf[%d] = %08x\n", i, buf[i]);
+    for (i = 0, j = start; i < BUF_SIZE; ++i) {
+        if (buf[i] != j++)
+            printf("%08x: expected %08x, found %08x\n", i, j - 1, buf[i]);
+    }
+
+    printf("done\n");
+}
+
+#endif
+
+#if 1
+
+{
+    uint32_t addr, startValue, value;
+    int i, j;
+    
+    printf("Big flash test\n");
+
+    addr = ROM_BASE;
+    srand(CNT);
+    startValue = value = addr + rand();
+    printf("Start value %08x\n", startValue);
+    printf("Filling flash\n");
+    for (j = 0; j < BUF_COUNT; ++j) {
+        uint32_t startAddr = addr;
+        for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
+            buf[i] = value++;
+        if ((startAddr & BLOCK_MASK_4K) == 0) {
+            //printf("Erasing %08x\n", ROM_BASE + startAddr);
+            eraseFlashBlock(startAddr - ROM_BASE);
+        }
+        //printf("Writing %08x\n", ROM_BASE + startAddr);
+        writeFlashBlock(startAddr - ROM_BASE, buf, sizeof(buf));
+    }
+    
+    printf("Checking flash\n");
+    addr = ROM_BASE;
+    value = startValue;
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
+        readBlock(addr, buf, sizeof(buf));
+        for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
+            if (buf[i] != value++)
+                printf("%08x: expected %08x, found %08x\n", addr, value - 1, buf[i]);
+    }
+
+    addr = ROM_BASE;
+    value = startValue;
+    printf("Filling flash inverted\n");
+    for (j = 0; j < BUF_COUNT; ++j) {
+        uint32_t startAddr = addr;
+        for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
+            buf[i] = ~value++;
+        if ((startAddr & BLOCK_MASK_4K) == 0) {
+            //printf("Erasing %08x\n", ROM_BASE + startAddr);
+            eraseFlashBlock(startAddr - ROM_BASE);
+        }
+        //printf("Writing %08x\n", ROM_BASE + startAddr);
+        writeFlashBlock(startAddr - ROM_BASE, buf, sizeof(buf));
+    }
+    
+    addr = ROM_BASE;
+    value = startValue;
+    printf("Checking flash inverted\n");
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
+        readBlock(addr, buf, sizeof(buf));
+        for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
+            if (buf[i] != ~value++)
+                printf("%08x: expected %08x, found %08x\n", addr, ~(value - 1), buf[i]);
+    }
 
     printf("done\n");
 }
@@ -154,22 +225,42 @@ int main(void)
 
     printf("Filling RAM\n");
     addr = RAM_BASE;
-    for (j = 0; j < 8; ++j) {
+    for (j = 0; j < BUF_COUNT; ++j) {
         uint32_t startAddr = addr;
         for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
             buf[i] = addr;
-        printf("Writing %08x\n", startAddr);
+        //printf("Writing %08x\n", startAddr);
         writeBlock(startAddr, buf, sizeof(buf));
     }
     
     printf("Checking RAM\n");
     addr = RAM_BASE;
-    for (j = 0; j < 8; ++j) {
-        printf("Reading %08x\n", addr);
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
         readBlock(addr, buf, sizeof(buf));
         for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
             if (buf[i] != addr)
                 printf("%08x: expected %08x, found %08x\n", addr, addr, buf[i]);
+    }
+
+    printf("Filling RAM inverted\n");
+    addr = RAM_BASE;
+    for (j = 0; j < BUF_COUNT; ++j) {
+        uint32_t startAddr = addr;
+        for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
+            buf[i] = ~addr;
+        //printf("Writing %08x\n", startAddr);
+        writeBlock(startAddr, buf, sizeof(buf));
+    }
+    
+    printf("Checking RAM inverted\n");
+    addr = RAM_BASE;
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
+        readBlock(addr, buf, sizeof(buf));
+        for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
+            if (buf[i] != ~addr)
+                printf("%08x: expected %08x, found %08x\n", addr, ~addr, buf[i]);
     }
 
     printf("done\n");

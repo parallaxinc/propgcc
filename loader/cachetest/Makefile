@@ -5,16 +5,14 @@ OBJCOPY=propeller-elf-objcopy
 TESTDRIVER?=winbond_sqi_flash_sram_xcache
 //TESTDRIVER?=rampage2_xcache
 
-CACHE_DRIVER_COMMON = cache_interface.spin cache_common.spin cache_sqi.spin
-
 .PHONY:	all
 all:	cachetest.elf $(TESTDRIVER).dat
 
 %.dat:	%.spin $(CACHE_DRIVER_COMMON)
 	spin2cpp --dat -o $@ $<
 
-winbond_sqi_flash_sram_xcache.dat:	sqi_flash_sram_xcache.spin $(CACHE_DRIVER_COMMON)
-	spin2cpp --dat -DWINBOND -o $@ $<
+winbond_sqi_flash_sram_xcache.dat:	../cache-drivers/sqi_flash_sram_xcache.spin
+	cd ../cache-drivers; spin2cpp --dat -DWINBOND -o ../cachetest/$@ $<
 
 %.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
