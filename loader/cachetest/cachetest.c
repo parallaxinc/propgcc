@@ -218,49 +218,55 @@ int main(void)
 #if 1
 
 {
-    uint32_t addr;
+    uint32_t addr, startValue, value;
     int i, j;
     
     printf("Big RAM test\n");
 
     printf("Filling RAM\n");
     addr = RAM_BASE;
+    srand(CNT);
+    startValue = value = addr + rand();
+    printf("Start value %08x\n", startValue);
     for (j = 0; j < BUF_COUNT; ++j) {
         uint32_t startAddr = addr;
         for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
-            buf[i] = addr;
+            buf[i] = value++;
         //printf("Writing %08x\n", startAddr);
         writeBlock(startAddr, buf, sizeof(buf));
     }
     
     printf("Checking RAM\n");
     addr = RAM_BASE;
+    value = startValue;
     for (j = 0; j < BUF_COUNT; ++j) {
         //printf("Reading %08x\n", addr);
         readBlock(addr, buf, sizeof(buf));
         for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
-            if (buf[i] != addr)
-                printf("%08x: expected %08x, found %08x\n", addr, addr, buf[i]);
+            if (buf[i] != value++)
+                printf("%08x: expected %08x, found %08x\n", addr, value - 1, buf[i]);
     }
 
     printf("Filling RAM inverted\n");
     addr = RAM_BASE;
+    value = startValue;
     for (j = 0; j < BUF_COUNT; ++j) {
         uint32_t startAddr = addr;
         for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
-            buf[i] = ~addr;
+            buf[i] = ~value++;
         //printf("Writing %08x\n", startAddr);
         writeBlock(startAddr, buf, sizeof(buf));
     }
     
     printf("Checking RAM inverted\n");
     addr = RAM_BASE;
+    value = startValue;
     for (j = 0; j < BUF_COUNT; ++j) {
         //printf("Reading %08x\n", addr);
         readBlock(addr, buf, sizeof(buf));
         for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
-            if (buf[i] != ~addr)
-                printf("%08x: expected %08x, found %08x\n", addr, ~addr, buf[i]);
+            if (buf[i] != ~value++)
+                printf("%08x: expected %08x, found %08x\n", addr, ~(value - 1), buf[i]);
     }
 
     printf("done\n");
