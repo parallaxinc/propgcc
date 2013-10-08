@@ -233,7 +233,6 @@ BREAD
   if_b  jmp     #BREAD_sram
         call    #start_read
         mov     ptr, hubaddr      ' hubaddr = hub page address
-        mov     count, count
 :loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1
