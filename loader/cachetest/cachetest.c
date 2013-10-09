@@ -11,7 +11,9 @@
 #define CACHE_SIZE      (512 + 8192)
 #define CACHE_CONFIG1   0       // cache geometry - use defaults
 #define CACHE_CONFIG2   ((0 << 24) | (7 << 16) | (5 << 8) | 6)  // for Propeller Memory Card
-#define CACHE_CONFIG3   0
+// prototype board -- #define CACHE_CONFIG2   ((0 << 24) | (4 << 16) | (5 << 8) | 6)  // for Propeller Memory Card
+// for trancefreak -- #define CACHE_CONFIG2   ((0 << 24) | (7 << 16) | (8 << 8) | 9)  // for Propeller Memory Card
+#define CACHE_CONFIG3   (4 << 24) | 0x01
 #define CACHE_CONFIG4   0
 
 #define BUF_SIZE        32
@@ -223,11 +225,11 @@ int main(void)
     
     printf("Big RAM test\n");
 
-    printf("Filling RAM\n");
     addr = RAM_BASE;
     srand(CNT);
     startValue = value = addr + rand();
     printf("Start value %08x\n", startValue);
+    printf("Filling RAM\n");
     for (j = 0; j < BUF_COUNT; ++j) {
         uint32_t startAddr = addr;
         for (i = 0; i < BUF_SIZE; ++i, addr += sizeof(uint32_t))
