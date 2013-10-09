@@ -7,7 +7,6 @@
 #define FLASH
 #define RW
 #define BLOCK_IO
-#define INIT_SD
 
 CON
 
@@ -62,7 +61,6 @@ init
         or      pinout, sram_cs_mask
         or      pindir, sram_cs_mask
         
-#ifdef INIT_SD
         ' get the sd chip select (cache-param3)
         add     t1, #4
         rdlong  t2, t1
@@ -74,12 +72,10 @@ init
   if_z  mov     sd_cs_mask, #0
         or      pinout, sd_cs_mask
         or      pindir, sd_cs_mask
-#endif
 
         ' set the pin directions
         call    #release
         
-#ifdef INIT_SD
         ' put the SD card in SPI mode
         tjz     sd_cs_mask, #sdSkip
         mov     t1, #10
@@ -108,7 +104,6 @@ sdLoop  call    #spiRecvByte
         djnz    t1, #sdLoop
 sdDone  andn    outa, sd_cs_mask
 sdSkip
-#endif
                 
         ' initialize the flash chip
         call    #flash_init
