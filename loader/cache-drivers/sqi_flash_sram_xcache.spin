@@ -87,7 +87,7 @@ init
         call    #spiSendByte
         djnz    t1, #:init
         andn    outa, sd_cs_mask
-        mov     data, CMD0_GO_IDLE_STATE
+        mov     data, #CMD0_GO_IDLE_STATE
         call    #spiSendByte
         mov     data, #0
         call    #spiSendByte
