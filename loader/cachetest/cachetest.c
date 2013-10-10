@@ -8,13 +8,30 @@
 #define TESTDRIVER      binary_rampage2_xcache_dat_start
 #endif
 
+//#define PMC_PROTOTYPE
+//#define PMC
+//#define RAMPAGE2_PMC
+
 #define CACHE_SIZE      (512 + 8192)
 #define CACHE_CONFIG1   0       // cache geometry - use defaults
-#define CACHE_CONFIG2   ((0 << 24) | (7 << 16) | (5 << 8) | 6)  // for Propeller Memory Card
-// prototype board -- #define CACHE_CONFIG2   ((0 << 24) | (4 << 16) | (5 << 8) | 6)  // for Propeller Memory Card
-// for trancefreak -- #define CACHE_CONFIG2   ((0 << 24) | (7 << 16) | (8 << 8) | 9)  // for Propeller Memory Card
-#define CACHE_CONFIG3   (4 << 24) | 0x01
+
+#ifdef PMC_PROTOTYPE
+#define CACHE_CONFIG2   ((0 << 24) | (4 << 16) | (5 << 8) | 6)
+#define CACHE_CONFIG3   ((7 << 24) | 1)
 #define CACHE_CONFIG4   0
+#endif
+
+#ifdef PMC
+#define CACHE_CONFIG2   ((0 << 24) | (7 << 16) | (5 << 8) | 6)
+#define CACHE_CONFIG3   ((4 << 24) | 1)
+#define CACHE_CONFIG4   0
+#endif
+
+#ifdef RAMPAGE2_PMC
+#define CACHE_CONFIG2   ((0 << 24) | (8 << 16) | (9 << 8) | 10)
+#define CACHE_CONFIG3   0
+#define CACHE_CONFIG4   0
+#endif
 
 #define BUF_SIZE        32
 #define BUF_COUNT       (32768 / sizeof(buf))
@@ -276,7 +293,7 @@ int main(void)
 
 #endif
 
-#if 1
+#if 0
 
 {
     int i;
