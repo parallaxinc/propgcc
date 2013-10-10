@@ -7,6 +7,7 @@
 #define FLASH
 #define RW
 #define BLOCK_IO
+#define SD_INIT        
 
 CON
 
@@ -53,14 +54,15 @@ init
         and     t3, #$ff
         mov     flash_cs_mask, #1
         shl     flash_cs_mask, t3
+        or      pinout, flash_cs_mask
+        or      pindir, flash_cs_mask
         and     t2, #$ff
         mov     sram_cs_mask, #1
         shl     sram_cs_mask, t2
-        or      pinout, flash_cs_mask
-        or      pindir, flash_cs_mask
         or      pinout, sram_cs_mask
         or      pindir, sram_cs_mask
-        
+
+#ifdef SD_INIT
         ' get the sd chip select (cache-param3)
         add     t1, #4
         rdlong  t2, t1
@@ -70,17 +72,19 @@ init
         shl     sd_cs_mask, t3
         test    t2, #1 wz
   if_z  mov     sd_cs_mask, #0
-        or      pinout, sd_cs_mask
-        or      pindir, sd_cs_mask
+  if_nz or      pinout, sd_cs_mask
+  if_nz or      pindir, sd_cs_mask
+#endif
 
         ' set the pin directions
         call    #release
         
+#ifdef SD_INIT
         ' put the SD card in SPI mode
         tjz     sd_cs_mask, #sdSkip
-        mov     t1, #10
+        mov     t1, #10             ' output 80 clocks
 :init   mov     data, #$ff
-        call    #spiSendByte        ' output 80 clocks
+        call    #spiSendByte
         djnz    t1, #:init
         andn    outa, sd_cs_mask
         mov     data, CMD0_GO_IDLE_STATE
@@ -93,30 +97,31 @@ init
         call    #spiSendByte
         mov     data, #0
         call    #spiSendByte
-        mov     data, #$95           ' CRC (for 1st command only)
+        mov     data, #$95          ' CRC (for 1st command only)
         call    #spiSendByte
         mov     data, #$ff
         call    #spiSendByte
-        mov     t1, #20              ' try 20 times
+        mov     t1, #20             ' try 20 times
 sdLoop  call    #spiRecvByte
         test    data, #$80 wz
   if_z  jmp     #sdDone
         djnz    t1, #sdLoop
-sdDone  andn    outa, sd_cs_mask
+sdDone  or      outa, sd_cs_mask
 sdSkip
+#endif
                 
         ' initialize the flash chip
         call    #flash_init
         
         ' select sequential access mode for the SRAM chip
-        call    #select_sram
+        andn    outa, sram_cs_mask
         mov     data, sram_seq
         mov     bits, #16
         call    #spiSend
         call    #release
         
         ' switch to quad mode for the SRAM chip
-        call    #select_sram
+        andn    outa, sram_cs_mask
         mov     data, sram_eqio
         mov     bits, #8
         call    #spiSend
@@ -124,7 +129,7 @@ sdSkip
 
 init_ret
         ret
-                
+
 '----------------------------------------------------------------------------------------------------
 '
 ' erase_4k_block
@@ -218,7 +223,7 @@ BSTART_sram
         and     cmd, offset_bits
         or      cmd, fn
         or      dira, sio_mask
-        call    #select_sram
+        andn    outa, sram_cs_mask
         rol     cmd, #8
         mov     data, cmd
         call    #sqiSendByte
@@ -263,9 +268,8 @@ BREAD_RET
 BREAD_sram
         mov     fn, sram_read
         call    #BSTART_sram 
-        mov     data, #0
-        call    #sqiSendByte
         andn    dira, sio_mask
+        call    #sqiRecvByte
 :loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1
@@ -299,7 +303,7 @@ BWRITE_RET
 ' spi commands
 
 read_jedec_id
-        call    #select_flash
+        andn    outa, flash_cs_mask
         mov     data, frdjedecid
         call    #spiSendByte
         call    #spiRecvByte       ' manufacturer's id
@@ -328,7 +332,7 @@ flash_init
         call    #read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
-        call    #select_flash
+        andn    outa, flash_cs_mask
         mov     data, sst_quadmode
         call    #spiSendByte
         call    #release
@@ -406,7 +410,7 @@ sst_start_quad_spi_cmd_1
         mov     bytes, #1
 sst_start_quad_spi_cmd
         or      dira, sio_mask
-        call    #select_flash
+        andn    outa, flash_cs_mask
 :loop   rol     cmd, #8
         mov     data, cmd
         call    #sqiSendByte
@@ -501,7 +505,7 @@ winbond_write_enable_ret
 winbond_start_quad_spi_cmd_1
         mov     bytes, #1
 winbond_start_quad_spi_cmd
-        call    #select_flash
+        andn    outa, flash_cs_mask
         rol     cmd, #8
         mov     data, cmd
         call    #spiSendByte
@@ -517,7 +521,7 @@ winbond_start_quad_spi_cmd_ret
         ret
         
 jedec_id            long    $000040ef    ' value of t1 after read_jedec_id routine (W25QxxBV, W25QxxFV)
-jedec_id2            long   $000060ef    ' value of t1 after read_jedec_id routine (W25Q80DW)
+jedec_id2           long    $000060ef    ' value of t1 after read_jedec_id routine (W25Q80DW)
 
 winbond_wrstatus    long    $01000000    ' write status
 winbond_program     long    $32000000    ' flash program byte/page
@@ -529,16 +533,6 @@ winbond_read        long    $e3000000    ' flash read command
 ' END OF CHIP SPECIFIC SPI FUNCTIONS
 ' **********************************
 
-select_flash
-        andn    outa, flash_cs_mask
-select_flash_ret
-        ret
-                
-select_sram
-        andn    outa, sram_cs_mask
-select_sram_ret
-        ret
-                
 release
         mov     outa, pinout
         mov     dira, pindir
@@ -556,21 +550,23 @@ pinout          long    0
 
 flash_cs_mask   long    0
 sram_cs_mask    long    0
+#ifdef SD_INIT        
 sd_cs_mask      long    0
+#endif
 
 ' variables used by the spi send/receive functions
-fn          long    0
-cmd         long    0
-bytes       long    0
-ptr         long    0
+fn              long    0
+cmd             long    0
+bytes           long    0
+ptr             long    0
 
 ' sram commands
-sram_read   long    $03000000       ' read command
-sram_write  long    $02000000       ' write command
-sram_eqio   long    $38000000       ' enter quad I/O mode
-sram_seq    long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
+sram_read       long    $03000000       ' read command
+sram_write      long    $02000000       ' write command
+sram_eqio       long    $38000000       ' enter quad I/O mode
+sram_seq        long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
 
-flash_base  long    $30000000       ' base address of flash memory
-offset_bits long    $00ffffff       ' mask to isolate the offset bits
+flash_base      long    $30000000       ' base address of flash memory
+offset_bits     long    $00ffffff       ' mask to isolate the offset bits
 
-            FIT     496
+        fit     496
