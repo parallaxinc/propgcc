@@ -4,14 +4,14 @@ DAT
 
 sqiSendByte
         mov     bits, data
-        ror     bits, #4
-        rol     bits, sio_shift
+        shr     bits, #4
+        shl     bits, sio_shift
         and     bits, sio_mask
         andn    outa, sio_mask
         or      outa, bits
         or      outa, sck_mask
         andn    outa, sck_mask
-        rol     data, sio_shift
+        shl     data, sio_shift
         and     data, sio_mask
         andn    outa, sio_mask
         or      outa, data
