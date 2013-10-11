@@ -10,8 +10,8 @@ CON
  
 DAT
 
-' param1: 0xooiiccee - oo=mosi ii=miso cc=sck pp=protocol
-' param2: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
+' param2: 0xooiiccee - oo=mosi ii=miso cc=sck pp=protocol
+' param3: 0xaabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' the protocol byte is a bit mask with the bits defined above
 '   if CS_CLR_PIN_MASK ($01) is set, then byte aa contains the CS or C3-style CLR pin number
 '   if INC_PIN_MASK ($02) is set, then byte bb contains the C3-style INC pin number
@@ -71,7 +71,7 @@ get_spi_pins
         shl     sck_mask, t3
         or      pindir, sck_mask
         
-        ' get the cs protocol selector bits (cache-param3)
+        ' get more pin definitions (cache-param3)
         rdlong  t3, t1
         add		t1, #4
         

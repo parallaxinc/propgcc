@@ -8,9 +8,7 @@
 #define TESTDRIVER      binary_rampage2_xcache_dat_start
 #endif
 
-//#define PMC_PROTOTYPE
-//#define PMC
-//#define RAMPAGE2_PMC
+#define DRIVERNAME(x)   #x
 
 #define CACHE_SIZE      (512 + 8192)
 #define CACHE_CONFIG1   0       // cache geometry - use defaults
@@ -27,9 +25,33 @@
 #define CACHE_CONFIG4   0
 #endif
 
+#ifdef PMC_SQI_SRAM
+#define CACHE_CONFIG2   ((0 << 24) | (7 << 8) | 0x01)
+#define CACHE_CONFIG3   (6 << 24)
+#define CACHE_CONFIG4   0
+#endif
+
+#ifdef PMC_SPI_SRAM24
+#define CACHE_CONFIG2   ((0 << 24) | (1 << 16) | (7 << 8) | 0x21)
+#define CACHE_CONFIG3   (6 << 24)
+#define CACHE_CONFIG4   0
+#endif
+
 #ifdef RAMPAGE2_PMC
 #define CACHE_CONFIG2   ((0 << 24) | (8 << 16) | (9 << 8) | 10)
 #define CACHE_CONFIG3   0
+#define CACHE_CONFIG4   0
+#endif
+
+#ifdef RAMPAGE2_SQI_SRAM
+#define CACHE_CONFIG2   ((0 << 24) | (8 << 8) | 0x01)
+#define CACHE_CONFIG3   (10 << 24)
+#define CACHE_CONFIG4   0
+#endif
+
+#ifdef RAMPAGE2_SPI_SRAM24
+#define CACHE_CONFIG2   ((0 << 24) | (1 << 16) | (8 << 8) | 0x21)
+#define CACHE_CONFIG3   (10 << 24)
 #define CACHE_CONFIG4   0
 #endif
 
@@ -145,7 +167,7 @@ int main(void)
 
 #endif
 
-#if 1
+#if 0
 
 {
     uint32_t addr, startValue, value;

@@ -1,5 +1,7 @@
 #undef FLASH
 #define RW
+#define BLOCK_IO
+
 #include "cache_common.spin"
 #include "cache_sqi_pins.spin"
 #include "cache_sqi.spin"
@@ -76,9 +78,8 @@ BSTART_RET
 BREAD
         mov     fn, read
         call    #BSTART 
-        mov     data, #0
-        call    #sqiSendByte
         andn    dira, sio_mask
+        call    #sqiRecvByte
 :loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1

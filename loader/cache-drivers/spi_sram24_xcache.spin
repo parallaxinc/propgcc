@@ -1,5 +1,7 @@
 #undef FLASH
 #define RW
+#define BLOCK_IO
+
 #include "cache_common.spin"
 #include "cache_spi_pins.spin"
 #include "cache_spi.spin"
