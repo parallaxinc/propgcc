@@ -4,14 +4,14 @@ OBJCOPY=propeller-elf-objcopy
 //TESTDRIVER?=c3_xcache
 //TESTDRIVER?=winbond_sqi_flash_sram_xcache
 //TESTDRIVER?=sst_sqi_flash_sram_xcache
-TESTDRIVER?=sqi_sram_xcache
-//TESTDRIVER?=spi_sram24_xcache
+//TESTDRIVER?=sqi_sram_xcache
+TESTDRIVER?=spi_sram24_xcache
 //TESTDRIVER?=rampage2_xcache
 
 //TESTBOARD?=PMC_PROTOTYPE
 //TESTBOARD?=PMC
-TESTBOARD?=PMC_SQI_SRAM
-//TESTBOARD?=PMC_SPI_SRAM24
+//TESTBOARD?=PMC_SQI_SRAM
+TESTBOARD?=PMC_SPI_SRAM24
 //TESTBOARD?=RAMPAGE2_PMC
 //TESTBOARD?=RAMPAGE2
 //TESTBOARD?=RAMPAGE2_SQI_SRAM
@@ -38,8 +38,8 @@ sst_%.dat:	../cache-drivers/%.spin $(CACHE_DRIVER_COMMON)
 %.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
 
-cachetest.elf:	cachetest.c $(TESTDRIVER).o
-	$(CC) -Wall -D TESTDRIVER=binary_$(TESTDRIVER)_dat_start -D $(TESTBOARD) -mcmm -mno-fcache -o $@ $^
+cachetest.elf:	cachetest.c $(TESTDRIVER).o Makefile
+	$(CC) -Wall -D TESTDRIVER=binary_$(TESTDRIVER)_dat_start -D $(TESTBOARD) -mcmm -mno-fcache -o $@ cachetest.c $(TESTDRIVER).o
     
 run:	cachetest.elf
 	propeller-load cachetest.elf -r -t
