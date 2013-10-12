@@ -170,7 +170,6 @@ lck_spi test    $, #0 wc                ' lock no-op: clear the carry bit
         shl     vmaddr, offset_width
         mov     count, line_size
         call    #BREAD                  ' read new page
-        mov     dira, #0                ' release the pins for other SPI clients
 nlk_spi nop        
         wrlong  vmpage, tagptr
 #ifdef RW

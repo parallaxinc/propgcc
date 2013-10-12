@@ -348,7 +348,7 @@ uint32_t cacheStart(void *code, cache_mbox_t *mbox, uint8_t *cache, uint32_t con
     params.config2 = config2;
     params.config3 = config3;
     params.config4 = config4;
-    mbox->cmd = 0xffffffff;
+    mbox->cmd = 1;
     cognew(code, &params);
     while (mbox->cmd)
         ;

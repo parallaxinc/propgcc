@@ -20,7 +20,9 @@ TESTBOARD?=PMC_SPI_SRAM24
 CACHE_DRIVER_COMMON=\
 ../cache-drivers/cache_interface.spin \
 ../cache-drivers/cache_common.spin \
+../cache-drivers/cache_sqi_pins.spin \
 ../cache-drivers/cache_sqi.spin \
+../cache-drivers/cache_spi_pins.spin \
 ../cache-drivers/cache_spi.spin
 
 .PHONY:	all

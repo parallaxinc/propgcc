@@ -122,7 +122,6 @@ ptr         long    0
 read        long    $03000000       ' read command
 write       long    $02000000       ' write command
 eqio        long    $38000000       ' enter quad I/O mode
-rstio       long    $ffffffff       ' reset quad I/O mode
 ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
 
 sram_mask   long    $00ffffff       ' mask to isolate the sram offset bits

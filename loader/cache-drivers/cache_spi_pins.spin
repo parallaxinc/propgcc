@@ -115,7 +115,7 @@ get_spi_pins
   if_nz shl     select_addr, t4
   if_nz shl     mask_inc, t4
   if_nz or      pindir, mask_inc
-  
+
 get_spi_pins_ret
         ret
 
