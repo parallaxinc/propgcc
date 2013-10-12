@@ -8,7 +8,7 @@
 
 init
         call    #get_spi_pins
-
+        
         ' set the pin directions
         mov     outa, pinout
         mov     dira, pindir
