@@ -8,11 +8,11 @@
 #define TESTDRIVER      binary_rampage2_xcache_dat_start
 #endif
 
-#define FLASH_TEST
-#define BIG_FLASH_TEST
-#define RAM_TEST
+//#define FLASH_TEST
+//#define BIG_FLASH_TEST
+//#define RAM_TEST
 #define BIG_RAM_TEST
-#define CACHE_TEST
+//#define CACHE_TEST
 
 #define CACHE_SIZE      (512 + 8192)
 #define CACHE_CONFIG1   0       // cache geometry - use defaults
@@ -56,6 +56,12 @@
 #ifdef RAMPAGE2_SPI_SRAM24
 #define CACHE_CONFIG2   ((0 << 24) | (1 << 16) | (8 << 8) | 0x21)
 #define CACHE_CONFIG3   (10 << 24)
+#define CACHE_CONFIG4   0
+#endif
+
+#ifdef RAMPAGE2
+#define CACHE_CONFIG2   0
+#define CACHE_CONFIG3   0
 #define CACHE_CONFIG4   0
 #endif
 
