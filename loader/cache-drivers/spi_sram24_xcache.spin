@@ -19,6 +19,7 @@ init
         mov     data, ramseq
         mov     bits, #16
         call    #spiSend
+        call    #release
         
 init_ret
         ret

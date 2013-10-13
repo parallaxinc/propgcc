@@ -8,7 +8,11 @@
 #define TESTDRIVER      binary_rampage2_xcache_dat_start
 #endif
 
-#define DRIVERNAME(x)   #x
+#define FLASH_TEST
+#define BIG_FLASH_TEST
+#define RAM_TEST
+#define BIG_RAM_TEST
+#define CACHE_TEST
 
 #define CACHE_SIZE      (512 + 8192)
 #define CACHE_CONFIG1   0       // cache geometry - use defaults
@@ -141,7 +145,7 @@ int main(void)
     printf("cache %08x\n", (uint32_t)cache);
     printf("buf   %08x\n", (uint32_t)buf);
     
-#if 0
+#ifdef FLASH_TEST
 
 {
     int start, i, j;
@@ -167,7 +171,7 @@ int main(void)
 
 #endif
 
-#if 0
+#ifdef BIG_FLASH_TEST
 
 {
     uint32_t addr, startValue, value;
@@ -234,12 +238,12 @@ int main(void)
 
 #endif
 
-#if 0
+#ifdef RAM_TEST
 
 {
     int i;
 
-    printf("Small RAM test\n");
+    printf("RAM test\n");
     
     for (i = 0; i < BUF_SIZE; ++i)
         buf[i] = 0xbeef0000 + i;
@@ -256,7 +260,7 @@ int main(void)
 
 #endif
         
-#if 1
+#ifdef BIG_RAM_TEST
 
 {
     uint32_t addr, startValue, value;
@@ -315,7 +319,7 @@ int main(void)
 
 #endif
 
-#if 0
+#ifdef CACHE_TEST
 
 {
     int i;
