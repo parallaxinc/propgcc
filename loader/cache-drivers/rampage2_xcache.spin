@@ -23,14 +23,14 @@ init
         call    #release
         
         ' select sequential access mode for the SRAM chips
-        call    #sram_select
+        andn    outa, sram_cs_mask
         mov     data, sram_seq
         mov     bits, #16
         call    #spiSend
         call    #release
         
         ' switch to quad mode for the SRAM chips
-        call    #sram_select
+        andn    outa, sram_cs_mask
         mov     data, sram_eqio
         mov     bits, #8
         call    #spiSend
@@ -49,7 +49,7 @@ init
   if_nz jmp     #halt
         cmp     t2, jedec_id wz
   if_nz jmp     #halt
-        call    #flash_select
+        andn    outa, flash_cs_mask
         mov     data, sst_quadmode
         call    #spiSendByte
         call    #release
@@ -217,7 +217,7 @@ write_block_ret
         jmp     #wloop
                 
 read_jedec_id
-        call    #flash_select
+        andn    outa, flash_cs_mask
         mov     data, frdjedecid
         call    #spiSendByte
         call    #spiRecvByte
@@ -331,7 +331,7 @@ sqi_read_ret
 
 sram_start_sqi_cmd
         or      dira, sio_mask      ' set data pins to outputs
-        call    #sram_select
+        andn    outa, sram_cs_mask
         jmp     #sloop
         
 sst_start_sqi_cmd_1
@@ -339,7 +339,7 @@ sst_start_sqi_cmd_1
         
 sst_start_sqi_cmd
         or      dira, sio_mask      ' set data pins to outputs
-        call    #flash_select       ' select the chip
+        andn    outa, flash_cs_mask
         
 sloop   rol     cmd, #8
         mov     sio_t1, cmd         ' send the high nibble
@@ -404,16 +404,6 @@ fwrenable           long    $06000000    ' flash write enable
 ' SPI routines
 '----------------------------------------------------------------------------------------------------
 
-flash_select
-        andn    outa, flash_cs_mask
-flash_select_ret
-        ret
-
-sram_select
-        andn    outa, sram_cs_mask
-sram_select_ret
-        ret
-
 release
         mov     outa, pinout
         mov     dira, pindir
@@ -450,8 +440,8 @@ spiRecvByte_ret
 ' mosi_lo, mosi_hi, sck, cs
 pindir          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
-' mosi_lo, mosi_hi, cs
-pinout          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (0 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
+' /hold, /we, flash_cs, sram_cs
+pinout          long    (%1100 << SIO0_PIN) | (%1100 << (SIO0_PIN + 4)) | (0 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
 mosi_lo_mask    long    1 << SIO0_PIN
 miso_lo_mask    long    2 << SIO0_PIN

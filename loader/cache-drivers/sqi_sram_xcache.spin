@@ -79,7 +79,7 @@ BREAD
         mov     fn, read
         call    #BSTART 
         andn    dira, sio_mask
-        call    #sqiRecvByte
+        call    #sqiRecvByte    ' dummy byte
 :loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1

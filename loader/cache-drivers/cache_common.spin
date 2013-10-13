@@ -116,7 +116,7 @@ vmflush mov     t1, way_count
         djnz    t1, #:flush
 
         ' start the command loop
-waitcmd 'mov     dira, #0                ' release the pins for other SPI clients
+waitcmd mov     dira, #0                ' release the pins for other SPI clients
         wrlong  zero, pvmcmd
 :wait   rdlong  vmpage, pvmcmd wz
   if_z  jmp     #:wait
