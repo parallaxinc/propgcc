@@ -3446,6 +3446,12 @@ fcache_convert_loops (void)
 int
 propeller_reg_dead_peep (rtx first, rtx reg)
 {
+  /* there is a bug in GCC's note handling, so the code below
+     is not reliable :-(
+     if/when that bug is fixed we can re-enable it (and the corresponding
+     peepholes)
+   */
+#if 0
   rtx insn;
 
   /* For mcore, subregs can't live independently of their parent regs.  */
@@ -3480,7 +3486,7 @@ propeller_reg_dead_peep (rtx first, rtx reg)
             return 1;
 	}
     }
-
+#endif
   /* No conclusive evidence either way, we cannot take the chance
      that control flow hid the use from us -- "I'm not dead yet".  */
   return 0;
