@@ -4,8 +4,13 @@
 #include <unistd.h>
 #include <propeller.h>
 
-#define C3FLASH
+//#define C3FLASH
 //#define C3SRAM
+
+//#define FLASH_TEST
+//#define BIG_FLASH_TEST
+//#define RAM_TEST
+#define BIG_RAM_TEST
 
 #define INC_PIN     8
 #define MOSI_PIN    9
@@ -29,10 +34,17 @@
 #define TESTDRIVER      binary_spi_sram_xmem_dat_start
 #endif
 
+#ifdef CHIP_ADDR
 #define XMEM_CONFIG1   ((MOSI_PIN << 24) | (MISO_PIN << 16) | (CLK_PIN << 8) | CS_CLR_PIN_MASK | INC_PIN_MASK | ADDR_MASK)
 #define XMEM_CONFIG2   ((CLR_PIN << 24) | (INC_PIN << 16) | CHIP_ADDR)
 #define XMEM_CONFIG3   0
 #define XMEM_CONFIG4   0
+#else
+#define XMEM_CONFIG1   0
+#define XMEM_CONFIG2   0
+#define XMEM_CONFIG3   0
+#define XMEM_CONFIG4   0
+#endif
 
 #define CS_CLR_PIN_MASK     0x01    // if is set, then byte aa contains the CS or C3-style CLR pin number
 #define INC_PIN_MASK        0x02    // if is set, then byte bb contains the C3-style INC pin number
@@ -43,6 +55,8 @@
 
 #define BUF_SIZE        1024
 #define BUF_SIZE32      (BUF_SIZE / sizeof(uint32_t))
+#define BUF_SIZE_CODE   XMEM_SIZE_1024
+#define BUF_COUNT       (32768 / BUF_SIZE)
 
 /* for the c3 */
 #define LED_PIN         15
@@ -113,95 +127,105 @@ int main(void)
 
 #endif
 
-#if 1
+#ifdef FLASH_TEST
 
 {
-    uint32_t base_addr, addr, base_value, value;
-    int i, j;
+    int start, i, j;
     
     printf("Flash test\n");
     
-    base_addr = ROM_BASE;
     srand(CNT);
-    base_value = rand();
-    printf("Starting with %08x\n", base_value);
-    
-    addr = base_addr;
-    value = base_value;
-    for (j = 0; j < 64; ++j) {
-        for (i = 0; i < BUF_SIZE32; ++i)
-            buf[i] = value++;
-        writeBlock(addr, buf, XMEM_SIZE_1024);
-        addr += 1024;
+    start = rand();
+    printf("Starting with %08x\n", start);
+    for (i = 0, j = start; i < BUF_SIZE32; ++i)
+        buf[i] = j++;
+    writeBlock(0, buf, BUF_SIZE_CODE);
+    memset(buf, 0, sizeof(buf));
+    readBlock(ROM_BASE, buf, BUF_SIZE_CODE);
+    for (i = 0, j = start; i < BUF_SIZE32; ++i) {
+        if (buf[i] != j++)
+            printf("%08x: expected %08x, found %08x\n", i, j - 1, buf[i]);
     }
-    
-    addr = base_addr;
-    value = base_value;
-    for (j = 0; j < 64; ++j) {
-        readBlock(addr, buf, XMEM_SIZE_1024);
-        for (i = 0; i < BUF_SIZE32; ++i)
-            if (buf[i] != value++)
-                printf("%08x: expected %08x, found %08x\n", addr + i * sizeof(uint32_t), value - 1, buf[i]);
-        addr += 1024;
-    }
-        
+
     printf("done\n");
 }
 
 #endif
 
-#if 1
+#ifdef BIG_FLASH_TEST
 
 {
-    uint32_t base_addr, addr, base_value, value;
+    uint32_t addr, startValue, value;
     int i, j;
     
-    printf("Inverted flash test\n");
-    
-    base_addr = ROM_BASE;
+    printf("Big flash test\n");
+
+    addr = ROM_BASE;
     srand(CNT);
-    base_value = rand();
-    printf("Starting with %08x\n", base_value);
-    
-    addr = base_addr;
-    value = base_value;
-    for (j = 0; j < 64; ++j) {
-        for (i = 0; i < BUF_SIZE32; ++i)
-            buf[i] = ~(value++);
-        writeBlock(addr, buf, XMEM_SIZE_1024);
-        addr += 1024;
+    startValue = value = addr + rand();
+    printf("Start value %08x\n", startValue);
+    printf("Filling flash\n");
+    for (j = 0; j < BUF_COUNT; ++j) {
+        uint32_t startAddr = addr;
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            buf[i] = value++;
+        //printf("Writing %08x\n", ROM_BASE + startAddr);
+        writeBlock(startAddr, buf, BUF_SIZE_CODE);
     }
     
-    addr = base_addr;
-    value = base_value;
-    for (j = 0; j < 64; ++j) {
-        readBlock(addr, buf, XMEM_SIZE_1024);
-        for (i = 0; i < BUF_SIZE32; ++i)
-            if (buf[i] != ~(value++))
-                printf("%08x: expected %08x, found %08x\n", addr + i * sizeof(uint32_t), ~(value - 1), buf[i]);
-        addr += 1024;
+    printf("Checking flash\n");
+    addr = ROM_BASE;
+    value = startValue;
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
+        readBlock(addr, buf, BUF_SIZE_CODE);
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            if (buf[i] != value++)
+                printf("%08x: expected %08x, found %08x\n", addr, value - 1, buf[i]);
     }
-        
+
+    addr = ROM_BASE;
+    value = startValue;
+    printf("Filling flash inverted\n");
+    for (j = 0; j < BUF_COUNT; ++j) {
+        uint32_t startAddr = addr;
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            buf[i] = ~value++;
+        //printf("Writing %08x\n", ROM_BASE + startAddr);
+        writeBlock(startAddr, buf, BUF_SIZE_CODE);
+    }
+    
+    addr = ROM_BASE;
+    value = startValue;
+    printf("Checking flash inverted\n");
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
+        readBlock(addr, buf, BUF_SIZE_CODE);
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            if (buf[i] != ~value++)
+                printf("%08x: expected %08x, found %08x\n", addr, ~(value - 1), buf[i]);
+    }
+
     printf("done\n");
 }
 
 #endif
 
-#if 0
+#ifdef RAM_TEST
 
 {
     int i;
 
-    printf("Small RAM test\n");
+    printf("RAM test\n");
     
-    for (i = 0; i < 32; ++i)
+    for (i = 0; i < BUF_SIZE32; ++i)
         buf[i] = 0xbeef0000 + i;
-    writeBlock(RAM_BASE, buf, XMEM_SIZE_128);
+    writeBlock(RAM_BASE, buf, BUF_SIZE_CODE);
     
     memset(buf, 0, sizeof(buf));
     
-    readBlock(RAM_BASE, buf, XMEM_SIZE_128);
-    for (i = 0; i < 32; ++i)
+    readBlock(RAM_BASE, buf, BUF_SIZE_CODE);
+    for (i = 0; i < BUF_SIZE32; ++i)
         printf("buf[%d] = %08x\n", i, buf[i]);
 
     printf("done\n");
@@ -209,32 +233,58 @@ int main(void)
 
 #endif
         
-#if 0
+#ifdef BIG_RAM_TEST
 
 {
-    uint32_t addr;
+    uint32_t addr, startValue, value;
     int i, j;
     
     printf("Big RAM test\n");
 
-    printf("Filling RAM\n");
     addr = RAM_BASE;
-    for (j = 0; j < 8; ++j) {
+    srand(CNT);
+    startValue = value = addr + rand();
+    printf("Start value %08x\n", startValue);
+    printf("Filling RAM\n");
+    for (j = 0; j < BUF_COUNT; ++j) {
         uint32_t startAddr = addr;
-        for (i = 0; i < 256; ++i, addr += sizeof(uint32_t))
-            buf[i] = addr;
-        printf("Writing %08x\n", startAddr);
-        writeBlock(startAddr, buf, XMEM_SIZE_1024);
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            buf[i] = value++;
+        //printf("Writing %08x\n", startAddr);
+        writeBlock(startAddr, buf, BUF_SIZE_CODE);
     }
     
     printf("Checking RAM\n");
     addr = RAM_BASE;
-    for (j = 0; j < 8; ++j) {
-        printf("Reading %08x\n", addr);
-        readBlock(addr, buf, XMEM_SIZE_1024);
-        for (i = 0; i < 256; ++i, addr += sizeof(uint32_t))
-            if (buf[i] != addr)
-                printf("%08x: expected %08x, found %08x\n", addr, addr, buf[i]);
+    value = startValue;
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
+        readBlock(addr, buf, BUF_SIZE_CODE);
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            if (buf[i] != value++)
+                printf("%08x: expected %08x, found %08x\n", addr, value - 1, buf[i]);
+    }
+
+    printf("Filling RAM inverted\n");
+    addr = RAM_BASE;
+    value = startValue;
+    for (j = 0; j < BUF_COUNT; ++j) {
+        uint32_t startAddr = addr;
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            buf[i] = ~value++;
+        //printf("Writing %08x\n", startAddr);
+        writeBlock(startAddr, buf, BUF_SIZE_CODE);
+    }
+    
+    printf("Checking RAM inverted\n");
+    addr = RAM_BASE;
+    value = startValue;
+    for (j = 0; j < BUF_COUNT; ++j) {
+        //printf("Reading %08x\n", addr);
+        readBlock(addr, buf, BUF_SIZE_CODE);
+        for (i = 0; i < BUF_SIZE32; ++i, addr += sizeof(uint32_t))
+            if (buf[i] != ~value++)
+                printf("%08x: expected %08x, found %08x\n", addr, ~(value - 1), buf[i]);
     }
 
     printf("done\n");
