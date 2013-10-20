@@ -32,33 +32,13 @@
   THE SOFTWARE.
 }
 
-CON
-
-PUB image
-  return @init_xmem
-
-DAT
-        org   $0
+#include "xmem_common.spin"
 
 ' xmem_param1: $ssxxccee - ss=sio0 cc=sck ee=cs
 
-init_xmem
-        jmp     #init_continue
-        
-xmem_param1
-        long    0
-xmem_param2
-        long    0
-xmem_param3
-        long    0
-xmem_param4
-        long    0
-        
-init_continue
+DAT
 
-        ' cmdbase is the base of an array of mailboxes
-        mov     cmdbase, par
-        
+init
         ' setup pin masks
         
         ' 31:24 is the SIO0 PIN
@@ -117,46 +97,9 @@ init_continue
         or      pindir, sio_mask
         andn    pinout, sio_mask
         call    #release
-
-        ' start the command loop
-waitcmd mov     dira, #0                ' release the pins for other SPI clients
-:reset  mov     cmdptr, cmdbase
-:loop   rdlong  t1, cmdptr wz
-  if_z  jmp     #:next                  ' skip this mailbox if it's zero
-        cmp     t1, #$8 wz              ' check for the end of list marker
-  if_z  jmp     #:reset
-        mov     hubaddr, t1             ' get the hub address
-        andn    hubaddr, #$f
-        mov     t2, cmdptr              ' get the external address
-        add     t2, #4
-        rdlong  extaddr, t2
-        mov     t2, t1                  ' get the byte count
-        and     t2, #7
-        mov     count, #8
-        shl     count, t2
-        mov     dira, pindir            ' setup the pins so we can use them
-        test    t1, #$8 wz              ' check the write flag
-  if_z  jmp     #:read                  ' do read if the flag is zero
-        call    #write_bytes            ' do write if the flag is one
-        jmp     #:done
-:read   call    #read_bytes
-:done   mov     dira, #0                ' release the pins for other SPI clients
-        wrlong  zero, cmdptr
-:next   add     cmdptr, #8
-        jmp     #:loop
-
-' pointers to mailbox array
-cmdbase long    0       ' base of the array of mailboxes
-cmdptr  long    0       ' pointer to the current mailbox
-
-' input parameters to read_bytes and write_bytes
-extaddr long    0       ' external address
-hubaddr long    0       ' hub address
-count   long    0
-
-zero    long    0       ' zero constant
-t1      long    0       ' temporary variable
-t2      long    0       ' temporary variable
+        
+init_ret
+        ret
 
 '----------------------------------------------------------------------------------------------------
 '
