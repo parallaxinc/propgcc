@@ -71,10 +71,6 @@ typedef struct {
 /* DAT header in flash_loader2.spin */
 typedef struct {
     uint32_t xmem_geometry;
-    uint32_t xmem_param1;
-    uint32_t xmem_param2;
-    uint32_t xmem_param3;
-    uint32_t xmem_param4;
     uint32_t vm_code_off;
     uint32_t cache_code_off;
 } FlashLoader2DatHdr;
@@ -1021,7 +1017,7 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
     /* copy the vm image to the binary file */
     memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
     
-    /* patch the cache driver with its initialization parameters */
+    /* patch the external memory driver with its initialization parameters */
     if (GetNumericConfigField(config, "xmem-param1", &ivalue))
         xmem[1] = ivalue;
     if (GetNumericConfigField(config, "xmem-param2", &ivalue))
