@@ -656,20 +656,20 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     uint32_t loadAddress;
     int helper_size;
     
-    /* check for a cache driver for loading the external image */
-    if (!(cacheDriver = GetConfigField(config, ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN ? "cache-driver" : "xmem-driver")))
-        return Error("no cache driver to load external image");
-    
     /* build the external image */
     if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        if (!(cacheDriver = GetConfigField(config,  "cache-driver")))
+            return Error("no cache driver to load external image");
         if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
             return FALSE;
     }
     else {
+        if (!(cacheDriver = GetConfigField(config, "xmem-driver")))
+            return Error("no external memory driver to load external image");
         if (!(imagebuf = BuildExternalImage2(config, c, &loadAddress, &imageSize)))
             return FALSE;
     }
-        
+    
     /* get the target memory space */
     if ((value = GetConfigField(config, "load-target")) != NULL) {
         if (strcasecmp(value, "flash") == 0)
@@ -786,28 +786,29 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         }
     }
     
-    /* this branch handles the new external memory drivers where the tag handling is in the kernel */
+    /* this branch handles the external memory drivers where the tag handling is in the kernel */
     else {
-        uint32_t params[5];
+        uint32_t *xmem = (uint32_t *)cacheDriverImage;
+        uint32_t params[1];
         memset(params, 0, sizeof(params));
-        if (GetNumericConfigField(config, "xmem-geometry", &ivalue))
+        if (GetNumericConfigField(config, "cache-geometry", &ivalue))
             params[0] = ivalue;
         if (GetNumericConfigField(config, "xmem-param1", &ivalue))
-            params[1] = ivalue;
+            xmem[1] = ivalue;
         if (GetNumericConfigField(config, "xmem-param2", &ivalue))
-            params[2] = ivalue;
+            xmem[2] = ivalue;
         if (GetNumericConfigField(config, "xmem-param3", &ivalue))
-            params[3] = ivalue;
+            xmem[3] = ivalue;
         if (GetNumericConfigField(config, "xmem-param4", &ivalue))
-            params[4] = ivalue;
+            xmem[4] = ivalue;
     
-        /* load the cache driver */
-        printf("Loading cache driver '%s'\n", cacheDriver);
+        /* load the external memory driver */
+        printf("Loading external memory driver '%s'\n", cacheDriver);
         if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
         ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
         ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
             free(imagebuf);
-            return Error("Loading cache driver failed");
+            return Error("Loading external memory driver failed");
         }
     }
             
@@ -1001,6 +1002,7 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
     SpinObj *obj = (SpinObj *)(flash_loader2_array + hdr->pbase);
     FlashLoader2DatHdr *dat = (FlashLoader2DatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t xmemDriverImage[COG_IMAGE_MAX];
+    uint32_t *xmem = (uint32_t *)xmemDriverImage;
     int imageSize, ivalue;
     char *xmemDriver;
     
@@ -1019,20 +1021,22 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
     /* copy the vm image to the binary file */
     memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
     
-    /* copy the cache driver image to the binary file */
+    /* patch the cache driver with its initialization parameters */
+    if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+        xmem[1] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+        xmem[2] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+        xmem[3] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+        xmem[4] = ivalue;
+
+    /* copy the external memory driver image to the flash loader image */
     memcpy((uint8_t *)dat + dat->cache_code_off, xmemDriverImage, imageSize);
     
-    /* get the cache size */
-    if (GetNumericConfigField(config, "xmem-geometry", &ivalue))
+    /* get the cache geometry */
+    if (GetNumericConfigField(config, "cache-geometry", &ivalue))
         dat->xmem_geometry = ivalue;
-    if (GetNumericConfigField(config, "xmem-param1", &ivalue))
-        dat->xmem_param1 = ivalue;
-    if (GetNumericConfigField(config, "xmem-param2", &ivalue))
-        dat->xmem_param2 = ivalue;
-    if (GetNumericConfigField(config, "xmem-param3", &ivalue))
-        dat->xmem_param3 = ivalue;
-    if (GetNumericConfigField(config, "xmem-param4", &ivalue))
-        dat->xmem_param4 = ivalue;
     
     /* recompute the checksum */
     UpdateChecksum(flash_loader2_array, flash_loader2_size);

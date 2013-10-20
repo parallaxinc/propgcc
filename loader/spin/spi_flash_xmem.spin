@@ -48,10 +48,8 @@ PUB image
 DAT
         org   $0
 
-' initialization structure offsets
-' $0: pointer to an array of mailboxes terminated by a long containing $00000008
-' $4: $ooiiccee - oo=mosi ii=miso cc=sck pp=protocol
-' $8: $aabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
+' xmem_param1: $ooiiccee - oo=mosi ii=miso cc=sck pp=protocol
+' xmem_param2: $aabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' the protocol byte is a bit mask with the bits defined above
 '   if CS_CLR_PIN_MASK ($01) is set, then byte aa contains the CS or C3-style CLR pin number
 '   if INC_PIN_MASK ($02) is set, then byte bb contains the C3-style INC pin number
@@ -63,90 +61,92 @@ DAT
 '   for a simple single pin CS you should set the protocol byte to $01 and place the CS pin number in byte aa.
 
 init_xmem
-        mov     t1, par             ' get the address of the initialization structure
-        rdlong  cmdbase, t1         ' cmdbase is the base of an array of mailboxes
-        add     t1, #4
+        jmp     #init_continue
+        
+xmem_param1
+        long    0
+xmem_param2
+        long    0
+xmem_param3
+        long    0
+xmem_param4
+        long    0
+        
+init_continue
 
-        ' get the pin definitions
-        rdlong  t2, t1
-        add     t1, #4
+        ' cmdbase is the base of an array of mailboxes
+        mov     cmdbase, par
 
         ' build the mosi mask
-        mov     mosi_pin, t2
+        mov     mosi_pin, xmem_param1
         shr     mosi_pin, #24
         mov     mosi_mask, #1
         shl     mosi_mask, mosi_pin
         or      spidir, mosi_mask
         
         ' build the miso mask
-        mov     t3, t2
-        shr     t3, #16
-        and     t3, #$ff
+        mov     t1, xmem_param1
+        shr     t1, #16
+        and     t1, #$ff
         mov     miso_mask, #1
-        shl     miso_mask, t3
+        shl     miso_mask, t1
         
         ' make the sio2 and sio3 pins outputs in single spi mode to assert /WP and /HOLD
-        test    t2, #QUAD_SPI_HACK_MASK wz
-  if_nz mov     t3, #$0c
-  if_nz shl     t3, mosi_pin
-  if_nz or      spidir, t3
-  if_nz or      spiout, t3
+        test    xmem_param1, #QUAD_SPI_HACK_MASK wz
+  if_nz mov     t1, #$0c
+  if_nz shl     t1, mosi_pin
+  if_nz or      spidir, t1
+  if_nz or      spiout, t1
         
         ' build the sck mask
-        mov     t3, t2
-        shr     t3, #8
-        and     t3, #$ff
+        mov     t1, xmem_param1
+        shr     t1, #8
+        and     t1, #$ff
         mov     sck_mask, #1
-        shl     sck_mask, t3
+        shl     sck_mask, t1
         or      spidir, sck_mask
         
-        ' get the cs protocol selector bits
-        rdlong  t3, t1
-        
         ' handle the CS or C3-style CLR pins
-        test    t2, #CS_CLR_PIN_MASK wz
-  if_nz mov     t4, t3
-  if_nz shr     t4, #24
+        test    xmem_param1, #CS_CLR_PIN_MASK wz
+  if_nz mov     t2, xmem_param2
+  if_nz shr     t2, #24
   if_nz mov     cs_clr, #1
-  if_nz shl     cs_clr, t4
+  if_nz shl     cs_clr, t2
   if_nz or      spidir, cs_clr
   if_nz or      spiout, cs_clr
   
         ' handle the mux width
-        test    t2, #MUX_WIDTH_MASK wz
-  if_nz mov     t4, t3
-  if_nz shr     t4, #8
-  if_nz and     t4, #$ff
+        test    xmem_param1, #MUX_WIDTH_MASK wz
+  if_nz mov     t2, xmem_param2
+  if_nz shr     t2, #8
+  if_nz and     t2, #$ff
   if_nz mov     mask_inc, #1
-  if_nz shl     mask_inc, t4
+  if_nz shl     mask_inc, t2
   if_nz sub     mask_inc, #1
   if_nz or      spidir, mask_inc
   
         ' handle the C3-style address or mux value
-        test    t2, #ADDR_MASK wz
-  if_nz mov     select_addr, t3
+        test    xmem_param1, #ADDR_MASK wz
+  if_nz mov     select_addr, xmem_param2
   if_nz and     select_addr, #$ff
 
         ' handle the C3-style INC pin
-        mov     t4, t3
-        shr     t4, #16
-        and     t4, #$ff
-        test    t2, #INC_PIN_MASK wz
+        mov     t2, xmem_param2
+        shr     t2, #16
+        and     t2, #$ff
+        test    xmem_param1, #INC_PIN_MASK wz
   if_nz mov     mask_inc, #1
-  if_nz shl     mask_inc, t4
+  if_nz shl     mask_inc, t2
   if_nz mov     select, c3_select_jmp       ' We're in C3 mode, so replace select/release
   if_nz mov     release, c3_release_jmp     ' with the C3-aware routines
   if_nz or      spidir, mask_inc
  
         ' handle the mux start bit (must follow setting of select_addr and mask_inc)
-        test    t2, #MUX_START_BIT_MASK wz
-  if_nz shl     select_addr, t4
-  if_nz shl     mask_inc, t4
+        test    xmem_param1, #MUX_START_BIT_MASK wz
+  if_nz shl     select_addr, t2
+  if_nz shl     mask_inc, t2
   if_nz or      spidir, mask_inc
   
-        ' signal that we're done with initialization
-        wrlong  zero, PAR
-        
         ' set the pin directions
         mov     outa, spiout
         mov     dira, spidir
@@ -190,7 +190,6 @@ zero            long    0       ' zero constant
 t1              long    0       ' temporary variable
 t2              long    0       ' temporary variable
 t3              long    0       ' temporary variable
-t4              long    0       ' temporary variable
 
 '----------------------------------------------------------------------------------------------------
 '

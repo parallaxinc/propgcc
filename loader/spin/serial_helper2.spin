@@ -103,10 +103,6 @@ PRI VM_INIT_handler
 
 PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_size, param1, param2, param3, param4, cogn
   p_cache_geometry := long[packet]
-  param1 := long[packet+4]
-  param2 := long[packet+8]
-  param3 := long[packet+12]
-  param4 := long[packet+16]
   index_width := p_cache_geometry >> 8
   offset_width := p_cache_geometry & $ff
   tags_size := (1 << index_width) * 4
@@ -118,7 +114,7 @@ PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_siz
   p_cache_lines := hub_memory_size - cache_size
   p_cache_tags := p_cache_lines - tags_size
   p_cache_mbox := p_cache_tags - cache#_MBOX2_SIZE * 4 - 4
-  cogn := cache.start2(mm_data_ptr, p_cache_mbox, 1, param1, param2, param3, param4)
+  cogn := cache.start2(mm_data_ptr, p_cache_mbox, 1)
 #ifdef TV_DEBUG
   tv.str(string(" -> "))
   tv.dec(cogn)
