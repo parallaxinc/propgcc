@@ -32,43 +32,7 @@
   THE SOFTWARE.
 }
 
-#define PMC
-'#define DNA
-'#define RAMPAGE2
-
 CON
-#ifdef PMC
-    START_PIN = 0
-    SIO0_PIN = START_PIN
-    MOSI_PIN = SIO0_PIN
-    MISO_PIN = SIO0_PIN + 1
-    NC_PIN = SIO0_PIN + 2
-    HOLD_PIN = SIO0_PIN + 3
-    SD_CS_PIN = START_PIN + 4
-    FLASH_CS_PIN = START_PIN + 5
-    SRAM_CS_PIN = START_PIN + 6
-    SCK_PIN = START_PIN + 7
-#endif
-#ifdef DNA
-    START_PIN = 22
-    SIO0_PIN = START_PIN
-    MOSI_PIN = SIO0_PIN
-    MISO_PIN = SIO0_PIN + 1
-    NC_PIN = SIO0_PIN + 2
-    HOLD_PIN = SIO0_PIN + 3
-    SCK_PIN = START_PIN + 4
-    SRAM_CS_PIN = START_PIN + 5
-#endif
-#ifdef RAMPAGE2
-    START_PIN = 0
-    SIO0_PIN = START_PIN
-    MOSI_PIN = SIO0_PIN
-    MISO_PIN = SIO0_PIN + 1
-    NC_PIN = SIO0_PIN + 2
-    HOLD_PIN = SIO0_PIN + 3
-    SCK_PIN = 8
-    SRAM_CS_PIN = 10
-#endif
 
 PUB image
   return @init_xmem
@@ -76,14 +40,63 @@ PUB image
 DAT
         org   $0
 
-init_xmem
-        mov     t1, par             ' get the address of the initialization structure
-        rdlong  cmdbase, t1         ' cmdbase is the base of an array of mailboxes
-        add     t1, #4
+' xmem_param1: $ssxxccee - ss=sio0 cc=sck ee=cs
 
-        ' signal that we're done with initialization
-        wrlong  zero, PAR
+init_xmem
+        jmp     #init_continue
         
+xmem_param1
+        long    0
+xmem_param2
+        long    0
+xmem_param3
+        long    0
+xmem_param4
+        long    0
+        
+init_continue
+
+        ' cmdbase is the base of an array of mailboxes
+        mov     cmdbase, par
+        
+        ' setup pin masks
+        
+        ' 31:24 is the SIO0 PIN
+        mov     sio_shift, xmem_param1
+        shr     sio_shift, #24
+        mov     mosi_mask, #1
+        shl     mosi_mask, sio_shift
+        mov     miso_mask, mosi_mask
+        shl     miso_mask, #1
+        mov     sio_mask, #$f
+        shl     sio_mask, sio_shift
+        
+        ' 15:8 is the SCK pin
+        mov     t1, xmem_param1
+        shr     t1, #8
+        and     t1, #$ff
+        mov     sck_mask, #1
+        shl     sck_mask, t1
+        
+        ' 7:0 is the CS pin
+        mov     t1, xmem_param1
+        and     t1, #$ff
+        mov     cs_mask, #1
+        shl     cs_mask, t1
+        
+        ' make the pin settings
+        or      pindir, mosi_mask
+        or      pindir, sck_mask
+        or      pindir, cs_mask
+        or      pinout, cs_mask
+        mov     t1, mosi_mask       ' setup /WE and /HOLD
+        shl     t1, #2
+        or      pindir, t1
+        or      pinout, t1
+        shl     t1, #1
+        or      pindir, t1
+        or      pinout, t1
+
         ' set the pin directions
         call    #release
         
@@ -308,15 +321,15 @@ sqiRecvByte_ret
 data        long    0
 bits        long    0
 
-pindir      long    (1 << MOSI_PIN) | (1 << SCK_PIN) | (1 << NC_PIN) | (1 << HOLD_PIN) | (1 << SRAM_CS_PIN)
-pinout      long    (1 << NC_PIN) | (1 << HOLD_PIN) | (1 << SRAM_CS_PIN)
+pindir      long    0
+pinout      long    0
 
-cs_mask     long    1 << SRAM_CS_PIN
-sio_shift   long    SIO0_PIN
-sio_mask    long    $f << SIO0_PIN
-mosi_mask   long    1 << MOSI_PIN
-miso_mask   long    1 << MISO_PIN
-sck_mask    long    1 << SCK_PIN
+cs_mask     long    0
+sio_shift   long    0
+sio_mask    long    0
+mosi_mask   long    0
+miso_mask   long    0
+sck_mask    long    0
 
 ' spi commands
 sram_read   long    $03000000       ' read command

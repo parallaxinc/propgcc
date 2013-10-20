@@ -23,7 +23,7 @@ PUB start | index_width, offset_width, tags_size, cache_size, cache_lines, cache
   xmem_mbox := cache_tags - cache#_MBOX2_SIZE * 4 - 4
   
   ' start the external memory driver
-  cache.start2(@xmem_code, xmem_mbox, 1, p_xmem_param1, p_xmem_param2, p_xmem_param3, p_xmem_param4)
+  cache.start2(@xmem_code, xmem_mbox, 1)
 
   ' setup the stack
   ' at start stack contains xmem_mbox, cache_tags, cache_lines, cache_geometry, pc
@@ -46,10 +46,6 @@ DAT
 
 ' parameters filled in before downloading flash_loader2.binary
 p_cache_geometry    long    0
-p_xmem_param1       long    0
-p_xmem_param2       long    0
-p_xmem_param3       long    0
-p_xmem_param4       long    0
 p_vm_code_off       long    @vm_code - @p_cache_geometry
 p_xmem_code_off     long    @xmem_code - @p_cache_geometry
 

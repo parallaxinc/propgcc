@@ -27,8 +27,8 @@
         .global __LMM_entry
 __LMM_entry
 r0      jmp     #__LMM_init ' kernel extension .start.kerext is already in place
-r1      long    0	    ' note: subsequent COGs will start with different
-r2      long    0	    ' initialization code, set up by the clone routines
+r1      long    0           ' note: subsequent COGs will start with different
+r2      long    0           ' initialization code, set up by the clone routines
 r3      long    0
 r4      long    0
 r5      long    0
@@ -46,27 +46,27 @@ lr      long    0
 sp      long    0
 pc      long    0
 #if defined(DEBUG_KERNEL)
-	.global __ccr__
+        .global __ccr__
 __ccr__
 #endif
 ccr     long    0
 
 #if defined(DEBUG_KERNEL)
-	''
-	'' there are two "hardware" breakpoints, hwbkpt0 and hwbkpt1
-	'' these are useful because XMM code often executes from ROM
-	'' or flash where normal software breakpoints are difficult or
-	'' impossible to place
+        ''
+        '' there are two "hardware" breakpoints, hwbkpt0 and hwbkpt1
+        '' these are useful because XMM code often executes from ROM
+        '' or flash where normal software breakpoints are difficult or
+        '' impossible to place
 
-hwbkpt0	long	0
-	'' register 20 needs to be the breakpoint command
-	'' the instruction at "Breakpoint" should be whatever
-	'' the debugger should use as a breakpoint instruction
+hwbkpt0 long    0
+        '' register 20 needs to be the breakpoint command
+        '' the instruction at "Breakpoint" should be whatever
+        '' the debugger should use as a breakpoint instruction
 Breakpoint
-	call	#__EnterLMMBreakpoint
+        call    #__EnterLMMBreakpoint
 
-hwbkpt1	long 0		'' only available in XMM
-	
+hwbkpt1 long 0          '' only available in XMM
+        
 #endif
         ''
         '' main LMM loop -- read instructions from hub memory
@@ -75,26 +75,26 @@ hwbkpt1	long 0		'' only available in XMM
 
 #if defined(DEBUG_KERNEL)
 __LMM_loop
-	muxc	ccr, #1
-	muxnz	ccr, #2
+        muxc    ccr, #1
+        muxnz   ccr, #2
 #if defined(__PROPELLER2__)
-	getp	rxpin wz	' check for low on RX
+        getp    rxpin wz        ' check for low on RX
 #else
-	and	rxbit,ina nr,wz	' check for low on RX
+        and     rxbit,ina nr,wz ' check for low on RX
 #endif
-  if_z	call	#__EnterDebugger
-	test	ccr, #COGFLAGS_STEP wz
-  if_nz call	#__EnterDebugger
-	cmp	pc, hwbkpt0 wz
-  if_z  call	#__EnterDebugger
-	cmp	pc, hwbkpt1 wz
-  if_z  call	#__EnterDebugger
+  if_z  call    #__EnterDebugger
+        test    ccr, #COGFLAGS_STEP wz
+  if_nz call    #__EnterDebugger
+        cmp     pc, hwbkpt0 wz
+  if_z  call    #__EnterDebugger
+        cmp     pc, hwbkpt1 wz
+  if_z  call    #__EnterDebugger
 
-	call	#read_code
-	add	pc,#4
-	shr	ccr, #1 wc,wz,nr	'' restore flags
-L_ins0	nop
-	jmp	#__LMM_loop
+        call    #read_code
+        add     pc,#4
+        shr     ccr, #1 wc,wz,nr        '' restore flags
+L_ins0  nop
+        jmp     #__LMM_loop
 #else
 __LMM_loop
         call    #read_code
@@ -631,12 +631,12 @@ __CMPSWAPSI_ret
         .global __LMM_FCACHE_START
 __LMM_FCACHE_START
 #if defined(DEBUG_KERNEL)
-	res	16	'' token amount, not really useful in debug
+        res     16      '' token amount, not really useful in debug
 #else
         res     64      '' reserve 64 longs = 256 bytes
 #endif
 
         #include "kernel.ext"
 #ifdef DEBUG_KERNEL
-	#include "cogdebug.ext"
+        #include "cogdebug.ext"
 #endif

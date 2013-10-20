@@ -212,7 +212,8 @@ $(DRVDIR)/rampage2_cache.dat \
 $(DRVDIR)/sst_spi_flash_xmem.dat \
 $(DRVDIR)/winbond_spi_flash_xmem.dat \
 $(DRVDIR)/spi_sram_xmem.dat \
-$(DRVDIR)/spi_sram24_xmem.dat
+$(DRVDIR)/spi_sram24_xmem.dat \
+$(DRVDIR)/sqi_sram_xmem.dat
 
 #################
 # OTHER DRIVERS #

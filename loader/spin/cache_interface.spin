@@ -54,13 +54,12 @@ CON
   CMD_MASK              = %11
   EXTEND_MASK           = %10   ' this bit must be zero for an extended command
   
-  ' external memory driver initialization structure
-  INIT2_MBOX            = 0     ' cache line mask should be returned here
-  INIT2_CONFIG_1        = 1     ' driver specific configuration
-  INIT2_CONFIG_2        = 2     ' driver specific configuration
-  INIT2_CONFIG_3        = 3
-  INIT2_CONFIG_4        = 4
-  _INIT2_SIZE           = 5
+  ' external memory driver header structure
+  HEADER2_JMP           = 0     ' jump around parameters
+  HEADER2_CONFIG_1      = 1     ' driver specific configuration
+  HEADER2_CONFIG_2      = 2
+  HEADER2_CONFIG_3      = 3
+  HEADER2_CONFIG_4      = 4
 
   ' external memory driver mailbox structure
   MBOX2_HUBADDR         = 0
@@ -98,18 +97,11 @@ PUB start(code, mbox, cache, config1, config2, config3, config4) | params[_INIT_
     vm_linemask := params[0]
     return vm_linemask
 
-PUB start2(code, mboxes, count, config1, config2, config3, config4) | params[_INIT2_SIZE], cogn
+PUB start2(code, mboxes, count)
     vm_mbox := mboxes ' use the first mailbox for now
     longfill(mboxes, 0, count * _MBOX2_SIZE)
     long[mboxes][count * _MBOX2_SIZE] := MBOX2_END
-    params[INIT2_MBOX] := mboxes
-    params[INIT2_CONFIG_1] := config1
-    params[INIT2_CONFIG_2] := config2
-    params[INIT2_CONFIG_3] := config3
-    params[INIT2_CONFIG_4] := config4
-    cogn := cognew(code, @params)
-    repeat while params[INIT2_MBOX]
-    return cogn
+    return cognew(code, mboxes)
 
 pub readLong(madr)
     long[vm_mbox][0] := (madr&!CMD_MASK) | READ_CMD

@@ -4,54 +4,51 @@
 #include <unistd.h>
 #include <propeller.h>
 
-//#define C3FLASH
-//#define C3SRAM
+//#define PMC
+#define DNA
+//#define RAMPAGE2
 
 //#define FLASH_TEST
 //#define BIG_FLASH_TEST
 //#define RAM_TEST
 #define BIG_RAM_TEST
 
-#define INC_PIN     8
-#define MOSI_PIN    9
-#define MISO_PIN    10
-#define CLK_PIN     11
-#define CLR_PIN     25
-
-#define SRAM1_ADDR  1
-#define SRAM2_ADDR  2
-#define FLASH_ADDR  3
-
-#if defined(C3FLASH)
-#define TESTDRIVER      binary_spi_flash_xmem_dat_start
-#define CHIP_ADDR       FLASH_ADDR
-#elif defined(C3SRAM)
-#define TESTDRIVER      binary_spi_sram_xmem_dat_start
-#define CHIP_ADDR       SRAM1_ADDR
-#endif
-
 #ifndef TESTDRIVER
 #define TESTDRIVER      binary_spi_sram_xmem_dat_start
 #endif
 
-#ifdef CHIP_ADDR
-#define XMEM_CONFIG1   ((MOSI_PIN << 24) | (MISO_PIN << 16) | (CLK_PIN << 8) | CS_CLR_PIN_MASK | INC_PIN_MASK | ADDR_MASK)
-#define XMEM_CONFIG2   ((CLR_PIN << 24) | (INC_PIN << 16) | CHIP_ADDR)
-#define XMEM_CONFIG3   0
-#define XMEM_CONFIG4   0
-#else
-#define XMEM_CONFIG1   0
-#define XMEM_CONFIG2   0
-#define XMEM_CONFIG3   0
-#define XMEM_CONFIG4   0
+#ifdef PMC
+#define START_PIN       0
+#define SIO0_PIN        START_PIN
+#define SRAM_CS_PIN     (START_PIN + 6)
+#define SCK_PIN         (START_PIN + 7)
+#define XMEM_CONFIG1    ((SIO0_PIN << 24) | (SCK_PIN << 8) | SRAM_CS_PIN)
+#define XMEM_CONFIG2    0
+#define XMEM_CONFIG3    0
+#define XMEM_CONFIG4    0
 #endif
 
-#define CS_CLR_PIN_MASK     0x01    // if is set, then byte aa contains the CS or C3-style CLR pin number
-#define INC_PIN_MASK        0x02    // if is set, then byte bb contains the C3-style INC pin number
-#define MUX_START_BIT_MASK  0x04    // if is set, then byte bb contains the starting bit number of the mux field
-#define MUX_WIDTH_MASK      0x08    // if is set, then byte cc contains the width of the mux field
-#define ADDR_MASK           0x10    // if is set, then byte dd contains either the C3-style address or the value to write to the mux field
-#define QUAD_SPI_HACK_MASK  0x20    // if is set, assume that pins miso+1 and miso+2 are /WP and /HOLD and assert them
+#ifdef DNA
+#define START_PIN       22
+#define SIO0_PIN        START_PIN
+#define SCK_PIN         (START_PIN + 4)
+#define SRAM_CS_PIN     (START_PIN + 5)
+#define XMEM_CONFIG1    ((SIO0_PIN << 24) | (SCK_PIN << 8) | SRAM_CS_PIN)
+#define XMEM_CONFIG2    0
+#define XMEM_CONFIG3    0
+#define XMEM_CONFIG4    0
+#endif
+
+#ifdef RAMPAGE2
+#define START_PIN       0
+#define SIO0_PIN        START_PIN
+#define SCK_PIN         8
+#define SRAM_CS_PIN     10
+#define XMEM_CONFIG1    ((SIO0_PIN << 24) | (SCK_PIN << 8) | SRAM_CS_PIN)
+#define XMEM_CONFIG2    0
+#define XMEM_CONFIG3    0
+#define XMEM_CONFIG4    0
+#endif
 
 #define BUF_SIZE        1024
 #define BUF_SIZE32      (BUF_SIZE / sizeof(uint32_t))
@@ -64,24 +61,15 @@
 #define LED_ON()        (OUTA &= ~LED_MASK)
 #define LED_OFF()       (OUTA |= LED_MASK)
 
-/* cache driver initialization structure */
-typedef struct {
-    void *mboxes;           // mailbox array terminated with XMEM_END
-    uint32_t config1;       // driver-specific parameter
-    uint32_t config2;       // driver-specific parameter
-    uint32_t config3;       // driver-specific parameter
-    uint32_t config4;       // driver-specific parameter
-} xmem_init_t;
-
-#define XMEM_WRITE          0x8
-#define XMEM_SIZE_16        0x1
-#define XMEM_SIZE_32        0x2
-#define XMEM_SIZE_64        0x3
-#define XMEM_SIZE_128       0x4
-#define XMEM_SIZE_256       0x5
-#define XMEM_SIZE_512       0x6
-#define XMEM_SIZE_1024      0x7
-#define XMEM_END            0x8
+#define XMEM_WRITE      0x8
+#define XMEM_SIZE_16    0x1
+#define XMEM_SIZE_32    0x2
+#define XMEM_SIZE_64    0x3
+#define XMEM_SIZE_128   0x4
+#define XMEM_SIZE_256   0x5
+#define XMEM_SIZE_512   0x6
+#define XMEM_SIZE_1024  0x7
+#define XMEM_END        0x8
 
 /* cache driver communications mailbox */
 typedef struct {
@@ -90,8 +78,8 @@ typedef struct {
 } xmem_mbox_t;
 
 /* external memory base addresses */
-#define RAM_BASE            0x20000000
-#define ROM_BASE            0x30000000
+#define RAM_BASE        0x20000000
+#define ROM_BASE        0x30000000
 
 /* globals */
 static xmem_mbox_t xmem_mboxes[2];
@@ -297,23 +285,14 @@ int main(void)
 
 int xmemStart(void *code, xmem_mbox_t *mboxes, int count, uint32_t config1, uint32_t config2, uint32_t config3, uint32_t config4)
 {
-    xmem_init_t params;
-    int cogn;
-    
+    uint32_t *xmem = (uint32_t *)code;
     memset(mboxes, 0, sizeof(xmem_mbox_t) * count);
     mboxes[count].hubaddr = XMEM_END;
-    
-    params.mboxes = mboxes;
-    params.config1 = config1;
-    params.config2 = config2;
-    params.config3 = config3;
-    params.config4 = config4;
-    cogn = cognew(code, &params);
-    
-    while (params.mboxes)
-        ;
-
-    return cogn;
+    xmem[1] = config1;
+    xmem[2] = config2;
+    xmem[3] = config3;
+    xmem[4] = config4;
+    return cognew(code, mboxes);
 }
 
 void readBlock(uint32_t extaddr, void *buf, uint32_t size)
@@ -326,7 +305,6 @@ void readBlock(uint32_t extaddr, void *buf, uint32_t size)
         ;
     //LED_OFF();
     //printf("read returned %08x\n", xmem_mbox->addr);
-    //usleep(1);
 }
 
 void writeBlock(uint32_t extaddr, void *buf, uint32_t size)
@@ -339,5 +317,4 @@ void writeBlock(uint32_t extaddr, void *buf, uint32_t size)
         ;
     //LED_OFF();
     //printf("read returned %08x\n", xmem_mbox->addr);
-    //usleep(1);
 }
