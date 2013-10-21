@@ -593,7 +593,6 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
             xmem[3] = ivalue;
         if (GetNumericConfigField(config, "xmem-param4", &ivalue))
             xmem[4] = ivalue;
-        printf("xmem params: %08x %08x %08x %08x\n", xmem[1], xmem[2], xmem[3], xmem[4]);
         memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
     }
     else
