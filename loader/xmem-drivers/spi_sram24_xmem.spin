@@ -34,16 +34,6 @@
 
 #include "xmem_common.spin"
 
-CON
-
-  ' protocol bits
-  CS_CLR_PIN_MASK       = $01
-  INC_PIN_MASK          = $02   ' for C3-style CS
-  MUX_START_BIT_MASK    = $04   ' low order bit of mux field
-  MUX_WIDTH_MASK        = $08   ' width of mux field
-  ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
-  QUAD_SPI_HACK_MASK    = $20   ' set /WE and /HOLD for testing on Quad SPI chips
- 
 ' xmem_param1: $ooiiccee - oo=mosi ii=miso cc=sck pp=protocol
 ' xmem_param2: $aabbccdd - aa=cs-or-clr bb=inc-or-start cc=width dd=addr
 ' the protocol byte is a bit mask with the bits defined above
@@ -56,6 +46,16 @@ CON
 ' example:
 '   for a simple single pin CS you should set the protocol byte to $01 and place the CS pin number in byte aa.
 
+CON
+
+  ' protocol bits
+  CS_CLR_PIN_MASK       = $01   ' for single pin CS or C3-style CS
+  INC_PIN_MASK          = $02   ' for C3-style CS
+  MUX_START_BIT_MASK    = $04   ' low order bit of mux field
+  MUX_WIDTH_MASK        = $08   ' width of mux field
+  ADDR_MASK             = $10   ' device number for C3-style CS or value to write to the mux
+  QUAD_SPI_HACK_MASK    = $20   ' set /WE and /HOLD for testing on Quad SPI chips
+ 
 DAT
 
 init
@@ -90,20 +90,20 @@ init
         
         ' handle the CS or C3-style CLR pins
         test    xmem_param1, #CS_CLR_PIN_MASK wz
-  if_nz mov     t2, xmem_param2
-  if_nz shr     t2, #24
+  if_nz mov     t1, xmem_param2
+  if_nz shr     t1, #24
   if_nz mov     cs_clr, #1
-  if_nz shl     cs_clr, t2
+  if_nz shl     cs_clr, t1
   if_nz or      pindir, cs_clr
   if_nz or      pinout, cs_clr
   
         ' handle the mux width
         test    xmem_param1, #MUX_WIDTH_MASK wz
-  if_nz mov     t2, xmem_param2
-  if_nz shr     t2, #8
-  if_nz and     t2, #$ff
+  if_nz mov     t1, xmem_param2
+  if_nz shr     t1, #8
+  if_nz and     t1, #$ff
   if_nz mov     mask_inc, #1
-  if_nz shl     mask_inc, t2
+  if_nz shl     mask_inc, t1
   if_nz sub     mask_inc, #1
   if_nz or      pindir, mask_inc
   
@@ -113,20 +113,20 @@ init
   if_nz and     select_addr, #$ff
 
         ' handle the C3-style INC pin
-        mov     t2, xmem_param2
-        shr     t2, #16
-        and     t2, #$ff
+        mov     t1, xmem_param2
+        shr     t1, #16
+        and     t1, #$ff
         test    xmem_param1, #INC_PIN_MASK wz
   if_nz mov     mask_inc, #1
-  if_nz shl     mask_inc, t2
+  if_nz shl     mask_inc, t1
   if_nz mov     select, c3_select_jmp       ' We're in C3 mode, so replace select/release
   if_nz mov     release, c3_release_jmp     ' with the C3-aware routines
   if_nz or      pindir, mask_inc
  
         ' handle the mux start bit (must follow setting of select_addr and mask_inc)
         test    xmem_param1, #MUX_START_BIT_MASK wz
-  if_nz shl     select_addr, t2
-  if_nz shl     mask_inc, t2
+  if_nz shl     select_addr, t1
+  if_nz shl     mask_inc, t1
   if_nz or      pindir, mask_inc
   
         ' set the pin directions
