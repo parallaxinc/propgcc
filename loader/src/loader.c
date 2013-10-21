@@ -434,6 +434,8 @@ static void SetSDParams(BoardConfig *config, SDParams *params)
     params->sdspi_config2 = Get_sdspi_config2(config);
 }
 
+#if 0
+
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
     uint8_t driverImage[COG_IMAGE_MAX];
@@ -484,7 +486,6 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         if (strcasecmp(value, "ram") == 0)
             info->flags |= SD_LOAD_RAM;
     }
-    
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find cache driver (.coguser1) segment");
@@ -532,8 +533,112 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     return TRUE;
 }
 
+#else
+
+int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
+{
+    uint8_t driverImage[COG_IMAGE_MAX];
+    int imageSize, driverSize, mode;
+    ElfProgramHdr program;
+    SdLoaderInfo *info;
+    uint8_t *imagebuf;
+    uint32_t start;
+    ElfContext *c;
+    ElfHdr hdr;
+    char *value;
+    int ivalue;
+    FILE *fp;
+    
+    /* open the sd loader executable */
+    if (!(fp = xbOpenFileInPath(sys, path, "rb")))
+        return Error("can't open '%s'", path);
+
+    /* check for an elf file */
+    if (!ReadAndCheckElfHdr(fp, &hdr))
+        return Error("bad elf file '%s'", path);
+
+    /* open the elf file */
+    if (!(c = OpenElfFile(fp, &hdr)))
+        return Error("failed to open elf file");
+        
+    /* build the .binary image */
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, NULL)))
+        return FALSE;
+    
+    if (FindProgramSegment(c, ".coguser0", &program) < 0)
+        return Error("can't find info (.coguser0) segment");
+    
+    info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
+    memset(info, 0, sizeof(SdLoaderInfo));
+    
+    if (GetNumericConfigField(config, "cache-geometry", &ivalue))
+        info->cache_geometry = ivalue;
+    if ((value = GetConfigField(config, "load-target")) != NULL) {
+        if (strcasecmp(value, "ram") == 0)
+            info->flags |= SD_LOAD_RAM;
+    }
+
+    if (FindProgramSegment(c, ".coguser1", &program) < 0)
+        return Error("can't find cache driver (.coguser1) segment");
+
+    if ((value = GetConfigField(config, "xmem-driver")) != NULL) {
+        uint32_t *xmem = (uint32_t *)driverImage;
+        if (!ReadCogImage(sys, value, driverImage, &driverSize))
+            return Error("reading external memory driver image failed: %s", value);
+        if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+            xmem[1] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+            xmem[2] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+            xmem[3] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+            xmem[4] = ivalue;
+        printf("xmem params: %08x %08x %08x %08x\n", xmem[1], xmem[2], xmem[3], xmem[4]);
+        memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+    }
+    else
+        return Error("no external memory driver");
+        
+    if (FindProgramSegment(c, ".coguser2", &program) < 0)
+        return Error("can't find sd_driver (.coguser2) segment");
+    
+    if ((value = GetConfigField(config, "sd-driver")) == NULL)
+        return Error("no sd-driver found in the configuration");
+
+    SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
+    if (!ReadCogImage(sys, value, driverImage, &driverSize))
+        return Error("reading sd driver image failed: %s", value);
+    SetSDParams(config, &dat->sd_params);
+    memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+            
+    /* update the checksum */
+    UpdateChecksum(imagebuf, imageSize);
+
+    /* determine the download mode */
+    if (flags & LFLAG_WRITE_EEPROM)
+        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+    else if (flags & LFLAG_RUN)
+        mode = DOWNLOAD_RUN_BINARY;
+    else
+        return Error("expecting -e and/or -r");
+        
+    /* load the program */
+    if (ploadbuf(path, imagebuf, imageSize, mode) != 0) {
+        free(imagebuf);
+        return Error("load failed");
+    }
+    
+    /* free the image buffer */
+    free(imagebuf);
+
+    return TRUE;
+}
+
+#endif
+
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
+#if 0
     uint8_t driverImage[COG_IMAGE_MAX];
     int imageSize, driverSize, mode;
     ElfProgramHdr program;
@@ -611,6 +716,9 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     free(imagebuf);
 
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
