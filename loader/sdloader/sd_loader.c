@@ -64,7 +64,7 @@ uint32_t __attribute__((section(".coguser2"))) sd_driver_data[496];
 extern unsigned int _load_start_coguser2[];
 
 /* kernel image buffer */
-static uint32_t kernel_image[512];
+static uint8_t kernel_image[2048];
 
 /* sector buffer for loading external memory */
 static uint8_t padded_buffer[SECTOR_SIZE + 15];
@@ -132,7 +132,7 @@ int main(void)
 
 	// read the file header
 	DPRINTF("Reading PEX file header\n");
-	if (GetNextFileSector(&finfo, (uint8_t *)kernel_image, &count) != 0 || count < PEXE_HDR_SIZE) {
+	if (GetNextFileSector(&finfo, kernel_image, &count) != 0 || count < PEXE_HDR_SIZE) {
 	    DPRINTF("Error reading PEX file header\n");
 		return 1;
 	}
@@ -147,7 +147,7 @@ int main(void)
 	load_address = hdr->loadAddress;
 	
 	// move past the header
-	memmove(kernel_image, kernel_image + PEXE_HDR_SIZE, SECTOR_SIZE - PEXE_HDR_SIZE);
+	memmove(kernel_image, (uint8_t *)kernel_image + PEXE_HDR_SIZE, SECTOR_SIZE - PEXE_HDR_SIZE);
 	p = (uint8_t *)kernel_image + SECTOR_SIZE - PEXE_HDR_SIZE;
 	
     // read the .kernel cog image
