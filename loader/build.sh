@@ -56,6 +56,7 @@ export BOARD
 #
 # build propeller-load
 #
+export PATH=$PREFIX/bin:$PATH
 make TARGET=../../../build/loader clean
 make TARGET=../../../build/loader
 make TARGET=../../../build/loader install
