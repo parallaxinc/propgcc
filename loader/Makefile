@@ -28,7 +28,7 @@ RM=rm
 
 ifeq ($(OS),linux)
 CFLAGS += -DLINUX
-BSTC=bstc.linux
+SPINCMP=openspin
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -36,7 +36,7 @@ endif
 
 ifeq ($(OS),cygwin)
 CFLAGS += -DCYGWIN
-BSTC=bstc
+SPINCMP=openspin
 EXT=.exe
 OSINT=osint_cygwin enumcom
 LIBS=-lsetupapi
@@ -44,7 +44,7 @@ endif
 
 ifeq ($(OS),msys)
 CFLAGS += -DMINGW
-BSTC=bstc
+SPINCMP=openspin
 EXT=.exe
 OSINT=osint_mingw enumcom
 LIBS=-lsetupapi
@@ -52,7 +52,7 @@ endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
-BSTC=bstc.osx
+SPINCMP=openspin
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -61,7 +61,7 @@ endif
 ifeq ($(OS),macosx32)
 OS=macosx
 CFLAGS += -DMACOSX -m32
-BSTC=bstc.osx
+SPINCMP=openspin
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -69,7 +69,7 @@ endif
 
 CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
-SPINFLAGS=-Ogxr
+SPINFLAGS=
 
 ##################
 # DEFAULT TARGET #
@@ -205,15 +205,15 @@ sd-loader:	$(DRVDIR)
 ##################
 
 $(OBJDIR)/serial_helper.binary:	$(SPINDIR)/serial_helper.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -b -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%_loader.binary:	$(SPINDIR)/%_loader.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -b -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
-	@$(BINDIR)/bin2c$(EXT) $< $@
+	$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) $@
 
 ###############
@@ -221,43 +221,43 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 ###############
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DENABLE_RAM -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DENABLE_RAM -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DFAST -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DFAST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/fast_sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -DFAST -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DSST -DFAST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DWINBOND -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DWINBOND -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DSST -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DSST -o $@ $<
 	@$(ECHO) $@
 
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -DWINBOND -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -DWINBOND -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPINCMP) $(SPINFLAGS) -c -o $@ $<
 	@$(ECHO) $@
 
 ############
