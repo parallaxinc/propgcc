@@ -1,0 +1,8 @@
+ttinyios.cpp
+>compiler=C++
+>memtype=lmm
+>optimize=-Os
+>-fno-exceptions
+>-fno-rtti
+>-ltiny
+>BOARD::HUB
