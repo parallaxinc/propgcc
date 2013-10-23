@@ -215,7 +215,8 @@ $(DRVDIR)/winbond_spi_flash_xmem.dat \
 $(DRVDIR)/sst_spi_flash_xmem.dat \
 $(DRVDIR)/spi_sram_xmem.dat \
 $(DRVDIR)/spi_sram24_xmem.dat \
-$(DRVDIR)/sqi_sram_xmem.dat
+$(DRVDIR)/sqi_sram_xmem.dat \
+$(DRVDIR)/c3_xmem.dat
 
 #################
 # OTHER DRIVERS #
