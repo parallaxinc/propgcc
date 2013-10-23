@@ -91,4 +91,5 @@ count   long    0
 zero    long    0       ' zero constant
 t1      long    0       ' temporary variable
 t2      long    0       ' temporary variable
+t3      long    0       ' temporary variable
 
