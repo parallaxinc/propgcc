@@ -2,13 +2,7 @@
   SPI SRAM External Memory Driver (16 bit addresses)
   Copyright (c) 2013 by David Betz
   
-  Based on code from VMCOG - virtual memory server for the Propeller
-  Copyright (c) February 3, 2010 by William Henning
-
-  and on code from SdramCache
-  Copyright (c) 2010 by John Steven Denson (jazzed)
-
-  and on code from Chip Gracey's Propeller II SDRAM Driver
+  Based on code from Chip Gracey's Propeller II SDRAM Driver
   Copyright (c) 2013 by Chip Gracey
 
   TERMS OF USE: MIT License
@@ -301,4 +295,4 @@ ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential 
 ' mask off the base address of external memory
 sram_mask   long    $0000ffff
 
-            FIT     496             ' out of 496
+            fit     496
