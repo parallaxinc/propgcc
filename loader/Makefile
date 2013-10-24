@@ -221,7 +221,8 @@ $(DRVDIR)/sqi_sram_xmem.dat \
 $(DRVDIR)/c3_xmem.dat \
 $(DRVDIR)/eeprom_xmem.dat \
 $(DRVDIR)/winbond_sqi_flash_sram_xmem.dat \
-$(DRVDIR)/sst_sqi_flash_sram_xmem.dat
+$(DRVDIR)/sst_sqi_flash_sram_xmem.dat \
+#$(DRVDIR)/sd_xmem.dat
 
 #################
 # OTHER DRIVERS #
