@@ -4,10 +4,7 @@
 '#define WINBOND
 '#define SST
 
-#define FLASH
-#define RW
-#define BLOCK_IO
-#define SD_INIT        
+'#define SD_INIT        
 
 CON
 
@@ -18,12 +15,12 @@ CON
 #include "xmem_sqi.spin"
 
 init
-        ' get the pin definitions (cache-param2)
-        ' 0xssccffrr where ss=sio0, cc=clk, ff=flash cs, ss=sram cs
-        rdlong  t2, t1
+        ' get the pin definitions
+        ' xmem_param1 - 0xssccffrr where ss=sio0, cc=clk, ff=flash cs, rr=sram cs
+        ' xmem_param2 - $ssxxxxff where ss=sd cs, ff=1 to initialize sd card
 
         ' get the sio_shift and build the mosi, miso, and sio masks
-        mov     sio_shift, t2
+        mov     sio_shift, xmem_param1
         shr     sio_shift, #24
         mov     mosi_mask, #1
         shl     mosi_mask, sio_shift
@@ -32,45 +29,43 @@ init
         mov     sio_mask, #$f
         shl     sio_mask, sio_shift
         or      pindir, mosi_mask
-        or      pinout, mosi_mask
         
         ' make the sio2 and sio3 pins outputs in single spi mode to assert /WE and /HOLD
-        mov     t3, #$0c
-        shl     t3, sio_shift
-        or      pindir, t3
-        or      pinout, t3
+        mov     t1, #$0c
+        shl     t1, sio_shift
+        or      pindir, t1
+        or      pinout, t1
                 
         ' build the sck mask
-        mov     t3, t2
-        shr     t3, #16
-        and     t3, #$ff
+        mov     t1, xmem_param1
+        shr     t1, #16
+        and     t1, #$ff
         mov     sck_mask, #1
-        shl     sck_mask, t3
+        shl     sck_mask, t1
         or      pindir, sck_mask
         
         ' get the chip selects
-        mov     t3, t2
-        shr     t3, #8
-        and     t3, #$ff
+        mov     t1, xmem_param1
+        shr     t1, #8
+        and     t1, #$ff
         mov     flash_cs_mask, #1
-        shl     flash_cs_mask, t3
+        shl     flash_cs_mask, t1
         or      pinout, flash_cs_mask
         or      pindir, flash_cs_mask
-        and     t2, #$ff
+        mov     t1, xmem_param1
+        and     t1, #$ff
         mov     sram_cs_mask, #1
-        shl     sram_cs_mask, t2
+        shl     sram_cs_mask, t1
         or      pinout, sram_cs_mask
         or      pindir, sram_cs_mask
 
 #ifdef SD_INIT
         ' get the sd chip select (cache-param3)
-        add     t1, #4
-        rdlong  t2, t1
-        mov     t3, t2
-        shr     t3, #24
+        mov     t1, xmem_param2
+        shr     t1, #24
         mov     sd_cs_mask, #1
-        shl     sd_cs_mask, t3
-        test    t2, #1 wz
+        shl     sd_cs_mask, t1
+        test    xmem_param2, #1 wz
   if_z  mov     sd_cs_mask, #0
   if_nz or      pinout, sd_cs_mask
   if_nz or      pindir, sd_cs_mask
@@ -81,7 +76,7 @@ init
         
 #ifdef SD_INIT
         ' put the SD card in SPI mode
-        tjz     sd_cs_mask, #sdSkip
+        tjz     sd_cs_mask, #:skip
         mov     t1, #10             ' output 80 clocks
 :init   mov     data, #$ff
         call    #spiSendByte
@@ -102,12 +97,12 @@ init
         mov     data, #$ff
         call    #spiSendByte
         mov     t1, #20             ' try 20 times
-sdLoop  call    #spiRecvByte
+:loop   call    #spiRecvByte
         test    data, #$80 wz
-  if_z  jmp     #sdDone
-        djnz    t1, #sdLoop
-sdDone  or      outa, sd_cs_mask
-sdSkip
+  if_z  jmp     #:done
+        djnz    t1, #:loop
+:done  or      outa, sd_cs_mask
+:skip
 #endif
                 
         ' initialize the flash chip
@@ -130,82 +125,6 @@ sdSkip
 init_ret
         ret
 
-'----------------------------------------------------------------------------------------------------
-'
-' erase_4k_block
-'
-' on input:
-'   extaddr is the virtual memory address to erase
-'
-'----------------------------------------------------------------------------------------------------
-
-#ifdef SST
-
-erase_4k_block
-        call    #sst_write_enable
-        mov     cmd, extaddr
-        and     cmd, offset_bits
-        or      cmd, ferase4kblk
-        mov     bytes, #4
-        call    #sst_start_quad_spi_cmd
-        call    #release
-        call    #wait_until_done
-erase_4k_block_ret
-        ret
-
-#endif
-
-#ifdef WINBOND
-
-erase_4k_block
-        call    #winbond_write_enable
-        mov     cmd, extaddr
-        and     cmd, offset_bits
-        or      cmd, ferase4kblk
-        call    #winbond_start_quad_spi_cmd_1
-        rol     cmd, #8
-        mov     data, cmd
-        call    #spiSendByte
-        rol     cmd, #8
-        mov     data, cmd
-        call    #spiSendByte
-        rol     cmd, #8
-        mov     data, cmd
-        call    #spiSendByte
-        call    #release
-        call    #wait_until_done
-erase_4k_block_ret
-        ret
-        
-#endif
-
-'----------------------------------------------------------------------------------------------------
-'
-' write_block
-'
-' on input:
-'   extaddr is the virtual memory address to write
-'   hubaddr is the hub memory address to read
-'   count is the number of bytes to write
-'
-'----------------------------------------------------------------------------------------------------
-
-_wloop  test    extaddr, #$ff wz
-  if_nz jmp     #_wdata
-        call    #release
-        call    #wait_until_done
-write_block
-        call    #start_write
-_wdata  rdbyte  data, hubaddr
-        call    #sqiSendByte
-        add     hubaddr, #1
-        add     extaddr, #1
-        djnz    count, #_wloop
-        call    #release
-        call    #wait_until_done
-write_block_ret
-        ret
-        
 '----------------------------------------------------------------------------------------------------
 '
 ' read_write_start
@@ -253,6 +172,8 @@ read_write_start_RET
 read_bytes
         cmp     extaddr, flash_base wc
   if_b  jmp     #read_bytes_sram
+  
+read_bytes_flash
         call    #start_read
 :loop   call    #sqiRecvByte
         wrbyte  data, hubaddr
@@ -288,10 +209,25 @@ read_bytes_sram
 write_bytes
         cmp     extaddr, flash_base wc
   if_b  jmp     #write_bytes_sram
+  
+write_bytes_flash
         tjz     wrenable, write_bytes_ret
         tjz     extaddr, disable_writes
-
-        ' add flash writing code
+        test    extaddr, block_mask wz
+  if_z  call    #erase_4k_block
+        jmp     #:addr
+:loop   test    extaddr, #$ff wz
+  if_nz jmp     #:data
+        call    #release
+        call    #wait_until_done
+:addr   call    #start_write
+:data   rdbyte  data, hubaddr
+        call    #sqiSendByte
+        add     hubaddr, #1
+        add     extaddr, #1
+        djnz    count, #:loop
+        call    #release
+        call    #wait_until_done
         jmp     write_bytes_ret
 
 write_bytes_sram
@@ -359,6 +295,18 @@ flash_init
         ' BUG: 4 more bytes are necessary for the SST26VF032 chip
         call    #release
 flash_init_ret
+        ret
+
+erase_4k_block
+        call    #sst_write_enable
+        mov     cmd, extaddr
+        and     cmd, offset_bits
+        or      cmd, ferase4kblk
+        mov     bytes, #4
+        call    #sst_start_quad_spi_cmd
+        call    #release
+        call    #wait_until_done
+erase_4k_block_ret
         ret
 
 start_write
@@ -462,6 +410,26 @@ id_ok   call    #winbond_write_enable
 flash_init_ret
         ret
 
+erase_4k_block
+        call    #winbond_write_enable
+        mov     cmd, extaddr
+        and     cmd, offset_bits
+        or      cmd, ferase4kblk
+        call    #winbond_start_quad_spi_cmd_1
+        rol     cmd, #8
+        mov     data, cmd
+        call    #spiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #spiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #spiSendByte
+        call    #release
+        call    #wait_until_done
+erase_4k_block_ret
+        ret
+        
 start_write
         call    #winbond_write_enable
         mov     cmd, extaddr
@@ -576,6 +544,7 @@ sram_seq        long    $01400000       ' %00000001_01000000 << 16 ' set sequent
 
 flash_base      long    $30000000       ' base address of flash memory
 offset_bits     long    $00ffffff       ' mask to isolate the offset bits
+block_mask      long    $00000fff       ' 4k flash blocks
 
 wrenable        long    1
 

@@ -1,22 +1,33 @@
-XMEM_DRIVER_COMMON = xmem_common.spin xmem_interface.spin
+CC=propeller-elf-gcc
+OBJCOPY=propeller-elf-objcopy
 
-DRIVERS = \
-winbond_spi_flash_xmem.dat \
-sst_spi_flash_xmem.dat \
-spi_sram_xmem.dat \
-spi_sram24_xmem.dat \
-sqi_sram_xmem.dat
+#TESTDRIVER?=spi_flash_xmem
+#TESTDRIVER?=spi_sram_xmem
+#TESTDRIVER?=sqi_sram_xmem
+TESTDRIVER?=winbond_sqi_flash_sram_xmem
 
-all:	$(DRIVERS)
+XMEM_DRIVER_COMMON = xmem_interface.spin xmem_common.spin
+
+.PHONY:	all
+all:	xmemtest.elf $(TESTDRIVER).dat
 
 %.dat:	%.spin $(XMEM_DRIVER_COMMON)
 	spin2cpp --dat -o $@ $<
 
 winbond_%.dat:	%.spin $(XMEM_DRIVER_COMMON)
-	spin2cpp --dat -DWINBOND -o $@ $<
+	spin2cpp --dat -D WINBOND -o $@ $<
 
 sst_%.dat:	%.spin $(XMEM_DRIVER_COMMON)
-	spin2cpp --dat -DSST -o $@ $<
+	spin2cpp --dat -D SST -o $@ $<
+
+%.o: %.dat
+	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
+
+xmemtest.elf:	xmemtest.c $(TESTDRIVER).o
+	$(CC) -Wall -D TESTDRIVER=binary_$(TESTDRIVER)_dat_start -mcmm -mno-fcache -o $@ $^
+    
+run:	xmemtest.elf
+	propeller-load xmemtest.elf -r -t
 
 clean:
-	rm -f $(DRIVERS)
+	rm -f *.o $(TESTDRIVER).dat xmemtest.elf
