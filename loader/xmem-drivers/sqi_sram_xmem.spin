@@ -2,13 +2,7 @@
   SQI SRAM External Memory Driver
   Copyright (c) 2013 by David Betz
   
-  Based on code from VMCOG - virtual memory server for the Propeller
-  Copyright (c) February 3, 2010 by William Henning
-
-  and on code from SdramCache
-  Copyright (c) 2010 by John Steven Denson (jazzed)
-
-  and on code from Chip Gracey's Propeller II SDRAM Driver
+  Based on code from Chip Gracey's Propeller II SDRAM Driver
   Copyright (c) 2013 by Chip Gracey
 
   TERMS OF USE: MIT License
@@ -33,62 +27,32 @@
 }
 
 #include "xmem_common.spin"
+#include "xmem_sqi_pins.spin"
+#include "xmem_sqi.spin"
 
 ' xmem_param1: $ssxxccee - ss=sio0 cc=sck ee=cs
 
 DAT
 
 init
-        ' setup pin masks
-        
-        ' 31:24 is the SIO0 PIN
-        mov     sio_shift, xmem_param1
-        shr     sio_shift, #24
-        mov     mosi_mask, #1
-        shl     mosi_mask, sio_shift
-        mov     miso_mask, mosi_mask
-        shl     miso_mask, #1
-        mov     sio_mask, #$f
-        shl     sio_mask, sio_shift
-        
-        ' 15:8 is the SCK pin
-        mov     t1, xmem_param1
-        shr     t1, #8
-        and     t1, #$ff
-        mov     sck_mask, #1
-        shl     sck_mask, t1
-        
-        ' 7:0 is the CS pin
-        mov     t1, xmem_param1
-        and     t1, #$ff
-        mov     cs_mask, #1
-        shl     cs_mask, t1
-        
-        ' make the pin settings
-        or      pindir, mosi_mask
-        or      pindir, sck_mask
-        or      pindir, cs_mask
-        or      pinout, cs_mask
-        mov     t1, mosi_mask       ' setup /WE and /HOLD
-        shl     t1, #2
-        or      pindir, t1
-        or      pinout, t1
-        shl     t1, #1
-        or      pindir, t1
-        or      pinout, t1
 
+        ' setup pin masks
+        call    #get_sqi_pins
+                
         ' set the pin directions
+        mov     outa, pinout
+        mov     dira, pindir
         call    #release
         
         ' select sequential access mode for the SRAM chip
-        andn    outa, cs_mask
+        call    #select
         mov     data, sram_ramseq
         mov     bits, #16
         call    #spiSend
         call    #release
         
         ' switch to quad mode
-        andn    outa, cs_mask
+        call    #select
         mov     data, sram_eqio
         mov     bits, #8
         call    #spiSend
@@ -168,7 +132,7 @@ read_write_init
         and     cmd, sram_mask
         or      cmd, fn
         or      dira, sio_mask
-        andn    outa, cs_mask
+        call    #select
         rol     cmd, #8
         mov     data, cmd
         call    #sqiSendByte
@@ -193,86 +157,8 @@ fn      long    0
 cmd     long    0
 ptr     long    0
 
-'----------------------------------------------------------------------------------------------------
-' SPI routines
-'----------------------------------------------------------------------------------------------------
-
-release
-        mov     outa, pinout
-        mov     dira, pindir
-release_ret
-        ret
-
-spiSendByte
-        shl     data, #24
-        mov     bits, #8
-spiSend rol     data, #1 wc
-        muxc    outa, mosi_mask
-        or      outa, sck_mask
-        andn    outa, sck_mask
-        djnz    bits, #spiSend
-spiSendByte_ret
-spiSend_ret
-        ret
-
-spiRecvByte
-        mov     data, #0
-        mov     bits, #8
-spiRecv or      outa, sck_mask
-        test    miso_mask, ina wc
-        rcl     data, #1
-        andn    outa, sck_mask
-        djnz    bits, #spiRecv
-spiRecvByte_ret
-spiRecv_ret
-        ret
-
-sqiSendByte
-        mov     bits, data
-        ror     bits, #4
-        rol     bits, sio_shift
-        and     bits, sio_mask
-        andn    outa, sio_mask
-        or      outa, bits
-        or      outa, sck_mask
-        andn    outa, sck_mask
-        rol     data, sio_shift
-        and     data, sio_mask
-        andn    outa, sio_mask
-        or      outa, data
-        or      outa, sck_mask
-        ' the caller will need to clear the clock pin
-        ' andn    outa, sck_mask
-sqiSendByte_ret
-        ret
-
-sqiRecvByte
-        or      outa, sck_mask
-        mov     data, ina
-        and     data, sio_mask
-        rol     data, #4
-        andn    outa, sck_mask
-        or      outa, sck_mask
-        mov     bits, ina
-        and     bits, sio_mask
-        or      data, bits
-        ror     data, sio_shift
-        andn    outa, sck_mask
-sqiRecvByte_ret
-        ret
-
-data        long    0
-bits        long    0
-
 pindir      long    0
 pinout      long    0
-
-cs_mask     long    0
-sio_shift   long    0
-sio_mask    long    0
-mosi_mask   long    0
-miso_mask   long    0
-sck_mask    long    0
 
 ' spi commands
 sram_read   long    $03000000       ' read command

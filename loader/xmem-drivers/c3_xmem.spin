@@ -27,6 +27,7 @@
 }
 
 #include "xmem_common.spin"
+#include "xmem_spi.spin"
 
 CON
 
@@ -39,6 +40,11 @@ CON
 DAT
 
 init
+        ' setup the spi pins
+        mov     mosi_mask, tmosi
+        mov     miso_mask, tmiso
+        mov     sck_mask, tclk
+        
         ' set the pin directions
         mov     outa, pinout
         mov     dira, pindir
@@ -48,14 +54,14 @@ init
         call    #sram_chip1
         mov     data, ramseq
         mov     bits, #16
-        call    #send
+        call    #spiSend
         call    #deselect
 
         ' select sequential access mode for the second SRAM chip
         call    #sram_chip2
         mov     data, ramseq
         mov     bits, #16
-        call    #send
+        call    #spiSend
         call    #deselect
 		
         ' unprotect the entire flash chip
@@ -63,7 +69,7 @@ init
         call    #flash_chip
         mov     data, fwrstatus ' write zero to the status register
         mov     bits, #16
-        call    #send
+        call    #spiSend
         call    #deselect
 init_ret
 		ret
@@ -88,7 +94,7 @@ read_write_start
         shl     data, #8          ' move it into position for transmission
         or      data, fn
         mov     bits, #24
-        call    #send
+        call    #spiSend
 read_write_start_ret
         ret
 '----------------------------------------------------------------------------------------------------
@@ -110,7 +116,7 @@ read_bytes
         and     data, flash_mask
         or      data, fread
         mov     bits, #40         ' includes 8 dummy bits
-        call    #send
+        call    #spiSend
 
 read_data
 :rloop  call    #spiRecvByte
@@ -157,7 +163,7 @@ write_block
         and     data, flash_mask
         or      data, fprogram
         mov     bits, #32
-        call    #send
+        call    #spiSend
 wdata   rdbyte  data, hubaddr
         call    #spiSendByte
         add     hubaddr, #1
@@ -178,6 +184,12 @@ write_sram_bytes
 write_bytes_ret
         ret
 
+disable_writes
+        mov     wrenable, #0
+        jmp     write_bytes_ret
+
+fn      long    0
+
 erase_4k_block
         call    #write_enable
         call    #flash_chip
@@ -185,23 +197,17 @@ erase_4k_block
         and     data, flash_mask
         or      data, ferase4kblk
         mov     bits, #32
-        call    #send
+        call    #spiSend
         call    #deselect
         call    #wait_until_done
 erase_4k_block_ret
 		ret
 
-disable_writes
-        mov     wrenable, #0
-        jmp     write_bytes_ret
-
-fn      long    0
-
 write_enable
         call    #flash_chip
         mov     data, fwrenable
         mov     bits, #8
-        call    #send
+        call    #spiSend
         call    #deselect
 write_enable_ret
         ret
@@ -210,49 +216,13 @@ wait_until_done
         call    #flash_chip
         mov     data, frdstatus
         mov     bits, #8
-        call    #send
+        call    #spiSend
 :wait   call    #spiRecvByte
         test    data, #1 wz
   if_nz jmp     #:wait
         call    #deselect
         and     data, #$ff
 wait_until_done_ret
-        ret
-
-'----------------------------------------------------------------------------------------------------
-' SPI routines
-'----------------------------------------------------------------------------------------------------
-
-spiSendByte
-        shl     data, #24
-        mov     bits, #8
-        jmp     #send
-
-send0   andn    outa, TCLK
-
-' CLK should be low coming into this function
-send    rol     data, #1 wc
-        muxc    outa, TMOSI
-        or      outa, TCLK
-        djnz    bits, #send0
-        andn    outa, TCLK
-        or      outa, TMOSI
-spiSendByte_ret
-send_ret
-        ret
-
-spiRecvByte
-        mov     data, #0
-        mov     bits, #8
-        
-' CLK was set H-L and data should be ready before this function starts
-receive or      outa, TCLK
-        test    TMISO, ina wc
-        rcl     data, #1
-        andn    outa, TCLK
-        djnz    bits, #receive
-spiRecvByte_ret
-receive_ret
         ret
 
 ' spi select functions
@@ -293,10 +263,6 @@ tinc        long    1<<INC_PIN
 tclk        long    1<<CLK_PIN
 tmosi       long    1<<MOSI_PIN
 tmiso       long    1<<MISO_PIN
-
-' temporaries used by send
-bits        long    0
-data        long    0
 
 ' sram function codes
 read        long    $03000000       ' read command
