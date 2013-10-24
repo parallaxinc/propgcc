@@ -92,8 +92,7 @@ init_ret
 ' stuck in read or write mode" section - this appears to be only applicable to
 ' multi-block read/write, and the PropGCC code uses and supports neither.
 
-sd_init_handler
-        mov     sdError, #0             ' Assume no errors
+sd_init
         call    #release
 
         mov     t1, sdInitCnt
@@ -111,7 +110,7 @@ _cmd0   mov     sdOp, #CMD0_GO_IDLE_STATE
   if_e  jmp     #_iniOK
         djnz    count, #_cmd0
         mov     sdError, #3             ' Error: Reset failed after 10 attempts
-        jmp     #sd_finish
+        jmp     #_ifinish
 
 _iniOK  mov     adrShift, #9
         mov     sdBlkCnt, cnt           ' We overload sdBlkCnt as part of master timer during init
@@ -128,7 +127,7 @@ _cmd8   mov     sdOp, #CMD8_SEND_IF_COND_CMD
         call    #spiRecvLong
         cmp     data, sd3_3V
   if_ne mov     sdError, #4             ' Error: 3.3V Not Supported
-  if_ne jmp     #sd_finish
+  if_ne jmp     #_ifinish
 
 _type2  mov     sdParam1, ccsbit        ' CMD41 is necessary for both type 1 and 2
         mov     sdCRC, #$77             ' but with different paramaters and CRC, so
@@ -140,7 +139,7 @@ _cmd58  mov     sdOp, #CMD58_READ_OCR
         call    #sdSendCmd
         cmp     data, #0 wz
   if_ne mov     sdError, #5             ' Error: READ_OCR Failed
-  if_ne jmp     #sd_finish
+  if_ne jmp     #_ifinish
 
         call    #spiRecvLong            ' Check the SDHC bit
         test    data, ccsbit wz
@@ -192,7 +191,7 @@ check_time
         sub     t1, sdBlkCnt            ' Check for expired timeout (1 sec)
         cmp     t1, count wc
   if_nc mov     sdError, #6             ' Error: Didn't totally initialize in 4 secs
-  if_nc jmp     #sd_finish
+  if_nc jmp     #_ifinish
 check_time_ret
         ret
 
@@ -202,13 +201,23 @@ _ifini  mov     sdOp, #CMD59_CRC_ON_OFF ' Sad, but we don't have the code space 
         call    #sdSendCmd
 
         call    #spiRecvLong            ' Drain the previous command
-        jmp     #sd_finish
-
+        mov     sdInit, #1              ' Initialization done
+_ifinish
+        call    #release
+        mov     t1, sdError             ' Return the error code
+sd_init_ret
+        ret
+        
 '------------------------------------------------------------------------------
 ' Block read/write
 '------------------------------------------------------------------------------
 
 read_bytes 
+        mov     sdError, #0             ' Assume no errors
+        mov     sdErrorHandler, #readFinish
+        tjnz    sdInit, #_readSkipInit
+        call    #sd_init
+_readSkipInit
         call    #select
         mov     sdOp, #CMD17_READ_SINGLE_BLOCK
 _readRepeat
@@ -228,16 +237,22 @@ _skipStore
         call    #spiRecvByte            ' Yes, finish with 16 clocks
         add     extaddr, #1
         tjnz    count, #_readRepeat     ' Check for more blocks to do
+readFinish
         call    #release
+        mov     t1, sdError
 read_bytes_ret
         ret
 
 write_bytes
         mov     sdError, #0             ' Assume no errors
+        mov     sdErrorHandler, #writeFinish
+        tjnz    sdInit, #_writeSkipInit
+        call    #sd_init
+_writeSkipInit
         rdlong  hubaddr, extaddr         ' Get the buffer pointer
         add     extaddr, #4
         rdlong  count, extaddr wz        ' Get the byte count
-  if_z  jmp     #sd_finish
+  if_z  jmp     #writeFinish
         add     extaddr, #4
         rdlong  extaddr, extaddr          ' Get the sector address
         call    #select
@@ -270,6 +285,7 @@ _padWrite
         tjnz    count, #_writeRepeat    ' Check for more blocks to do
 writeFinish
         call    #release
+        mov     t1, sdError             ' Return the error code
 write_bytes_ret
         ret
 
@@ -297,7 +313,7 @@ sdWaitLoop
         sub     t1, sdTime              ' Check for expired timeout (1 sec)
         cmp     t1, sdFreq wc
   if_nc mov     sdError, #2             ' Error: SD Command timed out after 1 second
-  if_nc jmp     #sd_finish              ' Note: this isn't quite appropriate when we're reading a cache line, but what else is?
+  if_nc jmp     sdErrorHandler          ' return to the error handler
 sdWaitData
         cmp     data, #0-0 wz           ' Wait for some other response
   if_e  jmp     #sdWaitLoop             '  than that specified
@@ -311,6 +327,7 @@ sdWaitBusy_ret
 ' Data for the SD Card Routines
 '----------------------------------------------------------------------------------------------------
 
+sdInit          long    0
 sdOp            long    0
 sdParam         long    0
 sdParam1        long    0
@@ -319,6 +336,7 @@ sdCRC1          long    0
 sdFreq          long    0
 sdTime          long    0
 sdError         long    0
+sdErrorHandler  jmp     #sdErrorHandler
 sdBlkCnt        long    0
 sdInitCnt       long    32768 / 8      ' Initial SPI clocks produced
 dstinc                                 ' 1<<9 = increment for the destination field of an instruction = same as sdBlkSize!
