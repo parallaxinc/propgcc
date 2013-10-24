@@ -61,9 +61,9 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
   if_z  jmp     #:reset
         mov     hubaddr, t1             ' get the hub address
         andn    hubaddr, #$f
-        mov     t2, cmdptr              ' get the external address
-        add     t2, #4
-        rdlong  extaddr, t2
+        mov     stsptr, cmdptr          ' get the external address and status pointer
+        add     stsptr, #4
+        rdlong  extaddr, stsptr         ' get the external address
         mov     t2, t1                  ' get the byte count
         and     t2, #7
         mov     count, #8
@@ -75,6 +75,7 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
         jmp     #:done
 :read   call    #read_bytes
 :done   mov     dira, #0                ' release the pins for other SPI clients
+        wrlong  t1, stsptr              ' return completion status
         wrlong  zero, cmdptr
 :next   add     cmdptr, #8
         jmp     #:loop
@@ -82,6 +83,7 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
 ' pointers to mailbox array
 cmdbase long    0       ' base of the array of mailboxes
 cmdptr  long    0       ' pointer to the current mailbox
+stsptr  long    0       ' pointer to where to store the completion status
 
 ' input parameters to read_bytes and write_bytes
 extaddr long    0       ' external address
