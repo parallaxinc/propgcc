@@ -76,6 +76,12 @@ init
         call    #release
         
         rdlong  sdFreq, #CLKFREQ_ADDR   ' Get the clock frequency
+        
+        mov     cluster_map, xmem_param1
+        mov     cluster_width, xmem_param2
+        mov     cluster_mask, #1
+        shl     cluster_mask, cluster_width
+        sub     cluster_mask, #1
 
 init_ret
         ret

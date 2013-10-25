@@ -4,12 +4,13 @@
 #include <unistd.h>
 #include <propeller.h>
 
-#define PMC
+//#define PMC
 //#define DNA
 //#define RAMPAGE2
+#define DEFAULTS
 
 //#define FLASH_TEST
-#define BIG_FLASH_TEST
+//#define BIG_FLASH_TEST
 //#define RAM_TEST
 #define BIG_RAM_TEST
 
@@ -47,6 +48,13 @@
 #define SCK_PIN         8
 #define SRAM_CS_PIN     10
 #define XMEM_CONFIG1    ((SIO0_PIN << 24) | (SCK_PIN << 8) | SRAM_CS_PIN)
+#define XMEM_CONFIG2    0
+#define XMEM_CONFIG3    0
+#define XMEM_CONFIG4    0
+#endif
+
+#ifdef DEFAULTS
+#define XMEM_CONFIG1    0
 #define XMEM_CONFIG2    0
 #define XMEM_CONFIG3    0
 #define XMEM_CONFIG4    0

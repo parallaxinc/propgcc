@@ -155,39 +155,6 @@ init_ret
 
 '----------------------------------------------------------------------------------------------------
 '
-' read_write_start
-'
-' select the chip and send the address for the read/write operation
-'
-' on input:
-'   extaddr is the sram transfer address
-'   hubaddr is the hub address
-'
-'----------------------------------------------------------------------------------------------------
-
-read_write_start
-        mov     cmd, extaddr
-        and     cmd, offset_bits
-        or      cmd, fn
-        or      dira, sio_mask
-        andn    outa, sram_cs_mask
-        rol     cmd, #8
-        mov     data, cmd
-        call    #sqiSendByte
-        rol     cmd, #8
-        mov     data, cmd
-        call    #sqiSendByte
-        rol     cmd, #8
-        mov     data, cmd
-        call    #sqiSendByte
-        rol     cmd, #8
-        mov     data, cmd
-        call    #sqiSendByte
-read_write_start_RET
-        ret
-
-'----------------------------------------------------------------------------------------------------
-'
 ' read_bytes
 '
 ' on input:
@@ -272,6 +239,39 @@ write_bytes_ret
 disable_writes
         mov     wrenable, #0
         jmp     write_bytes_ret
+
+'----------------------------------------------------------------------------------------------------
+'
+' read_write_start
+'
+' select the chip and send the address for the read/write operation
+'
+' on input:
+'   extaddr is the sram transfer address
+'   hubaddr is the hub address
+'
+'----------------------------------------------------------------------------------------------------
+
+read_write_start
+        mov     cmd, extaddr
+        and     cmd, offset_bits
+        or      cmd, fn
+        or      dira, sio_mask
+        andn    outa, sram_cs_mask
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+        rol     cmd, #8
+        mov     data, cmd
+        call    #sqiSendByte
+read_write_start_RET
+        ret
 
 ' spi commands
 
