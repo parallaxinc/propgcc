@@ -97,33 +97,6 @@ erase_4k_block_ret
 
 '----------------------------------------------------------------------------------------------------
 '
-' write_block
-'
-' on input:
-'   extaddr is the virtual memory address to write
-'   hubaddr is the hub memory address to read
-'   count is the number of bytes to write
-'
-'----------------------------------------------------------------------------------------------------
-
-_wloop  test    extaddr, #$ff wz
-  if_nz jmp     #_wdata
-        call    #release
-        call    #wait_until_done
-write_block
-        call    #start_write
-_wdata  rdbyte  data, hubaddr
-        call    #sqiSendByte
-        add     hubaddr, #1
-        add     extaddr, #1
-        djnz    count, #_wloop
-        call    #release
-        call    #wait_until_done
-write_block_ret
-        ret
-        
-'----------------------------------------------------------------------------------------------------
-'
 ' read_bytes
 '
 ' on input:
