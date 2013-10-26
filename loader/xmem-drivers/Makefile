@@ -5,7 +5,8 @@ OBJCOPY=propeller-elf-objcopy
 #TESTDRIVER?=spi_sram_xmem
 #TESTDRIVER?=sqi_sram_xmem
 #TESTDRIVER?=winbond_sqi_flash_sram_xmem
-TESTDRIVER?=synapse_xmem
+//TESTDRIVER?=synapse_xmem
+TESTDRIVER?=rampage2_xmem
 
 XMEM_DRIVER_COMMON = xmem_interface.spin xmem_common.spin
 

@@ -69,7 +69,7 @@ init
         cmp     t2, jedec_id_2 wz
   if_nz jmp     #:next
         cmp     t3, jedec_id_3 wz
-  if_z  jmp     #:unprot
+  if_z  jmp     #:inquad
 :next   call    #read_jedec_id
         cmp     t1, jedec_id wz
   if_nz jmp     #halt
@@ -86,7 +86,11 @@ init
   if_nz jmp     #halt
         cmp     t3, jedec_id_3 wz
   if_nz jmp     #halt
-:unprot call    #sst_write_enable
+
+:inquad or      pindir, sio_mask ' we're now in quad mode
+
+        ' unprotect the entire flash
+        call    #sst_write_enable
         mov     cmd, sst_wrblkprot
         call    #sst_start_sqi_cmd_1
         andn    outa, sck_mask
@@ -116,9 +120,10 @@ halt    jmp     #halt
 '----------------------------------------------------------------------------------------------------
 
 read_bytes
-        mov     ptr, hubaddr
+        add     count, #1               ' round to an even number of bytes
+        andn    count, #1
         cmp     extaddr, flash_base wc
-  if_b  jmp     read_bytes_sram
+  if_b  jmp     #read_bytes_sram
         mov     cmd, extaddr
         and     cmd, offset_bits
         shr     cmd, #1
@@ -148,6 +153,8 @@ read_bytes_sram
 '----------------------------------------------------------------------------------------------------
 
 write_bytes
+        add     count, #1               ' round to an even number of bytes
+        andn    count, #1
         cmp     extaddr, flash_base wc
   if_b  jmp     #write_bytes_sram
   
@@ -157,7 +164,26 @@ write_bytes_flash
         test    extaddr, block_mask wz
   if_z  call    #erase_4k_block
   
-' add flash write code here
+        mov     t1, extaddr
+        add     t1, #256
+        andn    t1, #255
+        sub     t1, extaddr
+        max     t1, count
+:loop   call    #sst_write_enable
+        mov     cmd, extaddr
+        and     cmd, offset_bits
+        shr     cmd, #1
+        or      cmd, sst_program
+        mov     bytes, #4
+        mov     dbytes, t1
+        call    #sst_sqi_write
+        call    #wait_until_done
+        sub     count, t1 wz
+ if_z   jmp     write_bytes_ret
+        add     extaddr, t1
+        mov     t1, count
+        max     t1, #256
+        jmp     #:loop
 
 write_bytes_sram
         mov     fn, sram_write
@@ -202,12 +228,10 @@ read_write_start_ret
 '----------------------------------------------------------------------------------------------------
 
 erase_4k_block
-        shr     extaddr, #1
-        test    extaddr, mask_4k wz
- if_nz  jmp     erase_4k_block_ret
         call    #sst_write_enable
         mov     cmd, extaddr
         and     cmd, offset_bits
+        shr     cmd, #1
         or      cmd, ferase4kblk
         mov     bytes, #4
         call    #sst_start_sqi_cmd
@@ -216,45 +240,6 @@ erase_4k_block
 erase_4k_block_ret
         ret
 
-mask_4k long    $00000fff
-
-'----------------------------------------------------------------------------------------------------
-'
-' write_block
-'
-' on input:
-'   extaddr is the virtual memory address to write
-'   hubaddr is the hub memory address to read
-'   count is the number of bytes to write
-'
-'----------------------------------------------------------------------------------------------------
-
-write_block
-        mov     ptr, hubaddr
-        add     count, #1               ' round to an even number of bytes
-        andn    count, #1
-        mov     t1, extaddr
-        add     t1, #256
-        andn    t1, #255
-        sub     t1, extaddr
-        max     t1, count
-wloop   call    #sst_write_enable
-        mov     cmd, extaddr
-        and     cmd, offset_bits
-        shr     cmd, #1
-        or      cmd, sst_program
-        mov     bytes, #4
-        mov     dbytes, t1
-        call    #sst_sqi_write
-        call    #wait_until_done
-        sub     count, t1 wz
-write_block_ret
- if_z   ret
-        add     extaddr, t1
-        mov     t1, count
-        max     t1, #256
-        jmp     #wloop
-                
 read_jedec_id
         call    #flash_select
         mov     data, frdjedecid
@@ -321,8 +306,8 @@ sst_sqi_write
 sqi_write
         andn    outa, sck_mask
         tjz     dbytes, #:done
-:loop   rdbyte  data, ptr
-        add     ptr, #1
+:loop   rdbyte  data, hubaddr
+        add     hubaddr, #1
         shl     data, sio_shift
         andn    outa, sio_mask
         or      outa, data
@@ -365,8 +350,8 @@ sqi_read
         mov     data, ina
         andn    outa, sck_mask
         shr     data, sio_shift
-        wrbyte  data, ptr
-        add     ptr, #1
+        wrbyte  data, hubaddr
+        add     hubaddr, #1
         djnz    dbytes, #:loop
 :done   call    #release
 sst_sqi_read_ret
@@ -424,9 +409,9 @@ wait_until_done
 wait_until_done_ret
         ret
 
-sio_t1          long    0
-sio_t2          long    0
-busy_bits       long    $8800
+sio_t1              long    0
+sio_t2              long    0
+busy_bits           long    $8800
 
 jedec_id            long    $00bf2601    ' SST26VF016
 jedec_id_1          long    $bbff
@@ -510,7 +495,6 @@ sio_shift       long    SIO0_PIN
 ' variables used by the spi send/receive functions
 fn              long    0
 cmd             long    0
-ptr             long    0
 bytes           long    0
 dbytes          long    0
 data            long    0
