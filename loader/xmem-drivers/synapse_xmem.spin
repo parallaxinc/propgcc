@@ -49,6 +49,12 @@ init_ret
 '----------------------------------------------------------------------------------------------------
 
 read_bytes
+        mov     t1, extaddr
+        add     t1, #256
+        andn    t1, #255
+        sub     t1, extaddr
+        max     t1, count
+rloop   mov     t2, t1
         call    #read_write_start
         andn    dira, data_mask         ' set data bus to input
         mov     outa, cmd_rd
@@ -57,10 +63,17 @@ read_bytes
         andn    outa, cmd_rd_count
         wrbyte  data, hubaddr
         add     hubaddr, #1
-        djnz    count, #:loop
+        djnz    t2, #:loop
         andn    outa, cmd_mask
+        sub     count, t1 wz
 read_bytes_ret
-        ret
+ if_z   ret
+        add     extaddr, t1
+        mov     t1, count
+        max     t1, #256
+        jmp     #rloop
+        
+data    long    0
 
 '----------------------------------------------------------------------------------------------------
 '
@@ -74,16 +87,26 @@ read_bytes_ret
 '----------------------------------------------------------------------------------------------------
 
 write_bytes
+        mov     t1, extaddr
+        add     t1, #256
+        andn    t1, #255
+        sub     t1, extaddr
+        max     t1, count
+wloop   mov     t2, t1
         call    #read_write_start
-        or      dira, data_mask         ' set data bus to output
 :loop   rdbyte  outa, hubaddr
         or      outa, cmd_wr
         or      outa, cmd_wr_count
         add     hubaddr, #1
-        djnz    count, #:loop
+        djnz    t2, #:loop
         andn    outa, cmd_mask
+        sub     count, t1 wz
 write_bytes_ret
-        ret
+ if_z   ret
+        add     extaddr, t1
+        mov     t1, count
+        max     t1, #256
+        jmp     #wloop
 
 '----------------------------------------------------------------------------------------------------
 '
@@ -98,22 +121,20 @@ write_bytes_ret
 
 read_write_start
         or      dira, data_mask         ' set data bus to output
-        movs    outa, extaddr           ' load A7:0
+        mov     data, extaddr
+        movs    outa, data           ' load A7:0
         or      outa, cmd_byte0_latch
         andn    outa, cmd_mask
-        shr     extaddr, #8             ' load A15:8
-        movs    outa, extaddr
+        shr     data, #8             ' load A15:8
+        movs    outa, data
         or      outa, cmd_byte1_latch
         andn    outa, cmd_mask
-        shr     extaddr, #8             ' load A18:16
-        movs    outa, extaddr
+        shr     data, #8             ' load A18:16
+        movs    outa, data
         or      outa, cmd_byte2_latch
         andn    outa, cmd_mask
 read_write_start_ret
         ret
-
-' temporaries used by read_bytes and write_bytes
-data            long    0
 
 ' command codes
 cmd_wr          long    $00010000
@@ -130,3 +151,5 @@ data_mask       long    $000000ff
 
 pindir          long    $00070000
 pinout          long    $00000000
+
+        fit     496
