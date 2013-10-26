@@ -10,9 +10,9 @@
 #define DEFAULTS
 
 //#define FLASH_TEST
-//#define BIG_FLASH_TEST
+#define BIG_FLASH_TEST
 //#define RAM_TEST
-#define BIG_RAM_TEST
+//#define BIG_RAM_TEST
 
 #ifndef TESTDRIVER
 #define TESTDRIVER      binary_spi_sram_xmem_dat_start
