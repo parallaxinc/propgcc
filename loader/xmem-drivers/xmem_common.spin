@@ -55,7 +55,13 @@ init_continue
         ' start the command loop
 waitcmd mov     dira, #0                ' release the pins for other SPI clients
 :reset  mov     cmdptr, cmdbase
-:loop   rdlong  t1, cmdptr wz
+:loop
+#ifdef REFRESH
+        djnz    refresh_cnt, #:norefresh' check to see if its time to refresh
+        call    #refresh_memory         ' if refresh timer expired, reload and refresh
+:norefresh
+#endif
+        rdlong  t1, cmdptr wz
   if_z  jmp     #:next                  ' skip this mailbox if it's zero
         cmp     t1, #$8 wz              ' check for the end of list marker
   if_z  jmp     #:reset
@@ -94,3 +100,33 @@ zero    long    0       ' zero constant
 t1      long    0       ' temporary variable
 t2      long    0       ' temporary variable
 t3      long    0       ' temporary variable
+
+'----------------------------------------------------------------------------------------------------
+'
+' read_bytes - read data from external memory
+'
+' on input:
+'   extaddr is the external memory address to read
+'   hubaddr is the hub memory address to write
+'   count is the number of bytes to read
+'
+'----------------------------------------------------------------------------------------------------
+
+'----------------------------------------------------------------------------------------------------
+'
+' write_bytes - write data to external memory
+'
+' on input:
+'   extaddr is the external memory address to write
+'   hubaddr is the hub memory address to read
+'   count is the number of longs to write
+'
+'----------------------------------------------------------------------------------------------------
+
+'----------------------------------------------------------------------------------------------------
+'
+' refresh_memory - refresh external memory and reset refresh_cnt
+'
+' Note: only required if REFRESH is defined
+'
+'----------------------------------------------------------------------------------------------------
