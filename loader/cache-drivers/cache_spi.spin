@@ -8,6 +8,7 @@ spiSend rol     data, #1 wc
         or      outa, sck_mask
         andn    outa, sck_mask
         djnz    bits, #spiSend
+        andn    outa, mosi_mask ' leave MOSI low
 spiSendByte_ret
 spiSend_ret
         ret

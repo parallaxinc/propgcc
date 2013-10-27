@@ -8,12 +8,7 @@
 '***********************************
 '* Assembly language serial driver *
 '***********************************
-			.section .data
-			.global  __FullDuplexCogCode
-__FullDuplexCogCode
-			long __load_start_cogsys0
-
-			.section .cogsys0, "ax"
+			.section .text, "ax"
                         org 0
 			.compress off
 '

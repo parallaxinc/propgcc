@@ -27,9 +27,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "PLoadLib.h"
 #include "osint.h"
 
-static int ShowPort(const char* port, void* data)
+typedef struct {
+    int baud;
+    int verbose;
+    char *actualport;
+    int noreset;
+} CheckPortInfo;
+
+static int CheckPort(const char *port, void *data)
 {
-    printf("%s\n", port);
+    CheckPortInfo* info = (CheckPortInfo *)data;
+    int rc;
+    if (info->verbose) {
+        printf("Trying %s                    \r", port);
+        fflush(stdout);
+    }
+    if ((rc = popenport(port, info->baud, info->noreset)) != PLOAD_STATUS_OK)
+        return rc;
+    if (info->actualport) {
+        strncpy(info->actualport, port, PATH_MAX - 1);
+        info->actualport[PATH_MAX - 1] = '\0';
+    }
+    return 0;
+}
+
+static int ShowPort(const char *port, void *data)
+{
+    if (data)
+        CheckPort(port, data);
+    else
+        printf("%s\n", port);
     return 1;
 }
 
@@ -38,26 +65,23 @@ void ShowPorts(char *prefix)
     serial_find(prefix, ShowPort, NULL);
 }
 
-typedef struct {
-    int baud;
-    int verbose;
-    char *actualport;
-    int noreset;
-} CheckPortInfo;
-
-static int CheckPort(const char* port, void* data)
+void ShowConnectedPorts(char *prefix, int baud, int flags)
 {
-    CheckPortInfo* info = (CheckPortInfo*)data;
-    int rc;
-    if (info->verbose)
-        printf("Trying %s                    \r", port); fflush(stdout);
-    if ((rc = popenport(port, info->baud, info->noreset)) != PLOAD_STATUS_OK)
-        return rc;
-    if (info->actualport) {
-        strncpy(info->actualport, port, PATH_MAX - 1);
-        info->actualport[PATH_MAX - 1] = '\0';
-    }
-    return 0;
+    CheckPortInfo info;
+    int noreset = PLOAD_RESET_DEVICE;
+    int verbose = 0;
+
+    if (flags & IFLAG_VERBOSE)
+      verbose = 1;
+    if (flags & IFLAG_NORESET)
+      noreset = PLOAD_NORESET;
+
+    info.baud = baud;
+    info.verbose = verbose;
+    info.actualport = NULL;
+    info.noreset = noreset;
+    
+    serial_find(prefix, ShowPort, &info);
 }
 
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
@@ -83,7 +107,7 @@ int InitPort(char *prefix, char *port, int baud, int flags, char *actualport)
         info.baud = baud;
         info.verbose = verbose;
         info.actualport = actualport;
-	info.noreset = noreset;
+	    info.noreset = noreset;
         if (serial_find(prefix, CheckPort, &info) == 0)
             rc = PLOAD_STATUS_OK;
         else
