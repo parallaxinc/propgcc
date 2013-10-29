@@ -38,6 +38,21 @@ int cog_i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int stop)
     return cdev->mailbox.sts == I2C_OK ? 0 : -1;
 }
 
+int cog_i2cReadMore(I2C *dev, uint8_t *buffer, int count, int stop)
+{
+    I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
+
+    cdev->mailbox.buffer = buffer;
+    cdev->mailbox.count = count;
+    cdev->mailbox.stop = stop;
+    cdev->mailbox.cmd = I2C_CMD_RECEIVE_MORE;
+    
+    while (cdev->mailbox.cmd != I2C_CMD_IDLE)
+        ;
+
+    return cdev->mailbox.sts == I2C_OK ? 0 : -1;
+}
+
 int cog_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, int stop)
 {
     I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
@@ -47,6 +62,21 @@ int cog_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, int stop)
     cdev->mailbox.count = count;
     cdev->mailbox.stop = stop;
     cdev->mailbox.cmd = I2C_CMD_SEND;
+    
+    while (cdev->mailbox.cmd != I2C_CMD_IDLE)
+        ;
+
+    return cdev->mailbox.sts == I2C_OK ? 0 : -1;
+}
+
+int cog_i2cWriteMore(I2C *dev, uint8_t *buffer, int count, int stop)
+{
+    I2C_COGDRIVER *cdev = (I2C_COGDRIVER *)dev;
+    
+    cdev->mailbox.buffer = buffer;
+    cdev->mailbox.count = count;
+    cdev->mailbox.stop = stop;
+    cdev->mailbox.cmd = I2C_CMD_SEND_MORE;
     
     while (cdev->mailbox.cmd != I2C_CMD_IDLE)
         ;

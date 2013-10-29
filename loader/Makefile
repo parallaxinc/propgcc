@@ -225,6 +225,24 @@ $(DRVDIR)/rampage2_xmem.dat \
 $(DRVDIR)/synapse_xmem.dat \
 $(DRVDIR)/sd_xmem.dat
 
+#######################
+# NEWER CACHE DRIVERS #
+#######################
+
+DRIVERS+=\
+$(DRVDIR)/rampage2_xcache.dat \
+$(DRVDIR)/winbond_spi_flash_xcache.dat \
+$(DRVDIR)/sst_spi_flash_xcache.dat \
+$(DRVDIR)/winbond_sqi_flash_xcache.dat \
+$(DRVDIR)/sst_sqi_flash_xcache.dat \
+$(DRVDIR)/spi_sram_xcache.dat \
+$(DRVDIR)/spi_sram24_xcache.dat \
+$(DRVDIR)/sqi_sram_xcache.dat \
+$(DRVDIR)/winbond_sqi_flash_sram_xcache.dat \
+$(DRVDIR)/sst_sqi_flash_sram_xcache.dat \
+$(DRVDIR)/c3_xcache.dat \
+$(DRVDIR)/synapse_xcache.dat
+
 #################
 # OTHER DRIVERS #
 #################
