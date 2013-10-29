@@ -13,6 +13,7 @@ endif
 SRCDIR=src
 SPINDIR=spin
 CACHEDRIVERDIR=cache-drivers
+OLDCACHEDRIVERDIR=old-cache-drivers
 XMEMDRIVERDIR=xmem-drivers
 OBJDIR=$(BUILDROOT)/obj/$(OS)
 BINDIR=$(BUILDROOT)/bin/$(OS)
@@ -176,14 +177,12 @@ $(SPINDIR)/serial_helper2.spin \
 $(SPINDIR)/flash_loader.spin \
 $(SPINDIR)/flash_loader2.spin \
 $(SPINDIR)/packet_driver.spin \
-$(SPINDIR)/cache_interface.spin \
 $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
-$(SPINDIR)/c3_cache.spin \
-$(SPINDIR)/ssf_cache.spin \
-$(SPINDIR)/eeprom_cache.spin \
-$(SPINDIR)/sd_cache.spin \
 $(SPINDIR)/vm_start.spin
+
+OLD_CACHE_DRIVER_SRCS=\
+$(OLDCACHEDRIVERDIR)/cache_interface.spin \
 
 #################
 # CACHE DRIVERS #
@@ -256,24 +255,32 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 # SPIN TO DAT #
 ###############
 
+$(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+	@$(SPIN_DAT) -o $@ $<
+	@$(ECHO) $@
+
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+	@$(SPIN_DAT) -o $@ $<
+	@$(ECHO) $@
+
+####################################
+# RULES TO BUILD OLD CACHE DRIVERS #
+####################################
+
+$(DRVDIR)/%.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -DENABLE_RAM -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+$(DRVDIR)/%_flash.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/sst_%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+$(DRVDIR)/sst_%.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/winbond_%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+$(DRVDIR)/winbond_%.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-$(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
 ######################################
