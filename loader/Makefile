@@ -182,7 +182,7 @@ $(SPINDIR)/TV_Text.spin \
 $(SPINDIR)/vm_start.spin
 
 OLD_CACHE_DRIVER_SRCS=\
-$(OLDCACHEDRIVERDIR)/cache_interface.spin \
+$(OLDCACHEDRIVERDIR)/cache_interface.spin
 
 #################
 # CACHE DRIVERS #
