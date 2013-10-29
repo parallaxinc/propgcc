@@ -1,12 +1,14 @@
 #undef FLASH
 #define RW
+#define BLOCK_IO
+
 #include "cache_common.spin"
 #include "cache_spi_pins.spin"
 #include "cache_spi.spin"
 
 init
         call    #get_spi_pins
-
+        
         ' set the pin directions
         mov     outa, pinout
         mov     dira, pindir
@@ -17,6 +19,8 @@ init
         mov     data, ramseq
         mov     bits, #16
         call    #spiSend
+        call    #release
+        
 init_ret
         ret
         
@@ -102,4 +106,4 @@ ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential 
 
 sram_mask   long    $00ffffff       ' mask to isolate the sram offset bits
 
-            FIT     496
+            fit     496

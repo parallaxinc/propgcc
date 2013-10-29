@@ -51,7 +51,7 @@ DAT
 
 ' initialization structure offsets
 ' $00: pointer to a two word mailbox
-' $04: pointer to where to store the cache lines in hub ram
+' $04: pointer to where to store the tags and cache lines in hub ram
 ' $08: geometry: (way_width << 24) | (index_width << 16) | (offset_width << 8)
 ' $0c: driver-specific parameter
 ' $10: driver-specific parameter
@@ -170,7 +170,6 @@ lck_spi test    $, #0 wc                ' lock no-op: clear the carry bit
         shl     vmaddr, offset_width
         mov     count, line_size
         call    #BREAD                  ' read new page
-        mov     dira, #0                ' release the pins for other SPI clients
 nlk_spi nop        
         wrlong  vmpage, tagptr
 #ifdef RW
@@ -204,18 +203,28 @@ extend  mov     vmaddr, vmpage
         jmp     vmpage
 
 dispatch
-        jmp     #waitcmd
+        jmp     #waitcmd                ' 0 - erase_chip
 #ifdef FLASH
-        jmp     #erase_block_handler
-        jmp     #write_data_handler
+        jmp     #erase_block_handler    ' 1 - erase_block
+        jmp     #write_data_handler     ' 2 - write_data
 #else
-        jmp     #waitcmd
-        jmp     #waitcmd
+        jmp     #waitcmd                ' 1 - erase block
+        jmp     #waitcmd                ' 2 - write_data
 #endif
-        jmp     #waitcmd
-        jmp     #waitcmd
-        jmp     #waitcmd
-'       jmp     #lock_set_handler - This is the next instruction - no need to waste a long
+#ifdef BLOCK_IO
+        jmp     #block_read_handler     ' 3 - block_read
+#ifdef RW
+        jmp     #block_write_handler    ' 4 - block_write
+#else
+        jmp     #waitcmd                ' 4 - block_write
+#endif
+#else
+        jmp     #waitcmd                ' 3 - block_read
+        jmp     #waitcmd                ' 4 - block_write
+#endif
+        jmp     #waitcmd                ' 5 - unused
+        jmp     #lock_set_handler       ' 6 - lock_set
+        jmp     #waitcmd                ' 7 - unused
 
 ' Note that we only provide SD locks for the cache operations - the other
 ' operations are specific to the sd_cache_loader's use of the cache driver, and
@@ -234,25 +243,60 @@ lock_id long    0               ' lock id for optional bus interlock
 
 #ifdef FLASH
 
+#ifndef NEED_BLOCK_SETUP
+#define NEED_BLOCK_SETUP
+#endif
+
 erase_block_handler
         call    #erase_4k_block
-        wrlong  data, pvmaddr
-        jmp     #waitcmd
+        jmp     #block_finish
 
 write_data_handler
-        rdlong  hubaddr, vmaddr         ' get the buffer pointer
-        add     vmaddr, #4
-        rdlong  count, vmaddr wz        ' get the byte count
-  if_z  mov     data, #0
-  if_z  jmp     #:done
-        add     vmaddr, #4
-        rdlong  vmaddr, vmaddr          ' get the flash address (zero based)
+        call    #block_setup
         call    #write_block
-:done   wrlong  data, pvmaddr
-        jmp     #waitcmd
+        jmp     #block_finish
 
 #endif
 
+#ifdef BLOCK_IO
+
+#ifndef NEED_BLOCK_SETUP
+#define NEED_BLOCK_SETUP
+#endif
+
+block_read_handler
+        call    #block_setup
+        call    #BREAD
+        jmp     #block_finish
+
+#ifdef RW
+
+block_write_handler
+        call    #block_setup
+        call    #BWRITE
+        jmp     #block_finish
+
+#endif
+
+#endif
+
+#ifdef NEED_BLOCK_SETUP
+
+block_setup
+        rdlong  hubaddr, vmaddr         ' get the hub buffer pointer
+        add     vmaddr, #4
+        rdlong  count, vmaddr           ' get the byte count
+        add     vmaddr, #4
+        rdlong  vmaddr, vmaddr          ' get the address or offset
+block_setup_ret
+        ret
+
+block_finish
+        wrlong  data, pvmaddr           ' return status
+        jmp     #waitcmd
+
+#endif
+        
 ' pointers to mailbox entries and cache hub space
 pvmcmd          long    0       ' on call this is the virtual address and read/write bit
 pvmaddr         long    0       ' on return this is the address of the cache line containing the virtual address
@@ -287,9 +331,9 @@ offset_shift    long    0       ' offset_width - 2
 line_size       long    0
 
 ' input parameters to BREAD and BWRITE
-vmaddr      long    0           ' virtual address
-hubaddr     long    0           ' hub memory address to read from or write to
-count       long    0           ' number of longs to read or write
+vmaddr          long    0       ' virtual address
+hubaddr         long    0       ' hub memory address to read from or write to
+count           long    0       ' number of bytes to read or write
 
 ' THE FOLLOWING FUNCTIONS AND VARIABLES ARE REQUIRED TO ACCESS EXTERNAL MEMORY
 
@@ -332,7 +376,7 @@ count       long    0           ' number of longs to read or write
 ' on input:
 '   vmaddr is the virtual memory address to read
 '   hubaddr is the hub memory address to write
-'   count is the number of longs to read
+'   count is the number of bytes to read
 '
 '----------------------------------------------------------------------------------------------------
 
@@ -343,7 +387,7 @@ count       long    0           ' number of longs to read or write
 ' on input:
 '   vmaddr is the virtual memory address to write
 '   hubaddr is the hub memory address to read
-'   count is the number of longs to write
+'   count is the number of bytes to write
 '
 ' Note: only required if RW is defined
 '

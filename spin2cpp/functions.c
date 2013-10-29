@@ -372,12 +372,21 @@ PrintParameterList(FILE *f, AST *list)
 void
 PrintAnnotationList(FILE *f, AST *ast, char terminal)
 {
+    AST *origAst = ast;
+    AST *old;
     while (ast) {
         if (ast->kind != AST_ANNOTATION) {
             ERROR(ast, "Internal error in function print: expecting annotation");
             return;
         }
+	// prune duplicates
+	for (old = origAst; old != ast; old = old->right) {
+	    if (!strcmp(old->d.string, ast->d.string)) {
+	      goto skip;
+	    }
+	}
         fprintf(f, "%s%c", ast->d.string, terminal);
+    skip:
         ast = ast->right;
     }
 }

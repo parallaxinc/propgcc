@@ -41,7 +41,9 @@ typedef struct I2C I2C;
 typedef struct {
     int (*close)(I2C *dev);
     int (*read)(I2C *dev, int address, uint8_t *buffer, int count, int stop);
+    int (*readMore)(I2C *dev, uint8_t *buffer, int count, int stop);
     int (*write)(I2C *dev, int address, uint8_t *buffer, int count, int stop);
+    int (*writeMore)(I2C *dev, uint8_t *buffer, int count, int stop);
 } I2C_OPS;
 
 /* i2c state information */
@@ -170,6 +172,28 @@ static inline int i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, in
 }
 
 /**
+ * @brief Write more to an I2C device
+ *
+ * @details Write more to an I2C device. This can only be used
+ * following a call to i2cWrite that specifies FALSE for the stop
+ * parameter. Set the stop parameter to TRUE to cause an
+ * I2C stop sequence to be emitted after the data. Setting it
+ * to FALSE omits the stop sequence.
+ *
+ * @param dev I2C device to write to
+ * @param buffer Address of the buffer containing data to write
+ * @param count Number of bytes of data to write
+ * @param stop TRUE to send a stop sequence after the data
+ *
+ * @returns 0 on success, -1 on failure.
+ *
+ */
+static inline int i2cWriteMore(I2C *dev, uint8_t *buffer, int count, int stop)
+{
+    return (*dev->ops->writeMore)(dev, buffer, count, stop);
+}
+
+/**
  * @brief Read from an I2C device
  *
  * @details Read from an I2C device at the specified address.
@@ -192,9 +216,34 @@ static inline int i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int
     return (*dev->ops->read)(dev, address, buffer, count, stop);
 }
 
+/**
+ * @brief Read more from an I2C device
+ *
+ * @details Read more from an I2C device. This can only be used
+ * following a call to i2cRead that specifies FALSE for the stop
+ * parameter. Set the stop parameter to TRUE to cause an
+ * I2C stop sequence to be emitted after the data. Setting it
+ * to FALSE omits the stop sequence.
+ *
+ * @param dev I2C device to read from
+ * @param address I2C address in bits 7:1, zero in bit 0
+ * @param buffer Address of the buffer to receive data
+ * @param count Number of bytes of data to receive
+ * @param stop TRUE to send a stop sequence after the data
+ *
+ * @returns 0 on success, -1 on failure.
+ *
+ */
+static inline int i2cReadMore(I2C *dev, uint8_t *buffer, int count, int stop)
+{
+    return (*dev->ops->readMore)(dev, buffer, count, stop);
+}
+
 /* internal functions */
 int cog_i2cRead(I2C *dev, int address, uint8_t *buffer, int count, int stop);
+int cog_i2cReadMore(I2C *dev, uint8_t *buffer, int count, int stop);
 int cog_i2cWrite(I2C *dev, int address, uint8_t *buffer, int count, int stop);
+int cog_i2cWriteMore(I2C *dev, uint8_t *buffer, int count, int stop);
 
 #if defined(__cplusplus)
 }

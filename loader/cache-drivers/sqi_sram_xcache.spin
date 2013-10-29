@@ -1,5 +1,7 @@
 #undef FLASH
 #define RW
+#define BLOCK_IO
+
 #include "cache_common.spin"
 #include "cache_sqi_pins.spin"
 #include "cache_sqi.spin"
@@ -76,9 +78,8 @@ BSTART_RET
 BREAD
         mov     fn, read
         call    #BSTART 
-        mov     data, #0
-        call    #sqiSendByte
         andn    dira, sio_mask
+        call    #sqiRecvByte    ' dummy byte
 :loop   call    #sqiRecvByte
         wrbyte  data, ptr
         add     ptr, #1
@@ -121,7 +122,6 @@ ptr         long    0
 read        long    $03000000       ' read command
 write       long    $02000000       ' write command
 eqio        long    $38000000       ' enter quad I/O mode
-rstio       long    $ffffffff       ' reset quad I/O mode
 ramseq      long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
 
 sram_mask   long    $00ffffff       ' mask to isolate the sram offset bits
