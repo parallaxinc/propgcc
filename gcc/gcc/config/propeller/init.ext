@@ -21,7 +21,10 @@ __LMM_init
         mov     sp, PAR
 #endif
 #if defined(__PROPELLER_USE_XMM__)
-        rdlong  xmem_hubaddrp, sp           ' pop the external memory driver mailbox address
+        rdlong  xmem_hubaddrp, sp           ' pop the base of the mailbox array
+        cogid   t1                          ' use our COG ID as an index to find our mailbox
+        shl     t1, #8                      ' each mailbox is two longs
+        add     xmem_hubaddrp, t1
         mov     xmem_extaddrp, xmem_hubaddrp
         add     xmem_extaddrp, #4
         add     sp, #4
