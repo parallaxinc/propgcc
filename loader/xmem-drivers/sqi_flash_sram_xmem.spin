@@ -182,7 +182,8 @@ read_bytes_ret
 read_bytes_sram
         mov     fn, sram_read
         call    #read_write_start 
-        andn    dira, sio_mask
+        andn    dira, sio_mask  ' switch to input
+        andn    outa, sck_mask
         call    #sqiRecvByte
 :loop   call    #sqiRecvByte
         wrbyte  data, hubaddr
@@ -228,6 +229,7 @@ write_bytes_flash
 write_bytes_sram
         mov     fn, sram_write
         call    #read_write_start
+        andn    outa, sck_mask
 :loop   rdbyte  data, hubaddr
         call    #sqiSendByte
         add     hubaddr, #1
@@ -269,8 +271,11 @@ read_write_start
         call    #sqiSendByte
         rol     cmd, #8
         mov     data, cmd
-        call    #sqiSendByte
-read_write_start_RET
+        call    #sqiSendByteX
+        ' let the caller release the clock so that the bus
+        ' can be switched to input before the clock goes low
+        ' andn    outa, sck_mask
+read_write_start_ret
         ret
 
 ' spi commands

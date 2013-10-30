@@ -78,8 +78,8 @@ init_ret
 
 read_bytes
         mov     fn, sram_read
-        call    #read_write_init 
-        andn    dira, sio_mask
+        call    #read_write_start 
+        andn    dira, sio_mask  ' switch to input
         andn    outa, sck_mask
         call    #sqiRecvByte    ' dummy byte
 :loop   call    #sqiRecvByte
@@ -103,7 +103,7 @@ read_bytes_ret
 
 write_bytes
         mov     fn, sram_write
-        call    #read_write_init
+        call    #read_write_start
         andn    outa, sck_mask
 :loop   rdbyte  data, ptr
         call    #sqiSendByte
@@ -116,7 +116,7 @@ write_bytes_ret
         
 '----------------------------------------------------------------------------------------------------
 '
-' read_write_init
+' read_write_start
 '
 ' select the chip and send the address for the read/write operation
 '
@@ -127,7 +127,7 @@ write_bytes_ret
 '
 '----------------------------------------------------------------------------------------------------
 
-read_write_init
+read_write_start
         mov     cmd, extaddr
         and     cmd, sram_mask
         or      cmd, fn
@@ -147,9 +147,9 @@ read_write_init
         andn    outa, sck_mask
         rol     cmd, #8
         mov     data, cmd
-        call    #sqiSendByte
+        call    #sqiSendByteX
         mov     ptr, hubaddr
-read_write_init_ret
+read_write_start_ret
         ret
 
 ' variables used by the spi send/receive functions
