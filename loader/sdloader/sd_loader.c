@@ -79,7 +79,7 @@ int main(void)
     uint8_t *buffer = (uint8_t *)(((uint32_t)padded_buffer + 15) & ~15);
     SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
     uint32_t load_address, index_width, offset_width, addr, count;
-    uint32_t tags_size, cache_size, p_cache_lines, p_cache_tags, *sp;
+    uint32_t tags_size, cache_size, cache_lines, cache_tags, mboxes, *sp;
     VolumeInfo vinfo;
     FileInfo finfo;
     PexeFileHdr *hdr;
@@ -91,18 +91,19 @@ int main(void)
     offset_width = info->cache_geometry & 0xff;
     tags_size = (1 << index_width) * 4;
     cache_size = 1 << (index_width + offset_width);
-    p_cache_lines = HUB_SIZE - cache_size;
-    p_cache_tags = p_cache_lines - tags_size;
-    xmem_mbox = (xmem_mbox_t *)(p_cache_tags - sizeof(xmem_mbox_t) - 4);
+    cache_lines = HUB_SIZE - cache_size;
+    cache_tags = cache_lines - tags_size;
+    mboxes = cache_tags - sizeof(xmem_mbox_t) * 8 - 4;
+    xmem_mbox = (xmem_mbox_t *)mboxes;
 
     // load the external memory driver
     DPRINTF("Loading external memory driver\n");
-    memset(xmem_mbox, 0, sizeof(xmem_mbox_t) + 4);
-    xmem_mbox[1].hubaddr = XMEM_END;
-    cognew(_load_start_coguser1, xmem_mbox);
+    memset((void *)mboxes, 0, sizeof(xmem_mbox_t) * 8 + 4);
+    xmem_mbox[8].hubaddr = XMEM_END;
+    cognew(_load_start_coguser1, mboxes);
     
     DPRINTF("Loading SD driver\n");
-    sd_mbox = (uint32_t *)xmem_mbox - 2;
+    sd_mbox = (uint32_t *)mboxes - 2;
     sd_mbox[0] = 0xffffffff;
     if ((sd_id = cognew(_load_start_coguser2, sd_mbox)) < 0) {
         DPRINTF("Error loading SD driver\n");
@@ -172,12 +173,12 @@ int main(void)
     
     // setup the stack
     // at start stack contains xmem_mbox, cache_tags, cache_lines, cache_geometry, pc
-    sp = (uint32_t *)xmem_mbox;
+    sp = (uint32_t *)mboxes;
     *--sp = load_address;
     *--sp = info->cache_geometry;
-    *--sp = p_cache_lines;
-    *--sp = p_cache_tags;
-    *--sp = (uint32_t)xmem_mbox;
+    *--sp = cache_lines;
+    *--sp = cache_tags;
+    *--sp = mboxes;
 
     // start the xmm kernel boot code
     DPRINTF("Starting kernel\n");
@@ -194,6 +195,4 @@ static void write_block(uint32_t addr, uint8_t *buffer, int size)
     while (xmem_mbox->hubaddr)
         ;
 }
-
-
 
