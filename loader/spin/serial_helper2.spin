@@ -113,8 +113,8 @@ PRI CACHE_INIT_handler(packet) | index_width, offset_width, tags_size, cache_siz
 #endif
   p_cache_lines := hub_memory_size - cache_size
   p_cache_tags := p_cache_lines - tags_size
-  p_cache_mbox := p_cache_tags - cache#_MBOX2_SIZE * 4 - 4
-  cogn := cache.start2(mm_data_ptr, p_cache_mbox, 1)
+  p_cache_mboxes := p_cache_tags - cache#_MBOX2_SIZE * 4 * 8 - 4 ' one mailbox per COG
+  cogn := cache.start2(mm_data_ptr, p_cache_mboxes, 8)
 #ifdef TV_DEBUG
   tv.str(string(" -> "))
   tv.dec(cogn)
@@ -236,7 +236,7 @@ PRI RUN_handler | sp
 
   ' setup the stack
   ' at start stack contains cache_mbox, cache_tags, cache_lines, cache_geometry, pc
-  sp := p_cache_mbox
+  sp := p_cache_mboxes
   sp -= 4
   long[sp] := initial_pc
   sp -= 4
@@ -246,7 +246,7 @@ PRI RUN_handler | sp
   sp -= 4
   long[sp] := p_cache_tags
   sp -= 4
-  long[sp] := p_cache_mbox
+  long[sp] := p_cache_mboxes
 
    ' start the xmm kernel boot code
   coginit(cogid, mm_data_ptr, sp)
@@ -291,7 +291,7 @@ p_sel_inc           long    0
 p_sel_msk           long    0
 ' end of parameters that are filled in before downloading
 
-p_cache_mbox        long    0
+p_cache_mboxes      long    0
 p_cache_geometry    long    0
 p_cache_tags        long    0
 p_cache_lines       long    0
