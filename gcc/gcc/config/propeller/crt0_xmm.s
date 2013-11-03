@@ -40,7 +40,7 @@ r10     long    0
 r11     long    0
 r12     long    0
 r13     long    0
-r14     long    0
+r14     long    0	'' flag for first time run
 r15     '' alias for lr
 lr      long    0
 sp      long    0
@@ -547,7 +547,7 @@ loadbuf_ret
         '' in Cog memory, providing a significant
         '' speedup.
         ''
-
+	.global __LMM_FCACHE_ADDR
 __LMM_FCACHE_ADDR
         long 0
 inc_dest
