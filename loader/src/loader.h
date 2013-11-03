@@ -25,11 +25,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "config.h"
 #include "system.h"
 #include "loadelf.h"
+#include "port.h"
 #include "PLoadLib.h"
-
-/* InitPort flags */
-#define IFLAG_VERBOSE               (1 << 0)
-#define IFLAG_NORESET               (1 << 1)
 
 /* LoadXXX flags */
 #define LFLAG_WRITE_EEPROM          (1 << 0)
@@ -82,8 +79,6 @@ typedef struct {
 } TranslateTable;
 
 /* loader.c */
-void ShowPorts(char *prefix);
-int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);

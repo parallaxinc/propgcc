@@ -61,6 +61,7 @@ void DumpBoardConfiguration(BoardConfig *config);
 BoardConfig *GetConfigSubtype(BoardConfig *config, const char *name);
 BoardConfig *MergeConfigs(BoardConfig *parent, BoardConfig *child);
 void SetConfigField(BoardConfig *config, const char *tag, const char *value);
+void RemoveConfigField(BoardConfig *config, const char *tag);
 char *GetConfigField(BoardConfig *config, const char *tag);
 int GetNumericConfigField(BoardConfig *config, const char *tag, int *pValue);
 

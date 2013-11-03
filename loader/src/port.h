@@ -22,13 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #ifndef __PORT_H__
 #define __PORT_H__
 
-#ifndef IFLAG_VERBOSE
 /* InitPort flags */
 #define IFLAG_VERBOSE               (1 << 0)
 #define IFLAG_NORESET               (1 << 1)
-#endif
 
 void ShowPorts(char *prefix);
+void ShowConnectedPorts(char *prefix, int baud, int flags);
 int InitPort(char *prefix, char *port, int baud, int flags, char *actualport);
 
 #endif

@@ -71,10 +71,6 @@ typedef struct {
 /* DAT header in flash_loader2.spin */
 typedef struct {
     uint32_t xmem_geometry;
-    uint32_t xmem_param1;
-    uint32_t xmem_param2;
-    uint32_t xmem_param3;
-    uint32_t xmem_param4;
     uint32_t vm_code_off;
     uint32_t cache_code_off;
 } FlashLoader2DatHdr;
@@ -438,6 +434,8 @@ static void SetSDParams(BoardConfig *config, SDParams *params)
     params->sdspi_config2 = Get_sdspi_config2(config);
 }
 
+#if 0
+
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
     uint8_t driverImage[COG_IMAGE_MAX];
@@ -488,7 +486,6 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         if (strcasecmp(value, "ram") == 0)
             info->flags |= SD_LOAD_RAM;
     }
-    
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find cache driver (.coguser1) segment");
@@ -536,8 +533,111 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     return TRUE;
 }
 
+#else
+
+int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
+{
+    uint8_t driverImage[COG_IMAGE_MAX];
+    int imageSize, driverSize, mode;
+    ElfProgramHdr program;
+    SdLoaderInfo *info;
+    uint8_t *imagebuf;
+    uint32_t start;
+    ElfContext *c;
+    ElfHdr hdr;
+    char *value;
+    int ivalue;
+    FILE *fp;
+    
+    /* open the sd loader executable */
+    if (!(fp = xbOpenFileInPath(sys, path, "rb")))
+        return Error("can't open '%s'", path);
+
+    /* check for an elf file */
+    if (!ReadAndCheckElfHdr(fp, &hdr))
+        return Error("bad elf file '%s'", path);
+
+    /* open the elf file */
+    if (!(c = OpenElfFile(fp, &hdr)))
+        return Error("failed to open elf file");
+        
+    /* build the .binary image */
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, NULL)))
+        return FALSE;
+    
+    if (FindProgramSegment(c, ".coguser0", &program) < 0)
+        return Error("can't find info (.coguser0) segment");
+    
+    info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
+    memset(info, 0, sizeof(SdLoaderInfo));
+    
+    if (GetNumericConfigField(config, "cache-geometry", &ivalue))
+        info->cache_geometry = ivalue;
+    if ((value = GetConfigField(config, "load-target")) != NULL) {
+        if (strcasecmp(value, "ram") == 0)
+            info->flags |= SD_LOAD_RAM;
+    }
+
+    if (FindProgramSegment(c, ".coguser1", &program) < 0)
+        return Error("can't find cache driver (.coguser1) segment");
+
+    if ((value = GetConfigField(config, "xmem-driver")) != NULL) {
+        uint32_t *xmem = (uint32_t *)driverImage;
+        if (!ReadCogImage(sys, value, driverImage, &driverSize))
+            return Error("reading external memory driver image failed: %s", value);
+        if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+            xmem[1] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+            xmem[2] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+            xmem[3] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+            xmem[4] = ivalue;
+        memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+    }
+    else
+        return Error("no external memory driver");
+        
+    if (FindProgramSegment(c, ".coguser2", &program) < 0)
+        return Error("can't find sd_driver (.coguser2) segment");
+    
+    if ((value = GetConfigField(config, "sd-driver")) == NULL)
+        return Error("no sd-driver found in the configuration");
+
+    SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
+    if (!ReadCogImage(sys, value, driverImage, &driverSize))
+        return Error("reading sd driver image failed: %s", value);
+    SetSDParams(config, &dat->sd_params);
+    memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+            
+    /* update the checksum */
+    UpdateChecksum(imagebuf, imageSize);
+
+    /* determine the download mode */
+    if (flags & LFLAG_WRITE_EEPROM)
+        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+    else if (flags & LFLAG_RUN)
+        mode = DOWNLOAD_RUN_BINARY;
+    else
+        return Error("expecting -e and/or -r");
+        
+    /* load the program */
+    if (ploadbuf(path, imagebuf, imageSize, mode) != 0) {
+        free(imagebuf);
+        return Error("load failed");
+    }
+    
+    /* free the image buffer */
+    free(imagebuf);
+
+    return TRUE;
+}
+
+#endif
+
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
+#if 0
     uint8_t driverImage[COG_IMAGE_MAX];
     int imageSize, driverSize, mode;
     ElfProgramHdr program;
@@ -615,6 +715,9 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     free(imagebuf);
 
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
@@ -656,20 +759,20 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     uint32_t loadAddress;
     int helper_size;
     
-    /* check for a cache driver for loading the external image */
-    if (!(cacheDriver = GetConfigField(config, ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN ? "cache-driver" : "xmem-driver")))
-        return Error("no cache driver to load external image");
-    
     /* build the external image */
     if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        if (!(cacheDriver = GetConfigField(config,  "cache-driver")))
+            return Error("no cache driver to load external image");
         if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
             return FALSE;
     }
     else {
+        if (!(cacheDriver = GetConfigField(config, "xmem-driver")))
+            return Error("no external memory driver to load external image");
         if (!(imagebuf = BuildExternalImage2(config, c, &loadAddress, &imageSize)))
             return FALSE;
     }
-        
+    
     /* get the target memory space */
     if ((value = GetConfigField(config, "load-target")) != NULL) {
         if (strcasecmp(value, "flash") == 0)
@@ -786,28 +889,29 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         }
     }
     
-    /* this branch handles the new external memory drivers where the tag handling is in the kernel */
+    /* this branch handles the external memory drivers where the tag handling is in the kernel */
     else {
-        uint32_t params[5];
+        uint32_t *xmem = (uint32_t *)cacheDriverImage;
+        uint32_t params[1];
         memset(params, 0, sizeof(params));
-        if (GetNumericConfigField(config, "xmem-geometry", &ivalue))
+        if (GetNumericConfigField(config, "cache-geometry", &ivalue))
             params[0] = ivalue;
         if (GetNumericConfigField(config, "xmem-param1", &ivalue))
-            params[1] = ivalue;
+            xmem[1] = ivalue;
         if (GetNumericConfigField(config, "xmem-param2", &ivalue))
-            params[2] = ivalue;
+            xmem[2] = ivalue;
         if (GetNumericConfigField(config, "xmem-param3", &ivalue))
-            params[3] = ivalue;
+            xmem[3] = ivalue;
         if (GetNumericConfigField(config, "xmem-param4", &ivalue))
-            params[4] = ivalue;
+            xmem[4] = ivalue;
     
-        /* load the cache driver */
-        printf("Loading cache driver '%s'\n", cacheDriver);
+        /* load the external memory driver */
+        printf("Loading external memory driver '%s'\n", cacheDriver);
         if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
         ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
         ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
             free(imagebuf);
-            return Error("Loading cache driver failed");
+            return Error("Loading external memory driver failed");
         }
     }
             
@@ -1001,6 +1105,7 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
     SpinObj *obj = (SpinObj *)(flash_loader2_array + hdr->pbase);
     FlashLoader2DatHdr *dat = (FlashLoader2DatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t xmemDriverImage[COG_IMAGE_MAX];
+    uint32_t *xmem = (uint32_t *)xmemDriverImage;
     int imageSize, ivalue;
     char *xmemDriver;
     
@@ -1019,20 +1124,22 @@ static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_
     /* copy the vm image to the binary file */
     memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
     
-    /* copy the cache driver image to the binary file */
+    /* patch the external memory driver with its initialization parameters */
+    if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+        xmem[1] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+        xmem[2] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+        xmem[3] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+        xmem[4] = ivalue;
+
+    /* copy the external memory driver image to the flash loader image */
     memcpy((uint8_t *)dat + dat->cache_code_off, xmemDriverImage, imageSize);
     
-    /* get the cache size */
-    if (GetNumericConfigField(config, "xmem-geometry", &ivalue))
+    /* get the cache geometry */
+    if (GetNumericConfigField(config, "cache-geometry", &ivalue))
         dat->xmem_geometry = ivalue;
-    if (GetNumericConfigField(config, "xmem-param1", &ivalue))
-        dat->xmem_param1 = ivalue;
-    if (GetNumericConfigField(config, "xmem-param2", &ivalue))
-        dat->xmem_param2 = ivalue;
-    if (GetNumericConfigField(config, "xmem-param3", &ivalue))
-        dat->xmem_param3 = ivalue;
-    if (GetNumericConfigField(config, "xmem-param4", &ivalue))
-        dat->xmem_param4 = ivalue;
     
     /* recompute the checksum */
     UpdateChecksum(flash_loader2_array, flash_loader2_size);

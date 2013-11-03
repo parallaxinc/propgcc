@@ -21,7 +21,10 @@ __LMM_init
         mov     sp, PAR
 #endif
 #if defined(__PROPELLER_USE_XMM__)
-        rdlong  xmem_hubaddrp, sp           ' pop the external memory driver mailbox address
+        rdlong  xmem_hubaddrp, sp           ' pop the base of the mailbox array
+        cogid   t1                          ' use our COG ID as an index to find our mailbox
+        shl     t1, #8                      ' each mailbox is two longs
+        add     xmem_hubaddrp, t1
         mov     xmem_extaddrp, xmem_hubaddrp
         add     xmem_extaddrp, #4
         add     sp, #4
@@ -29,14 +32,15 @@ __LMM_init
         add     sp, #4
         rdlong  cacheptr, sp                ' pop the hub address of the cache lines
         add     sp, #4
-        rdlong  t1, sp wz                   ' pop the cache geometry
+        rdlong  t1, sp                      ' pop the cache geometry
         add     sp, #4
-  if_z  jmp     #skip_geometry              ' skip cache geometry if zero
-        mov     index_width, t1
-        shr     index_width, #8
-        mov     offset_width, t1
-        and     offset_width, #$ff
-skip_geometry
+        mov     t2, t1
+        shr     t2, #8
+        and     t2, #$ff wz
+  if_nz mov     index_width, t2
+        mov     t2, t1
+        and     t2, #$ff wz
+  if_nz mov     offset_width, t2
         mov     index_count, #1
         shl     index_count, index_width
         mov     index_mask, index_count
