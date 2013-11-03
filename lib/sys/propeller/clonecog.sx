@@ -43,11 +43,16 @@ __clone_cog
 	add	r0,#4
 	mov	r1, #0
 	'' write r4-r14
-	mov	r2, #11
+	mov	r2, #10
 .Lrloop
 	wrlong	r1, r0
 	add	r0, #4
 	djnz	r2, #__LMM_FCACHE_START+(.Lrloop-.Lstart)
+
+	'' write a non-zero value to r14 to indicate not first time
+	mov	 r2, #1
+	wrlong	 r2, r0
+	add	 r0, #4
 
 	'' write r15
 	wrlong	__LMM_FCACHE_START+(.Lr15-.Lstart), r0
