@@ -54,10 +54,8 @@ flush   wrlong  empty_mask, t2
         rdlong  pc, sp
         add     sp, #4
 #endif
-        rdlong  __TMP0, __C_LOCK_PTR   ' check for first time run
-        shr __TMP0, #16
-        cmp __TMP0, #0x0001 wz
- IF_E   jmp    #not_first_cog        ' if not, skip some stuff
+        cmp	r14, #0 wz   ' check for first time run
+ IF_NE  jmp    #not_first_cog        ' if not, skip some stuff
         
         '' initialization for first time run
         locknew __TMP0 wc       ' allocate a lock

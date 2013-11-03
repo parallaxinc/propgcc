@@ -45,7 +45,7 @@ r10     nop
 r11     nop
 r12     nop
 r13	nop
-r14	nop
+r14	long	0	'' flag for first time run
 	
 r15	'' alias for link register lr
 lr	long	__exit
