@@ -478,6 +478,7 @@ cacheaddr       long    0               ' external address of last matching cach
 cacheline       long    0               ' hub address of last matching cache line
 set_dirty_bit   long    0               ' DIRTY_BIT set on writes, clear on reads
 
+		.global xmem_hubaddrp	' thread code needs access to the mailbox array address
 xmem_hubaddrp   long    0
 xmem_extaddrp   long    0
 
