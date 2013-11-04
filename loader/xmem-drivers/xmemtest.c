@@ -10,7 +10,7 @@
 //#define DEFAULTS
 
 //#define FLASH_TEST
-//#define BIG_FLASH_TEST
+#define BIG_FLASH_TEST
 //#define RAM_TEST
 #define BIG_RAM_TEST
 
