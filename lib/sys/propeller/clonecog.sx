@@ -15,7 +15,11 @@ __clone_cog
 	'' invalidate caches
 	mov	__LMM_FCACHE_ADDR,#0
 	mov	__kernel_ext,#0
-
+#if defined(__PROPELLER_USE_XMM__)
+	mov	cacheaddr,#0
+	mov	cacheline,#0
+	mov	set_dirty_bit,#0
+#endif
 	'' copy data from hub memory to r0
 	mov	r1,#(0x6C0/4)-1	'' end of kernel
 	mov	r2,r1
