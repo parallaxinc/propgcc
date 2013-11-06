@@ -474,6 +474,10 @@ newtag          long    0
 tag             long    0
 memp            long    0
 save_z_c        long    0
+
+		.global cacheaddr
+		.global cacheline
+		.global set_dirty_bit
 cacheaddr       long    0               ' external address of last matching cache line
 cacheline       long    0               ' hub address of last matching cache line
 set_dirty_bit   long    0               ' DIRTY_BIT set on writes, clear on reads
