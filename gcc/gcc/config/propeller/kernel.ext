@@ -18,15 +18,10 @@ __load_extension
 	cmp	__kernel_ext,__TMP1 wz
    if_z jmp	__load_extension_ret
 	mov	__kernel_ext,__TMP1
-#if defined(__PROPELLER_USE_XMM__)
-	mov	dummy, pc
-	mov	pc,__TMP1
-	call	#read_code
-	mov	__TMP0, L_ins0
-	mov	pc, dummy
-#else
+	'' NOTE: kernel extensions must go in hub memory, so
+	'' this rdlong should be OK even in XMM mode
 	rdlong	__TMP0, __TMP1		'' read the length
-#endif
+
 	''add	__TMP1, #4		'' the length byte has to be loaded too
 	mov	__COGA, #0x6C0/4
 	call	#loadbuf
