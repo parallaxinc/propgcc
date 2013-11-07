@@ -71,7 +71,6 @@ flush   wrlong  empty_mask, t2
         jmp    #__LMM_start
 
 not_first_cog
-	call	#LEDon
         '' initialization for non-primary cogs
         rdlong pc,sp            ' if user stack, pop the pc
         add     sp,#4
@@ -105,7 +104,7 @@ __jmptab_ptr
 #endif
 
 
-#if 1
+#if 0
 LEDon
 	or	DIRA, LEDbit
 	andn	OUTA, LEDbit
