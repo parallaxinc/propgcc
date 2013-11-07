@@ -20,7 +20,7 @@
 #define OUT OUTA
 #endif
 
-#define STACK_SIZE 16
+#define STACK_SIZE 32
 
 /* stack for cog 1 */
 static int cog1_stack[STACK_SIZE];
@@ -36,6 +36,7 @@ volatile unsigned int pins;
  * here's the toggle code that runs in another cog
  */
 
+//__attribute__((section(".hubtext")))
 void
 do_toggle(void *arg __attribute__((unused)) )
 {
@@ -76,7 +77,11 @@ void main (int argc,  char* argv[])
     printf("hello, world!\n");
 
     /* set up the parameters for the C cog */
+#if defined(__PROPELLER_USE_XMM__)
+    pins = 0x00008000;  /* C3 led only */
+#else
     pins = 0x3fffffff;
+#endif
 #if defined(__PROPELLER2__)
     wait_time = 30000000;
 #else
@@ -94,6 +99,7 @@ void main (int argc,  char* argv[])
       wait_time =  wait_time >> 1;
       if (wait_time < MIN_GAP)
 	wait_time = _clkfreq;
+      printf("time = %d cycles\n", wait_time);
     }
 }
 
