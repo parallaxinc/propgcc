@@ -11,7 +11,8 @@
  * pthread library for allowing multiple threads to run on
  * multiple COG instances of the PropellerGCC LMM interpreter.
  * Multiple threads can also run on an XMM interpreter, but
- * only one XMM interpreter can run at any given time.
+ * only one XMM interpreter can run at any given time (this restriction
+ * will probably be lifted soon).
  *
  * @pre It is very important to understand that pthreads provide
  * a cooperative non-preemptive multithreading system.
