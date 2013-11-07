@@ -56,12 +56,14 @@ __LMM_init
 flush   wrlong  empty_mask, t2
         add     t2, #4
         djnz    t1, #flush
-        rdlong  pc, sp
-        add     sp, #4
 #endif
         cmp	r14, #0 wz   ' check for first time run
  IF_NE  jmp    #not_first_cog        ' if not, skip some stuff
         
+#if defined(__PROPELLER_USE_XMM__)
+        rdlong  pc, sp		' XMM loader sets pc on stack
+        add     sp, #4
+#endif
         '' initialization for first time run
         locknew __TMP0 wc       ' allocate a lock
         or      __TMP0, #256    ' make high word be 0x0001
@@ -69,6 +71,7 @@ flush   wrlong  empty_mask, t2
         jmp    #__LMM_start
 
 not_first_cog
+	call	#LEDon
         '' initialization for non-primary cogs
         rdlong pc,sp            ' if user stack, pop the pc
         add     sp,#4
@@ -102,9 +105,21 @@ __jmptab_ptr
 #endif
 
 
-init_lr
-        long    __exit
-init_pc
-        long    entry
+#if 1
+LEDon
+	or	DIRA, LEDbit
+	andn	OUTA, LEDbit
+LEDon_ret
+	ret
 
+LEDoff
+	or	DIRA, LEDbit
+	or	OUTA, LEDbit
+LEDoff_ret
+	ret
+
+LEDbit
+	long	0x8000
+#endif
+	
 endinit
