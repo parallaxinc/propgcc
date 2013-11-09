@@ -34,7 +34,7 @@ PROPOBJDIR=$(BUILDROOT)/obj/propeller
 
 ifeq ($(OS),linux)
 CFLAGS += -DLINUX
-BSTC_OS=bstc.linux
+SPINCMP=openspin.linux
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -42,7 +42,7 @@ endif
 
 ifeq ($(OS),cygwin)
 CFLAGS += -DCYGWIN
-BSTC_OS=bstc
+SPINCMP=openspin.exe
 EXT=.exe
 OSINT=osint_cygwin enumcom
 LIBS=-lsetupapi
@@ -50,7 +50,7 @@ endif
 
 ifeq ($(OS),msys)
 CFLAGS += -DMINGW
-BSTC_OS=bstc
+SPINCMP=openspin.exe
 EXT=.exe
 OSINT=osint_mingw enumcom
 LIBS=-lsetupapi
@@ -58,7 +58,7 @@ endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
-BSTC_OS=bstc.osx
+SPINCMP=openspin.osx
 EXT=
 OSINT=osint_linux
 LIBS=
@@ -67,14 +67,10 @@ endif
 CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 
-#
-# Use the next two lines for bstc
-#
-SPIN=$(BSTC_OS) -Ogxr
-SPINBFLAGS=
-#SPIN=spin2cpp
-#SPINBFLAGS=-mcmm -O
+# for compiling Spin code
+SPINFLAGS=
 
+# for compiling PASM external memory drivers
 SPIN_DAT=spin2cpp --dat
 
 ##################
@@ -238,12 +234,8 @@ sd-loader:	$(DRVDIR)
 # SPIN TO BINARY #
 ##################
 
-$(OBJDIR)/serial_helper.binary:	$(SPINDIR)/serial_helper.spin $(SPIN_SRCS)
-	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
-	@$(ECHO) $@
-
-$(OBJDIR)/%_loader.binary:	$(SPINDIR)/%_loader.spin $(SPIN_SRCS)
-	@$(SPIN) -b $(SPINBFLAGS) -o $(basename $@) $<
+$(OBJDIR)/%.binary:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+	@$(SPINCMP) -b $(SPINFLAGS) -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.binary

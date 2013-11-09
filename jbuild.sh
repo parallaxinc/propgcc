@@ -10,6 +10,9 @@ echo Prefix is ${PREFIX=/opt/parallax}
 export PREFIX
 
 #
+GCCSRC=`basename $(pwd)`
+
+#
 # note that the propgcc version string does not deal well with
 # spaces due to how it is used below
 #
@@ -90,25 +93,25 @@ then
   OS=macosx
   PORT=/dev/cu.usbserial-A8004ILf
   BOARD=hub
-  BSTC=bstc.osx
+  SPINCMP=openspin.osx
 elif test x$UNAME = xCygwin
 then
   OS=cygwin
   PORT=COM16
   BOARD=c3
-  BSTC=bstc.exe
+  SPINCMP=openspin.exe
 elif test x$UNAME = xMsys
 then
   OS=msys
   PORT=COM16
   BOARD=c3
-  BSTC=bstc.exe
+  SPINCMP=openspin.exe
 elif test x$UNAME = xLinux
 then
   OS=linux
   PORT=/dev/ttyUSB0
   BOARD=c3
-  BSTC=bstc.linux
+  SPINCMP=openspin.linux
 else
   echo "Unknown system: " $UNAME
   exit 1
@@ -142,81 +145,81 @@ mkdir -p ../build/binutils/etc
 cp gnu-oids.texi ../build/binutils/etc
 
 cd ../build/binutils
-../../propgcc/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-shared ${CONFIG_OPTIONS}
+../../$GCCSRC/binutils/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-shared ${CONFIG_OPTIONS}
 if test $? != 0
 then
    echo "binutils configure failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 make ${JOBS} all
 if test $? != 0
 then
    echo "binutils make failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 make install
 if test $? != 0
 then
    echo "binutils make install failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
-cd ../../propgcc
+cd ../../$GCCSRC
 
 #
 # build gcc
 #
 mkdir -p ../build/gcc
 cd ../build/gcc
-../../propgcc/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto --disable-shared ${CONFIG_OPTIONS}
+../../$GCCSRC/gcc/configure --target=propeller-elf --prefix=$PREFIX --disable-nls --disable-libssp --disable-lto --disable-shared ${CONFIG_OPTIONS}
 if test $? != 0
 then
    echo "gcc configure failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 make ${JOBS} all-gcc
 if test $? != 0
 then
    echo "gcc make all-gcc failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 make install-gcc
 if test $? != 0
 then
    echo "gcc make install-gcc failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
-cd ../../propgcc
+cd ../../$GCCSRC
 
 #
 # build newlibs
 #
 #mkdir -p ../build/newlib
 #cd ../build/newlib
-#../../propgcc/newlib/src/configure --target=propeller-elf --prefix=$PREFIX --enable-target-optspace
+#../../$GCCSRC/newlib/src/configure --target=propeller-elf --prefix=$PREFIX --enable-target-optspace
 #if test $? != 0
 #then
 #   echo "newlib configure failed."
-#   cd ../../propgcc
+#   cd ../../$GCCSRC
 #   exit 1
 #fi
 #make all
 #if test $? != 0
 #then
 #   echo "newlib make all failed."
-#   cd ../../propgcc
+#   cd ../../$GCCSRC
 #   exit 1
 #fi
 #make install
 #if test $? != 0
 #then
 #   echo "newlib make install failed."
-#   cd ../../propgcc
+#   cd ../../$GCCSRC
 #   exit 1
 #fi
 
@@ -250,17 +253,17 @@ make ${JOBS} all-target-libgcc
 if test $? != 0
 then
    echo "gcc make all-target-libgcc failed"
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 make install-target-libgcc
 if test $? != 0
 then
    echo "gcc make install-target-libgcc failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
-cd ../../propgcc
+cd ../../$GCCSRC
 
 #
 # build library
@@ -300,18 +303,18 @@ cd ..
 #fi
 
 #
-# copy Brad's Spin Tool
+# copy the OpenSpin compiler
 #
-cp -f release/$BSTC $PREFIX/bin
+cp -f release/$SPINCMP $PREFIX/bin
 if test $? != 0
 then
-  echo "bstc install failed"
+  echo "openspin install failed"
   exit 1
 fi
-chmod a+x $PREFIX/bin/$BSTC
+chmod a+x $PREFIX/bin/$SPINCMP
 if test $? != 0
 then
-  echo "bstc chmod failed"
+  echo "openspin chmod failed"
   exit 1
 fi
 
@@ -325,17 +328,17 @@ make ${JOBS} all
 if test $? != 0
 then
    echo "gcc libstdc++ make all failed"
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 make install
 if test $? != 0
 then
    echo "gcc libstdc++ make install failed."
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
-cd ../../propgcc
+cd ../../$GCCSRC
 
 #
 # build tiny library
@@ -418,11 +421,11 @@ fi
 #
 mkdir -p ../build/gdb
 cd ../build/gdb
-../../propgcc/gdb/configure --target=propeller-elf --prefix=${PREFIX} --with-system-gdbinit=${PREFIX}/lib/gdb/gdbinit
+../../$GCCSRC/gdb/configure --target=propeller-elf --prefix=${PREFIX} --with-system-gdbinit=${PREFIX}/lib/gdb/gdbinit
 if test $? != 0
 then
    echo "gdb configure failed"
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 
@@ -430,7 +433,7 @@ make ${JOBS} all
 if test $? != 0
 then
    echo "gdb make all failed"
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 if [ ${OS} != "msys" ]
@@ -441,7 +444,7 @@ else
 fi
 mkdir -p ${PREFIX}/lib/gdb
 
-cd ../../propgcc
+cd ../../$GCCSRC
 cp -f gdbstub/gdbinit.propeller ${PREFIX}/lib/gdb/gdbinit
 
 #
@@ -453,14 +456,14 @@ make clean
 if test $? != 0
 then
    echo "spinsim clean failed"
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 make
 if test $? != 0
 then
    echo "spinsim make failed"
-   cd ../../propgcc
+   cd ../../$GCCSRC
    exit 1
 fi
 if [ ${OS} != "msys" ]
@@ -469,7 +472,7 @@ then
 else
     cp -f spinsim.exe ${PREFIX}/bin/.
 fi
-cd ../../propgcc
+cd ../../$GCCSRC
 
 #
 # build gdbstub
@@ -495,7 +498,7 @@ then
 else
     cp -f gdbstub.exe ${PREFIX}/bin/.
 fi
-cd ../../propgcc
+cd ../../$GCCSRC
 
 echo "Build complete."
 exit 0
