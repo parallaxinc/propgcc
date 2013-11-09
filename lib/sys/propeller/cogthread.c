@@ -8,6 +8,9 @@
 #define INDEX_BITS 5
 #define OFFSET_BITS 5
 #define CACHE_SIZE 1024
+#define TAG_SIZE ((1<<(INDEX_BITS+2)))
+
+#define CACHE_EXTRA_SPACE (CACHE_SIZE+TAG_SIZE+16)
 #define CACHE_GEOMETRY ((INDEX_BITS<<8) | (OFFSET_BITS) )
 extern unsigned int _hub_mailbox __asm__("xmem_hubaddrp") __attribute__((cogmem));
 #endif
@@ -31,6 +34,16 @@ _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_state
   unsigned int *sp = stacktop;
   int r;
 
+#if defined(__PROPELLER_USE_XMM__)
+  /* the space for the cache is taken from the top
+     of the stack space
+  */
+  unsigned int cachebase;
+
+  sp -= (CACHE_EXTRA_SPACE/sizeof(*sp));
+  cachebase = ~0xf & (15 + (unsigned int)sp);  /* align to 16 byte boundary */
+#endif
+
   /* copy the kernel into temporary (HUB) memory */
   _clone_cog(tmp);
 
@@ -45,25 +58,14 @@ _start_cog_thread(void *stacktop, void (*func)(void *), void *arg, _thread_state
 
 #if defined(__PROPELLER_USE_XMM__)
   {
-    unsigned int cache_size = CACHE_SIZE;
-    unsigned int tag_size = (1<<(INDEX_BITS+2));
-    unsigned char *hubdata;
     unsigned int cogid = __builtin_propeller_cogid();
 
-    {
-      // FIXME: we need to free this memory if the thread
-      // exits!!
-      extern char *_hubsbrk(unsigned long);
-      hubdata = (unsigned char *)_hubsbrk(cache_size+tag_size+15);
-      hubdata = (unsigned char *)(~0xf & (15 + (unsigned)hubdata));
-      memset(hubdata, 0, cache_size+tag_size);
-    }
     // push the cache geometry
     *--sp = CACHE_GEOMETRY;
     // push the cache line storage address
-    *--sp = (unsigned int)hubdata;
+    *--sp = cachebase;
     // push the cache tag storage address
-    *--sp = (unsigned int)(hubdata + cache_size);
+    *--sp = cachebase  + CACHE_SIZE;
     // push the base of the hub mailbox array
     *--sp = ((unsigned int)_hub_mailbox) - (cogid<<3);
   }
