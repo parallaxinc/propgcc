@@ -1,0 +1,16 @@
+#
+# File VERSION.txt
+#
+# This file maintains the current propgcc version.
+# Normally we release an image with a name like this:
+#
+#    image-name_VMajor_Minor_Build
+#
+# The underbar "_" is the version element delimiter.
+# Only the image-name, major, and minor version are set here.
+# The build version is maintained separately and appended by the build tool.
+# The suffix is appended to the version by the build tool.
+#
+# As of June 2012 we don't use the propgcc_v*.txt files.
+#
+propellergcc-alpha_v1_9_0
