@@ -1,0 +1,6 @@
+log2.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>BOARD::HUB
