@@ -329,7 +329,8 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr,
   if (stack == 0) {
     datasize += stksiz;
   }
-  thr = calloc(1, datasize);
+  thr = _hubcalloc(1, datasize);
+
   if (!thr)
     return -1;
   if (!stack)
