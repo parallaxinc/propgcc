@@ -93,25 +93,25 @@ then
   OS=macosx
   PORT=/dev/cu.usbserial-A8004ILf
   BOARD=hub
-  BSTC=bstc.osx
+  SPINCMP=openspin.osx
 elif test x$UNAME = xCygwin
 then
   OS=cygwin
   PORT=COM16
   BOARD=c3
-  BSTC=bstc.exe
+  SPINCMP=openspin.exe
 elif test x$UNAME = xMsys
 then
   OS=msys
   PORT=COM16
   BOARD=c3
-  BSTC=bstc.exe
+  SPINCMP=openspin.exe
 elif test x$UNAME = xLinux
 then
   OS=linux
   PORT=/dev/ttyUSB0
   BOARD=c3
-  BSTC=bstc.linux
+  SPINCMP=openspin.linux
 else
   echo "Unknown system: " $UNAME
   exit 1
@@ -305,16 +305,16 @@ cd ..
 #
 # copy Brad's Spin Tool
 #
-cp -f release/$BSTC $PREFIX/bin
+cp -f release/$SPINCMP $PREFIX/bin
 if test $? != 0
 then
-  echo "bstc install failed"
+  echo "openspin install failed"
   exit 1
 fi
-chmod a+x $PREFIX/bin/$BSTC
+chmod a+x $PREFIX/bin/$SPINCMP
 if test $? != 0
 then
-  echo "bstc chmod failed"
+  echo "openspin chmod failed"
   exit 1
 fi
 
