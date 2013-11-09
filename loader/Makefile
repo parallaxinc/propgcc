@@ -330,8 +330,7 @@ $(DRVDIR)/sst_%.dat:	$(CACHEDRIVERDIR)/%.spin $(CACHE_DRIVER_COMMON)
 ##########################################
 
 XMEM_DRIVER_COMMON=\
-$(XMEMDRIVERDIR)/xmem_common.spin \
-$(XMEMDRIVERDIR)/xmem_interface.spin
+$(XMEMDRIVERDIR)/xmem_common.spin
 
 $(DRVDIR)/%_xmem.dat:	$(XMEMDRIVERDIR)/%_xmem.spin $(XMEM_DRIVER_COMMON)
 	@$(SPIN_DAT) -o $@ $<

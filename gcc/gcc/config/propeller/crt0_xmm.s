@@ -427,7 +427,7 @@ rd_wr   mov     newtag, t1              ' get the new cache tag
 ' t2 has the external address of the cache line
 miss    test    tag, dirty_mask wz      ' check to see if old cache line is dirty
   if_z  jmp     #do_read                ' skip the write if the cache line isn't dirty
-
+  
         mov     t3, tag                 ' get current tag's external address
         shl     t3, offset_width
         wrlong  t3, xmem_extaddrp       ' setup the external address of the write

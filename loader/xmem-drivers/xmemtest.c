@@ -4,10 +4,10 @@
 #include <unistd.h>
 #include <propeller.h>
 
-#define PMC
+//#define PMC
 //#define DNA
 //#define RAMPAGE2
-//#define DEFAULTS
+#define DEFAULTS
 
 //#define FLASH_TEST
 #define BIG_FLASH_TEST
