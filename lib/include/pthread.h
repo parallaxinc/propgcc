@@ -37,10 +37,16 @@
 #include <sys/null.h>
 #include <setjmp.h>
 
+#if defined(__PROPELLER_USE_XMM__)
+#define _CACHE_SIZE_NEEDED (1024+128+16)
+#else
+#define _CACHE_SIZE_NEEDED (0)
+#endif
+
 /** @brief Minimum stack size for a thread. */
-#define PTHREAD_STACK_MIN 64
+#define PTHREAD_STACK_MIN (64 + _CACHE_SIZE_NEEDED)
 /** @brief Default stack size for a thread. */
-#define _PTHREAD_STACK_DEFAULT 512
+#define _PTHREAD_STACK_DEFAULT (512 + _CACHE_SIZE_NEEDED)
 
 /** @brief Detached flag for the pthread "flags" field */
 #define _PTHREAD_DETACHED   0x0001
