@@ -20,17 +20,23 @@
 #define OUT OUTA
 #endif
 
+#if defined(__PROPELLER_XMM__)
+#define STACK_SIZE (1024+128+32) /* need room for XMM cache */
+#else
 #define STACK_SIZE 32
+#endif
 
 /* stack for cog 1 */
-static int cog1_stack[STACK_SIZE];
+/* this must be in HUB memory */
+HUBDATA static int cog1_stack[STACK_SIZE];
+
+/* variables that we share between cogs */
+/* these must go in HUB memory so as to avoid cache coherency issues */
+HUBDATA volatile unsigned int wait_time;
+HUBDATA volatile unsigned int pins;
 
 /* per-thread library variables ("Thread Local Storage") */
 static _thread_state_t thread_data;
-
-/* variables that we share between cogs */
-volatile unsigned int wait_time;
-volatile unsigned int pins;
 
 /*
  * here's the toggle code that runs in another cog
