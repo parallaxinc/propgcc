@@ -595,38 +595,35 @@ Lmm_fcache_doit
         '' r0 == new value to set if (*r2) == r1
         '' r1 == value to compare with
         '' r2 == pointer to memory
+	'' r3,r4 == scratch registers
         '' output: r0 == original value of (*r2)
         ''         Z flag is set if (*r2) == r1, clear otherwise
         ''
         .global __CMPSWAPSI
         .global __CMPSWAPSI_ret
 __CMPSWAPSI
-        rdlong  __TMP1,__C_LOCK_PTR
-        mov     __TMP0,r0       '' save value to set
+        rdlong  r3,__C_LOCK_PTR
+        mov     r4,r0       '' save value to set
 .swaplp
-        lockset __TMP1 wc
+        lockset r3 wc
    IF_C jmp     #.swaplp
 
         cmp     r2,external_start wc    '' check for hub or external memory
-IF_B    jmp     #.cmpswaphub
-        mov     t1,r2           '' save address
-        call    cache_read
-        rdlong  r0, memp        '' fetch original value
+   IF_B  jmp     #.cmpswaphub
+        xmmio   rdlong,r0,r2           '' fetch original value
         cmp     r0,r1 wz        '' compare with desired original value
    IF_NZ jmp    #.cmpswapdone
-        mov     t1,r2
-        call    cache_write
-        wrlong  __TMP0,memp     '' if match, save new value
+        xmmio	wrlong,r4,r2     '' if match, save new value
         jmp     #.cmpswapdone
         
 .cmpswaphub
         rdlong  r0,r2           '' fetch original value
         cmp     r0,r1 wz        '' compare with desired original value
-   IF_Z wrlong  __TMP0,r2       '' if match, save new value
+   IF_Z wrlong  r4,r2       '' if match, save new value
 
 .cmpswapdone
         '' now release the C lock
-        lockclr __TMP1
+        lockclr r3
 __CMPSWAPSI_ret
         ret
 

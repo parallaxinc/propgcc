@@ -26,18 +26,31 @@ calloc(size_t nmemb, size_t len)
   return ptr;
 }
 
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
+/* in these modes all data is in hub, so hubcalloc is the same as calloc */
+__strong_alias(_hubcalloc, calloc);
+__weak_alias(hubcalloc, calloc);
+
+#else
+
 void *
-hubcalloc(size_t nmemb, size_t len)
+_hubcalloc(size_t nmemb, size_t len)
 {
   void *ptr;
   len = nmemb*len;
-  ptr = hubmalloc(len);
+  ptr = _hubmalloc(len);
   if (ptr)
     {
       memset(ptr, 0, len);
     }
   return ptr;
 }
+
+/* provide a more convenient, but non-ANSI compliant, name */
+__weak_alias(hubcalloc, _hubcalloc);
+
+#endif
+
 
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
