@@ -36,11 +36,18 @@
 #include <sys/size_t.h>
 #include <sys/null.h>
 #include <setjmp.h>
+#include <propeller.h>
+
+#if defined(__PROPELLER_USE_XMM__)
+#define _CACHE_SIZE_NEEDED (1024+128+16)
+#else
+#define _CACHE_SIZE_NEEDED (0)
+#endif
 
 /** @brief Minimum stack size for a thread. */
-#define PTHREAD_STACK_MIN 64
+#define PTHREAD_STACK_MIN (64 + _CACHE_SIZE_NEEDED)
 /** @brief Default stack size for a thread. */
-#define _PTHREAD_STACK_DEFAULT 512
+#define _PTHREAD_STACK_DEFAULT (512 + _CACHE_SIZE_NEEDED)
 
 /** @brief Detached flag for the pthread "flags" field */
 #define _PTHREAD_DETACHED   0x0001
@@ -86,7 +93,7 @@ typedef struct pthread_mutex_t {
 typedef int pthread_mutexattr_t;
 
 /** @brief Lock for pthreads data structures */
-extern atomic_t __pthreads_lock;
+extern HUBDATA atomic_t __pthreads_lock;
 #define __lock_pthreads() __lock(&__pthreads_lock)
 #define __unlock_pthreads() __unlock(&__pthreads_lock)
 
