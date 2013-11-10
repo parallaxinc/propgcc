@@ -58,6 +58,12 @@ ElfContext *OpenElfFile(FILE *fp, ElfHdr *hdr)
     ElfSectionHdr section;
     ElfContext *c;
     
+    /* check for a newer .elf file than we can handle */
+    if (ELF_VERSION(hdr) != ELF_VERSION_UNKNOWN) {
+        printf("error: this program requires a newer version of propeller-load\n");
+        return NULL;
+    }
+    
     /* allocate and initialize a context structure */
     if (!(c = (ElfContext *)malloc(sizeof(ElfContext))))
         return NULL;
