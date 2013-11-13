@@ -8,13 +8,14 @@
 #include <string.h>
 #include <errno.h>
 #include <compiler.h>
+#include <propeller.h>
 
 /*
  * mktemp: replace trailing 6 XXXXXX with a unique value
  */
 
-static int tmpnum;            /* incremented each time mktemp is called */
-static _atomic_t mktemp_lock; /* to make this thread safe */
+static HUBDATA int tmpnum;            /* incremented each time mktemp is called */
+static HUBDATA _atomic_t mktemp_lock; /* to make this thread safe */
 
 /* we use the name "_mktemp", which is in the ANSI reserved namespace,
  * so that the function can be called from standard C libraries;

@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/thread.h>
+#include <propeller.h>
 #include "malloc.h"
 
 /* we only need the external memory heap if we're in xmm mode (not lmm or xmmc) */
@@ -28,7 +29,7 @@ MemHeap _hub_malloc_heap = {
 };
 #endif
 
-static atomic_t malloc_lock;
+static HUBDATA atomic_t malloc_lock;
 
 /* local functions */
 static void common_free(MemHeap *heap, void *ptr);
