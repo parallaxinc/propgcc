@@ -189,10 +189,12 @@ const struct propeller_opcode propeller_opcodes[] = {
 /* call     010111 zc11 cccc DDDDDDDDD sssssssss *//* too. */
   {"call", 0x5c000000, 0xfc000000, PROPELLER_OPERAND_CALL, CCZCWR, PROP_1, NO_COMPRESSED, 0},
 
-/* test     011000 zcRi cccc ddddddddd sssssssss */
+/* test     011000 zc0i cccc ddddddddd sssssssss */
   {"test", 0x60000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* and      011000 zcri cccc ddddddddd sssssssss */
   {"and", 0x60000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_1 | PROP_2, COMPRESS_XOP, XOP_AND},
+/* testn     011001 zc0i cccc ddddddddd sssssssss */
+  {"testn", 0x64000000, 0xfc800000, PROPELLER_OPERAND_TWO_OPS, CCZCNR, PROP_1 | PROP_2, NO_COMPRESSED, 0},
 /* andn     011001 zcri cccc ddddddddd sssssssss */
   {"andn", 0x64000000, 0xfc000000, PROPELLER_OPERAND_TWO_OPS, CCZCWR, PROP_1 | PROP_2, COMPRESS_XOP, XOP_ANDN},
 /* or       011010 zcri cccc ddddddddd sssssssss */
