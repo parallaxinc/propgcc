@@ -105,7 +105,7 @@ clean:
 	@$(RM) -f -r $(BINDIR)
 	@$(RM) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf
 	@$(RM) -f *.binary
-	$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT)) clean
+	@$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT)) clean
 
 .PHONY:
 clean-all:	clean
@@ -247,7 +247,7 @@ drivers:	$(DRVDIR) $(DRIVERS)
 
 .PHONY:	sd-loader
 sd-loader:	$(DRVDIR)
-	$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT))
+	@$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT))
 
 ##################
 # SPIN TO BINARY #
