@@ -20,22 +20,29 @@
 #define OUT OUTA
 #endif
 
-#define STACK_SIZE 16
+#if defined(__PROPELLER_XMM__)
+#define STACK_SIZE (1024+128+32) /* need room for XMM cache */
+#else
+#define STACK_SIZE 32
+#endif
 
 /* stack for cog 1 */
-static int cog1_stack[STACK_SIZE];
+/* this must be in HUB memory */
+HUBDATA static int cog1_stack[STACK_SIZE];
+
+/* variables that we share between cogs */
+/* these must go in HUB memory so as to avoid cache coherency issues */
+HUBDATA volatile unsigned int wait_time;
+HUBDATA volatile unsigned int pins;
 
 /* per-thread library variables ("Thread Local Storage") */
 static _thread_state_t thread_data;
-
-/* variables that we share between cogs */
-volatile unsigned int wait_time;
-volatile unsigned int pins;
 
 /*
  * here's the toggle code that runs in another cog
  */
 
+//__attribute__((section(".hubtext")))
 void
 do_toggle(void *arg __attribute__((unused)) )
 {
@@ -76,7 +83,11 @@ void main (int argc,  char* argv[])
     printf("hello, world!\n");
 
     /* set up the parameters for the C cog */
+#if defined(__PROPELLER_USE_XMM__)
+    pins = 0x00008000;  /* C3 led only */
+#else
     pins = 0x3fffffff;
+#endif
 #if defined(__PROPELLER2__)
     wait_time = 30000000;
 #else
@@ -94,6 +105,7 @@ void main (int argc,  char* argv[])
       wait_time =  wait_time >> 1;
       if (wait_time < MIN_GAP)
 	wait_time = _clkfreq;
+      printf("time = %d cycles\n", wait_time);
     }
 }
 

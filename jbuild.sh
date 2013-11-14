@@ -319,28 +319,6 @@ then
 fi
 
 #
-# build gcc libstdc++
-# this must be done after the library build, since it depends on
-# library header files
-#
-cd ../build/gcc
-make ${JOBS} all
-if test $? != 0
-then
-   echo "gcc libstdc++ make all failed"
-   cd ../../$GCCSRC
-   exit 1
-fi
-make install
-if test $? != 0
-then
-   echo "gcc libstdc++ make install failed."
-   cd ../../$GCCSRC
-   exit 1
-fi
-cd ../../$GCCSRC
-
-#
 # build tiny library
 #
 cd lib
@@ -497,6 +475,30 @@ then
     cp -f gdbstub ${PREFIX}/bin/.
 else
     cp -f gdbstub.exe ${PREFIX}/bin/.
+fi
+cd ../../$GCCSRC
+
+#
+# build gcc libstdc++
+# this must be done after the library build, since it depends on
+# library header files
+# it's also the part of the build most likely to fail (senstive to problems
+# elsewhere in the build) so we put it last
+#
+cd ../build/gcc
+make ${JOBS} all
+if test $? != 0
+then
+   echo "gcc libstdc++ make all failed"
+   cd ../../$GCCSRC
+   exit 1
+fi
+make install
+if test $? != 0
+then
+   echo "gcc libstdc++ make install failed."
+   cd ../../$GCCSRC
+   exit 1
 fi
 cd ../../$GCCSRC
 

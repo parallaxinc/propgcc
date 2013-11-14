@@ -6,9 +6,9 @@ TEMPLATE_NAME=elf32
 EXTRA_EM_FILE=propeller
 
 TEXT_MEMORY=">rom AT>rom"
-DATA_MEMORY=">ram AT>rom"
+DATA_MEMORY=">ram AT>ram"
 DATA_BSS_MEMORY=">ram AT>ram"
-HUBTEXT_MEMORY=">hub AT>rom"
+HUBTEXT_MEMORY=">hub AT>hub"
 DRIVER_MEMORY=">coguser AT>rom"
 
 HUB_HEAP=1
@@ -18,17 +18,12 @@ KERNEL="
   /* the LMM kernel that is loaded into the cog */
   .xmmkernel ${RELOCATING-0} :
   {
-    *(.xmmkernel) *(.kernel)
+    *(.xmmkernel)
+    *(.kernel)
   } >kermem AT>dummy
 "
 KERNEL_NAME=.xmmkernel
-XMM_HEADER="
-    .header : {
-        LONG(entry)
-        LONG(0)
-        LONG(0)
-    } >rom
-"
+
 HUB_DATA="
 "
 DATA_DATA="

@@ -8,7 +8,7 @@ NAME = fibo
 OBJS = fibo.o
 
 # memory model
-MODEL = lmm
+MODEL ?= lmm
 
 #
 # enable experimental fcache code for this demo

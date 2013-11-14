@@ -34,22 +34,6 @@ static atomic_t malloc_lock;
 static void common_free(MemHeap *heap, void *ptr);
 
 void *
-malloc(size_t n)
-{
-    return _common_malloc(&_malloc_heap, n);
-}
-
-void *
-hubmalloc(size_t n)
-{
-#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
-    return _common_malloc(&_malloc_heap, n);
-#else
-    return _common_malloc(&_hub_malloc_heap, n);
-#endif
-}
-
-void *
 _common_malloc(MemHeap *heap, size_t n)
 {
   MemHeader *p;
@@ -94,20 +78,16 @@ _common_malloc(MemHeap *heap, size_t n)
   return (void *)(p+1);
 }
 
+void *
+malloc(size_t n)
+{
+    return _common_malloc(&_malloc_heap, n);
+}
+
 void
 free(void *ptr)
 {
     common_free(&_malloc_heap, ptr);
-}
-
-void
-hubfree(void *ptr)
-{
-#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
-    common_free(&_malloc_heap, ptr);
-#else
-    common_free(&_hub_malloc_heap, ptr);
-#endif
 }
 
 static void
@@ -178,6 +158,28 @@ common_free(MemHeap *heap, void *ptr)
   *prev = thisp;
   __unlock(&malloc_lock);
 }
+
+#if defined(__PROPELLER_LMM__) || defined(__PROPELLER_XMMC__)
+__strong_alias(_hubmalloc, malloc);
+__strong_alias(_hubfree, free);
+__weak_alias(hubmalloc, malloc);
+__weak_alias(hubfree, free);
+#else
+void *
+_hubmalloc(size_t n)
+{
+    return _common_malloc(&_hub_malloc_heap, n);
+}
+
+void
+_hubfree(void *ptr)
+{
+    common_free(&_hub_malloc_heap, ptr);
+}
+__weak_alias(hubmalloc, _hubmalloc);
+__weak_alias(hubfree, _hubfree);
+#endif
+
 
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License

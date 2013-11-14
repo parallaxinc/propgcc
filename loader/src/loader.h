@@ -65,15 +65,26 @@ typedef struct {
     uint16_t numlocals;
 } SpinObj;
 
-typedef int PatchFcn(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
+/* address translation table entry */
+typedef struct {
+    uint32_t paddr;
+    uint32_t laddr;
+    uint32_t size;
+} TranslateEntry;
+
+/* address translation table */
+typedef struct {
+    TranslateEntry *entries;
+    int count;
+} TranslateTable;
 
 /* loader.c */
 int LoadImage(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags);
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags);
 int WriteFileToSDCard(BoardConfig *config, char *path, char *target);
-int LoadSerialHelper(BoardConfig *config, int needsd);
-void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase);
+int LoadSerialHelper(BoardConfig *config, uint8_t  *image, int image_size, int needsd);
+void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, TranslateTable *table);
 int GetVariableValue(BoardConfig *config, const char *name, int *pValue);
 char *ConstructOutputName(char *outfile, const char *infile, char *ext);
 void *NullError(char *fmt, ...);
@@ -86,6 +97,9 @@ void UpdateChecksum(uint8_t *imagebuf, int imageSize);
 
 /* xmm-image.c */
 uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
+
+/* xmm-image2.c */
+uint8_t *BuildExternalImage2(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize);
 
 /* pex-image.c */
 int WriteExecutableFile(char *path, BoardConfig *config, ElfContext *c, char *outfile);

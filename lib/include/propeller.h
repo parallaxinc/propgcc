@@ -270,7 +270,7 @@ void kernel_use_lock(uint32_t lockId);
  * @brief Get a hub memory buffer containing a driver image
  * @param id The COG driver name
  */
-#define get_cog_driver(id)                                             \
+#define get_cog_driver(id)                                              \
             get_cog_driver_xmm(                                         \
                 binary_##id##_dat_start,                                \
                 binary_##id##_dat_end - binary_##id##_dat_start)
@@ -281,7 +281,7 @@ void kernel_use_lock(uint32_t lockId);
  * @param param Parameter to pass to the driver
  * @returns the id of the COG that was loaded
  */
-#define load_cog_driver(id, param)                                     \
+#define load_cog_driver(id, param)                                      \
             load_cog_driver_xmm(                                        \
                 binary_##id##_dat_start,                                \
                 binary_##id##_dat_end - binary_##id##_dat_start,        \
