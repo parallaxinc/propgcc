@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <propeller.h>
 
 struct tmpf {
   struct tmpf *next;
   char namebuf[L_tmpnam];
 };
 
-static struct tmpf *deletelist;
-static int delete_registered;
-static _atomic_t dellock;
+static HUBDATA struct tmpf *deletelist;
+static HUBDATA int delete_registered;
+static HUBDATA _atomic_t dellock;
 
 static void
 deletetemps()
