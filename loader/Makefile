@@ -13,6 +13,8 @@ endif
 SRCDIR=src
 SPINDIR=spin
 CACHEDRIVERDIR=cache-drivers
+OLDCACHEDRIVERDIR=old-cache-drivers
+XMEMDRIVERDIR=xmem-drivers
 OBJDIR=$(BUILDROOT)/obj/$(OS)
 BINDIR=$(BUILDROOT)/bin/$(OS)
 DRVDIR=$(BUILDROOT)/include
@@ -33,38 +35,38 @@ PROPCFLAGS=-mp2
 PROPOBJDIR=$(BUILDROOT)/obj/propeller
 
 ifeq ($(OS),linux)
-CFLAGS += -DLINUX
 SPINCMP=openspin.linux
+CFLAGS += -DLINUX
 EXT=
 OSINT=osint_linux
 LIBS=
 endif
 
 ifeq ($(OS),cygwin)
-CFLAGS += -DCYGWIN
 SPINCMP=openspin.exe
+CFLAGS += -DCYGWIN
 EXT=.exe
 OSINT=osint_cygwin enumcom
 LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),msys)
-CFLAGS += -DMINGW
 SPINCMP=openspin.exe
+CFLAGS += -DMINGW
 EXT=.exe
 OSINT=osint_mingw enumcom
 LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),macosx)
-CFLAGS += -DMACOSX
 SPINCMP=openspin.osx
+CFLAGS += -DMACOSX
 EXT=
 OSINT=osint_linux
 LIBS=
 endif
 
-CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
+CFLAGS+=$(DEBUG) -Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 
 # for compiling Spin code
@@ -79,7 +81,10 @@ SPIN_DAT=spin2cpp --dat
 
 .PHONY:	all
 
-all:	info propeller-load drivers sd-loader propeller-elf-image-size
+all:	info propeller-load drivers sd-loader propeller-elf-image-size \
+$(OBJDIR)/serial_helper.binary \
+$(OBJDIR)/serial_helper2.binary
+
 
 ##########################
 # SHOW BUILD INFORMATION #
@@ -117,6 +122,7 @@ $(OBJDIR)/propeller-load.o \
 $(OBJDIR)/loader.o \
 $(OBJDIR)/lmm-image.o \
 $(OBJDIR)/xmm-image.o \
+$(OBJDIR)/xmm-image2.o \
 $(OBJDIR)/pex-image.o \
 $(OBJDIR)/loadelf.o \
 $(OBJDIR)/packet.o \
@@ -131,7 +137,9 @@ $(OBJDIR)/expr.o \
 $(OBJDIR)/system.o \
 $(OBJDIR)/port.o \
 $(OBJDIR)/serial_helper.o \
+$(OBJDIR)/serial_helper2.o \
 $(OBJDIR)/flash_loader.o \
+$(OBJDIR)/flash_loader2.o \
 $(foreach x, $(OSINT), $(OBJDIR)/$(x).o)
 
 IMAGE_SIZE_OBJS=\
@@ -153,6 +161,7 @@ $(SRCDIR)/system.h
 
 HELPER_SRCS=\
 $(OBJDIR)/serial_helper.c \
+$(OBJDIR)/serial_helper2.c \
 $(OBJDIR)/flash_loader.c
 
 .PHONY:	spin-binaries
@@ -160,16 +169,16 @@ spin-binaries:	$(OBJDIR) bin2c $(HELPER_SRCS)
 
 SPIN_SRCS=\
 $(SPINDIR)/serial_helper.spin \
+$(SPINDIR)/serial_helper2.spin \
 $(SPINDIR)/flash_loader.spin \
+$(SPINDIR)/flash_loader2.spin \
 $(SPINDIR)/packet_driver.spin \
-$(SPINDIR)/cache_interface.spin \
 $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
-$(SPINDIR)/c3_cache.spin \
-$(SPINDIR)/ssf_cache.spin \
-$(SPINDIR)/eeprom_cache.spin \
-$(SPINDIR)/sd_cache.spin \
 $(SPINDIR)/vm_start.spin
+
+OLD_CACHE_DRIVER_SRCS=\
+$(OLDCACHEDRIVERDIR)/cache_interface.spin
 
 #################
 # CACHE DRIVERS #
@@ -177,6 +186,7 @@ $(SPINDIR)/vm_start.spin
 
 DRIVERS=\
 $(DRVDIR)/c3_cache.dat \
+$(DRVDIR)/c3_cache2.dat \
 $(DRVDIR)/c3_cache_flash.dat \
 $(DRVDIR)/ssf_cache.dat \
 $(DRVDIR)/dracblade_cache.dat \
@@ -184,9 +194,8 @@ $(DRVDIR)/sdram_cache.dat \
 $(DRVDIR)/eeprom_cache.dat \
 $(DRVDIR)/sd_cache.dat \
 $(DRVDIR)/spi_flash_cache.dat \
+$(DRVDIR)/spi_flash_cache2.dat \
 $(DRVDIR)/sst_spi_flash_cache.dat \
-$(DRVDIR)/fast_spi_flash_cache.dat \
-$(DRVDIR)/fast_sst_spi_flash_cache.dat \
 $(DRVDIR)/spi_nway_flash_cache.dat \
 $(DRVDIR)/sst_sqi_flash_cache.dat \
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat \
@@ -196,7 +205,21 @@ $(DRVDIR)/spi_nway_sram_cache.dat \
 $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
 $(DRVDIR)/synapse_cache.dat \
-$(DRVDIR)/rampage2_cache.dat
+$(DRVDIR)/rampage2_cache.dat \
+$(DRVDIR)/winbond_spi_flash_xmem.dat \
+$(DRVDIR)/sst_spi_flash_xmem.dat \
+$(DRVDIR)/spi_sram_xmem.dat \
+$(DRVDIR)/spi_sram24_xmem.dat \
+$(DRVDIR)/winbond_sqi_flash_xmem.dat \
+$(DRVDIR)/sst_sqi_flash_xmem.dat \
+$(DRVDIR)/sqi_sram_xmem.dat \
+$(DRVDIR)/c3_xmem.dat \
+$(DRVDIR)/eeprom_xmem.dat \
+$(DRVDIR)/winbond_sqi_flash_sram_xmem.dat \
+$(DRVDIR)/sst_sqi_flash_sram_xmem.dat \
+$(DRVDIR)/rampage2_xmem.dat \
+$(DRVDIR)/synapse_xmem.dat \
+$(DRVDIR)/sd_xmem.dat
 
 #######################
 # NEWER CACHE DRIVERS #
@@ -246,44 +269,32 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 # SPIN TO DAT #
 ###############
 
+$(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+	@$(SPIN_DAT) -o $@ $<
+	@$(ECHO) $@
+
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+	@$(SPIN_DAT) -o $@ $<
+	@$(ECHO) $@
+
+####################################
+# RULES TO BUILD OLD CACHE DRIVERS #
+####################################
+
+$(DRVDIR)/%.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -DENABLE_RAM -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/%_flash.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
+$(DRVDIR)/%_flash.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
+$(DRVDIR)/sst_%.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
-$(DRVDIR)/fast_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DFAST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/fast_sst_spi_flash_cache.dat:	$(SPINDIR)/spi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DSST -DFAST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DSST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_sqi_flash_cache.dat:	$(SPINDIR)/sqi_flash_cache.spin $(SPIN_SRCS)
+$(DRVDIR)/winbond_%.dat:	$(OLDCACHEDRIVERDIR)/%.spin $(OLD_CACHE_DRIVER_SRCS)
 	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DSST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_sqi_nway_flash_cache.dat:	$(SPINDIR)/sqi_nway_flash_cache.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-$(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(SPIN_DAT) -o $@ $<
 	@$(ECHO) $@
 
 ######################################
@@ -307,6 +318,25 @@ $(DRVDIR)/winbond_%.dat:	$(CACHEDRIVERDIR)/%.spin $(CACHE_DRIVER_COMMON)
 	@$(ECHO) $@
 
 $(DRVDIR)/sst_%.dat:	$(CACHEDRIVERDIR)/%.spin $(CACHE_DRIVER_COMMON)
+	@$(SPIN_DAT) -DSST -o $@ $<
+	@$(ECHO) $@
+
+##########################################
+# RULES TO BUILD EXTERNAL MEMORY DRIVERS #
+##########################################
+
+XMEM_DRIVER_COMMON=\
+$(XMEMDRIVERDIR)/xmem_common.spin
+
+$(DRVDIR)/%_xmem.dat:	$(XMEMDRIVERDIR)/%_xmem.spin $(XMEM_DRIVER_COMMON)
+	@$(SPIN_DAT) -o $@ $<
+	@$(ECHO) $@
+
+$(DRVDIR)/winbond_%_xmem.dat:	$(XMEMDRIVERDIR)/%_xmem.spin $(XMEM_DRIVER_COMMON)
+	@$(SPIN_DAT) -DWINBOND -o $@ $<
+	@$(ECHO) $@
+
+$(DRVDIR)/sst_%_xmem.dat:	$(XMEMDRIVERDIR)/%_xmem.spin $(XMEM_DRIVER_COMMON)
 	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 

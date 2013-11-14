@@ -11,15 +11,13 @@
 #include <errno.h>
 #include <compiler.h>
 
-/* lock for stdio functions */
-atomic_t __stdio_lock;
-
 /* force _InitIO to be linked */
 extern void _InitIO(void);
 long __dummy = (long)&_InitIO;
 
 /* the open file descriptors */
-FILE __files[FOPEN_MAX];
+/* these must go in HUB RAM so they can be shared amongst threads */
+__attribute__((section(".hubdata"))) FILE __files[FOPEN_MAX];
 
 /*
  * the fopen worker routine

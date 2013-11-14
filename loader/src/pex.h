@@ -3,7 +3,9 @@
 
 /* this header takes up 16 longs and is followed by the xmm kernel which takes 496 longs */
 #define PEXE_TAG        "PEXE"
-#define PEXE_VERSION    0x0100
+#define PEXE_VERSION1   0x0100  // cache drivers
+#define PEXE_VERSION2   0x0200  // cache tag handling in kernel, xmem drivers
+#define PEXE_VERSION    PEXE_VERSION2
 #define PEXE_HDR_SIZE   (16 * sizeof(uint32_t))
 
 typedef struct {

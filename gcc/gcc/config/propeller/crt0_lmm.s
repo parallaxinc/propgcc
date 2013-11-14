@@ -20,26 +20,22 @@
 
 	.global __LMM_entry
 __LMM_entry
-r0	mov	sp, PAR
-r1	rdlong  __TMP0, __C_LOCK_PTR  wz ' check for first time run
-r2  IF_NE    jmp    #not_first_cog	' if not, skip some stuff
-	
-	'' initialization for first time run
-r3      locknew	__TMP0 wc	' allocate a lock
-r4	or	__TMP0, #256	' in case lock is 0, make the 32 bit value nonzero
-r5      wrlong __TMP0, __C_LOCK_PTR	' save it to ram
-r6      jmp    #__LMM_loop
+r0	mov	__TMP1, r3	'' get pointer to initialization
+r1	call	#__load_extension
+r2  	jmp	#__LMM_init
+r3      long __load_start_start_kerext
 
-not_first_cog
-	'' initialization for non-primary cogs
-r7      rdlong pc,sp		' if user stack, pop the pc
-r8      add	sp,#4
-r9      rdlong r0,sp		' pop the argument for the function
-r10     add	sp,#4
-r11     rdlong __TLS,sp	' and the _TLS variable
-r12     add	sp,#4
-r13	jmp	#__LMM_loop
-r14	nop
+r4      nop
+r5	nop
+r6      nop
+r7      nop
+r8      nop
+r9      nop
+r10     nop
+r11     nop
+r12     nop
+r13	nop
+r14	long	0	'' flag for first time run
 	
 r15	'' alias for link register lr
 lr	long	__exit
@@ -308,6 +304,7 @@ i2s7	long	(2<<23) | 7
 	'' speedup.
 	''
 
+	.global	__LMM_FCACHE_ADDR
 __LMM_FCACHE_ADDR
 	long 0
 	

@@ -8,7 +8,7 @@
 ''*********************************************
 
   BASE = 0x0e80
-  CLOCK_FREQ = 60000000
+  CLOCK_FREQ = 160000000
   BAUD = 115200
   
   
@@ -35,8 +35,10 @@
 period                  long    CLOCK_FREQ / BAUD
                         long    0   ' unused
                         long    0   ' unused
+clkmode                 long    0xff '%1111_11_11       'PLL 16X
 
-init                    setp    #FLASH_CS
+init                    clkset	clkmode
+                        setp    #FLASH_CS
 
                         mov     vmaddr, header_off
                         mov     hubaddr, base_addr

@@ -27,23 +27,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #include "sdio.h"
 #include "../src/pex.h"
 #include "sd_loader.h"
-#include "cacheops.h"
 #include "debug.h"
 
-#define FILENAME    "AUTORUN PEX"
+#define FILENAME        "AUTORUN PEX"
 
-#define HUB_SIZE    (32 * 1024)
+#define HUB_SIZE        (32 * 1024)
 
-volatile uint32_t *xmm_mbox;
-volatile uint32_t *sd_mbox;
-volatile uint32_t *vm_mbox;
-uint32_t cache_line_mask;
+extern volatile uint32_t *sd_mbox;
+
+#define XMEM_WRITE      0x8
+#define XMEM_SIZE_16    0x1
+#define XMEM_SIZE_32    0x2
+#define XMEM_SIZE_64    0x3
+#define XMEM_SIZE_128   0x4
+#define XMEM_SIZE_256   0x5
+#define XMEM_SIZE_512   0x6
+#define XMEM_SIZE_1024  0x7
+#define XMEM_END        0x8
+
+/* cache driver communications mailbox */
+typedef struct {
+    volatile uint32_t hubaddr;
+    volatile uint32_t extaddr;
+} xmem_mbox_t;
 
 /* this section contains the info structure */
 SdLoaderInfo __attribute__((section(".coguser0"))) info_data;
 extern unsigned int _load_start_coguser0[];
 
-/* this section contains the cache driver code */
+/* this section contains the external memory driver code */
 uint32_t __attribute__((section(".coguser1"))) xmm_driver_data[496];
 extern unsigned int _load_start_coguser1[];
 
@@ -51,57 +63,61 @@ extern unsigned int _load_start_coguser1[];
 uint32_t __attribute__((section(".coguser2"))) sd_driver_data[496];
 extern unsigned int _load_start_coguser2[];
 
-/* this section contains the vm_start.S code */
-extern unsigned int _load_start_coguser3[];
+/* kernel image buffer */
+static uint8_t kernel_image[2048];
 
-static int ReadSector(char *tag, FileInfo *finfo, uint8_t *buf);
-static void write_ram_long(uint32_t addr, uint32_t val);
-static uint32_t erase_flash_block(uint32_t addr);
-static uint32_t write_flash_page(uint32_t addr, uint8_t *buffer, uint32_t count);
+/* sector buffer for loading external memory */
+static uint8_t padded_buffer[SECTOR_SIZE + 15];
+
+/* external memory mailbox */
+xmem_mbox_t *xmem_mbox;
+
+static void write_block(uint32_t addr, uint8_t *buffer, int size);
 
 int main(void)
 {
-    uint8_t *buffer = (uint8_t *)_load_start_coguser1;
+    uint8_t *buffer = (uint8_t *)(((uint32_t)padded_buffer + 15) & ~15);
     SdLoaderInfo *info = (SdLoaderInfo *)_load_start_coguser0;
-    uint32_t cache_addr, load_address;
-    uint32_t params[5];
+    uint32_t load_address, index_width, offset_width, addr, count;
+    uint32_t tags_size, cache_size, cache_lines, cache_tags, mboxes, *sp;
     VolumeInfo vinfo;
     FileInfo finfo;
     PexeFileHdr *hdr;
-    uint32_t count;
     int sd_id, i;
     uint8_t *p;
-    
-    cache_addr = HUB_SIZE - info->cache_size;
-    xmm_mbox = (uint32_t *)(cache_addr - 2 * sizeof(uint32_t));
-    vm_mbox = xmm_mbox - 1;
+
+    // determine the cache size and setup cache variables
+    index_width = info->cache_geometry >> 8;
+    offset_width = info->cache_geometry & 0xff;
+    tags_size = (1 << index_width) * 4;
+    cache_size = 1 << (index_width + offset_width);
+    cache_lines = HUB_SIZE - cache_size;
+    cache_tags = cache_lines - tags_size;
+    mboxes = cache_tags - sizeof(xmem_mbox_t) * 8 - 4;
+    xmem_mbox = (xmem_mbox_t *)mboxes;
+
+    // load the external memory driver
+    DPRINTF("Loading external memory driver\n");
+    memset((void *)mboxes, 0, sizeof(xmem_mbox_t) * 8 + 4);
+    xmem_mbox[8].hubaddr = XMEM_END;
+    cognew(_load_start_coguser1, mboxes);
     
     DPRINTF("Loading SD driver\n");
-    sd_mbox = vm_mbox - 2;
+    sd_mbox = (uint32_t *)mboxes - 2;
     sd_mbox[0] = 0xffffffff;
-    sd_id = cognew(_load_start_coguser2, sd_mbox);
+    if ((sd_id = cognew(_load_start_coguser2, sd_mbox)) < 0) {
+        DPRINTF("Error loading SD driver\n");
+        return 1;
+    }
     while (sd_mbox[0])
         ;
-    
-    params[0] = (uint32_t)xmm_mbox;
-    params[1] = cache_addr;
-    params[2] = info->cache_param1;
-    params[3] = info->cache_param2;
-    
-    // load the cache driver
-    DPRINTF("Loading cache driver\n");
-    xmm_mbox[0] = 0xffffffff;
-    cognew(_load_start_coguser1, params);
-    while (xmm_mbox[0])
-        ;
-    cache_line_mask = params[0];
-        
+
     DPRINTF("Initializing SD card\n");
     if (SD_Init(sd_mbox, 5) != 0) {
         DPRINTF("SD card initialization failed\n");
         return 1;
     }
-        
+	
     DPRINTF("Mounting filesystem\n");
     if (MountFS(buffer, &vinfo) != 0) {
         DPRINTF("MountFS failed\n");
@@ -114,13 +130,17 @@ int main(void)
         DPRINTF("FindFile '%s' failed\n", FILENAME);
         return 1;
     }
-    
+
 	// read the file header
-	if (ReadSector("PEX file header", &finfo, buffer) != 0)
+	DPRINTF("Reading PEX file header\n");
+	if (GetNextFileSector(&finfo, kernel_image, &count) != 0 || count < PEXE_HDR_SIZE) {
+	    DPRINTF("Error reading PEX file header\n");
 		return 1;
+	}
 		
 	// verify the header
-    hdr = (PexeFileHdr *)buffer;
+    DPRINTF("Verifying PEX file header\n");
+    hdr = (PexeFileHdr *)kernel_image;
     if (strncmp(hdr->tag, PEXE_TAG, sizeof(hdr->tag)) != 0 || hdr->version != PEXE_VERSION) {
         DPRINTF("Bad PEX file header\n");
         return 1;
@@ -128,106 +148,51 @@ int main(void)
 	load_address = hdr->loadAddress;
 	
 	// move past the header
-	memmove(buffer, buffer + PEXE_HDR_SIZE, SECTOR_SIZE - PEXE_HDR_SIZE);
-	p = buffer + SECTOR_SIZE - PEXE_HDR_SIZE;
+	memmove(kernel_image, (uint8_t *)kernel_image + PEXE_HDR_SIZE, SECTOR_SIZE - PEXE_HDR_SIZE);
+	p = (uint8_t *)kernel_image + SECTOR_SIZE - PEXE_HDR_SIZE;
 	
     // read the .kernel cog image
+    DPRINTF("Reading kernel image\n");
     for (i = 1; i < 4; ++i) {
-    	if (ReadSector("kernel image", &finfo, p) != 0)
+    	if (GetNextFileSector(&finfo, p, &count) != 0 || count < SECTOR_SIZE)
     		return 1;
         p += SECTOR_SIZE;
     }
     
-    // start the xmm kernel
-    DPRINTF("Starting kernel\n");
-    hdr = (PexeFileHdr *)buffer;
-    vm_mbox[0] = 0;
-    cognew(buffer, vm_mbox);
-    
-    // setup the parameters for vm_start.S
-    params[0] = load_address;
-    params[1] = (uint32_t)xmm_mbox;
-    params[2] = cache_line_mask;
-    params[3] = (uint32_t)vm_mbox;
-    params[4] = (uint32_t)vm_mbox;
-
-    // load into ram
-    if (load_address < 0x30000000 || (info->flags & SD_LOAD_RAM)) {
-        uint32_t addr = load_address;
-        DPRINTF("Loading RAM at 0x%08x\n", load_address);
-        while (GetNextFileSector(&finfo, buffer, &count) == 0) {
-            uint32_t *p = (uint32_t *)buffer;
-            while (count > 0) {
-                write_ram_long(addr, *p++);
-                addr += sizeof(uint32_t);
-                count -= sizeof(uint32_t);
-            }
-        }
+    // load the image
+    DPRINTF("Loading image at 0x%08x\n", load_address);
+    addr = load_address;
+    while (GetNextFileSector(&finfo, buffer, &count) == 0) {
+        write_block(addr, buffer, XMEM_SIZE_512);
+        addr += SECTOR_SIZE;
     }
 
-    // load into flash/eeprom
-    else {
-        uint32_t addr = 0x00000000;
-        DPRINTF("Loading flash/EEPROM at 0x%08x\n", load_address);
-        while (GetNextFileSector(&finfo, buffer, &count) == 0) {
-            if ((addr & 0x00000fff) == 0)
-                erase_flash_block(addr);
-            write_flash_page(addr, buffer, count);
-            addr += SECTOR_SIZE;
-        }
-    }
-        
     // stop the sd driver
-    if (sd_id >= 0) {
-        DPRINTF("Stopping the SD driver\n");
-        cogstop(sd_id);
-    }
-        
-    // replace this loader with vm_start.S
-    DPRINTF("Starting program\n");
-    coginit(cogid(), _load_start_coguser3, (uint32_t)params);
+    DPRINTF("Stopping SD driver\n");
+    cogstop(sd_id);
+    
+    // setup the stack
+    // at start stack contains xmem_mbox, cache_tags, cache_lines, cache_geometry, pc
+    sp = (uint32_t *)mboxes;
+    *--sp = load_address;
+    *--sp = info->cache_geometry;
+    *--sp = cache_lines;
+    *--sp = cache_tags;
+    *--sp = mboxes;
+
+    // start the xmm kernel boot code
+    DPRINTF("Starting kernel\n");
+    coginit(cogid(), kernel_image, sp);
 
     // should never reach this
     return 0;
 }
 
-static int ReadSector(char *tag, FileInfo *finfo, uint8_t *buf)
+static void write_block(uint32_t addr, uint8_t *buffer, int size)
 {
-	uint32_t count;
-	if (GetNextFileSector(finfo, buf, &count) != 0 || count != SECTOR_SIZE) {
-		DPRINTF("Incomplete %s\n", tag);
-		return 1;
-	}
-	return 0;
-}
-
-static void write_ram_long(uint32_t addr, uint32_t val)
-{
-    xmm_mbox[0] = (addr & ~CMD_MASK) | WRITE_CMD;
-    while (xmm_mbox[0])
+    xmem_mbox->extaddr = addr;
+    xmem_mbox->hubaddr = (uint32_t)buffer | XMEM_WRITE | size;
+    while (xmem_mbox->hubaddr)
         ;
-    *(uint32_t *)(xmm_mbox[1] + (addr & cache_line_mask)) = val;
 }
-
-static uint32_t erase_flash_block(uint32_t addr)
-{
-    xmm_mbox[0] = ERASE_BLOCK_CMD | (addr << 8);
-    while (xmm_mbox[0])
-        ;
-    return xmm_mbox[1];
-}
-
-static uint32_t write_flash_page(uint32_t addr, uint8_t *buffer, uint32_t count)
-{
-    uint32_t params[3];
-    params[0] = (uint32_t)buffer;
-    params[1] = count;
-    params[2] = addr;
-    xmm_mbox[0] =  WRITE_DATA_CMD | ((uint32_t)params << 8);
-    while (xmm_mbox[0])
-        ;
-    return xmm_mbox[1];
-}
-
-
 

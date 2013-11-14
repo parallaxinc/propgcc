@@ -2900,6 +2900,8 @@ void
 propeller_elf_final_processing (void)
 {
   /* set various flags in the elf header if necessary */
+  if (0 == EF_PROPELLER_GET_ABI(elf_flags))
+    EF_PROPELLER_PUT_ABI(elf_flags, DEFAULT_PROPELLER_ABI);
   elf_elfheader (stdoutput)->e_flags |= elf_flags;
 }
 

@@ -67,6 +67,13 @@ END_RELOC_NUMBERS (R_PROPELLER_max)
 #define EF_PROPELLER_COMPRESS   0x00000100 /* file contains compressed instructions */
 #define EF_PROPELLER_XMM        0x00000200 /* file contains XMM instructions */
 
+#define EF_PROPELLER_ABI_VERS   0x00FF0000 /* ABI version */
+#define EF_PROPELLER_GET_ABI(x) (((x)&EF_PROPELLER_ABI_VERS) >> 16)
+#define EF_PROPELLER_PUT_ABI(x,v) ((x) |= ((v)<<16) & EF_PROPELLER_ABI_VERS)
+
+/* default value to put in the ABI_VERS field */
+#define DEFAULT_PROPELLER_ABI 0x1
+
 /* Processor specific values for the section header flags */
 #define SHF_PROPELLER_COGDATA           0x10000000 /* data to be loaded in a cog */
 #define PF_PROPELLER_COGDATA            0x10000000 /* same thing for a program header */

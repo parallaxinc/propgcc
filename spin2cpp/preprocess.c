@@ -412,6 +412,18 @@ classify_char(int c)
 }
 
 /*
+ * skip over a quoted string
+ * returns a pointer to the last character (normally a quote)
+ */
+static char *
+skip_quoted_string(char *ptr)
+{
+  while (*ptr && (*ptr != '\"'))
+    ptr++;
+  return ptr;
+}
+
+/*
  * fetch the next word
  * a word is a sequence of identifier characters, spaces, or
  * other characters
@@ -429,11 +441,16 @@ static char *parse_getword(ParseState *P)
     }
     word = ptr;
     if (!*ptr) return ptr;
-    state = classify_char((unsigned char)*ptr);
-    ptr++;
-    while (*ptr && classify_char((unsigned char)*ptr) == state)
-        ptr++;
 
+    if (*ptr == '\"') {
+      ptr = skip_quoted_string(ptr+1);
+      if (*ptr == '\"') ptr++;
+    } else {
+      state = classify_char((unsigned char)*ptr);
+      ptr++;
+      while (*ptr && classify_char((unsigned char)*ptr) == state)
+        ptr++;
+    }
     P->save = ptr;
     P->c = *ptr;
     *ptr = 0;
@@ -496,9 +513,7 @@ static char *parse_getquotedstring(ParseState *P)
         return NULL;
     ptr++;
     start = ptr;
-    while (*ptr && *ptr != '\"') {
-        ptr++;
-    }
+    ptr = skip_quoted_string(ptr);
     if (!*ptr)
         return NULL;
     P->save = ptr;

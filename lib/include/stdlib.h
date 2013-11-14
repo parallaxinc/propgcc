@@ -36,10 +36,17 @@ extern "C" {
   void *realloc(void *, size_t);
   void free(void *);
 
+  void *_hubmalloc(size_t n);
+  void *_hubcalloc(size_t, size_t);
+  void *_hubrealloc(void *, size_t);
+  void _hubfree(void *);
+
+#if !defined(__STRICT_ANSI__)
   void *hubmalloc(size_t n);
   void *hubcalloc(size_t, size_t);
   void *hubrealloc(void *, size_t);
   void hubfree(void *);
+#endif
 
   int atexit(void (*func)(void));
   _NORETURN void exit(int status);

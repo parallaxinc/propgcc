@@ -4,11 +4,9 @@ OBJS = \
 spa_tester.o \
 spa.o
 
-ifndef MODEL
-MODEL = xmmc
-endif
+MODEL ?= xmmc
 
-CFLAGS = -Os -lm
+CFLAGS = -Os
 LIBS = -lm
 
 include ../common/common.mk

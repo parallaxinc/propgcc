@@ -12,7 +12,7 @@ threadfunc(void *arg)
   char *msg = (char *)arg;
 
   for(;;) {
-    printf("%s\n", msg);
+    printf("%s (cog %d)\n", msg, cogid());
     fflush(stdout);
 #ifdef MAIN_SLEEP
     pthread_yield();
@@ -44,6 +44,6 @@ main()
 #else
     busywait(1000000);
 #endif
-    printf("main still running\n");
+    printf("main still running on cog %d\n", cogid());
   }
 }

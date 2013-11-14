@@ -2629,6 +2629,8 @@
           UNSPEC_CAS))
    (set (reg:CC_Z CC_REG)
         (compare:CC_Z (mem:SI (reg:SI 2))(reg:SI 1)))
+   (clobber (reg:SI 3))
+   (clobber (reg:SI 4))
   ]
 ""
 {
@@ -2663,6 +2665,8 @@
             UNSPEC_CAS))
      (set (reg:CC_Z CC_REG)
           (compare:CC_Z (mem:SI (reg:SI 2))(reg:SI 1)))
+     (clobber (reg:SI 3))
+     (clobber (reg:SI 4))
      ])
   ]
 ""

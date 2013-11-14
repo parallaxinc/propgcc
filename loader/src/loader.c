@@ -68,6 +68,13 @@ typedef struct {
     uint32_t cache_code_off;
 } FlashLoaderDatHdr;
 
+/* DAT header in flash_loader2.spin */
+typedef struct {
+    uint32_t xmem_geometry;
+    uint32_t vm_code_off;
+    uint32_t cache_code_off;
+} FlashLoader2DatHdr;
+
 /* DAT header in sd_driver.spin */
 typedef struct {
     uint32_t jmp_init;
@@ -98,17 +105,23 @@ typedef struct {
 
 extern uint8_t serial_helper_array[];
 extern int serial_helper_size;
+extern uint8_t serial_helper2_array[];
+extern int serial_helper2_size;
 extern uint8_t flash_loader_array[];
 extern int flash_loader_size;
+extern uint8_t flash_loader2_array[];
+extern int flash_loader2_size;
 
 static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp, ElfHdr *hdr);
 static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flags, FILE *fp);
 static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int flags, ElfContext *c);
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c);
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c);
-static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode);
+static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode, ElfContext *c);
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
-static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value);
+static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size);
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value, TranslateTable *table);
+static uint32_t TranslateAddress(TranslateTable *table, uint32_t addr);
 static uint32_t Get_sdspi_config1(BoardConfig *config);
 static uint32_t Get_sdspi_config2(BoardConfig *config);
 static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
@@ -146,8 +159,8 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
     if (!(c = OpenElfFile(fp, hdr)))
         return Error("failed to open elf file");
         
-    /* '.header' section used for external loads */
-    if (FindSectionTableEntry(c, ".header", &section)) {
+    /* '.xmmkernel' section used for external loads */
+    if (FindSectionTableEntry(c, ".xmmkernel", &section)) {
     
         if (flags & (LFLAG_WRITE_PEX | LFLAG_WRITE_SDLOADER | LFLAG_WRITE_SDCACHELOADER)) {
             char outfile[PATH_MAX];
@@ -191,7 +204,7 @@ static int LoadElfFile(System *sys, BoardConfig *config, char *path, int flags, 
         }
     }
     
-    /* no '.header' section for internal loads */
+    /* no '.xmmkernel' section for internal loads */
     else {
     
         if (flags & LFLAG_WRITE_SDLOADER)
@@ -239,12 +252,12 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
     fseek(fp, 0, SEEK_END);
     size = ftell(fp);
     if (size > 32768)
-    	return Error(".binary file is larger than 32k");
-    	
+        return Error(".binary file is larger than 32k");
+        
     /* read the image */
     fseek(fp, 0, SEEK_SET);
     if (fread(image, 1, size, fp) != size)
-    	return Error("reading image file");
+        return Error("reading image file");
     
     /* close the image file */
     fclose(fp);
@@ -269,8 +282,8 @@ static int LoadBinaryFile(System *sys, BoardConfig *config, char *path, int flag
             hdr->clkmode = ivalue;
         }
             
-    	/* recompute the checksum */
-    	UpdateChecksum(image, size);
+        /* recompute the checksum */
+        UpdateChecksum(image, size);
     }
 #endif
 
@@ -325,8 +338,8 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
         return FALSE;
 
     if ( (flags & LFLAG_DEBUG) != 0) {
-      if (!PatchLMMImageForDebug(imagebuf, imageSize, c))
-	return FALSE;
+        if (!PatchLMMImageForDebug(imagebuf, imageSize, c))
+            return FALSE;
     }
 
     /* load the eeprom cache driver if we need to write cog images to eeprom */
@@ -344,7 +357,7 @@ static int LoadInternalImage(System *sys, BoardConfig *config, char *path, int f
         }
         
         /* load the serial helper program */
-        if (!LoadSerialHelper(config, FALSE)) {
+        if (!LoadSerialHelper(config, serial_helper_array, serial_helper_size, FALSE)) {
             free(cogimagesbuf);
             free(imagebuf);
             return FALSE;
@@ -421,6 +434,8 @@ static void SetSDParams(BoardConfig *config, SDParams *params)
     params->sdspi_config2 = Get_sdspi_config2(config);
 }
 
+#if 0
+
 int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
     uint8_t driverImage[COG_IMAGE_MAX];
@@ -471,7 +486,6 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
         if (strcasecmp(value, "ram") == 0)
             info->flags |= SD_LOAD_RAM;
     }
-    
 
     if (FindProgramSegment(c, ".coguser1", &program) < 0)
         return Error("can't find cache driver (.coguser1) segment");
@@ -519,8 +533,111 @@ int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
     return TRUE;
 }
 
+#else
+
+int LoadSDLoader(System *sys, BoardConfig *config, char *path, int flags)
+{
+    uint8_t driverImage[COG_IMAGE_MAX];
+    int imageSize, driverSize, mode;
+    ElfProgramHdr program;
+    SdLoaderInfo *info;
+    uint8_t *imagebuf;
+    uint32_t start;
+    ElfContext *c;
+    ElfHdr hdr;
+    char *value;
+    int ivalue;
+    FILE *fp;
+    
+    /* open the sd loader executable */
+    if (!(fp = xbOpenFileInPath(sys, path, "rb")))
+        return Error("can't open '%s'", path);
+
+    /* check for an elf file */
+    if (!ReadAndCheckElfHdr(fp, &hdr))
+        return Error("bad elf file '%s'", path);
+
+    /* open the elf file */
+    if (!(c = OpenElfFile(fp, &hdr)))
+        return Error("failed to open elf file");
+        
+    /* build the .binary image */
+    if (!(imagebuf = BuildInternalImage(config, c, &start, &imageSize, NULL)))
+        return FALSE;
+    
+    if (FindProgramSegment(c, ".coguser0", &program) < 0)
+        return Error("can't find info (.coguser0) segment");
+    
+    info = (SdLoaderInfo *)&imagebuf[program.paddr - start];
+    memset(info, 0, sizeof(SdLoaderInfo));
+    
+    if (GetNumericConfigField(config, "cache-geometry", &ivalue))
+        info->cache_geometry = ivalue;
+    if ((value = GetConfigField(config, "load-target")) != NULL) {
+        if (strcasecmp(value, "ram") == 0)
+            info->flags |= SD_LOAD_RAM;
+    }
+
+    if (FindProgramSegment(c, ".coguser1", &program) < 0)
+        return Error("can't find cache driver (.coguser1) segment");
+
+    if ((value = GetConfigField(config, "xmem-driver")) != NULL) {
+        uint32_t *xmem = (uint32_t *)driverImage;
+        if (!ReadCogImage(sys, value, driverImage, &driverSize))
+            return Error("reading external memory driver image failed: %s", value);
+        if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+            xmem[1] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+            xmem[2] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+            xmem[3] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+            xmem[4] = ivalue;
+        memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+    }
+    else
+        return Error("no external memory driver");
+        
+    if (FindProgramSegment(c, ".coguser2", &program) < 0)
+        return Error("can't find sd_driver (.coguser2) segment");
+    
+    if ((value = GetConfigField(config, "sd-driver")) == NULL)
+        return Error("no sd-driver found in the configuration");
+
+    SDDriverDatHdr *dat = (SDDriverDatHdr *)driverImage;
+    if (!ReadCogImage(sys, value, driverImage, &driverSize))
+        return Error("reading sd driver image failed: %s", value);
+    SetSDParams(config, &dat->sd_params);
+    memcpy(&imagebuf[program.paddr - start], driverImage, driverSize);
+            
+    /* update the checksum */
+    UpdateChecksum(imagebuf, imageSize);
+
+    /* determine the download mode */
+    if (flags & LFLAG_WRITE_EEPROM)
+        mode = flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM;
+    else if (flags & LFLAG_RUN)
+        mode = DOWNLOAD_RUN_BINARY;
+    else
+        return Error("expecting -e and/or -r");
+        
+    /* load the program */
+    if (ploadbuf(path, imagebuf, imageSize, mode) != 0) {
+        free(imagebuf);
+        return Error("load failed");
+    }
+    
+    /* free the image buffer */
+    free(imagebuf);
+
+    return TRUE;
+}
+
+#endif
+
 int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
 {
+#if 0
     uint8_t driverImage[COG_IMAGE_MAX];
     int imageSize, driverSize, mode;
     ElfProgramHdr program;
@@ -598,6 +715,9 @@ int LoadSDCacheLoader(System *sys, BoardConfig *config, char *path, int flags)
     free(imagebuf);
 
     return TRUE;
+#else
+    return FALSE;
+#endif
 }
 
 static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
@@ -631,21 +751,28 @@ static int WriteSpinBinaryFile(BoardConfig *config, char *path, ElfContext *c)
 
 static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfContext *c)
 {
-    uint8_t cacheDriverImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf;
+    uint8_t cacheDriverImage[COG_IMAGE_MAX], kernelImage[COG_IMAGE_MAX], *kernelbuf, *imagebuf, *helper_image;
     int cacheDriverImageSize, imageSize, target, ivalue;
-    uint32_t loadAddress, params[6];
-    ElfProgramHdr program_kernel;
+    ElfProgramHdr program_kernel, program_start;
     char *cacheDriver, *value;
     int eepromFirst = FALSE;
-
-    /* check for a cache driver for loading the external image */
-    if (!(cacheDriver = GetConfigField(config, "cache-driver")))
-        return Error("no cache driver to load external image");
+    uint32_t loadAddress;
+    int helper_size;
     
     /* build the external image */
-    if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
-        return FALSE;
-        
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        if (!(cacheDriver = GetConfigField(config,  "cache-driver")))
+            return Error("no cache driver to load external image");
+        if (!(imagebuf = BuildExternalImage(config, c, &loadAddress, &imageSize)))
+            return FALSE;
+    }
+    else {
+        if (!(cacheDriver = GetConfigField(config, "xmem-driver")))
+            return Error("no external memory driver to load external image");
+        if (!(imagebuf = BuildExternalImage2(config, c, &loadAddress, &imageSize)))
+            return FALSE;
+    }
+    
     /* get the target memory space */
     if ((value = GetConfigField(config, "load-target")) != NULL) {
         if (strcasecmp(value, "flash") == 0)
@@ -671,20 +798,39 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         free(imagebuf);
         return Error("can't load .xmmkernel section");
     }
+    
+    /* copy the kernel to a full size COG image buffer */
+    memset(kernelImage, 0, sizeof(kernelImage));
+    memcpy(kernelImage, kernelbuf, program_kernel.filesz);
+    free(kernelbuf);
+    
+    /* find the .start.kerext segment */
+    if (FindProgramSegment(c, ".start.kerext", &program_start) >= 0) {
+    
+        /* load the .start.kerext section */
+        if (!(kernelbuf = LoadProgramSegment(c, &program_start))) {
+            free(imagebuf);
+            return Error("can't load .start.kerext section");
+        }
+        
+        /* preload .start.kerext */
+        memcpy(&kernelImage[program_start.vaddr], kernelbuf, program_start.filesz);
+        free(kernelbuf);
+    }
+    
     /* if debugging requested, patch */
     if ( (flags & LFLAG_DEBUG) != 0) {
-        if (!(PatchSectionForDebug(kernelbuf, program_kernel.filesz, 0, c))) {
+        if (!(PatchSectionForDebug(kernelImage, sizeof(kernelImage), 0, c))) {
             free(imagebuf);
-	    return Error("can't patch .xmmkernel section");
-	}
+            return Error("can't patch .xmmkernel section");
+        }
     }
 
     /* handle downloads to eeprom that must be done before the external memory download */
     GetNumericConfigField(config, "eeprom-first", &eepromFirst);
     if (eepromFirst && (flags & LFLAG_WRITE_EEPROM)) {
         if (target == TYPE_FLASH_WRITE) {
-            if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, DOWNLOAD_EEPROM)) {
-                free(kernelbuf);
+            if (!WriteFlashLoader(sys, config, kernelImage, sizeof(kernelImage), DOWNLOAD_EEPROM, c)) {
                 free(imagebuf);
                 return Error("can't load '.xmmkernel' section into eeprom");
             }
@@ -694,46 +840,85 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
             return Error("no external ram eeprom loader is currently available");
     }
     
+    /* choose the serial helper program based on the elf version */
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        helper_image = serial_helper_array;
+        helper_size = serial_helper_size;
+    }
+    else {
+        helper_image = serial_helper2_array;
+        helper_size = serial_helper2_size;
+    }
+    
     /* load the serial helper program */
-    if (!LoadSerialHelper(config, FALSE)) {
-        free(kernelbuf);
+    if (!LoadSerialHelper(config, helper_image, helper_size, FALSE)) {
         free(imagebuf);
         return FALSE;
     }
         
-    /* load the cache driver */
+    /* get the cache driver image */
     if (!ReadCogImage(sys, cacheDriver, cacheDriverImage, &cacheDriverImageSize)) {
-        free(kernelbuf);
         free(imagebuf);
         return Error("reading cache driver image failed: %s", cacheDriver);
     }
-    printf("Loading cache driver '%s'\n", cacheDriver);
-    memset(params, 0, sizeof(params));
-    if (GetNumericConfigField(config, "cache-size", &ivalue))
-        params[0] = ivalue;
-    if (GetNumericConfigField(config, "cache-param1", &ivalue))
-        params[1] = ivalue;
-    if (GetNumericConfigField(config, "cache-param2", &ivalue))
-        params[2] = ivalue;
-    if (GetNumericConfigField(config, "cache-param3", &ivalue))
-        params[3] = ivalue;
-    if (GetNumericConfigField(config, "cache-param4", &ivalue))
-        params[4] = ivalue;
-    if (GetNumericConfigField(config, "cache-extra", &ivalue))
-        params[5] = ivalue;
-    if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
-    ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
-    ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
-        free(kernelbuf);
-        free(imagebuf);
-        return Error("Loading cache driver failed");
+    
+    /* setup the cache initialization parameters */
+    
+    /* this branch handles the old cache drivers that include tag handling */
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        uint32_t params[5];
+        memset(params, 0, sizeof(params));
+        if (GetNumericConfigField(config, "cache-size", &ivalue))
+            params[0] = ivalue;
+        if (GetNumericConfigField(config, "cache-param1", &ivalue))
+            params[1] = ivalue;
+        if (GetNumericConfigField(config, "cache-param2", &ivalue))
+            params[2] = ivalue;
+        if (GetNumericConfigField(config, "cache-param3", &ivalue))
+            params[3] = ivalue;
+        if (GetNumericConfigField(config, "cache-param4", &ivalue))
+            params[4] = ivalue;
+    
+        /* load the cache driver */
+        printf("Loading cache driver '%s'\n", cacheDriver);
+        if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
+        ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
+        ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
+            free(imagebuf);
+            return Error("Loading cache driver failed");
+        }
+    }
+    
+    /* this branch handles the external memory drivers where the tag handling is in the kernel */
+    else {
+        uint32_t *xmem = (uint32_t *)cacheDriverImage;
+        uint32_t params[1];
+        memset(params, 0, sizeof(params));
+        if (GetNumericConfigField(config, "cache-geometry", &ivalue))
+            params[0] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+            xmem[1] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+            xmem[2] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+            xmem[3] = ivalue;
+        if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+            xmem[4] = ivalue;
+    
+        /* load the external memory driver */
+        printf("Loading external memory driver '%s'\n", cacheDriver);
+        if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
+        ||  !WriteBuffer(cacheDriverImage, cacheDriverImageSize)
+        ||  !SendPacket(TYPE_CACHE_INIT, (uint8_t *)params, sizeof(params))) {
+            free(imagebuf);
+            return Error("Loading external memory driver failed");
+        }
     }
             
     /* write the full image to memory */
     printf("Loading program image to %s\n", target == TYPE_FLASH_WRITE ? "flash" : "RAM");
     if (!SendPacket(target, (uint8_t *)"", 0)
     ||  !WriteBuffer(imagebuf, imageSize)) {
-        free(kernelbuf);
         free(imagebuf);
         return Error("Loading program image failed");
     }
@@ -748,10 +933,8 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
         else {
             int mode = (flags & LFLAG_RUN ? DOWNLOAD_RUN_EEPROM : DOWNLOAD_EEPROM);
             if (target == TYPE_FLASH_WRITE) {
-                if (!WriteFlashLoader(sys, config, kernelbuf, program_kernel.filesz, mode)) {
-                    free(kernelbuf);
+                if (!WriteFlashLoader(sys, config, kernelImage, sizeof(kernelImage), mode, c))
                     return Error("can't load '.xmmkernel' section into eeprom");
-                }
             }
             else
                 return Error("no external ram eeprom loader is currently available");
@@ -762,23 +945,20 @@ static int LoadExternalImage(System *sys, BoardConfig *config, int flags, ElfCon
     else if (flags & LFLAG_RUN) {
         printf("Loading .xmmkernel\n");
         if (!SendPacket(TYPE_HUB_WRITE, (uint8_t *)"", 0)
-        ||  !WriteBuffer(kernelbuf, program_kernel.filesz)
+        ||  !WriteBuffer(kernelImage, sizeof(kernelImage))
         ||  !SendPacket(TYPE_VM_INIT, (uint8_t *)"", 0))
             return Error("can't loading xmm kernel");
         if (!SendPacket(TYPE_RUN, (uint8_t *)"", 0))
             return Error("can't run program");
     }
     
-    /* free the '.xmmkernel' section data */
-    free(kernelbuf);
-    
     return TRUE;
 }
-    
-int LoadSerialHelper(BoardConfig *config, int needsd)
+
+int LoadSerialHelper(BoardConfig *config, uint8_t  *image, int image_size, int needsd)
 {
-    SpinHdr *hdr = (SpinHdr *)serial_helper_array;
-    SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->pbase);
+    SpinHdr *hdr = (SpinHdr *)image;
+    SpinObj *obj = (SpinObj *)(image + hdr->pbase);
     SerialHelperDatHdr *dat = (SerialHelperDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     int ivalue;
     
@@ -833,10 +1013,10 @@ int LoadSerialHelper(BoardConfig *config, int needsd)
     }
         
     /* recompute the checksum */
-    UpdateChecksum(serial_helper_array, serial_helper_size);
+    UpdateChecksum(image, image_size);
     
     /* load the serial helper program */
-    if (ploadbuf("the serial helper", serial_helper_array, serial_helper_size, DOWNLOAD_RUN_BINARY) != 0)
+    if (ploadbuf("the serial helper", image, image_size, DOWNLOAD_RUN_BINARY) != 0)
         return Error("helper load failed");
 
     /* wait for the serial helper to complete initialization */
@@ -846,15 +1026,28 @@ int LoadSerialHelper(BoardConfig *config, int needsd)
     return TRUE;
 }
 
-static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode)
+static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size, int mode, ElfContext *c)
 {
-    /* build the flash loader image */
-    if (!BuildFlashLoaderImage(sys, config, vm_array, vm_size))
-        return Error("building flash loader image failed");
-        
+    uint8_t *loader_image;
+    int loader_size;
+
+    /* choose the flash loader based on the elf version */
+    if (ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN) {
+        if (!BuildFlashLoaderImage(sys, config, vm_array, vm_size))
+            return Error("building flash loader image failed");
+        loader_image = flash_loader_array;
+        loader_size = flash_loader_size;
+    }
+    else {
+        if (!BuildFlashLoader2Image(sys, config, vm_array, vm_size))
+            return Error("building flash loader image failed");
+        loader_image = flash_loader2_array;
+        loader_size = flash_loader2_size;
+    }
+    
     /* load the flash loader program */
-    if (preset() != 0 || ploadbuf("the flash loader", flash_loader_array, flash_loader_size, mode) != 0)
-        return Error("loader load failed");
+    if (preset() != 0 || ploadbuf("the flash loader", loader_image, loader_size, mode) != 0)
+        return Error("flash loader load failed");
     
     /* return successfully */
     return TRUE;
@@ -863,7 +1056,7 @@ static int WriteFlashLoader(System *sys, BoardConfig *config, uint8_t *vm_array,
 static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size)
 {
     SpinHdr *hdr = (SpinHdr *)flash_loader_array;
-    SpinObj *obj = ( SpinObj *)(flash_loader_array + hdr->pbase);
+    SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->pbase);
     FlashLoaderDatHdr *dat = (FlashLoaderDatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
     uint8_t cacheDriverImage[COG_IMAGE_MAX];
     int imageSize, ivalue;
@@ -906,8 +1099,57 @@ static int BuildFlashLoaderImage(System *sys, BoardConfig *config, uint8_t *vm_a
     return TRUE;
 }
 
+static int BuildFlashLoader2Image(System *sys, BoardConfig *config, uint8_t *vm_array, int vm_size)
+{
+    SpinHdr *hdr = (SpinHdr *)flash_loader2_array;
+    SpinObj *obj = (SpinObj *)(flash_loader2_array + hdr->pbase);
+    FlashLoader2DatHdr *dat = (FlashLoader2DatHdr *)((uint8_t *)obj + (obj->pubcnt + obj->objcnt) * sizeof(uint32_t));
+    uint8_t xmemDriverImage[COG_IMAGE_MAX];
+    uint32_t *xmem = (uint32_t *)xmemDriverImage;
+    int imageSize, ivalue;
+    char *xmemDriver;
+    
+    if (!(xmemDriver = GetConfigField(config, "xmem-driver")))
+        return Error("no xmem driver in board configuration");
+        
+    if (!ReadCogImage(sys, xmemDriver, xmemDriverImage, &imageSize))
+        return Error("reading xmem driver image failed: %s", xmemDriver);
+        
+    /* patch flash loader for clock mode and frequency */
+    GetNumericConfigField(config, "clkfreq", &ivalue);
+    hdr->clkfreq = ivalue;
+    GetNumericConfigField(config, "clkmode", &ivalue);
+    hdr->clkmode = ivalue;
+    
+    /* copy the vm image to the binary file */
+    memcpy((uint8_t *)dat + dat->vm_code_off, vm_array, vm_size);
+    
+    /* patch the external memory driver with its initialization parameters */
+    if (GetNumericConfigField(config, "xmem-param1", &ivalue))
+        xmem[1] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param2", &ivalue))
+        xmem[2] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param3", &ivalue))
+        xmem[3] = ivalue;
+    if (GetNumericConfigField(config, "xmem-param4", &ivalue))
+        xmem[4] = ivalue;
+
+    /* copy the external memory driver image to the flash loader image */
+    memcpy((uint8_t *)dat + dat->cache_code_off, xmemDriverImage, imageSize);
+    
+    /* get the cache geometry */
+    if (GetNumericConfigField(config, "cache-geometry", &ivalue))
+        dat->xmem_geometry = ivalue;
+    
+    /* recompute the checksum */
+    UpdateChecksum(flash_loader2_array, flash_loader2_size);
+    
+    /* return successfully */
+    return TRUE;
+}
+
 /* PatchVariables - patch user variables based on config file values */
-void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase)
+void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, TranslateTable *table)
 {
     int i;
     for (i = 1; i < c->symbolCnt; ++i) {
@@ -927,7 +1169,7 @@ void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint3
             
             /* get the variable value */
             if (GetVariableValue(config, cname, &value)) {
-                if (PatchVariable(c, imagebuf, imagebase, symbol.value, value))
+                if (PatchVariable(c, imagebuf, imagebase, symbol.value, value, table))
                     printf("Patching %s with %08x\n", vname, value);
                 else
                     printf("Unable to patch %s\n", vname);
@@ -941,14 +1183,14 @@ void PatchVariables(BoardConfig *config, ElfContext *c, uint8_t *imagebuf, uint3
 }
 
 /* PatchVariable - patch a single variable */
-static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value)
+static int PatchVariable(ElfContext *c, uint8_t *imagebuf, uint32_t imagebase, uint32_t addr, uint32_t value, TranslateTable *table)
 {
     ElfProgramHdr program;
     int i;
     for (i = 0; i < c->hdr.phnum; ++i) {
         if (LoadProgramTableEntry(c, i, &program)) {
             if (addr >= program.vaddr && addr < program.vaddr + program.filesz) {
-                uint32_t offset = addr - program.vaddr + program.paddr - imagebase;
+                uint32_t offset = addr - program.vaddr + TranslateAddress(table, program.paddr) - imagebase;
                 *(uint32_t *)(imagebuf + offset) = value;
                 return TRUE;
             }
@@ -972,6 +1214,22 @@ int GetVariableValue(BoardConfig *config, const char *name, int *pValue)
     else
         sts = GetNumericConfigField(config, name, pValue);
     return sts;
+}
+
+/* TranslateAddress - translate a paddr to an laddr */
+static uint32_t TranslateAddress(TranslateTable *table, uint32_t addr)
+{
+    if (table) {
+        TranslateEntry *entry = table->entries;
+        int count = table->count;
+        while (--count >= 0) {
+            if (addr >= entry->paddr && addr < entry->paddr + entry->size) {
+                addr = addr - entry->paddr + entry->laddr;
+                break;
+            }
+        }
+    }
+    return addr;
 }
 
 #define  CS_CLR_PIN_MASK       0x01   // either CS or CLR
@@ -1065,7 +1323,7 @@ int WriteFileToSDCard(BoardConfig *config, char *path, char *target)
     if ((fp = fopen(path, "rb")) == NULL)
         return Error("can't open %s", path);
     
-    if (!LoadSerialHelper(config, TRUE)) {
+    if (!LoadSerialHelper(config, serial_helper_array, serial_helper_size, TRUE)) {
         fclose(fp);
         return Error("loading serial helper");
     }

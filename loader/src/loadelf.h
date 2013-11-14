@@ -66,11 +66,19 @@ typedef struct {
     uint16_t    shstrndx;
 } ElfHdr;
 
-#define ELF_CHIP(h) ((h)->flags & 0xff)
+#define ELF_CHIP(h)         ((h)->flags & 0xff)
 
 #define ELF_CHIP_UNKNOWN    0
 #define ELF_CHIP_P1         1
 #define ELF_CHIP_P2         2
+
+#define ELF_VERSION(h)      (((h)->flags >> 16) & 0xff)
+
+#define ELF_VERSION_UNKNOWN 0
+/* Version 1
+   Introduces a new external memory interface where the kernel contains the cache handling
+   code and the "cache driver" only reads/writes blocks of external memory.
+*/
 
 typedef struct {
     uint32_t    name;

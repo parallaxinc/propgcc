@@ -12,7 +12,7 @@
 #define PKTMAXLEN       1024
 
 /* clock frequency (for Propeller 2 FPGA boards) */
-#define CLOCK_FREQ      60000000
+#define CLOCK_FREQ      80000000
 
 /* offset of signature in image */
 #define SIG_OFFSET      0x1f8

@@ -52,6 +52,7 @@ typedef struct {
 
 uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadAddress, int *pImageSize)
 {
+    char *initSectionName = ELF_VERSION(&c->hdr) == ELF_VERSION_UNKNOWN ? ".header" : ".init";
     ElfProgramHdr program, program_kernel, program_header, program_hub;
     int dataSize, initTableSize, imageSize, ki, hi, si, i;
     InitSection *initSectionTable, *initSection;
@@ -63,9 +64,9 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
     if ((ki = FindProgramSegment(c, ".xmmkernel", &program_kernel)) < 0)
         return NullError("can't find .xmmkernel segment");
     
-    /* find the .header segment */
-    if ((hi = FindProgramSegment(c, ".header", &program_header)) < 0)
-        return NullError("can't find .header segment");
+    /* find the .header or .init segment */
+    if ((hi = FindProgramSegment(c, initSectionName, &program_header)) < 0)
+        return NullError("can't find %s segment", initSectionName);
         
 #ifdef DEBUG_BUILD_EXTERNAL_IMAGE
     printf("header %08x\n", program_header.paddr);
@@ -167,7 +168,7 @@ uint8_t *BuildExternalImage(BoardConfig *config, ElfContext *c, uint32_t *pLoadA
     }
     
     /* patch user variables with values from the configuration file */
-    PatchVariables(config, c, imagebuf, program_header.paddr);
+    PatchVariables(config, c, imagebuf, program_header.paddr, NULL);
 
     /* return the image */
     *pLoadAddress = program_header.paddr;
