@@ -9,7 +9,7 @@ CON
   
 OBJ
 
-  cache : "cache_interface"
+  xmem : "xmem_interface"
 
 PUB start | index_width, offset_width, tags_size, cache_size, cache_lines, cache_tags, xmem_mboxes, sp
 
@@ -20,10 +20,10 @@ PUB start | index_width, offset_width, tags_size, cache_size, cache_lines, cache
 
   cache_lines := hub_memory_size - cache_size
   cache_tags := cache_lines - tags_size
-  xmem_mboxes := cache_tags - cache#_MBOX2_SIZE * 4 * 8 - 4 ' one mailbox per COG
+  xmem_mboxes := cache_tags - xmem#_MBOX2_SIZE * 4 * 8 - 4 ' one mailbox per COG
   
   ' start the external memory driver
-  cache.start2(@xmem_code, xmem_mboxes, 8)
+  xmem.start2(@xmem_code, xmem_mboxes, 8)
 
   ' setup the stack
   ' at start stack contains xmem_mboxes, cache_tags, cache_lines, cache_geometry, pc
