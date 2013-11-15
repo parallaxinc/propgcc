@@ -104,21 +104,5 @@ __jmptab_ptr
 #endif
 
 
-#if 0
-LEDon
-	or	DIRA, LEDbit
-	andn	OUTA, LEDbit
-LEDon_ret
-	ret
-
-LEDoff
-	or	DIRA, LEDbit
-	or	OUTA, LEDbit
-LEDoff_ret
-	ret
-
-LEDbit
-	long	0x8000
-#endif
 	
 endinit
