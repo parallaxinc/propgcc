@@ -174,3 +174,26 @@ __UDIV_BY_ZERO
 endmath
 
 #include "init.ext"
+
+#if 0
+	.section .kernel
+	.global LEDon
+	.global LEDon_ret
+LEDon
+	or	DIRA, __LEDbit
+	andn	OUTA, __LEDbit
+LEDon_ret
+	ret
+
+	.global LEDoff
+	.global LEDoff_ret
+LEDoff
+	or	DIRA, __LEDbit
+	or	OUTA, __LEDbit
+LEDoff_ret
+	ret
+
+	.global __LEDbit
+__LEDbit
+	long	0x8000
+#endif
