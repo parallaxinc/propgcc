@@ -349,7 +349,7 @@ i2s7	long	(2<<23) | 7
 	'' in Cog memory, providing a significant
 	'' speedup.
 	''
-
+	.global __LMM_FCACHE_ADDR
 __LMM_FCACHE_ADDR
 	long 0
 	
