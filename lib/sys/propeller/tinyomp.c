@@ -10,9 +10,11 @@
 #endif
 
 #define MAX_THREADS 8
-#define STACKSIZE 512
+#define DEFAULT_STACKSIZE 1024
 
 static int max_threads = MAX_THREADS; /* current limit on threads to use */
+static int STACKSIZE = DEFAULT_STACKSIZE; /* size to provide for stack */
+
 struct workstruct {
     void (*fn)(void *);
     void *arg;
@@ -200,8 +202,8 @@ GOMP_sections_end_nowait (void)
 }
 
 
-static _atomic_t atomic;
-static _atomic_t critical;
+HUBDATA static _atomic_t atomic;
+HUBDATA static _atomic_t critical;
 
 void
 GOMP_atomic_start (void)
