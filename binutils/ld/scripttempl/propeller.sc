@@ -192,6 +192,28 @@ SECTIONS
   .debug_loc      0 : { *(.debug_loc .zdebug_loc) }
   .debug_macinfo  0 : { *(.debug_macinfo .zdebug_macinfo) }
 
+  /* global variables */
+  ${P2-"PROVIDE(__clkfreq = 0x0) ;"}
+  ${P2-"PROVIDE(__clkmode = 0x4) ;"}
+
+  /* provide some register definitions - propeller 1 */
+  ${P2-"PROVIDE(PAR = 0x7C0) ;"}
+  ${P2-"PROVIDE(CNT = 0x7C4) ;"}
+  ${P2-"PROVIDE(INA = 0x7C8) ;"}
+  ${P2-"PROVIDE(INB = 0x7CC) ;"}
+  ${P2-"PROVIDE(OUTA = 0x7D0) ;"}
+  ${P2-"PROVIDE(OUTB = 0x7D4) ;"}
+  ${P2-"PROVIDE(DIRA = 0x7D8) ;"}
+  ${P2-"PROVIDE(DIRB = 0x7DC) ;"}
+  ${P2-"PROVIDE(CTRA = 0x7E0) ;"}
+  ${P2-"PROVIDE(CTRB = 0x7E4) ;"}
+  ${P2-"PROVIDE(FRQA = 0x7E8) ;"}
+  ${P2-"PROVIDE(FRQB = 0x7EC) ;"}
+  ${P2-"PROVIDE(PHSA = 0x7F0) ;"}
+  ${P2-"PROVIDE(PHSB = 0x7F4) ;"}
+  ${P2-"PROVIDE(VCFG = 0x7F8) ;"}
+  ${P2-"PROVIDE(VSCL = 0x7FC) ;"}
+
   /* provide some case-sensitive aliases - propeller 1 */
   ${P2-"PROVIDE(par = PAR) ;"}
   ${P2-"PROVIDE(cnt = CNT) ;"}
