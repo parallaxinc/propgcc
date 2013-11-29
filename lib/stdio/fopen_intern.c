@@ -10,6 +10,10 @@
 #include <string.h>
 #include <errno.h>
 #include <compiler.h>
+#include <propeller.h>
+
+/* lock for stdio functions */
+HUBDATA atomic_t __stdio_lock;
 
 /* force _InitIO to be linked */
 extern void _InitIO(void);
