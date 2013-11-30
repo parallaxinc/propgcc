@@ -420,7 +420,7 @@
           (plus:SI (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
                    (match_operand:SI 1 "propeller_add_operand"  "rCI,N"))
           (match_dup 0)))]
-  ""
+  "!TARGET_P2"
   "@
    add\t%0, %1 wc,nr
    sub\t%0, #%n1 wc,nr"
@@ -434,7 +434,7 @@
           (plus:SI (match_operand:SI 0 "propeller_dst_operand" "rC,rC")
                    (match_operand:SI 1 "propeller_add_operand"  "rCI,N"))
           (match_dup 1)))]
-  ""
+  "!TARGET_P2"
   "@
    add\t%0, %1 wc,nr
    sub\t%0, #%n1 wc,nr"
@@ -780,7 +780,7 @@
   ""
   "@
    test\t%0,%1 wz
-   andn\t%0,%M1 wz,nr"
+   testn\t%0,%M1 wz"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -801,7 +801,7 @@
   ""
   "@
    test\t%0,%1 wc
-   andn\t%0,%M1 wc,nr"
+   testn\t%0,%M1 wc"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
 )
@@ -895,7 +895,7 @@
             (match_operand:SI 1 "propeller_src_operand" "rCI"))
           (const_int 0)))
    ]
-  ""
+  "!TARGET_P2"
   "<opcode>\t%0, %1 wz,nr"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
@@ -991,7 +991,7 @@
             (match_operand:SI 1 "propeller_src_operand" "rCI"))
           (const_int 0)))
    ]
-  ""
+  "!TARGET_P2"
   "<opcode>\t%0, %1 wz,nr"
   [(set_attr "conds" "set")
    (set_attr "predicable" "yes")]
@@ -2700,7 +2700,7 @@
 ;;
 ;; we split coginit up into 2 insns, one to start the cog and the
 ;; second to update its state from the carry flag
-;; the coginit raw sets the carry flag to mean that the locknew failed,
+;; the coginit raw sets the carry flag to mean that the coginit failed,
 ;; which means that the register is to be set to -1 (i.e. < 0)
 ;;
 (define_insn "*coginit_raw"
@@ -2714,7 +2714,7 @@
        (unspec_volatile:SI
          [(match_dup 1)] UNSPEC_COGINIT))
   ]
-  ""
+  "!TARGET_P2"
   "coginit\t%0 wc,wr"
   [(set_attr "type" "hub")
    (set_attr "predicable" "yes")]
@@ -2725,7 +2725,7 @@
         (unspec_volatile:SI [(match_operand:SI 1 "propeller_dst_operand" "0")]
 	        UNSPEC_COGSTATE))
    ]
-  ""
+  "!TARGET_P2"
   "#"
   "reload_completed"
   [(parallel
