@@ -153,6 +153,21 @@ pp_nextline(struct preprocess *pp)
         int c0, c1;
         c0 = fgetc(f);
         if (c0 < 0) return 0;
+	if (c0 == 0xef) {
+	    A->readfunc = read_single;
+	    c1 = fgetc(f);
+	    if (c1 == 0xbb) {
+	        c1 = fgetc(f);
+		if (c1 == 0xbf) {
+		  /* discard the byte order mark */
+		} else {
+		  ungetc(c1, f);
+		  ungetc(0xbb, f);
+		}
+	    } else {
+	        ungetc(c1, f);
+	    }
+	} else
         if (c0 != 0xff) {
             if (c0 >= 0x80 && c0 < 0xc0) {
 	        A->readfunc = read_latin1;
