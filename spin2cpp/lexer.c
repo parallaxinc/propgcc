@@ -177,7 +177,7 @@ void
 lexungetc(LexStream *L, int c)
 {
     if (L->ungot_ptr == UNGET_MAX-1) {
-        fprintf(stderr, "ERROR: unget limit exceeded");
+        fprintf(stderr, "ERROR: unget limit exceeded\n");
     }
     L->ungot[L->ungot_ptr++] = c;
 }
@@ -492,6 +492,7 @@ again:
         struct flexbuf anno;
         int annotate = 0;
         int directive = 0;
+	int doccomment = 0;
 
         flexbuf_init(&anno, INCSTR);
         commentNest = 1;
@@ -510,22 +511,39 @@ again:
         } else if (c == '#') {
             c = lexgetc(L);
             directive = 1;
-        }
+        } else if (c == '{') {
+	    c = lexgetc(L);
+	    doccomment = 1;
+	}
         lexungetc(L, c);
         for(;;) {
             c = lexgetc(L);
-            if (c == '{')
+            if (c == '{' && !doccomment)
                 commentNest++;
-            else if (c == '}')
-                --commentNest;
+            else if (c == '}') {
+	        if (doccomment) {
+	            int peekc;
+		    peekc = lexgetc(L);
+		    if (peekc == '}') {
+		        commentNest = 0;
+		    } else {
+		        lexungetc(L, peekc);
+		    }
+		} else {
+		  --commentNest;
+		}
+	    }
             if (commentNest <= 0 || c == T_EOF)
                 break;
             if (annotate || directive) {
                 flexbuf_addchar(&anno, c);
             }
         }
-        if (c == T_EOF)
+        if (c == T_EOF) {
+	    if (commentNest > 0)
+	        fprintf(stderr, "WARNING: EOF seen inside comment\n");
             return c;
+	}
         if (annotate) {
             AST *ast = NewAST(AST_ANNOTATION, NULL, NULL);
             flexbuf_addchar(&anno, '\0');
