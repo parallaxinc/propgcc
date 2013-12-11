@@ -1301,7 +1301,7 @@ md_assemble (char *instruction_string)
 	    if (arg == NULL)
 	      as_fatal (_("Virtual memory exhausted"));
 	    strcpy(arg, "sp");
-	    parse_dest(arg, &op4, &insn);
+	    parse_src(arg, &op4, &insn, PROPELLER_OPERAND_TWO_OPS);
 	    // now set up the ADD instruction
 	    insn2.code = 0x80800000 | (0xf << 18); 
 	    free(arg);
