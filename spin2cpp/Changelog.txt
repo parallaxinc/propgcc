@@ -1,7 +1,8 @@
 Version 1.05
 
-- Fix a problem with double negation or negation of boolean operators
+- Fixed a problem with double negation or negation of boolean operators
   being printed as a predecrement.
+- Fixed usage of ID[n] in PASM code (where ID is a constant).
 
 Version 1.04
 

@@ -53,7 +53,7 @@ outputDataList(FILE *f, int size, AST *ast)
 
     while (ast) {
         sub = ast->left;
-        if (sub->kind == AST_ARRAYDECL) {
+        if (sub->kind == AST_ARRAYDECL || sub->kind == AST_ARRAYREF) {
             origval = EvalPasmExpr(ast->left->left);
             reps = EvalPasmExpr(ast->left->right);
         } else if (sub->kind == AST_STRING) {
