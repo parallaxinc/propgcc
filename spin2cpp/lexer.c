@@ -58,7 +58,7 @@ void strToLex(LexStream *L, const char *s, const char *name)
     memset(L, 0, sizeof(*L));
     L->arg = L->ptr = (void *)s;
     L->getcf = strgetc;
-    L->lineCounter = 1;
+    L->pendingLine = 1;
     L->fileName = name ? name : "<string>";
 }
 
@@ -134,7 +134,7 @@ void fileToLex(LexStream *L, FILE *f, const char *name)
     L->ptr = (void *)f;
     L->arg = NULL;
     L->getcf = filegetc;
-    L->lineCounter = 1;
+    L->pendingLine = 1;
     /* check for Unicode */
     c1 = fgetc(f);
     c2 = fgetc(f);
@@ -159,10 +159,14 @@ lexgetc(LexStream *L)
         --L->ungot_ptr;
         return L->ungot[L->ungot_ptr];
     }
+    if (L->pendingLine) {
+      L->lineCounter ++;
+      L->pendingLine = 0;
+      L->colCounter = 0;
+    }
     c = (L->getcf(L));
     if (c == '\n') {
-        L->lineCounter++;
-        L->colCounter = 0;
+        L->pendingLine = 1;
     } else if (c == '\t') {
         L->colCounter += TAB_STOP;
         /* now go back to the previous stop */
