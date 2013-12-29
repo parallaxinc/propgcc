@@ -81,7 +81,7 @@ read_bytes_ret
 '------------------------------------------------------------------------------
 write_bytes
         tjz     wrenable, write_bytes_ret
-        tjz     extaddr, disable_writes
+        tjz     extaddr, #disable_writes
 
         and     extaddr, eeprom_mask
         add     extaddr, eebase         ' add the eeprom image base address

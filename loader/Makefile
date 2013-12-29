@@ -17,7 +17,7 @@ OLDCACHEDRIVERDIR=old-cache-drivers
 XMEMDRIVERDIR=xmem-drivers
 OBJDIR=$(BUILDROOT)/obj/$(OS)
 BINDIR=$(BUILDROOT)/bin/$(OS)
-DRVDIR=$(BUILDROOT)/include
+DRVDIR=$(BUILDROOT)/propeller-load
 INSTALLBINDIR=$(TARGET)/bin
 INSTALLLIBDIR=$(TARGET)/propeller-load
 
@@ -99,7 +99,7 @@ info:
 # CLEAN TARGETS #
 #################
 
-.PHONY:	clean clean-for-release
+.PHONY:	clean
 clean:
 	@$(RM) -f -r $(OBJDIR)
 	@$(RM) -f -r $(BINDIR)
@@ -111,8 +111,6 @@ clean:
 clean-all:	clean
 	@$(RM) -f -r $(BUILDROOT)/obj
 	@$(RM) -f -r $(BUILDROOT)/bin
-	@$(RM) -f $(DRVDIR)/*.dat
-	@$(RM) -f *.binary
 
 #####################
 # OBJECT FILE LISTS #
@@ -178,11 +176,32 @@ $(SPINDIR)/TV.spin \
 $(SPINDIR)/TV_Text.spin \
 $(SPINDIR)/vm_start.spin
 
+###########################
+# EXTERNAL MEMORY DRIVERS #
+###########################
+
+DRIVERS=\
+$(DRVDIR)/winbond_spi_flash_xmem.dat \
+$(DRVDIR)/sst_spi_flash_xmem.dat \
+$(DRVDIR)/spi_sram_xmem.dat \
+$(DRVDIR)/spi_sram24_xmem.dat \
+$(DRVDIR)/winbond_sqi_flash_xmem.dat \
+$(DRVDIR)/sst_sqi_flash_xmem.dat \
+$(DRVDIR)/sqi_sram_xmem.dat \
+$(DRVDIR)/c3_xmem.dat \
+$(DRVDIR)/eeprom_xmem.dat \
+$(DRVDIR)/winbond_sqi_flash_sram_xmem.dat \
+$(DRVDIR)/sst_sqi_flash_sram_xmem.dat \
+$(DRVDIR)/rampage2_xmem.dat \
+$(DRVDIR)/synapse_xmem.dat \
+$(DRVDIR)/sd_xmem.dat
+
 #################
 # CACHE DRIVERS #
 #################
 
-DRIVERS=\
+ifdef NOTDEF
+DRIVERS+=\
 $(DRVDIR)/c3_cache.dat \
 $(DRVDIR)/c3_cache_flash.dat \
 $(DRVDIR)/ssf_cache.dat \
@@ -201,26 +220,14 @@ $(DRVDIR)/spi_nway_sram_cache.dat \
 $(DRVDIR)/winbond_sqi_flash_cache.dat \
 $(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
 $(DRVDIR)/synapse_cache.dat \
-$(DRVDIR)/rampage2_cache.dat \
-$(DRVDIR)/winbond_spi_flash_xmem.dat \
-$(DRVDIR)/sst_spi_flash_xmem.dat \
-$(DRVDIR)/spi_sram_xmem.dat \
-$(DRVDIR)/spi_sram24_xmem.dat \
-$(DRVDIR)/winbond_sqi_flash_xmem.dat \
-$(DRVDIR)/sst_sqi_flash_xmem.dat \
-$(DRVDIR)/sqi_sram_xmem.dat \
-$(DRVDIR)/c3_xmem.dat \
-$(DRVDIR)/eeprom_xmem.dat \
-$(DRVDIR)/winbond_sqi_flash_sram_xmem.dat \
-$(DRVDIR)/sst_sqi_flash_sram_xmem.dat \
-$(DRVDIR)/rampage2_xmem.dat \
-$(DRVDIR)/synapse_xmem.dat \
-$(DRVDIR)/sd_xmem.dat
+$(DRVDIR)/rampage2_cache.dat
+endif
 
 #######################
 # NEWER CACHE DRIVERS #
 #######################
 
+ifdef NOTDEF
 DRIVERS+=\
 $(DRVDIR)/rampage2_xcache.dat \
 $(DRVDIR)/winbond_spi_flash_xcache.dat \
@@ -234,6 +241,7 @@ $(DRVDIR)/winbond_sqi_flash_sram_xcache.dat \
 $(DRVDIR)/sst_sqi_flash_sram_xcache.dat \
 $(DRVDIR)/c3_xcache.dat \
 $(DRVDIR)/synapse_xcache.dat
+endif
 
 #################
 # OTHER DRIVERS #
@@ -424,19 +432,5 @@ install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
 	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
 	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size $(INSTALLBINDIR)
 	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
-	$(CP) -f include/* $(INSTALLLIBDIR)
-
-##################
-# RELEASE TARGET #
-##################
-
-.PHONY:	release
-release:	clean-for-release
-	$(RM) -rf ../loader-rel/loader
-	$(MKDIR) ../loader-rel/loader
-	$(CP) -r src ../loader-rel/loader
-	$(CP) -r spin ../loader-rel/loader
-	$(CP) -r include ../loader-rel/loader
-	$(CP) makefile ../loader-rel/loader
-	$(CP) setenv.* ../loader-rel/loader
-	$(CP) README.txt ../loader-rel/loader
+	$(CP) -f xmem-drivers/*.cfg $(INSTALLLIBDIR)
+	$(CP) -f xmem-drivers/boards.txt $(INSTALLLIBDIR)

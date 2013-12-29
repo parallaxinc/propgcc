@@ -37,6 +37,9 @@ CON
   CLK_PIN               = 11
   CLR_PIN               = 25
 
+  ' SD commands
+  CMD0_GO_IDLE_STATE      = $40|0
+
 DAT
 
 init
@@ -50,6 +53,30 @@ init
         mov     dira, pindir
         call    #deselect
 
+        ' put the SD card in SPI mode
+        mov     t1, #10             ' output 80 clocks
+:init   mov     data, #$ff
+        call    #spiSendByte
+        djnz    t1, #:init
+        call    #sd_card
+        mov     data, #CMD0_GO_IDLE_STATE
+        call    #spiSendByte
+        mov     data, #0
+        call    #spiSendByte
+        call    #spiSendByte
+        call    #spiSendByte
+        call    #spiSendByte
+        mov     data, #$95          ' CRC (for 1st command only)
+        call    #spiSendByte
+        mov     data, #$ff
+        call    #spiSendByte
+        mov     t1, #20             ' try 20 times
+:loop   call    #spiRecvByte
+        test    data, #$80 wz
+  if_z  jmp     #:done
+        djnz    t1, #:loop
+:done   call    #deselect
+                
         ' select sequential access mode for the first SRAM chip
         call    #sram_chip1
         mov     data, ramseq
@@ -147,7 +174,7 @@ write_bytes
         cmp     extaddr, flash_base wc
   if_b  jmp     #write_sram_bytes
         tjz     wrenable, write_bytes_ret
-        tjz     extaddr, disable_writes
+        tjz     extaddr, #disable_writes
         test    extaddr, block_mask wz
   if_z  call    #erase_4k_block
         jmp     #write_block
@@ -236,6 +263,10 @@ sram_chip2
         mov     t1, #2
         jmp     #select
 
+sd_card
+        mov     t1, #5
+        jmp     #select
+
 flash_chip
         mov     t1, #3
 
@@ -246,6 +277,7 @@ select  andn    outa, TCLR
         djnz    t1, #:loop
 sram_chip1_ret
 sram_chip2_ret
+sd_card_ret
 flash_chip_ret
         ret
 
