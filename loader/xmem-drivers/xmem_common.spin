@@ -111,6 +111,15 @@ t3      long    0       ' temporary variable
 
 '----------------------------------------------------------------------------------------------------
 '
+' init - initialize external memory
+'
+' on input:
+'   xmem_param1 - xmem_param4 are initialization parameters filled in by the loader from the .cfg file
+'
+'----------------------------------------------------------------------------------------------------
+
+'----------------------------------------------------------------------------------------------------
+'
 ' read_bytes - read data from external memory
 '
 ' on input:
@@ -127,7 +136,7 @@ t3      long    0       ' temporary variable
 ' on input:
 '   extaddr is the external memory address to write
 '   hubaddr is the hub memory address to read
-'   count is the number of longs to write
+'   count is the number of bytes to write
 '
 '----------------------------------------------------------------------------------------------------
 
