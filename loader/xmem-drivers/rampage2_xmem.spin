@@ -160,7 +160,7 @@ write_bytes
   
 write_bytes_flash
         tjz     wrenable, write_bytes_ret
-        tjz     extaddr, disable_writes
+        tjz     extaddr, #disable_writes
         test    extaddr, block_mask wz
   if_z  call    #erase_4k_block
   

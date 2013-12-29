@@ -53,7 +53,10 @@ init_continue
         call    #init
 
         ' start the command loop
-waitcmd mov     dira, #0                ' release the pins for other SPI clients
+waitcmd
+#ifdef RELEASE_PINS
+        mov     dira, #0                ' release the pins for other SPI clients
+#endif
 :reset  mov     cmdptr, cmdbase
 :loop
 #ifdef REFRESH
@@ -74,13 +77,18 @@ waitcmd mov     dira, #0                ' release the pins for other SPI clients
         and     t2, #7
         mov     count, #8
         shl     count, t2
+#ifdef RELEASE_PINS
         mov     dira, pindir            ' setup the pins so we can use them
+#endif
         test    t1, #$8 wz              ' check the write flag
   if_z  jmp     #:read                  ' do read if the flag is zero
         call    #write_bytes            ' do write if the flag is one
         jmp     #:done
 :read   call    #read_bytes
-:done   mov     dira, #0                ' release the pins for other SPI clients
+:done
+#ifdef RELEASE_PINS
+        mov     dira, #0                ' release the pins for other SPI clients
+#endif
         wrlong  t1, stsptr              ' return completion status
         wrlong  zero, cmdptr
 :next   add     cmdptr, #8

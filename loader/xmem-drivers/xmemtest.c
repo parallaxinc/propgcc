@@ -6,8 +6,8 @@
 
 //#define PMC
 //#define DNA
-//#define RAMPAGE2
-#define DEFAULTS
+#define RAMPAGE2
+//#define DEFAULTS
 
 //#define FLASH_TEST
 #define BIG_FLASH_TEST
