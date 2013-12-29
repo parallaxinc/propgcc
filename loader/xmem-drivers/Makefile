@@ -7,6 +7,7 @@ OBJCOPY=propeller-elf-objcopy
 #TESTDRIVER?=winbond_sqi_flash_sram_xmem
 #TESTDRIVER?=synapse_xmem
 TESTDRIVER?=rampage2_xmem
+#TESTDRIVER?=rampage2_sram_xmem
 #TESTDRIVER?=pmc_xmem
 #TESTDRIVER?=c3_xmem
 

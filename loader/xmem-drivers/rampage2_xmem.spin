@@ -48,20 +48,6 @@ init
         ' set the pin directions
         call    #release
 
-        ' select sequential access mode for the SRAM chip
-        call    #sram_select
-        mov     data, sram_seq
-        mov     bits, #16
-        call    #spiSend
-        call    #release
-        
-        ' switch to quad mode for the SRAM chip
-        call    #sram_select
-        mov     data, sram_eqio
-        mov     bits, #8
-        call    #spiSend
-        call    #release
-                
         ' initialize the flash
         call    #sst_read_jedec_id
         cmp     t1, jedec_id_1 wz
@@ -103,6 +89,20 @@ init
         call    #sst_sqi_write_word
         call    #release
 
+        ' select sequential access mode for the SRAM chip
+        call    #sram_select
+        mov     data, sram_seq
+        mov     bits, #16
+        call    #spiSend
+        call    #release
+        
+        ' switch to quad mode for the SRAM chip
+        call    #sram_select
+        mov     data, sram_eqio
+        mov     bits, #8
+        call    #spiSend
+        call    #release
+                
 init_ret
         ret
         
@@ -113,15 +113,13 @@ halt    jmp     #halt
 ' read_bytes - read data from external memory
 '
 ' on input:
-'   extaddr is the virtual memory address to read
+'   extaddr is the external memory address to read
 '   hubaddr is the hub memory address to write
-'   count is the number of longs to read
+'   count is the number of bytes to read
 '
 '----------------------------------------------------------------------------------------------------
 
 read_bytes
-        add     count, #1               ' round to an even number of bytes
-        andn    count, #1
         cmp     extaddr, flash_base wc
   if_b  jmp     #read_bytes_sram
         mov     cmd, extaddr
@@ -146,15 +144,13 @@ read_bytes_sram
 ' write_bytes
 '
 ' on input:
-'   extaddr is the virtual memory address to write
+'   extaddr is the external memory address to write
 '   hubaddr is the hub memory address to read
-'   count is the number of longs to write
+'   count is the number of bytes to write
 '
 '----------------------------------------------------------------------------------------------------
 
 write_bytes
-        add     count, #1               ' round to an even number of bytes
-        andn    count, #1
         cmp     extaddr, flash_base wc
   if_b  jmp     #write_bytes_sram
   
@@ -305,7 +301,6 @@ sst_sqi_write
         call    #sst_start_sqi_cmd
 sqi_write
         andn    outa, sck_mask
-        tjz     dbytes, #:done
 :loop   rdbyte  data, hubaddr
         add     hubaddr, #1
         shl     data, sio_shift
@@ -314,7 +309,7 @@ sqi_write
         or      outa, sck_mask
         andn    outa, sck_mask
         djnz    dbytes, #:loop
-:done   call    #release
+        call    #release
 sst_sqi_write_ret
 sqi_write_ret
         ret
@@ -338,14 +333,12 @@ sst_sqi_read_word_ret
 sst_sqi_read
         call    #sst_start_sqi_cmd
 sqi_read
+        andn    dira, sio_mask
         andn    outa, sck_mask
-        andn    outa, sio_mask
         or      outa, sck_mask  ' hi dummy nibble
         andn    outa, sck_mask
         or      outa, sck_mask  ' lo dummy nibble
-        andn    dira, sio_mask
         andn    outa, sck_mask
-        tjz     dbytes, #:done
 :loop   or      outa, sck_mask
         mov     data, ina
         andn    outa, sck_mask
@@ -353,7 +346,7 @@ sqi_read
         wrbyte  data, hubaddr
         add     hubaddr, #1
         djnz    dbytes, #:loop
-:done   call    #release
+        call    #release
 sst_sqi_read_ret
 sqi_read_ret
         ret
@@ -480,7 +473,7 @@ spiRecvByte_ret
 pindir          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
 ' mosi_lo, mosi_hi, cs
-pinout          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
+pinout          long    (%1101 << SIO0_PIN) | (%1101 << (SIO0_PIN + 4)) | (0 << SCK_PIN) | (1 << FLASH_CS_PIN) | (1 << SRAM_CS_PIN)
 
 mosi_lo_mask    long    1 << SIO0_PIN
 miso_lo_mask    long    2 << SIO0_PIN
@@ -506,12 +499,12 @@ bits            long    0
 sram_read       long    $03000000       ' read command
 sram_write      long    $02000000       ' write command
 sram_eqio       long    $38000000       ' enter quad I/O mode
-sram_seq        long    $01400000       ' %00000001_01000000 << 16 ' set sequential mode
+sram_seq        long    $01400000       ' set sequential mode
 
 flash_base      long    $30000000       ' base address of flash memory
-offset_bits     long    $00ffffff       ' mask to isolate the flash offset bits
+offset_bits     long    $00ffffff       ' mask to isolate the flash/sram offset bits
 block_mask      long    $00001fff       ' 2 * 4k flash blocks
 
 wrenable        long    1
 
-        fit     496
+                fit     496
