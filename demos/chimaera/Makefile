@@ -1,4 +1,4 @@
-TARGET=chimera.elf
+TARGET=chimaera.elf
 
 BOARD?=c3
 MODEL?=xmm-split
