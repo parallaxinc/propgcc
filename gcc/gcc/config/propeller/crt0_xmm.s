@@ -361,12 +361,11 @@ read_code
   if_b  jmp     #read_hub_code
         mov     t1, pc
         muxnz   save_z_c, #2                'save the z flag
-        call    #cache_read
+        call    #cache_read_common
         rdlong  L_ins0, memp
-        jmp     #read_restore_c
+        jmp     read_code_ret
 read_hub_code
         rdlong  L_ins0, pc
-read_restore_c
         shr     save_z_c, #1 wc             'restore the c flag
 read_code_ret
         ret
@@ -389,6 +388,7 @@ read_code_ret
 '   memp contains a pointer to the data
 '   z will be restored from save_z_c
 cache_write
+        muxc    save_z_c, #1            ' save the c flag
         mov     t2, t1                  ' get the cache line address
         andn    t2, offset_mask
         mov     set_dirty_bit, dirty_mask
@@ -401,6 +401,8 @@ cache_write
 '   memp contains a pointer to the data
 '   z will be restored from save_z_c
 cache_read
+        muxc    save_z_c, #1            ' save the c flag
+cache_read_common
         mov     t2, t1                  ' get the cache line address
         andn    t2, offset_mask
         cmp     cacheaddr, t2 wz        ' check to see if it's the same cache line as last time
@@ -425,9 +427,15 @@ rd_wr   mov     newtag, t1              ' get the new cache tag
   
 ' t1 has the external address
 ' t2 has the external address of the cache line
-miss    test    tag, dirty_mask wz      ' check to see if old cache line is dirty
+miss
+
+lck_spi test    $, #0 wc                ' lock no-op: clear the carry bit
+   if_c jmp     #lck_spi
+
+        test    tag, dirty_mask wz      ' check to see if old cache line is dirty
   if_z  jmp     #do_read                ' skip the write if the cache line isn't dirty
   
+do_write
         mov     t3, tag                 ' get current tag's external address
         shl     t3, offset_width
         wrlong  t3, xmem_extaddrp       ' setup the external address of the write
@@ -445,6 +453,8 @@ do_read wrlong  t2, xmem_extaddrp
 rwait   rdlong  t3, xmem_hubaddrp wz    ' wait for the read to complete
   if_nz jmp     #rwait
   
+nlk_spi nop        
+
         mov     tag, newtag             ' setup the new tag
  
 hit     or      tag, set_dirty_bit      ' set the dirty bit on writes
@@ -456,10 +466,27 @@ skip    mov     memp, t1                ' get cache line offset
         and     memp, offset_mask
         add     memp, cacheline         ' get address of data in cache line
         test    save_z_c, #2 wz         ' restore the z flag
-cache_read_ret
+        shr     save_z_c, #1 wc, nr     ' restore the c flag
 cache_write_ret
+cache_read_ret
+cache_read_common_ret
         ret
         
+		.global enable_locking
+enable_locking
+        mov     lock_id, r0
+        mov     lck_spi, lock_set
+        mov     nlk_spi, lock_clr
+enable_locking_ret
+        ret
+
+lock_set
+        lockset lock_id wc
+lock_clr
+        lockclr lock_id
+
+lock_id long    0                       ' lock id for optional spi bus interlock
+
 ' external memory driver command syntax
 ' long 0 (xmem_hubaddrp) - hub address, size selector, and write flag
 ' long 1 (xmem_extaddrp) - external address
