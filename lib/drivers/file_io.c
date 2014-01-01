@@ -27,6 +27,7 @@
 #define SD_WRITE_CMD 0x15
 #define BUS_LOCK_CMD 0x1D
 
+_NATIVE extern void _enable_spi_locking(int lock_id);
 static volatile uint32_t __attribute__((section(".hub"))) sd_lock = -1;
 static volatile uint32_t __attribute__((section(".hub"))) *sd_mbox;
 
@@ -49,7 +50,7 @@ static uint32_t __attribute__((section(".hubtext"))) do_cmd(uint32_t cmd)
 void dfs_use_lock(uint32_t lockId)
 {
     if (sd_mbox)
-        do_cmd(BUS_LOCK_CMD | (lockId << 8));
+        _enable_spi_locking(lockId);
     else
         sd_lock = lockId;
 }

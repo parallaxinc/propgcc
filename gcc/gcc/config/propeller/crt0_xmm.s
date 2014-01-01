@@ -472,12 +472,12 @@ cache_read_ret
 cache_read_common_ret
         ret
         
-		.global _enable_spi_locking
-_enable_spi_locking
+		.global __enable_spi_locking
+__enable_spi_locking
         mov     lock_id, r0
         mov     lck_spi, lock_set
         mov     nlk_spi, lock_clr
-_enable_spi_locking_ret
+__enable_spi_locking_ret
         ret
 
 lock_set
