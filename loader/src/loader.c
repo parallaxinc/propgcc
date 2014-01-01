@@ -1227,6 +1227,7 @@ static uint32_t TranslateAddress(TranslateTable *table, uint32_t addr)
                 addr = addr - entry->paddr + entry->laddr;
                 break;
             }
+            ++entry;
         }
     }
     return addr;
