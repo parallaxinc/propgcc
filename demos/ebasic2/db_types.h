@@ -16,7 +16,8 @@
 
 /* compiler heap size */
 #ifndef HEAPSIZE
-#define HEAPSIZE            (4 * 1024)
+//#define HEAPSIZE            (4 * 1024)
+#define HEAPSIZE            2500
 #endif
 
 /* maximum number of runtime objects */
