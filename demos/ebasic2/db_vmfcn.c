@@ -17,6 +17,8 @@ static void fcn_printTab(Interpreter *i);
 static void fcn_printNL(Interpreter *i);
 static void fcn_printFlush(Interpreter *i);
 
+#undef PROPELLER
+
 #ifdef PROPELLER
 
 #include <unistd.h>
