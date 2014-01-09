@@ -37,7 +37,10 @@ static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
     switch (expr->nodeType) {
     case NodeTypeSymbolRef:
         pv->fcn = expr->u.symbolRef.fcn;
-        pv->u.val = expr->u.symbolRef.offset;
+        if (pv->fcn == code_global)
+            pv->u.sym = expr->u.symbolRef.symbol;
+        else
+            pv->u.val = expr->u.symbolRef.offset;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);
@@ -159,7 +162,7 @@ void chklvalue(ParseContext *c, PVAL *pv)
 void code_global(ParseContext *c, PValOp fcn, PVAL *pv)
 {
     putcbyte(c, OP_LIT);
-    putcword(c, pv->u.val);
+    putcword(c, AddSymbolRef(pv->u.sym, codeaddr(c)));
     switch (fcn) {
     case PV_LOAD:
         putcbyte(c, OP_LOAD);
@@ -226,30 +229,6 @@ int putcword(ParseContext *c, VMVALUE w)
     return addr;
 }
 
-#if 0
-/* rd_cword - get a code word from the code buffer */
-static VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
-{
-    uint8_t *p = &c->codeBuf[off] + sizeof(VMVALUE);
-    int cnt = sizeof(VMVALUE);
-    VMVALUE w = 0;
-    while (--cnt >= 0) {
-        w <<= 8;
-        w |= *--p;
-    }
-    return w;
-}
-
-/* wr_cword - put a code word into the code buffer */
-static void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w)
-{
-    int cnt = sizeof(VMVALUE);
-    while (--cnt >= 0) {
-       c->codeBuf[off++] = w;
-       w >>= 8;
-    }
-}
-#else
 /* rd_cword - get a code word from the code buffer */
 VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
 {
@@ -270,7 +249,6 @@ void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w)
         w >>= 8;
     }
 }
-#endif
 
 /* merge - merge two reference chains */
 int merge(ParseContext *c, VMUVALUE chn, VMUVALUE chn2)

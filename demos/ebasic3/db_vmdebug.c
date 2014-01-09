@@ -85,15 +85,16 @@ int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
     uint8_t opcode, bytes[sizeof(VMVALUE)];
     const OTDEF *op;
     VMVALUE offset;
-    int n, addr, i;
+    VMUVALUE addr;
     int8_t sbyte;
+    int n, i;
 
     /* get the opcode */
     opcode = VMCODEBYTE(lc);
 
     /* show the address */
     addr = (int)(base + lc - code);
-    VM_printf("%08x %04x %02x ", lc, addr, opcode);
+    VM_printf("%08x %02x ", addr, opcode);
     n = 1;
 
     /* display the operands */

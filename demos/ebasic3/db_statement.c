@@ -179,7 +179,8 @@ static void ParseEndDef(ParseContext *c)
 {
     if (c->codeType != CODE_TYPE_FUNCTION)
         ParseError(c, "not in a function definition");
-    fixup(c, c->codeSymbol->fixups, StoreCode(c));
+    c->codeSymbol->value = StoreCode(c);
+    fixup(c, c->codeSymbol->fixups, c->codeSymbol->value);
     c->codeSymbol = NULL;
 }
 

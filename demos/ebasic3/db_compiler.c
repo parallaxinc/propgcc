@@ -16,6 +16,7 @@
 
 /* local function prototypes */
 static void PlaceStrings(ParseContext *c);
+static void PlaceSymbols(ParseContext *c);
 
 /* InitCompiler - initialize the compiler and create a parse context */
 ParseContext *InitCompiler(System *sys, int imageBufferSize)
@@ -102,7 +103,7 @@ ImageHdr *Compile(ParseContext *c)
 
     {
         int objectDataSize = (uint8_t *)c->imageDataFree - (uint8_t *)c->image;
-#if 0
+#if 1
         DumpSymbols(&c->globals, "symbols");
 #endif
         VM_printf("Heap: %d, Image: %d\n", c->maxHeapUsed, objectDataSize);
@@ -170,14 +171,16 @@ VMVALUE StoreCode(ParseContext *c)
     /* place string literals defined in this function */
     PlaceStrings(c);
     
+    /* place global symbols referenced by this function */
+    PlaceSymbols(c);
+    
     /* determine the code size */
     codeSize = (int)(c->cptr - c->codeBuf);
 
-#if 0
+#if 1
 {
-    VMUVALUE base = (uint8_t *)c->imageDataTop - (uint8_t *)c->imageDataFree;
     VM_printf("%s:\n", c->codeSymbol ? c->codeSymbol->name : "<main>");
-    DecodeFunction(base, c->codeBuf, codeSize);
+    DecodeFunction((VMUVALUE)c->imageDataFree, c->codeBuf, codeSize);
     DumpSymbols(&c->arguments, "arguments");
     DumpSymbols(&c->locals, "locals");
     VM_printf("\n");
@@ -264,6 +267,20 @@ VMVALUE AddSymbolRef(Symbol *sym, int offset)
     link = sym->fixups;
     sym->fixups = offset;
     return link;
+}
+
+/* PlaceSymbols - place any global symbols defined in the current function */
+static void PlaceSymbols(ParseContext *c)
+{
+    Symbol *sym;
+    for (sym = c->globals.head; sym != NULL; sym = sym->next) {
+        if (sym->fixups) {
+            sym->value = StoreVector(c, &sym->initialValue, 1);
+            sym->placed = VMTRUE;
+            fixup(c, sym->fixups, sym->value);
+            sym->fixups = 0;
+        }
+    }
 }
 
 /* GlobalAlloc - allocate memory from the global heap */
