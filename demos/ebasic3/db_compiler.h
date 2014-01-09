@@ -205,6 +205,7 @@ typedef struct PVAL PVAL;
 struct PVAL {
     void (*fcn)(ParseContext *c, PValOp op, PVAL *pv);
     union {
+        Symbol *sym;
         String *str;
         VMVALUE val;
     } u;
@@ -280,6 +281,7 @@ VMVALUE StoreCode(ParseContext *c);
 void AddIntrinsic(ParseContext *c, char *name, int index);
 String *AddString(ParseContext *c, char *value);
 VMVALUE AddStringRef(String *str, int offset);
+VMVALUE AddSymbolRef(Symbol *sym, int offset);
 void *GlobalAlloc(ParseContext *c, size_t size);
 void *LocalAlloc(ParseContext *c, size_t size);
 void Fatal(ParseContext *c, char *fmt, ...);

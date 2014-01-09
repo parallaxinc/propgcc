@@ -109,8 +109,8 @@ int Execute(Interpreter *i, ImageHdr *image)
             running = VMFALSE;
             break;
         case STS_Step:
-            printf("Step\n");
-            running = VMFALSE;
+            printf("Step: pc %08x, sp %08x, fp %08x, tos %08x\n", (VMUVALUE)state.pc, (VMUVALUE)state.sp, (VMUVALUE)state.fp, state.tos);
+            mailbox.cmd = VM_Continue;
             break;
         case STS_Trap:
             switch (mailbox.arg2_fcn) {
@@ -165,7 +165,7 @@ int Execute(Interpreter *i, ImageHdr *image)
             running = VMFALSE;
             break;
         case STS_IllegalOpcode:
-            printf("Illegal opcode\n");
+            printf("Illegal opcode: pc %08x\n", (VMUVALUE)state.pc);
             running = VMFALSE;
             break;
         default:

@@ -499,29 +499,14 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
         else {
             node->u.symbolRef.symbol = symbol;
             node->u.symbolRef.fcn = code_global;
-            node->u.symbolRef.offset = symbol->value;
         }
     }
 
     /* handle undefined symbols */
     else {
-
-        /* in the main code, add ithe symbol as a global */
-        if (c->codeType == CODE_TYPE_MAIN) {
-            symbol = AddGlobal(c, name, SC_VARIABLE, 0, 0);
-            node->u.symbolRef.symbol = symbol;
-            node->u.symbolRef.fcn = code_global;
-            node->u.symbolRef.offset = symbol->value;
-        }
-
-        /* inside a function or subroutine definition, add it as a local */
-        else {
-            symbol = AddLocal(c, name, SC_VARIABLE, c->localOffset++ + F_SIZE + 1);
-            node->u.symbolRef.symbol = symbol;
-            node->u.symbolRef.fcn = code_local;
-            node->u.symbolRef.offset = symbol->value;
-        }
-
+        symbol = AddGlobal(c, name, SC_VARIABLE, 0, 0);
+        node->u.symbolRef.symbol = symbol;
+        node->u.symbolRef.fcn = code_global;
     }
 
     /* return the symbol reference node */
