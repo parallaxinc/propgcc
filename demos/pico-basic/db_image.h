@@ -56,18 +56,6 @@
 #define OP_RETURNV      0x23    /* return from a function leaving no result on the stack */
 #define OP_DROP         0x24    /* drop the top element of the stack */
 
-#define OP_LITH         0x40    /* literal handle */
-#define OP_GREFH        0x41    /* load a handle global variable */
-#define OP_GSETH        0x42    /* set a handle global variable */
-#define OP_LREFH        0x43    /* load a handle local variable relative to the frame pointer */
-#define OP_LSETH        0x44    /* set a handlelocal variable relative to the frame pointer */
-#define OP_VREFH        0x45    /* load an element of a vector */
-#define OP_VSETH        0x46    /* set an element of a vector */
-#define OP_RETURNH      0x47    /* return from a function leaving a handle result on the stack */
-#define OP_DROPH        0x48    /* drop the top element of the handle stack */
-
-#define OP_CAT          0x49    /* concatenate two strings */
-
 #if ALIGN_MASK == 1
 #define get_VMVALUE(var, getbyte)               \
             var =  (VMVALUE) (getbyte);         \

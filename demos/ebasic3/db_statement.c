@@ -10,8 +10,7 @@
 
 /* statement handler prototypes */
 static void ParseDef(ParseContext *c);
-static void ParseFunctionDef(ParseContext *c, int codeType);
-static void ParseEndFunction(ParseContext *c, int codeType);
+static void ParseEndDef(ParseContext *c);
 static void ParseDim(ParseContext *c);
 static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize);
 static VMVALUE ParseScalarInitializer(ParseContext *c);
@@ -24,6 +23,7 @@ static void ParseElse(ParseContext *c);
 static void ParseElseIf(ParseContext *c);
 static void ParseEndIf(ParseContext *c);
 static void ParseEnd(ParseContext *c);
+static void ParseConstantDef(ParseContext *c, char *name);
 static void ParseFor(ParseContext *c);
 static void ParseNext(ParseContext *c);
 static void ParseDo(ParseContext *c);
@@ -38,14 +38,14 @@ static void ParseReturn(ParseContext *c);
 static void ParsePrint(ParseContext *c);
 
 /* prototypes */
-static void CallHandler(ParseContext *c, char *name, ParseTreeNode *expr);
+static void CallHandler(ParseContext *c, int trap, ParseTreeNode *expr);
 static void DefineLabel(ParseContext *c, char *name, int offset);
 static int ReferenceLabel(ParseContext *c, char *name, int offset);
 static void PushBlock(ParseContext *c);
 static void PopBlock(ParseContext *c);
 
 /* ParseStatement - parse a statement */
-void ParseStatement(ParseContext *c, Token tkn)
+void ParseStatement(ParseContext *c, int tkn)
 {
     /* dispatch on the statement keyword */
     switch (tkn) {
@@ -55,17 +55,8 @@ void ParseStatement(ParseContext *c, Token tkn)
     case T_DEF:
         ParseDef(c);
         break;
-    case T_FUNCTION:
-        ParseFunctionDef(c, CODE_TYPE_FUNCTION);
-        break;
-    case T_END_FUNCTION:
-        ParseEndFunction(c, CODE_TYPE_FUNCTION);
-        break;
-    case T_SUB:
-        ParseFunctionDef(c, CODE_TYPE_SUB);
-        break;
-    case T_END_SUB:
-        ParseEndFunction(c, CODE_TYPE_SUB);
+    case T_END_DEF:
+        ParseEndDef(c);
         break;
     case T_DIM:
         ParseDim(c);
@@ -141,112 +132,82 @@ void ParseStatement(ParseContext *c, Token tkn)
 static void ParseDef(ParseContext *c)
 {
     char name[MAXTOKEN];
-    ParseTreeNode *expr;
-    VMHANDLE symbol;
-    Symbol *sym;
+    int tkn;
 
     /* get the name being defined */
     FRequire(c, T_IDENTIFIER);
     strcpy(name, c->token);
-    FRequire(c, '=');
+
+    /* check for a constant definition */
+    if ((tkn = GetToken(c)) == '=')
+        ParseConstantDef(c, name);
+
+    /* otherwise, assume a function definition */
+    else {
+
+        /* save the lookahead token */
+        SaveToken(c, tkn);
+
+        /* enter the function name in the global symbol table */
+        c->codeSymbol = AddGlobal(c, name, SC_CONSTANT, 0, 0);
+
+        /* start the code under construction */
+        StartCode(c, CODE_TYPE_FUNCTION);
+
+        /* get the argument list */
+        if ((tkn = GetToken(c)) == '(') {
+            if ((tkn = GetToken(c)) != ')') {
+                int offset = 1;
+                SaveToken(c, tkn);
+                do {
+                    FRequire(c, T_IDENTIFIER);
+                    AddArgument(c, c->token, SC_VARIABLE, offset);
+                    ++offset;
+                } while ((tkn = GetToken(c)) == ',');
+            }
+            Require(c, tkn, ')');
+        }
+        else
+            SaveToken(c, tkn);
+    }
+
+    FRequire(c, T_EOL);
+}
+
+/* ParseEndDef - parse the 'END DEF' statement */
+static void ParseEndDef(ParseContext *c)
+{
+    if (c->codeType != CODE_TYPE_FUNCTION)
+        ParseError(c, "not in a function definition");
+    fixup(c, c->codeSymbol->fixups, StoreCode(c));
+    c->codeSymbol = NULL;
+}
+
+/* ParseConstantDef - parse a 'DEF <name> =' statement */
+static void ParseConstantDef(ParseContext *c, char *name)
+{
+    ParseTreeNode *expr;
 
     /* get the constant value */
     expr = ParseExpr(c);
 
     /* make sure it's a constant */
     if (!IsIntegerLit(expr))
-        ParseError(c, "expecting a constant expression", NULL);
+        ParseError(c, "expecting a constant expression");
 
     /* add the symbol as a global */
-    symbol = AddGlobal(c->heap, name, SC_CONSTANT, DefaultType(c, name));
-    sym = GetSymbolPtr(symbol);
-    sym->v.iValue = expr->u.integerLit.value;
+    AddGlobal(c, name, SC_CONSTANT, expr->u.integerLit.value, 0);
 
     FRequire(c, T_EOL);
-}
-
-/* ParseFunctionDef - parse a 'DEF <name> (' statement */
-static void ParseFunctionDef(ParseContext *c, int codeType)
-{
-    char name[MAXTOKEN];
-    VMHANDLE symbol, type, returnType;
-    Symbol *sym;
-    Token tkn;
-    Type *typ;
-
-    /* get the name being defined */
-    FRequire(c, T_IDENTIFIER);
-    strcpy(name, c->token);
-    
-    /* determine the return value type */
-    returnType = (codeType == CODE_TYPE_FUNCTION ? DefaultType(c, name) : NULL);
-    
-    /* make the function type */
-    type = NewType(c->heap, TYPE_FUNCTION);
-    typ = GetTypePtr(type);
-    typ->u.functionInfo.returnType = returnType;
-    InitSymbolTable(&c->arguments);
-    
-    /* enter the function name in the global symbol table */
-    symbol = AddGlobal(c->heap, name, SC_CONSTANT, type);
-    sym = GetSymbolPtr(symbol);
-
-    /* start the code under construction */
-    StartCode(c, sym->name, codeType, returnType);
-    sym->v.hValue = c->code;
-
-    /* get the argument list */
-    if ((tkn = GetToken(c)) == '(') {
-        if ((tkn = GetToken(c)) != ')') {
-            int offset = 0;
-            int handleOffset = 0;
-            SaveToken(c, tkn);
-            do {
-                VMHANDLE argType;
-                FRequire(c, T_IDENTIFIER);
-                argType = DefaultType(c, c->token);
-                if (IsHandleType(argType)) {
-                    AddLocal(c->heap, &c->arguments, c->token, argType, handleOffset);
-                    ++c->handleArgumentCount;
-                    --handleOffset;
-                }
-                else {
-                    AddLocal(c->heap, &c->arguments, c->token, argType, offset);
-                    ++c->argumentCount;
-                    ++offset;
-                }
-            } while ((tkn = GetToken(c)) == ',');
-            Require(c, tkn, ')');
-        }
-        tkn = GetToken(c);
-    }
-    
-    /* store the argument symbol table */
-    typ = GetTypePtr(type);
-    typ->u.functionInfo.arguments = c->arguments;
-    
-    Require(c, tkn, T_EOL);
-}
-
-/* ParseEndFunction - parse the 'END FUNCTION' and 'END SUB' statements */
-static void ParseEndFunction(ParseContext *c, int codeType)
-{
-    if (codeType != c->codeType) {
-        if (codeType == CODE_TYPE_FUNCTION)
-            ParseError(c, "not in FUNCTION definition", NULL);
-        else
-            ParseError(c, "not in SUB definition", NULL);
-    }
-    StoreCode(c);
 }
 
 /* ParseDim - parse the 'DIM' statement */
 static void ParseDim(ParseContext *c)
 {
     char name[MAXTOKEN];
-    VMVALUE value = 0, size;
+    VMVALUE value, size = 0;
     int isArray;
-    Token tkn;
+    int tkn;
 
     /* parse variable declarations */
     do {
@@ -256,8 +217,6 @@ static void ParseDim(ParseContext *c)
 
         /* add to the global symbol table if outside a function definition */
         if (c->codeType == CODE_TYPE_MAIN) {
-            VMHANDLE symbol;
-            Symbol *sym;
 
             /* check for initializers */
             if ((tkn = GetToken(c)) == '=') {
@@ -273,30 +232,19 @@ static void ParseDim(ParseContext *c)
                 SaveToken(c, tkn);
             }
 
-            /* add the symbol to the global symbol table */
-            symbol = AddGlobal(c->heap, name, SC_VARIABLE, DefaultType(c, name));
-            sym = GetSymbolPtr(symbol);
-
             /* create a vector object for arrays */
-            if (isArray)
-                sym->v.hValue = StoreIntegerVector(c->heap, (VMVALUE *)c->codeBuf, size);
-            else
-                sym->v.iValue = value;
+            value = isArray ? StoreVector(c, (VMVALUE *)c->codeBuf, size) : 0;
+
+            /* add the symbol to the global symbol table */
+            AddGlobal(c, name, SC_VARIABLE, 0, value);
         }
 
         /* otherwise, add to the local symbol table */
         else {
-            VMHANDLE type = DefaultType(c, name);
             if (isArray)
-                ParseError(c, "local arrays are not supported", NULL);
-            if (IsHandleType(type)) {
-                AddLocal(c->heap, &c->locals, name, type, c->handleLocalOffset);
-                ++c->handleLocalOffset;
-            }
-            else {
-                AddLocal(c->heap, &c->locals, c->token, type, c->localOffset);
-                --c->localOffset;
-            }
+                ParseError(c, "local arrays are not supported");
+            AddLocal(c, name, SC_VARIABLE, c->localOffset + F_SIZE + 1);
+            ++c->localOffset;
         }
 
     } while ((tkn = GetToken(c)) == ',');
@@ -307,7 +255,7 @@ static void ParseDim(ParseContext *c)
 /* ParseVariableDecl - parse a variable declaration */
 static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize)
 {
-    Token tkn;
+    int tkn;
 
     /* parse the variable name */
     FRequire(c, T_IDENTIFIER);
@@ -333,7 +281,7 @@ static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize)
 
             /* make sure it's a constant */
             if (!IsIntegerLit(expr) || expr->u.integerLit.value <= 0)
-                ParseError(c, "expecting a positive constant expression", NULL);
+                ParseError(c, "expecting a positive constant expression");
             size = expr->u.integerLit.value;
 
             /* only one dimension allowed for now */
@@ -358,7 +306,7 @@ static VMVALUE ParseScalarInitializer(ParseContext *c)
 {
     ParseTreeNode *expr = ParseExpr(c);
     if (!IsIntegerLit(expr))
-        ParseError(c, "expecting a constant expression", NULL);
+        ParseError(c, "expecting a constant expression");
     return expr->u.integerLit.value;
 }
 
@@ -368,7 +316,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
     VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
     VMVALUE *dataTop = (VMVALUE *)c->ctop;
     int done = VMFALSE;
-    Token tkn;
+    int tkn;
 
     FRequire(c, '{');
 
@@ -378,8 +326,8 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
         /* look for the first non-blank line */
         while ((tkn = GetToken(c)) == T_EOL) {
-            if (!GetLine(c->sys))
-                ParseError(c, "unexpected end of file in initializers", NULL);
+            if (!GetLine(c))
+                ParseError(c, "unexpected end of file in initializers");
         }
 
         /* check for the end of the initializers */
@@ -394,18 +342,18 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
             /* get a constant expression */
             expr = ParseExpr(c);
             if (!IsIntegerLit(expr))
-                ParseError(c, "expecting a constant expression", NULL);
+                ParseError(c, "expecting a constant expression");
 
             /* check for too many initializers */
             if (--size < 0)
-                ParseError(c, "too many initializers", NULL);
+                ParseError(c, "too many initializers");
 
             /* store the initial value */
             if (dataPtr >= dataTop)
-                ParseError(c, "insufficient object data space", NULL);
+                ParseError(c, "insufficient object data space");
             *dataPtr++ = expr->u.integerLit.value;
 
-            switch ((int)(tkn = GetToken(c))) {
+            switch (tkn = GetToken(c)) {
             case T_EOL:
                 lineDone = VMTRUE;
                 break;
@@ -416,7 +364,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
             case ',':
                 break;
             default:
-                ParseError(c, "expecting a comma, right brace or end of line", NULL);
+                ParseError(c, "expecting a comma, right brace or end of line");
                 break;
             }
 
@@ -430,7 +378,7 @@ static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
     VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
     VMVALUE *dataTop = (VMVALUE *)c->ctop;
     if (dataPtr + size > dataTop)
-        ParseError(c, "insufficient object initializer space", NULL);
+        ParseError(c, "insufficient object initializer space");
     memset(dataPtr, 0, size * sizeof(VMVALUE));
 }
 
@@ -438,10 +386,10 @@ static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
 static void ParseImpliedLetOrFunctionCall(ParseContext *c)
 {
     ParseTreeNode *expr;
-    Token tkn;
+    int tkn;
     PVAL pv;
     expr = ParsePrimary(c);
-    switch ((int)(tkn = GetToken(c))) {
+    switch (tkn = GetToken(c)) {
     case '=':
         code_lvalue(c, expr, &pv);
         ParseRValue(c);
@@ -472,7 +420,7 @@ static void ParseLet(ParseContext *c)
 /* ParseIf - parse the 'IF' statement */
 static void ParseIf(ParseContext *c)
 {
-    Token tkn;
+    int tkn;
     ParseRValue(c);
     FRequire(c, T_THEN);
     PushBlock(c);
@@ -505,7 +453,7 @@ static void ParseElseIf(ParseContext *c)
         FRequire(c, T_EOL);
         break;
     default:
-        ParseError(c, "ELSE IF without a matching IF", NULL);
+        ParseError(c, "ELSE IF without a matching IF");
         break;
     }
 }
@@ -523,7 +471,7 @@ static void ParseElse(ParseContext *c)
         c->bptr->u.ElseBlock.end = end;
         break;
     default:
-        ParseError(c, "ELSE without a matching IF", NULL);
+        ParseError(c, "ELSE without a matching IF");
         break;
     }
     FRequire(c, T_EOL);
@@ -543,7 +491,7 @@ static void ParseEndIf(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "END IF without a matching IF/ELSE IF/ELSE", NULL);
+        ParseError(c, "END IF without a matching IF/ELSE IF/ELSE");
         break;
     }
     FRequire(c, T_EOL);
@@ -562,7 +510,7 @@ static void ParseFor(ParseContext *c)
 {
     ParseTreeNode *var, *step;
     int test, body, inst;
-    Token tkn;
+    int tkn;
     PVAL pv;
 
     PushBlock(c);
@@ -621,12 +569,11 @@ static void ParseFor(ParseContext *c)
 /* ParseNext - parse the 'NEXT' statement */
 static void ParseNext(ParseContext *c)
 {
-    //ParseTreeNode *var;
     int inst;
     switch (CurrentBlockType(c)) {
     case BLOCK_FOR:
         FRequire(c, T_IDENTIFIER);
-        //var = GetSymbolRef(c, c->token);
+        GetSymbolRef(c, c->token);
         /* BUG: check to make sure it matches the symbol used in the FOR */
         inst = putcbyte(c, OP_BR);
         putcword(c, c->bptr->u.ForBlock.nxt - inst - 1 - sizeof(VMUVALUE));
@@ -634,7 +581,7 @@ static void ParseNext(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "NEXT without a matching FOR", NULL);
+        ParseError(c, "NEXT without a matching FOR");
         break;
     }
     FRequire(c, T_EOL);
@@ -686,7 +633,7 @@ static void ParseLoop(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "LOOP without a matching DO", NULL);
+        ParseError(c, "LOOP without a matching DO");
         break;
     }
     FRequire(c, T_EOL);
@@ -705,7 +652,7 @@ static void ParseLoopWhile(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "LOOP without a matching DO", NULL);
+        ParseError(c, "LOOP without a matching DO");
         break;
     }
     FRequire(c, T_EOL);
@@ -724,7 +671,7 @@ static void ParseLoopUntil(ParseContext *c)
         PopBlock(c);
         break;
     default:
-        ParseError(c, "LOOP without a matching DO", NULL);
+        ParseError(c, "LOOP without a matching DO");
         break;
     }
     FRequire(c, T_EOL);
@@ -749,22 +696,17 @@ static void ParseGoto(ParseContext *c)
 /* ParseReturn - parse the 'RETURN' statement */
 static void ParseReturn(ParseContext *c)
 {
-    Token tkn;
-    if (c->codeType == CODE_TYPE_MAIN)
-        ParseError(c, "return not allowed outside of a FUNCTION or SUB", NULL);
+    int tkn;
     if ((tkn = GetToken(c)) == T_EOL) {
-        if (c->codeType == CODE_TYPE_FUNCTION)
-            ParseError(c, "expecting a return value", NULL);
+        putcbyte(c, OP_LIT);
+        putcword(c, 0);
     }
     else {
-        if (c->codeType == CODE_TYPE_SUB)
-            ParseError(c, "not expecting a return value", NULL);
         SaveToken(c, tkn);
         ParseRValue(c);
         FRequire(c, T_EOL);
     }
-    putcbyte(c, OP_BR);
-    c->returnFixups = putcword(c, c->returnFixups);
+    putcbyte(c, OP_RETURN);
 }
 
 /* ParsePrint - handle the 'PRINT' statement */
@@ -772,13 +714,13 @@ static void ParsePrint(ParseContext *c)
 {
     int needNewline = VMTRUE;
     ParseTreeNode *expr;
-    Token tkn;
+    int tkn;
 
     while ((tkn = GetToken(c)) != T_EOL) {
-        switch ((int)tkn) {
+        switch (tkn) {
         case ',':
             needNewline = VMFALSE;
-            CallHandler(c, "printTab", NULL);
+            CallHandler(c, TRAP_PrintTab, NULL);
             break;
         case ';':
             needNewline = VMFALSE;
@@ -787,41 +729,34 @@ static void ParsePrint(ParseContext *c)
             needNewline = VMTRUE;
             SaveToken(c, tkn);
             expr = ParseExpr(c);
-            if (expr->type == CommonType(c->heap, stringType))
-                CallHandler(c, "printStr", expr);
-            else
-                CallHandler(c, "printInt", expr);
+            switch (expr->nodeType) {
+            case NodeTypeStringLit:
+                CallHandler(c, TRAP_PrintStr, expr);
+                break;
+            default:
+                CallHandler(c, TRAP_PrintInt, expr);
+                break;
+            }
             break;
         }
     }
 
     if (needNewline)
-        CallHandler(c, "printNL", NULL);
+        CallHandler(c, TRAP_PrintNL, NULL);
     else
-        CallHandler(c, "printFlush", NULL);
+        CallHandler(c, TRAP_PrintFlush, NULL);
 }
 
 /* CallHandler - compile a call to a runtime print function */
-static void CallHandler(ParseContext *c, char *name, ParseTreeNode *expr)
+static void CallHandler(ParseContext *c, int trap, ParseTreeNode *expr)
 {
-    VMHANDLE symbol;
-    Symbol *sym;
-    
-    /* find the built-in function */
-    if (!(symbol = FindGlobal(c->heap, name)))
-        ParseError(c, "undefined print function: %s", name);
-    sym = GetSymbolPtr(symbol);
-        
     /* compile the argument */
     if (expr)
         code_rvalue(c, expr);
     
     /* compile the function symbol reference */
-    putcbyte(c, OP_LIT);
-    putcword(c, sym->v.iValue);
-
-    /* call the function */
-    putcbyte(c, OP_CALL);
+    putcbyte(c, OP_TRAP);
+    putcbyte(c, trap);
 }
 
 /* DefineLabel - define a local label */
@@ -833,7 +768,7 @@ static void DefineLabel(ParseContext *c, char *name, int offset)
     for (label = c->labels; label != NULL; label = label->next)
         if (strcasecmp(name, label->name) == 0) {
             if (!label->fixups)
-                ParseError(c, "duplicate label", name);
+                ParseError(c, "duplicate label: %s", name);
             else {
                 fixupbranch(c, label->fixups, offset);
                 label->offset = offset;
@@ -887,7 +822,7 @@ void CheckLabels(ParseContext *c)
     for (label = c->labels; label != NULL; label = next) {
         next = label->next;
         if (label->fixups)
-            Abort(c->sys, "undefined label: %s", label->name);
+            Fatal(c, "undefined label: %s", label->name);
     }
     c->labels = NULL;
 }
@@ -902,7 +837,7 @@ BlockType  CurrentBlockType(ParseContext *c)
 static void PushBlock(ParseContext *c)
 {
     if (++c->bptr >= c->btop)
-        Abort(c->sys, "statements too deeply nested");
+        Fatal(c, "statements too deeply nested");
 }
 
 /* PopBlock - pop a block off the block stack */
