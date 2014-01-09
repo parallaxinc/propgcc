@@ -19,7 +19,6 @@
 
 /* program limits */
 #define MAXTOKEN        32
-#define MAXCODE         1024
 
 /* forward type declarations */
 typedef struct SymbolTable SymbolTable;
@@ -187,7 +186,7 @@ typedef struct {
     Block *btop;                    /* parse - top of block stack */
     uint8_t *cptr;                  /* generate - next available code staging buffer position */
     uint8_t *ctop;                  /* generate - top of code staging buffer */
-    uint8_t codeBuf[MAXCODE];       /* generate - code staging buffer */
+    uint8_t *codeBuf;               /* generate - code staging buffer */
     ImageHdr *image;                /* header of image being constructed */
     int imageBufferSize;            /* size of image buffer including the image header in bytes */
     VMVALUE *imageDataFree;         /* next free location in the image data buffer */
@@ -329,7 +328,6 @@ void code_local(ParseContext *c, PValOp fcn, PVAL *pv);
 int codeaddr(ParseContext *c);
 int putcbyte(ParseContext *c, int b);
 int putcword(ParseContext *c, VMVALUE w);
-int merge(ParseContext *c, VMUVALUE chn, VMUVALUE chn2);
 void fixup(ParseContext *c, VMUVALUE chn, VMUVALUE val);
 void fixupbranch(ParseContext *c, VMUVALUE chn, VMUVALUE val);
 

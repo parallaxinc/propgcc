@@ -250,30 +250,6 @@ void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w)
     }
 }
 
-/* merge - merge two reference chains */
-int merge(ParseContext *c, VMUVALUE chn, VMUVALUE chn2)
-{
-    int last, nxt;
-
-    /* if the chain we're adding is empty, just return the original chain */
-    if (!chn2)
-        return chn;
-
-    /* find the last entry in the new chain */
-    last = chn2;
-    while (last != 0) {
-        if (!(nxt = rd_cword(c, last)))
-            break;
-        last = nxt;
-    }
-
-    /* link the last entry in the new chain to the first entry in the original chain */
-    wr_cword(c, last, chn);
-
-    /* return the new chain now linked to the original chain */
-    return chn2;
-}
-
 /* fixup - fixup a reference chain */
 void fixup(ParseContext *c, VMUVALUE chn, VMUVALUE val)
 {
