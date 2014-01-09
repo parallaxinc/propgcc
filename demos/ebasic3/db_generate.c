@@ -12,6 +12,8 @@ static void code_shortcircuit(ParseContext *c, int op, ParseTreeNode *expr, PVAL
 static void code_arrayref(ParseContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_call(ParseContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_index(ParseContext *c, PValOp fcn, PVAL *pv);
+static VMVALUE rd_cword(ParseContext *c, VMUVALUE off);
+static void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w);
 
 /* code_lvalue - generate code for an l-value expression */
 void code_lvalue(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
@@ -31,19 +33,32 @@ void code_rvalue(ParseContext *c, ParseTreeNode *expr)
 /* code_expr - generate code for an expression parse tree */
 static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
+    VMVALUE ival;
     switch (expr->nodeType) {
     case NodeTypeSymbolRef:
-        pv->u.hValue = expr->u.symbolRef.symbol;
         pv->fcn = expr->u.symbolRef.fcn;
+        pv->u.val = expr->u.symbolRef.offset;
         break;
     case NodeTypeStringLit:
         putcbyte(c, OP_LIT);
-        putcword(c, (VMUVALUE)expr->u.stringLit.string);
+        putcword(c, AddStringRef(expr->u.stringLit.string, codeaddr(c)));
         pv->fcn = NULL;
         break;
     case NodeTypeIntegerLit:
+        ival = expr->u.integerLit.value;
+        if (ival >= -128 && ival <= 127) {
+            putcbyte(c, OP_SLIT);
+            putcbyte(c, ival);
+        }
+        else {
+            putcbyte(c, OP_LIT);
+            putcword(c, ival);
+        }
+        pv->fcn = NULL;
+        break;
+    case NodeTypeFunctionLit:
         putcbyte(c, OP_LIT);
-        putcword(c, expr->u.integerLit.value);
+        putcword(c, expr->u.functionLit.offset);
         pv->fcn = NULL;
         break;
     case NodeTypeUnaryOp:
@@ -75,7 +90,7 @@ static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 /* code_shortcircuit - generate code for a conjunction or disjunction of boolean expressions */
 static void code_shortcircuit(ParseContext *c, int op, ParseTreeNode *expr, PVAL *pv)
 {
-    ExprListEntry *entry = expr->u.exprList.exprs.head;
+    ExprListEntry *entry = expr->u.exprList.exprs;
     int end = 0;
 
     code_rvalue(c, entry->expr);
@@ -110,15 +125,15 @@ static void code_call(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
     ExprListEntry *arg;
 
-    /* code each argument expression */
-    for (arg = expr->u.functionCall.args.tail; arg != NULL; arg = arg->prev)
-        code_rvalue(c, arg->expr);
-
     /* get the value of the function */
     code_rvalue(c, expr->u.functionCall.fcn);
 
+    /* code each argument expression */
+    for (arg = expr->u.functionCall.args; arg != NULL; arg = arg->next)
+        code_rvalue(c, arg->expr);
+
     /* call the function */
-    putcbyte(c, OP_CALL);
+    putcbyte(c, OP_PUSHJ);
 
     /* we've got an rvalue now */
     pv->fcn = NULL;
@@ -137,21 +152,20 @@ void rvalue(ParseContext *c, PVAL *pv)
 void chklvalue(ParseContext *c, PVAL *pv)
 {
     if (pv->fcn == NULL)
-        ParseError(c,"Expecting an lvalue", NULL);
+        ParseError(c,"Expecting an lvalue");
 }
 
 /* code_global - compile a global variable reference */
 void code_global(ParseContext *c, PValOp fcn, PVAL *pv)
 {
-    Symbol *sym = GetSymbolPtr(pv->u.hValue);
+    putcbyte(c, OP_LIT);
+    putcword(c, pv->u.val);
     switch (fcn) {
     case PV_LOAD:
-        putcbyte(c, OP_GREF);
-        putcword(c, (VMUVALUE)pv->u.hValue);
+        putcbyte(c, OP_LOAD);
         break;
     case PV_STORE:
-        putcbyte(c, OP_GSET);
-        putcword(c, (VMUVALUE)pv->u.hValue);
+        putcbyte(c, OP_STORE);
         break;
     }
 }
@@ -159,15 +173,14 @@ void code_global(ParseContext *c, PValOp fcn, PVAL *pv)
 /* code_local - compile an local reference */
 void code_local(ParseContext *c, PValOp fcn, PVAL *pv)
 {
-    Local *sym = GetLocalPtr(pv->u.hValue);
     switch (fcn) {
     case PV_LOAD:
         putcbyte(c, OP_LREF);
-        putcbyte(c, sym->offset);
+        putcbyte(c, pv->u.val);
         break;
     case PV_STORE:
         putcbyte(c, OP_LSET);
-        putcbyte(c, sym->offset);
+        putcbyte(c, pv->u.val);
         break;
     }
 }
@@ -175,12 +188,13 @@ void code_local(ParseContext *c, PValOp fcn, PVAL *pv)
 /* code_index - compile a vector reference */
 static void code_index(ParseContext *c, PValOp fcn, PVAL *pv)
 {
+    putcbyte(c, OP_INDEX);
     switch (fcn) {
     case PV_LOAD:
-        putcbyte(c, OP_VREF);
+        putcbyte(c, OP_LOAD);
         break;
     case PV_STORE:
-        putcbyte(c, OP_VSET);
+        putcbyte(c, OP_STORE);
         break;
     }
 }
@@ -196,7 +210,7 @@ int putcbyte(ParseContext *c, int b)
 {
     int addr = codeaddr(c);
     if (c->cptr >= c->ctop)
-        Abort(c->sys, "bytecode buffer overflow");
+        Fatal(c, "Bytecode buffer overflow");
     *c->cptr++ = b;
     return addr;
 }
@@ -206,14 +220,15 @@ int putcword(ParseContext *c, VMVALUE w)
 {
     int addr = codeaddr(c);
     if (c->cptr + sizeof(VMVALUE) > c->ctop)
-        Abort(c->sys, "bytecode buffer overflow");
-    wr_cword(c, (VMUVALUE)(c->cptr - c->codeBuf), w);
+        Fatal(c, "Bytecode buffer overflow");
+    wr_cword(c, c->cptr - c->codeBuf, w);
     c->cptr += sizeof(VMVALUE);
     return addr;
 }
 
+#if 0
 /* rd_cword - get a code word from the code buffer */
-VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
+static VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
 {
     uint8_t *p = &c->codeBuf[off] + sizeof(VMVALUE);
     int cnt = sizeof(VMVALUE);
@@ -225,18 +240,37 @@ VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
     return w;
 }
 
-/* wr_cword - put a word into the code buffer */
-void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE v)
+/* wr_cword - put a code word into the code buffer */
+static void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w)
 {
-    int i;
-    union {
-        VMVALUE value;
-        uint8_t bytes[sizeof(VMVALUE)];
-    } u;
-    u.value = v;
-    for (i = 0; i < sizeof(u.bytes); ++i)
-       c->codeBuf[off++] = u.bytes[i];
+    int cnt = sizeof(VMVALUE);
+    while (--cnt >= 0) {
+       c->codeBuf[off++] = w;
+       w >>= 8;
+    }
 }
+#else
+/* rd_cword - get a code word from the code buffer */
+VMVALUE rd_cword(ParseContext *c, VMUVALUE off)
+{
+    int cnt = sizeof(VMVALUE);
+    VMVALUE w = 0;
+    while (--cnt >= 0)
+        w = (w << 8) | c->codeBuf[off++];
+    return w;
+}
+
+/* wr_cword - put a code word into the code buffer */
+void wr_cword(ParseContext *c, VMUVALUE off, VMVALUE w)
+{
+    uint8_t *p = &c->codeBuf[off] + sizeof(VMVALUE);
+    int cnt = sizeof(VMVALUE);
+    while (--cnt >= 0) {
+        *--p = w;
+        w >>= 8;
+    }
+}
+#endif
 
 /* merge - merge two reference chains */
 int merge(ParseContext *c, VMUVALUE chn, VMUVALUE chn2)

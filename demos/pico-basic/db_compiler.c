@@ -146,7 +146,7 @@ void StoreCode(ParseContext *c)
         }
         fixupbranch(c, c->returnFixups, codeaddr(c));
         if (c->codeType == CODE_TYPE_FUNCTION)
-            putcbyte(c, IsHandleType(c->returnType) ? OP_RETURNH : OP_RETURN);
+            putcbyte(c, OP_RETURN);
         else
             putcbyte(c, OP_RETURNV);
         putcbyte(c, c->argumentCount);
@@ -159,7 +159,7 @@ void StoreCode(ParseContext *c)
     /* determine the code size */
     codeSize = (int)(c->cptr - c->codeBuf);
 
-#if 0
+#if 1
     VM_printf("%s:\n", c->codeName);
     DecodeFunction(0, c->codeBuf, codeSize);
     DumpLocalVariables(c);

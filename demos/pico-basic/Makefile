@@ -12,9 +12,6 @@ db_scan.o \
 db_generate.o
 
 RUNTIME_OBJS = \
-db_vmint.o \
-db_vmfcn.o \
-db_vmheap.o \
 db_vmdebug.o \
 db_system.o \
 osint_propgcc.o
