@@ -173,7 +173,7 @@ VMVALUE StoreCode(ParseContext *c)
     /* determine the code size */
     codeSize = (int)(c->cptr - c->codeBuf);
 
-#if 1
+#if 0
 {
     VMUVALUE base = (uint8_t *)c->imageDataTop - (uint8_t *)c->imageDataFree;
     VM_printf("%s:\n", c->codeSymbol ? c->codeSymbol->name : "<main>");

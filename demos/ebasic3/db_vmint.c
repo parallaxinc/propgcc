@@ -125,7 +125,7 @@ int Execute(Interpreter *i, ImageHdr *image)
                 mailbox.cmd = VM_Continue;
                 break;
             case TRAP_PrintStr:
-                puts((char *)state.tos);
+                printf("%s", (char *)state.tos);
                 state.tos = *state.sp++;
                 mailbox.cmd = VM_Continue;
                 break;
