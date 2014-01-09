@@ -71,21 +71,20 @@ OTDEF OpcodeTable[] = {
 };
 
 /* DecodeFunction - decode the instructions in a function code object */
-void DecodeFunction(VMUVALUE base, const uint8_t *code, int len)
+void DecodeFunction(const uint8_t *code, int len)
 {
     const uint8_t *lc = code;
     const uint8_t *end = code + len;
     while (lc < end)
-        lc += DecodeInstruction(base, code, lc);
+        lc += DecodeInstruction(code, lc);
 }
 
 /* DecodeInstruction - decode a single bytecode instruction */
-int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
+int DecodeInstruction(const uint8_t *code, const uint8_t *lc)
 {
     uint8_t opcode, bytes[sizeof(VMVALUE)];
     const OTDEF *op;
     VMVALUE offset;
-    VMUVALUE addr;
     int8_t sbyte;
     int n, i;
 
@@ -93,8 +92,7 @@ int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
     opcode = VMCODEBYTE(lc);
 
     /* show the address */
-    addr = (int)(base + lc - code);
-    VM_printf("%08x %02x ", addr, opcode);
+    VM_printf("%08x %02x ", (int)lc, opcode);
     n = 1;
 
     /* display the operands */
@@ -143,7 +141,7 @@ int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc)
                 VM_printf("%s ", op->name);
                 for (i = 0; i < sizeof(VMVALUE); ++i)
                     VM_printf("%02x", bytes[i]);
-                VM_printf(" # %04x\n", addr + 1 + sizeof(VMVALUE) + offset);
+                VM_printf(" # %04x\n", (int)lc + 1 + sizeof(VMVALUE) + offset);
                 n += sizeof(VMVALUE);
                 break;
             }

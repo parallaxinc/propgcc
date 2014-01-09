@@ -15,6 +15,7 @@
 #include "db_vm.h"
 
 /* local function prototypes */
+static void InitCodeBuffer(ParseContext *c);
 static void PlaceStrings(ParseContext *c);
 static void PlaceSymbols(ParseContext *c);
 
@@ -70,9 +71,8 @@ ImageHdr *Compile(ParseContext *c)
     c->btop = (Block *)((char *)c->blockBuf + sizeof(c->blockBuf));
     c->bptr = c->blockBuf - 1;
 
-    /* initialize the code staging buffer */
-    c->ctop = c->codeBuf + sizeof(c->codeBuf);
-    c->cptr = c->codeBuf;
+    /* initialize the code buffer */
+    InitCodeBuffer(c);
 
     /* initialize the string and label tables */
     c->strings = NULL;
@@ -116,6 +116,16 @@ ImageHdr *Compile(ParseContext *c)
     return image;
 }
 
+/* InitCodeBuffer - initialize the code buffer */
+static void InitCodeBuffer(ParseContext *c)
+{
+    c->codeBuf = (uint8_t *)c->imageDataFree;
+    c->ctop = (uint8_t *)c->imageDataTop;
+    c->cptr = c->codeBuf;
+}
+
+VMVALUE *codeStart;
+
 /* StartCode - start a function or method under construction */
 void StartCode(ParseContext *c, CodeType type)
 {
@@ -138,6 +148,8 @@ void StartCode(ParseContext *c, CodeType type)
         putcbyte(c, OP_FRAME);
         putcbyte(c, 0);
     }
+    
+    codeStart = c->imageDataFree;
 }
 
 /* StoreCode - store the function or method under construction */
@@ -167,6 +179,16 @@ VMVALUE StoreCode(ParseContext *c)
 
     /* make sure all referenced labels were defined */
     CheckLabels(c);
+    
+    if (c->imageDataFree != codeStart)
+        printf("code buffer overwrite! was %08x, is %08x\n", (int)codeStart, (int)c->imageDataFree);
+
+    /* determine the code size */
+    codeSize = (int)(c->cptr - c->codeBuf);
+    
+    /* reserve space for the code */
+    code = (VMVALUE)c->imageDataFree;
+    c->imageDataFree += GetObjSizeInWords(codeSize);
 
     /* place string literals defined in this function */
     PlaceStrings(c);
@@ -174,21 +196,15 @@ VMVALUE StoreCode(ParseContext *c)
     /* place global symbols referenced by this function */
     PlaceSymbols(c);
     
-    /* determine the code size */
-    codeSize = (int)(c->cptr - c->codeBuf);
-
 #if 1
 {
     VM_printf("%s:\n", c->codeSymbol ? c->codeSymbol->name : "<main>");
-    DecodeFunction((VMUVALUE)c->imageDataFree, c->codeBuf, codeSize);
+    DecodeFunction((uint8_t *)code, codeSize);
     DumpSymbols(&c->arguments, "arguments");
     DumpSymbols(&c->locals, "locals");
     VM_printf("\n");
 }
 #endif
-
-    /* store the vector object */
-    code = StoreBVector(c, c->codeBuf, codeSize);
 
     /* empty the local heap */
     c->nextLocal = c->sys->freeTop;
@@ -198,7 +214,9 @@ VMVALUE StoreCode(ParseContext *c)
 
     /* reset to compile the next code */
     c->codeType = CODE_TYPE_MAIN;
-    c->cptr = c->codeBuf;
+    
+    /* reinitialize the code buffer */
+    InitCodeBuffer(c);
     
     /* return the code vector */
     return code;

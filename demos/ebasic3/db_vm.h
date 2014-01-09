@@ -91,11 +91,6 @@ int Execute(Interpreter *i, ImageHdr *image);
 void Warn(const char *fmt, ...);                    /* fmt in FLASH_SPACE */
 void Abort(Interpreter *i, const char *fmt, ...);   /* fmt in FLASH_SPACE */
 
-/* prototypes from db_vmdebug.c */
-void DecodeFunction(VMUVALUE base, const uint8_t *code, int len);
-int DecodeInstruction(VMUVALUE base, const uint8_t *code, const uint8_t *lc);
-void ShowStack(Interpreter *i);
-
 /* directory entry structure (platform specific) */
 typedef struct VMDIRENT VMDIRENT;
 
