@@ -128,7 +128,6 @@ static void DoLoad(System *sys)
         VM_printf("Loading '%s'\n", programName);
         BufInit();
         while (VM_fgets(sys->lineBuf, sizeof(sys->lineBuf), fp) != NULL) {
-            int len = strlen(sys->lineBuf);
             VMVALUE lineNumber;
             char *token;
             sys->linePtr = sys->lineBuf;
