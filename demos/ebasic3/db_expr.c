@@ -505,7 +505,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
 
     /* handle undefined symbols */
     else {
-        symbol = AddGlobal(c, name, SC_VARIABLE, 0, 0);
+        symbol = AddGlobal(c, name, SC_VARIABLE, 0);
         node->u.symbolRef.symbol = symbol;
         node->u.symbolRef.fcn = code_global;
     }

@@ -145,7 +145,6 @@ struct Symbol {
     int fixups;
     StorageClass storageClass;
     VMVALUE value;
-    VMVALUE initialValue;
     char name[1];
 };
 
@@ -195,6 +194,7 @@ typedef struct {
 
 /* partial value function codes */
 typedef enum {
+    PV_ADDR,
     PV_LOAD,
     PV_STORE
 } PValOp;
@@ -274,6 +274,7 @@ struct ExprListEntry {
 
 /* db_compiler.c */
 ParseContext *InitCompiler(System *sys, int imageBufferSize);
+void InitCodeBuffer(ParseContext *c);
 ImageHdr *Compile(ParseContext *c);
 void StartCode(ParseContext *c, CodeType type);
 VMVALUE StoreCode(ParseContext *c);
@@ -311,7 +312,7 @@ void ParseError(ParseContext *c, char *fmt, ...);
 
 /* db_symbols.c */
 void InitSymbolTable(SymbolTable *table);
-Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, int value, VMVALUE initialValue);
+Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, VMVALUE value);
 Symbol *AddArgument(ParseContext *c, const char *name, StorageClass storageClass, int value);
 Symbol *AddLocal(ParseContext *c, const char *name, StorageClass storageClass, int value);
 Symbol *FindSymbol(SymbolTable *table, const char *name);
