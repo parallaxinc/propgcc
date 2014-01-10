@@ -404,8 +404,8 @@ static void ParseImpliedLetOrFunctionCall(ParseContext *c)
     expr = ParsePrimary(c);
     switch (tkn = GetToken(c)) {
     case '=':
-        code_lvalue(c, expr, &pv);
         ParseRValue(c);
+        code_lvalue(c, expr, &pv);
         (*pv.fcn)(c, PV_STORE, &pv);
         break;
     default:
@@ -423,9 +423,9 @@ static void ParseLet(ParseContext *c)
     ParseTreeNode *lvalue;
     PVAL pv;
     lvalue = ParsePrimary(c);
-    code_lvalue(c, lvalue, &pv);
     FRequire(c, '=');
     ParseRValue(c);
+    code_lvalue(c, lvalue, &pv);
     (*pv.fcn)(c, PV_STORE, &pv);
     FRequire(c, T_EOL);
 }

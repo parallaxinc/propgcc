@@ -14,6 +14,8 @@
 #include "db_vmdebug.h"
 #include "db_vm.h"
 
+//#define DEBUG
+
 /* local function prototypes */
 static void PlaceStrings(ParseContext *c);
 static void PlaceSymbols(ParseContext *c);
@@ -100,7 +102,7 @@ ImageHdr *Compile(ParseContext *c)
     StartCode(c, CODE_TYPE_MAIN);
     image->mainCode = StoreCode(c);
 
-#if 1
+#ifdef DEBUG
     {
         int objectDataSize = (uint8_t *)c->imageDataFree - (uint8_t *)c->image;
         DumpSymbols(&c->globals, "symbols");
@@ -195,7 +197,7 @@ VMVALUE StoreCode(ParseContext *c)
     /* place global symbols referenced by this function */
     PlaceSymbols(c);
     
-#if 1
+#ifdef DEBUG
 {
     VM_printf("%s:\n", c->codeSymbol ? c->codeSymbol->name : "<main>");
     DecodeFunction((uint8_t *)code, codeSize);
