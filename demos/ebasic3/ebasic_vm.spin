@@ -107,6 +107,8 @@ _init1
         rdlong  stack,t1        ' load the stack base
         add     t1,#4
         rdlong  stackTop,t1     ' load the stack top
+        
+        ' initialize the stack and frame pointers
         mov     sp,stackTop
         mov     fp,stackTop
 

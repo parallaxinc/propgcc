@@ -14,7 +14,7 @@
 #define VMTRUE      1
 #define VMFALSE     0
 
-/* system heap size (includes compiler heap and image) */
+/* system heap size (includes compiler heap and image buffer) */
 #ifndef HEAPSIZE
 #define HEAPSIZE            5000
 #endif
@@ -24,7 +24,7 @@
 #define IMAGESIZE           2500
 #endif
 
-/* edit buffer size */
+/* edit buffer size (separate from the system heap) */
 #ifndef EDITBUFSIZE
 #define EDITBUFSIZE         1500
 #endif

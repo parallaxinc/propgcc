@@ -113,11 +113,17 @@ static void code_shortcircuit(ParseContext *c, int op, ParseTreeNode *expr, PVAL
 /* code_arrayref - code an array reference */
 static void code_arrayref(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
-    /* code the array */
-    code_rvalue(c, expr->u.arrayRef.array);
+    PVAL pv2;
 
-    /* code the first index */
+    /* code the array address */
+    code_lvalue(c, expr->u.arrayRef.array, &pv2);
+    (*pv2.fcn)(c, PV_ADDR, &pv2);
+
+    /* code the index */
     code_rvalue(c, expr->u.arrayRef.index);
+
+    /* code the index operation */
+    putcbyte(c, OP_INDEX);
 
     /* setup the element type */
     pv->fcn = code_index;
@@ -162,6 +168,9 @@ void code_global(ParseContext *c, PValOp fcn, PVAL *pv)
     putcbyte(c, OP_LIT);
     putcword(c, AddSymbolRef(pv->u.sym, codeaddr(c)));
     switch (fcn) {
+    case PV_ADDR:
+        // just need the address
+        break;
     case PV_LOAD:
         putcbyte(c, OP_LOAD);
         break;
@@ -175,6 +184,9 @@ void code_global(ParseContext *c, PValOp fcn, PVAL *pv)
 void code_local(ParseContext *c, PValOp fcn, PVAL *pv)
 {
     switch (fcn) {
+    case PV_ADDR:
+        // what to do here?
+        break;
     case PV_LOAD:
         putcbyte(c, OP_LREF);
         putcbyte(c, pv->u.val);
@@ -189,8 +201,10 @@ void code_local(ParseContext *c, PValOp fcn, PVAL *pv)
 /* code_index - compile a vector reference */
 static void code_index(ParseContext *c, PValOp fcn, PVAL *pv)
 {
-    putcbyte(c, OP_INDEX);
     switch (fcn) {
+    case PV_ADDR:
+        // what to do here?
+        break;
     case PV_LOAD:
         putcbyte(c, OP_LOAD);
         break;
