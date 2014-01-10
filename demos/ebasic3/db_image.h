@@ -16,11 +16,6 @@ typedef struct {
     VMVALUE     imageData[1];       /* data space */
 } ImageHdr;
 
-/* stack frame offsets */
-#define F_FP    1
-#define F_PC    2
-#define F_SIZE  2
-
 /* get the size of an object in words */
 #define GetObjSizeInWords(s)    (((s) + sizeof(VMVALUE) - 1) / sizeof(VMVALUE))
 
@@ -59,16 +54,13 @@ typedef struct {
 #define OP_LREF         0x1f    /* load a local variable relative to the frame pointer */
 #define OP_LSET         0x20    /* set a local variable relative to the frame pointer */
 #define OP_INDEX        0x21    /* index into a vector of longs */
-#define OP_PUSHJ        0x22    /* push the pc and jump to a function */
-#define OP_POPJ         0x23    /* return to the address on the stack */
-#define OP_CLEAN        0x24    /* clean arguments off the stack after a function call */
-#define OP_FRAME        0x25    /* create a stack frame */
-#define OP_RETURN       0x26    /* remove a stack frame and return from a function call */
-#define OP_RETURNZ      0x27    /* remove a stack frame and return zero from a function call */
-#define OP_DROP         0x28    /* drop the top element of the stack */
-#define OP_DUP          0x29    /* duplicate the top element of the stack */
-#define OP_NATIVE       0x2a    /* execute native code */
-#define OP_TRAP         0x2b    /* trap to handler */
+#define OP_CALL         0x22    /* call a function */
+#define OP_FRAME        0x23    /* create a stack frame */
+#define OP_RETURN       0x24    /* remove a stack frame and return from a function call */
+#define OP_DROP         0x25    /* drop the top element of the stack */
+#define OP_DUP          0x26    /* duplicate the top element of the stack */
+#define OP_NATIVE       0x27    /* execute native code */
+#define OP_TRAP         0x28    /* trap to handler */
 
 /* VM trap codes */
 enum {

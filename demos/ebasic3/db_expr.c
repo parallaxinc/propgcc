@@ -477,9 +477,10 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
             node->u.integerLit.value = symbol->value;
         }
         else {
+            printf("symbol '%s', value %d\n", symbol->name, symbol->value);
             node->u.symbolRef.symbol = symbol;
             node->u.symbolRef.fcn = code_local;
-            node->u.symbolRef.offset = symbol->value;
+            node->u.symbolRef.offset = -symbol->value - 1;
         }
     }
 
@@ -487,7 +488,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
     else if (c->codeType != CODE_TYPE_MAIN && (symbol = FindSymbol(&c->arguments, name)) != NULL) {
         node->u.symbolRef.symbol = symbol;
         node->u.symbolRef.fcn = code_local;
-        node->u.symbolRef.offset = symbol->value - c->arguments.count;
+        node->u.symbolRef.offset = c->arguments.count - symbol->value - 1;
     }
 
     /* handle global symbols */
