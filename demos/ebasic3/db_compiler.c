@@ -15,7 +15,6 @@
 #include "db_vm.h"
 
 /* local function prototypes */
-static void InitCodeBuffer(ParseContext *c);
 static void PlaceStrings(ParseContext *c);
 static void PlaceSymbols(ParseContext *c);
 
@@ -101,7 +100,7 @@ ImageHdr *Compile(ParseContext *c)
     StartCode(c, CODE_TYPE_MAIN);
     image->mainCode = StoreCode(c);
 
-#if 0
+#if 1
     {
         int objectDataSize = (uint8_t *)c->imageDataFree - (uint8_t *)c->image;
         DumpSymbols(&c->globals, "symbols");
@@ -117,7 +116,7 @@ ImageHdr *Compile(ParseContext *c)
 }
 
 /* InitCodeBuffer - initialize the code buffer */
-static void InitCodeBuffer(ParseContext *c)
+void InitCodeBuffer(ParseContext *c)
 {
     c->codeBuf = (uint8_t *)c->imageDataFree;
     c->ctop = (uint8_t *)c->imageDataTop;
@@ -196,7 +195,7 @@ VMVALUE StoreCode(ParseContext *c)
     /* place global symbols referenced by this function */
     PlaceSymbols(c);
     
-#if 0
+#if 1
 {
     VM_printf("%s:\n", c->codeSymbol ? c->codeSymbol->name : "<main>");
     DecodeFunction((uint8_t *)code, codeSize);
@@ -293,7 +292,7 @@ static void PlaceSymbols(ParseContext *c)
     Symbol *sym;
     for (sym = c->globals.head; sym != NULL; sym = sym->next) {
         if (sym->fixups) {
-            sym->value = StoreVector(c, &sym->initialValue, 1);
+            sym->value = StoreVector(c, &sym->value, 1);
             sym->placed = VMTRUE;
             fixup(c, sym->fixups, sym->value);
             sym->fixups = 0;

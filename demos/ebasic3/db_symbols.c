@@ -21,7 +21,7 @@ void InitSymbolTable(SymbolTable *table)
 }
 
 /* AddGlobal - add a global symbol to the symbol table */
-Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, int value, VMVALUE initialValue)
+Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, VMVALUE value)
 {
     size_t size = sizeof(Symbol) + strlen(name);
     Symbol *sym;
@@ -33,7 +33,6 @@ Symbol *AddGlobal(ParseContext *c, const char *name, StorageClass storageClass, 
     sym->fixups = 0;
     sym->storageClass = storageClass;
     sym->value = value;
-    sym->initialValue = initialValue;
     sym->next = NULL;
 
     /* add it to the symbol table */

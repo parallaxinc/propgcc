@@ -149,7 +149,7 @@ static void ParseDef(ParseContext *c)
         SaveToken(c, tkn);
 
         /* enter the function name in the global symbol table */
-        c->codeSymbol = AddGlobal(c, name, SC_CONSTANT, 0, 0);
+        c->codeSymbol = AddGlobal(c, name, SC_CONSTANT, 0);
 
         /* start the code under construction */
         StartCode(c, CODE_TYPE_FUNCTION);
@@ -197,7 +197,7 @@ static void ParseConstantDef(ParseContext *c, char *name)
         ParseError(c, "expecting a constant expression");
 
     /* add the symbol as a global */
-    AddGlobal(c, name, SC_CONSTANT, expr->u.integerLit.value, 0);
+    AddGlobal(c, name, SC_CONSTANT, expr->u.integerLit.value);
 
     FRequire(c, T_EOL);
 }
@@ -218,26 +218,37 @@ static void ParseDim(ParseContext *c)
 
         /* add to the global symbol table if outside a function definition */
         if (c->codeType == CODE_TYPE_MAIN) {
+            Symbol *sym;
 
             /* check for initializers */
             if ((tkn = GetToken(c)) == '=') {
                 if (isArray)
                     ParseArrayInitializers(c, size);
-                else
-                    value = ParseScalarInitializer(c);
+                else {
+                    VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
+                    if (dataPtr >= (VMVALUE *)c->ctop)
+                        ParseError(c, "insufficient image space");
+                    *dataPtr = ParseScalarInitializer(c);
+                    printf("initializer %d\n", *dataPtr);
+                }
             }
 
             /* no initializers */
             else {
-                ClearArrayInitializers(c, size);
+                ClearArrayInitializers(c, isArray ? size : 1);
                 SaveToken(c, tkn);
             }
 
-            /* create a vector object for arrays */
-            value = isArray ? StoreVector(c, (VMVALUE *)c->codeBuf, size) : 0;
-
+            /* allocate space for the data */
+            value = (VMVALUE)c->imageDataFree;
+            c->imageDataFree += size;
+            
             /* add the symbol to the global symbol table */
-            AddGlobal(c, name, SC_VARIABLE, 0, value);
+            sym = AddGlobal(c, name, SC_VARIABLE, value);
+            sym->placed = VMTRUE;
+    
+            /* reinitialize the code buffer */
+            InitCodeBuffer(c);
         }
 
         /* otherwise, add to the local symbol table */
@@ -256,6 +267,7 @@ static void ParseDim(ParseContext *c)
 /* ParseVariableDecl - parse a variable declaration */
 static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize)
 {
+    int isArray;
     int tkn;
 
     /* parse the variable name */
@@ -264,11 +276,10 @@ static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize)
 
     /* handle arrays */
     if ((tkn = GetToken(c)) == '[') {
-        int size;
 
         /* check for an array with unspecified size */
         if ((tkn = GetToken(c)) == ']')
-            size = 0;
+            *pSize = 0;
 
         /* otherwise, parse the array size */
         else {
@@ -283,23 +294,26 @@ static int ParseVariableDecl(ParseContext *c, char *name, VMVALUE *pSize)
             /* make sure it's a constant */
             if (!IsIntegerLit(expr) || expr->u.integerLit.value <= 0)
                 ParseError(c, "expecting a positive constant expression");
-            size = expr->u.integerLit.value;
+            *pSize = expr->u.integerLit.value;
 
             /* only one dimension allowed for now */
             FRequire(c, ']');
         }
 
         /* return an array and its size */
-        *pSize = size;
+        isArray = VMTRUE;
         return VMTRUE;
     }
 
     /* not an array */
-    else
+    else {
         SaveToken(c, tkn);
+        isArray = VMFALSE;
+        *pSize = 1;
+    }
 
-    /* return a scalar */
-    return VMFALSE;
+    /* return array indicator */
+    return isArray;
 }
 
 /* ParseScalarInitializer - parse a scalar initializer */
@@ -338,12 +352,10 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
         /* handle each initializer in the current line */
         while (!lineDone) {
-            ParseTreeNode *expr;
+            VMVALUE value;
 
             /* get a constant expression */
-            expr = ParseExpr(c);
-            if (!IsIntegerLit(expr))
-                ParseError(c, "expecting a constant expression");
+            value = ParseScalarInitializer(c);
 
             /* check for too many initializers */
             if (--size < 0)
@@ -351,8 +363,8 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
             /* store the initial value */
             if (dataPtr >= dataTop)
-                ParseError(c, "insufficient object data space");
-            *dataPtr++ = expr->u.integerLit.value;
+                ParseError(c, "insufficient image space");
+            *dataPtr++ = value;
 
             switch (tkn = GetToken(c)) {
             case T_EOL:
@@ -379,7 +391,7 @@ static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
     VMVALUE *dataPtr = (VMVALUE *)c->codeBuf;
     VMVALUE *dataTop = (VMVALUE *)c->ctop;
     if (dataPtr + size > dataTop)
-        ParseError(c, "insufficient object initializer space");
+        ParseError(c, "insufficient image space");
     memset(dataPtr, 0, size * sizeof(VMVALUE));
 }
 
