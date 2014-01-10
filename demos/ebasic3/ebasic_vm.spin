@@ -49,17 +49,14 @@ OP_STOREB       = $1e    ' store a byte in memory
 OP_LREF         = $1f    ' load a local variable relative to the frame pointer
 OP_LSET         = $20    ' set a local variable relative to the frame pointer
 OP_INDEX        = $21    ' index into a vector
-OP_PUSHJ        = $22    ' push the pc and jump to a function */
-OP_POPJ         = $23    ' return to the address on the stack */
-OP_CLEAN        = $24    ' clean arguments off the stack after a function call */
-OP_FRAME        = $25    ' create a stack frame */
-OP_RETURN       = $26    ' remove a stack frame and return from a function call */
-OP_RETURNZ      = $27    ' remove a stack frame and return zero from a function call */
-OP_DROP         = $28    ' drop the top element of the stack
-OP_DUP          = $29    ' duplicate the top element of the stack
-OP_NATIVE       = $2a    ' execute a native instruction
-OP_TRAP         = $2b    ' invoke a trap handler
-OP_LAST         = $2b
+OP_CALL         = $22    ' push the pc and jump to a function */
+OP_FRAME        = $23    ' create a stack frame */
+OP_RETURN       = $24    ' remove a stack frame and return from a function call */
+OP_DROP         = $25    ' drop the top element of the stack
+OP_DUP          = $26    ' duplicate the top element of the stack
+OP_NATIVE       = $27    ' execute a native instruction
+OP_TRAP         = $28    ' invoke a trap handler
+OP_LAST         = $28
 
 DIV_OP          = 0
 REM_OP          = 1
@@ -242,12 +239,9 @@ opcode_table                            ' opcode dispatch table
         jmp     #_OP_LREF               ' load a local variable relative to the frame pointer
         jmp     #_OP_LSET               ' set a local variable relative to the frame pointer
         jmp     #_OP_INDEX              ' index into a vector
-        jmp     #_OP_PUSHJ              ' push the pc and jump to the address on the stack
-        jmp     #_OP_POPJ               ' return to the address on the stack
-        jmp     #_OP_CLEAN              ' remove function arguments from the stack
+        jmp     #_OP_CALL               ' call a function
         jmp     #_OP_FRAME              ' push a frame onto the stack
         jmp     #_OP_RETURN             ' remove a frame from the stack and return from a function call
-        jmp     #_OP_RETURNZ            ' remove a frame from the stack and return zero from a function call
         jmp     #_OP_DROP               ' drop the top element of the stack
         jmp     #_OP_DUP                ' duplicate the top element of the stack
         jmp     #_OP_NATIVE             ' execute a native instruction
@@ -463,21 +457,10 @@ _OP_INDEX               ' index into a vector
         add     tos,t1
         jmp     #_next
         
-_OP_PUSHJ
+_OP_CALL
         mov     t1,tos
         mov     tos,pc
         mov     pc,t1
-        jmp     #_next
-
-_OP_POPJ
-        mov     pc,tos
-        call    #pop_tos
-        jmp     #_next
-
-_OP_CLEAN
-        call    #get_code_byte
-        shl     t1,#2
-        add     sp,t1
         jmp     #_next
 
 _OP_FRAME
@@ -488,15 +471,11 @@ _OP_FRAME
         sub     sp,t1
         cmp     sp,stack wc,wz
    if_b jmp     #stack_overflow_err
-        mov     t1,fp
-        sub     t1,#4
+        mov     t1,sp
+        wrlong  tos,t1      ' store the old pc
+        add     t1,#4
         wrlong  t2,t1       ' store the old fp
         jmp     #_next
-
-_OP_RETURNZ
-        call    #push_tos
-        mov     tos,#0
-        ' fall through
 
 _OP_RETURN
         rdlong  pc,sp

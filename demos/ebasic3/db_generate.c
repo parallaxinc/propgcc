@@ -128,15 +128,13 @@ static void code_call(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
     ExprListEntry *arg;
 
-    /* get the value of the function */
-    code_rvalue(c, expr->u.functionCall.fcn);
-
     /* code each argument expression */
     for (arg = expr->u.functionCall.args; arg != NULL; arg = arg->next)
         code_rvalue(c, arg->expr);
 
     /* call the function */
-    putcbyte(c, OP_PUSHJ);
+    code_rvalue(c, expr->u.functionCall.fcn);
+    putcbyte(c, OP_CALL);
 
     /* we've got an rvalue now */
     pv->fcn = NULL;

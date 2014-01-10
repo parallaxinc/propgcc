@@ -101,13 +101,13 @@ ImageHdr *Compile(ParseContext *c)
     StartCode(c, CODE_TYPE_MAIN);
     image->mainCode = StoreCode(c);
 
+#if 0
     {
         int objectDataSize = (uint8_t *)c->imageDataFree - (uint8_t *)c->image;
-#if 1
         DumpSymbols(&c->globals, "symbols");
-#endif
         VM_printf("Heap: %d, Image: %d\n", c->maxHeapUsed, objectDataSize);
     }
+#endif
 
     /* free up the space the compiler was consuming */
     sys->freeNext = c->freeMark;
@@ -173,7 +173,7 @@ VMVALUE StoreCode(ParseContext *c)
 
     /* fixup the RESERVE instruction at the start of the code */
     if (c->codeType != CODE_TYPE_MAIN) {
-        c->codeBuf[1] = c->localOffset;
+        c->codeBuf[1] = 2 + c->localOffset;
         putcbyte(c, OP_RETURN);
     }
 
@@ -196,7 +196,7 @@ VMVALUE StoreCode(ParseContext *c)
     /* place global symbols referenced by this function */
     PlaceSymbols(c);
     
-#if 1
+#if 0
 {
     VM_printf("%s:\n", c->codeSymbol ? c->codeSymbol->name : "<main>");
     DecodeFunction((uint8_t *)code, codeSize);

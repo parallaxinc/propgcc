@@ -57,16 +57,16 @@ typedef struct {
     uint32_t stackSize;
 } VM_Init;
 
-VM_Mailbox mailbox;
-VM_State state;
-uint32_t stack[32];
+static VM_Mailbox mailbox;
+static VM_State state;
+static uint32_t stack[32];
+static int cog;
 
 /* InitInterpreter - initialize the interpreter */
 int InitInterpreter(Interpreter *i, size_t stackSize)
 {
     extern uint32_t binary_ebasic_vm_dat_start[];
     VM_Init init;
-    int cog;
 
     init.mailbox = &mailbox;
     init.state = &state;
@@ -105,7 +105,6 @@ int Execute(Interpreter *i, ImageHdr *image)
             running = VMFALSE;
             break;
         case STS_Halt:
-            printf("Halt\n");
             running = VMFALSE;
             break;
         case STS_Step:
@@ -174,6 +173,8 @@ int Execute(Interpreter *i, ImageHdr *image)
             break;
         }
     }
+    
+    cogstop(cog);
 
     return 0;
 }

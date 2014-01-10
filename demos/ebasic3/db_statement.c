@@ -157,7 +157,7 @@ static void ParseDef(ParseContext *c)
         /* get the argument list */
         if ((tkn = GetToken(c)) == '(') {
             if ((tkn = GetToken(c)) != ')') {
-                int offset = 1;
+                int offset = 0;
                 SaveToken(c, tkn);
                 do {
                     FRequire(c, T_IDENTIFIER);
@@ -244,7 +244,7 @@ static void ParseDim(ParseContext *c)
         else {
             if (isArray)
                 ParseError(c, "local arrays are not supported");
-            AddLocal(c, name, SC_VARIABLE, c->localOffset + F_SIZE + 1);
+            AddLocal(c, name, SC_VARIABLE, c->localOffset);
             ++c->localOffset;
         }
 
