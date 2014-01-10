@@ -42,24 +42,23 @@ typedef struct {
 
 /* VM state structure */
 typedef struct {
-    volatile uint32_t *fp;
-    volatile uint32_t *sp;
-    volatile uint32_t tos;
+    volatile VMVALUE *fp;
+    volatile VMVALUE *sp;
+    volatile VMVALUE tos;
     volatile uint8_t *pc;
-    volatile uint32_t stepping;
+    volatile int stepping;
 } VM_State;
 
 /* VM initialization structure */
 typedef struct {
     VM_Mailbox *mailbox;
     VM_State *state;
-    uint32_t *stack;
-    uint32_t stackSize;
+    VMVALUE *stack;
+    VMVALUE *stackTop;
 } VM_Init;
 
 static VM_Mailbox mailbox;
 static VM_State state;
-static uint32_t stack[32];
 static int cog;
 
 /* InitInterpreter - initialize the interpreter */
@@ -68,10 +67,13 @@ int InitInterpreter(Interpreter *i, size_t stackSize)
     extern uint32_t binary_ebasic_vm_dat_start[];
     VM_Init init;
 
+    i->stack = (VMVALUE *)((uint8_t *)i + sizeof(Interpreter));
+    i->stackTop = i->stack + stackSize;
+
     init.mailbox = &mailbox;
     init.state = &state;
-    init.stack = stack;
-    init.stackSize = sizeof(stack);
+    init.stack = i->stack;
+    init.stackTop = i->stackTop;
     
     mailbox.cmd = VM_Continue;
     

@@ -104,10 +104,9 @@ _init1
         add     t1,#4
 
         ' setup the stack
-        rdlong  stack,t1        ' load stack
+        rdlong  stack,t1        ' load the stack base
         add     t1,#4
-        rdlong  stackTop,t1     ' load the stack size
-        add     stackTop,stack
+        rdlong  stackTop,t1     ' load the stack top
         mov     sp,stackTop
         mov     fp,stackTop
 
