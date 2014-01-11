@@ -107,22 +107,30 @@ var
 integer
 "string"
 
-Functions:
+Built-in variables:
 
-RND(x)
-ABS(x)
-IN(pin)
-IN(high, low)
-OUT(pin)
-OUT(high, low)
-HIGH(pin)
-LOW(pin)
-TOGGLE(pin)
-DIR(pin, state)
-DIR(high, low, state)
-GETDIR(pin)
-GETDIR(high, low)
-CNT()
-PAUSE(milliseconds)
-PULSEIN(pin, state)
-PULSEOUT(pin, duration)
+clkfreq
+par
+cnt
+ina
+inb
+outa
+outb
+dira
+dirb
+ctra
+ctrb
+frqa
+frqb
+phsa
+phsb
+vcfg
+vscl
+
+Built-in Functions:
+
+waitcnt(target)
+waitpeq(state, mask)
+waitpne(state, mask)
+
+
