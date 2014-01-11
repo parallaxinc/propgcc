@@ -103,14 +103,14 @@ int Execute(Interpreter *i, ImageHdr *image)
         
         switch (mailbox.arg_sts) {
         case STS_Fail:
-            printf("Fail\n");
+            VM_printf("Fail\n");
             running = VMFALSE;
             break;
         case STS_Halt:
             running = VMFALSE;
             break;
         case STS_Step:
-            printf("Step: pc %08x, sp %08x, fp %08x, tos %08x\n", (VMUVALUE)state.pc, (VMUVALUE)state.sp, (VMUVALUE)state.fp, state.tos);
+            VM_printf("Step: pc %08x, sp %08x, fp %08x, tos %08x\n", (VMUVALUE)state.pc, (VMUVALUE)state.sp, (VMUVALUE)state.fp, state.tos);
             mailbox.cmd = VM_Continue;
             break;
         case STS_Trap:
@@ -126,12 +126,12 @@ int Execute(Interpreter *i, ImageHdr *image)
                 mailbox.cmd = VM_Continue;
                 break;
             case TRAP_PrintStr:
-                printf("%s", (char *)state.tos);
+                VM_printf("%s", (char *)state.tos);
                 state.tos = *state.sp++;
                 mailbox.cmd = VM_Continue;
                 break;
             case TRAP_PrintInt:
-                printf("%d", state.tos);
+                VM_printf("%d", state.tos);
                 state.tos = *state.sp++;
                 mailbox.cmd = VM_Continue;
                 break;
@@ -148,29 +148,29 @@ int Execute(Interpreter *i, ImageHdr *image)
                 mailbox.cmd = VM_Continue;
                 break;
             default:
-                printf("Unknown trap\n");
+                VM_printf("Unknown trap\n");
                 running = VMFALSE;
                 break;
             }
             break;
         case STS_Success:
-            printf("Success\n");
+            VM_printf("Success\n");
             running = VMFALSE;
             break;
         case STS_StackOver:
-            printf("Stack overflow\n");
+            VM_printf("Stack overflow\n");
             running = VMFALSE;
             break;
         case STS_DivideZero:
-            printf("Divide by zero\n");
+            VM_printf("Divide by zero\n");
             running = VMFALSE;
             break;
         case STS_IllegalOpcode:
-            printf("Illegal opcode: pc %08x\n", (VMUVALUE)state.pc);
+            VM_printf("Illegal opcode: pc %08x\n", (VMUVALUE)state.pc);
             running = VMFALSE;
             break;
         default:
-            printf("Unknown status\n");
+            VM_printf("Unknown status\n");
             running = VMFALSE;
             break;
         }

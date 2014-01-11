@@ -32,7 +32,7 @@ ParseContext *InitCompiler(System *sys, int imageBufferSize)
     uint8_t *freeMark;
     ImageHdr *image;
 
-    /* allocate space for the image header */
+    /* allocate space for the image buffer */
     if (!(image = (ImageHdr *)AllocateFreeSpace(sys, imageBufferSize)))
         ParseError(c, "insufficient space for image header");
         
@@ -245,7 +245,7 @@ VMVALUE StoreCode(ParseContext *c)
     CheckLabels(c);
     
     if (c->imageDataFree != codeStart)
-        printf("code buffer overwrite! was %08x, is %08x\n", (int)codeStart, (int)c->imageDataFree);
+        VM_printf("code buffer overwrite! was %08x, is %08x\n", (int)codeStart, (int)c->imageDataFree);
 
     /* determine the code size */
     codeSize = (int)(c->cptr - c->codeBuf);

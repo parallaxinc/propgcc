@@ -26,7 +26,7 @@ endif
 CFLAGS = -Wall -Os -DPROPELLER_GCC -Dvsnprintf=__simple_vsnprintf
 #CFLAGS += -DLOAD_SAVE
 #CFLAGS += -DUSE_FDS
-#CFLAGS += -DUSE_ASM
+CFLAGS += -DUSE_ASM
 
 %.dat:	%.spin
 	@spin2cpp --dat -o $@ $<

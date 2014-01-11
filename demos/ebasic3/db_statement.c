@@ -237,7 +237,7 @@ static void ParseDim(ParseContext *c)
                     if (dataPtr >= (VMVALUE *)c->ctop)
                         ParseError(c, "insufficient image space");
                     *dataPtr = ParseScalarInitializer(c);
-                    printf("initializer %d\n", *dataPtr);
+                    VM_printf("initializer %d\n", *dataPtr);
                 }
             }
 
