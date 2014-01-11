@@ -54,9 +54,15 @@ enum {
     T_STOP,
     T_RETURN,
     T_PRINT,
+#ifdef USE_ASM
+    T_ASM,
+#endif
     T_ELSE_IF,  /* compound keywords */
     T_END_DEF,
     T_END_IF,
+#ifdef USE_ASM
+    T_END_ASM,
+#endif
     T_DO_WHILE,
     T_DO_UNTIL,
     T_LOOP_WHILE,

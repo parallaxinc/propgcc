@@ -36,6 +36,9 @@ static void ParseStop(ParseContext *c);
 static void ParseGoto(ParseContext *c);
 static void ParseReturn(ParseContext *c);
 static void ParsePrint(ParseContext *c);
+#ifdef USE_ASM
+static void ParseAsm(ParseContext *c);
+#endif
 
 /* prototypes */
 static void CallHandler(ParseContext *c, int trap, ParseTreeNode *expr);
@@ -115,6 +118,11 @@ void ParseStatement(ParseContext *c, int tkn)
     case T_PRINT:
         ParsePrint(c);
         break;
+#ifdef USE_ASM
+    case T_ASM:
+        ParseAsm(c);
+        break;
+#endif
     case T_IDENTIFIER:
         if (SkipSpaces(c) == ':') {
             DefineLabel(c, c->token, codeaddr(c));
@@ -759,6 +767,90 @@ static void ParsePrint(ParseContext *c)
     else
         CallHandler(c, TRAP_PrintFlush, NULL);
 }
+
+#ifdef USE_ASM
+
+#include "db_vmdebug.h"
+
+static void Assemble(ParseContext *c, char *name);
+static VMVALUE ParseIntegerConstant(ParseContext *c);
+
+/* ParseAsm - parse the 'ASM ... END ASM' statement */
+static void ParseAsm(ParseContext *c)
+{
+    int tkn;
+    
+    /* check for the end of the 'ASM' statement */
+    FRequire(c, T_EOL);
+    
+    /* parse each assembly instruction */
+    for (;;) {
+    
+        /* get the next line */
+        if (!GetLine(c))
+            ParseError(c, "unexpected end of file in ASM statement");
+        
+        /* check for the end of the assembly instructions */
+        if ((tkn = GetToken(c)) == T_END_ASM)
+            break;
+            
+        /* check for an empty statement */
+        else if (tkn == T_EOL)
+            continue;
+            
+        /* check for an opcode name */
+        else if (tkn != T_IDENTIFIER)
+            ParseError(c, "expected an assembly instruction opcode");
+            
+        /* assemble a single instruction */
+        Assemble(c, c->token);
+    }
+    
+    /* check for the end of the 'END ASM' statement */
+    FRequire(c, T_EOL);
+}
+
+/* Assemble - assemble a single line */
+static void Assemble(ParseContext *c, char *name)
+{
+    FLASH_SPACE OTDEF *def;
+    
+    /* lookup the opcode */
+    for (def = OpcodeTable; def->name != NULL; ++def)
+        if (strcasecmp(name, def->name) == 0) {
+            putcbyte(c, def->code);
+            switch (def->fmt) {
+            case FMT_NONE:
+                break;
+            case FMT_BYTE:
+            case FMT_SBYTE:
+                putcbyte(c, ParseIntegerConstant(c));
+                break;
+            case FMT_WORD:
+                putcword(c, ParseIntegerConstant(c));
+                break;
+            default:
+                ParseError(c, "instruction not currently supported");
+                break;
+            }
+            FRequire(c, T_EOL);
+            return;
+        }
+        
+    ParseError(c, "undefined opcode");
+}
+
+/* ParseIntegerConstant - parse an integer constant expression */
+static VMVALUE ParseIntegerConstant(ParseContext *c)
+{
+    ParseTreeNode *expr;
+    expr = ParseExpr(c);
+    if (!IsIntegerLit(expr))
+        ParseError(c, "expecting an integer constant expression");
+    return expr->u.integerLit.value;
+}
+
+#endif
 
 /* CallHandler - compile a call to a runtime print function */
 static void CallHandler(ParseContext *c, int trap, ParseTreeNode *expr)

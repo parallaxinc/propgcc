@@ -16,7 +16,12 @@
 
 //#define DEBUG
 
+static uint8_t bi_waitcnt[];
+
 /* local function prototypes */
+static void EnterBuiltInSymbols(ParseContext *c);
+static void EnterBuiltInVariable(ParseContext *c, char *name, VMVALUE addr);
+static void EnterBuiltInFunction(ParseContext *c, char *name, VMVALUE addr);
 static void PlaceStrings(ParseContext *c);
 static void PlaceSymbols(ParseContext *c);
 
@@ -85,6 +90,9 @@ ImageHdr *Compile(ParseContext *c)
     /* initialize the global symbol table */
     InitSymbolTable(&c->globals);
 
+    /* enter built-in symbols */
+    EnterBuiltInSymbols(c);
+
     /* initialize scanner */
     c->inComment = VMFALSE;
     
@@ -115,6 +123,43 @@ ImageHdr *Compile(ParseContext *c)
 
     /* return the image */
     return image;
+}
+
+static uint8_t bi_waitcnt[] = {
+    OP_FRAME, 2,
+    OP_LREF, 0,
+    OP_NATIVE, 0xf8,0x7c,0x0a,0x00, // waitcnt tos, #0
+    OP_RETURN
+};
+
+/* EnterBuiltInSymbols - enter the built-in symbols */
+static void EnterBuiltInSymbols(ParseContext *c)
+{
+    /* variables */
+    EnterBuiltInVariable(c, "clkfreq",  0x00000000);
+    EnterBuiltInVariable(c, "cnt",      0x10000000 | (0x1f1 << 2));
+    EnterBuiltInVariable(c, "ina",      0x10000000 | (0x1f2 << 2));
+    EnterBuiltInVariable(c, "outa",     0x10000000 | (0x1f4 << 2));
+    EnterBuiltInVariable(c, "dira",     0x10000000 | (0x1f6 << 2));
+    
+    /* functions */
+    EnterBuiltInFunction(c, "waitcnt",  (VMVALUE)bi_waitcnt);
+}
+
+/* EnterBuiltInVariable - enter a built-in variable */
+static void EnterBuiltInVariable(ParseContext *c, char *name, VMVALUE addr)
+{
+    Symbol *sym;
+    sym = AddGlobal(c, name, SC_VARIABLE,  addr);
+    sym->placed = VMTRUE;
+}
+
+/* EnterBuiltInFunction - enter a built-in function */
+static void EnterBuiltInFunction(ParseContext *c, char *name, VMVALUE addr)
+{
+    Symbol *sym;
+    sym = AddGlobal(c, name, SC_CONSTANT,  addr);
+    sym->placed = VMTRUE;
 }
 
 /* InitCodeBuffer - initialize the code buffer */
