@@ -44,6 +44,9 @@ static struct {
 {   "STOP",     T_STOP      },
 {   "RETURN",   T_RETURN    },
 {   "PRINT",    T_PRINT     },
+#ifdef USE_ASM
+{   "ASM",      T_ASM       },
+#endif
 {   NULL,       0           }
 };
 
@@ -145,6 +148,9 @@ char *TokenName(int token)
     case T_STOP:
     case T_RETURN:
     case T_PRINT:
+#ifdef USE_ASM
+    case T_ASM:
+#endif
         name = ktab[token - T_REM].keyword;
         break;
     case T_END_DEF:
@@ -153,6 +159,11 @@ char *TokenName(int token)
     case T_END_IF:
         name = "END IF";
         break;
+#ifdef USE_ASM
+    case T_END_ASM:
+        name = "END ASM";
+        break;
+#endif
     case T_DO_WHILE:
         name = "DO WHILE";
         break;
@@ -299,6 +310,11 @@ static int NextToken(ParseContext *c)
                     case T_IF:
                         tkn = T_END_IF;
                         break;
+#ifdef USE_ASM
+                    case T_ASM:
+                        tkn = T_END_ASM;
+                        break;
+#endif
                     default:
                         c->sys->linePtr = savePtr;
                         break;
