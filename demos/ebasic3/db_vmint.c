@@ -61,10 +61,11 @@ static VM_Mailbox mailbox;
 static VM_State state;
 static int cog;
 
+use_cog_driver(ebasic_vm);
+
 /* InitInterpreter - initialize the interpreter */
 int InitInterpreter(Interpreter *i, size_t stackSize)
 {
-    extern uint32_t binary_ebasic_vm_dat_start[];
     VM_Init init;
 
     i->stack = (VMVALUE *)((uint8_t *)i + sizeof(Interpreter));
@@ -77,7 +78,7 @@ int InitInterpreter(Interpreter *i, size_t stackSize)
     
     mailbox.cmd = VM_Continue;
     
-    if ((cog = cognew(binary_ebasic_vm_dat_start, &init)) < 0)
+    if ((cog = load_cog_driver(ebasic_vm, &init)) < 0)
         return VMFALSE;
         
     while (mailbox.cmd != VM_Done)
