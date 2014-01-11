@@ -148,15 +148,29 @@ static uint8_t bi_waitpne[] = {
     OP_RETURN
 };
 
+#define COG_BASE    0x10000000
+
 /* EnterBuiltInSymbols - enter the built-in symbols */
 static void EnterBuiltInSymbols(ParseContext *c)
 {
     /* variables */
     EnterBuiltInVariable(c, "clkfreq",  0x00000000);
-    EnterBuiltInVariable(c, "cnt",      0x10000000 | (0x1f1 << 2));
-    EnterBuiltInVariable(c, "ina",      0x10000000 | (0x1f2 << 2));
-    EnterBuiltInVariable(c, "outa",     0x10000000 | (0x1f4 << 2));
-    EnterBuiltInVariable(c, "dira",     0x10000000 | (0x1f6 << 2));
+    EnterBuiltInVariable(c, "par",      COG_BASE + 0x1f0 * 4);
+    EnterBuiltInVariable(c, "cnt",      COG_BASE + 0x1f1 * 4);
+    EnterBuiltInVariable(c, "ina",      COG_BASE + 0x1f2 * 4);
+    EnterBuiltInVariable(c, "inb",      COG_BASE + 0x1f3 * 4);
+    EnterBuiltInVariable(c, "outa",     COG_BASE + 0x1f4 * 4);
+    EnterBuiltInVariable(c, "outb",     COG_BASE + 0x1f5 * 4);
+    EnterBuiltInVariable(c, "dira",     COG_BASE + 0x1f6 * 4);
+    EnterBuiltInVariable(c, "dirb",     COG_BASE + 0x1f7 * 4);
+    EnterBuiltInVariable(c, "ctra",     COG_BASE + 0x1f8 * 4);
+    EnterBuiltInVariable(c, "ctrb",     COG_BASE + 0x1f9 * 4);
+    EnterBuiltInVariable(c, "frqa",     COG_BASE + 0x1fa * 4);
+    EnterBuiltInVariable(c, "frqb",     COG_BASE + 0x1fb * 4);
+    EnterBuiltInVariable(c, "phsa",     COG_BASE + 0x1fc * 4);
+    EnterBuiltInVariable(c, "phsb",     COG_BASE + 0x1fd * 4);
+    EnterBuiltInVariable(c, "vcfg",     COG_BASE + 0x1fe * 4);
+    EnterBuiltInVariable(c, "vscl",     COG_BASE + 0x1ff * 4);
     
     /* functions */
     EnterBuiltInFunction(c, "waitcnt",  (VMVALUE)bi_waitcnt);

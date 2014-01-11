@@ -459,6 +459,7 @@ _OP_INDEX               ' index into a vector
         jmp     #_next
         
 _OP_CALL
+        add     pc,#1       ' skip over the argument count byte for now
         mov     t1,tos
         mov     tos,pc
         mov     pc,t1
@@ -481,6 +482,11 @@ _OP_FRAME
 _OP_RETURN
         rdlong  pc,sp
         mov     sp,fp
+        mov     t1,pc       ' get the argument count from the CALL instruction
+        sub     t1,#1
+        call    #_read_byte
+        shl     t1,#2
+        add     sp,t1       ' pop the arguments off the stack
         sub     fp,#4
         rdlong  fp,fp
         jmp     #_next
