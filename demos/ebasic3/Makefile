@@ -20,12 +20,12 @@ ebasic_vm.o
 OBJS += db_vmdebug.o
 
 ifndef MODEL
-MODEL = cmm
+MODEL = xmmc
 endif
 
 CFLAGS = -Wall -Os -DPROPELLER_GCC -Dvsnprintf=__simple_vsnprintf
 #CFLAGS += -DLOAD_SAVE
-#CFLAGS += -DUSE_FDS
+CFLAGS += -DUSE_FDS
 CFLAGS += -DUSE_ASM
 
 %.dat:	%.spin
