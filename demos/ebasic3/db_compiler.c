@@ -132,6 +132,22 @@ static uint8_t bi_waitcnt[] = {
     OP_RETURN
 };
 
+static uint8_t bi_waitpeq[] = {
+    OP_LREF, 1,                     // get mask
+    OP_NATIVE, 0xa0,0xbc,0x02,0x05, // mov t1, tos
+    OP_LREF, 0,                     // get state
+    OP_NATIVE, 0xf0,0xbc,0x0a,0x01, // waitpeq tos, t1 wr
+    OP_RETURN
+};
+
+static uint8_t bi_waitpne[] = {
+    OP_LREF, 1,                     // get mask
+    OP_NATIVE, 0xa0,0xbc,0x02,0x05, // mov t1, tos
+    OP_LREF, 0,                     // get state
+    OP_NATIVE, 0xf4,0xbc,0x0a,0x01, // waitpne tos, t1 wr
+    OP_RETURN
+};
+
 /* EnterBuiltInSymbols - enter the built-in symbols */
 static void EnterBuiltInSymbols(ParseContext *c)
 {
@@ -144,6 +160,8 @@ static void EnterBuiltInSymbols(ParseContext *c)
     
     /* functions */
     EnterBuiltInFunction(c, "waitcnt",  (VMVALUE)bi_waitcnt);
+    EnterBuiltInFunction(c, "waitpeq",  (VMVALUE)bi_waitpeq);
+    EnterBuiltInFunction(c, "waitpne",  (VMVALUE)bi_waitpne);
 }
 
 /* EnterBuiltInVariable - enter a built-in variable */
