@@ -133,6 +133,7 @@ static uint8_t bi_waitcnt[] = {
 };
 
 static uint8_t bi_waitpeq[] = {
+    OP_FRAME, 2,
     OP_LREF, 1,                     // get mask
     OP_NATIVE, 0xa0,0xbc,0x02,0x05, // mov t1, tos
     OP_LREF, 0,                     // get state
@@ -141,6 +142,7 @@ static uint8_t bi_waitpeq[] = {
 };
 
 static uint8_t bi_waitpne[] = {
+    OP_FRAME, 2,
     OP_LREF, 1,                     // get mask
     OP_NATIVE, 0xa0,0xbc,0x02,0x05, // mov t1, tos
     OP_LREF, 0,                     // get state
