@@ -4,7 +4,7 @@
 #include "xbeeframe.h"
 
 /**
- * start initializes and starts native assembly driver in a cog.
+ * XbeeFrame_start - initializes and starts native assembly driver in a cog.
  * @param init is the initialization structure
  * @param mailbox is the mailbox structure
  * @param rxpin is pin number for receive input
@@ -32,7 +32,7 @@ int XbeeFrame_start(XbeeFrameInit_t *init, XbeeFrame_t *mailbox, int rxpin, int 
 }
 
 /**
- * sendframe sends a frame to the Xbee module 
+ * XbeeFrame_sendframe - sends a frame to the Xbee module 
  */
 void XbeeFrame_sendframe(XbeeFrame_t *mailbox, uint8_t *frame, int length)
 {
@@ -41,4 +41,23 @@ void XbeeFrame_sendframe(XbeeFrame_t *mailbox, uint8_t *frame, int length)
     mailbox->txframe = frame;
     mailbox->txlength = length;
     mailbox->txstatus = XBEEFRAME_STATUS_BUSY;
+}
+
+/**
+ * XbeeFrame_recvframe - receives a frame from the Xbee module 
+ */
+uint8_t *XbeeFrame_recvframe(XbeeFrame_t *mailbox, int *plength)
+{
+    if (mailbox->rxstatus == XBEEFRAME_STATUS_IDLE)
+        return NULL;
+    *plength = (int)mailbox->rxlength;
+    return (uint8_t *)mailbox->rxframe;
+}
+
+/**
+ * XbeeFrame_release - releases a frame received from the Xbee module 
+ */
+void XbeeFrame_release(XbeeFrame_t *mailbox)
+{
+    mailbox->rxstatus = XBEEFRAME_STATUS_IDLE;
 }

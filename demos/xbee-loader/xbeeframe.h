@@ -50,5 +50,7 @@ typedef struct {
 
 int XbeeFrame_start(XbeeFrameInit_t *init, XbeeFrame_t *mailbox, int rxpin, int txpin, int mode, int baudrate);
 void XbeeFrame_sendframe(XbeeFrame_t *mailbox, uint8_t *frame, int length);
+uint8_t *XbeeFrame_recvframe(XbeeFrame_t *mailbox, int *plength);
+void XbeeFrame_release(XbeeFrame_t *mailbox);
 
 #endif

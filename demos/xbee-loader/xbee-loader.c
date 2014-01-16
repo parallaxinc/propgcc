@@ -20,6 +20,7 @@
 #define XBEE_BAUD   9600
 
 #define MAX_RETRIES 100000
+#define BUFSIZE     1024
 
 /* list of drivers we can use */
 extern _Driver _FullDuplexSerialDriver;
@@ -122,13 +123,14 @@ int main(void)
     
     printf("Listen for packets\n");
     while (1) {
-        if (mailbox.rxstatus == XBEEFRAME_STATUS_BUSY) {
-            int i;
+        uint8_t *frame;
+        int length, i;
+        if ((frame = XbeeFrame_recvframe(&mailbox, &length)) != NULL) {
             printf("frame");
-            for (i = 0; i < mailbox.rxlength; ++i)
-                printf(" %02x", mailbox.rxframe[i]);
+            for (i = 0; i < length; ++i)
+                printf(" %02x", frame[i]);
             putchar('\n');
-            mailbox.rxstatus = XBEEFRAME_STATUS_IDLE;
+            XbeeFrame_release(&mailbox);
         }
     }
     
@@ -145,8 +147,6 @@ void send(FdSerial_t *fds, char *fmt, ...)
     for (p = buf; *p != '\0'; ++p)
         FdSerial_tx(fds, *p);
 }
-
-#define BUFSIZE 1024
 
 int expect(FdSerial_t *fds, char *str)
 {
