@@ -1,9 +1,10 @@
 ''*********************************************
-''* Packet Driver                             *
-''*  (C) 2011 David Betz                      *
+''* Xbee Frame Driver                         *
+''*  (C) 2014 David Betz                      *
 ''* Based on:                                 *
 ''*  Full-Duplex Serial Driver v1.1 Extended  *
 ''*   (C) 2006 Parallax, Inc.                 *
+''* Released under the MIT License            *
 ''*********************************************
 
 {
