@@ -3,6 +3,8 @@ TARGET=xbee-term.elf
 CFLAGS=-Os -Wall
 
 HDRS=\
+xbeeframe.h \
+fds.h
 
 OBJS=\
 xbee-loader.o \
