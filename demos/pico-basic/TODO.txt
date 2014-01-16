@@ -1,0 +1,4 @@
+- release memory used by handles on parser errors
+
+- function signatures are only checked at compile time so there could be parameter mismatches if the called function
+  is subsequently redefined

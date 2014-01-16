@@ -1,0 +1,19 @@
+#
+# This is a board selection file.
+# To enable a board, all that's needed is the
+# board cfg filename somewhere in the text here
+# 
+activityboard.cfg      # this is the Propeller Activity board type
+c3.cfg                 # this is the default C3 type
+demoboard.cfg          # demoboard type
+eeprom.cfg             # this is the default 64KB EEPROM board type
+hydra.cfg              # hydra type
+pmc.cfg                # propeller memory card type
+propboe.cfg            # propboe type
+propmini.cfg           # propmini type
+propstick.cfg          # propstick type
+quickstart.cfg         # quickstart type
+rcfast.cfg             # the generic rcfast clock setting
+rcslow.cfg             # the generic rcslow clock setting
+spinstamp.cfg          # spinstamp type
+synapse.cfg            # synapse type

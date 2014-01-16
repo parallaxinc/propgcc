@@ -1,0 +1,351 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+	<TITLE>Propeller GCC Memory Models</TITLE>
+</HEAD>
+<BODY>
+<H1>Memory Models</H1>
+
+<P>The Propeller port of GCC supports a
+number of memory models, or ways of storing the program in memory.
+Basically these models provide a trade off of speed for code space.
+By far the fastest model is the native “cog” model (<CODE>-mcog</CODE>)
+in which machine instructions are executed directly. However, in that
+model only the 2K of internal memory (actually slightly less) is
+available for code. In the other models (LMM, CMM, XMMC, and XMM) code is
+stored in RAM external to the cog and is loaded in by a small kernel.
+This makes more space available for the code (and, in the XMM case,
+the data) but at the cost of having kernel overhead on each
+instruction executed.</P>
+
+<H2>COG</H2>
+
+<P>As previously mentioned, in the COG
+memory model code is stored directly in the internal memory of the
+Propeller's cogs. This memory is 512 words, or 2048 bytes, long, but
+16 words are reserved for hardware registers. The GNU C compiler
+reserves an additional 17 words for compiler registers. These
+registers, named <CODE>r0</CODE>-<CODE>r14</CODE>,<CODE>
+lr</CODE>, and <CODE>sp</CODE>, are used by the
+compiler for various purposes. <CODE>r0</CODE>-<CODE>r7</CODE>
+are temporary registers within a function (not preserved across
+function calls). <CODE>r8</CODE>-<CODE>r14</CODE>
+are working registers within a function and are preserved across
+function calls. <CODE>lr</CODE> is the “link
+register” which holds the return address for functions (except for
+functions declared with the “native” attribute, for which the
+return address is stored directly in the <CODE>ret</CODE>
+instruction). <CODE>sp</CODE> is the stack pointer.</P>
+
+<H3>Assembly programming in COG mode</H3>
+
+<P>Inline assembly (or writing external C
+callable functions in assembly) in COG mode is very straightforward –
+the Propeller instruction set is directly usable. The GNU assembler
+gas accepts input that is very similar to PASM. The major differences
+are: (1) gas does not understand local labels (labels that start with
+<CODE>:</CODE>), and (2) by default addresses are considered to be byte addresses
+rather than word addresses; you can tell gas to treat them as words
+by using the <CODE>.cog_ram</CODE> directive. The
+instruction set is the same, although for convenience gas offers a
+<CODE>mova</CODE> (“move address”) instruction
+that works just like <CODE>mov</CODE> but which
+divides any immediate source value by 4, thus converting it from a
+byte address to a word address. <CODE>mova</CODE> is
+not needed in .cog_ram mode, but is convenient in the default
+mode.</P>
+
+<H2>LMM</H2>
+<P>In the Large Memory Model (LMM mode),
+the program code is stored in hub memory, which is 32K in size. The
+program's data and stack are also stored there. A small kernel
+program (the “LMM Kernel”) runs in COG memory and loads and
+executes program instructions from hub memory. In this mode the same
+17 compiler registers are available as in hub mode (<CODE>r0</CODE>-<CODE>r14</CODE>,
+<CODE>lr</CODE>, and <CODE>sp</CODE>),
+but there is an additional register <CODE>pc</CODE>
+which is a pointer to the next instruction to be fetched.</P>
+
+<H3>Assembly programming in LMM mode</H3>
+
+<P>In LMM mode most PASM instructions can
+be used, except for any jump or call instructions (including <CODE>djnz</CODE>,
+<CODE>tjnz</CODE>, and <CODE>jmpret</CODE>).
+Instead of doing direct jumps, we have to modify the value of the <CODE>pc</CODE>
+register used by the LMM interpreter instead. This may be done either
+by directly adding an offset to <CODE>pc</CODE>, or
+by loading a new value into it. gas provides a pseudo-instruction <CODE>brs</CODE>
+(“branch short”) which translates into an immediate <CODE>add</CODE>
+or <CODE>sub</CODE> of the <CODE>pc</CODE>;
+this may be used to branch to a destination within 508 bytes (plus or
+minus) of the instruction following the <CODE>brs</CODE>.
+For longer branches we can use the <CODE>__LMM_JMP</CODE>
+routine built into the kernel, or else move a different register into
+<CODE>pc</CODE> (for an indirect jump). After the <CODE>jmp
+#__LMM_JMP</CODE> instruction comes a 4 byte address indicating the
+new value for the <CODE>pc</CODE>.</P>
+
+<P>Calls are handled by the <CODE>__LMM_CALL</CODE>
+and <CODE>__LMM_CALL_INDIRECT</CODE> kernel
+functions. <CODE>__LMM_CALL</CODE> is like <CODE>__LMM_JMP</CODE>
+except that before it loads the new <CODE>pc</CODE>
+it saves the old value into the <CODE>lr</CODE>
+register. The called function can thus return with a simple <CODE>mov
+pc,lr</CODE> instruction. <CODE>__LMM_CALL_INDIRECT</CODE>
+uses a special register, <CODE>__TMP0</CODE>, as the
+address to call; thus, an indirect call via compiler register <CODE>r6</CODE>
+would be coded as:</P>
+<P>
+<CODE>mov __TMP0, r6</CODE><BR>
+<CODE>jmp
+#__LMM_CALL_INDIRECT</CODE><BR>
+</P>
+
+<P><CODE>__LMM_CALL_INDIRECT</CODE>
+also saves the return address in <CODE>lr</CODE>.</P>
+
+<H2>XMMC</H2>
+
+<P>In the eXtended Memory Model – Code
+(XMMC mode) the program code is stored in external memory, either
+flash or ram. The exact size of this memory depends on the board
+used, but it is generally quite a bit larger than hub memory. The
+program's data and stack reside in hub memory as in LMM mode.</P>
+<P>Assembly programming in XMMC mode is
+exactly the same as in LMM mode.</P>
+
+<H2>XMM</H2>
+
+<P>In the eXtended Memory Model both the
+code and data are placed in external memory (in the case of data it
+must be an external RAM). This allows for the largest possible
+programs, but at a considerable cost in execution time, since all
+data accesses must go through functions in the XMM kernel. As in all
+other modes, the stack remains in hub memory (and hence is limited to
+32K bytes less the cache size used by the XMM kernel, which is
+typically 8K bytes).</P>
+
+<P>Assembly programming in XMM mode is
+very similar to LMM mode, except that data accesses which may point
+into external memory must be done via the appropriate kernel
+functions instead of directly with <CODE>rdlong</CODE>
+and <CODE>wrlong</CODE> instructions.</P>
+
+<H2>CMM</H2>
+
+<P>
+There is a special memory model called the "compressed memory
+model" (CMM). This model is the same as the LMM model in that code
+and data are both stored in hub memory. The difference is that in CMM
+mode code is compressed in a special format that takes less space, and
+decompressed by the kernel at run time. This saves space, but at the
+cost of execution speed.
+</P>
+
+
+<H1>Kernel APIs</H1>
+
+<P>The kernels all
+provide some common functions which may be used by programs (and
+which the compiler takes advantage of).</P>
+
+<P>
+  Note that the GAS assembler has macros built in which provide a
+  "short form" of some of the calls below. In the compressed memory
+  model (if -mcmm is used) these short forms are actualy stored
+  compressed in the instruction stream.
+</P>
+
+<H2>Data movement</H2>
+
+<P>
+<CODE>jmp #__LMM_MVI_rn</CODE><BR>
+<CODE>long val</CODE><BR>
+</P>
+<P>This is a “move immediate”
+instruction to move the value “val” into compiler register <CODE>rn</CODE>
+(or the link register <CODE>lr</CODE>). After the
+instruction is complete the LMM interpreter resumes automatically.</P>
+<P>
+short form:
+<CODE>mvil rn, #val</CODE>
+<br>or <CODE>mviw rn, #val</CODE> if val is known to fit in 16 bits
+</P>
+<br>
+
+<P>
+<CODE>mov __TMP0,
+#(count&lt;&lt;4)|regnum</CODE><BR>
+<CODE>call #__LMM_PUSHM</CODE><BR>
+</P>
+<P>Push multiple compiler registers onto
+the stack. “count” is the number of registers to push, and
+“regnum” is the number of the first register to push (0 for <CODE>r0</CODE>,
+1 for <CODE>r1</CODE>, and so on; register number 15
+is <CODE>lr</CODE>). Note that “count+regnum”
+should be less than or equal to 16. The registers count up, so if
+regnum is 12 and count is 3 then <CODE>r12</CODE>,
+<CODE>r13</CODE>, and <CODE>r14</CODE>
+will be pushed (in that order).</P>
+<P>short form:
+<CODE>pushm #(count&lt;&lt;4)|regnum</CODE><BR>
+</P>
+<br>
+
+<P>
+<CODE>mov __TMP0,
+#(count&lt;&lt;4)|regnum</CODE><BR>
+<CODE>call #__LMM_POPM</CODE> or call #__LMM_POPRET<BR>
+</P>
+<P>Pop multiple compiler registers from
+the stack. “count” is the number of registers to pop, and
+“regnum” is the number of the first register to pop, which should
+be the last register pushed (0 for <CODE>r0</CODE>, 1
+for <CODE>r1</CODE>, and so on). Note that
+“count+regnum” should be less than or equal to 16. The registers
+count down, so if regnum is 14 and count is 3 then <CODE>r14</CODE>,
+<CODE>r13</CODE>, and <CODE>r12</CODE>
+will be popped (in that order).</P>
+<P>If <CODE>__LMM_POPRET</CODE> is used then a <CODE>mov pc,lr</CODE>
+  will be issued right after the pop
+</P>
+
+<P>short form:
+<CODE>popm #(count&lt;&lt;4)|regnum</CODE><BR>
+or <CODE>popret #(count&lt;&lt;4)|regnum</CODE><BR>
+</P>
+<br>
+
+<H2>Branches and calls</H2>
+
+<P>
+<CODE>jmp #__LMM_JMP</CODE><BR>
+<CODE>long addr</CODE><BR>
+</P>
+<P>Moves the immediate value <CODE>addr</CODE>
+into the <CODE>pc</CODE> register (so the LMM
+interpreter will begin to execute at address <CODE>addr</CODE>,
+thus performing an unconditional jump).</P>
+</P>
+<P>short form:
+<CODE>brl #addr</CODE><BR>
+</P>
+<br>
+
+<P>
+<CODE>jmp #__LMM_CALL</CODE><BR>
+<CODE>long addr</CODE><BR>
+</P>
+<P>Moves the address of the next
+instruction into the <CODE>lr</CODE> register, and
+moves <CODE>addr</CODE> into the <CODE>pc</CODE>
+register (so the LMM interpreter will begin execution at address
+<CODE>addr</CODE>, which is typically a subroutine).</P>
+<P>
+<P>short form:
+<CODE>lcall #addr</CODE><BR>
+</P>
+<br>
+
+<CODE>mov __TMP0,rn</CODE><BR>
+<CODE>jmp #__LMM_CALL_INDIRECT</CODE><BR>
+</P>
+<P>Moves the address of the next
+instruction into the <CODE>lr</CODE> register, and
+moves <CODE>__TMP0</CODE> into the <CODE>pc</CODE>
+register (so the LMM interpreter will begin execution at address, it
+contained, which is typically a subroutine).</P>
+
+<H2>Math functions</H2>
+
+<P>
+<CODE>call #__UDIVSI</CODE>
+</P>
+<P>Performs 32 bit unsigned division of
+the value in compiler register <CODE>r0</CODE> by the one in
+<CODE>r1</CODE>. Returns the
+quotient in <CODE>r0</CODE>, and the remainder in <CODE>r1</CODE>.</P>
+
+<P><CODE>call #__DIVSI</CODE></P>
+<P>Performs a 32 bit signed division of <CODE>r0</CODE>
+by <CODE>r1</CODE>. Returns the quotient in <CODE>r0</CODE>,
+and the remainder in <CODE>r1</CODE>. The sign of the remainder is
+chosen so as to be consistent with the C standard.
+</P>
+
+<P><CODE>call #__MULSI</CODE></P>
+<P>Multiplies the two 32 bit numbers in <CODE>r0</CODE>
+and <CODE>r1</CODE>, and returns the (low order) 32 bits of the result in <CODE>r0</CODE>.</P>
+
+<P><CODE>call #__CLZSI</CODE></P>
+
+<P>Counts the number of leading 0 bits in
+register <CODE>r0</CODE>, and returns the result in <CODE>r0</CODE>. For example, if <CODE>r0</CODE> =
+0x00008100, then the result will be 16. This is useful for
+normalizing fixed and floating point numbers.</P>
+
+<P><CODE>call #__CTZSI</CODE></P>
+
+<P>Counts the number of trailing 0 bits in
+register <CODE>r0</CODE>, and returns the result in <CODE>r0</CODE>. For example, if <CODE>r0</CODE> =
+0x00008100, then the result will be 8.</P>
+
+<H2>Miscellaneous functions</H2>
+
+<P>
+<CODE>
+jmp #__LMM_FCACHE_LOAD<BR>
+long nbytes
+</CODE></P>
+
+<P>
+Loads some code into the fast cache and executes
+it. The code to be loaded and executed immediately follows the load
+sequence, and is <CODE>nbytes</CODE> bytes long (which must be a
+multiple of 4).
+
+Code executing in the fast cache must use only COG instructions, and
+must not refer to the program counter <CODE>pc</CODE>
+(<CODE>jmp</CODE> instructions must be used instead, with labels
+referring to the COG memory region starting
+at <CODE>__LMM_FCACHE_START</CODE>, which is where it will be executed
+from. At the end of the fastcached block should come a <CODE>jmp
+__LMM_RET</CODE> instruction (note that this is an indirect jump).
+</P>
+<P>
+For example, the C strcpy function:
+</P>
+<PRE>
+char *strcpy(char *dst_orig, const char *src) {
+    char *dst = dst_orig;
+    while ((*dst++ = *src++) != 0)
+        ;
+    return dst_orig;
+}
+</PRE>
+<P>
+is translated by the compiler into code using the fast cache like:
+</P>
+<P>
+<PRE>
+	.global	_strcpy
+_strcpy
+	mov	r7, r0
+	jmp	#__LMM_FCACHE_LOAD
+	long	.L6-.L5
+.L5
+.L2
+	rdbyte	r6, r1
+	cmp	r6, #0 wz
+	add	r1, #1
+	wrbyte	r6, r7
+	add	r7, #1
+	IF_NE	jmp	#__LMM_FCACHE_START+(.L2-.L5)
+	jmp	__LMM_RET
+.L6
+	mov	pc,lr
+</PRE>
+</P>
+</BODY>
+</HTML>
