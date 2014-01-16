@@ -42,8 +42,8 @@ typedef struct FdSerial_struct
     int mode;      // interface mode
     int ticks;     // clkfreq / baud
     int buffptr;   // pointer to rx buffer
-    char rxbuff[FDSERIAL_BUFF_MASK+1];  // receive buffer
-    char txbuff[FDSERIAL_BUFF_MASK+1];  // transmit buffer
+    volatile char rxbuff[FDSERIAL_BUFF_MASK+1];  // receive buffer
+    volatile char txbuff[FDSERIAL_BUFF_MASK+1];  // transmit buffer
     int cogId;     // cog flag/id
 
     // make a linked list so we can find which pins are in use by other cogs
