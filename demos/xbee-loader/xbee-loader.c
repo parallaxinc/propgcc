@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <propeller.h>
 #include "xbeeframe.h"
+#include "fds.h"
 
 #ifndef TRUE
 #define TRUE    1
@@ -29,77 +30,66 @@ _Driver *_driverlist[] = {
 
 uint32_t ticks_per_ms;
 
-void send(FILE *fp, char *fmt, ...);
+void send(FdSerial_t *fds, char *fmt, ...);
+int expect(FdSerial_t *fds, char *str);
 void wait(int ms);
-int expect(FILE *fp, char *str);
-
-void SendFrame(FILE *fp, uint8_t *frame, int size);
-int RecvFrame(FILE *fp, uint8_t *frame, int maxSize);
-int nextc(FILE *fp);
 
 int main(void)
 {
-    FILE *xbeein, *xbeeout;
     uint8_t frame[1024];
+    FdSerial_t xbee;
     XbeeFrameInit_t init;
     XbeeFrame_t mailbox;
-    int cog, ch, i;
+    int cog, i;
     
     ticks_per_ms = CLKFREQ / 1000;
     
-    if (!(xbeein = fopen("FDS:9600,13,12", "r")))
-        return 1;
-    if (!(xbeeout = fopen("FDS:9600,13,12", "w")))
-        return 1;
-        
     /* set non-blocking mode on stdin and xbee */
     stdin->_flag |= _IONONBLOCK;
     stdin->_flag &= ~_IOCOOKED;
-    xbeein->_flag |= _IONONBLOCK;
-    xbeein->_flag &= ~_IOCOOKED;
     setvbuf(stdout, NULL, _IONBF, 0);
-    setvbuf(xbeeout, NULL, _IONBF, 0);
     
-    /* flush an pending input */
-    fflush(xbeein);
+    /* open the xbee */
+    if (FdSerial_start(&xbee, 13, 12, 0, 9600) < 0)
+        printf("failed to open xbee\n");
     
     /* enter AT command mode */
     printf("Entering AT command mode\n");
     wait(1000);
-    send(xbeeout, "+++");
+    send(&xbee, "+++");
     wait(1000);
-    if (!expect(xbeein, "OK"))
+    if (!expect(&xbee, "OK"))
         printf("failed to enter AT command mode\n");
     
     /* set SSID */
     printf("Set SSID\n");
-    send(xbeeout, "ATID%s\r", SSID);
-    if (!expect(xbeein, "OK"))
+    send(&xbee, "ATID%s\r", SSID);
+    if (!expect(&xbee, "OK"))
         printf("failed to set SSID\n");
     
     /* enable WPA2 encryption */
     printf("Set WPA2 encryption\n");
-    send(xbeeout, "ATEE2\r");
-    if (!expect(xbeein, "OK"))
+    send(&xbee, "ATEE2\r");
+    if (!expect(&xbee, "OK"))
         printf("failed to set WPA2 encryption\n");
     
     /* set security key */
     printf("Set security key\n");
-    send(xbeeout, "ATPK%s\r", PASSWORD);
-    if (!expect(xbeein, "OK"))
+    send(&xbee, "ATPK%s\r", PASSWORD);
+    if (!expect(&xbee, "OK"))
         printf("failed to set security key\n");
         
     /* activate settings */
     printf("Activate settings\n");
-    send(xbeeout, "ATAC\r");
-    if (!expect(xbeein, "OK"))
+    send(&xbee, "ATAC\r");
+    if (!expect(&xbee, "OK"))
         printf("failed to activate settings\n");
         
     /* wait for an IP address to be assigned */
     printf("Waiting for an IP address\n");
     for (i = 0; i < MAX_RETRIES; ++i) {
-        send(xbeeout, "ATAI\r");
-        if (expect(xbeein, "0"))
+        send(&xbee, "ATAI\r");
+        if (expect(&xbee, "0"))
             break;
         printf("  waiting...\n");
         wait(500);
@@ -107,29 +97,18 @@ int main(void)
     
     /* set API mode */
     printf("Set API mode\n");
-    send(xbeeout, "ATAP1\r");
-    if (!expect(xbeein, "OK"))
+    send(&xbee, "ATAP1\r");
+    if (!expect(&xbee, "OK"))
         printf("failed to set API mode\n");
 
     /* leave command mode */
     printf("Leave command mode\n");
-    send(xbeeout, "ATCN\r");
-    if (!expect(xbeein, "OK"))
+    send(&xbee, "ATCN\r");
+    if (!expect(&xbee, "OK"))
         printf("failed to leave command mode\n");
 
-#if 0
-    frame[0] = 0x08;
-    frame[1] = 0x01;
-    frame[2] = 'M';
-    frame[3] = 'Y';
-    SendFrame(xbeeout, frame, 4);
-#endif
-
-    printf("Closing Xbee input\n");
-    fclose(xbeein);
-    
-    printf("Closing Xbee output\n");
-    fclose(xbeeout);
+    printf("Closing Xbee\n");
+    FdSerial_stop(&xbee);
     
     cog = XbeeFrame_start(&init, &mailbox, XBEE_RX, XBEE_TX, 0, XBEE_BAUD);
     printf("cog: %d\n", cog);
@@ -143,17 +122,6 @@ int main(void)
     
     printf("Listen for packets\n");
     while (1) {
-#if 0
-        int size = RecvFrame(xbeein, frame, sizeof(frame));
-        if (size < 0)
-            printf("receive packet error\n");
-        else {
-            int i;
-            for (i = 0; i < size; ++i)
-                printf(" %02x", frame[i]);
-            putchar('\n');
-        }
-#endif
         if (mailbox.rxstatus == XBEEFRAME_STATUS_BUSY) {
             int i;
             printf("frame");
@@ -164,48 +132,28 @@ int main(void)
         }
     }
     
-    printf("Enter interactive mode\n");
-    
-    /* loop copying characters from stdin to xbee and from xbee to stdout */
-    while (1) {
-        if ((ch = getchar()) != -1) {
-            //printf("tch %02x\n", ch);
-            putchar(ch);
-            putc(ch, xbeeout);
-        }
-        if ((ch = getc(xbeein)) != -1) {
-            //printf("rch %02x\n", ch);
-            putchar(ch);
-            if (ch == '\r')
-                putchar('\n');
-        }
-    }
-  
     return 0;
 }
 
-void send(FILE *fp, char *fmt, ...)
+void send(FdSerial_t *fds, char *fmt, ...)
 {
+    char buf[1024], *p;
     va_list ap;
     va_start(ap, fmt);
-    vfprintf(fp, fmt, ap);
+    vsprintf(buf, fmt, ap);
     va_end(ap);
-    fflush(fp);
-}
-
-void wait(int ms)
-{
-    waitcnt(ms * ticks_per_ms + CNT);
+    for (p = buf; *p != '\0'; ++p)
+        FdSerial_tx(fds, *p);
 }
 
 #define BUFSIZE 1024
 
-int expect(FILE *fp, char *str)
+int expect(FdSerial_t *fds, char *str)
 {
     char buf[BUFSIZE + 1];
     int ch, i = 0;
     while (1) {
-        while ((ch = getc(fp)) == EOF)
+        while ((ch = FdSerial_rx(fds)) == -1)
             ;
         if (i >= BUFSIZE) {
             printf("buffer overflow\n");
@@ -222,65 +170,7 @@ int expect(FILE *fp, char *str)
     return strcmp(str, buf) == 0;
 }
 
-void SendFrame(FILE *fp, uint8_t *frame, int size)
+void wait(int ms)
 {
-    unsigned int chksum = 0;
-    int i;
-            
-    /* send the start byte */
-    putc(0x7e, fp);
-    
-    /* send the data length */
-    putc((size >> 8) & 0xff, fp);
-    putc(size & 0xff, fp);
-    
-    /* send the data */
-    for (i = 0; i < size; ++i) {
-        int ch = frame[i];
-        putc(ch, fp);
-        chksum += ch;
-    }
-    
-    /* send the checksum */
-    putc(0xff - (chksum & 0xff), fp);
-}
-
-int RecvFrame(FILE *fp, uint8_t *frame, int maxSize)
-{
-    unsigned int chksum = 0;
-    unsigned int len, ch, i;
-    
-    /* look for the start byte */
-    while ((ch = nextc(fp)) != 0x7e)
-        ;
-        
-    /* get the data length */
-    len = nextc(fp) << 8;
-    len |= nextc(fp);
-    
-    /* make sure the data will fit in the buffer */
-    if (len >= maxSize)
-        return -1;
-        
-    /* get the data */
-    for (i = 0; i < len; ++i) {
-        int ch = nextc(fp);
-        frame[i] = ch;
-        chksum += ch;
-    }
-    
-    /* check the checksum */
-    if (((chksum + nextc(fp)) & 0xff) != 0xff)
-        return -1;
-        
-    /* return the frame length */
-    return len;
-}
-
-int nextc(FILE *fp)
-{
-    int ch;
-    while ((ch = getc(fp)) == EOF)
-        ;
-    return ch;
+    waitcnt(ms * ticks_per_ms + CNT);
 }

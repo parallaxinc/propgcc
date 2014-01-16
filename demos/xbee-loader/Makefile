@@ -7,7 +7,9 @@ HDRS=\
 OBJS=\
 xbee-loader.o \
 xbeeframe.o \
-xbeeframe_driver.o
+xbeeframe_driver.o \
+fds.o \
+fds_driver.o
 
 TARGET=xbee-loader.elf
 
