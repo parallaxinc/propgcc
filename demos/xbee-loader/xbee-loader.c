@@ -91,6 +91,12 @@ int main(void)
         wait(500);
     }
     
+    /* select TCP mode */
+    printf("Select TCP mode\n");
+    send(&xbee, "ATIP1\r");
+    if (!expect(&xbee, "OK"))
+        printf("failed to select TCP mode\n");
+        
     /* set API mode */
     printf("Set API mode\n");
     send(&xbee, "ATAP1\r");

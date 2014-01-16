@@ -15,8 +15,7 @@
         long rxtx_mode     '3: rx/tx mode
         long bit_ticks     '4: baud rate
         long rxlength      '5: size of receive frame data buffer
-        long txlength      '6: size of transmit buffer (must be power of 2)
-        long buffers       '7: rxlength*2+txlength size buffer
+        long buffers       '6: rxlength*2 size buffer
 
   mailbox structure:
         long rxframe       '0: rx frame data buffer
@@ -46,9 +45,6 @@ CON
   STATE_DATA
   STATE_CHKSUM
   
-  rxsize = 1024
-  txsize = 16
-
 DAT
 
 '***********************************
