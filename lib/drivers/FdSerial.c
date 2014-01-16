@@ -38,7 +38,6 @@ int _FdSerial_start(FdSerial_t *data, int rxpin, int txpin, int mode, int baudra
     data->cogId = load_cog_driver(FullDuplexSerial, data) + 1;
     data->users = 1;
 
-    //waitcnt(_clkfreq + _CNT);
     return data->cogId;
 }
 
@@ -57,8 +56,9 @@ void _FdSerial_stop(FdSerial_t *data)
  */
 void _FdSerial_rxflush(FdSerial_t *data)
 {
+    // clear out queue by receiving all available 
     while(_FdSerial_rxcheck(data) >= 0)
-        ; // clear out queue by receiving all available 
+      ;
 }
 
 /**
@@ -88,7 +88,6 @@ int _FdSerial_getbyte(FILE *fp)
   int rc = _FdSerial_rxcheck(data);
   while(rc < 0 && !(fp->_flag & _IONONBLOCK)) {
     (*__yield_ptr)();
-    //(*__napuntil_ptr)(_CNT + 10000);
     rc = _FdSerial_rxcheck(data);
   }
   return rc;
@@ -101,7 +100,7 @@ int _FdSerial_getbyte(FILE *fp)
 int _FdSerial_putbyte(int txbyte, FILE *fp)
 {
     FdSerial_t *data = (FdSerial_t *)fp->drvarg[0];
-    char* txbuff = data->txbuff;
+    volatile char* txbuff = data->txbuff;
 
     while(data->tx_tail == ((data->tx_head+1) & FDSERIAL_BUFF_MASK)) // wait for space in queue
         ;
@@ -121,10 +120,15 @@ int _FdSerial_putbyte(int txbyte, FILE *fp)
 void
 _FdSerial_drain(FdSerial_t *data)
 {
+  unsigned int waitcycles;
   while(data->tx_tail != data->tx_head)
     ;
-  /* wait for transmission */
-  waitcnt(_clkfreq + data->ticks);
+
+  // wait for character to be transmitted
+  // strictly speaking we only need to wait 10*data->ticks,
+  // but give ourselves a bit of margin here
+  waitcycles = getcnt() + (data->ticks<<4);
+  waitcnt(waitcycles);
 }
 
 /*
@@ -172,6 +176,7 @@ fdserial_fopen(FILE *fp, const char *name, const char *mode)
 	  if (setBaud) {
 	    data->ticks = _clkfreq / baud;
 	  }
+	  data->users++;
 	  break;
 	}
     }
