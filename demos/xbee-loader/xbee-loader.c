@@ -45,11 +45,6 @@ int main(void)
     
     ticks_per_ms = CLKFREQ / 1000;
     
-    /* set non-blocking mode on stdin and xbee */
-    stdin->_flag |= _IONONBLOCK;
-    stdin->_flag &= ~_IOCOOKED;
-    setvbuf(stdout, NULL, _IONBF, 0);
-    
     /* open the xbee */
     if (FdSerial_start(&xbee, 13, 12, 0, 9600) < 0)
         printf("failed to open xbee\n");
