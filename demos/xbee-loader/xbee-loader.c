@@ -21,6 +21,31 @@
 
 #define MAX_RETRIES 100000
 #define BUFSIZE     1024
+#define FRAMEHDRLEN 3
+
+#define ID_IPV4TX   0x20
+#define ID_IPV4RX   0xb0
+
+typedef struct {
+    uint8_t apiid;
+    uint8_t frameid;
+    uint8_t dstaddr[4];
+    uint8_t dstport[2];
+    uint8_t srcport[2];
+    uint8_t protocol;
+    uint8_t options;
+    uint8_t data[1];
+} IPV4TX_header;
+
+typedef struct {
+    uint8_t apiid;
+    uint8_t srcaddr[4];
+    uint8_t dstport[2];
+    uint8_t srcport[2];
+    uint8_t protocol;
+    uint8_t status;
+    uint8_t data[1];
+} IPV4RX_header;
 
 /* list of drivers we can use */
 extern _Driver _FullDuplexSerialDriver;
@@ -131,6 +156,20 @@ int main(void)
             for (i = 0; i < length; ++i)
                 printf(" %02x", frame[i]);
             putchar('\n');
+            if (frame[0] == ID_IPV4RX) {
+                uint8_t txframe[1024];
+                IPV4RX_header *rxhdr = (IPV4RX_header *)frame;
+                IPV4TX_header *txhdr = (IPV4TX_header *)txframe;
+                txhdr->apiid = ID_IPV4TX;
+                txhdr->frameid = 0x42;
+                memcpy(&txhdr->dstaddr, &rxhdr->srcaddr, 4);
+                memcpy(&txhdr->dstport, &rxhdr->srcport, 2);
+                memcpy(&txhdr->srcport, &rxhdr->dstport, 2);
+                txhdr->protocol = rxhdr->protocol;
+                txhdr->options = 0x01; // terminate after send
+                memcpy(&txhdr->data, "Xbee Here!", 10);
+                XbeeFrame_sendframe(&mailbox, txframe, sizeof(IPV4TX_header) + 9);
+            }
             XbeeFrame_release(&mailbox);
         }
     }
