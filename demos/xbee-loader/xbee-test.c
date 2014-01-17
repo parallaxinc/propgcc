@@ -65,22 +65,11 @@ int ConnectSocket(char *hostName, short port)
     int enable = TRUE;
     struct hostent *hostEntry;
     struct sockaddr_in addr;
-    struct linger lstruct;
     int sock;
 
     /* create the socket */
     if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         return -1;
-
-#if 0
-    /* turn on the "linger" flag */
-    lstruct.l_onoff = 1;
-    lstruct.l_linger = 10;
-    setsockopt(sock, SOL_SOCKET, SO_LINGER, (char *)&lstruct, sizeof(lstruct));
-
-    /* turn off output buffering */
-    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char *)&enable, sizeof(enable));
-#endif
 
     /* setup the address */
     memset(&addr,0,sizeof(addr));
