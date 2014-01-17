@@ -15,7 +15,6 @@
  *   mode bit 0 = invert rx
  *   mode bit 1 = invert tx
  *   mode bit 2 = open-drain/source tx
- *   mode bit 3 = ignore tx echo on rx
  */
 #define XBEEFRAME_MODE_INVERT_RX        1
 #define XBEEFRAME_MODE_INVERT_TX        2
