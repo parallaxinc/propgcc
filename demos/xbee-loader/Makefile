@@ -14,8 +14,9 @@ fds.o \
 fds_driver.o
 
 TARGET=xbee-loader.elf
+TEST=xbee-test
 
-all:	$(TARGET) xbee-test
+all:	$(TARGET) $(TEST)
 
 %.dat:	%.spin
 	@spin2cpp --dat -o $@ $<
@@ -33,11 +34,14 @@ $(TARGET): $(OBJS)
 	@propeller-elf-gcc $(CFLAGS) -o $@ $(OBJS)
 	@echo $@
 
-xbee-test:	xbee-test.c
-	cc -Wall -o xbee-test xbee-test.c
+$(TEST):	xbee-test.c
+	cc -Wall -o $@ xbee-test.c
 
 run:	$(TARGET)
 	@propeller-load $(TARGET) -r -t
+
+test:	$(TEST)
+	./$(TEST)
 	
 clean:
 	@rm -rf $(OBJS) $(TARGET) *.dat xbee-test

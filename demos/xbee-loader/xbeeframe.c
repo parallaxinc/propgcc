@@ -3,6 +3,17 @@
 #include <propeller.h>
 #include "xbeeframe.h"
 
+XbeeFrame_strings http_strings = {
+    .post     = "POST",
+    .ld       = "ld/",
+    .tx       = "tx/",
+    .rx       = "rx/",
+    .crlf     = "\r\n",
+    .version  = "HTTP/1.1 ",
+    .ok       = "200 OK",
+    .notfound = "404 ERROR"
+};
+
 /**
  * XbeeFrame_start - initializes and starts native assembly driver in a cog.
  * @param init is the initialization structure
@@ -24,6 +35,7 @@ int XbeeFrame_start(XbeeFrameInit_t *init, XbeeFrame_t *mailbox, int rxpin, int 
     init->ticks    = _clkfreq / baudrate;   // baud
     init->rxlength = XBEEFRAME_RXSIZE;      // receive buffer length
     init->buffers  = mailbox->buffers;      // receive buffers
+    init->strings  = &http_strings;         // http strings
     
     memset(mailbox, 0, sizeof(XbeeFrame_t));
     mailbox->cogId = load_cog_driver(xbeeframe_driver, init);
