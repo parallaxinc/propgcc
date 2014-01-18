@@ -16,7 +16,7 @@ fds_driver.o
 TARGET=xbee-loader.elf
 TEST=xbee-test
 
-all:	$(TARGET) $(TEST)
+all:	$(TARGET) # $(TEST)
 
 %.dat:	%.spin
 	@spin2cpp --dat -o $@ $<
