@@ -10,9 +10,11 @@
 #define FALSE   0
 #endif
 
+//#define DEBUG_AT
+
 /* assumes WPA2 encryption */
 #define SSID        "xlisper4"
-#define PASSWORD    "shaky2!raven"
+#define PASSWD      "shaky2!raven"
 
 /* Xbee pins */
 #define XBEE_RX     13
@@ -56,89 +58,30 @@ _Driver *_driverlist[] = {
 
 uint32_t ticks_per_ms;
 
-void send(FdSerial_t *fds, char *fmt, ...);
+void handle_ipv4_frame(uint8_t *frame, int length);
+int init_xbee(void);
+void send(FdSerial_t *fds, char *str);
 int expect(FdSerial_t *fds, char *str);
 void wait(int ms);
 
 int main(void)
 {
     uint8_t frame[1024];
-    FdSerial_t xbee;
     XbeeFrameInit_t init;
     XbeeFrame_t mailbox;
-    int cog, i;
     
     ticks_per_ms = CLKFREQ / 1000;
     
-    /* open the xbee */
-    if (FdSerial_start(&xbee, 13, 12, 0, 9600) < 0)
-        printf("failed to open xbee\n");
-    
-    /* enter AT command mode */
-    printf("Entering AT command mode\n");
-    wait(1000);
-    send(&xbee, "+++");
-    wait(1000);
-    if (!expect(&xbee, "OK"))
-        printf("failed to enter AT command mode\n");
-    
-    /* set SSID */
-    printf("Set SSID\n");
-    send(&xbee, "ATID%s\r", SSID);
-    if (!expect(&xbee, "OK"))
-        printf("failed to set SSID\n");
-    
-    /* enable WPA2 encryption */
-    printf("Set WPA2 encryption\n");
-    send(&xbee, "ATEE2\r");
-    if (!expect(&xbee, "OK"))
-        printf("failed to set WPA2 encryption\n");
-    
-    /* set security key */
-    printf("Set security key\n");
-    send(&xbee, "ATPK%s\r", PASSWORD);
-    if (!expect(&xbee, "OK"))
-        printf("failed to set security key\n");
-        
-    /* activate settings */
-    printf("Activate settings\n");
-    send(&xbee, "ATAC\r");
-    if (!expect(&xbee, "OK"))
-        printf("failed to activate settings\n");
-        
-    /* wait for an IP address to be assigned */
-    printf("Waiting for an IP address\n");
-    for (i = 0; i < MAX_RETRIES; ++i) {
-        send(&xbee, "ATAI\r");
-        if (expect(&xbee, "0"))
-            break;
-        printf("  waiting...\n");
-        wait(500);
+    if (!init_xbee()) {
+        printf("Xbee initialization failed\n");
+        return 1;
     }
     
-    /* select TCP mode */
-    printf("Select TCP mode\n");
-    send(&xbee, "ATIP1\r");
-    if (!expect(&xbee, "OK"))
-        printf("failed to select TCP mode\n");
-        
-    /* set API mode */
-    printf("Set API mode\n");
-    send(&xbee, "ATAP1\r");
-    if (!expect(&xbee, "OK"))
-        printf("failed to set API mode\n");
-
-    /* leave command mode */
-    printf("Leave command mode\n");
-    send(&xbee, "ATCN\r");
-    if (!expect(&xbee, "OK"))
-        printf("failed to leave command mode\n");
-
-    printf("Closing Xbee\n");
-    FdSerial_stop(&xbee);
-    
-    cog = XbeeFrame_start(&init, &mailbox, XBEE_RX, XBEE_TX, 0, XBEE_BAUD);
-    printf("cog: %d\n", cog);
+    printf("Starting frame driver\n");
+    if (XbeeFrame_start(&init, &mailbox, XBEE_RX, XBEE_TX, 0, XBEE_BAUD) < 0) {
+        printf("failed to start frame driver\n");
+        return 1;
+    }
     
     printf("Getting our IP address\n");
     frame[0] = 0x08;
@@ -152,11 +95,15 @@ int main(void)
         uint8_t *frame;
         int length, i;
         if ((frame = XbeeFrame_recvframe(&mailbox, &length)) != NULL) {
+        
             printf("frame");
             for (i = 0; i < length; ++i)
                 printf(" %02x", frame[i]);
             putchar('\n');
+            
+            /* handle IPv4 packets received from the Xbee */
             if (frame[0] == ID_IPV4RX) {
+                handle_ipv4_frame(frame, length);
                 uint8_t txframe[1024];
                 IPV4RX_header *rxhdr = (IPV4RX_header *)frame;
                 IPV4TX_header *txhdr = (IPV4TX_header *)txframe;
@@ -177,15 +124,143 @@ int main(void)
     return 0;
 }
 
-void send(FdSerial_t *fds, char *fmt, ...)
+uint8_t *pkt_ptr;
+int pkt_len;
+
+int match(char *str)
 {
-    char buf[1024], *p;
-    va_list ap;
-    va_start(ap, fmt);
-    vsprintf(buf, fmt, ap);
-    va_end(ap);
-    for (p = buf; *p != '\0'; ++p)
-        FdSerial_tx(fds, *p);
+    uint8_t *ptr = pkt_ptr;
+    int len = pkt_len;
+    while (*str) {
+        if (--len < 0 || *ptr++ != *str++)
+            return FALSE;
+    }
+    pkt_ptr = ptr;
+    pkt_len = len;
+    return TRUE;
+}
+
+void skip_spaces(void)
+{
+    while (pkt_len > 0 && *pkt_ptr == ' ') {
+        --pkt_len;
+        ++pkt_ptr;
+    }
+}
+
+void handle_ipv4_frame(uint8_t *frame, int length)
+{
+    pkt_ptr = frame + (int)&((IPV4RX_header *)0)->data;
+    pkt_len = length;
+    
+    if (match("XPOST")) {
+        skip_spaces();
+        if (match("/ld")) {
+            printf("Got load request\n");
+        }
+        else if (match("/tx")) {
+            printf("Got tx request\n");
+        }
+        else if (match("/rx")) {
+            printf("Got rx request\n");
+        }
+        else {
+            // bad request
+        }
+    }
+    else {
+        // bad request
+    }
+}
+
+char ssid_str[32];
+char passwd_str[32];
+
+struct {
+    char *cmd;
+    char *response;
+    int retries;
+    char *info;
+} cmds[] = {
+{   ssid_str,       "OK",   1,              "Set SSID"              },
+{   passwd_str,     "OK",   1,              "Set password"          },
+{   "ATEE2\r",      "OK",   1,              "Set WPA2 encryption"   },
+{   "ATAC\r",       "OK",   1,              "Activate settings"     },
+{   "ATAI\r",       "0",    MAX_RETRIES,    "Connect to AP"         },
+// this doesn't work for exiting Soft AP mode
+//{   "ATCE0\r",      "OK",   1,              "Disable Soft AP mode"  },
+{   "ATC01F90\r",   "OK",   1,              "Set port to 8080"      },
+{   "ATIP1\r",      "OK",   1,              "Set TCP mode"          },
+{   "ATAP1\r",      "OK",   1,              "Set API mode"          },
+{   "ATCN\r",       "OK",   1,              "Exit command mode"     },
+{   0,              0,      0,              0,                      }
+};
+
+int init_xbee(void)
+{
+    int result = TRUE;
+    FdSerial_t xbee;
+    int i;
+
+    /* open the xbee */
+    if (FdSerial_start(&xbee, XBEE_RX, XBEE_TX, 0, XBEE_BAUD) < 0) {
+        printf("failed to open xbee\n");
+        return FALSE;
+    }
+    
+    /* enter AT command mode */
+    printf("Entering AT command mode\n");
+    wait(1000);
+    send(&xbee, "+++");
+    wait(1000);
+    if (!expect(&xbee, "OK")) {
+        printf("failed to enter AT command mode\n");
+        return FALSE;
+    }
+    
+    /* setup the SSID and password strings */
+    sprintf(ssid_str, "ATID%s\r", SSID);
+    sprintf(passwd_str, "ATPK%s\r", PASSWD);
+
+    /* initialize */
+    for (i = 0; cmds[i].cmd != NULL; ++i) {
+        int remaining;
+        
+        /* execute a command */
+        printf("%s\n", cmds[i].info);
+        remaining = cmds[i].retries;
+        while (--remaining >= 0) {
+        
+            /* send the command */
+            send(&xbee, cmds[i].cmd);
+        
+            /* receive the response */
+            if (expect(&xbee, cmds[i].response))
+                break;
+            
+            /* wait if another retry is required */
+            printf("  waiting...\n");
+            wait(500);
+        }
+        
+        /* fail if the retry count expired */
+        if (remaining < 0) {
+            printf("  failed\n");
+            result = FALSE;
+            goto done;
+        }
+    }
+        
+done:
+    printf("Closing Xbee\n");
+    FdSerial_stop(&xbee);
+    return result;
+}
+
+void send(FdSerial_t *fds, char *str)
+{
+    while (*str != '\0')
+        FdSerial_tx(fds, *str++);
 }
 
 int expect(FdSerial_t *fds, char *str)
@@ -199,14 +274,17 @@ int expect(FdSerial_t *fds, char *str)
             printf("buffer overflow\n");
             return FALSE;
         }
+#ifdef DEBUG_AT
         printf(" %02x", ch); fflush(stdout);
+#endif
         if (ch == '\r')
             break;
         buf[i++] = ch;
     }
-    putc('\n', stdout);
     buf[i] = '\0';
-    printf("got: '%s'\n", buf);
+#ifdef DEBUG_AT
+    printf("\n got '%s'\n", buf);
+#endif
     return strcmp(str, buf) == 0;
 }
 

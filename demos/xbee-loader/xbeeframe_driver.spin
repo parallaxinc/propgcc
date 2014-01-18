@@ -187,6 +187,7 @@ do_rcv_chksum           add     rcv_chksum, rxdata        'update the checksum
                         and     rcv_chksum, #$ff
                         cmp     rcv_chksum, #$ff wz       'check the checksum
               if_nz     jmp     #look_for_frame
+              
 :wait                   jmpret  rxcode,txcode         'wait for the previous frame to be consumed
                         rdlong  t1, rx_status_ptr wz
               if_nz     jmp     #:wait

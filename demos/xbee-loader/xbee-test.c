@@ -13,7 +13,12 @@
 #include <netdb.h>
 
 #define IPADDR  "10.0.1.66"
-#define PORT    0x2616          // supposedly the default for the Xbee Wi-Fi
+#define PORT    8080        // alternate web server port
+
+#define POST_REQUEST      "XPOST /ld HTTP/1.1\r\n"
+//#define REQUEST_DATA    "Hello, World!"
+#define REQUEST_DATA    buf
+#define PACKET_SIZE     32
 
 #ifndef TRUE
 #define TRUE    1
@@ -29,8 +34,8 @@ int ReceiveSocketData(int socket, char *buf, int len);
 /* main - the main function */
 int main(int argc, char *argv[])
 {
-    char buf[1024];
-    int xbee, cnt;
+    int xbee, cnt, next, i, j;
+    char buf[1024], packet[PACKET_SIZE];
     
     if ((xbee = ConnectSocket(IPADDR, PORT)) < 0) {
         printf("Failed to connect to %s:%d\n", IPADDR, PORT);
@@ -38,9 +43,22 @@ int main(int argc, char *argv[])
     }
     printf("Connected\n");
     
-    if (SendSocketData(xbee, "Hello!", 6) < 0) {
-        printf("Failed to send data to %s:%d\n", IPADDR, PORT);
+    if (SendSocketData(xbee, POST_REQUEST, sizeof(POST_REQUEST) - 1) < 0) {
+        printf("Failed to send request header to %s:%d\n", IPADDR, PORT);
         return 1;
+    }
+    printf("Header sent\n");
+
+    next = 0;
+    for (j = 0; j < 8; ++j) {
+        uint16_t *p = (uint16_t *)packet;
+        for (i = 0; i < sizeof(packet); i += 2)
+            *p++ = next++;
+        printf("Sending %04x\n", next & 0xffff);
+        if (SendSocketData(xbee, packet, sizeof(packet)) < 0) {
+            printf("Failed to send request data to %s:%d\n", IPADDR, PORT);
+            return 1;
+        }
     }
     printf("Data sent\n");
     
@@ -51,8 +69,6 @@ int main(int argc, char *argv[])
     buf[cnt] = '\0';
     printf("Data received: %s\n", buf);
     
-    sleep(10);
-
     DisconnectSocket(xbee);
     printf("Disconnected\n");
     
@@ -62,7 +78,6 @@ int main(int argc, char *argv[])
 /* ConnectSocket - connect to the server */
 int ConnectSocket(char *hostName, short port)
 {
-    int enable = TRUE;
     struct hostent *hostEntry;
     struct sockaddr_in addr;
     int sock;
