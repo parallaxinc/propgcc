@@ -13,7 +13,7 @@
 #include <netdb.h>
 
 #define IPADDR  "10.0.1.66"
-#define PORT    8080        // alternate web server port
+#define PORT    80
 
 #define POST_REQUEST      "XPOST /ld HTTP/1.1\r\n"
 //#define REQUEST_DATA    "Hello, World!"
