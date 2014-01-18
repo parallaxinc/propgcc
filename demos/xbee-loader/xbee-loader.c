@@ -58,7 +58,8 @@ _Driver *_driverlist[] = {
 
 uint32_t ticks_per_ms;
 
-void handle_ipv4_frame(uint8_t *frame, int length);
+void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length);
+void show_frame(uint8_t *frame, int length);
 int init_xbee(void);
 void send(FdSerial_t *fds, char *str);
 int expect(FdSerial_t *fds, char *str);
@@ -93,30 +94,15 @@ int main(void)
     printf("Listen for packets\n");
     while (1) {
         uint8_t *frame;
-        int length, i;
+        int length;
         if ((frame = XbeeFrame_recvframe(&mailbox, &length)) != NULL) {
         
-            printf("frame");
-            for (i = 0; i < length; ++i)
-                printf(" %02x", frame[i]);
-            putchar('\n');
+            printf("[RX]");
+            show_frame(frame, length);
             
             /* handle IPv4 packets received from the Xbee */
-            if (frame[0] == ID_IPV4RX) {
-                handle_ipv4_frame(frame, length);
-                uint8_t txframe[1024];
-                IPV4RX_header *rxhdr = (IPV4RX_header *)frame;
-                IPV4TX_header *txhdr = (IPV4TX_header *)txframe;
-                txhdr->apiid = ID_IPV4TX;
-                txhdr->frameid = 0x42;
-                memcpy(&txhdr->dstaddr, &rxhdr->srcaddr, 4);
-                memcpy(&txhdr->dstport, &rxhdr->srcport, 2);
-                memcpy(&txhdr->srcport, &rxhdr->dstport, 2);
-                txhdr->protocol = rxhdr->protocol;
-                txhdr->options = 0x01; // terminate after send
-                memcpy(&txhdr->data, "Xbee Here!", 10);
-                XbeeFrame_sendframe(&mailbox, txframe, sizeof(IPV4TX_header) + 9);
-            }
+            if (frame[0] == ID_IPV4RX)
+                handle_ipv4_frame(&mailbox, frame, length);
             XbeeFrame_release(&mailbox);
         }
     }
@@ -148,7 +134,45 @@ void skip_spaces(void)
     }
 }
 
-void handle_ipv4_frame(uint8_t *frame, int length)
+void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data, int length)
+{
+    uint8_t txframe[1024];
+    IPV4TX_header *txhdr = (IPV4TX_header *)txframe;
+    
+    txhdr->apiid = ID_IPV4TX;
+    txhdr->frameid = 0x42;
+    memcpy(&txhdr->dstaddr, &rxhdr->srcaddr, 4);
+    memcpy(&txhdr->dstport, &rxhdr->srcport, 2);
+    memcpy(&txhdr->srcport, &rxhdr->dstport, 2);
+    txhdr->protocol = rxhdr->protocol;
+    txhdr->options = 0x00; // don't terminate after send
+    memcpy(txhdr->data, data, length);
+    length += sizeof(IPV4TX_header) - 1;
+
+    printf("[TX]");
+    show_frame(txframe, length);
+
+    XbeeFrame_sendframe(mbox, txframe, length);
+}
+
+void show_frame(uint8_t *frame, int length)
+{
+    int i;
+    for (i = 0; i < length; ++i)
+        printf(" %02x", frame[i]);
+    printf("\n     \"");
+    for (i = 0; i < length; ++i) {
+        if (frame[i] >= 0x20 && frame[i] <= 0x7e)
+            putchar(frame[i]);
+        else
+            printf("<%02x>", frame[i]);
+        if (frame[i] == '\n')
+            putchar('\n');
+    }
+    printf("\"\n");
+}
+
+void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
 {
     pkt_ptr = frame + (int)&((IPV4RX_header *)0)->data;
     pkt_len = length;
@@ -157,6 +181,8 @@ void handle_ipv4_frame(uint8_t *frame, int length)
         skip_spaces();
         if (match("/ld")) {
             printf("Got load request\n");
+#define CANNED_RESPONSE "HTTP/1.1 200 OK\r\n\r\nGot ld request"
+            send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)CANNED_RESPONSE, sizeof(CANNED_RESPONSE) - 1);
         }
         else if (match("/tx")) {
             printf("Got tx request\n");
