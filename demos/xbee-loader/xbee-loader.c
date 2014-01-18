@@ -91,7 +91,7 @@ int main(void)
     frame[3] = 'Y';
     XbeeFrame_sendframe(&mailbox, frame, 4);
     
-    printf("Listen for packets\n");
+    printf("Listen for frames\n");
     while (1) {
         uint8_t *frame;
         int length;
@@ -103,6 +103,7 @@ int main(void)
             /* handle IPv4 packets received from the Xbee */
             if (frame[0] == ID_IPV4RX)
                 handle_ipv4_frame(&mailbox, frame, length);
+                
             XbeeFrame_release(&mailbox);
         }
     }
@@ -215,7 +216,8 @@ struct {
 {   "ATAI\r",       "0",    MAX_RETRIES,    "Connect to AP"         },
 // this doesn't work for exiting Soft AP mode
 //{   "ATCE0\r",      "OK",   1,              "Disable Soft AP mode"  },
-{   "ATC01F90\r",   "OK",   1,              "Set port to 8080"      },
+//{   "ATC01F90\r",   "OK",   1,              "Set port to 8080"      },
+{   "ATC050\r",   "OK",   1,                "Set port to 80"        },
 {   "ATIP1\r",      "OK",   1,              "Set TCP mode"          },
 {   "ATAP1\r",      "OK",   1,              "Set API mode"          },
 {   "ATCN\r",       "OK",   1,              "Exit command mode"     },
