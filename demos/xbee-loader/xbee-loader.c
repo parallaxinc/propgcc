@@ -35,6 +35,7 @@ Content-Length: 0\r\n\
 
 #define CANNED_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
+Access-Control-Allow-Origin: *\r\n\
 Content-Length: 14\r\n\
 \r\n\
 Got ld request"
