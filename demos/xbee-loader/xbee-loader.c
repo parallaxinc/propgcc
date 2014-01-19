@@ -56,12 +56,14 @@ typedef struct {
     uint8_t data[1];
 } IPV4RX_header;
 
+#if 0
 /* list of drivers we can use */
 extern _Driver _FullDuplexSerialDriver;
 _Driver *_driverlist[] = {
     &_FullDuplexSerialDriver,
     NULL
 };
+#endif
 
 void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length);
 void show_frame(uint8_t *frame, int length);
@@ -85,7 +87,7 @@ int main(void)
     frame[3] = 'Y';
     XbeeFrame_sendframe(&mailbox, frame, 4);
     
-    printf("Listen for frames\n");
+    printf("Listening for frames\n");
     while (1) {
         uint8_t *frame;
         int length;
