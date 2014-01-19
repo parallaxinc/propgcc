@@ -11,14 +11,6 @@
 #define DEBUG_AT
 //#define SOFT_AP
 
-/* assumes WPA2 encryption */
-#ifdef SOFT_AP
-#define SSID        "activityboard"
-#else
-#define SSID        "xlisper4"
-#define PASSWD      "shaky2!raven"
-#endif
-
 /* Xbee pins */
 #define XBEE_RX     13
 #define XBEE_TX     12
@@ -27,10 +19,8 @@
 #define MAX_RETRIES 100000
 #define BUFSIZE     1024
 
-char ssid_str[32];
-#ifndef SOFT_AP
-char passwd_str[32];
-#endif
+char ssid[128], ssid_cmd[32];
+char passwd[128], passwd_cmd[32];
 
 struct {
     char *cmd;
@@ -38,13 +28,13 @@ struct {
     int retries;
     char *info;
 } cmds[] = {
-{   ssid_str,       "OK",   1,              "Set SSID"              },
+{   ssid_cmd,       "OK",   1,              "Set SSID"              },
 #ifdef SOFT_AP
 {   "ATCE1\r",      "OK",   1,              "Enable Soft AP mode"   },
 {   "ATEE0\r",      "OK",   1,              "Disable encryption"    },
 #else
 {   "ATCE2\r",      "OK",   1,              "Disable Soft AP mode"  },
-{   passwd_str,     "OK",   1,              "Set password"          },
+{   passwd_cmd,     "OK",   1,              "Set password"          },
 {   "ATEE2\r",      "OK",   1,              "Set WPA2 encryption"   },
 #endif
 {   "ATDO0\r",      "OK",   1,              "Disable device cloud"  },
@@ -70,6 +60,10 @@ int main(void)
     FdSerial_t xbee;
     int i;
 
+    /* get the SSID and password */
+    printf("SSID? "); gets(ssid);
+    printf("Password? "); gets(passwd);
+    
     /* get the number of clock ticks per millisecond */
     ticks_per_ms = CLKFREQ / 1000;
     
@@ -90,10 +84,8 @@ int main(void)
     }
     
     /* setup the SSID and password strings */
-    sprintf(ssid_str, "ATID%s\r", SSID);
-#ifndef SOFT_AP
-    sprintf(passwd_str, "ATPK%s\r", PASSWD);
-#endif
+    sprintf(ssid_cmd, "ATID%s\r", ssid);
+    sprintf(passwd_cmd, "ATPK%s\r", passwd);
 
     /* initialize */
     for (i = 0; cmds[i].cmd != NULL; ++i) {
