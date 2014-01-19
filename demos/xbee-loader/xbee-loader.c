@@ -10,11 +10,21 @@
 #define FALSE   0
 #endif
 
-//#define DEBUG_AT
+#define DEBUG_AT
+//#define SOFT_AP
 
 /* assumes WPA2 encryption */
+#ifdef SOFT_AP
+#define SSID        "activityboard"
+#else
 #define SSID        "xlisper4"
 #define PASSWD      "shaky2!raven"
+#endif
+
+#define CANNED_RESPONSE "\
+HTTP/1.1 200 OK\r\n\
+\r\n\
+Got ld request"
 
 /* Xbee pins */
 #define XBEE_RX     13
@@ -182,7 +192,6 @@ void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
         skip_spaces();
         if (match("/ld")) {
             printf("Got load request\n");
-#define CANNED_RESPONSE "HTTP/1.1 200 OK\r\n\r\nGot ld request"
             send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)CANNED_RESPONSE, sizeof(CANNED_RESPONSE) - 1);
         }
         else if (match("/tx")) {
@@ -201,7 +210,9 @@ void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
 }
 
 char ssid_str[32];
+#ifndef SOFT_AP
 char passwd_str[32];
+#endif
 
 struct {
     char *cmd;
@@ -210,15 +221,18 @@ struct {
     char *info;
 } cmds[] = {
 {   ssid_str,       "OK",   1,              "Set SSID"              },
+#ifdef SOFT_AP
+{   "ATCE1\r",      "OK",   1,              "Enable Soft AP mode"   },
+{   "ATEE0\r",      "OK",   1,              "Disable encryption"    },
+#else
 {   passwd_str,     "OK",   1,              "Set password"          },
 {   "ATEE2\r",      "OK",   1,              "Set WPA2 encryption"   },
+#endif
+{   "ATDO0\r",      "OK",   1,              "Disable device cloud"  },
+{   "ATC050\r",     "OK",   1,              "Set port to 80"        },
+{   "ATIP1\r",      "OK",   1,              "Set TCP mode"          },
 {   "ATAC\r",       "OK",   1,              "Activate settings"     },
 {   "ATAI\r",       "0",    MAX_RETRIES,    "Connect to AP"         },
-// this doesn't work for exiting Soft AP mode
-//{   "ATCE0\r",      "OK",   1,              "Disable Soft AP mode"  },
-//{   "ATC01F90\r",   "OK",   1,              "Set port to 8080"      },
-{   "ATC050\r",   "OK",   1,                "Set port to 80"        },
-{   "ATIP1\r",      "OK",   1,              "Set TCP mode"          },
 {   "ATAP1\r",      "OK",   1,              "Set API mode"          },
 {   "ATCN\r",       "OK",   1,              "Exit command mode"     },
 {   0,              0,      0,              0,                      }
@@ -248,7 +262,9 @@ int init_xbee(void)
     
     /* setup the SSID and password strings */
     sprintf(ssid_str, "ATID%s\r", SSID);
+#ifndef SOFT_AP
     sprintf(passwd_str, "ATPK%s\r", PASSWD);
+#endif
 
     /* initialize */
     for (i = 0; cmds[i].cmd != NULL; ++i) {
