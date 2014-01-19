@@ -12,7 +12,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define IPADDR  "10.0.1.66"
+//#define IPADDR  "10.0.1.66"
+#define IPADDR  "192.168.1.10"
 #define PORT    80
 
 #define POST_REQUEST      "XPOST /ld HTTP/1.1\r\n"
