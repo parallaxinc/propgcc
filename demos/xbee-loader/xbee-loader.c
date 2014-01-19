@@ -30,10 +30,12 @@ Access-Control-Max-Age: 1000000\r\n\
 Keep-Alive: timeout=1, max=100\r\n\
 Connection: Keep-Alive\r\n\
 Content-Type: text/plain\r\n\
+Content-Length: 0\r\n\
 \r\n"
 
 #define CANNED_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
+Content-Length: 14\r\n\
 \r\n\
 Got ld request"
 
@@ -168,6 +170,7 @@ void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data, int l
     memcpy(&txhdr->srcport, &rxhdr->dstport, 2);
     txhdr->protocol = rxhdr->protocol;
     txhdr->options = 0x00; // don't terminate after send
+    //txhdr->options = 0x01; // terminate after send
     memcpy(txhdr->data, data, length);
     length += sizeof(IPV4TX_header) - 1;
 
