@@ -1,22 +1,24 @@
-TARGET=xbee-term.elf
-
 CFLAGS=-Os -Wall
 
 HDRS=\
 xbeeframe.h \
 fds.h
 
-OBJS=\
-xbee-loader.o \
-xbeeframe.o \
-xbeeframe_driver.o \
+CONFIG_OBJS=\
+xbee-config.o \
 fds.o \
 fds_driver.o
 
-TARGET=xbee-loader.elf
+LOADER_OBJS=\
+xbee-loader.o \
+xbeeframe.o \
+xbeeframe_driver.o
+
+CONFIG=xbee-config.elf
+LOADER=xbee-loader.elf
 TEST=xbee-test
 
-all:	$(TARGET) # $(TEST)
+all:	$(CONFIG) $(LOADER) # $(TEST)
 
 %.dat:	%.spin
 	@spin2cpp --dat -o $@ $<
@@ -30,18 +32,25 @@ all:	$(TARGET) # $(TEST)
 	@propeller-elf-gcc $(CFLAGS) -c -o $@ $<
 	@echo $@
 
-$(TARGET): $(OBJS)
-	@propeller-elf-gcc $(CFLAGS) -o $@ $(OBJS)
+$(CONFIG): $(CONFIG_OBJS)
+	@propeller-elf-gcc $(CFLAGS) -o $@ $(CONFIG_OBJS)
+	@echo $@
+
+$(LOADER): $(LOADER_OBJS)
+	@propeller-elf-gcc $(CFLAGS) -o $@ $(LOADER_OBJS)
 	@echo $@
 
 $(TEST):	xbee-test.c
 	cc -Wall -o $@ xbee-test.c
 
-run:	$(TARGET)
-	@propeller-load $(TARGET) -r -t
+config:	$(CONFIG)
+	@propeller-load $(CONFIG) -r -t
+
+run:	$(LOADER)
+	@propeller-load $(LOADER) -r -t
 
 test:	$(TEST)
 	./$(TEST)
 	
 clean:
-	@rm -rf $(OBJS) $(TARGET) *.dat xbee-test
+	@rm -rf $(CONFIG_OBJS) $(CONFIG) $(LOADER_OBJS) $(LOADER) $(TEST) *.dat
