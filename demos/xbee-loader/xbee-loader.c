@@ -21,6 +21,17 @@
 #define PASSWD      "shaky2!raven"
 #endif
 
+#define OPTION_RESPONSE "\
+HTTP/1.1 200 OK\r\n\
+Access-Control-Allow-Origin: *\r\n\
+Access-Control-Allow-Methods: GET, POST, OPTIONS, XPOST, XLOAD\r\n\
+Access-Control-Allow-Headers: XPOST, XLOAD\r\n\
+Access-Control-Max-Age: 1000000\r\n\
+Keep-Alive: timeout=1, max=100\r\n\
+Connection: Keep-Alive\r\n\
+Content-Type: text/plain\r\n\
+\r\n"
+
 #define CANNED_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
 \r\n\
@@ -204,6 +215,9 @@ void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
             // bad request
         }
     }
+    else if (match("OPTIONS")) {
+        send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)OPTION_RESPONSE, sizeof(OPTION_RESPONSE) - 1);
+    }
     else {
         // bad request
     }
@@ -225,6 +239,7 @@ struct {
 {   "ATCE1\r",      "OK",   1,              "Enable Soft AP mode"   },
 {   "ATEE0\r",      "OK",   1,              "Disable encryption"    },
 #else
+{   "ATCE2\r",      "OK",   1,              "Disable Soft AP mode"  },
 {   passwd_str,     "OK",   1,              "Set password"          },
 {   "ATEE2\r",      "OK",   1,              "Set WPA2 encryption"   },
 #endif
