@@ -36,18 +36,6 @@ typedef struct {
     uint8_t buffers[XBEEFRAME_RXSIZE * 2];
 } XbeeFrame_t;
 
-/* http parser strings */
-typedef struct {
-    char *post;         // "POST"
-    char *ld;           // "ld/"
-    char *tx;           // "tx/"
-    char *rx;           // "rx/"
-    char *crlf;         // "\r\n"
-    char *version;      // "HTTP/1.1 "
-    char *ok;           // "200 OK"
-    char *notfound;     // "404"
-} XbeeFrame_strings;
-
 /* init structure */
 typedef struct {
     XbeeFrame_t *mailbox;       // mailbox address
@@ -57,7 +45,6 @@ typedef struct {
     uint32_t ticks;             // baud rate
     uint32_t rxlength;          // size of frame buffer
     uint8_t *buffers;           // rxlength*2 size buffer
-    XbeeFrame_strings *strings; // strings needed by the HTTP parser
 } XbeeFrameInit_t;
 
 int XbeeFrame_start(XbeeFrameInit_t *init, XbeeFrame_t *mailbox, int rxpin, int txpin, int mode, int baudrate);
