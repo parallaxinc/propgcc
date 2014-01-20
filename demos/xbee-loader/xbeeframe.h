@@ -31,6 +31,10 @@ typedef struct {
     volatile uint8_t *txframe;  // tx frame buffer
     volatile uint32_t txlength; // tx frame length
     volatile uint32_t txstatus; // tx status
+    volatile uint8_t *ldbuf;    // buffer containing first data to load
+    volatile uint32_t ldcount;  // number of bytes in ldbuf
+    volatile uint8_t *ldaddr;   // hub load address
+    volatile uint32_t ldtotal;  // hub load byte count
     volatile uint32_t ticks;    // number of ticks per bit
     uint32_t cogId;             // cog running driver (not used by driver)
     uint8_t buffers[XBEEFRAME_RXSIZE * 2];
