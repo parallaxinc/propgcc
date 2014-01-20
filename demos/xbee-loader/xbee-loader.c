@@ -56,17 +56,14 @@ typedef struct {
     uint8_t data[1];
 } IPV4RX_header;
 
-#if 0
-/* list of drivers we can use */
-extern _Driver _FullDuplexSerialDriver;
-_Driver *_driverlist[] = {
-    &_FullDuplexSerialDriver,
-    NULL
-};
-#endif
+uint8_t *pkt_ptr;
+int pkt_len;
 
-void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length);
-void show_frame(uint8_t *frame, int length);
+static void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length);
+static void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data, int length);
+static int match(char *str);
+static void skip_spaces(void);
+static void show_frame(uint8_t *frame, int length);
 
 int main(void)
 {
@@ -107,70 +104,7 @@ int main(void)
     return 0;
 }
 
-uint8_t *pkt_ptr;
-int pkt_len;
-
-int match(char *str)
-{
-    uint8_t *ptr = pkt_ptr;
-    int len = pkt_len;
-    while (*str) {
-        if (--len < 0 || *ptr++ != *str++)
-            return FALSE;
-    }
-    pkt_ptr = ptr;
-    pkt_len = len;
-    return TRUE;
-}
-
-void skip_spaces(void)
-{
-    while (pkt_len > 0 && *pkt_ptr == ' ') {
-        --pkt_len;
-        ++pkt_ptr;
-    }
-}
-
-void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data, int length)
-{
-    uint8_t txframe[1024];
-    IPV4TX_header *txhdr = (IPV4TX_header *)txframe;
-    
-    txhdr->apiid = ID_IPV4TX;
-    txhdr->frameid = 0x42;
-    memcpy(&txhdr->dstaddr, &rxhdr->srcaddr, 4);
-    memcpy(&txhdr->dstport, &rxhdr->srcport, 2);
-    memcpy(&txhdr->srcport, &rxhdr->dstport, 2);
-    txhdr->protocol = rxhdr->protocol;
-    txhdr->options = 0x00; // don't terminate after send
-    //txhdr->options = 0x01; // terminate after send
-    memcpy(txhdr->data, data, length);
-    length += sizeof(IPV4TX_header) - 1;
-
-    printf("[TX]");
-    show_frame(txframe, length);
-
-    XbeeFrame_sendframe(mbox, txframe, length);
-}
-
-void show_frame(uint8_t *frame, int length)
-{
-    int i;
-    for (i = 0; i < length; ++i)
-        printf(" %02x", frame[i]);
-    printf("\n     \"");
-    for (i = 0; i < length; ++i) {
-        if (frame[i] >= 0x20 && frame[i] <= 0x7e)
-            putchar(frame[i]);
-        else
-            printf("<%02x>", frame[i]);
-        if (frame[i] == '\n')
-            putchar('\n');
-    }
-    printf("\"\n");
-}
-
-void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
+static void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
 {
     pkt_ptr = frame + (int)&((IPV4RX_header *)0)->data;
     pkt_len = length;
@@ -197,4 +131,64 @@ void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
     else {
         // bad request
     }
+}
+
+static void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data, int length)
+{
+    uint8_t txframe[1024];
+    IPV4TX_header *txhdr = (IPV4TX_header *)txframe;
+    
+    txhdr->apiid = ID_IPV4TX;
+    txhdr->frameid = 0x42;
+    memcpy(&txhdr->dstaddr, &rxhdr->srcaddr, 4);
+    memcpy(&txhdr->dstport, &rxhdr->srcport, 2);
+    memcpy(&txhdr->srcport, &rxhdr->dstport, 2);
+    txhdr->protocol = rxhdr->protocol;
+    txhdr->options = 0x00; // don't terminate after send
+    //txhdr->options = 0x01; // terminate after send
+    memcpy(txhdr->data, data, length);
+    length += sizeof(IPV4TX_header) - 1;
+
+    printf("[TX]");
+    show_frame(txframe, length);
+
+    XbeeFrame_sendframe(mbox, txframe, length);
+}
+
+static int match(char *str)
+{
+    uint8_t *ptr = pkt_ptr;
+    int len = pkt_len;
+    while (*str) {
+        if (--len < 0 || *ptr++ != *str++)
+            return FALSE;
+    }
+    pkt_ptr = ptr;
+    pkt_len = len;
+    return TRUE;
+}
+
+static void skip_spaces(void)
+{
+    while (pkt_len > 0 && *pkt_ptr == ' ') {
+        --pkt_len;
+        ++pkt_ptr;
+    }
+}
+
+static void show_frame(uint8_t *frame, int length)
+{
+    int i;
+    for (i = 0; i < length; ++i)
+        printf(" %02x", frame[i]);
+    printf("\n     \"");
+    for (i = 0; i < length; ++i) {
+        if (frame[i] >= 0x20 && frame[i] <= 0x7e)
+            putchar(frame[i]);
+        else
+            printf("<%02x>", frame[i]);
+        if (frame[i] == '\n')
+            putchar('\n');
+    }
+    printf("\"\n");
 }
