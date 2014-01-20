@@ -112,7 +112,7 @@ static void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
     if (match("XPOST")) {
         skip_spaces();
         if (match("/ld")) {
-            printf("Got load request\n");
+            printf("Got ld request\n");
             send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)CANNED_RESPONSE, sizeof(CANNED_RESPONSE) - 1);
         }
         else if (match("/tx")) {
