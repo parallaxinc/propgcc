@@ -1,5 +1,7 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <propeller.h>
 #include "xbeeframe.h"
 
@@ -138,7 +140,7 @@ void skip_spaces(void)
     }
 }
 
-int  skip_white(void)
+void  skip_white(void)
 {
     while (pkt_len > 0 && isspace(*pkt_ptr)) {
         --pkt_len;
@@ -151,7 +153,7 @@ char *find(char *str)
     char *s = strstr((char*) pkt_ptr, str);
     if(s && s > (char*) pkt_ptr) {
         pkt_len -= s - (char*) pkt_ptr;
-        pkt_ptr = s;
+        pkt_ptr = (uint8_t*)s;
         return s;
     }
     return 0;
@@ -160,16 +162,16 @@ char *find(char *str)
 int token(char *str)
 {
     int n = 0;
-    char *s = pkt_ptr;
+    char *s = (char*)pkt_ptr;
     skip_white();
-    s = pkt_ptr;
+    s = (char*)pkt_ptr;
     while(pkt_len > 0 && !isspace(*s)) {
         str[n] = *(s++);
         n++;
     }
     str[n] = 0;
     pkt_len -= n;
-    pkt_ptr = s;
+    pkt_ptr = (uint8_t*)s;
     return n;
 }
 
@@ -214,7 +216,7 @@ void show_frame(uint8_t *frame, int length)
 
 void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
 {
-    int  num;
+    int  num = 0;
     char str[80];
     pkt_ptr = frame + (int)&((IPV4RX_header *)0)->data;
     pkt_len = length;
@@ -252,7 +254,7 @@ void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
         send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)CANNED_RESPONSE, sizeof(CANNED_RESPONSE) - 1);
     }
     else if (match("XPING")) {
-        send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)XPING_RESPONSE, sizeof(CANNED_RESPONSE) - 1);
+        send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)XPING_RESPONSE, sizeof(XPING_RESPONSE) - 1);
     }
     else if (match("OPTIONS")) {
         send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)OPTION_RESPONSE, sizeof(OPTION_RESPONSE) - 1);
