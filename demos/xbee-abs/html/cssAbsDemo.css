@@ -72,53 +72,53 @@ body {
     top:  542px;
     left: 380px;
 }
-.dotled {
-    cursor: pointer;
+.pwrled {
+    cursor: cursor;
     position: absolute;
     background-color: gray;
-    background-color: yellow;
-    width:  4px;
-    height: 8px;
-    left: 296px;
-    top:  435px;
+    background-color: lime;
+    width:   7px;
+    height: 12px;
+    left:  396px;
+    top:   298px;
 }
 .dinled {
-    cursor: pointer;
+    cursor: cursor;
     position: absolute;
+    background-color: red;
     background-color: gray;
-    background-color: yellow;
-    width:  4px;
-    height: 8px;
-    left: 296px;
-    top:  424px;
+    width:   6px;
+    height: 10px;
+    left:  296px;
+    top:   423px;
+}
+.dotled {
+    cursor: cursor;
+    position: absolute;
+    background-color: lightblue;
+    background-color: gray;
+    width:   6px;
+    height: 10px;
+    left:  296px;
+    top:   434px;
 }
 .d27led {
     cursor: pointer;
     position: absolute;
     background-color: yellow;
     background-color: gray;
-    width:  4px;
-    height: 8px;
-    top:  193px;
-    left: 385px;
+    width:   6px;
+    height: 12px;
+    top:   189px;
+    left:  384px;
 }
 .d26led {
     cursor: pointer;
     position: absolute;
     background-color: yellow;
     background-color: gray;
-    width:  4px;
-    height: 8px;
-    top:  203px;
-    left: 385px;
-}
-.pwrled {
-    cursor: pointer;
-    position: absolute;
-    background-color: gray;
-    background-color: lime;
-    width:  6px;
-    height: 10px;
-    left: 396px;
-    top:  299px;
+    width:   6px;
+    height: 12px;
+    top:   202px;
+    left:  384px;
 }
