@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <propeller.h>
 #include "xbeeframe.h"
+#include "xbeeload.h"
 
 #ifndef TRUE
 #define TRUE    1
@@ -20,12 +21,33 @@ Content-Type: text/plain\r\n\
 Content-Length: 0\r\n\
 \r\n"
 
-#define CANNED_RESPONSE "\
+#define LD_RESPONSE "\
+HTTP/1.1 200 OK\r\n\
+Access-Control-Allow-Origin: *\r\n\
+Content-Length: 20\r\n\
+\r\n\
+ld request succeeded"
+
+#define LD_FAIL_RESPONSE "\
+HTTP/1.1 200 OK\r\n\
+Access-Control-Allow-Origin: *\r\n\
+Content-Length: 17\r\n\
+\r\n\
+ld request failed"
+
+#define TX_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
 Access-Control-Allow-Origin: *\r\n\
 Content-Length: 14\r\n\
 \r\n\
-Got ld request"
+Got tx request"
+
+#define RX_RESPONSE "\
+HTTP/1.1 200 OK\r\n\
+Access-Control-Allow-Origin: *\r\n\
+Content-Length: 14\r\n\
+\r\n\
+Got rx request"
 
 /* Xbee pins */
 #define XBEE_RX     13
@@ -56,11 +78,22 @@ typedef struct {
     uint8_t data[1];
 } IPV4RX_header;
 
+#define HUBSIZE         (32 * 1024)
+#define RESPONSESIZE    1024
+
+/* place these data structures at the top of memory so the loader doesn't overwrite them */
+XbeeFrame_t *mailbox = (XbeeFrame_t *)(HUBSIZE - sizeof(XbeeFrame_t));
+uint8_t *response = (uint8_t *)HUBSIZE - sizeof(XbeeFrame_t) - RESPONSESIZE;
+
 uint8_t *pkt_ptr;
 int pkt_len;
 
 static void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length);
+static void handle_ld_request(XbeeFrame_t *mbox, uint8_t *frame, int length);
+static void handle_tx_request(XbeeFrame_t *mbox, uint8_t *frame, int length);
+static void handle_rx_request(XbeeFrame_t *mbox, uint8_t *frame, int length);
 static void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data, int length);
+static int prepare_response(uint8_t *txframe, IPV4RX_header *rxhdr, uint8_t *data, int length);
 static int match(char *str);
 static void skip_spaces(void);
 static void show_frame(uint8_t *frame, int length);
@@ -69,10 +102,9 @@ int main(void)
 {
     uint8_t frame[1024];
     XbeeFrameInit_t init;
-    XbeeFrame_t mailbox;
     
     printf("Starting frame driver\n");
-    if (XbeeFrame_start(&init, &mailbox, XBEE_RX, XBEE_TX, 0, XBEE_BAUD) < 0) {
+    if (XbeeFrame_start(&init, mailbox, XBEE_RX, XBEE_TX, 0, XBEE_BAUD) < 0) {
         printf("failed to start frame driver\n");
         return 1;
     }
@@ -82,22 +114,22 @@ int main(void)
     frame[1] = 0x01;
     frame[2] = 'M';
     frame[3] = 'Y';
-    XbeeFrame_sendframe(&mailbox, frame, 4);
+    XbeeFrame_sendframe(mailbox, frame, 4);
     
     printf("Listening for frames\n");
     while (1) {
         uint8_t *frame;
         int length;
-        if ((frame = XbeeFrame_recvframe(&mailbox, &length)) != NULL) {
+        if ((frame = XbeeFrame_recvframe(mailbox, &length)) != NULL) {
         
             printf("[RX]");
             show_frame(frame, length);
             
             /* handle IPv4 packets received from the Xbee */
             if (frame[0] == ID_IPV4RX)
-                handle_ipv4_frame(&mailbox, frame, length);
+                handle_ipv4_frame(mailbox, frame, length);
                 
-            XbeeFrame_release(&mailbox);
+            XbeeFrame_release(mailbox);
         }
     }
     
@@ -111,33 +143,72 @@ static void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
     
     if (match("XPOST")) {
         skip_spaces();
-        if (match("/ld")) {
-            printf("Got ld request\n");
-            send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)CANNED_RESPONSE, sizeof(CANNED_RESPONSE) - 1);
-        }
-        else if (match("/tx")) {
-            printf("Got tx request\n");
-        }
-        else if (match("/rx")) {
-            printf("Got rx request\n");
-        }
+        if (match("/ld"))
+            handle_ld_request(mbox, frame, length);
+        else if (match("/tx"))
+            handle_tx_request(mbox, frame, length);
+        else if (match("/rx"))
+            handle_rx_request(mbox, frame, length);
         else {
             // bad request
         }
     }
-    else if (match("OPTIONS")) {
+    else if (match("OPTIONS"))
         send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)OPTION_RESPONSE, sizeof(OPTION_RESPONSE) - 1);
-    }
     else {
         // bad request
     }
 }
 
+    XbeeFrame_t *mailbox;   // frame driver mailbox
+    uint8_t *ldbuf;         // buffer containing initial data to load
+    uint32_t ldcount;       // count of bytes in ldbuf
+    uint8_t *ldaddr;        // hub load address
+    uint32_t ldtotal;       // hub load byte count
+    uint8_t *response;      // response
+    uint32_t rcount;        // count of bytes in response
+static void handle_ld_request(XbeeFrame_t *mbox, uint8_t *frame, int length)
+{
+    printf("Got ld request\n");
+    if (1 || match("\r\n\r\n")) {
+        XbeeLoadInit_t init;
+        init.mailbox = mbox;
+        init.ldbuf = pkt_ptr;
+        init.ldcount = pkt_len;
+        init.ldaddr = 0;
+        init.ldtotal = 0;
+        init.response = response;
+        //send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)LD_RESPONSE, sizeof(LD_RESPONSE) - 1);
+        init.rcount = prepare_response(response, (IPV4RX_header *)frame, (uint8_t *)LD_RESPONSE, sizeof(LD_RESPONSE) - 1);
+        XbeeLoad_start(&init);
+    }
+    else {
+        send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)LD_FAIL_RESPONSE, sizeof(LD_FAIL_RESPONSE) - 1);
+    }
+}
+
+static void handle_tx_request(XbeeFrame_t *mbox, uint8_t *frame, int length)
+{
+    printf("Got tx request\n");
+    send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)TX_RESPONSE, sizeof(TX_RESPONSE) - 1);
+}
+
+static void handle_rx_request(XbeeFrame_t *mbox, uint8_t *frame, int length)
+{
+    printf("Got rx request\n");
+    send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)RX_RESPONSE, sizeof(RX_RESPONSE) - 1);
+}
+
 static void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data, int length)
 {
     uint8_t txframe[1024];
+    length = prepare_response(txframe, rxhdr, data, length);
+    XbeeFrame_sendframe(mbox, txframe, length);
+}
+
+static int prepare_response(uint8_t *txframe, IPV4RX_header *rxhdr, uint8_t *data, int length)
+{
     IPV4TX_header *txhdr = (IPV4TX_header *)txframe;
-    
     txhdr->apiid = ID_IPV4TX;
     txhdr->frameid = 0x42;
     memcpy(&txhdr->dstaddr, &rxhdr->srcaddr, 4);
@@ -151,8 +222,8 @@ static void send_response(XbeeFrame_t *mbox, IPV4RX_header *rxhdr, uint8_t *data
 
     printf("[TX]");
     show_frame(txframe, length);
-
-    XbeeFrame_sendframe(mbox, txframe, length);
+    
+    return length;
 }
 
 static int match(char *str)

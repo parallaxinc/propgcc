@@ -18,18 +18,14 @@
         long buffers       '6: rxlength*2 size buffer
 
   mailbox structure:
-        long rxframe       ' 0: rx frame data buffer
-        long rxlength      ' 1: rx frame data length
-        long rxstatus      ' 2: rx status
-        long txframe       ' 3: tx frame data buffer
-        long txlength      ' 4: tx frame data length
-        long txstatus      ' 5: tx status
-        long ldbuf         ' 6: buffer containing initial data to load
-        long ldcount       ' 7: number of bytes in ldbuf
-        long ldaddr        ' 8: hub load address
-        long ldtotal       ' 9: hub load byte count
-        long ticks         '10: number of ticks per bit
-        long cog           '11: cog running driver
+        long rxframe       '0: rx frame data buffer
+        long rxlength      '1: rx frame data length
+        long rxstatus      '2: rx status
+        long txframe       '3: tx frame data buffer
+        long txlength      '4: tx frame data length
+        long txstatus      '5: tx status
+        long ticks         '6: number of ticks per bit
+        long cog           '7: cog running driver
 }
 
 CON
@@ -41,10 +37,6 @@ CON
   
   ' character codes
   START = $7e   ' start of a frame
-  
-  ' frame types
-  IPV4RX = $b0
-  IPV4RX_DATA_OFFSET = 11
 
   #0
   STATE_START
@@ -78,14 +70,6 @@ entry                   mov     t1, par              'get init structure address
                         mov     tx_length_ptr, t2
                         add     t2, #4
                         mov     tx_status_ptr, t2
-                        add     t2, #4
-                        mov     ld_buf_ptr, t2
-                        add     t2, #4
-                        mov     ld_count_ptr, t2
-                        add     t2, #4
-                        mov     ld_addr_ptr, t2
-                        add     t2, #4
-                        mov     ld_total_ptr, t2
 
                         add     t1, #4                'get rx_pin
                         rdlong  t2, t1
@@ -134,18 +118,7 @@ entry                   mov     t1, par              'get init structure address
 '
 receive                 jmpret  rxcode,txcode         'run a chunk of transmit code, then return
 
-                        rdlong  ld_remaining, ld_total_ptr wz
-              if_z      jmp     #receive1
-                        rdlong  ld_ptr, ld_addr_ptr
-                        mov     loading, #1
-                        or      outa, #1
-                        or      dira, #1
-                        rdlong  t1, ld_buf_ptr
-                        rdlong  t2, ld_count_ptr wz
-              if_nz     call    #copy_data
-              if_z      jmp     #load_done
-              
-receive1                test    rxtxmode,#%001  wz    'wait for start bit on rx pin
+                        test    rxtxmode,#%001  wz    'wait for start bit on rx pin
                         test    rxmask,ina      wc
         if_z_eq_c       jmp     #receive
 
@@ -203,37 +176,21 @@ do_rcv_len_lo           or      rcv_length, rxdata
                         mov     rcv_ptr, rcv_buf1
                         jmp     #receive              'byte done, receive next byte
 
-do_rcv_data             add     rcv_chksum, rxdata    'update the checksum
+do_rcv_data             add     rcv_chksum, rxdata        'update the checksum
                         wrbyte  rxdata, rcv_ptr
                         add     rcv_ptr, #1
                         djnz    rcv_cnt, #receive
                         mov     rcv_state, #STATE_CHKSUM
                         jmp     #receive              'byte done, receive next byte
 
-do_rcv_chksum           add     rcv_chksum, rxdata    'update the checksum
+do_rcv_chksum           add     rcv_chksum, rxdata        'update the checksum
                         and     rcv_chksum, #$ff
-                        cmp     rcv_chksum, #$ff wz   'check the checksum
+                        cmp     rcv_chksum, #$ff wz       'check the checksum
               if_nz     jmp     #look_for_frame
               
-                        tjz     loading, #wait_for_rx_buffer
-                                      
-                        rdbyte  t1, rcv_buf1
-                        cmp     t1, #IPV4RX wz
-              if_nz     jmp     #look_for_frame       'ignore frames other than IPV4RX
-              
-                        mov     t1, rcv_buf1
-                        add     t1, #IPV4RX_DATA_OFFSET
-                        mov     t2, rcv_length
-                        sub     t2, #IPV4RX_DATA_OFFSET wz
-              if_z      jmp     #look_for_frame
-                        call    #copy_data
-              if_nz     jmp     #look_for_frame
-
-load_done               ' send response and start program
-              
-wait_for_rx_buffer      jmpret  rxcode,txcode         'wait for the previous frame to be consumed
+:wait                   jmpret  rxcode,txcode         'wait for the previous frame to be consumed
                         rdlong  t1, rx_status_ptr wz
-              if_nz     jmp     #wait_for_rx_buffer
+              if_nz     jmp     #:wait
                         wrlong  rcv_length, rx_length_ptr 'pass the frame to the application
                         wrlong  rcv_buf1, rx_frame_ptr
                         mov     t1, #STATUS_BUSY
@@ -319,16 +276,6 @@ tx_start                or      txdata,#$100          'or in a stop bit
 
                         jmp     #transmit             'byte done, transmit next byte
 
-'copy t2 bytes from t1 to ld_ptr but stop if ld_remaining goes to zero
-copy_data               rdbyte  t3, t1
-                        add     t1, #1
-                        wrbyte  t3, ld_ptr
-                        add     ld_ptr, #1
-                        sub     ld_remaining, #1 wz
-              if_z      jmp     copy_data_ret
-                        djnz    t2, #copy_data
-copy_data_ret           ret
-              
 '
 '
 ' Initialized data
@@ -336,14 +283,12 @@ copy_data_ret           ret
 '
 zero                    long    0
 word_mask               long    $ffff
-loading                 long    0
 
 '
 ' Uninitialized data
 '
 t1                      res     1
 t2                      res     1
-t3                      res     1
 
 rxtxmode                res     1
 bitticks                res     1
@@ -382,14 +327,5 @@ tx_frame_ptr            res     1
 tx_length_ptr           res     1
 tx_status_ptr           res     1
 
-ld_buf_ptr              res     1
-ld_count_ptr            res     1
-ld_addr_ptr             res     1
-ld_total_ptr            res     1
-
-ld_ptr                  res     1
-ld_remaining            res     1
 
                         fit     496
-
-
