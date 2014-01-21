@@ -1,4 +1,4 @@
-CFLAGS=-Os -Wall
+CFLAGS=-Os -Wall -Dprintf=__simple_printf
 LDFLAGS=-Wl,--defsym,__stack_end=0x7000
 
 HDRS=\
@@ -15,7 +15,8 @@ xbee-loader.o \
 xbeeframe.o \
 xbeeframe_driver.o \
 xbeeload.o \
-xbeeload_driver.o
+xbeeload_driver.o \
+strcasestr.o
 
 CONFIG=xbee-config.elf
 LOADER=xbee-loader.elf
