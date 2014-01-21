@@ -1,4 +1,5 @@
 CFLAGS=-Os -Wall
+LDFLAGS=-Wl,--defsym,__stack_end=0x7000
 
 HDRS=\
 xbeeframe.h \
@@ -12,7 +13,9 @@ fds_driver.o
 LOADER_OBJS=\
 xbee-loader.o \
 xbeeframe.o \
-xbeeframe_driver.o
+xbeeframe_driver.o \
+xbeeload.o \
+xbeeload_driver.o
 
 CONFIG=xbee-config.elf
 LOADER=xbee-loader.elf
@@ -37,7 +40,7 @@ $(CONFIG): $(CONFIG_OBJS)
 	@echo $@
 
 $(LOADER): $(LOADER_OBJS)
-	@propeller-elf-gcc $(CFLAGS) -o $@ $(LOADER_OBJS)
+	@propeller-elf-gcc $(CFLAGS) $(LDFLAGS) -o $@ $(LOADER_OBJS)
 	@echo $@
 
 $(TEST):	xbee-test.c

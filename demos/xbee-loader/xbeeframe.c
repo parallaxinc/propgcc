@@ -1,10 +1,10 @@
-/* xbeeframe.c - Xbee frame driver */
+/* xbeeframe.c - Xbee frame driver interface */
 
 #include <propeller.h>
 #include "xbeeframe.h"
 
 /**
- * XbeeFrame_start - initializes and starts native assembly driver in a cog.
+ * XbeeFrame_start - initializes and starts the xbee frame driver in a cog.
  * @param init is the initialization structure
  * @param mailbox is the mailbox structure
  * @param rxpin is pin number for receive input
