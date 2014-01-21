@@ -154,7 +154,6 @@ function toggleLeds()
         var led  = canvas.children[n];
         var name = led.id;
         if(name && name.indexOf("_LED") > 0) {
-            startShine(led);
             if(ledsOn) {
                 if(name.indexOf("PWR") < 0) {
                     led.style.backgroundColor = "yellow";
