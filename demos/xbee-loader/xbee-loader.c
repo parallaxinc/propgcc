@@ -172,9 +172,15 @@ static void handle_ld_request(XbeeFrame_t *mbox, uint8_t *frame, int length)
     printf("Got ld request\n");
         
     if ((p = strcasestr((char *)pkt_ptr, "Content-Length:")) != NULL) {
+    
         pkt_len -= p - (char *)pkt_ptr;
         pkt_ptr = (uint8_t *)p;
+        
+        pkt_ptr += sizeof("Content-Length:") - 1;
+        pkt_len -= sizeof("Content-Length:") - 1;
+
         skip_spaces();
+        
         length = 0;
         while (pkt_len > 0 && isdigit(*pkt_ptr)) {
             length = length * 10 + *pkt_ptr++ - '0';
@@ -185,8 +191,14 @@ static void handle_ld_request(XbeeFrame_t *mbox, uint8_t *frame, int length)
     
     if ((p = strcasestr((char *)pkt_ptr, "\r\n\r\n")) != NULL) {
         XbeeLoadInit_t init;
+        int i;
         pkt_len -= p - (char *)pkt_ptr;
         pkt_ptr = (uint8_t *)p;
+        pkt_ptr += 4;
+        pkt_len -= 4;
+        for (i = 0; i < 8; ++i)
+          printf(" %02x", pkt_ptr[i]);
+        printf("\nldcount %d\n", pkt_len);
         init.mailbox = mbox;
         init.ldbuf = pkt_ptr;
         init.ldcount = pkt_len;
