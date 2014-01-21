@@ -1,5 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
+#include <ctype.h>
 #include <propeller.h>
 #include "xbeeframe.h"
 #include "xbeeload.h"
@@ -160,25 +163,36 @@ static void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
     }
 }
 
-    XbeeFrame_t *mailbox;   // frame driver mailbox
-    uint8_t *ldbuf;         // buffer containing initial data to load
-    uint32_t ldcount;       // count of bytes in ldbuf
-    uint8_t *ldaddr;        // hub load address
-    uint32_t ldtotal;       // hub load byte count
-    uint8_t *response;      // response
-    uint32_t rcount;        // count of bytes in response
+char *strcasestr(const char *s, const char *wanted);
+
 static void handle_ld_request(XbeeFrame_t *mbox, uint8_t *frame, int length)
 {
+    char *p;
+    
     printf("Got ld request\n");
-    if (1 || match("\r\n\r\n")) {
+        
+    if ((p = strcasestr((char *)pkt_ptr, "Content-Length:")) != NULL) {
+        pkt_len -= p - (char *)pkt_ptr;
+        pkt_ptr = (uint8_t *)p;
+        skip_spaces();
+        length = 0;
+        while (pkt_len > 0 && isdigit(*pkt_ptr)) {
+            length = length * 10 + *pkt_ptr++ - '0';
+            --pkt_len;
+        }
+        printf("Length: %d\n", length);
+    }
+    
+    if ((p = strcasestr((char *)pkt_ptr, "\r\n\r\n")) != NULL) {
         XbeeLoadInit_t init;
+        pkt_len -= p - (char *)pkt_ptr;
+        pkt_ptr = (uint8_t *)p;
         init.mailbox = mbox;
         init.ldbuf = pkt_ptr;
         init.ldcount = pkt_len;
         init.ldaddr = 0;
-        init.ldtotal = 0;
+        init.ldtotal = length;
         init.response = response;
-        //send_response(mbox, (IPV4RX_header *)frame, (uint8_t *)LD_RESPONSE, sizeof(LD_RESPONSE) - 1);
         init.rcount = prepare_response(response, (IPV4RX_header *)frame, (uint8_t *)LD_RESPONSE, sizeof(LD_RESPONSE) - 1);
         XbeeLoad_start(&init);
     }
