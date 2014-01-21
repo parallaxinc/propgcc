@@ -12,14 +12,13 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-//#define IPADDR  "10.0.1.66"
-#define IPADDR  "192.168.1.10"
+#define IPADDR  "10.0.1.66"
 #define PORT    80
 
-#define POST_REQUEST      "XPOST /ld HTTP/1.1\r\n"
-//#define REQUEST_DATA    "Hello, World!"
-#define REQUEST_DATA    buf
-#define PACKET_SIZE     32
+#define POST_REQUEST      "\
+XPOST /ld HTTP/1.1\r\n\
+Content-Length: %d\r\n\
+\r\n"
 
 #ifndef TRUE
 #define TRUE    1
@@ -32,11 +31,22 @@ int SocketDataAvailableP(int socket, int timeout);
 int SendSocketData(int socket, char *buf, int len);
 int ReceiveSocketData(int socket, char *buf, int len);
 
+uint8_t image[] = {
+ 0x00, 0x1b, 0xb7, 0x00, 0x00, 0xe1, 0x10, 0x00,
+ 0x3c, 0x00, 0x44, 0x00, 0x18, 0x00, 0x48, 0x00,
+ 0x2c, 0x00, 0x02, 0x00, 0x08, 0x00, 0x00, 0x00,
+ 0x36, 0x38, 0x1a, 0xe3, 0x36, 0x38, 0x1b, 0xe3,
+ 0xea, 0x61, 0x60, 0x3f, 0xb6, 0x36, 0x38, 0x1a,
+ 0xe3, 0x3f, 0xb4, 0x60, 0x3f, 0xd4, 0x4b, 0x3f,
+ 0x91, 0x35, 0xc0, 0x37, 0x00, 0xf6, 0xec, 0x23,
+ 0x04, 0x71, 0x32, 0x00,
+};
+
 /* main - the main function */
 int main(int argc, char *argv[])
 {
-    int xbee, cnt, next, i, j;
-    char buf[1024], packet[PACKET_SIZE];
+    char buf[1024];
+    int xbee, cnt;
     
     if ((xbee = ConnectSocket(IPADDR, PORT)) < 0) {
         printf("Failed to connect to %s:%d\n", IPADDR, PORT);
@@ -44,24 +54,15 @@ int main(int argc, char *argv[])
     }
     printf("Connected\n");
     
-    if (SendSocketData(xbee, POST_REQUEST, sizeof(POST_REQUEST) - 1) < 0) {
+    cnt = sprintf(buf, POST_REQUEST, (int)sizeof(image));
+    memcpy(&buf[cnt], image, sizeof(image));
+    cnt += sizeof(image);
+    
+    if (SendSocketData(xbee, buf, cnt) < 0) {
         printf("Failed to send request header to %s:%d\n", IPADDR, PORT);
         return 1;
     }
-    printf("Header sent\n");
-
-    next = 0;
-    for (j = 0; j < 8; ++j) {
-        uint16_t *p = (uint16_t *)packet;
-        for (i = 0; i < sizeof(packet); i += 2)
-            *p++ = next++;
-        printf("Sending %04x\n", next & 0xffff);
-        if (SendSocketData(xbee, packet, sizeof(packet)) < 0) {
-            printf("Failed to send request data to %s:%d\n", IPADDR, PORT);
-            return 1;
-        }
-    }
-    printf("Data sent\n");
+    printf("Request sent\n");
     
     if ((cnt = ReceiveSocketData(xbee, buf, sizeof(buf))) < 0) {
         printf("Failed to receive data from %s:%d\n", IPADDR, PORT);
