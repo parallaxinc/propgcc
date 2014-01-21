@@ -103,7 +103,7 @@ int main(void)
         if ((frame = XbeeFrame_recvframe(&mailbox, &length)) != NULL) {
         
             printf("[RX]");
-            show_frame(frame, length);
+            //show_frame(frame, length);
             
             /* handle IPv4 packets received from the Xbee */
             if (frame[0] == ID_IPV4RX)
@@ -223,10 +223,13 @@ void handle_ipv4_frame(XbeeFrame_t *mbox, uint8_t *frame, int length)
     
     if (match("XABS"))
     {
-        // COMMAND: XABS PIN # [HIGH|LOW|TOGGLE|INPUT]
         if(find("\r\n\r\n"))
         { // got message body
             skip_white();
+
+            //
+            // COMMAND: XABS PIN # [HIGH|LOW|TOGGLE|INPUT]
+            //
             if (match("PIN"))
             { // got pin
                 skip_spaces();

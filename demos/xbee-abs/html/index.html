@@ -13,14 +13,14 @@
     <input type="text"   id="ipaddr"  class="ctext"   size="16" value="192.168.1.103" />
 <!--
     <input type="text"   id="port"    class="ctext"   size="4"  value="8086" />
--->
     <input type="button" id="clr_btn" class="buttons" value="CLEAR"
         onclick='clearText();' title="Clear text box." />
+-->
     <input type="button" id="helobtn" class="buttons" value="HELLO"
         onclick='hello();'     title="Say hello bot." />
+<!--
     <input type="button" id="testbtn" class="buttons" value="LEDS" 
         onclick='toggleLeds();'  title="Toggle LEDs." />
-<!--
     <input type="button" id="stopbtn" class="buttons" value="STOP" 
         onclick='stopBot();'   title="Stop the bot." />
 -->
@@ -50,17 +50,11 @@
     >
     </div>
 
-    <div id="DOT_LED"   class="dotled" title="DO LED"
-        onclick='shineLED("DOT_LED");'
-    >
+    <div id="DOT_LED"   class="dotled" title="DO LED" >
     </div>
-    <div id="DIN_LED"   class="dinled" title="DI LED"
-        onclick='shineLED("DIN_LED");'
-    >
+    <div id="DIN_LED"   class="dinled" title="DI LED" >
     </div>
-    <div id="PWR_LED"   class="pwrled" title="PWR LED"
-        onclick='shineLED("PWR_LED");'
-    >
+    <div id="PWR_LED"   class="pwrled" title="PWR LED" >
     </div>
 
     <img id="shine1" class="shine1" src="images/shine.png" style="visibility:hidden" />
@@ -68,6 +62,6 @@
 
 </div>
 <div>
-    <textarea id="response" rows="5" cols="80" style="width:99%" value="" ></textarea>
+    <textarea id="response" rows="5" cols="40" style="width:99%" value="" ></textarea>
 </div>
 </body>

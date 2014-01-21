@@ -39,8 +39,20 @@ function newCORSRequest(method, url)
     return xhr;
 }
 
-
 function hello()
+{
+    var d26led= document.getElementById("D26_LED");
+    var d27led= document.getElementById("D27_LED");
+
+    sendHello();
+
+    sendCommand("PIN 26 LOW");
+    d26led.style.backgroundColor = "gray";
+    sendCommand("PIN 27 LOW");
+    d27led.style.backgroundColor = "gray";
+}
+
+function sendHello()
 {
     texta = document.getElementById("response");
     ipaddr= document.getElementById("ipaddr");
@@ -56,11 +68,13 @@ function hello()
             throw new Error('CORS not supported');
         }
         xhr.onreadystatechange=function() {
+            startDinTimer();
             if (xhr.readyState==4 && xhr.status==200) {
                 texta.value += xhr.responseText;
             }
         }
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.setRequestHeader("Content-Type", "text/plain");
+        startDotTimer();
         xhr.send();
     }
     catch (err) {
@@ -84,13 +98,15 @@ function sendCommand(cmd)
             throw new Error('CORS not supported');
         }
         xhr.onreadystatechange=function() {
-            texta.value += "\n" + xhr.readyState + " " + xhr.status + " ";
-            texta.value += xhr.statusText + " " + xhr.responseText;
+            startDinTimer();
             if (xhr.readyState==4 && xhr.status==200) {
+                texta.value += "\n" + xhr.readyState + " " + xhr.status + " ";
+                texta.value += xhr.statusText + " " + xhr.responseText;
                 texta.value += " Done";
             }
         }
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.setRequestHeader("Content-Type", "text/plain");
+        startDotTimer();
         xhr.send(cmd);
     }
     catch (err) {
