@@ -11,7 +11,7 @@ xbeeframe_driver.o
 
 ABSERV=xbee-abserv.elf
 
-all:	$(CONFIG) $(LOADER) $(ABSERV) # $(TEST)
+all:	Makefile $(ABSERV)
 
 %.dat:	%.spin
 	@spin2cpp --dat -o $@ $<
