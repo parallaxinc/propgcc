@@ -1,0 +1,124 @@
+body {
+    background-color: moccasin;
+    background-color: #FFCB73;
+    background-color: #F0B350;
+    background-color: sandybrown;
+    background-color: #F0C37B;
+}
+.header {
+    width: 600px;
+    height: 29px;
+}
+.canvas {
+    width: 600px;
+    height: 600px;
+    background: url(images/abs2.png);
+    background-size: 600px 600px;
+    background-repeat: no-repeat;
+}
+.foot {
+    width: 600px;
+    height: 100px;
+}
+.ctext {
+    text-align: center;
+}
+.buttons {
+    background-color: #925D08;
+    background-color: #A87E38;
+    background-color: #E19419;
+    background-color: wheat;
+    color: black;
+}
+.uarrow {
+    position: absolute;
+    width:  75px;
+    height: 80px;
+    top: 50px;
+    left: 263px;
+}
+.darrow {
+    position: absolute;
+    width:  75px;
+    height: 80px;
+    top: 540px;
+    left: 263px;
+}
+.larrow {
+    position: absolute;
+    width:  80px;
+    height: 75px;
+    top:  234px;
+    left: 59px;
+}
+.rarrow {
+    position: absolute;
+    width:  80px;
+    height: 75px;
+    top:  234px;
+    left: 460px;
+}
+.shine1 {
+    position: absolute;
+    width:  19px;
+    height: 19px;
+    top:  548px;
+    left: 385px;
+}
+.shine2 {
+    position: absolute;
+    width:  30px;
+    height: 30px;
+    top:  542px;
+    left: 380px;
+}
+.dotled {
+    cursor: pointer;
+    position: absolute;
+    background-color: gray;
+    background-color: yellow;
+    width:  4px;
+    height: 8px;
+    left: 296px;
+    top:  435px;
+}
+.dinled {
+    cursor: pointer;
+    position: absolute;
+    background-color: gray;
+    background-color: yellow;
+    width:  4px;
+    height: 8px;
+    left: 296px;
+    top:  424px;
+}
+.d27led {
+    cursor: pointer;
+    position: absolute;
+    background-color: yellow;
+    background-color: gray;
+    width:  4px;
+    height: 8px;
+    top:  193px;
+    left: 385px;
+}
+.d26led {
+    cursor: pointer;
+    position: absolute;
+    background-color: yellow;
+    background-color: gray;
+    width:  4px;
+    height: 8px;
+    top:  203px;
+    left: 385px;
+}
+.pwrled {
+    cursor: pointer;
+    position: absolute;
+    background-color: gray;
+    background-color: lime;
+    width:  6px;
+    height: 10px;
+    left: 396px;
+    top:  299px;
+}

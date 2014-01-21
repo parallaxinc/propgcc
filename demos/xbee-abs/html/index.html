@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ABS Wifi Demo</title>
+    <link rel="stylesheet" type="text/css" href="cssAbsDemo.css">
+    <script language="javascript" src="shine.js"></script>
+    <script language="javascript" src="events.js"></script>
+</head>
+
+<body>
+<div class="header">
+    <input type="text"   id="ipaddr"  class="ctext"   size="16" value="192.168.1.103" />
+<!--
+    <input type="text"   id="port"    class="ctext"   size="4"  value="8086" />
+-->
+    <input type="button" id="clr_btn" class="buttons" value="CLEAR"
+        onclick='clearText();' title="Clear text box." />
+    <input type="button" id="helobtn" class="buttons" value="HELLO"
+        onclick='hello();'     title="Say hello bot." />
+    <input type="button" id="testbtn" class="buttons" value="LEDS" 
+        onclick='toggleLeds();'  title="Toggle LEDs." />
+<!--
+    <input type="button" id="stopbtn" class="buttons" value="STOP" 
+        onclick='stopBot();'   title="Stop the bot." />
+-->
+</div>
+
+<div id="canvas" class="canvas">
+
+    <img id="up"    class="uarrow" src="images/uparrow.png"     title="Forward"
+        onclick='clickUpArrow();'
+    />
+    <img id="down"  class="darrow" src="images/downarrow.png"   title="Reverse"
+        onclick='clickDownArrow();'
+    />
+    <img id="left"  class="larrow" src="images/leftarrow.png"   title="Turn Left"
+        onclick='clickLeftArrow();'
+    />
+    <img id="right" class="rarrow" src="images/rightarrow.png"  title="Turn Right"
+        onclick='clickRightArrow();'
+    />
+
+    <div id="D26_LED"   class="d26led" title="D26 LED"
+        onclick='clickLED("D26_LED");'
+    >
+    </div>
+    <div id="D27_LED"   class="d27led" title="D27 LED"
+        onclick='clickLED("D27_LED");'
+    >
+    </div>
+
+    <div id="DOT_LED"   class="dotled" title="DO LED"
+        onclick='shineLED("DOT_LED");'
+    >
+    </div>
+    <div id="DIN_LED"   class="dinled" title="DI LED"
+        onclick='shineLED("DIN_LED");'
+    >
+    </div>
+    <div id="PWR_LED"   class="pwrled" title="PWR LED"
+        onclick='shineLED("PWR_LED");'
+    >
+    </div>
+
+    <img id="shine1" class="shine1" src="images/shine.png" style="visibility:hidden" />
+    <img id="shine2" class="shine2" src="images/shine.png" style="visibility:hidden" />
+
+</div>
+<div>
+    <textarea id="response" rows="5" cols="80" style="width:99%" value="" ></textarea>
+</div>
+</body>
