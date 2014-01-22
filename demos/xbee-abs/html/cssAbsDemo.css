@@ -30,33 +30,85 @@ body {
     background-color: wheat;
     color: black;
 }
+.stop {
+    position: absolute;
+    cursor: pointer;
+    width:  60px;
+    height: 60px;
+    top:  300px;
+    left: 270px;
+}
 .uarrow {
     position: absolute;
+    cursor: pointer;
     width:  75px;
     height: 80px;
     top: 50px;
     left: 263px;
 }
+.fwdspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:  28px;
+    height:  0px;
+    top:   120px;
+    left:  286px;
+}
 .darrow {
     position: absolute;
+    cursor: pointer;
     width:  75px;
     height: 80px;
     top: 540px;
     left: 263px;
 }
+.revspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:  28px;
+    height:  0px;
+    top:   540px;
+    left:  286px;
+}
 .larrow {
     position: absolute;
+    cursor: pointer;
     width:  80px;
     height: 75px;
-    top:  234px;
+    top:  260px;
     left: 59px;
+}
+.lftspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:   0px;
+    height: 28px;
+    top:   284px;
+    left:  129px;
 }
 .rarrow {
     position: absolute;
+    cursor: pointer;
     width:  80px;
     height: 75px;
-    top:  234px;
-    left: 460px;
+    top:  260px;
+    left: 461px;
+}
+.rgtspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:   0px;
+    height: 28px;
+    top:   284px;
+    left:  462px;
 }
 .shine1 {
     position: absolute;
@@ -72,15 +124,25 @@ body {
     top:  542px;
     left: 380px;
 }
+.srvled {
+    cursor: cursor;
+    position: absolute;
+    background-color: lime;
+    background-color: gray;
+    width:   7px;
+    height:  9px;
+    left:  396px;
+    top:   288px;
+}
 .pwrled {
     cursor: cursor;
     position: absolute;
     background-color: gray;
     background-color: lime;
     width:   7px;
-    height: 12px;
+    height:  9px;
     left:  396px;
-    top:   298px;
+    top:   300px;
 }
 .dinled {
     cursor: cursor;

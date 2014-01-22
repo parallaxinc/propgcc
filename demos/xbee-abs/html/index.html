@@ -18,11 +18,17 @@
 -->
     <input type="button" id="helobtn" class="buttons" value="HELLO"
         onclick='hello();'     title="Say hello bot." />
+    <input type="button" id="d26btn" class="buttons"  value="LED26" 
+        onclick='clickLED("D26_LED");'  title="Toggle P26 LEDs." />
+    <input type="button" id="d27btn" class="buttons"  value="LED27" 
+        onclick='clickLED("D27_LED");'  title="Toggle P27 LEDs." />
 <!--
     <input type="button" id="testbtn" class="buttons" value="LEDS" 
         onclick='toggleLeds();'  title="Toggle LEDs." />
+    <input type="button" id="stopbtn" class="buttons" value="START" 
+        onclick='clickStart();'     title="Start the servos." />
     <input type="button" id="stopbtn" class="buttons" value="STOP" 
-        onclick='stopBot();'   title="Stop the bot." />
+        onclick='clickStop();'      title="Stop the servos." />
 -->
 </div>
 
@@ -31,14 +37,30 @@
     <img id="up"    class="uarrow" src="images/uparrow.png"     title="Forward"
         onclick='clickUpArrow();'
     />
+    <div id="FWD_SPD"   class="fwdspd" title="Forward speed."
+        onclick='clickUpArrow();'>
+    </div>
     <img id="down"  class="darrow" src="images/downarrow.png"   title="Reverse"
         onclick='clickDownArrow();'
     />
+    <div id="REV_SPD"   class="revspd" title="Reverse speed."
+        onclick='clickDownArrow();' >
+    </div>
     <img id="left"  class="larrow" src="images/leftarrow.png"   title="Turn Left"
         onclick='clickLeftArrow();'
     />
+    <div id="LFT_SPD"   class="lftspd" title="Left speed."
+        onclick='clickLeftArrow();' >
+    </div>
     <img id="right" class="rarrow" src="images/rightarrow.png"  title="Turn Right"
         onclick='clickRightArrow();'
+    />
+    <div id="RGT_SPD"   class="rgtspd" title="Right speed."
+        onclick='clickRightArrow();' >
+    </div>
+
+    <img id="stop" class="stop" src="images/stop.png"           title="Stop Bot"
+        onclick='stopBot();'
     />
 
     <div id="D26_LED"   class="d26led" title="D26 LED"
@@ -54,7 +76,9 @@
     </div>
     <div id="DIN_LED"   class="dinled" title="DI LED" >
     </div>
-    <div id="PWR_LED"   class="pwrled" title="PWR LED" >
+    <div id="PWR_LED"   class="pwrled" title="Power LED" >
+    </div>
+    <div id="SRV_LED"   class="srvled" title="Servo Power LED" >
     </div>
 
     <img id="shine1" class="shine1" src="images/shine.png" style="visibility:hidden" />
@@ -62,6 +86,6 @@
 
 </div>
 <div>
-    <textarea id="response" rows="5" cols="40" style="width:580px" value="" ></textarea>
+    <textarea id="response" rows="5" cols="40" style="width:595px" value="" ></textarea>
 </div>
 </body>

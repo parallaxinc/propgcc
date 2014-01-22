@@ -94,6 +94,7 @@ function dinTimer()
         }
     }
     else {
+        dinled.style.backgroundColor = "gray";
         window.clearInterval(dinTimerVar);
     }
     dinCount--;
@@ -110,6 +111,7 @@ function dotTimer()
         }
     }
     else {
+        dotled.style.backgroundColor = "gray";
         window.clearInterval(dotTimerVar);
     }
     dotCount--;
