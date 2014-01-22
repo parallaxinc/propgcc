@@ -8,7 +8,7 @@
 #include "xbeeframe.h"
 #include "xbeeload.h"
 
-//#define MULTI_SOCKETS
+#define MULTI_SOCKETS
 
 #define BAD_REQUEST_RESPONSE "\
 HTTP/1.1 400 Bad Request\r\n\
@@ -324,6 +324,7 @@ void send_response(Socket_t *sock, uint8_t *data, int length)
     uint8_t frame[1024];
     length = prepare_response(sock, frame, data, length);
     XbeeFrame_sendframe(mailbox, frame, length);
+    sock->flags &= ~SF_BUSY;
 }
 
 static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length)
