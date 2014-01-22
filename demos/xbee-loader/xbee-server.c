@@ -17,8 +17,10 @@ HTTP/1.1 400 Bad Request\r\n\
 #define XBEE_TX     12
 #define XBEE_BAUD   9600
 
-#define ID_IPV4TX   0x20
-#define ID_IPV4RX   0xb0
+#define ID_IPV4TX       0x20
+#define ID_ATRESPONSE   0x88
+#define ID_TXSTATUS     0x89
+#define ID_IPV4RX       0xb0
 
 #define MAX_SOCKETS 4
 
@@ -43,6 +45,20 @@ typedef struct {
     uint8_t data[1];
 } IPV4RX_header_t;
 
+typedef struct {
+    uint8_t apiid;
+    uint8_t frameid;
+    uint8_t status;
+} TXStatus_t;
+
+typedef struct {
+    uint8_t apiid;
+    uint8_t frameid;
+    uint8_t command[2];
+    uint8_t status;
+    uint8_t value[1];
+} ATResponse_t;
+
 #define HUBSIZE         (32 * 1024)
 #define RESPONSESIZE    1024
 
@@ -53,9 +69,12 @@ XbeeFrame_t *mailbox = (XbeeFrame_t *)(HUBSIZE - sizeof(XbeeFrame_t));
 uint8_t *response = (uint8_t *)HUBSIZE - sizeof(XbeeFrame_t) - RESPONSESIZE;
 
 Socket_t sockets[MAX_SOCKETS];
+uint8_t txframeid = 0x00;
 
 /* prototypes */
 static void handle_ipv4_frame(IPV4RX_header_t *frame, int length);
+static void handle_txstatus_frame(TXStatus_t *frame, int length);
+static void handle_atresponse_frame(ATResponse_t *frame, int length);
 static void parse_request(Socket_t *sock);
 static void parse_header(Socket_t *sock);
 static void handle_content(Socket_t *sock);
@@ -95,9 +114,20 @@ int main(void)
             printf("[RX]");
             show_frame(frame, length);
             
-            /* handle IPv4 packets received from the Xbee */
-            if (frame[0] == ID_IPV4RX)
+            /* handle the frame */
+            switch (frame[0]) {
+            case ID_IPV4RX:
                 handle_ipv4_frame((IPV4RX_header_t *)frame, length);
+                break;
+            case ID_ATRESPONSE:
+                handle_atresponse_frame((ATResponse_t *)frame, length);
+                break;
+            case ID_TXSTATUS:
+                handle_txstatus_frame((TXStatus_t *)frame, length);
+                break;
+            default:
+                break;
+            }
                 
             XbeeFrame_release(mailbox);
         }
@@ -113,13 +143,14 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
     int remaining, len, i;
     uint8_t *ptr;
     
-    printf("ip %d.%d.%d.%d, dst %d, src %d\n", 
+    printf("ip %d.%d.%d.%d, dst %d, src %d, protocol %d\n", 
             frame->srcaddr[0],
             frame->srcaddr[1],
             frame->srcaddr[2],
             frame->srcaddr[3],
             (frame->dstport[0] << 8) | frame->dstport[1],
-            (frame->srcport[0] << 8) | frame->srcport[1]);
+            (frame->srcport[0] << 8) | frame->srcport[1],
+            frame->protocol);
     
     /* find a socket for this connection */
     for (i = 0; i < MAX_SOCKETS; ++i) {
@@ -252,6 +283,29 @@ static void handle_content(Socket_t *sock)
     sock->i = 0;
 }
 
+static void handle_atresponse_frame(ATResponse_t *frame, int length)
+{
+    if (frame->status == 0x00 && strncmp((char *)frame->command, "MY", 2) == 0)
+        printf("IP Address: %d.%d.%d.%d\n", frame->value[0], frame->value[1], frame->value[2], frame->value[3]);
+}
+
+static void handle_txstatus_frame(TXStatus_t *frame, int length)
+{
+    printf("TX Status: Frame %02x, ", frame->frameid);
+    switch (frame->status) {
+    case 0x00:  printf("Success\n"); break;
+    case 0x03:  printf("Transmission purged\n"); break;
+    case 0x04:  printf("Physical error\n"); break;
+    case 0x21:  printf("TX64 transmission timed out\n"); break;
+    case 0x32:  printf("Resource error\n"); break;
+    case 0x74:  printf("Message too long\n"); break;
+    case 0x76:  printf("Attempt to create client socket failed\n"); break;
+    case 0x77:  printf("TCP connection does not exist\n"); break;
+    case 0x78:  printf("Source port on UDP transmission doesn't match listening port\n"); break;
+    default:    printf("Unknown status %02x\n", frame->status); break;
+    }
+}
+
 void send_response(Socket_t *sock, uint8_t *data, int length)
 {
     uint8_t frame[1024];
@@ -264,17 +318,17 @@ static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int l
     IPV4TX_header_t *txhdr = (IPV4TX_header_t *)frame;
 
     txhdr->apiid = ID_IPV4TX;
-    txhdr->frameid = 0x42;
+    txhdr->frameid = ++txframeid;
     memcpy(&txhdr->dstaddr, &sock->id.srcaddr, 4);
     memcpy(&txhdr->dstport, &sock->id.srcport, 2);
     memcpy(&txhdr->srcport, &sock->id.dstport, 2);
     txhdr->protocol = sock->protocol;
-    txhdr->options = 0x00; // don't terminate after send
-    //txhdr->options = 0x01; // terminate after send
+    //txhdr->options = 0x00; // don't terminate after send
+    txhdr->options = 0x01; // terminate after send
     memcpy(txhdr->data, data, length);
     length += (int)&((IPV4TX_header_t *)0)->data;
 
-    printf("[TX]");
+    printf("[TX %02x]", txframeid);
     show_frame(frame, length);
     
     return length;
