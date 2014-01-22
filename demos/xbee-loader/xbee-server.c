@@ -8,6 +8,8 @@
 #include "xbeeframe.h"
 #include "xbeeload.h"
 
+//#define MULTI_SOCKETS
+
 #define BAD_REQUEST_RESPONSE "\
 HTTP/1.1 400 Bad Request\r\n\
 \r\n"
@@ -22,7 +24,11 @@ HTTP/1.1 400 Bad Request\r\n\
 #define ID_TXSTATUS     0x89
 #define ID_IPV4RX       0xb0
 
+#ifdef MULTI_SOCKETS
 #define MAX_SOCKETS 4
+#else
+#define MAX_SOCKETS 1
+#endif
 
 typedef struct {
     uint8_t apiid;
@@ -139,7 +145,9 @@ int main(void)
 static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
 {
     Socket_t *sock = sockets;
-    //Socket_t *free = NULL;
+#ifdef MULTI_SOCKETS
+    Socket_t *free = NULL;
+#endif
     int remaining, len, i;
     uint8_t *ptr;
     
@@ -158,18 +166,23 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
             if (memcmp(&sock->id, &frame->srcaddr, sizeof(sock->id)) == 0)
                 break;
         }
-        //else if (!free)
-        //    free = sock;
+#ifdef MULTI_SOCKETS
+        else if (!free)
+            free = sock;
+#endif
         ++sock;
     }
     
     /* check for needing to open a new socket */
     if (i >= MAX_SOCKETS) {
-        //if (!(sock = free)) {
-        //    printf("No free sockets\n");
-        //    return; // no sockets available, ignore frame
-        //}
+#ifdef MULTI_SOCKETS
+        if (!(sock = free)) {
+            printf("No free sockets\n");
+            return; // no sockets available, ignore frame
+        }
+#else
         sock = &sockets[0];
+#endif
         sock->flags |= SF_BUSY;
         memcpy(&sock->id, frame->srcaddr, sizeof(sock->id));
         sock->protocol = frame->protocol;
