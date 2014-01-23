@@ -96,11 +96,13 @@ function sendCommand(cmd)
 
     var method = "XABS";
     //var url = "http://"+ipaddr.value+":"+port.value;
-    //var url = "http://"+ipaddr.value;
+    var url = "http://"+ipaddr.value;
+    /*
     while(cmd.indexOf(" ") > -1) {
         cmd = cmd.replace(" ", "/");
     }
     var url = "http://"+ipaddr.value+"/"+cmd;
+     */
 
     try {
         var xhr = newCORSRequest(method, url);
@@ -117,8 +119,91 @@ function sendCommand(cmd)
         }
         xhr.setRequestHeader("Content-Type", "text/plain");
         startDotTimer();
-        //xhr.send(cmd);
-        xhr.send();
+        xhr.send(cmd);
+        //xhr.send();
+    }
+    catch (err) {
+        texta.value += "\nXHR Request Exception "+err;
+    }
+}
+
+function clickBattery()
+{
+    ipaddr= document.getElementById("ipaddr");
+    texta = document.getElementById("response");
+
+    var battery = document.getElementById("battery");
+    var batchg  = document.getElementById("batchg");
+    var batval  = document.getElementById("batval");
+    var srvled  = document.getElementById("SRV_LED");
+
+    var method = "XABS";
+    var url = "http://"+ipaddr.value;
+
+    try {
+        var xhr = newCORSRequest(method, url);
+        if(!xhr) {
+            throw new Error('CORS not supported');
+        }
+        xhr.onreadystatechange=function() {
+            var adc;
+            startDinTimer();
+            if (xhr.readyState==4 && xhr.status==200) {
+                texta.value += "\n" + xhr.readyState + " " + xhr.status + " ";
+                texta.value += xhr.statusText + " " + xhr.responseText;
+                texta.value += " Done";
+                var btop = battery.offsetTop;
+                var bhgt = battery.offsetHeight;
+                adc = parseInt(xhr.responseText);
+                batchg.style.height = ((adc*2.0*bhgt*0.90)/4096.0)+"px";
+                batchg.style.top = (btop+bhgt*0.95-batchg.offsetHeight)+"px";
+
+                if(adc) {
+                    srvled.style.backgroundColor = "lime";
+                } else {
+                    srvled.style.backgroundColor = "gray";
+                }
+                batval.textContent = (adc*15.0/4096.0).toPrecision(2)+"V";
+            }
+        }
+        xhr.setRequestHeader("Content-Type", "text/plain");
+        startDotTimer();
+        xhr.send("ADC 0");
+    }
+    catch (err) {
+        texta.value += "\nXHR Request Exception "+err;
+    }
+}
+
+function clickSolarCell()
+{
+    ipaddr= document.getElementById("ipaddr");
+    texta = document.getElementById("response");
+
+    var solval  = document.getElementById("solval");
+
+    var method = "XABS";
+    var url = "http://"+ipaddr.value;
+
+    try {
+        var xhr = newCORSRequest(method, url);
+        if(!xhr) {
+            throw new Error('CORS not supported');
+        }
+        xhr.onreadystatechange=function() {
+            var adc;
+            startDinTimer();
+            if (xhr.readyState==4 && xhr.status==200) {
+                texta.value += "\n" + xhr.readyState + " " + xhr.status + " ";
+                texta.value += xhr.statusText + " " + xhr.responseText;
+                texta.value += " Done";
+                adc = parseInt(xhr.responseText);
+                solval.textContent = (adc*5.1/4096.0).toPrecision(3)+"mV";
+            }
+        }
+        xhr.setRequestHeader("Content-Type", "text/plain");
+        startDotTimer();
+        xhr.send("ADC 3");
     }
     catch (err) {
         texta.value += "\nXHR Request Exception "+err;
@@ -277,5 +362,4 @@ function clickRightArrow()
 
     sendCommand("SERVO RUN "+left+" "+right);
 }
-
 
