@@ -21,6 +21,7 @@
 
 char ssid[128], ssid_cmd[32];
 char passwd[128], passwd_cmd[32];
+char enc_cmd[32];
 
 struct {
     char *cmd;
@@ -35,7 +36,7 @@ struct {
 #else
 {   "ATCE2\r",      "OK",   1,              "Disable Soft AP mode"  },
 {   passwd_cmd,     "OK",   1,              "Set password"          },
-{   "ATEE2\r",      "OK",   1,              "Set WPA2 encryption"   },
+{   enc_cmd,        "OK",   1,              "Set encryption mode"   },
 #endif
 {   "ATDO0\r",      "OK",   1,              "Disable device cloud"  },
 {   "ATC050\r",     "OK",   1,              "Set port to 80"        },
@@ -57,12 +58,39 @@ void wait(int ms);
 int main(void)
 {
     int result = 1; // the glass is half empty
+    int need_password = 1;
     FdSerial_t xbee;
+    char buf[128];
     int i;
 
-    /* get the SSID and password */
+    /* get encryption type */
+    while (1) {
+        printf("Encryption type (none, wep, wpa, or wpa2)? "); gets(buf);
+        if (strcmp(buf, "none") == 0) {
+            strcpy(enc_cmd, "ATEE0\r");
+            need_password = 0;
+            break;
+        }
+        if (strcmp(buf, "wpa") == 0) {
+            strcpy(enc_cmd, "ATEE1\r");
+            break;
+        }
+        if (strcmp(buf, "wpa2") == 0) {
+            strcpy(enc_cmd, "ATEE2\r");
+            break;
+        }
+        if (strcmp(buf, "wep") == 0) {
+            strcpy(enc_cmd, "ATEE3\r");
+            break;
+        }
+    }
+    
+    /* get the SSID and password if encryption is enabled */
     printf("SSID? "); gets(ssid);
-    printf("Password? "); gets(passwd);
+    if (need_password) {
+        printf("Password? ");
+        gets(passwd);
+    }
     
     /* get the number of clock ticks per millisecond */
     ticks_per_ms = CLKFREQ / 1000;

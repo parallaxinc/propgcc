@@ -80,7 +80,11 @@ entry                   mov     t1, par             'get init structure address
                         cmp     count, #0 wz
               if_nz     call    #copy_data
               if_z      jmp     #load_done
-              
+                        jmp     #wait_for_frame
+
+release_frame           mov     t1, #STATUS_IDLE
+                        wrlong  t1, rx_status_ptr
+                        
 wait_for_frame          rdlong  t1, rx_status_ptr
                         cmp     t1, #STATUS_IDLE wz
               if_z      jmp     #wait_for_frame
@@ -90,13 +94,13 @@ wait_for_frame          rdlong  t1, rx_status_ptr
                         
                         rdbyte  t1, src
                         cmp     t1, #IPV4RX wz
-              if_nz     jmp     #wait_for_frame     'ignore frames other than IPV4RX
+              if_nz     jmp     #release_frame      'ignore frames other than IPV4RX
               
                         add     src, #IPV4RX_DATA_OFFSET
                         sub     count, #IPV4RX_DATA_OFFSET wz
               if_z      jmp     #wait_for_frame
                         call    #copy_data
-              if_nz     jmp     #wait_for_frame
+              if_nz     jmp     #release_frame
 
 load_done               ' send the response
                         wrlong  response, tx_frame_ptr
