@@ -2,6 +2,7 @@
 #define __XBEE_SERVER_H__
 
 #include <stdint.h>
+#include "xbeeframe.h"
 
 #ifndef TRUE
 #define TRUE    1
@@ -34,6 +35,8 @@ struct Socket_t {
     uint8_t protocol;
     void (*handler)(Socket_t *sock, int phase);
     uint8_t content[MAX_CONTENT + 1];
+    uint8_t *frame_ptr;
+    int frame_len;
     int length;
     int i;
 };
@@ -41,6 +44,7 @@ struct Socket_t {
 enum {
     HP_REQUEST,
     HP_HEADER,
+    HP_CONTENT_START,
     HP_CONTENT
 };
 
@@ -49,6 +53,10 @@ typedef struct {
     void (*handler)(Socket_t *sock, int phase);
 } MethodBinding_t;
 
+extern XbeeFrame_t *mailbox;
+extern uint8_t *response;
+
 void send_response(Socket_t *sock, uint8_t *data, int length);
+int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length);
 
 #endif

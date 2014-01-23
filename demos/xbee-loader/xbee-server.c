@@ -89,7 +89,6 @@ static void handle_atresponse_frame(ATResponse_t *frame, int length);
 static void parse_request(Socket_t *sock);
 static void parse_header(Socket_t *sock);
 static void handle_content(Socket_t *sock);
-static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length);
 static char *match(Socket_t *sock, char *str);
 static char *skip_spaces(char *str);
 #ifdef FRAME_DEBUG
@@ -234,7 +233,16 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
 #ifdef STATE_MACHINE_DEBUG
                         printf("Found content\n");
 #endif
-                        sock->state = (term == '\r' ? SS_CONTENT_NL : SS_CONTENT);
+                        if (term == '\r')
+                            sock->state = SS_CONTENT_NL;
+                        else {
+                            if (sock->handler) {
+                                sock->frame_ptr = ptr;
+                                sock->frame_len = len;
+                                (*sock->handler)(sock, HP_CONTENT_START);
+                            }
+                            sock->state = SS_CONTENT;
+                        }
                     }
                 }
                 else {
@@ -256,11 +264,16 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
             break;
         case SS_SKIP_NL:
         case SS_CONTENT_NL:
-            sock->state = (sock->state == SS_SKIP_NL ? SS_HEADER : SS_CONTENT);
             if (*ptr == '\n') {
                 ++ptr;
                 --len;
             }
+            if (sock->state == SS_CONTENT_NL && sock->handler) {
+                sock->frame_ptr = ptr;
+                sock->frame_len = len;
+                (*sock->handler)(sock, HP_CONTENT_START);
+            }
+            sock->state = (sock->state == SS_SKIP_NL ? SS_HEADER : SS_CONTENT);
             break;
         case SS_CONTENT:
             cnt = sock->length - sock->i;
@@ -270,7 +283,7 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
             if (len < cnt)
                 cnt = len;
             memcpy(&sock->content[sock->i], ptr, cnt);
-            sock->i += len;
+            sock->i += cnt;
             ptr += cnt;
             len -= cnt;
             if (len > 0 && sock->i >= sock->length)
@@ -368,7 +381,7 @@ void send_response(Socket_t *sock, uint8_t *data, int length)
     sock->flags &= ~SF_BUSY;
 }
 
-static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length)
+int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length)
 {
     IPV4TX_header_t *txhdr = (IPV4TX_header_t *)frame;
     char *ptr = (char *)data;
