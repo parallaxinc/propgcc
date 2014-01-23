@@ -66,20 +66,20 @@ int main(void)
     /* get encryption type */
     while (1) {
         printf("Encryption type (none, wep, wpa, or wpa2)? "); gets(buf);
-        if (strcmp(buf, "none") == 0) {
+        if (strcasecmp(buf, "none") == 0) {
             strcpy(enc_cmd, "ATEE0\r");
             need_password = 0;
             break;
         }
-        if (strcmp(buf, "wpa") == 0) {
+        if (strcasecmp(buf, "wpa") == 0) {
             strcpy(enc_cmd, "ATEE1\r");
             break;
         }
-        if (strcmp(buf, "wpa2") == 0) {
+        if (strcasecmp(buf, "wpa2") == 0) {
             strcpy(enc_cmd, "ATEE2\r");
             break;
         }
-        if (strcmp(buf, "wep") == 0) {
+        if (strcasecmp(buf, "wep") == 0) {
             strcpy(enc_cmd, "ATEE3\r");
             break;
         }
