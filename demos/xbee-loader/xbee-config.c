@@ -142,7 +142,8 @@ int expect(FdSerial_t *fds, char *str)
             return FALSE;
         }
 #ifdef DEBUG_AT
-        printf(" %02x", ch); fflush(stdout);
+        printf(" %02x", ch);
+        fflush(stdout);
 #endif
         if (ch == '\r')
             break;

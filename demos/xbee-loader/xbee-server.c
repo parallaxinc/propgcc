@@ -10,6 +10,11 @@
 
 #define MULTI_SOCKETS
 
+//#define FRAME_DEBUG
+//#define STATE_MACHINE_DEBUG
+//#define SOCKET_DEBUG
+//#define STATUS_DEBUG
+
 #define BAD_REQUEST_RESPONSE "\
 HTTP/1.1 400 Bad Request\r\n\
 \r\n"
@@ -87,7 +92,9 @@ static void handle_content(Socket_t *sock);
 static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length);
 static char *match(Socket_t *sock, char *str);
 static char *skip_spaces(char *str);
+#ifdef FRAME_DEBUG
 static void show_frame(uint8_t *frame, int length);
+#endif
 
 /* main - the main routine */
 int main(void)
@@ -104,7 +111,7 @@ int main(void)
         return 1;
     }
     
-    printf("Getting our IP address\n");
+    /* get our IP address */
     frame[0] = 0x08;
     frame[1] = 0x01;
     frame[2] = 'M';
@@ -117,8 +124,10 @@ int main(void)
         int length;
         if ((frame = XbeeFrame_recvframe(mailbox, &length)) != NULL) {
         
-            printf("[RX]");
+#ifdef FRAME_DEBUG
+            printf("\n\n[RX]");
             show_frame(frame, length);
+#endif
             
             /* handle the frame */
             switch (frame[0]) {
@@ -148,9 +157,10 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
 #ifdef MULTI_SOCKETS
     Socket_t *free = NULL;
 #endif
-    int remaining, len, i;
+    int len, cnt, i;
     uint8_t *ptr;
     
+#ifdef SOCKET_DEBUG
     printf("ip %d.%d.%d.%d, dst %d, src %d, protocol %d\n", 
             frame->srcaddr[0],
             frame->srcaddr[1],
@@ -159,6 +169,7 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
             (frame->dstport[0] << 8) | frame->dstport[1],
             (frame->srcport[0] << 8) | frame->srcport[1],
             frame->protocol);
+#endif
     
     /* find a socket for this connection */
     for (i = 0; i < MAX_SOCKETS; ++i) {
@@ -191,7 +202,9 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
         sock->length = 0;
         sock->i = 0;
     }
+#ifdef SOCKET_DEBUG
     printf("Using socket %d\n", sock - sockets);
+#endif
     
     /* setup the frame parsing variables */
     ptr = frame->data;
@@ -213,12 +226,21 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
                 sock->content[sock->i] = '\0';
                 ++ptr;
                 --len;
-                if (sock->content[0] == '\0') {
-                    printf("Found content\n");
-                    sock->state = (term == '\r' ? SS_CONTENT_NL : SS_CONTENT);
+                if (sock->i == 0) {
+                    if (sock->state == SS_REQUEST) {
+                        printf("Missing request line\n");
+                    }
+                    else {
+#ifdef STATE_MACHINE_DEBUG
+                        printf("Found content\n");
+#endif
+                        sock->state = (term == '\r' ? SS_CONTENT_NL : SS_CONTENT);
+                    }
                 }
                 else {
+#ifdef STATE_MACHINE_DEBUG
                     printf("Found %s: %s\n", sock->state == SS_REQUEST ? "request" : "header", sock->content);
+#endif
                     switch (sock->state) {
                     case SS_REQUEST:
                         parse_request(sock);
@@ -241,13 +263,17 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
             }
             break;
         case SS_CONTENT:
-            remaining = sock->length - sock->i;
-            printf("length %d, remaining: %d\n", sock->length, remaining);
-            if (len > remaining)
-                len = remaining;
-            memcpy(&sock->content[sock->i], ptr, len);
+            cnt = sock->length - sock->i;
+#ifdef STATE_MACHINE_DEBUG
+            printf("length %d, remaining: %d\n", sock->length, cnt);
+#endif
+            if (len < cnt)
+                cnt = len;
+            memcpy(&sock->content[sock->i], ptr, cnt);
             sock->i += len;
-            if (sock->i >= sock->length)
+            ptr += cnt;
+            len -= cnt;
+            if (len > 0 && sock->i >= sock->length)
                 handle_content(sock);
             break;
         }
@@ -260,10 +286,12 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
 static void parse_request(Socket_t *sock)
 {
     MethodBinding_t *binding = NULL;
-    printf("Request: %s\n", sock->content);
+    printf("\nRequest: %s\n", sock->content);
     for (binding = methodBindings; binding->method != NULL; ++binding) {
         if (match(sock, binding->method)) {
+#ifdef REQUEST_DEBUG
             printf(" -- found handler for %s\n", binding->method);
+#endif
             sock->handler = binding->handler;
             (*sock->handler)(sock, HP_REQUEST);
             break;
@@ -276,7 +304,9 @@ static void parse_header(Socket_t *sock)
     char *p;
     if ((p = match(sock, "CONTENT-LENGTH:")) != NULL) {
         sock->length = atoi(skip_spaces(p));
+#ifdef REQUEST_DEBUG
         printf("Length: %d\n", sock->length);
+#endif
     }
     if (sock->handler)
         (*sock->handler)(sock, HP_HEADER);
@@ -284,8 +314,12 @@ static void parse_header(Socket_t *sock)
 
 static void handle_content(Socket_t *sock)
 {
+#ifdef STATE_MACHINE_DEBUG
     printf("Collected content:\n");
+#endif
+#ifdef FRAME_DEBUG
     show_frame(sock->content, sock->length);
+#endif
     if (sock->handler)
         (*sock->handler)(sock, HP_CONTENT);
     else
@@ -304,9 +338,16 @@ static void handle_atresponse_frame(ATResponse_t *frame, int length)
 
 static void handle_txstatus_frame(TXStatus_t *frame, int length)
 {
-    printf("TX Status: Frame %02x, ", frame->frameid);
+#ifndef STATUS_DEBUG
+    if (frame->status != 0x00)
+#endif
+        printf("TX Status: Frame %02x, ", frame->frameid);
     switch (frame->status) {
+#ifdef STATUS_DEBUG
     case 0x00:  printf("Success\n"); break;
+#else
+    case 0x00:  break;
+#endif
     case 0x03:  printf("Transmission purged\n"); break;
     case 0x04:  printf("Physical error\n"); break;
     case 0x21:  printf("TX64 transmission timed out\n"); break;
@@ -330,6 +371,13 @@ void send_response(Socket_t *sock, uint8_t *data, int length)
 static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length)
 {
     IPV4TX_header_t *txhdr = (IPV4TX_header_t *)frame;
+    char *ptr = (char *)data;
+    int len = length;
+    
+    printf("Response: ");
+    while (--len >= 0 && *ptr != '\r')
+        putchar(*ptr++);
+    putchar('\n');
 
     txhdr->apiid = ID_IPV4TX;
     txhdr->frameid = ++txframeid;
@@ -342,8 +390,10 @@ static int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int l
     memcpy(txhdr->data, data, length);
     length += (int)&((IPV4TX_header_t *)0)->data;
 
+#ifdef FRAME_DEBUG
     printf("[TX %02x]", txframeid);
     show_frame(frame, length);
+#endif
     
     return length;
 }
@@ -367,6 +417,7 @@ static char *skip_spaces(char *str)
     return str;
 }
 
+#ifdef FRAME_DEBUG
 static void show_frame(uint8_t *frame, int length)
 {
     int i;
@@ -383,3 +434,4 @@ static void show_frame(uint8_t *frame, int length)
     }
     printf("\"\n");
 }
+#endif

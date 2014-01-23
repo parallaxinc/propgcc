@@ -3,7 +3,7 @@
 #include <ctype.h>
 #include "xbee-server.h"
 
-#define OPTION_RESPONSE "\
+#define OPTIONS_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
 Access-Control-Allow-Origin: *\r\n\
 Access-Control-Allow-Methods: GET, POST, OPTIONS, XPOST, XLOAD\r\n\
@@ -39,12 +39,11 @@ Got rx request"
 static void handle_options_request(Socket_t *sock, int phase)
 {
     if (phase == HP_CONTENT)
-        send_response(sock, (uint8_t *)OPTION_RESPONSE, sizeof(OPTION_RESPONSE) - 1);
+        send_response(sock, (uint8_t *)OPTIONS_RESPONSE, sizeof(OPTIONS_RESPONSE) - 1);
 }
 
 static void handle_xpost_ld_request(Socket_t *sock, int phase)
 {
-    printf("Got xpost /ld request: %d\n", phase);
 #if 0
     XbeeLoadInit_t init;
     int i;
@@ -68,14 +67,12 @@ static void handle_xpost_ld_request(Socket_t *sock, int phase)
 
 static void handle_xpost_tx_request(Socket_t *sock, int phase)
 {
-    printf("Got xpost /tx request: %d\n", phase);
     if (phase == HP_CONTENT)
         send_response(sock, (uint8_t *)TX_RESPONSE, sizeof(TX_RESPONSE) - 1);
 }
 
 static void handle_xpost_rx_request(Socket_t *sock, int phase)
 {
-    printf("Got xpost /rx request: %d\n", phase);
     if (phase == HP_CONTENT)
         send_response(sock, (uint8_t *)RX_RESPONSE, sizeof(RX_RESPONSE) - 1);
 }
@@ -85,8 +82,6 @@ static void handle_xpost_request(Socket_t *sock, int phase)
     char *uri = (char *)sock->content;
     char *p;
     
-    printf("Got xpost request: %d\n", phase);
-
     /* skip over the method */
     while (*uri && !isspace(*uri))
         ++uri;

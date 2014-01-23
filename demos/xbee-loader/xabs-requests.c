@@ -5,7 +5,7 @@
 #include <propeller.h>
 #include "xbee-server.h"
 
-#define OPTION_RESPONSE "\
+#define OPTIONS_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
 Access-Control-Allow-Origin: *\r\n\
 Access-Control-Allow-Methods: GET, POST, OPTIONS, XPING, XABS\r\n\
@@ -66,28 +66,24 @@ void  skip_white(void)
 int token(char *str)
 {
     int n = 0;
-    char *s = (char*)pkt_ptr;
     skip_white();
-    s = (char*)pkt_ptr;
-    while(pkt_len > 0 && !isspace(*s)) {
-        str[n] = *(s++);
+    while(pkt_len > 0 && !isspace(*pkt_ptr)) {
+        str[n] = *(pkt_ptr++);
+        --pkt_len;
         n++;
     }
     str[n] = 0;
-    pkt_len -= n;
-    pkt_ptr = (uint8_t*)s;
     return n;
 }
 
 static void handle_options_request(Socket_t *sock, int phase)
 {
     if (phase == HP_CONTENT)
-        send_response(sock, (uint8_t *)OPTION_RESPONSE, sizeof(OPTION_RESPONSE) - 1);
+        send_response(sock, (uint8_t *)OPTIONS_RESPONSE, sizeof(OPTIONS_RESPONSE) - 1);
 }
 
 static void handle_xabs_request(Socket_t *sock, int phase)
 {
-    printf("Got XABS request: %d\n", phase);
     if (phase == HP_CONTENT) {
         int  num = 0;
         char str[80];
@@ -133,7 +129,6 @@ static void handle_xabs_request(Socket_t *sock, int phase)
 
 static void handle_xping_request(Socket_t *sock, int phase)
 {
-    printf("Got XPING request: %d\n", phase);
     if (phase == HP_CONTENT)
         send_response(sock, (uint8_t *)XPING_RESPONSE, sizeof(XPING_RESPONSE) - 1);
 }

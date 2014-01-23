@@ -36,11 +36,11 @@ int XbeeFrame_start(XbeeFrameInit_t *init, XbeeFrame_t *mailbox, int rxpin, int 
  */
 void XbeeFrame_sendframe(XbeeFrame_t *mailbox, uint8_t *frame, int length)
 {
-    while (mailbox->txstatus != XBEEFRAME_STATUS_IDLE)
-        ;
     mailbox->txframe = frame;
     mailbox->txlength = length;
     mailbox->txstatus = XBEEFRAME_STATUS_BUSY;
+    while (mailbox->txstatus != XBEEFRAME_STATUS_IDLE)
+        ;
 }
 
 /**
