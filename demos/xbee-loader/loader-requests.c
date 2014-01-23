@@ -56,6 +56,7 @@ static void handle_xpost_ld_request(Socket_t *sock, int phase)
         init.response = response;
         init.rcount = prepare_response(sock, response, (uint8_t *)LD_RESPONSE, sizeof(LD_RESPONSE) - 1);
         XbeeLoad_start(&init);
+        printf("Should never get here\n");
     }
 }
 
