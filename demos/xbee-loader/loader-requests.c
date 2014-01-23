@@ -2,6 +2,8 @@
 #include <string.h>
 #include <ctype.h>
 #include "xbee-server.h"
+#include "xbeeframe.h"
+#include "xbeeload.h"
 
 #define OPTIONS_RESPONSE "\
 HTTP/1.1 200 OK\r\n\
@@ -44,25 +46,17 @@ static void handle_options_request(Socket_t *sock, int phase)
 
 static void handle_xpost_ld_request(Socket_t *sock, int phase)
 {
-#if 0
-    XbeeLoadInit_t init;
-    int i;
-    pkt_len -= p - (char *)pkt_ptr;
-    pkt_ptr = (uint8_t *)p;
-    pkt_ptr += 4;
-    pkt_len -= 4;
-    for (i = 0; i < 8; ++i)
-      printf(" %02x", pkt_ptr[i]);
-    printf("\nldcount %d\n", pkt_len);
-    init.mailbox = mailbox;
-    init.ldbuf = pkt_ptr;
-    init.ldcount = pkt_len;
-    init.ldaddr = 0;
-    init.ldtotal = length;
-    init.response = response;
-    init.rcount = prepare_response(response, (IPV4RX_header_t *)frame, (uint8_t *)LD_RESPONSE, sizeof(LD_RESPONSE) - 1);
-    XbeeLoad_start(&init);
-#endif
+    if (phase == HP_CONTENT_START) {
+        XbeeLoadInit_t init;
+        init.mailbox = mailbox;
+        init.ldbuf = sock->frame_ptr;
+        init.ldcount = sock->frame_len;
+        init.ldaddr = 0;
+        init.ldtotal = sock->length;
+        init.response = response;
+        init.rcount = prepare_response(sock, response, (uint8_t *)LD_RESPONSE, sizeof(LD_RESPONSE) - 1);
+        XbeeLoad_start(&init);
+    }
 }
 
 static void handle_xpost_tx_request(Socket_t *sock, int phase)
