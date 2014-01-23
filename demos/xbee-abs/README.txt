@@ -20,10 +20,12 @@ Procedure:
 * Install the Digi S6B Wifi module
 * Add jumper from DO to P13
 * Add jumper from DI to P12
+* Connect Left Servo to P16 header
+* Connect Right Servo to P17 header
 * Connect Activity Bot to USB port
 * Build and run the xbee-loader/xbee-config program (make config)
 * Setup the SSID and WPA2 password (only WPA2 supported at this time)
-* Build and run the xbee-abs/server (make run)
+* Build and run the xbee-abs/sideserver (build with simpleide)
 * Finally load the xbee-abs/html/index.html page
 
 When the page starts, the user must set the IP Address in the text box.
@@ -53,6 +55,10 @@ XABS PIN # HIGH         /Got request    /PIN # output set high
 XABS PIN # LOW          /Got request    /PIN # output set low 
 XABS PIN # TOGGLE       /Got request    /PIN # output toggles
 XABS PIN # INPUT        /Got request    /PIN # set to input
+
+XABS SERVO START        /Got request    /Start servo cog
+XABS SERVO STOP         /Got request    /Stop servo cog
+XABS SERVO RUN # #      /Got request    /RUN left right speeds
 
 More to come ... (we miss you Johnny Carson).
 

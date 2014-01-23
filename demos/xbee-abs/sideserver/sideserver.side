@@ -1,0 +1,15 @@
+sideserver.c
+fds.c
+fds.h
+fds_driver.spin
+xbeeframe.c
+xbeeframe.h
+xbeeframe_driver.spin
+>compiler=C
+>memtype=cmm main ram compact
+>optimize=-Os
+>-m32bit-doubles
+>-Wall
+>-fno-exceptions
+>defs::-std=c99
+>BOARD::ACTIVITYBOARD

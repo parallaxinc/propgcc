@@ -12,7 +12,7 @@ function newCORSRequest(method, url)
 {
     var xhr = new XMLHttpRequest();
     texta = document.getElementById("response");
-    texta.value = "";
+    texta.value = url;
     //texta.value = "Got new XHR ";
 
     if ("withCredentials" in xhr)
@@ -41,15 +41,21 @@ function newCORSRequest(method, url)
 
 function hello()
 {
-    var d26led= document.getElementById("D26_LED");
-    var d27led= document.getElementById("D27_LED");
-
     sendHello();
 
-    sendCommand("PIN 26 LOW");
+    var d26led= document.getElementById("D26_LED");
+    var d27led= document.getElementById("D27_LED");
     d26led.style.backgroundColor = "gray";
-    sendCommand("PIN 27 LOW");
     d27led.style.backgroundColor = "gray";
+
+    /* Server now clears P26/27 on hello.
+     * This keeps us from needing more than one request.
+     * Sending more than one request for hello may not be
+     * the best thing to do.
+     *
+    sendCommand("PIN 26 LOW");
+    sendCommand("PIN 27 LOW");
+     */
 }
 
 function sendHello()
@@ -70,7 +76,7 @@ function sendHello()
         xhr.onreadystatechange=function() {
             startDinTimer();
             if (xhr.readyState==4 && xhr.status==200) {
-                texta.value += xhr.responseText;
+                texta.value += "\n"+xhr.responseText;
             }
         }
         xhr.setRequestHeader("Content-Type", "text/plain");
@@ -90,7 +96,11 @@ function sendCommand(cmd)
 
     var method = "XABS";
     //var url = "http://"+ipaddr.value+":"+port.value;
-    var url = "http://"+ipaddr.value;
+    //var url = "http://"+ipaddr.value;
+    while(cmd.indexOf(" ") > -1) {
+        cmd = cmd.replace(" ", "/");
+    }
+    var url = "http://"+ipaddr.value+"/"+cmd;
 
     try {
         var xhr = newCORSRequest(method, url);
@@ -107,7 +117,8 @@ function sendCommand(cmd)
         }
         xhr.setRequestHeader("Content-Type", "text/plain");
         startDotTimer();
-        xhr.send(cmd);
+        //xhr.send(cmd);
+        xhr.send();
     }
     catch (err) {
         texta.value += "\nXHR Request Exception "+err;
@@ -183,20 +194,88 @@ function toggleLeds()
     }
 }
 
+function clickStart()
+{
+    sendCommand("SERVO START");
+}
+function clickStop()
+{
+    sendCommand("SERVO STOP");
+}
+
+function stopBot()
+{
+    zeroArrows();
+    sendCommand("SERVO RUN 0 0");
+}
+
+function zeroArrows()
+{
+    var fspd = document.getElementById("FWD_SPD");
+    fspd.style.height = 0+"px";
+    var dspd = document.getElementById("REV_SPD");
+    dspd.style.height = 0+"px";
+    var lspd = document.getElementById("LFT_SPD");
+    lspd.style.width = 0+"px";
+    var rspd = document.getElementById("RGT_SPD");
+    rspd.style.width = 0+"px";
+
+}
+
 function clickUpArrow()
 {
+    var arrow = document.getElementById("up");
+    var left  = -(arrow.offsetHeight-(event.clientY-arrow.offsetTop));
+    var right =  (arrow.offsetHeight-(event.clientY-arrow.offsetTop));
+
+    zeroArrows();
+    var fspd = document.getElementById("FWD_SPD");
+    fspd.style.height = right+"px";
+    fspd.style.top    = (arrow.offsetTop+arrow.offsetHeight-right-1)+"px";
+
+    sendCommand("SERVO RUN "+left*2+" "+right*2);
 }
 
 function clickDownArrow()
 {
+    var arrow = document.getElementById("down");
+    var left  =  (event.clientY-arrow.offsetTop);
+    var right = -(event.clientY-arrow.offsetTop);
+
+    zeroArrows();
+    var fspd = document.getElementById("REV_SPD");
+    fspd.style.height = left+"px";
+    fspd.style.top    = (arrow.offsetTop)+"px";
+
+    sendCommand("SERVO RUN "+left*2+" "+right*2);
 }
 
 function clickLeftArrow()
 {
+    var arrow = document.getElementById("left");
+    var left  = -(arrow.offsetWidth-(event.clientX-arrow.offsetLeft));
+    var right = -(arrow.offsetWidth-(event.clientX-arrow.offsetLeft));
+
+    zeroArrows();
+    var lspd = document.getElementById("LFT_SPD");
+    lspd.style.width  = -left+"px";
+    lspd.style.left   = (arrow.offsetLeft+arrow.offsetWidth+left-1)+"px";
+
+    sendCommand("SERVO RUN "+left+" "+right);
 }
 
 function clickRightArrow()
 {
+    var arrow = document.getElementById("right");
+    var left  =  (event.clientX-arrow.offsetLeft);
+    var right =  (event.clientX-arrow.offsetLeft);
+
+    zeroArrows();
+    var rspd = document.getElementById("RGT_SPD");
+    rspd.style.width  = left+"px";
+    rspd.style.left   = (arrow.offsetLeft+1)+"px";
+
+    sendCommand("SERVO RUN "+left+" "+right);
 }
 
 
