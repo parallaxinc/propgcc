@@ -1,0 +1,13 @@
+vgademo.c
+draw.h
+text.h
+text2.h
+vga.c
+draw.c
+text.c
+text2.c
+>compiler=C
+>memtype=xmmc
+>optimize=-Os
+>-fno-exceptions
+>BOARD::C3F

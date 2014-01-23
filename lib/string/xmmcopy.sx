@@ -1,0 +1,52 @@
+#ifdef __PROPELLER_USE_XMM__
+	.text
+	.balign	4
+	.global	__copy_from_xmm
+__copy_from_xmm
+	test	r0,#0x3 wz
+	mov	r7, r0
+	IF_NE	brs	.L2
+	test	r1,#0x3 wz
+	IF_E 	brs	.L15
+.L2
+	cmp	r2, #0 wz
+	IF_E 	brs	.L16
+	jmp	#__LMM_FCACHE_LOAD
+	long	.L20-.L19
+.L19
+.L12
+	xmmio	rdbyte,r6,r1
+	wrbyte	r6,r7
+	sub	r2, #1 wz
+	add	r7, #1
+	add	r1, #1
+	IF_NE	jmp	#__LMM_FCACHE_START+(.L12-.L19)
+	jmp	__LMM_RET
+.L20
+	lret
+.L15
+	cmp	r2, #9 wc
+	IF_B 	brs	.L2
+	jmp	#__LMM_FCACHE_LOAD
+	long	.L18-.L17
+.L17
+.L7
+	xmmio	rdlong,r6,r1
+	mov	r5, r1
+	add	r5, #4
+	sub	r2, #8
+	cmp	r2, #8 wz,wc
+	wrlong	r6,r7
+	mov	r6, r7
+	add	r6, #4
+	add	r7, #8
+	add	r1, #8
+	xmmio	rdlong,r5,r5
+	wrlong	r5,r6
+	IF_A 	jmp	#__LMM_FCACHE_START+(.L7-.L17)
+	jmp	__LMM_RET
+.L18
+	brs	.L2
+.L16
+	lret
+#endif
