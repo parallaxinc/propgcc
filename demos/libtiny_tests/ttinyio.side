@@ -1,0 +1,7 @@
+ttinyio.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>-ltiny
+>BOARD::HUB
