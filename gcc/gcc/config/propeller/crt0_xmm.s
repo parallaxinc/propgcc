@@ -473,6 +473,7 @@ cache_read_common_ret
         ret
         
 		.global __enable_spi_locking
+		.global __enable_spi_locking_ret
 __enable_spi_locking
         mov     lock_id, r0
         mov     lck_spi, lock_set
