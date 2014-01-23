@@ -318,7 +318,7 @@ function clickUpArrow()
     fspd.style.height = right+"px";
     fspd.style.top    = (arrow.offsetTop+arrow.offsetHeight-right-1)+"px";
 
-    sendCommand("SERVO RUN "+left*2+" "+right*2);
+    sendCommand("SERVO RUN "+left+" "+right);
 }
 
 function clickDownArrow()
@@ -332,7 +332,7 @@ function clickDownArrow()
     fspd.style.height = left+"px";
     fspd.style.top    = (arrow.offsetTop)+"px";
 
-    sendCommand("SERVO RUN "+left*2+" "+right*2);
+    sendCommand("SERVO RUN "+left+" "+right);
 }
 
 function clickLeftArrow()
@@ -346,6 +346,7 @@ function clickLeftArrow()
     lspd.style.width  = -left+"px";
     lspd.style.left   = (arrow.offsetLeft+arrow.offsetWidth+left-1)+"px";
 
+    right = 0;
     sendCommand("SERVO RUN "+left+" "+right);
 }
 
@@ -360,6 +361,7 @@ function clickRightArrow()
     rspd.style.width  = left+"px";
     rspd.style.left   = (arrow.offsetLeft+1)+"px";
 
+    left = 0;
     sendCommand("SERVO RUN "+left+" "+right);
 }
 
