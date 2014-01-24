@@ -5,6 +5,13 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+
+/* for windows builds */
+#ifdef __MINGW32__
+#include <winsock.h>
+
+/* for linux and mac builds */
+#else
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -12,6 +19,12 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#define SOCKET int
+#define IN_ADDR struct in_addr
+#define SOCKADDR_IN struct sockaddr_in
+#define SOCKADDR struct sockaddr
+#define HOSTENT struct hostent
+#endif
 
 #define DEF_IPADDR  "10.0.1.66"
 #define DEF_PORT    80
@@ -23,11 +36,11 @@ XPOST /ld HTTP/1.1\r\n\
 Content-Length: %d\r\n\
 \r\n"
 
-int ConnectSocket(char *hostName, short port);
-void DisconnectSocket(int socket);
-int SocketDataAvailableP(int socket, int timeout);
-int SendSocketData(int socket, char *buf, int len);
-int ReceiveSocketData(int socket, char *buf, int len);
+SOCKET ConnectSocket(char *hostName, short port);
+void DisconnectSocket(SOCKET socket);
+int SocketDataAvailableP(SOCKET socket, int timeout);
+int SendSocketData(SOCKET socket, char *buf, int len);
+int ReceiveSocketData(SOCKET socket, char *buf, int len);
 
 static void usage(void);
 
@@ -117,7 +130,7 @@ int main(int argc, char *argv[])
             printf("Failed to send request header to %s:%d\n", ipaddr, port);
             return 1;
         }
-        sleep(1);
+        //sleep(1);
     }
     printf("Request sent\n");
     fclose(fp);
@@ -147,11 +160,11 @@ usage: xbee-load\n\
 }
 
 /* ConnectSocket - connect to the server */
-int ConnectSocket(char *hostName, short port)
+SOCKET ConnectSocket(char *hostName, short port)
 {
-    struct hostent *hostEntry;
-    struct sockaddr_in addr;
-    int sock;
+    HOSTENT *hostEntry;
+    SOCKADDR_IN addr;
+    SOCKET sock;
 
     /* create the socket */
     if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
@@ -165,7 +178,7 @@ int ConnectSocket(char *hostName, short port)
     /* get the host address by address in dot notation */
     if (isdigit(hostName[0])) {
         unsigned long hostAddr = inet_addr(hostName);
-        addr.sin_addr = *(struct in_addr *)&hostAddr;
+        addr.sin_addr = *(IN_ADDR *)&hostAddr;
     }
     
     /* get the host address by name */
@@ -174,11 +187,11 @@ int ConnectSocket(char *hostName, short port)
             close(sock);
             return -1;
         }
-        addr.sin_addr = *(struct in_addr *)*hostEntry->h_addr_list;
+        addr.sin_addr = *(IN_ADDR *)*hostEntry->h_addr_list;
     }
     
     /* connect to the server */
-    if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    if (connect(sock, (SOCKADDR *)&addr, sizeof(addr)) != 0) {
         close(sock);
         return -1;
     }
@@ -188,7 +201,7 @@ int ConnectSocket(char *hostName, short port)
 }
 
 /* DisconnectSocket - close a connection */
-void DisconnectSocket(int sock)
+void DisconnectSocket(SOCKET sock)
 {
     struct timeval tv;
     fd_set sockets;
@@ -210,15 +223,17 @@ void DisconnectSocket(int sock)
             break;
     }
 
+#ifndef __MINGW32__
     /* shutdown the socket */
     shutdown(sock, SHUT_RDWR);
+#endif
 
     /* close the socket */
     close(sock);
 }
 
 /* SocketDataAvailableP - check for data being available on a socket */
-int SocketDataAvailableP(int sock, int timeout)
+int SocketDataAvailableP(SOCKET sock, int timeout)
 {
     struct timeval timeVal;
     fd_set sockets;
@@ -239,13 +254,13 @@ int SocketDataAvailableP(int sock, int timeout)
 }
 
 /* SendSocketData - send socket data */
-int SendSocketData(int sock, char *buf, int len)
+int SendSocketData(SOCKET sock, char *buf, int len)
 {
     return send(sock, buf, len, 0);
 }
 
 /* ReceiveSocketData - receive socket data */
-int ReceiveSocketData(int sock, char *buf, int len)
+int ReceiveSocketData(SOCKET sock, char *buf, int len)
 {
     return recv(sock, buf, len, 0);
 }

@@ -1,6 +1,16 @@
 CFLAGS=-mcmm -Os -Wall -Dprintf=__simple_printf
 LDFLAGS=-Wl,--defsym,__stack_end=0x7000
 
+HOST_CFLAGS=-Wall
+HOST_LIBS=
+
+ifeq ($(OSTYPE),msys)
+HOST_LIBS+=-lws2_32
+EXT=.exe
+else
+EXT=
+endif
+
 HDRS=\
 xbeeframe.h \
 fds.h
@@ -29,7 +39,7 @@ CONFIG=xbee-config.elf
 LOADER=xbee-loader.elf
 LOADER_SERVER=xbee-server.elf
 XABS_SERVER=xabs-server.elf
-LOAD=xbee-load
+LOAD=xbee-load$(EXT)
 
 all:	$(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) # $(LOAD)
 
@@ -58,7 +68,7 @@ $(XABS_SERVER): $(XABS_SERVER_OBJS)
 	@echo $@
 
 $(LOAD):	xbee-load.c
-	cc -Wall -o $@ xbee-load.c
+	cc $(HOST_CFLAGS) -o $@ xbee-load.c $(HOST_LIBS)
 
 config:	$(CONFIG)
 	@propeller-load $(CONFIG) -r -t
@@ -72,4 +82,4 @@ xabs:	$(XABS_SERVER)
 load:	$(LOAD)
 	
 clean:
-	@rm -rf *.o $(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) $(TEST) *.dat
+	@rm -rf *.o $(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) $(LOAD) *.dat
