@@ -159,12 +159,27 @@ usage: xbee-load\n\
     exit(1);
 }
 
+#ifdef __MINGW32__
+int socketsInitialized = FALSE;
+#endif
+
 /* ConnectSocket - connect to the server */
 SOCKET ConnectSocket(char *hostName, short port)
 {
     HOSTENT *hostEntry;
     SOCKADDR_IN addr;
     SOCKET sock;
+
+#ifdef __MINGW32__
+    WSADATA WsaData;
+
+    /* initialize winsock */
+    if (!socketsInitialized) {
+        if (WSAStartup(0x0101,&WsaData) != 0)
+            return INVALID_SOCKET;
+        socketsInitialized = TRUE;
+    }
+#endif
 
     /* create the socket */
     if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
