@@ -75,12 +75,14 @@ entry                   mov     t1, par             'get init structure address
                         rdlong  SaveClkFreq,#clkfreqVal ' Save clock frequency and mode
                         rdbyte  SaveClkMode,#clksetVal
 
+                        ' check for no data to load
                         tjz     ld_remaining, #load_done
 
-                        cmp     count, #0 wz
-              if_nz     call    #copy_data
+                        ' check for an empty initial buffer
+                        tjz     count, #release_frame
+                        
+                        call    #copy_data
               if_z      jmp     #load_done
-                        jmp     #wait_for_frame
 
 release_frame           mov     t1, #STATUS_IDLE
                         wrlong  t1, rx_status_ptr
@@ -91,14 +93,14 @@ wait_for_frame          rdlong  t1, rx_status_ptr
 
                         rdlong  src, rx_frame_ptr
                         rdlong  count, rx_length_ptr
-                        
+
                         rdbyte  t1, src
                         cmp     t1, #IPV4RX wz
               if_nz     jmp     #release_frame      'ignore frames other than IPV4RX
               
                         add     src, #IPV4RX_DATA_OFFSET
                         sub     count, #IPV4RX_DATA_OFFSET wz
-              if_z      jmp     #wait_for_frame
+              if_z      jmp     #release_frame
                         call    #copy_data
               if_nz     jmp     #release_frame
 
@@ -109,8 +111,8 @@ load_done               ' send the response
                         wrlong  t1, tx_status_ptr
 :wait                   rdlong  t1, tx_status_ptr
                         cmp     t1, #STATUS_IDLE wz
-              if_nz     jmp     #:wait
-                        
+              if_nz     jmp     #:wait              
+
 '' Adapted from code in sdspiFemto.spin
 '' After reading is finished for a boot, the stack marker is added below dbase
 '' and memory is cleared between that and vbase (the end of the loaded program).
@@ -157,6 +159,11 @@ copy_data               rdbyte  t1, src
               if_z      jmp     copy_data_ret
                         djnz    count, #copy_data
 copy_data_ret           ret
+
+debug                   or      outa, :debug_leds
+                        or      dira, :debug_leds
+:debug                  jmp     #:debug
+:debug_leds             long    (1 << 26) | (1 << 27)
 
 '
 ' Initialized data

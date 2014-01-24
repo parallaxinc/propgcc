@@ -48,6 +48,12 @@ static void handle_xpost_ld_request(Socket_t *sock, int phase)
 {
     if (phase == HP_CONTENT_START) {
         XbeeLoadInit_t init;
+        int i;
+        printf("Length: %d\n", sock->length);
+        printf("Fragment[%d]:", sock->frame_len);
+        for (i = 0; i < sock->frame_len; ++i)
+            printf(" %02x", sock->frame_ptr[i]);
+        putchar('\n');
         init.mailbox = mailbox;
         init.ldbuf = sock->frame_ptr;
         init.ldcount = sock->frame_len;

@@ -10,14 +10,6 @@ xbee-config.o \
 fds.o \
 fds_driver.o
 
-LOADER_OBJS=\
-xbee-loader.o \
-xbeeframe.o \
-xbeeframe_driver.o \
-xbeeload.o \
-xbeeload_driver.o \
-strcasestr.o
-
 COMMON_SERVER_OBJS=\
 xbee-server.o \
 xbeeframe.o \
@@ -37,9 +29,9 @@ CONFIG=xbee-config.elf
 LOADER=xbee-loader.elf
 LOADER_SERVER=xbee-server.elf
 XABS_SERVER=xabs-server.elf
-TEST=xbee-test
+LOAD=xbee-load
 
-all:	$(CONFIG) $(LOADER) $(LOADER_SERVER) $(XABS_SERVER) # $(TEST)
+all:	$(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) # $(LOAD)
 
 %.dat:	%.spin
 	@spin2cpp --dat -o $@ $<
@@ -57,10 +49,6 @@ $(CONFIG): $(CONFIG_OBJS)
 	@propeller-elf-gcc $(CFLAGS) -o $@ $(CONFIG_OBJS)
 	@echo $@
 
-$(LOADER): $(LOADER_OBJS)
-	@propeller-elf-gcc $(CFLAGS) $(LDFLAGS) -o $@ $(LOADER_OBJS)
-	@echo $@
-
 $(LOADER_SERVER): $(LOADER_SERVER_OBJS)
 	@propeller-elf-gcc $(CFLAGS) $(LDFLAGS) -o $@ $(LOADER_SERVER_OBJS)
 	@echo $@
@@ -69,14 +57,11 @@ $(XABS_SERVER): $(XABS_SERVER_OBJS)
 	@propeller-elf-gcc $(CFLAGS) $(LDFLAGS) -o $@ $(XABS_SERVER_OBJS)
 	@echo $@
 
-$(TEST):	xbee-test.c
-	cc -Wall -o $@ xbee-test.c
+$(LOAD):	xbee-load.c
+	cc -Wall -o $@ xbee-load.c
 
 config:	$(CONFIG)
 	@propeller-load $(CONFIG) -r -t
-
-run:	$(LOADER)
-	@propeller-load $(LOADER) -r -t
 
 serve:	$(LOADER_SERVER)
 	@propeller-load $(LOADER_SERVER) -r -t
@@ -84,8 +69,7 @@ serve:	$(LOADER_SERVER)
 xabs:	$(XABS_SERVER)
 	@propeller-load $(XABS_SERVER) -r -t
 
-test:	$(TEST)
-	./$(TEST)
+load:	$(LOAD)
 	
 clean:
-	@rm -rf *.o $(CONFIG) $(LOADER) $(SERVER) $(TEST) *.dat
+	@rm -rf *.o $(CONFIG) $(LOADER_SERVER) $(XABS_SERVER) $(TEST) *.dat
