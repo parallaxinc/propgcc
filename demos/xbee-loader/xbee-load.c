@@ -8,7 +8,9 @@
 
 /* for windows builds */
 #ifdef __MINGW32__
+#include <windows.h>
 #include <winsock.h>
+#define sleep(n)        Sleep((n) * 1000)
 
 /* for linux and mac builds */
 #else
@@ -24,6 +26,8 @@
 #define SOCKADDR_IN struct sockaddr_in
 #define SOCKADDR struct sockaddr
 #define HOSTENT struct hostent
+#define INVALID_SOCKET  -1
+#define closesocket(x)  close(x)
 #endif
 
 #define DEF_IPADDR  "10.0.1.66"
@@ -48,10 +52,11 @@ static void usage(void);
 int main(int argc, char *argv[])
 {
     char buf[CHUNK_SIZE];
-    int xbee, fileSize, remaining, cnt, i;
-    char *file = NULL;
+    int fileSize, remaining, cnt, i;
     char *ipaddr = DEF_IPADDR;
     int port = DEF_PORT;
+    char *file = NULL;
+    SOCKET xbee;
     FILE *fp;
     
     /* get the arguments */
@@ -105,7 +110,7 @@ int main(int argc, char *argv[])
     fileSize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     
-    if ((xbee = ConnectSocket(ipaddr, port)) < 0) {
+    if ((xbee = ConnectSocket(ipaddr, port)) == INVALID_SOCKET) {
         printf("Failed to connect to %s:%d\n", ipaddr, port);
         return 1;
     }
@@ -130,7 +135,7 @@ int main(int argc, char *argv[])
             printf("Failed to send request header to %s:%d\n", ipaddr, port);
             return 1;
         }
-        //sleep(1);
+        sleep(1);
     }
     printf("Request sent\n");
     fclose(fp);
@@ -199,7 +204,7 @@ SOCKET ConnectSocket(char *hostName, short port)
     /* get the host address by name */
     else {
         if ((hostEntry = gethostbyname(hostName)) == NULL) {
-            close(sock);
+            closesocket(sock);
             return -1;
         }
         addr.sin_addr = *(IN_ADDR *)*hostEntry->h_addr_list;
@@ -207,7 +212,7 @@ SOCKET ConnectSocket(char *hostName, short port)
     
     /* connect to the server */
     if (connect(sock, (SOCKADDR *)&addr, sizeof(addr)) != 0) {
-        close(sock);
+        closesocket(sock);
         return -1;
     }
 
@@ -238,13 +243,8 @@ void DisconnectSocket(SOCKET sock)
             break;
     }
 
-#ifndef __MINGW32__
-    /* shutdown the socket */
-    shutdown(sock, SHUT_RDWR);
-#endif
-
     /* close the socket */
-    close(sock);
+    closesocket(sock);
 }
 
 /* SocketDataAvailableP - check for data being available on a socket */
