@@ -1,8 +1,8 @@
 CON
-   _clkmode = RCFAST
+'   _clkmode = RCFAST
 
-'   _clkmode = xtal1 + pll16x
-'   _xinfreq = 5_000_000
+   _clkmode = xtal1 + pll16x
+   _xinfreq = 5_000_000
 
   LED1 = 26
   LED2 = 27
