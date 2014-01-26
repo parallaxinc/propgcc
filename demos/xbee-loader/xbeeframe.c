@@ -9,18 +9,18 @@
  * @param mailbox is the mailbox structure
  * @param rxpin is pin number for receive input
  * @param txpin is pin number for transmit output
- * @param mode is interface mode. see header XBEEFRAME_MODE_...
+ * @param rtspin is pin number for rts
  * @param baudrate is frequency of bits ... 115200, 57600, etc...
  * @returns COG ID on success and -1 on failure
  */
-int XbeeFrame_start(XbeeFrameInit_t *init, XbeeFrame_t *mailbox, int rxpin, int txpin, int mode, int baudrate)
+int XbeeFrame_start(XbeeFrameInit_t *init, XbeeFrame_t *mailbox, int rxpin, int txpin, int rtspin, int baudrate)
 {
     use_cog_driver(xbeeframe_driver);
 
     init->mailbox  = mailbox;               // mailbox
     init->rx_pin   = rxpin;                 // receive pin
     init->tx_pin   = txpin;                 // transmit pin
-    init->mode     = mode;                  // interface mode
+    init->rts_pin  = rtspin;                // rts pin
     init->ticks    = _clkfreq / baudrate;   // baud
     init->rxlength = XBEEFRAME_RXSIZE;      // receive buffer length
     init->buffers  = mailbox->buffers;      // receive buffers

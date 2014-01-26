@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #include <propeller.h>
@@ -10,7 +11,10 @@
 
 #define MULTI_SOCKETS
 
-//#define FRAME_DEBUG
+//#define AT_DEBUG
+//#define FRAME_RX_DEBUG
+//#define FRAME_TX_DEBUG
+//#define FRAME_DEBUG_TEXT
 //#define STATE_MACHINE_DEBUG
 //#define SOCKET_DEBUG
 //#define STATUS_DEBUG
@@ -22,12 +26,16 @@ HTTP/1.1 400 Bad Request\r\n\
 /* Xbee pins */
 #define XBEE_RX     13
 #define XBEE_TX     12
+#define XBEE_RTS    11
 #define XBEE_BAUD   9600
 
+#define ID_ATCOMMAND    0x08
 #define ID_IPV4TX       0x20
 #define ID_ATRESPONSE   0x88
 #define ID_TXSTATUS     0x89
 #define ID_IPV4RX       0xb0
+
+#define PORT            80
 
 #ifdef MULTI_SOCKETS
 #define MAX_SOCKETS 4
@@ -65,6 +73,12 @@ typedef struct {
 typedef struct {
     uint8_t apiid;
     uint8_t frameid;
+    uint8_t command[1];
+} ATCommand_t;
+
+typedef struct {
+    uint8_t apiid;
+    uint8_t frameid;
     uint8_t command[2];
     uint8_t status;
     uint8_t value[1];
@@ -74,6 +88,8 @@ typedef struct {
 #define RESPONSESIZE    1024
 
 extern MethodBinding_t methodBindings[];
+
+#define field_offset(s, f)  ((int)&((s *)0)->f)
 
 /* place these data structures at the top of memory so the loader doesn't overwrite them */
 XbeeFrame_t *mailbox = (XbeeFrame_t *)(HUBSIZE - sizeof(XbeeFrame_t));
@@ -85,13 +101,14 @@ uint8_t txframeid = 0x00;
 /* prototypes */
 static void handle_ipv4_frame(IPV4RX_header_t *frame, int length);
 static void handle_txstatus_frame(TXStatus_t *frame, int length);
+static void send_at_command(int id, char *fmt, ...);
 static void handle_atresponse_frame(ATResponse_t *frame, int length);
 static void parse_request(Socket_t *sock);
 static void parse_header(Socket_t *sock);
 static void handle_content(Socket_t *sock);
 static char *match(Socket_t *sock, char *str);
 static char *skip_spaces(char *str);
-#ifdef FRAME_DEBUG
+#if defined(AT_DEBUG) || defined(FRAME_RX_DEBUG) || defined(FRAME_TX_DEBUG)
 static void show_frame(uint8_t *frame, int length);
 #endif
 
@@ -99,32 +116,29 @@ static void show_frame(uint8_t *frame, int length);
 int main(void)
 {
     XbeeFrameInit_t init;
-    uint8_t frame[1024];
     
     /* initialize the sockets */
     memset(sockets, 0, sizeof(sockets));
     
     printf("Starting frame driver\n");
-    if (XbeeFrame_start(&init, mailbox, XBEE_RX, XBEE_TX, 0, XBEE_BAUD) < 0) {
+    if (XbeeFrame_start(&init, mailbox, XBEE_RX, XBEE_TX, XBEE_RTS, XBEE_BAUD) < 0) {
         printf("failed to start frame driver\n");
         return 1;
     }
     
-    /* get our IP address */
-    frame[0] = 0x08;
-    frame[1] = 0x01;
-    frame[2] = 'M';
-    frame[3] = 'Y';
-    XbeeFrame_sendframe(mailbox, frame, 4);
+    /* set the port and ask for our IP address */
+    //send_at_command(0, "C0%x", PORT);
+    send_at_command(1, "MY");
     
     printf("Listening for frames\n");
     while (1) {
         uint8_t *frame;
         int length;
+        
         if ((frame = XbeeFrame_recvframe(mailbox, &length)) != NULL) {
         
-#ifdef FRAME_DEBUG
-            printf("\n\n[RX]");
+#ifdef FRAME_RX_DEBUG
+            printf("[RX]");
             show_frame(frame, length);
 #endif
             
@@ -207,7 +221,7 @@ static void handle_ipv4_frame(IPV4RX_header_t *frame, int length)
     
     /* setup the frame parsing variables */
     ptr = frame->data;
-    len = length - (int)&((IPV4RX_header_t *)0)->data;
+    len = length - field_offset(IPV4RX_header_t, data);
     
     /* process the data in this frame */
     while (len > 0) {
@@ -327,12 +341,6 @@ static void parse_header(Socket_t *sock)
 
 static void handle_content(Socket_t *sock)
 {
-#ifdef STATE_MACHINE_DEBUG
-    printf("Collected content:\n");
-#endif
-#ifdef FRAME_DEBUG
-    show_frame(sock->content, sock->length);
-#endif
     if (sock->handler)
         (*sock->handler)(sock, HP_CONTENT);
     else
@@ -343,10 +351,39 @@ static void handle_content(Socket_t *sock)
     sock->i = 0;
 }
 
+static void send_at_command(int id, char *fmt, ...)
+{
+    uint8_t frame[32];
+    ATCommand_t *atcmd = (ATCommand_t *)frame;
+    va_list ap;
+    int len;
+
+    atcmd->apiid = ID_ATCOMMAND;
+    atcmd->frameid = id;
+
+    va_start(ap, fmt);
+    len = field_offset(ATCommand_t, command) + vsprintf((char *)atcmd->command, fmt, ap);
+    va_end(ap);
+
+#ifdef AT_DEBUG
+    printf("AT frame:");
+    show_frame(frame, len);
+    printf("AT '%s'", atcmd->command);
+#endif
+
+    XbeeFrame_sendframe(mailbox, frame, len);
+    
+#ifdef AT_DEBUG
+    printf(" -- sent\n");
+#endif
+}
+
 static void handle_atresponse_frame(ATResponse_t *frame, int length)
 {
-    if (frame->status == 0x00 && strncmp((char *)frame->command, "MY", 2) == 0)
-        printf("IP Address: %d.%d.%d.%d\n", frame->value[0], frame->value[1], frame->value[2], frame->value[3]);
+    if (frame->status == 0x00) {
+        if (strncmp((char *)frame->command, "MY", 2) == 0)
+            printf("IP Address: %d.%d.%d.%d\n", frame->value[0], frame->value[1], frame->value[2], frame->value[3]);
+    }
 }
 
 static void handle_txstatus_frame(TXStatus_t *frame, int length)
@@ -401,9 +438,9 @@ int prepare_response(Socket_t *sock, uint8_t *frame, uint8_t *data, int length)
     //txhdr->options = 0x00; // don't terminate after send
     txhdr->options = 0x01; // terminate after send
     memcpy(txhdr->data, data, length);
-    length += (int)&((IPV4TX_header_t *)0)->data;
+    length += field_offset(IPV4TX_header_t, data);
 
-#ifdef FRAME_DEBUG
+#ifdef FRAME_TX_DEBUG
     printf("[TX %02x]", txframeid);
     show_frame(frame, length);
 #endif
@@ -430,13 +467,15 @@ static char *skip_spaces(char *str)
     return str;
 }
 
-#ifdef FRAME_DEBUG
+#if defined(AT_DEBUG) || defined(FRAME_RX_DEBUG) || defined(FRAME_TX_DEBUG)
 static void show_frame(uint8_t *frame, int length)
 {
     int i;
     for (i = 0; i < length; ++i)
         printf(" %02x", frame[i]);
-    printf("\n     \"");
+    putchar('\n');
+#ifdef FRAME_DEBUG_TEXT
+    printf("     \"");
     for (i = 0; i < length; ++i) {
         if (frame[i] >= 0x20 && frame[i] <= 0x7e)
             putchar(frame[i]);
@@ -446,5 +485,6 @@ static void show_frame(uint8_t *frame, int length)
             putchar('\n');
     }
     printf("\"\n");
+#endif
 }
 #endif

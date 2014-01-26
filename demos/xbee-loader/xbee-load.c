@@ -33,7 +33,7 @@
 #define DEF_IPADDR  "10.0.1.66"
 #define DEF_PORT    80
 
-#define CHUNK_SIZE  1024
+#define CHUNK_SIZE  512
 
 #define POST_REQUEST      "\
 XPOST /ld HTTP/1.1\r\n\
@@ -45,6 +45,10 @@ void DisconnectSocket(SOCKET socket);
 int SocketDataAvailableP(SOCKET socket, int timeout);
 int SendSocketData(SOCKET socket, char *buf, int len);
 int ReceiveSocketData(SOCKET socket, char *buf, int len);
+void msdelay(int ms);
+
+int port = DEF_PORT;
+int delay = 500;
 
 static void usage(void);
 
@@ -54,7 +58,6 @@ int main(int argc, char *argv[])
     char buf[CHUNK_SIZE];
     int fileSize, remaining, cnt, i;
     char *ipaddr = DEF_IPADDR;
-    int port = DEF_PORT;
     char *file = NULL;
     SOCKET xbee;
     FILE *fp;
@@ -78,6 +81,14 @@ int main(int argc, char *argv[])
                     port = atoi(&argv[i][2]);
                 else if (++i < argc)
                     port = atoi(argv[i]);
+                else
+                    usage();
+                break;
+            case 'd':   // set the delay in ms between chunks
+                if (argv[i][2])
+                    delay = atoi(&argv[i][2]);
+                else if (++i < argc)
+                    delay = atoi(argv[i]);
                 else
                     usage();
                 break;
@@ -114,19 +125,19 @@ int main(int argc, char *argv[])
         printf("Failed to connect to %s:%d\n", ipaddr, port);
         return 1;
     }
-    printf("Connected\n");
     
     cnt = sprintf(buf, POST_REQUEST, fileSize);
     if (SendSocketData(xbee, buf, cnt) < 0) {
         printf("Failed to send request header to %s:%d\n", ipaddr, port);
         return 1;
     }
-    printf("Header sent\n");
     
     for (remaining = fileSize; remaining > 0; remaining -= cnt) {
+        msdelay(delay);
         if ((cnt = remaining) > CHUNK_SIZE)
             cnt = CHUNK_SIZE;
-        printf("Sending %d bytes\n", cnt);
+        printf("  %d bytes remaining                \r", remaining);
+        fflush(stdout);
         if (fread(buf, 1, cnt, fp) != cnt) {
             printf("error: reading binary file\n");
             return 1;
@@ -135,9 +146,8 @@ int main(int argc, char *argv[])
             printf("Failed to send request header to %s:%d\n", ipaddr, port);
             return 1;
         }
-        sleep(1);
     }
-    printf("Request sent\n");
+    printf("  %d bytes sent                         \n", fileSize);
     fclose(fp);
     
     if ((cnt = ReceiveSocketData(xbee, buf, sizeof(buf) - 1)) < 0) {
@@ -148,7 +158,6 @@ int main(int argc, char *argv[])
     printf("Data received: %s\n", buf);
     
     DisconnectSocket(xbee);
-    printf("Disconnected\n");
     
     return 0;
 }
@@ -157,10 +166,12 @@ static void usage(void)
 {
 printf("\
 usage: xbee-load\n\
+         [ -d <delay> ]    set the delay in ms between packets (default is %d)\n\
          [ -i <ip-addr> ]  set the IP address of the Xbee Wi-Fi module\n\
-         [ -p <port> ]     set the port number (default is 80)\n\
+         [ -p <port> ]     set the port number (default is %d)\n\
          [ -? ]            display a usage message and exit\n\
-         <file>            spin binary file to load\n");
+         <file>            spin binary file to load\n",
+         delay, port);
     exit(1);
 }
 
@@ -278,4 +289,9 @@ int SendSocketData(SOCKET sock, char *buf, int len)
 int ReceiveSocketData(SOCKET sock, char *buf, int len)
 {
     return recv(sock, buf, len, 0);
+}
+
+void msdelay(int ms)
+{
+    usleep(ms * 1000);
 }
