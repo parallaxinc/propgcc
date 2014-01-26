@@ -14,7 +14,10 @@
 /* Xbee pins */
 #define XBEE_RX     13
 #define XBEE_TX     12
+#define XBEE_RTS    11
 #define XBEE_BAUD   9600
+
+#define PORT        80
 
 #define MAX_RETRIES 100000
 #define BUFSIZE     1024
@@ -22,6 +25,7 @@
 char ssid[128], ssid_cmd[32];
 char passwd[128], passwd_cmd[32];
 char enc_cmd[32];
+char port_cmd[32];
 
 struct {
     char *cmd;
@@ -39,8 +43,9 @@ struct {
 {   enc_cmd,        "OK",   1,              "Set encryption mode"   },
 #endif
 {   "ATDO0\r",      "OK",   1,              "Disable device cloud"  },
-{   "ATC050\r",     "OK",   1,              "Set port to 80"        },
+{   port_cmd,       "OK",   1,              "Set port"              },
 {   "ATIP1\r",      "OK",   1,              "Set TCP mode"          },
+{   "ATD61\r",      "OK",   1,              "Enable RTS"            },
 {   "ATAC\r",       "OK",   1,              "Activate settings"     },
 {   "ATAI\r",       "0",    MAX_RETRIES,    "Connect to AP"         },
 {   "ATAP1\r",      "OK",   1,              "Set API mode"          },
@@ -101,6 +106,10 @@ int main(void)
         return 1;
     }
     
+    /* pull RTS high */
+    OUTA &= ~(1 << XBEE_RTS);
+    DIRA |= 1 << XBEE_RTS;
+    
     /* enter AT command mode */
     printf("Entering AT command mode\n");
     wait(1000);
@@ -111,9 +120,10 @@ int main(void)
         goto done;
     }
     
-    /* setup the SSID and password strings */
+    /* setup the SSID, password, and port strings */
     sprintf(ssid_cmd, "ATID%s\r", ssid);
     sprintf(passwd_cmd, "ATPK%s\r", passwd);
+    sprintf(port_cmd, "ATC0%x\r", PORT);
 
     /* initialize */
     for (i = 0; cmds[i].cmd != NULL; ++i) {

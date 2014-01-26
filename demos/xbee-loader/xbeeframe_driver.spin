@@ -44,6 +44,7 @@ CON
   STATE_LEN_LO
   STATE_DATA
   STATE_CHKSUM
+  STATE_WAIT
   
 DAT
 
@@ -81,19 +82,29 @@ entry                   mov     t1, par              'get init structure address
                         mov     txmask, #1
                         shl     txmask, t2
 
-                        add     t1, #4                'get rxtx_mode
-                        rdlong  rxtxmode, t1
+                        add     t1, #4                'get rts_pin
+                        rdlong  t2, t1
+                        mov     rtsmask, #1
+                        shl     rtsmask, t2
 
                         add     t1, #4                'get bit_ticks
                         rdlong  bitticks, t1
 
                         add     t1, #4                'get rxsize
                         rdlong  rcv_max, t1
+                        
+                        mov     rxtxmode, #0          'force the rxtxmode to zero
 
                         add     t1, #4                'get buffer address
                         rdlong  rcv_buf1, t1
                         mov     rcv_buf2, rcv_buf1
                         add     rcv_buf2, rcv_max
+                        
+                        mov     rcv_head, #0          'setup the circular receive buffer
+                        mov     rcv_tail, #0
+                        mov     rcv_count, #0
+                        mov     rcv_mask, rcv_max
+                        sub     rcv_mask, #1
 
                         mov     t1, #STATUS_IDLE      'no frame available yet
                         wrlong  t1, rx_status_ptr
@@ -105,6 +116,9 @@ entry                   mov     t1, par              'get init structure address
                         test    rxtxmode,#%010  wc    'if_c = inverted output
         if_z_ne_c       or      outa,txmask
         if_z            or      dira,txmask
+        
+                        andn    outa, rtsmask
+                        or      dira, rtsmask
 
                         mov     rxcode,#receive       'initialize ping-pong multitasking
                         mov     txcode,#transmit
@@ -120,7 +134,7 @@ receive                 jmpret  rxcode,txcode         'run a chunk of transmit c
 
                         test    rxtxmode,#%001  wz    'wait for start bit on rx pin
                         test    rxmask,ina      wc
-        if_z_eq_c       jmp     #receive
+        if_z_eq_c       jmp     #assemble
 
                         mov     rxbits,#9             'ready to receive byte
                         mov     rxcnt,bitticks
@@ -147,15 +161,57 @@ receive                 jmpret  rxcode,txcode         'run a chunk of transmit c
                         and     rxdata,#$FF
         if_nz           xor     rxdata,#$FF           'if rx inverted, invert byte
         
+                        ' we have received a byte at this point
+        
+                        mov     t1, rcv_head
+                        add     t1, rcv_buf2
+                        wrbyte  rxdata, t1            'write the byte to the receive buffer
+                        add     rcv_head, #1
+                        and     rcv_head, rcv_mask
+                        cmp     rcv_count, rcv_max wz wc
+        if_b            add     rcv_count, #1
+        if_ae           add     rcv_tail, #1
+        if_ae           and     rcv_tail, rcv_mask
+        if_ae           or      outa, led
+        if_ae           or      dira, led
+        
+                        cmp     rcv_count, high_water wz wc
+        if_a            or      outa, rtsmask
+        if_a            or      outa, led2
+        if_a            or      dira, led2
+        
+assemble                cmp     rcv_state, #STATE_WAIT wz
+        if_z            jmp     #do_rcv_wait
+        
+                        cmp     rcv_count, #0 wz
+        if_z            jmp     #receive
+        
+                        mov     t1, rcv_tail
+                        add     t1, rcv_buf2
+                        rdbyte  rxdata, t1
+                        add     rcv_tail, #1
+                        and     rcv_tail, rcv_mask
+                        sub     rcv_count, #1
+                                
+                        cmp     rcv_count, low_water wz wc
+        if_b            andn    outa, rtsmask
+
                         mov     t1, rcv_state
                         add     t1, #rcv_dispatch
                         jmp     t1
+                        
+led                     long    1 << 26
+led2                    long    1 << 27
+
+high_water              long    1000
+low_water               long    100
 
 rcv_dispatch            jmp     #do_rcv_start
                         jmp     #do_rcv_len_hi
                         jmp     #do_rcv_len_lo
                         jmp     #do_rcv_data
                         jmp     #do_rcv_chksum
+                        jmp     #do_rcv_wait
 
 do_rcv_start            cmp     rxdata, #START wz
               if_z      mov     rcv_state, #STATE_LEN_HI
@@ -176,28 +232,26 @@ do_rcv_len_lo           or      rcv_length, rxdata
                         mov     rcv_ptr, rcv_buf1
                         jmp     #receive              'byte done, receive next byte
 
-do_rcv_data             add     rcv_chksum, rxdata        'update the checksum
+do_rcv_data             add     rcv_chksum, rxdata    'update the checksum
                         wrbyte  rxdata, rcv_ptr
                         add     rcv_ptr, #1
                         djnz    rcv_cnt, #receive
                         mov     rcv_state, #STATE_CHKSUM
                         jmp     #receive              'byte done, receive next byte
 
-do_rcv_chksum           add     rcv_chksum, rxdata        'update the checksum
+do_rcv_chksum           add     rcv_chksum, rxdata    'update the checksum
                         and     rcv_chksum, #$ff
-                        cmp     rcv_chksum, #$ff wz       'check the checksum
+                        cmp     rcv_chksum, #$ff wz   'check the checksum
               if_nz     jmp     #look_for_frame
               
-:wait                   jmpret  rxcode,txcode         'wait for the previous frame to be consumed
-                        rdlong  t1, rx_status_ptr wz
-              if_nz     jmp     #:wait
                         wrlong  rcv_length, rx_length_ptr 'pass the frame to the application
                         wrlong  rcv_buf1, rx_frame_ptr
                         mov     t1, #STATUS_BUSY
                         wrlong  t1, rx_status_ptr
-                        mov     t1, rcv_buf1          'swap the frame buffers
-                        mov     rcv_buf1, rcv_buf2
-                        mov     rcv_buf2, t1
+                        mov     rcv_state, #STATE_WAIT
+
+do_rcv_wait             rdlong  t1, rx_status_ptr wz
+              if_nz     jmp     #receive
                         
 look_for_frame          mov     rcv_state, #STATE_START
                         jmp     #receive              'byte done, receive next byte
@@ -305,6 +359,8 @@ txbits                  res     1
 txcnt                   res     1
 txcode                  res     1
 
+rtsmask                 res     1
+
 rcv_buf1                res     1
 rcv_buf2                res     1
 rcv_state               res     1
@@ -313,6 +369,11 @@ rcv_max                 res     1  'maximum frame data length
 rcv_ptr                 res     1  'data buffer pointer
 rcv_cnt                 res     1  'data buffer count
 rcv_chksum              res     1
+
+rcv_head                res     1  'receive buffer head
+rcv_tail                res     1  'receive buffer tail
+rcv_count               res     1  'number of bytes in the receive buffer
+rcv_mask                res     1  'receive buffer mask for wrapping
 
 xmt_state               res     1
 xmt_ptr                 res     1

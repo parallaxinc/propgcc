@@ -10,16 +10,6 @@
  */
 #define XBEEFRAME_RXSIZE    1024
 
-/**
- * Defines mode bits
- *   mode bit 0 = invert rx
- *   mode bit 1 = invert tx
- *   mode bit 2 = open-drain/source tx
- */
-#define XBEEFRAME_MODE_INVERT_RX        1
-#define XBEEFRAME_MODE_INVERT_TX        2
-#define XBEEFRAME_MODE_OPENDRAIN_TX     4
-
 #define XBEEFRAME_STATUS_IDLE           0
 #define XBEEFRAME_STATUS_BUSY           1
 
@@ -45,7 +35,7 @@ typedef struct {
     XbeeFrame_t *mailbox;       // mailbox address
     uint32_t rx_pin;            // receive pin
     uint32_t tx_pin;            // transmit pin
-    uint32_t mode;              // rx/tx mode
+    uint32_t rts_pin;           // rts pin
     uint32_t ticks;             // baud rate
     uint32_t rxlength;          // size of frame buffer
     uint8_t *buffers;           // rxlength*2 size buffer
