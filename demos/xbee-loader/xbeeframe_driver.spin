@@ -7,6 +7,9 @@
 ''* Released under the MIT License            *
 ''*********************************************
 
+'#define FIFO_DEBUG
+'#define RTS_DEBUG
+
 {
   init structure:
         long mailbox       '0: mailbox address
@@ -172,13 +175,17 @@ receive                 jmpret  rxcode,txcode         'run a chunk of transmit c
         if_b            add     rcv_count, #1
         if_ae           add     rcv_tail, #1
         if_ae           and     rcv_tail, rcv_mask
+#ifdef FIFO_DEBUG
         if_ae           or      outa, led
         if_ae           or      dira, led
+#endif
         
                         cmp     rcv_count, high_water wz wc
         if_a            or      outa, rtsmask
+#ifdef RTS_DEBUG
         if_a            or      outa, led2
         if_a            or      dira, led2
+#endif
         
 assemble                cmp     rcv_state, #STATE_WAIT wz
         if_z            jmp     #do_rcv_wait
@@ -200,8 +207,13 @@ assemble                cmp     rcv_state, #STATE_WAIT wz
                         add     t1, #rcv_dispatch
                         jmp     t1
                         
+#ifdef FIFO_DEBUG
 led                     long    1 << 26
+#endif
+
+#ifdef RTS_DEBUG
 led2                    long    1 << 27
+#endif
 
 high_water              long    1000
 low_water               long    100
