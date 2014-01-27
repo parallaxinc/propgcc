@@ -127,7 +127,7 @@ int main(void)
     }
     
     /* set the port and ask for our IP address */
-    //send_at_command(0, "C0%x", PORT);
+    //send_at_command(0, "C0%x", PORT); // this doesn't seem to work for some reason
     send_at_command(1, "MY");
     
     printf("Listening for frames\n");
