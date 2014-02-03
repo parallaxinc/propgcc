@@ -29,11 +29,11 @@ volatile struct {
  */
 void start(volatile void *parptr)
 {
-    extern unsigned int _load_start_toggle_fw_cog[];
+    extern unsigned int *toggle_fw_code;
 #if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
-    load_cog_driver_xmm(_load_start_toggle_fw_cog, 496, (uint32_t *)parptr);
+    load_cog_driver_xmm(toggle_fw_code, 496, (uint32_t *)parptr);
 #else
-    cognew(_load_start_toggle_fw_cog, parptr);
+    cognew(toggle_fw_code, parptr);
 #endif
 }
 
