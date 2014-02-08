@@ -26,6 +26,8 @@
   THE SOFTWARE.
 }
 
+#define RELEASE_PINS
+
 #include "xmem_common.spin"
 #include "xmem_spi.spin"
 
