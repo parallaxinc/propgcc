@@ -31,7 +31,7 @@ _NATIVE extern void _enable_spi_locking(int lock_id);
 static volatile uint32_t __attribute__((section(".hub"))) sd_lock = -1;
 static volatile uint32_t __attribute__((section(".hub"))) *sd_mbox;
 
-#if defined(__PROPELLER_XMM__) || defined(__PROPELLER_XMMC__)
+#ifdef __PROPELLER_USE_XMM__
 #define USE_XMM_MBOX
 extern uint16_t _xmm_mbox_p;
 #endif
@@ -49,9 +49,11 @@ static uint32_t __attribute__((section(".hubtext"))) do_cmd(uint32_t cmd)
 // This routine passes a bus lock to the low-level driver
 void dfs_use_lock(uint32_t lockId)
 {
+#ifdef __PROPELLER_USE_XMM__
     if (sd_mbox)
         _enable_spi_locking(lockId);
     else
+#endif
         sd_lock = lockId;
 }
 
