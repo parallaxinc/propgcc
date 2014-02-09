@@ -70,7 +70,7 @@ CFLAGS+=$(DEBUG) -Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 
 # for compiling Spin code
-SPINFLAGS=
+SPINFLAGS= -I$(SPINDIR)
 
 # for compiling PASM external memory drivers
 SPIN_DAT=spin2cpp --dat
