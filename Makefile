@@ -1,5 +1,5 @@
-#PREFIX?=/opt/parallax
-PREFIX?=$(shell pwd)/target
+PREFIX?=/opt/parallax
+#PREFIX?=$(shell pwd)/target
 
 ROOT=$(shell pwd)
 BUILD=../build
@@ -10,6 +10,7 @@ CD=cd
 MKDIR=mkdir -p
 CHMOD=chmod
 CP=cp
+TOUCH=touch
 
 UNAME=$(shell uname -s)
 
@@ -32,7 +33,7 @@ ifeq ($(UNAME),Msys)
 endif
 
 ifeq ($(OS),)
-  $(error "Unknown system: " $(UNAME))
+  $(error Unknown system: $(UNAME))
 endif
 
 export PREFIX
@@ -47,121 +48,161 @@ all:	binutils gcc lib-cog libgcc lib install-spin-compiler lib-tiny spin2cpp loa
 ############
 
 .PHONY:	binutils
-binutils:	$(BUILD)/binutils
+binutils:	$(BUILD)/binutils/binutils-built
+
+$(BUILD)/binutils/binutils-built:	$(BUILD)/binutils/binutils-configured
 	@$(ECHO) Building binutils
-	@$(MAKE) -C $< all
+	@$(MAKE) -C $(BUILD)/binutils all
 	@$(ECHO) Installing binutils
-	@$(MAKE) -C $< install
+	@$(MAKE) -C $(BUILD)/binutils install
+	@$(TOUCH) $@
 	
-$(BUILD)/binutils:
+$(BUILD)/binutils/binutils-configured:	$(BUILD)/binutils/binutils-created
 	@$(ECHO) Configuring binutils
-	@$(MKDIR) -p $@
-	@$(CD) $@; $(ROOT)/binutils/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
+	@$(CD) $(BUILD)/binutils; $(ROOT)/binutils/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
+	@$(TOUCH) $@
+
+$(BUILD)/binutils/binutils-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 #######
 # GCC #
 #######
 
 .PHONY:	gcc
-gcc:	$(BUILD)/gcc
+gcc:	$(BUILD)/gcc/gcc-built
+
+$(BUILD)/gcc/gcc-built:	$(BUILD)/binutils/binutils-built $(BUILD)/gcc/gcc-configured
 	@$(ECHO) Building gcc
-	@$(MAKE) -C $< all-gcc
+	@$(MAKE) -C $(BUILD)/gcc all-gcc
 	@$(ECHO) Installing gcc
-	@$(MAKE) -C $< install-gcc
+	@$(MAKE) -C $(BUILD)/gcc install-gcc
+	@$(TOUCH) $@
 	
-$(BUILD)/gcc:
+$(BUILD)/gcc/gcc-configured:	$(BUILD)/gcc/gcc-created
 	@$(ECHO) Configuring gcc
-	$(MKDIR) -p $@
-	$(CD) $@; $(ROOT)/gcc/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
+	@$(CD) $(BUILD)/gcc; $(ROOT)/gcc/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
+	@$(TOUCH) $@
+
+$(BUILD)/gcc/gcc-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 #############
 # LIBSTDC++ #
 #############
 
 .PHONY:	libstdc++
-libstdc++:	$(BUILD)/gcc
+libstdc++:	$(BUILD)/gcc/libstdc++-built
+
+$(BUILD)/gcc/libstdc++-built:	$(BUILD)/gcc/gcc-built
 	@$(ECHO) Building libstdc++
-	@$(MAKE) -C $< all
+	@$(MAKE) -C $(BUILD)/gcc all
 	@$(ECHO) Installing libstdc++
-	@$(MAKE) -C $< install
+	@$(MAKE) -C $(BUILD)/gcc install
+	@$(TOUCH) $@
+	
+##########
+# LIBGCC #
+##########
+
+.PHONY:	libgcc
+libgcc:	$(BUILD)/gcc/libgcc-built
+
+$(BUILD)/gcc/libgcc-built:	$(BUILD)/gcc/gcc-built
+	@$(ECHO) Building libgcc
+	@$(MAKE) -C $(BUILD)/gcc all-target-libgcc
+	@$(ECHO) Installing gcc
+	@$(MAKE) -C $(BUILD)/gcc install-target-libgcc
+	@$(TOUCH) $@
 	
 #######
 # GDB #
 #######
 
 .PHONY:	gdb
-gdb:	$(BUILD)/gdb
+gdb:	$(BUILD)/gdb/gdb-built
+
+$(BUILD)/gdb/gdb-built:	$(BUILD)/gdb/gdb-configured
 	@$(ECHO) Building gdb
-	@$(MAKE) -C $< all-gcc
+	@$(MAKE) -C $(BUILD)/gdb all
 	@$(ECHO) Installing gdb
-	@$(MAKE) -C $< install-gcc
-	@$(ECHO) Installing gdb
-	@$(CP) -f gdb/gdb$(EXT) ${PREFIX}/bin/propeller-elf-gdb$(EXT)
+	@$(CP) -f $(BUILD)/gdb/gdb/gdb$(EXT) $(PREFIX)/bin/propeller-elf-gdb$(EXT)
+	@$(TOUCH) $@
 	
-$(BUILD)/gdb:
+$(BUILD)/gdb/gdb-configured:	$(BUILD)/gdb/gdb-created
 	@$(ECHO) Configuring gdb
-	$(MKDIR) -p $@
-	$(CD) $@; $(ROOT)/gdb/configure --target=propeller-elf --prefix=$(PREFIX) --with-system-gdbinit=${PREFIX}/lib/gdb/gdbinit
+	@$(CD) $(BUILD)/gdb; $(ROOT)/gdb/configure --target=propeller-elf --prefix=$(PREFIX) --with-system-gdbinit=$(PREFIX)/lib/gdb/gdbinit
+	@$(TOUCH) $@
+
+$(BUILD)/gdb/gdb-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 ###########
 # GDBSTUB #
 ###########
 
 .PHONY:	gdbstub
-gdbstub:
+gdbstub:	$(BUILD)/gdb/gdb-built
+
+$(BUILD)/gdbstub/gdbstub-built:	$(BUILD)/gdbstub/gdbstub-created
 	@$(ECHO) Building gdbstub
 	@$(MAKE) -C gdbstub
 	@$(ECHO) Installing gdbstub
 	@$(CP) -f gdbstub/gdbstub$(EXT) $(PREFIX)/bin/
 	@$(MKDIR) -p $(PREFIX)/lib/gdb
 	@$(CP) -f gdbstub/gdbinit.propeller $(PREFIX)/lib/gdb/gdbinit
+	@$(TOUCH) $@
 
-##########
-# LIBGCC #
-##########
+$(BUILD)/gdbstub/gdbstub-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
-.PHONY:	libgcc
-libgcc:	$(BUILD)/gcc
-	@$(ECHO) Building libgcc
-	@$(MAKE) -C $< all-target-libgcc
-	@$(ECHO) Installing gcc
-	@$(MAKE) -C $< install-target-libgcc
-	
-$(BUILD)/gcc:
-	@$(ECHO) Configuring gcc
-	@$(MKDIR) -p $@
-	@$(CD) $@; $(ROOT)/gcc/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
+#######
+# LIB #
+#######
+
+.PHONY:	lib
+lib:	$(BUILD)/lib/lib-built
+
+$(BUILD)/lib/lib-built:	$(BUILD)/lib/lib-created
+	@$(ECHO) Building library
+	@$(MAKE) -C lib
+	@$(ECHO) Installing library
+	@$(MAKE) -C lib install
+	@$(TOUCH) $@
+
+$(BUILD)/lib/lib-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 ###############
 # COG LIBRARY #
 ###############
 
 .PHONY:	lib-cog
-lib-cog:
+lib-cog:	$(BUILD)/lib/lib-cog-built
+
+$(BUILD)/lib/lib-cog-built:	$(BUILD)/lib/lib-created
 	@$(ECHO) Building cog library
 	@$(MAKE) -C lib cog
-
-###########
-# LIBRARY #
-###########
-
-.PHONY:	lib
-lib:
-	@$(ECHO) Building library
-	@$(MAKE) -C lib
-	@$(ECHO) Installing library
-	@$(MAKE) -C lib install
+	@$(TOUCH) $@
 
 ###########
 # LIBTINY #
 ###########
 
 .PHONY:	lib-tiny
-lib-tiny:
+lib-tiny:	$(BUILD)/lib/lib-tiny-built
+
+$(BUILD)/lib/lib-tiny-built:	$(BUILD)/lib/lib-created
 	@$(ECHO) Building tiny library
 	@$(MAKE) -C lib tiny
 	@$(ECHO) Installing tiny library
 	@$(MAKE) -C lib install-tiny
+	@$(TOUCH) $@
 
 #################
 # SPIN COMPILER #
@@ -177,32 +218,53 @@ install-spin-compiler:
 ############
 
 .PHONY:	spin2cpp
-spin2cpp:
+spin2cpp:	$(BUILD)/spin2cpp/spin2cpp-built
+
+$(BUILD)/spin2cpp/spin2cpp-built:	$(BUILD)/spin2cpp/spin2cpp-created
 	@$(ECHO) Building spin2cpp
 	@$(MAKE) -C spin2cpp TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp
 	@$(ECHO) Installing spin2cpp
 	@$(MAKE) -C spin2cpp TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp install
+	@$(TOUCH) $@
+
+$(BUILD)/spin2cpp/spin2cpp-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 ###########
 # SPINSIM #
 ###########
 
 .PHONY:	spinsim
-spinsim:
+spinsim:	$(BUILD)/spinsim/spinsim-built
+
+$(BUILD)/spinsim/spinsim-built:	$(BUILD)/spinsim/spinsim-created
 	@$(ECHO) Building spinsim
 	@$(MAKE) -C spinsim
-	@$(CP) -f spinsim/spinsim$(EXT) ${PREFIX}/bin/
+	@$(CP) -f spinsim/spinsim$(EXT) $(PREFIX)/bin/
+	@$(TOUCH) $@
+
+$(BUILD)/%-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 ##########
 # LOADER #
 ##########
 
 .PHONY:	loader
-loader:
+loader:	$(BUILD)/loader/loader-built
+
+$(BUILD)/loader/loader-built:	$(BUILD)/loader/loader-created
 	@$(ECHO) Building propeller-load
 	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader
 	@$(ECHO) Installing propeller-load
 	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader install
+	@$(TOUCH) $@
+
+$(BUILD)/loader/loader-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 #########
 # CLEAN #
@@ -210,7 +272,7 @@ loader:
 
 .PHONY:	clean
 clean:
-	@$(ECHO) Removing $(BUILD).
+	@$(ECHO) Removing $(BUILD)
 	@$(RM) -rf $(BUILD)
 	@$(MAKE) -C lib clean
 	@$(MAKE) -C spin2cpp clean
@@ -224,5 +286,5 @@ clean:
 
 .PHONY:	clean-all
 clean-all:	clean
-	@$(ECHO) Removing $(PREFIX).
-	@$(RM) -rf $(PREFIX)
+	@$(ECHO) Removing $(PREFIX)/*
+	@$(RM) -rf $(PREFIX)/*
