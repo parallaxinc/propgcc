@@ -71,6 +71,7 @@ all:	binutils gcc lib-cog libgcc lib install-spin-compiler lib-tiny spin2cpp loa
 # HELP #
 ########
 
+.PHONY:	help
 help:
 	@$(ECHO)
 	@$(ECHO) 'Targets:'
