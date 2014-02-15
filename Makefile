@@ -128,7 +128,7 @@ $(BUILD)/binutils/binutils-configured:	$(BUILD)/binutils/binutils-created
 .PHONY:	gcc
 gcc:	$(BUILD)/gcc/gcc-built
 
-$(BUILD)/gcc/gcc-built:	$(BUILD)/binutils/binutils-built $(BUILD)/gcc/gcc-configured
+$(BUILD)/gcc/gcc-built:	binutils $(BUILD)/binutils/binutils-built $(BUILD)/gcc/gcc-configured
 	@$(ECHO) Building gcc
 	@$(MAKE) -C $(BUILD)/gcc all-gcc
 	@$(ECHO) Installing gcc
@@ -147,7 +147,7 @@ $(BUILD)/gcc/gcc-configured:	$(BUILD)/gcc/gcc-created
 .PHONY:	libstdc++
 libstdc++:	$(BUILD)/gcc/libstdc++-built
 
-$(BUILD)/gcc/libstdc++-built:	$(BUILD)/gcc/gcc-built
+$(BUILD)/gcc/libstdc++-built:	gcc $(BUILD)/gcc/gcc-built
 	@$(ECHO) Building libstdc++
 	@$(MAKE) -C $(BUILD)/gcc all
 	@$(ECHO) Installing libstdc++
@@ -161,7 +161,7 @@ $(BUILD)/gcc/libstdc++-built:	$(BUILD)/gcc/gcc-built
 .PHONY:	libgcc
 libgcc:	$(BUILD)/gcc/libgcc-built
 
-$(BUILD)/gcc/libgcc-built:	$(BUILD)/gcc/gcc-built
+$(BUILD)/gcc/libgcc-built:	gcc $(BUILD)/gcc/gcc-built
 	@$(ECHO) Building libgcc
 	@$(MAKE) -C $(BUILD)/gcc all-target-libgcc
 	@$(ECHO) Installing gcc
@@ -210,7 +210,7 @@ $(BUILD)/gdbstub/gdbstub-built:	$(BUILD)/gdbstub/gdbstub-created
 .PHONY:	lib
 lib:	$(BUILD)/lib/lib-built
 
-$(BUILD)/lib/lib-built:	$(BUILD)/lib/lib-created
+$(BUILD)/lib/lib-built:	gcc $(BUILD)/lib/lib-created
 	@$(ECHO) Building library
 	@$(MAKE) -C lib
 	@$(ECHO) Installing library
@@ -224,7 +224,7 @@ $(BUILD)/lib/lib-built:	$(BUILD)/lib/lib-created
 .PHONY:	lib-cog
 lib-cog:	$(BUILD)/lib/lib-cog-built
 
-$(BUILD)/lib/lib-cog-built:	$(BUILD)/lib/lib-created
+$(BUILD)/lib/lib-cog-built:	gcc $(BUILD)/lib/lib-created
 	@$(ECHO) Building cog library
 	@$(MAKE) -C lib cog
 	@$(TOUCH) $@
@@ -236,7 +236,7 @@ $(BUILD)/lib/lib-cog-built:	$(BUILD)/lib/lib-created
 .PHONY:	lib-tiny
 lib-tiny:	$(BUILD)/lib/lib-tiny-built
 
-$(BUILD)/lib/lib-tiny-built:	$(BUILD)/lib/lib-created
+$(BUILD)/lib/lib-tiny-built:	gcc $(BUILD)/lib/lib-created
 	@$(ECHO) Building tiny library
 	@$(MAKE) -C lib tiny
 	@$(ECHO) Installing tiny library
@@ -286,7 +286,7 @@ $(BUILD)/spinsim/spinsim-built:	$(BUILD)/spinsim/spinsim-created
 .PHONY:	loader
 loader:	$(BUILD)/loader/loader-built
 
-$(BUILD)/loader/loader-built:	$(BUILD)/loader/loader-created
+$(BUILD)/loader/loader-built:	gcc $(BUILD)/loader/loader-created
 	@$(ECHO) Building propeller-load
 	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader
 	@$(ECHO) Installing propeller-load
