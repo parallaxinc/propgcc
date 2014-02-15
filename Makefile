@@ -36,13 +36,71 @@ ifeq ($(OS),)
   $(error Unknown system: $(UNAME))
 endif
 
+$(warning OS $(OS) detected.)
+
 export PREFIX
 export OS
+
+#
+# note that the propgcc version string does not deal well with
+# spaces due to how it is used below
+#
+VERSION=$(shell cat release/VERSION.txt | grep -v '^\#')
+# better revision command. thanks yeti.
+HGVERSION=$(shell hg tip --template '{rev}\n')
+
+PROPGCC_VERSION=$(VERSION)_$(HGVERSION)
+
+$(warning PropGCC version is $(PROPGCC_VERSION).)
+export PROPGCC_VERSION
+
+BUGURL?=http://code.google.com/p/propgcc/issues
+$(warning BugURL is $(BUGURL).)
+export BUGURL
+
+#
+# configure options for propgcc
+#
+CONFIG_OPTIONS=--with-pkgversion=$(PROPGCC_VERSION) --with-bugurl=$(BUGURL)
 
 .PHONY:	all
 all:	binutils gcc lib-cog libgcc lib install-spin-compiler lib-tiny spin2cpp loader gdb gdbstub spinsim libstdc++
 	@$(ECHO) Build complete.
 
+########
+# HELP #
+########
+
+help:
+	@$(ECHO)
+	@$(ECHO) 'Targets:'
+	@$(ECHO) '  all - build all targets (default)'
+	@$(ECHO) '  binutils - build binutils'	
+	@$(ECHO) '  gcc - build gcc'	
+	@$(ECHO) '  libstdc++ - build the C++ library'	
+	@$(ECHO) '  libgcc - build libgcc'	
+	@$(ECHO) '  gdb - build gdb'	
+	@$(ECHO) '  gdbstub - build gdbstub'	
+	@$(ECHO) '  lib - build the library'	
+	@$(ECHO) '  lib-cog - build the cog library'	
+	@$(ECHO) '  lib-tiny - build libtiny'	
+	@$(ECHO) '  install-spin-compiler - install OpenSpin'	
+	@$(ECHO) '  spin2cpp - build spin2cpp'	
+	@$(ECHO) '  spinsim - build spinsim'	
+	@$(ECHO) '  loader - build the loader'	
+	@$(ECHO)
+	@$(ECHO) 'Cleaning targets:'
+	@$(ECHO) '  clean - prepare for a fresh build'
+	@$(ECHO) '  clean-all - prepare for a fresh build and remove the $(PREFIX) directory'
+	@$(ECHO) '  clean-binutils - prepare for a fresh rebuild of binutils'	
+	@$(ECHO) '  clean-gcc - prepare for a fresh rebuild of gcc, libgcc, libstdc++'	
+	@$(ECHO) '  clean-gdb - prepare for a fresh rebuild of gdb'	
+	@$(ECHO) '  clean-gdbstub - prepare for a fresh rebuild of gdbstub'	
+	@$(ECHO) '  clean-lib - prepare for a fresh rebuild of lib, lib-cog, lib-tiny'	
+	@$(ECHO) '  clean-spin2cpp - prepare for a fresh rebuild of spin2cpp'	
+	@$(ECHO) '  clean-spinsim prepare for a fresh rebuild of spinsim'	
+	@$(ECHO)
+	
 ############
 # BINUTILS #
 ############
@@ -59,7 +117,7 @@ $(BUILD)/binutils/binutils-built:	$(BUILD)/binutils/binutils-configured
 	
 $(BUILD)/binutils/binutils-configured:	$(BUILD)/binutils/binutils-created
 	@$(ECHO) Configuring binutils
-	@$(CD) $(BUILD)/binutils; $(ROOT)/binutils/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
+	@$(CD) $(BUILD)/binutils; $(ROOT)/binutils/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared $(CONFIG_OPTIONS)
 	@$(TOUCH) $@
 
 #######
@@ -78,7 +136,7 @@ $(BUILD)/gcc/gcc-built:	$(BUILD)/binutils/binutils-built $(BUILD)/gcc/gcc-config
 	
 $(BUILD)/gcc/gcc-configured:	$(BUILD)/gcc/gcc-created
 	@$(ECHO) Configuring gcc
-	@$(CD) $(BUILD)/gcc; $(ROOT)/gcc/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
+	@$(CD) $(BUILD)/gcc; $(ROOT)/gcc/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared $(CONFIG_OPTIONS)
 	@$(TOUCH) $@
 
 #############
@@ -239,14 +297,9 @@ $(BUILD)/loader/loader-built:	$(BUILD)/loader/loader-created
 #########
 
 .PHONY:	clean
-clean:
+clean:	clean-gdbstub clean-lib clean-loader clean-spin2cpp clean-spinsim
 	@$(ECHO) Removing $(BUILD)
 	@$(RM) -rf $(BUILD)
-	@$(MAKE) -C lib clean
-	@$(MAKE) -C spin2cpp clean
-	@$(MAKE) -C loader clean
-	@$(MAKE) -C gdbstub clean
-	@$(MAKE) -C spinsim clean
 
 #############
 # CLEAN-ALL #
@@ -257,10 +310,50 @@ clean-all:	clean
 	@$(ECHO) Removing $(PREFIX)/*
 	@$(RM) -rf $(PREFIX)/*
 
+#####################
+# INDIVIDUAL CLEANS #
+#####################
+
+.PHONY:	clean-binutils
+clean-binutils:
+	@$(RM) -rf $(BUILD)/binutils
+
+.PHONY:	clean-gcc
+clean-gcc:
+	@$(RM) -rf $(BUILD)/gcc
+
+.PHONY:	clean-gdb
+clean-gdb:
+	@$(RM) -rf $(BUILD)/gdb
+
+.PHONY:	clean-gdbstub
+clean-gdbstub:
+	@$(RM) -rf $(BUILD)/gdbstub
+	@$(MAKE) -C gdbstub clean
+
+.PHONY:	clean-lib
+clean-lib:
+	@$(RM) -rf $(BUILD)/lib
+	@$(MAKE) -C lib clean
+
+.PHONY:	clean-loader
+clean-loader:
+	@$(RM) -rf $(BUILD)/loader
+	@$(MAKE) -C loader clean
+
+.PHONY:	clean-spin2cpp
+clean-spin2cpp:
+	@$(RM) -rf $(BUILD)/spin2cpp
+	@$(MAKE) -C spin2cpp clean
+
+.PHONY:	clean-spinsim
+clean-spinsim:
+	@$(RM) -rf $(BUILD)/spinsim
+	@$(MAKE) -C spinsim clean
+
 # create a directory
 	
 $(BUILD)/%-created:
 	@$(MKDIR) -p $(@D)
 	@$(TOUCH) $@
-
 
