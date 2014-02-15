@@ -62,10 +62,6 @@ $(BUILD)/binutils/binutils-configured:	$(BUILD)/binutils/binutils-created
 	@$(CD) $(BUILD)/binutils; $(ROOT)/binutils/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
 	@$(TOUCH) $@
 
-$(BUILD)/binutils/binutils-created:
-	@$(MKDIR) -p $(@D)
-	@$(TOUCH) $@
-
 #######
 # GCC #
 #######
@@ -83,10 +79,6 @@ $(BUILD)/gcc/gcc-built:	$(BUILD)/binutils/binutils-built $(BUILD)/gcc/gcc-config
 $(BUILD)/gcc/gcc-configured:	$(BUILD)/gcc/gcc-created
 	@$(ECHO) Configuring gcc
 	@$(CD) $(BUILD)/gcc; $(ROOT)/gcc/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared
-	@$(TOUCH) $@
-
-$(BUILD)/gcc/gcc-created:
-	@$(MKDIR) -p $(@D)
 	@$(TOUCH) $@
 
 #############
@@ -136,10 +128,6 @@ $(BUILD)/gdb/gdb-configured:	$(BUILD)/gdb/gdb-created
 	@$(CD) $(BUILD)/gdb; $(ROOT)/gdb/configure --target=propeller-elf --prefix=$(PREFIX) --with-system-gdbinit=$(PREFIX)/lib/gdb/gdbinit
 	@$(TOUCH) $@
 
-$(BUILD)/gdb/gdb-created:
-	@$(MKDIR) -p $(@D)
-	@$(TOUCH) $@
-
 ###########
 # GDBSTUB #
 ###########
@@ -156,10 +144,6 @@ $(BUILD)/gdbstub/gdbstub-built:	$(BUILD)/gdbstub/gdbstub-created
 	@$(CP) -f gdbstub/gdbinit.propeller $(PREFIX)/lib/gdb/gdbinit
 	@$(TOUCH) $@
 
-$(BUILD)/gdbstub/gdbstub-created:
-	@$(MKDIR) -p $(@D)
-	@$(TOUCH) $@
-
 #######
 # LIB #
 #######
@@ -172,10 +156,6 @@ $(BUILD)/lib/lib-built:	$(BUILD)/lib/lib-created
 	@$(MAKE) -C lib
 	@$(ECHO) Installing library
 	@$(MAKE) -C lib install
-	@$(TOUCH) $@
-
-$(BUILD)/lib/lib-created:
-	@$(MKDIR) -p $(@D)
 	@$(TOUCH) $@
 
 ###############
@@ -227,10 +207,6 @@ $(BUILD)/spin2cpp/spin2cpp-built:	$(BUILD)/spin2cpp/spin2cpp-created
 	@$(MAKE) -C spin2cpp TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp install
 	@$(TOUCH) $@
 
-$(BUILD)/spin2cpp/spin2cpp-created:
-	@$(MKDIR) -p $(@D)
-	@$(TOUCH) $@
-
 ###########
 # SPINSIM #
 ###########
@@ -242,10 +218,6 @@ $(BUILD)/spinsim/spinsim-built:	$(BUILD)/spinsim/spinsim-created
 	@$(ECHO) Building spinsim
 	@$(MAKE) -C spinsim
 	@$(CP) -f spinsim/spinsim$(EXT) $(PREFIX)/bin/
-	@$(TOUCH) $@
-
-$(BUILD)/%-created:
-	@$(MKDIR) -p $(@D)
 	@$(TOUCH) $@
 
 ##########
@@ -260,10 +232,6 @@ $(BUILD)/loader/loader-built:	$(BUILD)/loader/loader-created
 	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader
 	@$(ECHO) Installing propeller-load
 	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader install
-	@$(TOUCH) $@
-
-$(BUILD)/loader/loader-created:
-	@$(MKDIR) -p $(@D)
 	@$(TOUCH) $@
 
 #########
@@ -288,3 +256,11 @@ clean:
 clean-all:	clean
 	@$(ECHO) Removing $(PREFIX)/*
 	@$(RM) -rf $(PREFIX)/*
+
+# create a directory
+	
+$(BUILD)/%-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
+
+
