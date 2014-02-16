@@ -21,13 +21,12 @@ DRVDIR=$(BUILDROOT)/propeller-load
 INSTALLBINDIR=$(TARGET)/bin
 INSTALLLIBDIR=$(TARGET)/propeller-load
 
-DIRS = $(OBJDIR) $(PROPOBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
-
 CC=gcc
 ECHO=echo
 MKDIR=mkdir -p
 CP=cp
 RM=rm
+TOUCH=touch
 
 PROPCC=propeller-elf-gcc
 PROPOBJCOPY=propeller-elf-objcopy
@@ -204,10 +203,10 @@ DRIVERS+=\
 $(DRVDIR)/sd_driver.dat
 
 .PHONY:	drivers
-drivers:	$(DRVDIR) $(DRIVERS)
+drivers:	$(DRVDIR)/dir-created $(DRIVERS)
 
 .PHONY:	sd-loader
-sd-loader:	$(DRVDIR)
+sd-loader:	$(DRVDIR)/dir-created
 	@$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT))
 
 ##################
@@ -265,7 +264,7 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.dat
 # GAS TO C #
 ############
 
-$(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)
+$(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)/dir-created
 	@$(PROPCC) $(PROPCFLAGS) -nostdlib $< -o $@
 	@$(ECHO) $(PROPCC) $@
 
@@ -273,7 +272,7 @@ $(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
 	@$(PROPOBJCOPY) -O binary $< $@
 	@$(ECHO) cc $@
 
-$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)
+$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)/dir-created
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) bin2c $@
 
@@ -288,14 +287,14 @@ $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
 .PHONY:	propeller-load
 propeller-load:		$(BINDIR)/propeller-load$(EXT)
 
-$(BINDIR)/propeller-load$(EXT):	$(BINDIR) $(OBJDIR) bin2c $(OBJS)
+$(BINDIR)/propeller-load$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-created bin2c $(OBJS)
 	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	@$(ECHO) $@
 
 .PHONY:	propeller-elf-image-size
 propeller-elf-image-size:		$(BINDIR)/propeller-elf-image-size$(EXT)
 
-$(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR) $(OBJDIR) $(IMAGE_SIZE_OBJS)
+$(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-created $(IMAGE_SIZE_OBJS)
 	@$(CC) $(LDFLAGS) -o $@ $(IMAGE_SIZE_OBJS)
 	@$(ECHO) $@
 
@@ -318,7 +317,7 @@ $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
 .PHONY:	bin2c
 bin2c:		$(BINDIR)/bin2c$(EXT)
 
-$(BINDIR)/bin2c$(EXT):	$(OBJDIR) $(SRCDIR)/tools/bin2c.c
+$(BINDIR)/bin2c$(EXT):	$(OBJDIR)/dir-created $(SRCDIR)/tools/bin2c.c
 	@$(CC) $(CFLAGS) $(LDFLAGS) $(SRCDIR)/tools/bin2c.c -o $@
 	@$(ECHO) $@
 
@@ -326,15 +325,16 @@ $(BINDIR)/bin2c$(EXT):	$(OBJDIR) $(SRCDIR)/tools/bin2c.c
 # DIRECTORIES #
 ###############
 
-$(DIRS):
-	$(MKDIR) $@
+%/dir-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 ##################
 # INSTALL TARGET #
 ##################
 
 .PHONY:	install
-install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
+install:	all $(INSTALLBINDIR)/dir-created $(INSTALLLIBDIR)/dir-created
 	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
 	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size $(INSTALLBINDIR)
 	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
