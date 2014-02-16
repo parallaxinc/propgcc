@@ -1,5 +1,4 @@
 PREFIX?=/opt/parallax
-#PREFIX?=$(shell pwd)/target
 
 ROOT=$(shell pwd)
 BUILD=../build
