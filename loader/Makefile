@@ -103,7 +103,7 @@ info:
 clean:
 	@$(RM) -f -r $(OBJDIR)
 	@$(RM) -f -r $(BINDIR)
-	@$(RM) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf
+	@$(RM) -f -r $(DRVDIR)
 	@$(RM) -f *.binary
 	@$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT)) clean
 
