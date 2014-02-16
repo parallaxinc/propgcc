@@ -8,7 +8,7 @@ endif
 
 SRCDIR=.
 OBJDIR=$(BUILDROOT)/obj
-DRVDIR=$(BUILDROOT)/include
+DRVDIR=$(BUILDROOT)/propeller-load
 
 DIRS = $(OBJDIR) $(DRVDIR)
 
