@@ -197,53 +197,6 @@ $(DRVDIR)/synapse_xmem.dat \
 $(DRVDIR)/sd_xmem.dat
 
 #################
-# CACHE DRIVERS #
-#################
-
-ifdef NOTDEF
-DRIVERS+=\
-$(DRVDIR)/c3_cache.dat \
-$(DRVDIR)/c3_cache_flash.dat \
-$(DRVDIR)/ssf_cache.dat \
-$(DRVDIR)/dracblade_cache.dat \
-$(DRVDIR)/sdram_cache.dat \
-$(DRVDIR)/eeprom_cache.dat \
-$(DRVDIR)/sd_cache.dat \
-$(DRVDIR)/spi_flash_cache.dat \
-$(DRVDIR)/sst_spi_flash_cache.dat \
-$(DRVDIR)/spi_nway_flash_cache.dat \
-$(DRVDIR)/sst_sqi_flash_cache.dat \
-$(DRVDIR)/sst_sqi_nway_flash_cache.dat \
-$(DRVDIR)/spi_sram_cache.dat \
-$(DRVDIR)/spi_sram24_cache.dat \
-$(DRVDIR)/spi_nway_sram_cache.dat \
-$(DRVDIR)/winbond_sqi_flash_cache.dat \
-$(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
-$(DRVDIR)/synapse_cache.dat \
-$(DRVDIR)/rampage2_cache.dat
-endif
-
-#######################
-# NEWER CACHE DRIVERS #
-#######################
-
-ifdef NOTDEF
-DRIVERS+=\
-$(DRVDIR)/rampage2_xcache.dat \
-$(DRVDIR)/winbond_spi_flash_xcache.dat \
-$(DRVDIR)/sst_spi_flash_xcache.dat \
-$(DRVDIR)/winbond_sqi_flash_xcache.dat \
-$(DRVDIR)/sst_sqi_flash_xcache.dat \
-$(DRVDIR)/spi_sram_xcache.dat \
-$(DRVDIR)/spi_sram24_xcache.dat \
-$(DRVDIR)/sqi_sram_xcache.dat \
-$(DRVDIR)/winbond_sqi_flash_sram_xcache.dat \
-$(DRVDIR)/sst_sqi_flash_sram_xcache.dat \
-$(DRVDIR)/c3_xcache.dat \
-$(DRVDIR)/synapse_xcache.dat
-endif
-
-#################
 # OTHER DRIVERS #
 #################
 
@@ -279,53 +232,6 @@ $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(SPIN_DAT) -o $@ $<
-	@$(ECHO) $@
-
-####################################
-# RULES TO BUILD OLD CACHE DRIVERS #
-####################################
-
-CACHE_DRIVER_COMMON=\
-$(CACHEDRIVERDIR)/cache_interface.spin
-
-$(DRVDIR)/%_cache.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DENABLE_RAM -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/%_cache_flash.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_%_cache.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DSST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_%_cache.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-######################################
-# RULES TO BUILD NEWER CACHE DRIVERS #
-######################################
-
-XCACHE_DRIVER_COMMON=\
-$(CACHEDRIVERDIR)/cache_common.spin \
-$(CACHEDRIVERDIR)/cache_interface.spin \
-$(CACHEDRIVERDIR)/cache_spi_pins.spin \
-$(CACHEDRIVERDIR)/cache_sqi_pins.spin \
-$(CACHEDRIVERDIR)/cache_spi.spin \
-$(CACHEDRIVERDIR)/cache_sqi.spin
-
-$(DRVDIR)/%_xcache.dat:	$(CACHEDRIVERDIR)/%_xcache.spin $(XCACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_%_xcache.dat:	$(CACHEDRIVERDIR)/%_xcache.spin $(XCACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_%_xcache.dat:	$(CACHEDRIVERDIR)/%_xcache.spin $(XCACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 ##########################################
