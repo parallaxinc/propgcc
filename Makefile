@@ -247,7 +247,7 @@ $(BUILD)/lib/lib-tiny-built:	gcc $(BUILD)/lib/lib-created
 #################
 
 .PHONY:	install-spin-compiler
-install-spin-compiler:
+install-spin-compiler:	$(PREFIX)/bin/bin-created
 	@$(CP) -f release/$(SPINCMP) $(PREFIX)/bin
 	@$(CHMOD) a+x $(PREFIX)/bin/$(SPINCMP)
 	
@@ -353,7 +353,7 @@ clean-spinsim:
 
 # create a directory
 	
-$(BUILD)/%-created:
+%-created:
 	@$(MKDIR) -p $(@D)
 	@$(TOUCH) $@
 
