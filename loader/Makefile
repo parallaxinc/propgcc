@@ -22,6 +22,7 @@ INSTALLBINDIR=$(TARGET)/bin
 INSTALLLIBDIR=$(TARGET)/propeller-load
 
 CC=gcc
+TOOLCC=$(CC)
 ECHO=echo
 MKDIR=mkdir -p
 CP=cp
