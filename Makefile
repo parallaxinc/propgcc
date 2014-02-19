@@ -1,7 +1,25 @@
-PREFIX?=/opt/parallax
-
+#
+# Normally this Makefile builds binaries for the same system as the host,
+# i.e. when run on linux x86 it produces a linux x86 propgcc toolchain.
+# However, you can also generate a toolchain for a different platform. To
+# do this, first make for the host (just do a plain "make") and then do a
+# "make CROSS=win32" to build a win32 toolchain.
+#
 ROOT=$(shell pwd)
-BUILD=../build
+ifeq ($(CROSS),)
+  BUILD=$(ROOT)/../build
+  CFGCROSS=
+  CROSSCC=gcc
+else
+  BUILD=$(ROOT)/../build-$(CROSS)
+  PREFIX=/opt/parallax-$(CROSS)
+  CFGCROSS=--host=i586-mingw32msvc
+  CROSSCC=i586-mingw32msvc-gcc
+  OS=msys
+  EXT=.exe
+endif
+
+PREFIX?=/opt/parallax
 
 ECHO=echo
 RM=rm
@@ -14,21 +32,21 @@ TOUCH=touch
 UNAME=$(shell uname -s)
 
 ifeq ($(UNAME),Linux)
-  OS=linux
+  OS?=linux
   SPINCMP=openspin.linux
-  EXT=
+  EXT?=
 endif
 
 ifeq ($(UNAME),Darwin)
-  OS=macosx
+  OS?=macosx
   SPINCMP=openspin.osx
-  EXT=
+  EXT?=
 endif
 
 ifeq ($(UNAME),Msys)
-  OS=msys
+  OS?=msys
   SPINCMP=openspin.exe
-  EXT=.exe
+  EXT?=.exe
 endif
 
 ifeq ($(OS),)
@@ -39,6 +57,7 @@ $(warning OS $(OS) detected.)
 
 export PREFIX
 export OS
+export SPINCMP
 
 #
 # note that the propgcc version string does not deal well with
@@ -60,7 +79,7 @@ export BUGURL
 #
 # configure options for propgcc
 #
-CONFIG_OPTIONS=--with-pkgversion=$(PROPGCC_VERSION) --with-bugurl=$(BUGURL)
+CONFIG_OPTIONS=--with-pkgversion=$(PROPGCC_VERSION) --with-bugurl=$(BUGURL) $(CFGCROSS)
 
 .PHONY:	all
 all:	binutils gcc lib-cog libgcc lib install-spin-compiler lib-tiny spin2cpp loader gdb gdbstub spinsim libstdc++
@@ -100,7 +119,7 @@ help:
 	@$(ECHO) '  clean-spin2cpp - prepare for a fresh rebuild of spin2cpp'	
 	@$(ECHO) '  clean-spinsim prepare for a fresh rebuild of spinsim'	
 	@$(ECHO)
-	
+
 ############
 # BINUTILS #
 ############
@@ -114,7 +133,7 @@ $(BUILD)/binutils/binutils-built:	$(BUILD)/binutils/binutils-configured
 	@$(ECHO) Installing binutils
 	@$(MAKE) -C $(BUILD)/binutils install
 	@$(TOUCH) $@
-	
+
 $(BUILD)/binutils/binutils-configured:	$(BUILD)/binutils/binutils-created
 	@$(ECHO) Configuring binutils
 	@$(CD) $(BUILD)/binutils; $(ROOT)/binutils/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared $(CONFIG_OPTIONS)
@@ -133,7 +152,7 @@ $(BUILD)/gcc/gcc-built:	binutils $(BUILD)/binutils/binutils-built $(BUILD)/gcc/g
 	@$(ECHO) Installing gcc
 	@$(MAKE) -C $(BUILD)/gcc install-gcc
 	@$(TOUCH) $@
-	
+
 $(BUILD)/gcc/gcc-configured:	$(BUILD)/gcc/gcc-created
 	@$(ECHO) Configuring gcc
 	@$(CD) $(BUILD)/gcc; $(ROOT)/gcc/configure --target=propeller-elf --prefix=$(PREFIX) --disable-nls --disable-shared $(CONFIG_OPTIONS)
@@ -152,7 +171,7 @@ $(BUILD)/gcc/libstdc++-built:	gcc $(BUILD)/gcc/gcc-built
 	@$(ECHO) Installing libstdc++
 	@$(MAKE) -C $(BUILD)/gcc install
 	@$(TOUCH) $@
-	
+
 ##########
 # LIBGCC #
 ##########
@@ -166,7 +185,7 @@ $(BUILD)/gcc/libgcc-built:	gcc $(BUILD)/gcc/gcc-built
 	@$(ECHO) Installing gcc
 	@$(MAKE) -C $(BUILD)/gcc install-target-libgcc
 	@$(TOUCH) $@
-	
+
 #######
 # GDB #
 #######
@@ -180,10 +199,10 @@ $(BUILD)/gdb/gdb-built:	$(BUILD)/gdb/gdb-configured
 	@$(ECHO) Installing gdb
 	@$(CP) -f $(BUILD)/gdb/gdb/gdb$(EXT) $(PREFIX)/bin/propeller-elf-gdb$(EXT)
 	@$(TOUCH) $@
-	
+
 $(BUILD)/gdb/gdb-configured:	$(BUILD)/gdb/gdb-created
 	@$(ECHO) Configuring gdb
-	@$(CD) $(BUILD)/gdb; $(ROOT)/gdb/configure --target=propeller-elf --prefix=$(PREFIX) --with-system-gdbinit=$(PREFIX)/lib/gdb/gdbinit
+	@$(CD) $(BUILD)/gdb; $(ROOT)/gdb/configure $(CFGCROSS) --target=propeller-elf --prefix=$(PREFIX) --with-system-gdbinit=$(PREFIX)/lib/gdb/gdbinit 
 	@$(TOUCH) $@
 
 ###########
@@ -250,7 +269,7 @@ $(BUILD)/lib/lib-tiny-built:	gcc $(BUILD)/lib/lib-created
 install-spin-compiler:	$(PREFIX)/bin/bin-created
 	@$(CP) -f release/$(SPINCMP) $(PREFIX)/bin
 	@$(CHMOD) a+x $(PREFIX)/bin/$(SPINCMP)
-	
+
 ############
 # SPIN2CPP #
 ############
@@ -274,7 +293,7 @@ spinsim:	$(BUILD)/spinsim/spinsim-built
 
 $(BUILD)/spinsim/spinsim-built:	$(BUILD)/spinsim/spinsim-created
 	@$(ECHO) Building spinsim
-	@$(MAKE) -C spinsim
+	@$(MAKE) -C spinsim CC=$(CROSSCC) OS=$(OS) BUILD=$(BUILD)/spinsim EXT=$(EXT)
 	@$(CP) -f spinsim/spinsim$(EXT) $(PREFIX)/bin/
 	@$(TOUCH) $@
 
@@ -287,9 +306,9 @@ loader:	$(BUILD)/loader/loader-built
 
 $(BUILD)/loader/loader-built:	gcc $(BUILD)/loader/loader-created
 	@$(ECHO) Building propeller-load
-	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader
+	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader TOOLCC=$(CROSSCC)
 	@$(ECHO) Installing propeller-load
-	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader install
+	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader TOOLCC=$(CROSSCC) install
 	@$(TOUCH) $@
 
 #########
@@ -352,7 +371,7 @@ clean-spinsim:
 	@$(MAKE) -C spinsim clean
 
 # create a directory
-	
+
 %-created:
 	@$(MKDIR) -p $(@D)
 	@$(TOUCH) $@
