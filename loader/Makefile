@@ -320,7 +320,7 @@ $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
 bin2c:		$(BINDIR)/bin2c$(EXT)
 
 $(BINDIR)/bin2c$(EXT):	$(OBJDIR)/dir-created $(SRCDIR)/tools/bin2c.c
-	@$(TOOLCC) $(CFLAGS) $(LDFLAGS) $(SRCDIR)/tools/bin2c.c -o $@
+	@$(CC) $(CFLAGS) $(LDFLAGS) $(SRCDIR)/tools/bin2c.c -o $@
 	@$(ECHO) $@
 
 ###############
