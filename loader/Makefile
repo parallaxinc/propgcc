@@ -34,7 +34,7 @@ PROPCFLAGS=-mp2
 PROPOBJDIR=$(BUILDROOT)/obj/propeller
 
 ifeq ($(OS),linux)
-SPINCMP=openspin.linux
+SPINCMP?=openspin.linux
 CFLAGS += -DLINUX
 EXT=
 OSINT=osint_linux
@@ -42,7 +42,7 @@ LIBS=
 endif
 
 ifeq ($(OS),cygwin)
-SPINCMP=openspin.exe
+SPINCMP?=openspin.exe
 CFLAGS += -DCYGWIN
 EXT=.exe
 OSINT=osint_cygwin enumcom
@@ -50,7 +50,7 @@ LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),msys)
-SPINCMP=openspin.exe
+SPINCMP?=openspin.exe
 CFLAGS += -DMINGW
 EXT=.exe
 OSINT=osint_mingw enumcom
@@ -58,7 +58,7 @@ LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),macosx)
-SPINCMP=openspin.osx
+SPINCMP?=openspin.osx
 CFLAGS += -DMACOSX
 EXT=
 OSINT=osint_linux
@@ -90,6 +90,7 @@ $(OBJDIR)/serial_helper2.binary
 ##########################
 
 info:
+	@$(ECHO) TOOLCC: $(TOOLCC)
 	@$(ECHO) CFLAGS: $(CFLAGS)
 	@$(ECHO) LDFLAGS: $(LDFLAGS)
 	@$(ECHO) SPIN: $(SPIN)
@@ -270,15 +271,15 @@ $(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)/dir-created
 
 $(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
 	@$(PROPOBJCOPY) -O binary $< $@
-	@$(ECHO) cc $@
+	@$(ECHO) binary $@
 
 $(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)/dir-created
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) bin2c $@
 
 $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
-	@$(CC) $(CFLAGS) -c $< -o $@
-	@$(ECHO) $(CC) $@
+	@$(TOOLCC) $(CFLAGS) -c $< -o $@
+	@$(ECHO) create .o with $(TOOLCC) $@
 
 ################
 # MAIN TARGETS #
@@ -288,14 +289,14 @@ $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
 propeller-load:		$(BINDIR)/propeller-load$(EXT)
 
 $(BINDIR)/propeller-load$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-created bin2c $(OBJS)
-	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	@$(TOOLCC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	@$(ECHO) $@
 
 .PHONY:	propeller-elf-image-size
 propeller-elf-image-size:		$(BINDIR)/propeller-elf-image-size$(EXT)
 
 $(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-created $(IMAGE_SIZE_OBJS)
-	@$(CC) $(LDFLAGS) -o $@ $(IMAGE_SIZE_OBJS)
+	@$(TOOLCC) $(LDFLAGS) -o $@ $(IMAGE_SIZE_OBJS)
 	@$(ECHO) $@
 
 #########
@@ -303,11 +304,11 @@ $(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-cr
 #########
 
 $(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS)
-	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(TOOLCC) $(CFLAGS) -c $< -o $@
 	@$(ECHO) $@
 
 $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
-	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(TOOLCC) $(CFLAGS) -c $< -o $@
 	@$(ECHO) $@
 
 #########
@@ -318,7 +319,7 @@ $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
 bin2c:		$(BINDIR)/bin2c$(EXT)
 
 $(BINDIR)/bin2c$(EXT):	$(OBJDIR)/dir-created $(SRCDIR)/tools/bin2c.c
-	@$(CC) $(CFLAGS) $(LDFLAGS) $(SRCDIR)/tools/bin2c.c -o $@
+	@$(TOOLCC) $(CFLAGS) $(LDFLAGS) $(SRCDIR)/tools/bin2c.c -o $@
 	@$(ECHO) $@
 
 ###############
@@ -335,8 +336,8 @@ $(BINDIR)/bin2c$(EXT):	$(OBJDIR)/dir-created $(SRCDIR)/tools/bin2c.c
 
 .PHONY:	install
 install:	all $(INSTALLBINDIR)/dir-created $(INSTALLLIBDIR)/dir-created
-	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
-	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size $(INSTALLBINDIR)
+	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load$(EXT) $(INSTALLBINDIR)
+	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size$(EXT) $(INSTALLBINDIR)
 	$(CP) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf $(INSTALLLIBDIR)
 	$(CP) -f xmem-drivers/*.cfg $(INSTALLLIBDIR)
 	$(CP) -f xmem-drivers/boards.txt $(INSTALLLIBDIR)
