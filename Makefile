@@ -210,13 +210,13 @@ $(BUILD)/gdb/gdb-configured:	$(BUILD)/gdb/gdb-created
 ###########
 
 .PHONY:	gdbstub
-gdbstub:	$(BUILD)/gdb/gdb-built
+gdbstub:	$(BUILD)/gdbstub/gdbstub-built
 
 $(BUILD)/gdbstub/gdbstub-built:	$(BUILD)/gdbstub/gdbstub-created
 	@$(ECHO) Building gdbstub
-	@$(MAKE) -C gdbstub
+	@$(MAKE) -C gdbstub BUILDROOT=$(BUILD)/gdbstub CC=$(CROSSCC)
 	@$(ECHO) Installing gdbstub
-	@$(CP) -f gdbstub/gdbstub$(EXT) $(PREFIX)/bin/
+	@$(CP) -f $(BUILD)/gdbstub/gdbstub$(EXT) $(PREFIX)/bin/
 	@$(MKDIR) -p $(PREFIX)/lib/gdb
 	@$(CP) -f gdbstub/gdbinit.propeller $(PREFIX)/lib/gdb/gdbinit
 	@$(TOUCH) $@
