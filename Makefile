@@ -97,8 +97,11 @@ export BUGURL
 CONFIG_OPTIONS=--with-pkgversion=$(PROPGCC_VERSION) --with-bugurl=$(BUGURL) $(CFGCROSS)
 
 .PHONY:	all
+
 all:	binutils gcc lib-cog libgcc lib install-spin-compiler lib-tiny spin2cpp loader gdb gdbstub spinsim libstdc++
 	@$(ECHO) Build complete.
+
+.NOTPARALLEL:
 
 ########
 # HELP #
@@ -159,7 +162,7 @@ $(BUILD)/binutils/binutils-configured:	$(BUILD)/binutils/binutils-created
 #######
 
 .PHONY:	gcc
-gcc:	$(BUILD)/gcc/gcc-built
+gcc:	binutils $(BUILD)/gcc/gcc-built
 
 $(BUILD)/gcc/gcc-built:	$(BUILD)/gcc/gcc-configured
 	@$(ECHO) Building gcc
@@ -178,9 +181,9 @@ $(BUILD)/gcc/gcc-configured:	$(BUILD)/gcc/gcc-created
 #############
 
 .PHONY:	libstdc++
-libstdc++:	binutils gcc libgcc $(BUILD)/gcc/libstdc++-built
+libstdc++:	lib $(BUILD)/gcc/libstdc++-built
 
-$(BUILD)/gcc/libstdc++-built:	gcc $(BUILD)/gcc/gcc-built
+$(BUILD)/gcc/libstdc++-built:	$(BUILD)/gcc/gcc-built
 	@$(ECHO) Building libstdc++
 	@$(MAKE) -C $(BUILD)/gcc all
 	@$(ECHO) Installing libstdc++
@@ -192,9 +195,9 @@ $(BUILD)/gcc/libstdc++-built:	gcc $(BUILD)/gcc/gcc-built
 ##########
 
 .PHONY:	libgcc
-libgcc:	$(BUILD)/gcc/libgcc-built
+libgcc:	binutils gcc $(BUILD)/gcc/libgcc-built
 
-$(BUILD)/gcc/libgcc-built:	binutils gcc $(BUILD)/gcc/gcc-built
+$(BUILD)/gcc/libgcc-built: $(BUILD)/gcc/gcc-built
 	@$(ECHO) Building libgcc
 	@$(MAKE) -C $(BUILD)/gcc all-target-libgcc
 	@$(ECHO) Installing gcc
@@ -206,7 +209,7 @@ $(BUILD)/gcc/libgcc-built:	binutils gcc $(BUILD)/gcc/gcc-built
 #######
 
 .PHONY:	gdb
-gdb:	$(BUILD)/gdb/gdb-built
+gdb:	lib $(BUILD)/gdb/gdb-built
 
 $(BUILD)/gdb/gdb-built:	binutils gcc $(BUILD)/gdb/gdb-configured
 	@$(ECHO) Building gdb
@@ -225,7 +228,7 @@ $(BUILD)/gdb/gdb-configured:	$(BUILD)/gdb/gdb-created
 ###########
 
 .PHONY:	gdbstub
-gdbstub:	gdb $(BUILD)/gdbstub/gdbstub-built
+gdbstub:	lib gdb $(BUILD)/gdbstub/gdbstub-built
 
 $(BUILD)/gdbstub/gdbstub-built:	$(BUILD)/gdbstub/gdbstub-created
 	@$(ECHO) Building gdbstub
@@ -241,9 +244,9 @@ $(BUILD)/gdbstub/gdbstub-built:	$(BUILD)/gdbstub/gdbstub-created
 #######
 
 .PHONY:	lib
-lib:	$(BUILD)/lib/lib-built
+lib:	libgcc $(BUILD)/lib/lib-built
 
-$(BUILD)/lib/lib-built:	binutils gcc $(BUILD)/lib/lib-created
+$(BUILD)/lib/lib-built:	$(BUILD)/lib/lib-created
 	@$(ECHO) Building library
 	@$(MAKE) -C lib
 	@$(ECHO) Installing library
@@ -255,9 +258,9 @@ $(BUILD)/lib/lib-built:	binutils gcc $(BUILD)/lib/lib-created
 ###############
 
 .PHONY:	lib-cog
-lib-cog:	$(BUILD)/lib/lib-cog-built
+lib-cog:	libgcc $(BUILD)/lib/lib-cog-built
 
-$(BUILD)/lib/lib-cog-built:	binutils gcc $(BUILD)/lib/lib-created
+$(BUILD)/lib/lib-cog-built:  $(BUILD)/lib/lib-created
 	@$(ECHO) Building cog library
 	@$(MAKE) -C lib cog
 	@$(TOUCH) $@
@@ -267,9 +270,9 @@ $(BUILD)/lib/lib-cog-built:	binutils gcc $(BUILD)/lib/lib-created
 ###########
 
 .PHONY:	lib-tiny
-lib-tiny:	$(BUILD)/lib/lib-tiny-built
+lib-tiny:	libgcc $(BUILD)/lib/lib-tiny-built
 
-$(BUILD)/lib/lib-tiny-built:	binutils gcc $(BUILD)/lib/lib-created
+$(BUILD)/lib/lib-tiny-built:	$(BUILD)/lib/lib-created
 	@$(ECHO) Building tiny library
 	@$(MAKE) -C lib tiny
 	@$(ECHO) Installing tiny library
@@ -290,7 +293,7 @@ install-spin-compiler:	$(PREFIX)/bin/bin-created
 ############
 
 .PHONY:	spin2cpp
-spin2cpp:	$(BUILD)/spin2cpp/spin2cpp-built
+spin2cpp:	libgcc $(BUILD)/spin2cpp/spin2cpp-built
 
 $(BUILD)/spin2cpp/spin2cpp-built:	$(BUILD)/spin2cpp/spin2cpp-created
 	@$(ECHO) Building spin2cpp
@@ -317,9 +320,9 @@ $(BUILD)/spinsim/spinsim-built:	$(BUILD)/spinsim/spinsim-created
 ##########
 
 .PHONY:	loader
-loader:	$(BUILD)/loader/loader-built
+loader:	lib $(BUILD)/loader/loader-built
 
-$(BUILD)/loader/loader-built:	libgcc $(BUILD)/loader/loader-created
+$(BUILD)/loader/loader-built:	$(BUILD)/loader/loader-created
 	@$(ECHO) Building propeller-load
 	@$(MAKE) -C loader TARGET=$(PREFIX) BUILDROOT=$(BUILD)/loader TOOLCC=$(CROSSCC)
 	@$(ECHO) Installing propeller-load

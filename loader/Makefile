@@ -274,7 +274,7 @@ $(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
 	@$(PROPOBJCOPY) -O binary $< $@
 	@$(ECHO) binary $@
 
-$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)/dir-created
+$(OBJDIR)/%.c:	bin2c $(PROPOBJDIR)/%.bin $(OBJDIR)/dir-created
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) bin2c $@
 
@@ -287,6 +287,8 @@ $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
 ################
 
 .PHONY:	propeller-load
+.NOTPARALLEL: propeller-load
+
 propeller-load:		$(BINDIR)/propeller-load$(EXT)
 
 $(BINDIR)/propeller-load$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-created bin2c $(OBJS)
