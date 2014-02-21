@@ -274,7 +274,7 @@ $(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
 	@$(PROPOBJCOPY) -O binary $< $@
 	@$(ECHO) binary $@
 
-$(OBJDIR)/%.c:	bin2c $(PROPOBJDIR)/%.bin $(OBJDIR)/dir-created
+$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)/dir-created
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) bin2c $@
 
