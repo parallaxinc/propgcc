@@ -66,11 +66,6 @@ all: $(OBJDIR) $(PROGS)
 $(OBJDIR)/testlex$(EXT): testlex.c $(LEXOBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-$(OBJDIR)/spin.tab.c $(OBJDIR)/spin.tab.h: spin.y
-	$(YACC) -t -b $(OBJDIR)/spin -d spin.y
-
-lexer.c: $(OBJDIR)/spin.tab.h
-
 clean:
 	$(RM) -r $(OBJDIR)
 
@@ -90,3 +85,11 @@ install:	all $(INSTALLDIR)
 
 $(DIRS):
 	$(MKDIR) $@
+
+$(OBJDIR)/spin.tab.c $(OBJDIR)/spin.tab.h: spin.y
+	$(YACC) -t -b $(OBJDIR)/spin -d spin.y
+
+spinc.h: $(OBJDIR)/spin.tab.h
+
+ast.c expr.c functions.c lexer.c outcpp.c outdat.c pasm.c spin2cpp.c testlex.c: spinc.h
+
