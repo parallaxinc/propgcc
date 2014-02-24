@@ -1,11 +1,16 @@
 #include "test.h"
 
+#define QUICKSTART
+//#define ACTIVITYBOARD
+
 int main(void)
 {
-#if 0
+#ifdef QUICKSTART
     test obj;
     test obj2;
 
+    obj.start_blinker();
+    
     obj.set_pins(16, 17);
     obj.blink();
     obj.set_pin(18);
@@ -21,7 +26,10 @@ int main(void)
 
     while (1)
     	;
-#else
+    	
+#endif
+
+#ifdef ACTIVITYBOARD
     test obj;
     
     obj.set_pins(26, 27);
