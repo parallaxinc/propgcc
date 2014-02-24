@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 	uint8_t *binary;
 	long binarySize;
 	int stackSize = DEFAULT_STACK_SIZE;
-	int i;
+	int sts, i;
 	
 	/* get the arguments */
     for(i = 1; i < argc; ++i) {
@@ -190,7 +190,10 @@ int main(int argc, char *argv[])
     sprintf(cmd, "openspin.osx%s -o \"%s\" \"%s\"", spin_args, binary_path, spin_path);
     if (debug)
     	printf("cmd: %s\n", cmd);
-    system(cmd);
+    if ((sts = system(cmd)) != 0) {
+    	fprintf(stderr, "error: openspin compile failed, error code %d\n", sts);
+    	return 1;
+    }
     
     /* read the generated binary */
     if (!(binary = ReadEntireFile(binary_path, &binarySize))) {
