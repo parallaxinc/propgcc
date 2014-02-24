@@ -6,10 +6,10 @@ DAT
 
 cog_code
 		or		dira, mask
-loop	xor		outa, mask
 		mov		target, delta
 		add		target, cnt
-		waitcnt	target, #0
+loop	xor		outa, mask
+		waitcnt	target, delta
 		jmp		#loop
 
 mask	long	1 << 23
