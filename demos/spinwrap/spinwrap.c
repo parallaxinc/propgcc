@@ -8,10 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <limits.h>
 #include <string.h>
 #include <ctype.h>
 
-#define LINE_MAX			1024
 #define TOKEN_MAX			33
 
 #define DEFAULT_STACK_SIZE	64
@@ -94,10 +94,17 @@ typedef struct {
 #define FIELDOFFSET(s, f)	((int)&((s *)0)->f)
 
 /* globals */
+static char rootPath[PATH_MAX] = "";
+static char h_path[PATH_MAX] = "";
+static char cpp_path[PATH_MAX] = "";
+static char spin_path[PATH_MAX] = "";
+static char binary_path[PATH_MAX] = "";
+static char spin_args[LINE_MAX] = "";
 static int debug = 0;
 
 /* forward declarations */
 static void Usage(void);
+static void CompleteOutputPaths(char *name);
 static Object *ProcessSpinFile(ParseContext *c, char *name);
 static void WriteHeader(char *name, Object *objects, uint8_t *binary, int stackSize);
 static void WriteStubs(char *name, Object *objects, uint8_t *binary, int binarySize);
@@ -113,8 +120,7 @@ int main(int argc, char *argv[])
 {
 	ParseContext *c = safe_calloc(sizeof(ParseContext));
 	Object *object = NULL;
-	char file[1024];
-	char cmd[1024];
+	char cmd[1024], *arg;
 	uint8_t *binary;
 	long binarySize;
 	int stackSize = DEFAULT_STACK_SIZE;
@@ -126,6 +132,14 @@ int main(int argc, char *argv[])
         /* handle switches */
         if(argv[i][0] == '-') {
             switch(argv[i][1]) {
+            case 'p':	// output path
+                if (argv[i][2])
+                    strcpy(rootPath, &argv[i][2]);
+                else if (++i < argc)
+                    strcpy(rootPath, argv[i]);
+                else
+                    Usage();
+            	break;
             case 's':   // stack size
                 if (argv[i][2])
                     stackSize = atoi(&argv[i][2]);
@@ -134,6 +148,18 @@ int main(int argc, char *argv[])
                 else
                     Usage();
                 break;
+            case 'S':	// option to pass to openspin
+                if (argv[i][2] != ',')
+                	Usage();
+                else if (argv[i][3])
+                    arg = &argv[i][3];
+                else if (++i < argc)
+                    arg = argv[i];
+                else
+                    Usage();
+                strcat(spin_args, " ");
+                strcat(spin_args, arg);
+            	break;
             case 'd':   // debug
             	debug = 1;
             	break;
@@ -153,30 +179,30 @@ int main(int argc, char *argv[])
     
     if (!object)
     	Usage();
+    	
+    /* determine the paths to each of the output files */
+    CompleteOutputPaths(object->name);
     
 	/* create the spin proxy */
-	sprintf(file, "%s_proxy.spin", object->name);
-    WriteProxy(file, object);
+    WriteProxy(spin_path, object);
     
     /* compile the spin proxy */
-    sprintf(cmd, "openspin.osx -q \"%s\"", file);
+    sprintf(cmd, "openspin.osx%s -o \"%s\" \"%s\"", spin_args, binary_path, spin_path);
+    printf("cmd: %s\n", cmd);
     system(cmd);
     
     /* read the generated binary */
-	sprintf(file, "%s_proxy.binary", object->name);
-    if (!(binary = ReadEntireFile(file, &binarySize))) {
-    	fprintf(stderr, "error: can't read %s\n", file);
+    if (!(binary = ReadEntireFile(binary_path, &binarySize))) {
+    	fprintf(stderr, "error: can't read %s\n", binary_path);
     	return 1;
     }
 
     if (debug)
     	DumpSpinBinary(binary);
 
-	sprintf(file, "%s.h", object->name);
-    WriteHeader(file, object, binary, stackSize);
-
-	sprintf(file, "%s.cpp", object->name);
-    WriteStubs(file, object, binary, (int)binarySize);
+    /* create the header and stubs files */
+    WriteHeader(h_path, object, binary, stackSize);
+    WriteStubs(cpp_path, object, binary, (int)binarySize);
     
 	/* return successfully */
 	return 0;
@@ -185,8 +211,22 @@ int main(int argc, char *argv[])
 /* Usage - display a usage message and exit */
 static void Usage(void)
 {
-	printf("usage: spinwrap [ -d ] [ -s <stack-size> ] <spin-file>...\n");
+	printf("\
+	usage: spinwrap [ -d ] \n\
+	                [ -p <output-path-root> ] \n\
+	                [ -s <stack-size> ] \n\
+	                [ -S,<openspin option> ]... <spin-file>...\n");
 	exit(1);
+}
+
+static void CompleteOutputPaths(char *name)
+{
+	if (rootPath[0] != '\0' && rootPath[strlen(rootPath) - 1] != '/')
+		strcat(rootPath, "/");
+	sprintf(h_path, "%s%s.h", rootPath, name);
+	sprintf(cpp_path, "%s%s.cpp", rootPath, name);
+	sprintf(spin_path, "%s%s_proxy.spin", rootPath, name);
+	sprintf(binary_path, "%s%s.binary", rootPath, name);
 }
 
 static Object *ProcessSpinFile(ParseContext *c, char *name)
@@ -449,13 +489,16 @@ static void rootname(char *path, char *name)
 {
 	char *start = strrchr(path, '/');
 	char *end = strrchr(path, '.');
+	int len;
 	if (start)
 		++start;
 	else
 		start = path;
 	if (!end)
 		end = &path[strlen(path)];
-	strncpy(name, start, end - start);
+	len = end - start;
+	strncpy(name, start, len);
+	name[len] = '\0';
 }
 
 static int getLine(ParseContext *c)
