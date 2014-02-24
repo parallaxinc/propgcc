@@ -2,6 +2,9 @@ VAR
 	long my_pin
 	long my_other_pin
 	
+OBJ
+	blinker : "blinker"
+	
 PUB set_pin(pin)
     my_other_pin := my_pin
 	my_pin := pin
@@ -28,19 +31,4 @@ PUB blink
 	    swap_pins
 
 PUB start_blinker
-	delta := clkfreq / 2
-	cognew(@cog_code, 0)
-	    
-DAT
-
-cog_code
-		or		dira, mask
-loop	xor		outa, mask
-		mov		target, delta
-		add		target, cnt
-		waitcnt	target, #0
-		jmp		#loop
-
-mask	long	1 << 23
-target	long	0
-delta	long	0
+	blinker.start
