@@ -188,7 +188,8 @@ int main(int argc, char *argv[])
     
     /* compile the spin proxy */
     sprintf(cmd, "openspin.osx%s -o \"%s\" \"%s\"", spin_args, binary_path, spin_path);
-    printf("cmd: %s\n", cmd);
+    if (debug)
+    	printf("cmd: %s\n", cmd);
     system(cmd);
     
     /* read the generated binary */
