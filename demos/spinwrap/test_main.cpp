@@ -21,12 +21,11 @@ int main(void)
     obj2.set_pin(22);
     obj2.blink();
     
-    obj.blink();
-    obj2.blink();
+    while (1) {
+    	obj.blink();
+    	obj2.blink();
+    }
 
-    while (1)
-    	;
-    	
 #endif
 
 #ifdef ACTIVITYBOARD
