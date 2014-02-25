@@ -1,0 +1,199 @@
+	''
+	'' this file is intended to be #included into kernels
+	'' to define the extensions
+	''
+	''
+	'' math support functions
+	'' these call out to a kernel extension
+	''
+	.section .kernel
+	
+	.global __loadmath
+	.global __loadmath_ret
+	.global	__load_extension
+	.global	__load_extension_ret
+__loadmath
+	mov	__TMP1,__math_kernel_ptr
+__load_extension
+	cmp	__kernel_ext,__TMP1 wz
+   if_z jmp	__load_extension_ret
+	mov	__kernel_ext,__TMP1
+	'' NOTE: kernel extensions must go in hub memory, so
+	'' this rdlong should be OK even in XMM mode
+	rdlong	__TMP0, __TMP1		'' read the length
+
+	''add	__TMP1, #4		'' the length byte has to be loaded too
+	mov	__COGA, #0x6C0/4
+	call	#loadbuf
+__load_extension_ret
+__loadmath_ret
+	ret
+
+	.global __kernel_ext
+__kernel_ext
+#ifdef USE_START_KEREXT
+	long	__load_start_start_kerext ' this is preloaded by propeller-load
+#else
+	long	0
+#endif
+__math_kernel_ptr
+	long	__load_start_math_kerext
+
+	.global __DIVSI
+	.global __DIVSI_ret
+__DIVSI
+	call	#__loadmath
+	call	#__DIVSI_impl
+__DIVSI_ret
+	ret
+	
+	.global __UDIVSI
+	.global __UDIVSI_ret
+__UDIVSI
+	call	#__loadmath
+	call	#__UDIVSI_impl
+__UDIVSI_ret
+	ret
+
+__DIVCNT
+	long	0
+
+	.global __CLZSI
+	.global __CLZSI_ret
+__CLZSI
+	rev	r0, #0
+__CTZSI
+	call	#__loadmath
+	call	#__CTZSI_impl
+__CLZSI_ret
+	ret
+	
+	''
+	'' the math kernel extension
+	''
+	.section	.math.kerext, "ax"
+
+startmath
+
+	.long	endmath - startmath
+
+	
+__MASK_00FF00FF	long	0x00FF00FF
+__MASK_0F0F0F0F	long	0x0F0F0F0F
+__MASK_33333333	long	0x33333333
+__MASK_55555555	long	0x55555555
+	
+	.global	__CTZSI_impl
+	.global	__CLZSI_impl_ret
+
+__CLZSI_impl
+	rev	r0,#0
+__CTZSI_impl
+	neg	__TMP0, r0
+	and	__TMP0, r0	wz
+	mov	r0, #0
+ IF_Z	mov	r0, #1
+	test	__TMP0, __MASK_0000FFFF	wz
+ IF_Z	add	r0, #16
+	test	__TMP0, __MASK_00FF00FF	wz
+ IF_Z	add	r0, #8
+	test	__TMP0, __MASK_0F0F0F0F	wz
+ IF_Z	add	r0, #4
+	test	__TMP0, __MASK_33333333	wz
+ IF_Z	add	r0, #2
+	test	__TMP0, __MASK_55555555	wz
+ IF_Z	add	r0, #1
+__CLZSI_impl_ret
+__CTZSI_impl_ret
+	ret
+	
+__DIVR	long	0
+
+	''
+	'' calculate r0 = orig_r0/orig_r1, r1 = orig_r0 % orig_r1
+	''
+__UDIVSI_impl
+#ifdef __PROPELLER2__
+       setdivu	r0
+       setdivb	r1
+       getdivq	r0
+       getdivr	r1
+#else
+	mov	__DIVR, r0
+	call	#__CLZSI_impl
+	neg	__DIVCNT, r0
+	mov	r0, r1 wz
+ IF_Z   jmp	#__UDIV_BY_ZERO
+	call	#__CLZSI_impl
+	add	__DIVCNT, r0
+	mov	r0, #0
+	cmps	__DIVCNT, #0	wz, wc
+ IF_C	jmp	#__UDIVSI_done
+	shl	r1, __DIVCNT
+	add	__DIVCNT, #1
+__UDIVSI_loop
+	cmpsub	__DIVR, r1	wz, wc
+	addx	r0, r0
+	shr	r1, #1
+	djnz	__DIVCNT, #__UDIVSI_loop
+__UDIVSI_done
+	mov	r1, __DIVR
+#endif
+__UDIVSI_impl_ret
+	ret
+__DIVSGN	long	0
+__DIVSI_impl
+#ifdef __PROPELLER2__
+       setdiva	r0
+       setdivb	r1
+       getdivq	r0
+       getdivr	r1
+#else
+	mov	__DIVSGN, r0
+	xor	__DIVSGN, r1
+	abs	r0, r0 wc
+	muxc	__DIVSGN, #1	' save original sign of r0
+	abs	r1, r1
+	call	#__UDIVSI_impl
+	cmps	__DIVSGN, #0	wz, wc
+ IF_B	neg	r0, r0
+	test	__DIVSGN, #1 wz	' check original sign of r0
+ IF_NZ	neg	r1, r1		' make the modulus result match
+#endif
+__DIVSI_impl_ret
+	ret
+
+	'' come here on divide by zero
+	'' we probably should raise a signal
+__UDIV_BY_ZERO
+	neg	r0,#1
+	mov	r1,#0
+	jmp	#__UDIVSI_ret
+	
+
+endmath
+
+#include "init.ext"
+
+#if 0
+	.section .kernel
+	.global LEDon
+	.global LEDon_ret
+LEDon
+	or	DIRA, __LEDbit
+	andn	OUTA, __LEDbit
+LEDon_ret
+	ret
+
+	.global LEDoff
+	.global LEDoff_ret
+LEDoff
+	or	DIRA, __LEDbit
+	or	OUTA, __LEDbit
+LEDoff_ret
+	ret
+
+	.global __LEDbit
+__LEDbit
+	long	0x8000
+#endif

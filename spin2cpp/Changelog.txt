@@ -1,0 +1,102 @@
+Version 1.05
+
+- Fixed a problem with double negation or negation of boolean operators
+  being printed as a predecrement.
+- Fixed usage of ID[n] in PASM code (where ID is a constant).
+
+Version 1.04
+
+- Fix precedence of NOT operator
+- Add quoting for spaces inside file names
+- Produce an error for redefined labels in DAT sections.
+- Rename constants that start with an _ to avoid conflicts with C.
+- Fix "reversed" range expressions like OUTA[9..10].
+
+Version 1.03
+
+- Use for() loop instead of do/while for simple counting loops
+- Added a -o option to specify the output file name
+- Fixed error messages after #include (so correct line number and file
+  information is preserved)
+- Made the search paths for #include and OBJ sections relative to the
+  currently processed file.
+- Added --binary output option to produce a .binary file
+- Fixed a bug in the DAT section output for classes with names that
+  have "Spin" appended.
+- Fixed DAT section output in C mode.
+- Fixed several other miscellaneous bugs.
+
+Version 1.02
+
+- Made CON section accept x[y] syntax for skipping over ranges of values
+- Modified C/C++ output so that unused return values are not declared
+- Fixed reboot command to really reboot (not just abort)
+- Fixed a typo which could cause segmentation faults
+- Follow Spin's practice of allowing the first object of an object
+  array to be used without a subscript.
+- Accept annotations on the DAT section of a file.
+
+Version 1.01
+
+- Output symbolic names for constants instead of the constant value itself
+- Added missing =>= and =<= operators
+- Put the spin2cpp version number in the comment header of generated
+  files
+
+Version 1.00
+
+- Fixed a problem with parsing negative floating point constants
+- Fixed use of $ in PASM data declarations
+- Some fixes to the internal source code
+
+Version 0.99
+
+- Added preliminary support for translating PASM to GAS (--gas)
+- Added support for waitpne and waitpeq
+- Fixed the trunc operator
+- Fixed some issues with constants declared in other objects
+- Fixed a problem with catching abort of functions with no parameters
+
+Version 0.98
+
+- Cleaned up and improved preprocessor
+- Added #include, #elseifdef, #elseifndef
+- Further improved Catalina support
+- Fixed an issue with returns inside if statements
+- Made error messages more consistent (now they all have the format
+  "file:line: message", like Catalina and gcc)
+
+
+Version 0.97
+
+- Added a simple preprocessor similar to the one in bstc
+- A comment giving the command line is output at the start of files
+- Somewhat improved support for Catalina
+- Some minor bugs fixes
+
+Version 0.96 New in this version:
+
+- preliminary support for output of C code instead of C++
+- fix the order of defines so constants in one object may be used to
+define constants in another object
+- support for placing C code inline in the Spin code (via "annotations")
+- bug fix for reverse()
+- sort variables the way Spin does
+
+Version 0.95. New in this version:
+
+- arrays of objects
+- fix outa[pin] with variable pin
+- handle TAB characters correctly
+- various other bug fixes
+
+Version 0.9. New in this version:
+
+- correct handling of files that do not end in a newline
+- fixed array references
+- fixed nesting of objects more than 2 deep
+- work around some library and compiler issues with the abort feature
+- better handling of bit set and clear
+- fixed a bug preventing PASM instructions from always being aligned
+- --files option to list generated .cpp files
+- --elf option to automatically invoke propeller-elf-gcc to compile the .spin file

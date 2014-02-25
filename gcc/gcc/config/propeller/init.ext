@@ -1,0 +1,108 @@
+        ''
+        '' this file is intended to be #included into kernels
+        '' to define the initialization code
+        ''
+        '' initialization is put into a kernel extension, so that
+        '' we can load it back into a cloned kernel
+        ''
+        '' originally this was to be named .init.kerext, but that
+        '' conflicts with the .init.* section rules built in to the linker
+	''
+
+        .section        .start.kerext, "ax"
+
+startinit
+        .long   endinit - startinit
+
+        .global __LMM_init
+__LMM_init
+#if defined(__PROPELLER2__)
+        getptra sp
+#else
+        mov     sp, PAR
+#endif
+#if defined(__PROPELLER_USE_XMM__)
+        rdlong  xmem_hubaddrp, sp           ' pop the base of the mailbox array
+        cogid   t1                          ' use our COG ID as an index to find our mailbox
+        shl     t1, #3                      ' each mailbox is two longs
+        add     xmem_hubaddrp, t1
+        mov     xmem_extaddrp, xmem_hubaddrp
+        add     xmem_extaddrp, #4
+        add     sp, #4
+        rdlong  tagsptr, sp                 ' pop the hub address of the cache tags
+        add     sp, #4
+        rdlong  cacheptr, sp                ' pop the hub address of the cache lines
+        add     sp, #4
+        rdlong  t1, sp                      ' pop the cache geometry
+        add     sp, #4
+        mov     t2, t1
+        shr     t2, #8
+        and     t2, #$ff wz
+  if_nz mov     index_width, t2
+        mov     t2, t1
+        and     t2, #$ff wz
+  if_nz mov     offset_width, t2
+        mov     index_count, #1
+        shl     index_count, index_width
+        mov     index_mask, index_count
+        sub     index_mask, #1
+        mov     offset_mask, #1
+        shl     offset_mask, offset_width
+        sub     offset_mask, #1
+        mov     size_select, offset_width   ' memory driver supports minimum of 16 byte lines
+        sub     size_select, #3             ' 1=16, 2=32, 3=64 ... 7=1024
+        mov     t1, index_count
+        mov     t2, tagsptr
+flush   wrlong  empty_mask, t2
+        add     t2, #4
+        djnz    t1, #flush
+#endif
+        cmp	r14, #0 wz   ' check for first time run
+ IF_NE  jmp    #not_first_cog        ' if not, skip some stuff
+        
+#if defined(__PROPELLER_USE_XMM__)
+        rdlong  pc, sp		' XMM loader sets pc on stack
+        add     sp, #4
+#endif
+        '' initialization for first time run
+        locknew __TMP0 wc       ' allocate a lock
+        or      __TMP0, #256    ' make high word be 0x0001
+        wrlong __TMP0, __C_LOCK_PTR     ' save it to ram
+        jmp    #__LMM_start
+
+not_first_cog
+        '' initialization for non-primary cogs
+        rdlong pc,sp            ' if user stack, pop the pc
+        add     sp,#4
+        rdlong r0,sp            ' pop the argument for the function
+        add     sp,#4
+        rdlong __TLS,sp ' and the _TLS variable
+        add     sp,#4
+
+        '' fall through
+
+__LMM_start
+
+#if defined(DEBUG_KERNEL) && defined(__PROPELLER2__)
+        call    #rxtx_init
+#endif
+#if defined(__PROPELLER2__) && defined(__PROPELLER_CMM__)
+        '' copy jmptab_base into the CLUT/STACK area
+        setspa  #0
+        mov     r5, #16
+.inilp
+        rdlong  r4, __jmptab_ptr
+        add     __jmptab_ptr, #4
+        pusha   r4
+        djnz    r5, #.inilp
+        
+        jmp     #__LMM_loop
+__jmptab_ptr
+        long    jmptab_base
+#else
+        jmp     #__LMM_loop
+#endif
+
+
+	
+endinit

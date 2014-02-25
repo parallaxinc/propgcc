@@ -1,0 +1,14 @@
+termctest.c
+-I /home/steve/gcc-cmm/propgcc/demos/Term/include/
+term.c -> /home/steve/gcc-cmm/propgcc/demos/Term/lib/term.c
+term_serial.c -> /home/steve/gcc-cmm/propgcc/demos/Term/lib/term_serial.c
+term_tv.c -> /home/steve/gcc-cmm/propgcc/demos/Term/lib/term_tv.c
+term_vga.c -> /home/steve/gcc-cmm/propgcc/demos/Term/lib/term_vga.c
+TV.spin -> /home/steve/gcc-cmm/propgcc/demos/Term/lib/TV.spin
+VGA.spin -> /home/steve/gcc-cmm/propgcc/demos/Term/lib/VGA.spin
+launch.c -> /home/steve/gcc-cmm/propgcc/demos/Term/lib/launch.c
+>compiler=C
+>memtype=cmm
+>optimize=-Os
+>-fno-exceptions
+>BOARD::HUB

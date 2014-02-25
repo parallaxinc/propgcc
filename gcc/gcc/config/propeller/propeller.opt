@@ -1,0 +1,80 @@
+; Command line options for the Parallax Propeller port of GCC.
+; Copyright (C) 2011 Parallax, Inc.
+; Contributed by Eric R. Smith <ersmith@totalspectrum.ca>
+;
+; This file is part of GCC.
+;
+; GCC is free software; you can redistribute it and/or modify it under
+; the terms of the GNU General Public License as published by the Free
+; Software Foundation; either version 3, or (at your option) any later
+; version.
+;
+; GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+; WARRANTY; without even the implied warranty of MERCHANTABILITY or
+; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+; for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with GCC; see the file COPYING3.  If not see
+; <http://www.gnu.org/licenses/>.
+;---------------------------------------------------
+
+; options for the propeller
+
+mspin
+Target Mask(OUTPUT_SPINCODE) Report
+Output spin wrapper code for the assembly language.
+
+mcog
+Target RejectNegative InverseMask(LMM) Report.
+Generate code to run in internal cog space.
+
+mlmm
+Target RejectNegative Mask(LMM) Report
+Generate for large memory model (LMM) (code and data in hub)
+
+mcmm
+Target RejectNegative Mask(CMM) Report
+Generate for compressed memory model (CMM) (code and data in hub)
+
+mxmmc
+Target RejectNegative Mask(XMM_CODE) Report
+Generate code to run in external memory (XMM); data is in hub. Implies -mlmm too.
+
+mxmm
+Target RejectNegative Mask(XMM) Report
+Generate code to run in external flash/rom, with data in external ram.
+
+mxmm-single
+Target RejectNegative Mask(XMM_SINGLE) Report
+Generate code to run in external memory, with data in external memory as well.
+
+mxmm-split
+Target RejectNegative Mask(XMM_SPLIT) Report
+Generate code to run in external flash/rom, with data in external ram.
+
+mpasm
+Target Mask(PASM) Report
+Generate assembler output that is compatible with the PASM assembler. The default is to generate GAS compatible syntax, unless -mspin is given.
+
+m64bit-doubles
+Target RejectNegative Mask(64BIT_DOUBLES) Report
+Store doubles in 64 bits. This is the default.
+
+m32bit-doubles
+Target RejectNegative InverseMask(64BIT_DOUBLES) Report
+Store doubles in 32 bits for faster and smaller code.
+
+mfcache
+Target Var(propeller_fcache_enable, 1) Init(-1) Report
+Enable support for loading external code into the cog memory fcache.
+This is enabled by default in optimization levels -O2 and higher, but
+may be disabled with an explicit -mno-fcache.
+
+mp2
+Target RejectNegative Mask(P2) Report
+Select Propeller 2 code generation.
+
+mexperimental
+Target Mask(EXPERIMENTAL)
+Enable experimental optimizations which may or may not work correctly.

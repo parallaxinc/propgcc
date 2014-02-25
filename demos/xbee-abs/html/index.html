@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ABS Wifi Demo</title>
+    <link rel="stylesheet" type="text/css" href="cssAbsDemo.css">
+    <script language="javascript" src="shine.js"></script>
+    <script language="javascript" src="events.js"></script>
+</head>
+
+<body>
+<div class="header">
+    <input type="text"   id="ipaddr"  class="ctext"   size="16" value="192.168.1.103" />
+<!--
+    <input type="text"   id="port"    class="ctext"   size="4"  value="8086" />
+    <input type="button" id="clr_btn" class="buttons" value="CLEAR"
+        onclick='clearText();' title="Clear text box." />
+-->
+    <input type="button" id="helobtn" class="buttons" value="HELLO"
+        onclick='hello();'     title="Say hello bot." />
+    <input type="button" id="d26btn" class="buttons"  value="LED26" 
+        onclick='clickLED("D26_LED");'  title="Toggle P26 LEDs." />
+    <input type="button" id="d27btn" class="buttons"  value="LED27" 
+        onclick='clickLED("D27_LED");'  title="Toggle P27 LEDs." />
+<!--
+    <input type="button" id="testbtn" class="buttons" value="LEDS" 
+        onclick='toggleLeds();'  title="Toggle LEDs." />
+    <input type="button" id="stopbtn" class="buttons" value="START" 
+        onclick='clickStart();'     title="Start the servos." />
+    <input type="button" id="stopbtn" class="buttons" value="STOP" 
+        onclick='clickStop();'      title="Stop the servos." />
+-->
+</div>
+
+<div id="canvas" class="canvas">
+
+    <img id="up"    class="uarrow" src="images/uparrow.png"     title="Forward"
+        onclick='clickUpArrow();' />
+    <div id="FWD_SPD"   class="fwdspd" title="Forward speed."
+        onclick='clickUpArrow();'>
+    </div>
+    <img id="down"  class="darrow" src="images/downarrow.png"   title="Reverse"
+        onclick='clickDownArrow();' />
+    <div id="REV_SPD"   class="revspd" title="Reverse speed."
+        onclick='clickDownArrow();' >
+    </div>
+    <img id="left"  class="larrow" src="images/leftarrow.png"   title="Turn Left"
+        onclick='clickLeftArrow();' />
+    <div id="LFT_SPD"   class="lftspd" title="Left speed."
+        onclick='clickLeftArrow();' >
+    </div>
+    <img id="right" class="rarrow" src="images/rightarrow.png"  title="Turn Right"
+        onclick='clickRightArrow();' />
+    <div id="RGT_SPD"   class="rgtspd" title="Right speed."
+        onclick='clickRightArrow();' >
+    </div>
+
+    <img id="stop" class="stop" src="images/stop.png"           title="Stop Bot"
+        onclick='stopBot();' />
+
+    <div id="D26_LED"   class="d26led" title="D26 LED"
+        onclick='clickLED("D26_LED");'
+    >
+    </div>
+    <div id="D27_LED"   class="d27led" title="D27 LED"
+        onclick='clickLED("D27_LED");'
+    >
+    </div>
+
+    <div id="DOT_LED"   class="dotled" title="DO LED" >
+    </div>
+    <div id="DIN_LED"   class="dinled" title="DI LED" >
+    </div>
+    <div id="PWR_LED"   class="pwrled" title="Power LED" >
+    </div>
+    <div id="SRV_LED"   class="srvled" title="Servo Power LED" >
+    </div>
+
+    <div id="battery"   class="battery" title="Battery" onclick='clickBattery();' > </div>
+    <div id="battop"    class="battop"  title="Battery" onclick='clickBattery();' > </div>
+    <div id="batchg"    class="batchg"  title="Battery Charge" onclick='clickBattery();' > </div>
+    <div id="batval"    class="batval"  title="Battery Voltage" ></div>
+
+    <img id="solar"     class="solar" src="images/solarcell.png" title="Solar Cell"
+        onclick='clickSolarCell();' />
+    <div id="solval"    class="solval"  title="Solar Cell Voltage" ></div>
+
+    <img id="shine1"    class="shine1" src="images/shine.png" style="visibility:hidden" />
+    <img id="shine2"    class="shine2" src="images/shine.png" style="visibility:hidden" />
+
+</div>
+<div>
+    <textarea id="response" rows="3" cols="60" style="width:595px" value="" ></textarea>
+</div>
+</body>
