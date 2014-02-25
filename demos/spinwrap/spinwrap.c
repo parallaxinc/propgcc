@@ -366,6 +366,7 @@ static void WriteCppHeader(char *file, Object *object, uint8_t *binary, int stac
         fprintf(fp, "  static uint16_t *m_pVarOffset;\n");
         fprintf(fp, "  static uint32_t m_stack[%d];\n", stackSize);
         fprintf(fp, "  static volatile uint32_t *volatile m_mailbox;\n");
+        fprintf(fp, "  static int m_refCnt;\n");
         fprintf(fp, "  static int m_cogid;\n");
         fprintf(fp, "};\n");
         
@@ -404,6 +405,7 @@ static void WriteCStubs(char *file, Object *object, int stackSize, uint8_t *bina
         fprintf(fp, "static uint16_t *%s_pVarOffset;\n", object->name);
         fprintf(fp, "static uint32_t %s_stack[%d];\n", object->name, stackSize);
         fprintf(fp, "static volatile uint32_t *volatile %s_mailbox = 0;\n", object->name);
+        fprintf(fp, "static int %s_refCnt = 0;\n", object->name);
         fprintf(fp, "static int %s_cogid = -1;\n", object->name);
         
         fprintf(fp, "\nstatic uint8_t spinBinary[] = {\n");
@@ -456,13 +458,16 @@ static void WriteCStubs(char *file, Object *object, int stackSize, uint8_t *bina
         fprintf(fp, "    %s_pVarOffset = (uint16_t *)(spinBinary + 0x%04x);\n", object->name, off - 4);
         fprintf(fp, "    %s_cogid = cognew(SPINVM, spinBinary);\n", object->name);
         fprintf(fp, "  }\n");
+        fprintf(fp, "  ++%s_refCnt;\n", object->name);
         fprintf(fp, "}\n");
         
         fprintf(fp, "\nvoid term_%s(%s *obj)\n", object->name, object->name);
         fprintf(fp, "{\n");
-        fprintf(fp, "  if (%s_cogid >= 0) {\n", object->name);
-        fprintf(fp, "    cogstop(%s_cogid);\n", object->name);
-        fprintf(fp, "    %s_cogid = -1;\n", object->name);
+        fprintf(fp, "  if (%s_refCnt > 0) {\n", object->name);
+        fprintf(fp, "    if (--%s_refCnt == 0 && %s_cogid >= 0) {\n", object->name, object->name);
+        fprintf(fp, "      cogstop(%s_cogid);\n", object->name);
+        fprintf(fp, "      %s_cogid = -1;\n", object->name);
+        fprintf(fp, "    }\n");
         fprintf(fp, "  }\n");
         fprintf(fp, "}\n");
         
@@ -522,6 +527,7 @@ static void WriteCppStubs(char *file, Object *object, uint8_t *binary, int binar
         fprintf(fp, "uint16_t *%s::m_pVarOffset;\n", object->name);
         fprintf(fp, "uint32_t %s::m_stack[];\n", object->name);
         fprintf(fp, "volatile uint32_t *volatile %s::m_mailbox = 0;\n", object->name);
+        fprintf(fp, "int %s::m_refCnt = 0;\n", object->name);
         fprintf(fp, "int %s::m_cogid = -1;\n", object->name);
         
         fprintf(fp, "\nstatic uint8_t spinBinary[] = {\n");
@@ -574,13 +580,16 @@ static void WriteCppStubs(char *file, Object *object, uint8_t *binary, int binar
         fprintf(fp, "    m_pVarOffset = (uint16_t *)(spinBinary + 0x%04x);\n", off - 4);
         fprintf(fp, "    m_cogid = cognew(SPINVM, spinBinary);\n");
         fprintf(fp, "  }\n");
+        fprintf(fp, "  ++m_refCnt;\n");
         fprintf(fp, "}\n");
         
         fprintf(fp, "\n%s::~%s()\n", object->name, object->name);
         fprintf(fp, "{\n");
-        fprintf(fp, "  if (m_cogid >= 0) {\n");
-        fprintf(fp, "    cogstop(m_cogid);\n");
-        fprintf(fp, "    m_cogid = -1;\n");
+        fprintf(fp, "  if (m_refCnt > 0) {\n");
+        fprintf(fp, "    if (--m_refCnt == 0 && m_cogid >= 0) {\n");
+        fprintf(fp, "      cogstop(m_cogid);\n");
+        fprintf(fp, "      m_cogid = -1;\n");
+        fprintf(fp, "    }\n");
         fprintf(fp, "  }\n");
         fprintf(fp, "}\n");
         
