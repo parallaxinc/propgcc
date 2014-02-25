@@ -14,6 +14,10 @@
 
 #define TOKEN_MAX           33
 
+#ifndef LINE_MAX
+#define LINE_MAX			1024
+#endif
+
 #define DEFAULT_STACK_SIZE  64
 
 enum {
