@@ -389,6 +389,11 @@ static void WriteCStubs(char *file, Object *object, int stackSize, uint8_t *bina
         fprintf(fp, "#include <string.h>\n");
         fprintf(fp, "#include \"%s.h\"\n", object->name);
         
+        fprintf(fp, "\n#ifdef __CATALINA__\n");
+        fprintf(fp, "#define cognew(code, params)    _coginit((int)(params) >> 2, (code) >> 2, ANY_COG)\n");
+        fprintf(fp, "#define cogstop(id)             _cogstop(id)\n");
+        fprintf(fp, "#endif\n");
+        
         fprintf(fp, "\n#define SPINVM 0xf004\n");
         
         fprintf(fp, "\nstatic uint8_t *%s_rootVars;\n", object->name);
