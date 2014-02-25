@@ -15,7 +15,7 @@
 #define TOKEN_MAX           33
 
 #ifndef LINE_MAX
-#define LINE_MAX			1024
+#define LINE_MAX            1024
 #endif
 
 #define DEFAULT_STACK_SIZE  64
@@ -139,9 +139,9 @@ int main(int argc, char *argv[])
         /* handle switches */
         if(argv[i][0] == '-') {
             switch(argv[i][1]) {
-            case 'c':	// generate c instead of c++
-            	generateC = 1;
-            	break;
+            case 'c':   // generate c instead of c++
+                generateC = 1;
+                break;
             case 'd':   // debug
                 debug = 1;
                 break;
@@ -216,12 +216,12 @@ int main(int argc, char *argv[])
 
     /* create the header and stubs files */
     if (generateC) {
-		WriteCHeader(h_path, object, binary);
-		WriteCStubs(source_path, object, stackSize, binary, (int)binarySize);
+        WriteCHeader(h_path, object, binary);
+        WriteCStubs(source_path, object, stackSize, binary, (int)binarySize);
     }
     else {
-		WriteCppHeader(h_path, object, binary, stackSize);
-		WriteCppStubs(source_path, object, binary, (int)binarySize);
+        WriteCppHeader(h_path, object, binary, stackSize);
+        WriteCppStubs(source_path, object, binary, (int)binarySize);
     }
     
     /* return successfully */
@@ -246,9 +246,9 @@ static void CompleteOutputPaths(char *name)
         strcat(rootPath, "/");
     sprintf(h_path, "%s%s.h", rootPath, name);
     if (generateC)
-    	sprintf(source_path, "%s%s.c", rootPath, name);
+        sprintf(source_path, "%s%s.c", rootPath, name);
     else
-    	sprintf(source_path, "%s%s.cpp", rootPath, name);
+        sprintf(source_path, "%s%s.cpp", rootPath, name);
     sprintf(spin_path, "%s%s_proxy.spin", rootPath, name);
     sprintf(binary_path, "%s%s.binary", rootPath, name);
 }
@@ -444,7 +444,7 @@ static void WriteCStubs(char *file, Object *object, int stackSize, uint8_t *bina
         fprintf(fp, "    dbase[-4] = 2;          // pbase + abort-trap + return-value\n");
         fprintf(fp, "    dbase[-3] = 0;          // vbase (not used)\n");
         fprintf(fp, "    dbase[-2] = 0;          // dbase (not used)\n");
-        fprintf(fp, "    dbase[-1] = 0xfff9;  	 // return address\n");
+        fprintf(fp, "    dbase[-1] = 0xfff9;     // return address\n");
         fprintf(fp, "    *(uint32_t *)dbase = 0; // result\n");
         fprintf(fp, "    dat = (uint32_t *)(spinBinary + 0x%04x);\n", dat - 4);
         fprintf(fp, "    *dat = (uint32_t)&%s_mailbox;\n", object->name);
@@ -562,7 +562,7 @@ static void WriteCppStubs(char *file, Object *object, uint8_t *binary, int binar
         fprintf(fp, "    dbase[-4] = 2;          // pbase + abort-trap + return-value\n");
         fprintf(fp, "    dbase[-3] = 0;          // vbase (not used)\n");
         fprintf(fp, "    dbase[-2] = 0;          // dbase (not used)\n");
-        fprintf(fp, "    dbase[-1] = 0xfff9;  	 // return address\n");
+        fprintf(fp, "    dbase[-1] = 0xfff9;     // return address\n");
         fprintf(fp, "    *(uint32_t *)dbase = 0; // result\n");
         fprintf(fp, "    dat = (uint32_t *)(spinBinary + 0x%04x);\n", dat - 4);
         fprintf(fp, "    *dat = (uint32_t)&m_mailbox;\n");
