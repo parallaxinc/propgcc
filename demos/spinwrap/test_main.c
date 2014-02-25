@@ -25,9 +25,11 @@ int main(void)
     test_set_pin(&obj2, 22);
     test_blink(&obj2);
     
-    test_blink(&obj);
-    test_blink(&obj2);
-
+    while (1) {
+    	test_blink(&obj);
+    	test_blink(&obj2);
+	}
+	
     while (1)
         ;
         
