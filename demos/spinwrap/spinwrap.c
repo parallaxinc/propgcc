@@ -310,7 +310,7 @@ static void WriteHeader(char *file, Object *object, uint8_t *binary, int stackSi
             method = method->next;
         }
         fprintf(fp, "private:\n");
-        fprintf(fp, "  uint8_t m_variables[%d];\n", hdr->dbase - hdr->vbase);
+        fprintf(fp, "  uint8_t m_variables[%d];\n", hdr->dbase - hdr->vbase - 8);
         fprintf(fp, "  static uint8_t *m_rootVars;\n");
         fprintf(fp, "  static uint16_t *m_pVarOffset;\n");
         fprintf(fp, "  static uint32_t m_stack[%d];\n", stackSize);
@@ -376,19 +376,21 @@ static void WriteStubs(char *file, Object *object, uint8_t *binary, int binarySi
         fprintf(fp, "  memset(m_variables, 0, sizeof(m_variables));\n");
         fprintf(fp, "  if (m_cogid < 0) {\n");
         fprintf(fp, "    Params *params = (Params *)spinBinary;\n");
-        fprintf(fp, "    uint16_t *dbase = (uint16_t *)(uint32_t)params->dbase;\n");
-        fprintf(fp, "    uint32_t *dat = (uint32_t *)(spinBinary + 0x%04x);\n", dat - 4);
+        fprintf(fp, "    uint16_t *dbase;\n");
+        fprintf(fp, "    uint32_t *dat;\n");
         fprintf(fp, "    params->pbase += (uint16_t)(uint32_t)spinBinary - 4;\n");
         fprintf(fp, "    params->vbase  = (uint16_t)(uint32_t)m_variables;\n");
         fprintf(fp, "    params->dbase  = (uint16_t)(uint32_t)(m_stack + 2);\n");
         fprintf(fp, "    params->pcurr += (uint16_t)(uint32_t)spinBinary - 4;\n");
         fprintf(fp, "    params->dcurr  = params->dbase + %d;\n", hdr->dcurr - hdr->dbase);
+        fprintf(fp, "    dbase = (uint16_t *)(uint32_t)params->dbase;\n");
         fprintf(fp, "    dbase[-4] = 2;          // pbase + abort-trap + return-value\n");
         fprintf(fp, "    dbase[-3] = 0;          // vbase (not used)\n");
         fprintf(fp, "    dbase[-2] = 0;          // dbase (not used)\n");
-        fprintf(fp, "    dbase[-1] = 0xfff9;     // return address\n");
+        fprintf(fp, "    dbase[-1] = 0xfff9;  	 // return address\n");
         fprintf(fp, "    *(uint32_t *)dbase = 0; // result\n");
-        fprintf(fp, "    dat[0] = (uint32_t)&m_mailbox;\n");
+        fprintf(fp, "    dat = (uint32_t *)(spinBinary + 0x%04x);\n", dat - 4);
+        fprintf(fp, "    *dat = (uint32_t)&m_mailbox;\n");
         fprintf(fp, "    m_rootVars = (uint8_t *)(uint32_t)params->vbase;\n");
         fprintf(fp, "    m_pVarOffset = (uint16_t *)(spinBinary + 0x%04x);\n", off - 4);
         fprintf(fp, "    m_cogid = cognew(SPINVM, spinBinary);\n");
