@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     WriteProxy(spin_path, object);
     
     /* compile the spin proxy */
-    sprintf(cmd, "openspin.osx%s -o \"%s\" \"%s\"", spin_args, binary_path, spin_path);
+    sprintf(cmd, "openspin%s -o \"%s\" \"%s\"", spin_args, binary_path, spin_path);
     if (debug)
         printf("cmd: %s\n", cmd);
     if ((sts = system(cmd)) != 0) {
