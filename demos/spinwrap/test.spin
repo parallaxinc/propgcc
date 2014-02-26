@@ -8,6 +8,12 @@ OBJ
 PUB set_pin(pin)
     my_other_pin := my_pin
     my_pin := pin
+    
+PUB get_pin
+	return my_pin
+	
+PUB get_other_pin
+	return my_other_pin
 
 PUB set_pins(pin1, pin2)
     my_pin := pin1

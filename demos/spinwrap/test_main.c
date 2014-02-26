@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "test.h"
 
 #define QUICKSTART
@@ -11,25 +12,29 @@ int main(void)
 
     init_test(&obj);
     
+    test_set_pins(&obj, 16, 17);
+    printf("obj: pin %d, other pin %d\n", test_get_pin(&obj), test_get_other_pin(&obj));
+    
+    init_test(&obj2);
+    
+    test_set_pins(&obj2, 20, 21);
+    printf("obj2: pin %d, other pin %d\n", test_get_pin(&obj2), test_get_other_pin(&obj2));
+
     test_start_blinker(&obj);
     
-    test_set_pins(&obj, 16, 17);
     test_blink(&obj);
     test_set_pin(&obj, 18);
     test_blink(&obj);
 
-    init_test(&obj2);
-    
-    test_set_pins(&obj2, 20, 21);
     test_blink(&obj2);
     test_set_pin(&obj2, 22);
     test_blink(&obj2);
     
     while (1) {
-    	test_blink(&obj);
-    	test_blink(&obj2);
-	}
-	
+        test_blink(&obj);
+        test_blink(&obj2);
+    }
+    
     while (1)
         ;
         
