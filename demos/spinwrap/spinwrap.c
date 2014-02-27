@@ -12,6 +12,12 @@
 #include <string.h>
 #include <ctype.h>
 
+#ifdef CATALINA
+#define SPINCOMPILER        "spinnaker"
+#else
+#define SPINCOMPILER        "openspin"
+#endif
+
 #define TOKEN_MAX           33
 
 #ifndef LINE_MAX
@@ -197,7 +203,7 @@ int main(int argc, char *argv[])
     WriteProxy(spin_path, object);
     
     /* compile the spin proxy */
-    sprintf(cmd, "openspin%s -o \"%s\" \"%s\"", spin_args, binary_path, spin_path);
+    sprintf(cmd, "%s%s -o \"%s\" \"%s\"", SPINCOMPILER, spin_args, binary_path, spin_path);
     if (debug)
         printf("cmd: %s\n", cmd);
     if ((sts = system(cmd)) != 0) {
@@ -318,8 +324,8 @@ static void WriteCHeader(char *file, Object *object, uint8_t *binary)
         /* can't have an array of size zero */
         varSize = hdr->dbase - hdr->vbase - 8;
         if (varSize <= 0)
-        	varSize = sizeof(uint32_t);
-        	
+            varSize = sizeof(uint32_t);
+            
         fprintf(fp, "\ntypedef struct {\n");
         fprintf(fp, "  uint8_t variables[%d];\n", varSize);
         fprintf(fp, "} %s;\n", object->name);
@@ -356,8 +362,8 @@ static void WriteCppHeader(char *file, Object *object, uint8_t *binary, int stac
         /* can't have an array of size zero */
         varSize = hdr->dbase - hdr->vbase - 8;
         if (varSize <= 0)
-        	varSize = sizeof(uint32_t);
-        	
+            varSize = sizeof(uint32_t);
+            
         fprintf(fp, "\nclass %s {\n", object->name);
         fprintf(fp, "public:\n");
         fprintf(fp, "  %s();\n", object->name);
