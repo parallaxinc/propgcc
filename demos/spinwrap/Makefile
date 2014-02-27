@@ -14,7 +14,7 @@ testc.elf:	test_main.c test.c test.h
 	propeller-elf-gcc -Os -Wall -o $@ test_main.c test.c
 
 testcatalina.binary:	test_main.c test.c test.h
-	catalina -o $@ test_main.c test.c -lc
+	catalina -C CR_ON_LF -o $@ test_main.c test.c -lc
 
 run:	test.elf
 	propeller-load test.elf -r -t
