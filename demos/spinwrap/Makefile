@@ -27,3 +27,7 @@ runcatalina:	testcatalina.binary
 	
 clean:
 	rm -f spinwrap test.cpp test.c test.h test_proxy.spin *.elf *.o *.binary
+
+zip:	clean
+	rm -f spinwrap.zip
+	zip spinwrap *
