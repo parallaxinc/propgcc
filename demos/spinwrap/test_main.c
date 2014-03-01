@@ -11,13 +11,12 @@ int main(void)
     test obj2;
 
     init_test(&obj);
-    
     test_set_pins(&obj, 16, 17);
-    printf("obj: pin %d, other pin %d\n", test_get_pin(&obj), test_get_other_pin(&obj));
     
     init_test(&obj2);
-    
     test_set_pins(&obj2, 20, 21);
+
+    printf("obj: pin %d, other pin %d\n", test_get_pin(&obj), test_get_other_pin(&obj));
     printf("obj2: pin %d, other pin %d\n", test_get_pin(&obj2), test_get_other_pin(&obj2));
 
     test_start_blinker(&obj);
