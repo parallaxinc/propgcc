@@ -1,4 +1,10 @@
+
+ifndef BUILDROOT
+BUILDROOT=.
+endif
+
 CC=gcc
+NATIVECC=gcc
 PROPCC=propeller-elf-gcc
 RM=rm
 LOAD=propeller-load
@@ -8,6 +14,8 @@ LOADERSRC=$(LOADER)/src
 
 CFLAGS=-Wall -I$(LOADERSRC)
 SPINFLAGS=-Ogxr
+
+OBJDIR=$(BUILDROOT)
 
 vpath %.c $(LOADERSRC)
 vpath %.h $(LOADERSRC)
@@ -44,16 +52,24 @@ OSINT=osint_linux
 LIBS=
 endif
 
-TARGET=gdbstub$(EXT)
+TARGET=$(BUILDROOT)/gdbstub$(EXT)
 
-OBJS=gdbstub.o config.o expr.o system.o port.o PLoadLib.o $(foreach x, $(OSINT), $(x).o) kernel_image.o
+OBJS=$(OBJDIR)/gdbstub.o $(OBJDIR)/config.o $(OBJDIR)/expr.o \
+	$(OBJDIR)/system.o \
+	$(OBJDIR)/port.o \
+	$(OBJDIR)/PLoadLib.o \
+	$(foreach x, $(OSINT), $(OBJDIR)/$(x).o) \
+	$(OBJDIR)/kernel_image.o
 
-all:	bin2c$(EXT) $(TARGET)
+all:	dir bin2c$(EXT) $(TARGET)
+
+dir:
+	mkdir -p $(OBJDIR)
 
 $(TARGET):	$(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 
-%.o:	%.c
+$(OBJDIR)/%.o:	%.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 ################
@@ -81,8 +97,9 @@ kernel_image.elf:	kernel.c
 #########
 
 bin2c$(EXT):	$(LOADERSRC)/tools/bin2c.c
-	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
+	$(NATIVECC) $(CFLAGS) $(LDFLAGS) $< -o $@
 
 .PHONY:	clean
 clean:
-	$(RM) -rf *.o $(TARGET) bin2c *.log kernel_image.*
+	$(RM) -rf $(TARGET) $(OBJS) bin2c *.log kernel_image.*
+	$(RM) -f obj
