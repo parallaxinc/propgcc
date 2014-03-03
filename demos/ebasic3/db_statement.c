@@ -248,8 +248,8 @@ static void ParseDim(ParseContext *c)
             }
 
             /* allocate space for the data */
-            value = (VMVALUE)c->imageDataFree;
-            c->imageDataFree += size;
+            value = (VMVALUE)c->image->free;
+            c->image->free += size;
             
             /* add the symbol to the global symbol table */
             sym = AddGlobal(c, name, SC_VARIABLE, value);
@@ -349,7 +349,7 @@ static void ParseArrayInitializers(ParseContext *c, VMVALUE size)
 
         /* look for the first non-blank line */
         while ((tkn = GetToken(c)) == T_EOL) {
-            if (!GetLine(c))
+            if (!GetLine(c->sys))
                 ParseError(c, "unexpected end of file in initializers");
         }
 
@@ -787,7 +787,7 @@ static void ParseAsm(ParseContext *c)
     for (;;) {
     
         /* get the next line */
-        if (!GetLine(c))
+        if (!GetLine(c->sys))
             ParseError(c, "unexpected end of file in ASM statement");
         
         /* check for the end of the assembly instructions */
@@ -927,7 +927,7 @@ void CheckLabels(ParseContext *c)
     for (label = c->labels; label != NULL; label = next) {
         next = label->next;
         if (label->fixups)
-            Fatal(c, "undefined label: %s", label->name);
+            Abort(c->sys, "undefined label: %s", label->name);
     }
     c->labels = NULL;
 }
@@ -942,7 +942,7 @@ BlockType  CurrentBlockType(ParseContext *c)
 static void PushBlock(ParseContext *c)
 {
     if (++c->bptr >= c->btop)
-        Fatal(c, "statements too deeply nested");
+        Abort(c->sys, "statements too deeply nested");
 }
 
 /* PopBlock - pop a block off the block stack */

@@ -226,7 +226,7 @@ int putcbyte(ParseContext *c, int b)
 {
     int addr = codeaddr(c);
     if (c->cptr >= c->ctop)
-        Fatal(c, "Bytecode buffer overflow");
+        Abort(c->sys, "Bytecode buffer overflow");
     *c->cptr++ = b;
     return addr;
 }
@@ -236,7 +236,7 @@ int putcword(ParseContext *c, VMVALUE w)
 {
     int addr = codeaddr(c);
     if (c->cptr + sizeof(VMVALUE) > c->ctop)
-        Fatal(c, "Bytecode buffer overflow");
+        Abort(c->sys, "Bytecode buffer overflow");
     wr_cword(c, c->cptr - c->codeBuf, w);
     c->cptr += sizeof(VMVALUE);
     return addr;

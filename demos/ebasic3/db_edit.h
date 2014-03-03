@@ -1,11 +1,18 @@
-#ifndef __EDIT_H__
-#define __EDIT_H__
+#ifndef __DB_EDIT_H__
+#define __DB_EDIT_H__
 
 #include "db_system.h"
 
 #define MAX_PROG_NAME   32
 
-void EditWorkspace(System *sys);
+typedef void Handler(void *cookie);
+
+typedef struct {
+    char *name;
+    Handler *handler;
+} UserCmd;
+
+void EditWorkspace(System *sys, UserCmd *userCmds, Handler *evalHandler, void *cookie);
 
 /* edit buffer interface */
 void BufInit(void);

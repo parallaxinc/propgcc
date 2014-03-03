@@ -25,47 +25,31 @@ static void EnterBuiltInFunction(ParseContext *c, char *name, VMVALUE addr);
 static void PlaceStrings(ParseContext *c);
 static void PlaceSymbols(ParseContext *c);
 
-/* InitCompiler - initialize the compiler and create a parse context */
-ParseContext *InitCompiler(System *sys, int imageBufferSize)
+/* Compile - compile a program */
+VMVALUE Compile(System *sys, ImageHdr *image, int oneStatement)
 {
-    ParseContext *c = NULL;
+    int prompt = VMFALSE;
     uint8_t *freeMark;
-    ImageHdr *image;
+    VMVALUE mainCode;
+    ParseContext *c;
 
-    /* allocate space for the image buffer */
-    if (!(image = (ImageHdr *)AllocateFreeSpace(sys, imageBufferSize)))
-        ParseError(c, "insufficient space for image header");
-        
     /* mark the current position in free space to allow compiler data structures to be freed */
     freeMark = sys->freeNext;
 
     /* allocate and initialize the parse context */
     if (!(c = (ParseContext *)AllocateFreeSpace(sys, sizeof(ParseContext))))
-        ParseError(c, "insufficient space for parse context\n");
-    
-    /* initialize the parse context */
+        return NULL;
     memset(c, 0, sizeof(ParseContext));
     c->sys = sys;
     c->freeMark = freeMark;
     c->image = image;
-    c->imageBufferSize = imageBufferSize;
-    
-    /* return the new parse context */
-    return c;
-}
-
-/* Compile - compile a program */
-ImageHdr *Compile(ParseContext *c)
-{
-    ImageHdr *image = c->image;
-    System *sys = c->sys;
     
     /* setup an error target */
     if (setjmp(c->errorTarget) != 0)
         return NULL;
 
     /* clear the runtime space */
-    InitImageAllocator(c);
+    InitImage(image);
 
     /* use the rest of the free space for the compiler heap */
     c->nextGlobal = sys->freeNext;
@@ -97,22 +81,36 @@ ImageHdr *Compile(ParseContext *c)
     c->inComment = VMFALSE;
     
     /* get the next line */
-    while (GetLine(c)) {
+    do {
         int tkn;
+        
+        /* get the next line */
+        if (!oneStatement || prompt) {
+            if (prompt)
+                VM_printf("  > ");
+            if (!GetLine(c->sys))
+                break;
+        }
+            
+        /* prompt on continuation lines */
+        prompt = (oneStatement ? VMTRUE : VMFALSE);
+            
+        /* parse the statement */
         if ((tkn = GetToken(c)) != T_EOL)
             ParseStatement(c, tkn);
-    }
+            
+    } while (!oneStatement || c->codeType != CODE_TYPE_MAIN || c->bptr >= c->blockBuf);
 
     /* end the main code with a halt */
     putcbyte(c, OP_HALT);
     
     /* write the main code */
     StartCode(c, CODE_TYPE_MAIN);
-    image->mainCode = StoreCode(c);
+    mainCode = StoreCode(c);
 
 #ifdef DEBUG
     {
-        int objectDataSize = (uint8_t *)c->imageDataFree - (uint8_t *)c->image;
+        int objectDataSize = (uint8_t *)image->free - (uint8_t *)c->image;
         DumpSymbols(&c->globals, "symbols");
         VM_printf("Heap: %d, Image: %d\n", c->maxHeapUsed, objectDataSize);
     }
@@ -121,8 +119,8 @@ ImageHdr *Compile(ParseContext *c)
     /* free up the space the compiler was consuming */
     sys->freeNext = c->freeMark;
 
-    /* return the image */
-    return image;
+    /* return the main function */
+    return mainCode;
 }
 
 static uint8_t bi_waitcnt[] = {
@@ -199,8 +197,8 @@ static void EnterBuiltInFunction(ParseContext *c, char *name, VMVALUE addr)
 /* InitCodeBuffer - initialize the code buffer */
 void InitCodeBuffer(ParseContext *c)
 {
-    c->codeBuf = (uint8_t *)c->imageDataFree;
-    c->ctop = (uint8_t *)c->imageDataTop;
+    c->codeBuf = (uint8_t *)c->image->free;
+    c->ctop = (uint8_t *)c->image->top;
     c->cptr = c->codeBuf;
 }
 
@@ -209,6 +207,8 @@ VMVALUE *codeStart;
 /* StartCode - start a function or method under construction */
 void StartCode(ParseContext *c, CodeType type)
 {
+    ImageHdr *image = c->image;
+
     /* all methods must precede the main code */
     if (type != CODE_TYPE_MAIN && c->cptr > c->codeBuf)
         ParseError(c, "subroutines and functions must precede the main code");
@@ -229,12 +229,13 @@ void StartCode(ParseContext *c, CodeType type)
         putcbyte(c, 0);
     }
     
-    codeStart = c->imageDataFree;
+    codeStart = image->free;
 }
 
 /* StoreCode - store the function or method under construction */
 VMVALUE StoreCode(ParseContext *c)
 {
+    ImageHdr *image = c->image;
     VMVALUE code;
     int codeSize;
 
@@ -260,15 +261,15 @@ VMVALUE StoreCode(ParseContext *c)
     /* make sure all referenced labels were defined */
     CheckLabels(c);
     
-    if (c->imageDataFree != codeStart)
-        VM_printf("code buffer overwrite! was %08x, is %08x\n", (int)codeStart, (int)c->imageDataFree);
+    if (image->free != codeStart)
+        VM_printf("code buffer overwrite! was %08x, is %08x\n", (int)codeStart, (int)image->free);
 
     /* determine the code size */
     codeSize = (int)(c->cptr - c->codeBuf);
     
     /* reserve space for the code */
-    code = (VMVALUE)c->imageDataFree;
-    c->imageDataFree += GetObjSizeInWords(codeSize);
+    code = (VMVALUE)image->free;
+    image->free += GetObjSizeInWords(codeSize);
 
     /* place string literals defined in this function */
     PlaceStrings(c);
@@ -308,7 +309,7 @@ static void PlaceStrings(ParseContext *c)
     String *str;
     for (str = c->strings; str != NULL; str = str->next) {
         if (str->fixups) {
-            str->value = StoreBVector(c, (uint8_t *)str->data, strlen(str->data));
+            str->value = StoreBVector(c->image, (uint8_t *)str->data, strlen(str->data));
             str->placed = VMTRUE;
             fixup(c, str->fixups, str->value);
             str->fixups = 0;
@@ -373,7 +374,7 @@ static void PlaceSymbols(ParseContext *c)
     Symbol *sym;
     for (sym = c->globals.head; sym != NULL; sym = sym->next) {
         if (sym->fixups) {
-            sym->value = StoreVector(c, &sym->value, 1);
+            sym->value = StoreVector(c->image, &sym->value, 1);
             sym->placed = VMTRUE;
             fixup(c, sym->fixups, sym->value);
             sym->fixups = 0;
@@ -387,7 +388,7 @@ void *GlobalAlloc(ParseContext *c, size_t size)
     void *p;
     size = (size + ALIGN_MASK) & ~ALIGN_MASK;
     if (c->nextGlobal + size > c->nextLocal)
-        Fatal(c, "insufficient memory");
+        Abort(c->sys, "insufficient memory");
     p = c->nextGlobal;
     c->nextGlobal += size;
     if (c->heapSize - (c->nextLocal - c->nextGlobal) > c->maxHeapUsed)
@@ -400,30 +401,9 @@ void *LocalAlloc(ParseContext *c, size_t size)
 {
     size = (size + ALIGN_MASK) & ~ALIGN_MASK;
     if (c->nextLocal + size < c->nextGlobal)
-        Fatal(c, "insufficient memory");
+        Abort(c->sys, "insufficient memory");
     c->nextLocal -= size;
     if (c->heapSize - (c->nextLocal - c->nextGlobal) > c->maxHeapUsed)
         c->maxHeapUsed = c->heapSize - (c->nextLocal - c->nextGlobal);
     return c->nextLocal;
-}
-
-/* VM_printf - formatted print */
-void VM_printf(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    VM_vprintf(fmt, ap);
-    va_end(ap);
-}
-
-/* Fatal - report a fatal error and exit */
-void Fatal(ParseContext *c, char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    VM_printf("error: ");
-    VM_vprintf(fmt, ap);
-    VM_putchar('\n');
-    va_end(ap);
-    longjmp(c->errorTarget, 1);
 }

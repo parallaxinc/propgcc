@@ -8,12 +8,16 @@
 #define __DB_IMAGE_H__
 
 #include <stdarg.h>
+#include "db_system.h"
 #include "db_types.h"
 
 /* in-memory image header */
 typedef struct {
-    VMVALUE     mainCode;           /* main code */
-    VMVALUE     imageData[1];       /* data space */
+    System *sys;        /* system state */
+    int size;           /* size of image buffer including the image header in bytes */
+    VMVALUE *free;      /* next free location in the image data buffer */
+    VMVALUE *top;       /* top of the image data buffer */
+    VMVALUE data[1];    /* data space */
 } ImageHdr;
 
 /* get the size of an object in words */
@@ -74,8 +78,9 @@ enum {
 };
 
 /* prototypes */
-void VM_printf(const char *fmt, ...);           /* fmt in FLASH_SPACE */
-void VM_vprintf(const char *fmt, va_list ap);   /* fmt in FLASH_SPACE */
-void VM_putchar(int ch);
+ImageHdr *AllocateImage(System *sys, int imageBufferSize);
+void InitImage(ImageHdr *image);
+VMVALUE StoreVector(ImageHdr *image, const VMVALUE *buf, int size);
+VMVALUE StoreBVector(ImageHdr *image, const uint8_t *buf, int size);
 
 #endif
