@@ -1,0 +1,9 @@
+Memory map:
+
+0x6000-0x7fff   8k cache (must be on a 16 byte boundary)
+0x5e00-0x5fff	128 cache tags
+0x5dbc-0x5dff   8 SDRAM-style mailboxes and a 0x00000008 terminator
+0x5dbc          initial sp
+
+Replace the first entry in the XMM header with a "brs #entry" instruction
+so we can just begin execution at 0x20000000 or 0x30000000.

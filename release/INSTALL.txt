@@ -1,0 +1,34 @@
+release/INSTALL.txt
+
+These instructions are for propeller-gcc package command line users.
+
+1. Propeller GCC Linux install:
+
+   To install Propeller GCC on linux: unpack the tar file in a suitable location.
+
+   For users with root access, copy the main parallax folder to /opt as /opt/parallax.
+   It is also possible for the main folder to be installed in the user's home directory.
+
+   Add /opt/parallax/bin or your other folder as appropriate to ensure propeller-elf-gcc
+   is in your PATH. It's probably necessary to append a command to the ~/.bashrc file.
+
+   $ PATH=/opt/parallax/bin:$PATH
+   $ PATH=${HOME}/parallax/bin:$PATH
+
+
+2. Propeller GCC Windows install:
+
+   The install procedure for Windows with an installer will be in a different package.
+   Please follow instructions in README_WINDOWS.txt to install.
+
+
+3. Propeller GCC Cygwin install:
+
+   The install procedure for Windows/Cygwin with an installer is in a different package.
+   Please follow instructions in README_CYGWIN.txt to install.
+
+
+4. Propeller GCC MAC OSX install:
+
+   The Mac OSX distribution can be installed as /opt/parallax as in suggested linux.
+
