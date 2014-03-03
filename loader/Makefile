@@ -21,13 +21,13 @@ DRVDIR=$(BUILDROOT)/propeller-load
 INSTALLBINDIR=$(TARGET)/bin
 INSTALLLIBDIR=$(TARGET)/propeller-load
 
-DIRS = $(OBJDIR) $(PROPOBJDIR) $(BINDIR) $(DRVDIR) $(INSTALLBINDIR) $(INSTALLLIBDIR)
-
 CC=gcc
+TOOLCC=$(CC)
 ECHO=echo
 MKDIR=mkdir -p
 CP=cp
 RM=rm
+TOUCH=touch
 
 PROPCC=propeller-elf-gcc
 PROPOBJCOPY=propeller-elf-objcopy
@@ -35,7 +35,7 @@ PROPCFLAGS=-mp2
 PROPOBJDIR=$(BUILDROOT)/obj/propeller
 
 ifeq ($(OS),linux)
-SPINCMP=openspin.linux
+SPINCMP?=openspin.linux
 CFLAGS += -DLINUX
 EXT=
 OSINT=osint_linux
@@ -43,7 +43,7 @@ LIBS=
 endif
 
 ifeq ($(OS),cygwin)
-SPINCMP=openspin.exe
+SPINCMP?=openspin.exe
 CFLAGS += -DCYGWIN
 EXT=.exe
 OSINT=osint_cygwin enumcom
@@ -51,7 +51,7 @@ LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),msys)
-SPINCMP=openspin.exe
+SPINCMP?=openspin.exe
 CFLAGS += -DMINGW
 EXT=.exe
 OSINT=osint_mingw enumcom
@@ -59,7 +59,7 @@ LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),macosx)
-SPINCMP=openspin.osx
+SPINCMP?=openspin.osx
 CFLAGS += -DMACOSX
 EXT=
 OSINT=osint_linux
@@ -70,7 +70,7 @@ CFLAGS+=$(DEBUG) -Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 
 # for compiling Spin code
-SPINFLAGS=
+SPINFLAGS= -I$(SPINDIR)
 
 # for compiling PASM external memory drivers
 SPIN_DAT=spin2cpp --dat
@@ -91,6 +91,7 @@ $(OBJDIR)/serial_helper2.binary
 ##########################
 
 info:
+	@$(ECHO) TOOLCC: $(TOOLCC)
 	@$(ECHO) CFLAGS: $(CFLAGS)
 	@$(ECHO) LDFLAGS: $(LDFLAGS)
 	@$(ECHO) SPIN: $(SPIN)
@@ -103,7 +104,7 @@ info:
 clean:
 	@$(RM) -f -r $(OBJDIR)
 	@$(RM) -f -r $(BINDIR)
-	@$(RM) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf
+	@$(RM) -f -r $(DRVDIR)
 	@$(RM) -f *.binary
 	@$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT)) clean
 
@@ -197,53 +198,6 @@ $(DRVDIR)/synapse_xmem.dat \
 $(DRVDIR)/sd_xmem.dat
 
 #################
-# CACHE DRIVERS #
-#################
-
-ifdef NOTDEF
-DRIVERS+=\
-$(DRVDIR)/c3_cache.dat \
-$(DRVDIR)/c3_cache_flash.dat \
-$(DRVDIR)/ssf_cache.dat \
-$(DRVDIR)/dracblade_cache.dat \
-$(DRVDIR)/sdram_cache.dat \
-$(DRVDIR)/eeprom_cache.dat \
-$(DRVDIR)/sd_cache.dat \
-$(DRVDIR)/spi_flash_cache.dat \
-$(DRVDIR)/sst_spi_flash_cache.dat \
-$(DRVDIR)/spi_nway_flash_cache.dat \
-$(DRVDIR)/sst_sqi_flash_cache.dat \
-$(DRVDIR)/sst_sqi_nway_flash_cache.dat \
-$(DRVDIR)/spi_sram_cache.dat \
-$(DRVDIR)/spi_sram24_cache.dat \
-$(DRVDIR)/spi_nway_sram_cache.dat \
-$(DRVDIR)/winbond_sqi_flash_cache.dat \
-$(DRVDIR)/winbond_sqi_nway_flash_cache.dat \
-$(DRVDIR)/synapse_cache.dat \
-$(DRVDIR)/rampage2_cache.dat
-endif
-
-#######################
-# NEWER CACHE DRIVERS #
-#######################
-
-ifdef NOTDEF
-DRIVERS+=\
-$(DRVDIR)/rampage2_xcache.dat \
-$(DRVDIR)/winbond_spi_flash_xcache.dat \
-$(DRVDIR)/sst_spi_flash_xcache.dat \
-$(DRVDIR)/winbond_sqi_flash_xcache.dat \
-$(DRVDIR)/sst_sqi_flash_xcache.dat \
-$(DRVDIR)/spi_sram_xcache.dat \
-$(DRVDIR)/spi_sram24_xcache.dat \
-$(DRVDIR)/sqi_sram_xcache.dat \
-$(DRVDIR)/winbond_sqi_flash_sram_xcache.dat \
-$(DRVDIR)/sst_sqi_flash_sram_xcache.dat \
-$(DRVDIR)/c3_xcache.dat \
-$(DRVDIR)/synapse_xcache.dat
-endif
-
-#################
 # OTHER DRIVERS #
 #################
 
@@ -251,10 +205,10 @@ DRIVERS+=\
 $(DRVDIR)/sd_driver.dat
 
 .PHONY:	drivers
-drivers:	$(DRVDIR) $(DRIVERS)
+drivers:	$(DRVDIR)/dir-created $(DRIVERS)
 
 .PHONY:	sd-loader
-sd-loader:	$(DRVDIR)
+sd-loader:	$(DRVDIR)/dir-created
 	@$(MAKE) -C sdloader BUILDROOT=$(realpath $(BUILDROOT))
 
 ##################
@@ -279,53 +233,6 @@ $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
 	@$(SPIN_DAT) -o $@ $<
-	@$(ECHO) $@
-
-####################################
-# RULES TO BUILD OLD CACHE DRIVERS #
-####################################
-
-CACHE_DRIVER_COMMON=\
-$(CACHEDRIVERDIR)/cache_interface.spin
-
-$(DRVDIR)/%_cache.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DENABLE_RAM -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/%_cache_flash.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_%_cache.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DSST -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_%_cache.dat:	$(CACHEDRIVERDIR)/%_cache.spin $(CACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-######################################
-# RULES TO BUILD NEWER CACHE DRIVERS #
-######################################
-
-XCACHE_DRIVER_COMMON=\
-$(CACHEDRIVERDIR)/cache_common.spin \
-$(CACHEDRIVERDIR)/cache_interface.spin \
-$(CACHEDRIVERDIR)/cache_spi_pins.spin \
-$(CACHEDRIVERDIR)/cache_sqi_pins.spin \
-$(CACHEDRIVERDIR)/cache_spi.spin \
-$(CACHEDRIVERDIR)/cache_sqi.spin
-
-$(DRVDIR)/%_xcache.dat:	$(CACHEDRIVERDIR)/%_xcache.spin $(XCACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/winbond_%_xcache.dat:	$(CACHEDRIVERDIR)/%_xcache.spin $(XCACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DWINBOND -o $@ $<
-	@$(ECHO) $@
-
-$(DRVDIR)/sst_%_xcache.dat:	$(CACHEDRIVERDIR)/%_xcache.spin $(XCACHE_DRIVER_COMMON)
-	@$(SPIN_DAT) -DSST -o $@ $<
 	@$(ECHO) $@
 
 ##########################################
@@ -359,38 +266,40 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.dat
 # GAS TO C #
 ############
 
-$(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)
+$(PROPOBJDIR)/%.o:	$(SRCDIR)/%.s $(HDRS) $(PROPOBJDIR)/dir-created
 	@$(PROPCC) $(PROPCFLAGS) -nostdlib $< -o $@
 	@$(ECHO) $(PROPCC) $@
 
 $(PROPOBJDIR)/%.bin:	$(PROPOBJDIR)/%.o $(HDRS)
 	@$(PROPOBJCOPY) -O binary $< $@
-	@$(ECHO) cc $@
+	@$(ECHO) binary $@
 
-$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)
+$(OBJDIR)/%.c:	$(PROPOBJDIR)/%.bin bin2c $(OBJDIR)/dir-created
 	@$(BINDIR)/bin2c$(EXT) $< $@
 	@$(ECHO) bin2c $@
 
 $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
-	@$(CC) $(CFLAGS) -c $< -o $@
-	@$(ECHO) $(CC) $@
+	@$(TOOLCC) $(CFLAGS) -c $< -o $@
+	@$(ECHO) create .o with $(TOOLCC) $@
 
 ################
 # MAIN TARGETS #
 ################
 
 .PHONY:	propeller-load
+.NOTPARALLEL: propeller-load
+
 propeller-load:		$(BINDIR)/propeller-load$(EXT)
 
-$(BINDIR)/propeller-load$(EXT):	$(BINDIR) $(OBJDIR) bin2c $(OBJS)
-	@$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+$(BINDIR)/propeller-load$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-created bin2c $(OBJS)
+	@$(TOOLCC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	@$(ECHO) $@
 
 .PHONY:	propeller-elf-image-size
 propeller-elf-image-size:		$(BINDIR)/propeller-elf-image-size$(EXT)
 
-$(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR) $(OBJDIR) $(IMAGE_SIZE_OBJS)
-	@$(CC) $(LDFLAGS) -o $@ $(IMAGE_SIZE_OBJS)
+$(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR)/dir-created $(OBJDIR)/dir-created $(IMAGE_SIZE_OBJS)
+	@$(TOOLCC) $(LDFLAGS) -o $@ $(IMAGE_SIZE_OBJS)
 	@$(ECHO) $@
 
 #########
@@ -398,11 +307,11 @@ $(BINDIR)/propeller-elf-image-size$(EXT):	$(BINDIR) $(OBJDIR) $(IMAGE_SIZE_OBJS)
 #########
 
 $(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS)
-	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(TOOLCC) $(CFLAGS) -c $< -o $@
 	@$(ECHO) $@
 
 $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
-	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(TOOLCC) $(CFLAGS) -c $< -o $@
 	@$(ECHO) $@
 
 #########
@@ -412,7 +321,7 @@ $(OBJDIR)/%.o:	$(OBJDIR)/%.c $(HDRS)
 .PHONY:	bin2c
 bin2c:		$(BINDIR)/bin2c$(EXT)
 
-$(BINDIR)/bin2c$(EXT):	$(OBJDIR) $(SRCDIR)/tools/bin2c.c
+$(BINDIR)/bin2c$(EXT):	$(OBJDIR)/dir-created $(SRCDIR)/tools/bin2c.c
 	@$(CC) $(CFLAGS) $(LDFLAGS) $(SRCDIR)/tools/bin2c.c -o $@
 	@$(ECHO) $@
 
@@ -420,17 +329,18 @@ $(BINDIR)/bin2c$(EXT):	$(OBJDIR) $(SRCDIR)/tools/bin2c.c
 # DIRECTORIES #
 ###############
 
-$(DIRS):
-	$(MKDIR) $@
+%/dir-created:
+	@$(MKDIR) -p $(@D)
+	@$(TOUCH) $@
 
 ##################
 # INSTALL TARGET #
 ##################
 
 .PHONY:	install
-install:	all $(INSTALLBINDIR) $(INSTALLLIBDIR)
-	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load $(INSTALLBINDIR)
-	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size $(INSTALLBINDIR)
-	$(CP) -f $(DRVDIR)/* $(INSTALLLIBDIR)
+install:	all $(INSTALLBINDIR)/dir-created $(INSTALLLIBDIR)/dir-created
+	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-load$(EXT) $(INSTALLBINDIR)
+	$(CP) -f $(BUILDROOT)/bin/$(OS)/propeller-elf-image-size$(EXT) $(INSTALLBINDIR)
+	$(CP) -f $(DRVDIR)/*.dat $(DRVDIR)/*.elf $(INSTALLLIBDIR)
 	$(CP) -f xmem-drivers/*.cfg $(INSTALLLIBDIR)
 	$(CP) -f xmem-drivers/boards.txt $(INSTALLLIBDIR)

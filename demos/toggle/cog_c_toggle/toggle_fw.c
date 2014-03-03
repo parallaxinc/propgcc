@@ -40,6 +40,27 @@ void main (volatile struct toggle_mailbox *m)
   }
 }
 
+/*
+ * The load function -- call this to start the cog.
+ * We put this here so that this .cog file can be pulled in from a
+ * library. If you're not using libraries it doesn't matter where it
+ * goes. The reason we need it for a library (.a) is subtle; the linker
+ * will only add a .cog file from a library if some symbol from the .cog
+ * is actually used, so we need to provide something that the main
+ * program references (the __load_start_XXX_cog symbol will not work, because
+ * the linker only creates that *after* it has decided it needs the .cog!)
+ *
+ * the "toggle_fw_code" label serves this purpose; the caller should
+ * use this instead of _load_start_toggle_fw_cog[]. This is necessary
+ * because the linker does not define _load_start_XXX until *after* all
+ * linking decisions are made, so that symbol cannot be used to force
+ * this module to be linked; we need some symbol that is already present
+ * in the .cog file.
+ */
+
+extern unsigned int _load_start_toggle_fw_cog[];
+const unsigned int *toggle_fw_code = _load_start_toggle_fw_cog;
+
 /* +--------------------------------------------------------------------
  * ¦  TERMS OF USE: MIT License
  * +--------------------------------------------------------------------
