@@ -5,12 +5,12 @@
 #include <propeller.h>
 
 //#define PMC
-//#define DNA
-#define RAMPAGE2
+#define DNA
+//#define RAMPAGE2
 //#define DEFAULTS
 
 //#define FLASH_TEST
-#define BIG_FLASH_TEST
+//#define BIG_FLASH_TEST
 //#define RAM_TEST
 #define BIG_RAM_TEST
 
@@ -36,8 +36,8 @@
 #define SIO0_PIN        START_PIN
 #define SCK_PIN         (START_PIN + 4)
 #define SRAM_CS_PIN     (START_PIN + 5)
-#define XMEM_CONFIG1    ((SIO0_PIN << 24) | (SCK_PIN << 8) | SRAM_CS_PIN)
-#define XMEM_CONFIG2    0
+#define XMEM_CONFIG1    ((SIO0_PIN << 24) | (SCK_PIN << 8) | 0x01)
+#define XMEM_CONFIG2    (SRAM_CS_PIN << 24)
 #define XMEM_CONFIG3    0
 #define XMEM_CONFIG4    0
 #endif

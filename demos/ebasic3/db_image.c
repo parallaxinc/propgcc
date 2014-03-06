@@ -4,29 +4,41 @@
  *
  */
 
-#include "db_compiler.h"
-#include "db_vmdebug.h"
+#include "db_system.h"
+#include "db_image.h"
 
-/* InitImageAllocator - initialize the image allocator */
-void InitImageAllocator(ParseContext *c)
+/* AllocateImage - allocate a program image */
+ImageHdr *AllocateImage(System *sys, int size)
 {
-    c->imageDataFree = c->image->imageData;
-    c->imageDataTop = (VMVALUE *)((uint8_t *)c->image + c->imageBufferSize);
+    ImageHdr *image;
+    if (!(image = (ImageHdr *)AllocateFreeSpace(sys, size)))
+        return NULL;
+    image->sys = sys;
+    image->size = size;
+    InitImage(image);
+    return image;
+}
+        
+/* InitImage - initialize an image */
+void InitImage(ImageHdr *image)
+{
+    image->free = image->data;
+    image->top = (VMVALUE *)((uint8_t *)image + image->size);
 }
 
 /* StoreVector - store a vector */
-VMVALUE StoreVector(ParseContext *c, const VMVALUE *buf, int size)
+VMVALUE StoreVector(ImageHdr *image, const VMVALUE *buf, int size)
 {
-    VMVALUE addr = (VMVALUE)c->imageDataFree;
-    if (c->imageDataFree + size > c->imageDataTop)
-        ParseError(c, "insufficient image space");
-    memcpy(c->imageDataFree, buf, size * sizeof(VMVALUE));
-    c->imageDataFree += size;
+    VMVALUE addr = (VMVALUE)image->free;
+    if (image->free + size > image->top)
+        return NULL;
+    memcpy(image->free, buf, size * sizeof(VMVALUE));
+    image->free += size;
     return addr;
 }
 
 /* StoreBVector - store a byte vector */
-VMVALUE StoreBVector(ParseContext *c, const uint8_t *buf, int size)
+VMVALUE StoreBVector(ImageHdr *image, const uint8_t *buf, int size)
 {
-    return StoreVector(c, (VMVALUE *)buf, GetObjSizeInWords(size));
+    return StoreVector(image, (VMVALUE *)buf, GetObjSizeInWords(size));
 }
