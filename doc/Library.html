@@ -533,7 +533,8 @@ this. Pthreads can run on other cogs or on the same cog.
 <A NAME="RunningLMM"><H2>LMM on Another Cog</H2></A>
 <P>
   Running compiled code in another thread is very straightforward
-  in <CODE>-mlmm</CODE> mode. To start a new thread running function
+  in <CODE>-mlmm</CODE>, <CODE>-mcmm</CODE>, or <CODE>-mxmmc</CODE>
+  modes. To start a new thread running function
   <CODE>foo</CODE> with argument <CODE>arg</CODE> do:
   <PRE>
     int cog = _start_cog_thread(sp, foo, arg, tls_ptr);
@@ -546,11 +547,14 @@ this. Pthreads can run on other cogs or on the same cog.
   in <CODE>cog</CODE>. If no cogs are available, -1 is returned.
 </P>
 <P>
-  Note that <CODE>_start_cog_thread</CODE> only works in LMM mode; in
-  XMM or XMMC mode it will always return an error.
+  Note that <CODE>_start_cog_thread</CODE> is not recommended for use
+  in XMM mode, because there is no data cache coherency mechanism;
+  thus, any use of variables in external memory by more than one COG
+  can lead to data corruption. In the other modes (LMM, CMM, and XMMC)
+  the data is stored in hub memory and hence no external RAM cache is required.
 </P>
 <P>
-  There are several synchronization methods available for LMM code
+  There are several synchronization methods available for code
   running on different cogs. The most basic is
   the <CODE>__lock/__unlock</CODE> mechanism provided
   in <CODE>sys/thread.h</CODE>. These locks are spin locks; a cog that
