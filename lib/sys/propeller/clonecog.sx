@@ -1,0 +1,87 @@
+	''
+	'' clone a propeller into HUB memory
+	''
+	'' r0 == address of hub buffer (2K)
+	''
+
+	.text
+	.global __clone_cog
+__clone_cog
+	fcache	#(.Lend - .Lstart)
+	.compress off
+.Lstart
+	mov	pc,lr
+	mov	lr,__LMM_RET
+	'' invalidate caches
+	mov	__LMM_FCACHE_ADDR,#0
+	mov	__kernel_ext,#0
+#if defined(__PROPELLER_USE_XMM__)
+	mov	cacheaddr,#0
+	mov	cacheline,#0
+	mov	set_dirty_bit,#0
+#endif
+	'' copy data from hub memory to r0
+	mov	r1,#(0x6C0/4)-1	'' end of kernel
+	mov	r2,r1
+	shl	r2,#2
+	add	r0,r2
+
+.Lloop
+	movd	(.Ltmp-.Lstart)+__LMM_FCACHE_START,r1
+	nop
+	nop
+.Ltmp
+	wrlong	r1,r0
+	sub	r0,#4
+	djnz	r1,#(.Lloop-.Lstart)+__LMM_FCACHE_START
+
+	'' now fix up the registers
+	'' to jump to initialization code
+	wrlong	__LMM_FCACHE_START+(.Lr0-.Lstart), r0
+	add	r0,#4
+	wrlong	__LMM_FCACHE_START+(.Lr1-.Lstart), r0
+	add	r0,#4
+	wrlong	__LMM_FCACHE_START+(.Lr2-.Lstart), r0
+	add	r0,#4
+	wrlong	__LMM_FCACHE_START+(.Lr3-.Lstart), r0
+	add	r0,#4
+	mov	r1, #0
+	'' write r4-r14
+	mov	r2, #10
+.Lrloop
+	wrlong	r1, r0
+	add	r0, #4
+	djnz	r2, #__LMM_FCACHE_START+(.Lrloop-.Lstart)
+
+	'' write a non-zero value to r14 to indicate not first time
+	mov	 r2, #1
+	wrlong	 r2, r0
+	add	 r0, #4
+
+	'' write r15
+	wrlong	__LMM_FCACHE_START+(.Lr15-.Lstart), r0
+	add	r0, #4
+	'' write 0 to sp
+	wrlong	 r1, r0
+	add	 r0, #4
+
+	'' write entry to pc
+	wrlong	__LMM_FCACHE_START+(.Lpc-.Lstart), r0
+
+	'' all done, return to caller
+	jmp	lr
+
+	'' initialization code+data
+.Lr0
+	mov	__TMP1,r3
+.Lr1
+	call	#__load_extension
+.Lr2
+	jmp	#__LMM_init
+.Lr3
+	long	__load_start_start_kerext
+.Lr15
+	long	__exit
+.Lpc
+	long	entry
+.Lend

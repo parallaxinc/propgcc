@@ -1,0 +1,653 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+  <META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+  <TITLE>Propeller GCC Library</TITLE>
+</HEAD>
+<BODY>
+
+<H1>Contents</H1>
+<A HREF="#intro">Introduction</A><BR>
+<A HREF="#environment">Environment</A><BR>
+<A HREF="#locales">Locales and Character Sets</A><BR>
+<A HREF="#stdio">Standard I/O</A><BR>
+<A HREF="#fopen">...fopen</A><BR>
+<A HREF="#cooked">...Raw vs. Cooked mode</A><BR>
+<A HREF="#nonblock">...Non-Blocking Reads</A><BR>
+<A HREF="#printf">...Printf and Code Size</A><BR>
+<A HREF="#time">Time Related Functions</A><BR>
+<A HREF="#TimeZones">...Time Zones</A><BR>
+<A HREF="#RTC">...Real Time Clocks</A><BR>
+<A HREF="#drivers">Device Drivers</A><BR>
+<A HREF="#InstallDrivers">...Installing Drivers</A><BR>
+<A HREF="#DriversProvided">...Drivers Provided in the Library</A><BR>
+<A HREF="#WritingDrivers">...Writing New Drivers</A><BR>
+<A HREF="#CogModeDrivers">...Cog Mode Drivers</A><BR>
+<A HREF="#Threads">Threads and Cogs</A><BR>
+<A HREF="#RunningLMM">...LMM on Another Cog</A><BR>
+<A HREF="#Pthreads">...Pthreads</A><BR>
+<A HREF="#RunningNative">...Native Cog C</A><BR>
+
+<A NAME="intro"><H1>Introduction</H1></A>
+<P>
+The Propeller GCC Library is an implementation of the standard C
+library. It attempts to conform to the C89 version of the standard,
+with some C99 extensions. This documentation assumes that the user is
+familiar with the C language and C libraries; we will focus on the
+Propeller specific details of this library rather than general usage.
+</P>
+
+<A NAME="environment"><H1>Environment</H1></A>
+<P>
+  The <CODE>main</CODE> function has prototype:
+<PRE>
+  int main(int argc, char *argv[], char *environ[]); 
+</PRE>
+</P><P>
+    <CODE>argv</CODE> are the arguments to the program; this is a NULL
+    terminated list of pointers to strings. Conventionally the first
+    argument (<CODE>argv[0]</CODE>) is the name of the program. Since
+    the Propeller has no operating system, it is up to the application
+    to supply arguments. This is done with the global variable
+    <CODE>char *_argv[]</CODE>, which is passed directly to main as
+    <CODE>argv</CODE>.
+</P><P>
+    <CODE>argc</CODE> is a count of the arguments to the program, and
+    is initialized from <CODE>_argv</CODE> automatically by the
+    startup code.
+</P><P>
+    <CODE>environ</CODE> is a list of environment variables, also NULL
+    terminated. As with <CODE>argv</CODE>, this is initialized from a
+    global variable, in this case <CODE>char *_environ[]</CODE>. The 
+    <CODE>getenv</CODE> library function also
+    uses <CODE>_environ</CODE> to look for variables.
+</P><P>
+    The strings in <CODE>_environ</CODE> should be of the form
+    <CODE>VAR=value</CODE>, where "VAR" is the name of the environment
+    variable and "value" is its value. At present <CODE>TZ</CODE> is
+    the only environment variable that is actually used by the library
+    (for the <A HREF="TimeZOnes">time zone</A>), but some applications
+    may also look at the environment and require customized settings.
+</P>
+
+<A NAME="locales"><H1>Locales and Character Sets</H1></A>
+<P>
+The library starts up in a plain "C" locale which uses an 8 bit ASCII
+character set. Only the 7 bit ASCII subset is
+recognized by the character classification functions, but character
+conversion to wide characters uses ISO 8859-1 (so a character
+like <CODE>'\xa0'</CODE> converts to the wide
+character <CODE>L'\u00a0'</CODE> when processed by <CODE>mbtowc</CODE>
+or a similar function).
+</P>
+<P>
+The library also provides a "C.UTF-8" locale which is the same as the
+"C" locale except that the encoding is UTF-8 rather than ISO
+8859-1. UTF-8 allows wide characters to be represented by multiple
+bytes in a lossless way. Only the multibyte to/from wide character
+conversion routines (including the ones inside functions such as
+printf) are affected; character classification functions
+like <CODE>isalpha</CODE> still only recognize the ASCII subset of Unicode.
+</P>
+<P>
+To set the UTF-8 character encoding, do
+<PRE>
+  setlocale(LC_CTYPE, "C.UTF-8");
+</PRE>
+or just
+<PRE>
+  setlocale(LC_ALL, "");
+</PRE>
+in your <CODE>main</CODE> function. To switch back to ASCII, do
+<PRE>
+  setlocale(LC_CTYPE, "C");
+</PRE>
+</P>
+<P>
+Note that the locale setting affects all threads in a program. Also,
+the locale and multibyte/wide character functions are not available
+in <CODE>-mcog</CODE> mode.
+</P>
+
+<A NAME="stdio"><H1>Stdio</H1></A>
+<P>
+The standard I/O library implementation ("stdio") is fairly
+complete. Unlike in many other systems, stdio is fundamental; it is
+not implemented on top of POSIX like functions such
+as <CODE>open</CODE> and <CODE>close</CODE>. Rather, there is a
+<A HREF="#drivers">driver layer</A> which implements the files that
+<CODE>fopen</CODE> operates on.
+</P>
+<A NAME="FILE"><H2>FILE</H2></A>
+<P>
+The stdio FILE structure is in most respects fairly conventional. It
+contains flags for how the file was opened, a pointer to a buffer, and
+a buffer size. Unlike many libraries, the Propeller GCC library does
+not automatically use <CODE>malloc</CODE> to allocate the FILE buffer;
+rather it defaults to a small character array inside the FILE
+structure. Some drivers (particularly for disks and similar devices)
+may override this to provide a bigger buffer.
+</P>
+<P>
+The FILE structure also contains an array of driver specific variables
+(in <CODE>drvarray</CODE>) which drivers may use for any
+purpose they wish. 
+</P>
+
+<A NAME="fopen"><H2>fopen</H2></A>
+<P>
+The <CODE>fopen</CODE> function
+takes a string describing the device or file that is to be opened. In
+the Propeller GCC library this string should start with a prefix which
+specifies the <A HREF="#drivers">driver</A>, followed by a string
+which is passed to the driver. The prefix should end with a colon. For
+example, to open the simple serial port driver for reading and writing
+at 9600 baud, with transmit pin 5 and receive pin 5, do:
+<PRE>
+  FILE *f = fopen("SSER:9600,5,5", "r+");
+</PRE>
+Here <CODE>"SSER:"</CODE> is the prefix for the simple serial device,
+and <CODE>"9600,5,5"</CODE> are the parameters for the
+device. Similarly, opening a file for writing on a DOS file system
+might be achieved by something like:
+<PRE>
+  FILE *f = fopen("DOS:log.txt", "w");
+</PRE>
+</P>
+<A NAME="fopen_driver"><H3>__fopen_driver</H3></A>
+<P>
+  The <CODE>__fopen_driver</CODE> function is like <CODE>fopen</CODE>,
+  but has additional parameters directly specifying the handle and driver to
+  use, rather than relying on a prefix. So for example:
+<PRE>
+  stdin = freopen(stdin, "SSER:9600,5,5", "r");
+</PRE>
+could also be called as:
+<PRE>
+  extern _Driver _SimpleSerialDriver;
+  stdin = __fopen_driver(stdin, &_SimpleSerialDriver, "9600,5,5", "r");
+</PRE>
+<CODE>__fopen_driver</CODE> is used internally by <CODE>fopen</CODE>
+and <CODE>freopen</CODE>, but may sometimes be useful to application
+programmers who need direct control over driver and handle usage.
+</P>
+
+<A NAME="cooked"><H2>Raw vs. Cooked mode</H2></A>
+
+<P>
+Some drivers (notably the serial drivers) support a "cooked" mode of
+input. In this mode characters are echoed when they are received, and
+backspace (or delete) may be used to delete characters. Additionally,
+input is gathered until either the requested number of characters is
+received or a newline is seen.
+</P><P>
+Cooked mode is
+selected by setting the <CODE>_IOCOOKED</CODE> bit in
+a <CODE>FILE</CODE> structure's <CODE>_flag</CODE> field. If the bit
+is clear, then "raw" mode is used, where there is no echoing and no
+interpretation of special characters.
+</P>
+<P>
+Cooked mode is the default. To read characters directly from stdin
+without processing, do something like:
+<PRE>
+  stdin->_flag &= ~_IOCOOKED;
+</PRE>
+This also causes stdin to effectively be unbuffered, since the
+terminal driver only processes 1 character at a time in raw mode.
+</P>
+
+<A NAME="nonblock"><H2>Non-blocking Reads</H2></A>
+<P>
+Terminal style drivers also support the ability to attempt to read a
+byte and return immediately if none is available. This is accomplished
+by setting the <CODE>_IONONBLOCK</CODE> bit in the <CODE>_flag</CODE>
+field of the <CODE>FILE</CODE> structure. For example, to check to see
+if a byte is available from stdin, you could do:
+<PRE>
+  stdin->_flag |= _IONONBLOCK;
+  c = getchar();
+</PRE>
+If a character is available then <CODE>c</CODE> will be set
+to that character, otherwise it will be set to <CODE>-1</CODE>. Note
+that this is the same as <CODE>EOF</CODE>; in non-blocking mode there
+is no way to distinguish between end of file and no character
+currently available (for terminals there never is really an end of
+file).
+</P>
+
+<A NAME="printf"><H2>Printf and Code Size</H2></A>
+<P>
+  The <CODE>printf</CODE> function (and related functions such
+  as <CODE>sprintf</CODE>) can consume quite a bit of memory. To help
+  reduce the footprint of these functions, the library provides
+  several options:
+  <UL>
+    <LI><CODE>__simple_printf</CODE> is a simple version of printf with
+      support for the most common output formats (hex and decimal
+      integers, strings, and characters) but without support for
+      floating point, 64 bit integers, right
+      justification, precision, alternate output formats, and other
+      advanced features. <CODE>__simple_printf</CODE> is also not
+      thread safe, so it should be used only in single threaded
+      applications. You can
+      use this version of printf in your code by
+      adding <CODE>-Dprintf=__simple_printf</CODE> to the command
+      line. The simple printf is by far the smallest version of
+      printf, but obviously it is limited.
+    </LI>
+    <LI>The default <CODE>printf</CODE> function supports all integer output
+      formats and options, but leaves out floating point output
+      (the <CODE>e</CODE>, <CODE>f</CODE>, and <CODE>g</CODE>
+      formats). This is the one found in libc.
+    </LI>
+    <LI>The full version of <CODE>printf</CODE>, including floating
+      point support, is found in the math library libm, which is
+      selected by adding <CODE>-lm</CODE> to the command line of the
+      final build step.
+    </LI>
+  </UL>
+</P>
+
+<A NAME="cogprintf"><H3>Printf in -mcog mode</H3></A>
+<P>
+  The stdio functions in -mcog mode are even simpler. Only the
+  equivalent of <CODE>__simple_printf</CODE> is available in -mcog mode
+  (there isn't enough room for more). Only the standard output is
+  available in -mcog.
+</P>
+
+<A NAME="time"><H1>Time Related Functions</H1></A>
+<P>
+There is a normal set of time related functions in the library. The
+defines for these are mostly in <CODE>&lt;time.h&gt;</CODE>.
+</P>
+<H2>Types</H2>
+<H3>time_t</H3>
+<P>
+  The <CODE>time_t</CODE> type is used for keeping track of dates. As
+  in POSIX, it
+  contains the value <CODE>86400*(days since Jan. 1, 1970) + (seconds
+  elapsed today)</CODE>, all in the Coordinated Universal Time (UTC)
+  time zone. This is not the same as seconds elapsed since
+  Jan. 1, 1970, because leap seconds are ignored (as in POSIX).
+</P>
+<P>
+  Note that unless there is a real time clock on the board (with an
+  appropriate driver!) and the
+  time zone has been set correctly, the values stored
+  in <CODE>time_t</CODE> are almost certainly bogus and should not be
+  relied on.
+</P>
+<H3>clock_t</H3>
+<P>
+  The <CODE>clock_t</CODE> type contains a count of processor
+  cycles. It is a 32 bit type, and so on a typical 80MHz board it will
+  roll over in about 54 seconds.
+</P>
+
+<A NAME="TimeZones"><H2>Time Zones</H2></A>
+<P>
+  Some functions (such as <CODE>localtime</CODE>
+  or <CODE>strftime</CODE>) make use of time zone settings. The time
+  zone is set automatically from the <CODE>TZ</CODE>
+  <A HREF="#environment">environment variable</A>. This specifies the
+  standard time name, offset from GMT, and (optionally) a daylight
+  savings time name. For example, include <CODE>"TZ=EST5EDT"</CODE> as
+  one of the strings in the <CODE>_environ</CODE> array for the US
+  Eastern time zone.
+</P><P>
+  Only the North American daylight savings times rules are recognized
+  at present, and only the current ones (as of 2011) are implemented.
+</P>
+
+<A NAME="RTC"><H2>Real Time Clocks</H2></A>
+<P>
+  The interface to real time clocks is via two function pointers:
+  <PRE>
+    #include &lt;sys/rtc.h&gt;
+    int (*_rtc_gettime)(struct timeval *tv);
+    int (*_rtc_settime)(const struct timeval *tv);
+  </PRE>
+  These point to functions to get and set the current time,
+  respectively. The <CODE>struct timeval</CODE> structure is described
+  by POSIX, and has two fields <CODE>tv_sec</CODE> (giving the current
+  time in <CODE>time_t</CODE> format) and <CODE>tv_usec</CODE> (giving
+  the microseconds elapsed since <CODE>tv_sec</CODE> last changed;
+  during a leap second this might go up to 2000000000).
+</P>
+<P>
+  There is a default clock that simply uses the built-in cycle
+  counter. At a typical clock rate of 80MHz this counter overflows in
+  54 seconds. The default RTC driver uses a 64 bit tick counter to
+  compensate for this, but a time retrieval function (such as time())
+  must be called more often than the counter overflows in order for it
+  to keep the high word of the tick counter accurate.
+</P>
+<P>
+  There is also a mechanism to use another cog to update the cycle
+  counter, which will remove the requirement for frequent calling of
+  the clock functions. To do this, call
+  the <CODE>_rtc_start_timekeeping_cog()</CODE> routine, which will
+  start a cog running whose entire purpose is to keep the clock
+  up-to-date.
+</P>
+<P>
+  Alternatively, if you have spare time on one of your cogs, you can
+  kick the built-in cycle counter yourself (without the expensive call
+  to the time() routine which performs several 64-bit math
+  operations).  To do this, set the global variable
+  <CODE>_default_ticks_updated</CODE> to a non-zero value, and call the
+  _update_default_ticks() routine on a regular basis.
+</P>
+<P>
+  If you have an alternate way to keep time (such as a hardware chip
+  like the DS1318), replace the built-in drivers by assigning the
+  global <CODE>_rtc_gettime</CODE> and <CODE>_rtc_settime</CODE>
+  pointers to your own gettime() and settime() routines.
+</P>
+
+<A NAME="drivers"><H1>Device Drivers</H1></A>
+<P>
+Drivers for the <A HREF="#stdio">standard I/O library</A> may be
+written by the user and installed in the system. The library comes
+with some default drivers, which are described below.
+</P>
+
+<A NAME="InstallDrivers"><H2>Installing Drivers</H2></A>
+<P>
+In the default configuration only the simple serial driver is
+installed. This is easily modified by the program at compile time.
+The global variable <CODE>_driverlist</CODE> is a NULL terminated
+array of pointers to driver structures that should be included. So for
+example to include both the simple serial driver and full duplex
+serial driver, you would do:
+<PRE>
+#include &lt;driver.h&gt;
+extern _Driver _SimpleSerialDriver;
+extern _Driver _FullDuplexSerialDriver;
+
+_Driver *_driverlist[] = {
+  &_SimpleSerialDriver,
+  &_FullDuplexSerialDriver,
+  NULL
+};
+</PRE>
+</P>
+<P>
+The first driver in the list is the "default" driver, and is used to
+open the <CODE>stdin</CODE>, <CODE>stdout</CODE>,
+and <CODE>stderr</CODE> FILE descriptors. If you want finer control
+over how these files are opened, you can either use
+the <CODE>freopen</CODE> function on them at the start of your code,
+or define a function <CODE>_InitIO</CODE> which will set up the file
+handles.
+</P>
+
+<A NAME="DriversProvided"><H2>Drivers Provided in the Library</H2></A>
+<A NAME="simpleserial"><H3>Simple Serial Driver (Prefix SSER:)</H3></A>
+<P>
+The simple serial port driver 
+(<CODE>_Driver _SimpleSerialDriver</CODE>)
+is a half duplex driver for generic
+serial ports. It defaults to doing I/O at the rate specified in the
+<CODE>_baud</CODE> variable (normally 115200 on most boards), with
+transmit pin <CODE>_txpin</CODE> and receive pin <CODE>_rxpin</CODE>.
+These defaults may be overridden by the string passed
+to <CODE>fopen</CODE>. This string contains the baud rate, optionally
+followed by a comma and the receive pin number and then another comma
+and the transmit pin number, all in decimal notation. So for example
+the default 
+<PRE>
+FILE *f=fopen("SSER:", "r");
+</PRE>
+is equivalent to
+<PRE>
+FILE *f=fopen("SSER:115200,31,30", "r");
+</PRE>
+on most boards.
+</P>
+<P>
+The simple serial driver does not require any additional cogs to
+operate.
+</P>
+<P>
+  Note that because the simple serial driver runs completely in the
+  local cog, it shares the cog's DIRA and OUTA register with the
+  calling code.  Therefore, avoid overwriting the DIRA/OUTA bits
+  corresponding to the simple serial driver's TX and RX pins.  You can
+  do this when setting or clearing bits for other I/O devices by using
+  bit-setting and bit-masking instead of direct assignment
+  (e.g. <CODE>DIRA |= 3</CODE> or <CODE>DIRA &= ~3</CODE> instead
+  of <CODE>DIRA = 3</CODE> or <CODE>DIRA = 0</CODE>).  This is always
+  a good idea, but failing to do this in any code that uses the simple
+  serial driver will result in unpredictable I/O.
+</P>
+<H3>Full Duplex Serial Driver (Prefix FDS:)</H3>
+<P>
+The full duplex serial driver (<CODE>_Driver
+_FullDuplexSerialDriver</CODE>) takes over a cog in order to provide
+reliable full duplex communication on a serial line. A separate cog is
+needed for every set of transmit and receive pins in use. Like
+the <A HREF="#simpleserial">simple serial driver</A>, the full duplex
+serial driver defaults to the values in the board
+specific <CODE>_baud</CODE>, <CODE>_txpin</CODE>,
+and <CODE>_rxpin</CODE> variables, and these may be overridden by
+passing a string containing <I>baud</I>,<I>rxpin</I>,<I>txpin</I>.
+</P>
+
+<A NAME="WritingDrivers"><H2>Writing New Drivers</H2></A>
+<P>
+It is fairly straightforward to write a device driver. Drivers are
+represented by a <CODE>_Driver</CODE> structure, as defined in
+<CODE>&lt;driver.h&gt;</CODE>. This structure has the following
+fields, which must be set up by the driver code:
+<DL>
+  <DT><CODE>const char *prefix</CODE></DT>
+  <DD>The file prefix that tells <CODE>fopen</CODE> which driver to
+    use; this should end in a colon <CODE>:</CODE></DD>
+  <DT><CODE>int (*fopen)(FILE *fp, const char *name, const char *mode)</CODE></DT>
+  <DD>A hook called by the <CODE>fopen</CODE>
+    function. The <CODE>name</CODE> parameter contains the portion of
+    the name passed to <CODE>fopen</CODE> that comes <I>after</I> the
+    prefix. <CODE>fp</CODE> is the <CODE>FILE</CODE> structure that
+    is being set up. The hook should put any driver specific
+    variables that are required into the <CODE>drvarg</CODE> array
+    in <CODE>fp</CODE>; if more than 4 longs are required, it should
+    allocate memory and put a pointer
+    into <CODE>drvarg</CODE>. The <CODE>fopen</CODE> hook should
+    return 0 on success, and -1 on failure; in the latter case it
+    should set <CODE>errno</CODE> to an appropriate value.</DD>
+  <DT><CODE>int (*fclose)(FILE *fp)</CODE></DT>
+  <DD>A hook called when a file is being closed; this should free any
+    memory allocated by the <CODE>fopen</CODE> hook.</DD>
+  <DT><CODE>int (*read)(FILE *fp, unsigned char *buf, int size)</CODE></DT>
+  <DT><CODE>int (*write)(FILE *fp, unsigned char *buf, int size)</CODE></DT>
+  <DD>These are the I/O functions, called to actually read and write
+    data. Many drivers will have to implement their own versions of
+    these hooks, but some may be able to use the default
+    functions <CODE>_null_read</CODE> and <CODE>_null_write</CODE>
+    (which return EOF and do nothing, respectively)
+    or <CODE>_term_read</CODE> and <CODE>_term_write</CODE> (which do
+    terminal I/O using the <CODE>getbyte</CODE>
+    and <CODE>putbyte</CODE> hooks, see below).</DD>
+  <DT><CODE>int (*seek)(FILE *fp, long offset, int whence)</CODE></DT>
+  <DD>A hook called to change the current read or write position in the file.
+    <CODE>whence</CODE> is one
+    of <CODE>SEEK_SET</CODE>, <CODE>SEEK_CUR</CODE>,
+    or <CODE>SEEK_END</CODE>, which have the same meanings as they do
+    for the <CODE>fseek</CODE> function. A driver need not implement
+    the <CODE>seek</CODE> hook; if this hook is set to NULL, then any
+    attempt to seek on the file will fail and <CODE>errno</CODE> will
+    be set to <CODE>ENOSEEK</CODE>.</DD>
+  <DT><CODE>int (*remove)(const char *name)</CODE></DT>
+  <DD>A hook called to remove a file. File removal is not yet
+    implemented, so most drivers will simply set this to NULL.</DD>
+  <DT><CODE>int (*getbyte)(FILE *fp)</CODE></DT>
+  <DD>An optional hook for single character I/O; reads and returns a
+    single character. This hook is used by
+    the <CODE>_term_read</CODE> function for cooked terminal I/O; if a
+    driver does not wish to use <CODE>_term_read</CODE> for its reader
+    function, it may set this hook to NULL.</DD>
+  <DT><CODE>int (*putbyte)(FILE *fp)</CODE></DT>
+  <DD>An optional hook for single character I/O. This hook is used by
+    the <CODE>_term_read</CODE> and <CODE>_term_write</CODE> functions
+    for cooked terminal I/O; if a driver does not wish to
+    use these functions, it may set
+    this hook to NULL.</DD>
+</DL>
+</P>
+<P>
+  After the driver is written, it must also
+  be <A HREF="#InstallDrivers">installed</A>.
+</P>
+<A NAME="CogModeDrivers"><H2>Cog mode drivers</H2></A>
+<P>
+  In <CODE>-mcog</CODE> mode the stdio driver facility is not
+  available (it is too large to fit in the 2K of internal space in a
+  cog). Instead, the stdio library for <CODE>-mcog</CODE> uses just
+  two functions, <CODE>putchar</CODE> and <CODE>getchar</CODE>. The
+  default <CODE>putchar</CODE> implementation writes characters to the
+  serial port (using code very much like the simple serial driver).
+</P>
+<P>
+  Note that <CODE>fopen</CODE> and similar functions are not supported
+  in <CODE>-mcog</CODE> mode. Only <CODE>stdin</CODE>
+  and <CODE>stdout</CODE> are supported.
+</P>
+
+<A NAME="Threads"><H1>Threads</H1></A>
+<P>
+Sometimes one wants to run some code on another cog. There are two
+ways to do this: to run a copy of the LMM (or XMM) interpreter on the
+other cog, or to run native cog code (compiled
+with <CODE>-mcog</CODE>) on the other cog. Both of these amount to
+running a thread on the other cog
+</P>
+<P>
+There are also times when one wants to run more threads of execution
+than there are cogs. The <B>pthreads</B> functions provide a way to do
+this. Pthreads can run on other cogs or on the same cog.
+</P>
+
+<A NAME="RunningLMM"><H2>LMM on Another Cog</H2></A>
+<P>
+  Running compiled code in another thread is very straightforward
+  in <CODE>-mlmm</CODE>, <CODE>-mcmm</CODE>, or <CODE>-mxmmc</CODE>
+  modes. To start a new thread running function
+  <CODE>foo</CODE> with argument <CODE>arg</CODE> do:
+  <PRE>
+    int cog = _start_cog_thread(sp, foo, arg, tls_ptr);
+  </PRE>
+  Here <CODE>sp</CODE> points to the top of the new thread's stack,
+  and <CODE>tls_ptr</CODE> points to a new <CODE>_thread_state_t</CODE> to
+  hold the thread local storage for this thread (that is, the library
+  variables that need to be kept per-thread rather than globally; for
+  example <CODE>errno</CODE>). The new cog id is returned
+  in <CODE>cog</CODE>. If no cogs are available, -1 is returned.
+</P>
+<P>
+  Note that <CODE>_start_cog_thread</CODE> is not recommended for use
+  in XMM mode, because there is no data cache coherency mechanism;
+  thus, any use of variables in external memory by more than one COG
+  can lead to data corruption. In the other modes (LMM, CMM, and XMMC)
+  the data is stored in hub memory and hence no external RAM cache is required.
+</P>
+<P>
+  There are several synchronization methods available for code
+  running on different cogs. The most basic is
+  the <CODE>__lock/__unlock</CODE> mechanism provided
+  in <CODE>sys/thread.h</CODE>. These locks are spin locks; a cog that
+  is waiting on the lock loops until it becomes available. More
+  sophisticated (blocking) lock mechanisms are available in
+  the <A HREF="#Pthreads">pthreads</A> library.
+</P>
+<P>
+  To use a spin lock, simply declare a variable as:
+  <PRE>
+    #include &lt;sys/thread.h&gt;
+    _atomic_t mylock;
+  </PRE>
+  and then lock and unlock it like:
+  <PRE>
+    __lock(&amp;mylock);
+    // .. do some things
+    __unlock(&amp;mylock);
+  </PRE>
+  It is important to hold locks only for as long as required, and to
+  unlock them immediately afterwards. Also, the locks are not
+  recursive. If a thread attempts to lock a variable which it has
+  already locked, it will hang.
+</P>
+
+<A NAME="Pthreads"><H2>Pthreads</H2></A>
+<P>
+  It is also possible to use the standard POSIX pthreads functions in
+  <CODE>pthreads.h</CODE> to start and stop threads. pthreads will run
+  on other cogs if available; if none are available then the threads
+  will have to share cogs. The number of pthreads that can run
+  simultaneously is limited only by memory.
+</P>
+<P>
+  When a new pthread is started, the library attempts to start it on a
+  new cog. If no new cog can be allocated, the library runs it on an
+  existing cog. However, multiple threads on the same cog must
+  cooperate; that is, a thread will keep running until it calls some
+  blocking function (such as <CODE>sleep</CODE>) or
+  calls <CODE>pthread_yield</CODE>. 
+</P>
+<P>
+  To compile a program to use pthreads, link
+  with <CODE>-lpthread</CODE>. The pthread functions themselves, and
+  some slight modifications to standard functions to support pthreads,
+  are in that library.
+</P>
+
+<A NAME="RunningNative"><H2>Native Cog C</H2></A>
+<P>
+  To run some C code directly in a cog (not in LMM mode) we have to
+  compile it with the <CODE>-mcog</CODE> flag. We also have to do some
+  linker tricks to make sure that some definitions in the library and
+  kernel do not conflict with definitions in the main LMM code.
+</P>
+<P>
+  Typically we would put all the C code for a cog in one file, and
+  compile it with a set of commands like:
+  <PRE>
+    propeller-elf-gcc -mcog -r -o mydriver.o -Os mydriver.c
+    propeller-elf-objcopy --localize-text --rename .text=mydriver.cog mydriver.cog
+  </PRE>
+  The first line creates the cog program; the <CODE>-r</CODE> option
+  tells gcc that we want it to be relocatable (we will be further
+  linking it with the main LMM program).
+  The second line causes all of the global text segment symbols
+  (function definitions and such) to become local
+  to the cog program so they will not interfere
+  with similar symbols in the LMM program. It also renames the .text
+  section (where the code is) to mydriver.cog. The linker knows that
+  any section whose name begins or ends with <B>.cog</B> is an
+  overlay intended to be run inside a cog.
+</P>
+<P>
+  By convention COG programs are named <CODE>foo.cog</CODE>,
+  but this is just a convention. The important thing to the linker is
+  the name of the section containing the cog code, which must start or
+  end with .cog. The linker also creates symbols telling where the code
+  starts (and ends) in the file. For a section
+  named <CODE>foo.cog</CODE>, it creates symbols
+  <CODE>__load_start_foo_cog</CODE> and <CODE>__load_stop_foo_cog</CODE>
+  (note that since period is not a valid character in a C identifier,
+  it is translated to underscore if it is in the middle of a name and stripped if it is at the start of the name).
+  Similarly for a section named <CODE>.cog.my.driver</CODE> it creates symbols
+  <CODE>__load_start_cogmydriver</CODE> and <CODE>__load_stop_cogmydriver</CODE>.
+  We can use these
+  symbols to load the overlays into a cog. For example, to start the
+  mydriver.cog code and pass it in a pointer to a mailbox, we would do:
+  <PRE>
+    #include &lt;propeller.h&gt;
+    cognew(__load_start_mydriver_cog, &mailbox);
+  </PRE>
+</P>
+
+</BODY>
+</HTML>

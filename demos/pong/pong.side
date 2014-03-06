@@ -1,0 +1,6 @@
+pong.c
+>compiler=C
+>memtype=cog
+>optimize=-Os
+>-fno-exceptions
+>BOARD::HUB

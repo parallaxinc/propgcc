@@ -1,0 +1,239 @@
+body {
+    background-color: moccasin;
+    background-color: #FFCB73;
+    background-color: #F0B350;
+    background-color: sandybrown;
+    background-color: #F0C37B;
+}
+.header {
+    width: 600px;
+    height: 29px;
+}
+.canvas {
+    width: 600px;
+    height: 600px;
+    background: url(images/abs2.png);
+    background-size: 600px 600px;
+    background-repeat: no-repeat;
+}
+.foot {
+    width: 600px;
+    height: 100px;
+}
+.ctext {
+    text-align: center;
+}
+.buttons {
+    background-color: #925D08;
+    background-color: #A87E38;
+    background-color: #E19419;
+    background-color: wheat;
+    color: black;
+}
+.stop {
+    position: absolute;
+    cursor: pointer;
+    width:  60px;
+    height: 60px;
+    top:  300px;
+    left: 270px;
+}
+.uarrow {
+    position: absolute;
+    cursor: pointer;
+    width:  75px;
+    height: 80px;
+    top: 50px;
+    left: 263px;
+}
+.fwdspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:  28px;
+    height:  0px;
+    top:   120px;
+    left:  286px;
+}
+.darrow {
+    position: absolute;
+    cursor: pointer;
+    width:  75px;
+    height: 80px;
+    top: 540px;
+    left: 263px;
+}
+.revspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:  28px;
+    height:  0px;
+    top:   540px;
+    left:  286px;
+}
+.larrow {
+    position: absolute;
+    cursor: pointer;
+    width:  80px;
+    height: 75px;
+    top:  260px;
+    left: 59px;
+}
+.lftspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:   0px;
+    height: 28px;
+    top:   284px;
+    left:  129px;
+}
+.rarrow {
+    position: absolute;
+    cursor: pointer;
+    width:  80px;
+    height: 75px;
+    top:  260px;
+    left: 461px;
+}
+.rgtspd {
+    cursor: pointer;
+    position: absolute;
+    background-color: lightblue;
+    background-color: #1091FF;
+    width:   0px;
+    height: 28px;
+    top:   284px;
+    left:  462px;
+}
+.shine1 {
+    position: absolute;
+    width:  19px;
+    height: 19px;
+    top:  548px;
+    left: 385px;
+}
+.shine2 {
+    position: absolute;
+    width:  30px;
+    height: 30px;
+    top:  542px;
+    left: 380px;
+}
+.srvled {
+    position: absolute;
+    background-color: lime;
+    background-color: gray;
+    width:   7px;
+    height:  9px;
+    left:  396px;
+    top:   288px;
+}
+.pwrled {
+    position: absolute;
+    background-color: gray;
+    background-color: lime;
+    width:   7px;
+    height:  9px;
+    left:  396px;
+    top:   300px;
+}
+.dinled {
+    position: absolute;
+    background-color: red;
+    background-color: gray;
+    width:   6px;
+    height: 10px;
+    left:  296px;
+    top:   423px;
+}
+.dotled {
+    position: absolute;
+    background-color: lightblue;
+    background-color: gray;
+    width:   6px;
+    height: 10px;
+    left:  296px;
+    top:   434px;
+}
+.d27led {
+    cursor: pointer;
+    position: absolute;
+    background-color: yellow;
+    background-color: gray;
+    width:   6px;
+    height: 12px;
+    top:   189px;
+    left:  384px;
+}
+.d26led {
+    cursor: pointer;
+    position: absolute;
+    background-color: yellow;
+    background-color: gray;
+    width:   6px;
+    height: 12px;
+    top:   202px;
+    left:  384px;
+}
+.battery {
+    cursor: pointer;
+    position: absolute;
+    background-color: navy;
+    height: 70px;
+    width:  25px;
+    left:   20px;
+    top:    60px;
+}
+.battop {
+    cursor: pointer;
+    position: absolute;
+    background-color: navy;
+    height:  5px;
+    width:  15px;
+    left:   25px;
+    top:    55px;
+}
+.batchg {
+    cursor: pointer;
+    position: absolute;
+    background-color: #1091FF;
+    height:  0px;
+    top:   100px;
+    width:  19px;
+    left:   23px;
+}
+.batval {
+    position: absolute;
+    background-color: wheat;
+    color: dodgerblue;
+    font-size: 18px;
+    text-align: center;
+    height: 22px;
+    top:   132px;
+    left:   12px;
+    width:  40px;
+}
+.solar {
+    cursor: pointer;
+    position: absolute;
+    height:  75px;
+    width:   70px;
+    top:     55px;
+    left:    60px;
+}
+.solval {
+    position: absolute;
+    background-color: wheat;
+    color: dodgerblue;
+    font-size: 18px;
+    text-align: center;
+    top:    132px;
+    height:  22px;
+    left:    60px;
+    width:   72px;
+}

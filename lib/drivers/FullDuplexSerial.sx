@@ -1,0 +1,312 @@
+''********************************************
+''*  Full-Duplex Serial Driver v1.2          *
+''*  Author: Chip Gracey, Jeff Martin        *
+''*  Copyright (c) 2006-2009 Parallax, Inc.  *
+''*  See end of file for terms of use.       *
+''********************************************
+
+'***********************************
+'* Assembly language serial driver *
+'***********************************
+			.section .text, "ax"
+                        org 0
+			.compress off
+'
+'
+' Entry
+'
+entry
+
+#if defined(__PROPELLER2__)
+'
+' Propeller2 can use the hardware multitasking
+' 
+x1			jmp	#setup
+x2			jmp	#transmit
+par			long	0
+bitticks		long	0
+bitticks_2		long	0
+bitticks_ptr		long	0
+rxpin			long	0
+txpin			long	0
+rxtxmode		long	0
+t1			long	0
+t2			long	0
+rxval			long	0
+rxcnt			long	0
+thead			long	0
+ttail			long	0
+txval			long	0
+txcnt			long	0
+
+rxbuff			long	0
+txbuff			long	0
+zero			long	0
+
+setup
+			getptra	par			' get structure address
+			mov	t1,par
+			add	t1,#4 << 2		' skip past heads and tails
+			rdlong	rxpin,t1
+			add	t1,#4
+			rdlong	txpin,t1
+			add	t1,#4
+			rdlong	rxtxmode,t1
+			add	t1,#4
+			rdlong	bitticks,t1
+			mov	bitticks_2,bitticks
+			shr	bitticks_2,#1
+			mov	bitticks_ptr,t1
+			add	t1,#4
+			rdlong	rxbuff,t1
+			mov	txbuff,rxbuff
+			add	txbuff,#16
+
+			wrlong	zero,par		' let user know COG started
+			settask	#$11			' set other task
+
+'
+' Receive code
+'
+rcv.wait
+			getp	rxpin wc		' get pin value into C
+		if_c	jmp	#rcv.wait
+			mov	rxval,#0
+			mov	rxcnt,#8
+			' sync for one half bit
+			getcnt	t1
+			add	t1,bitticks
+			add	t1,bitticks_2
+rcv.loop
+			passcnt	t1			' wait t1 cycles
+			getp	rxpin wc
+			getcnt	t1
+			rcr	rxval,#1
+			add	t1,bitticks
+			djnz	rxcnt,#rcv.loop
+
+			'' we have 8 bits in rxval, now shift them down
+			shr	rxval,#24
+			'' wait for stop bit to finish
+rcv.waitstop
+			getp	rxpin wc
+		if_nc	jmp	#rcv.waitstop
+
+			'' now save rxval
+			rdlong	t1,par
+			add    	t1,rxbuff
+			wrbyte	rxval,t1
+			sub	t1,rxbuff
+			add	t1,#1
+			and	t1,#$0F
+			wrlong	t1,par
+			jmp	#rcv.wait
+
+'
+' Transmit
+'
+transmit
+			rdlong	bitticks,bitticks_ptr	' update baud rate if necessary
+
+			mov	t2,par
+			add	t2,#2<<2
+			rdlong	thead,t2
+			add	t2,#1<<2
+			rdlong	ttail,t2
+			cmp	thead,ttail wz
+	if_e		jmp	#transmit
+			add	ttail,txbuff
+			rdbyte	txval,ttail
+			sub	ttail,txbuff
+			add	ttail,#1
+			and	ttail,#$0F
+			wrlong	ttail,t2
+
+			'' set output
+			setp	txpin
+			getcnt	t2
+			add	t2,bitticks
+
+			or	txval,#0x100
+			shl	txval,#1
+			mov	txcnt,#10
+tx.loop
+			passcnt	t2
+			shr	txval,#1 wc
+			setpc	txpin
+			getcnt	t2
+			add	t2,bitticks
+			djnz	txcnt,#tx.loop
+
+			jmp	#transmit
+			
+
+#else
+
+	                mov     t1,par                'get structure address
+                        add     t1,#4 << 2            'skip past heads and tails
+
+                        rdlong  t2,t1                 'get rx_pin
+                        mov     rxmask,#1
+                        shl     rxmask,t2
+
+                        add     t1,#4                 'get tx_pin
+                        rdlong  t2,t1
+                        mov     txmask,#1
+                        shl     txmask,t2
+
+                        add     t1,#4                 'get rxtx_mode
+                        rdlong  rxtxmode,t1
+
+                        add     t1,#4                 'get bit_ticks
+                        rdlong  bitticks,t1
+			mov	bitticks_ptr,t1
+                        add     t1,#4                 'get buffer_ptr
+                        rdlong  rxbuff,t1
+                        mov     txbuff,rxbuff
+                        add     txbuff,#16
+
+                        test    rxtxmode,#%100  wz    'init tx pin according to mode
+                        test    rxtxmode,#%010  wc
+        if_z_ne_c       or      outa,txmask
+        if_z            or      dira,txmask
+
+                        mov     txcode,#transmit      'initialize ping-pong multitasking
+			shr	txcode,#2	      ' GAS fix: address is byte instead of long
+                        wrlong  zero,par              ' let user know COG started
+'
+'
+' Receive
+'
+receive                 jmpret  rxcode,txcode         'run a chunk of transmit code, then return
+
+                        test    rxtxmode,#%001  wz    'wait for start bit on rx pin
+                        test    rxmask,ina      wc
+        if_z_eq_c       jmp     #receive
+
+                        mov     rxbits,#9             'ready to receive byte
+                        mov     rxcnt,bitticks
+                        shr     rxcnt,#1
+                        add     rxcnt,cnt                          
+
+rcv.bit                 add     rxcnt,bitticks        'ready next bit period
+
+rcv.wait                jmpret  rxcode,txcode         'run a chuck of transmit code, then return
+
+                        mov     t1,rxcnt              'check if bit receive period done
+                        sub     t1,cnt
+                        cmps    t1,#0           wc
+        if_nc           jmp     #rcv.wait
+
+                        test    rxmask,ina      wc    'receive bit on rx pin
+                        rcr     rxdata,#1
+                        djnz    rxbits,#rcv.bit
+
+                        shr     rxdata,#32-9          'justify and trim received byte
+                        and     rxdata,#$FF
+                        test    rxtxmode,#%001  wz    'if rx inverted, invert byte
+        if_nz           xor     rxdata,#$FF
+
+                        rdlong  t2,par                'save received byte and inc head
+                        add     t2,rxbuff
+                        wrbyte  rxdata,t2
+                        sub     t2,rxbuff
+                        add     t2,#1
+                        and     t2,#$0F
+                        wrlong  t2,par
+
+                        jmp     #receive              'byte done, receive next byte
+'
+'
+' Transmit
+'
+transmit                jmpret  txcode,rxcode         'run a chunk of receive code, then return
+
+                        mov     t1,par                'check for head <> tail
+                        add     t1,#2 << 2
+                        rdlong  t2,t1
+                        add     t1,#1 << 2
+                        rdlong  t3,t1
+                        cmp     t2,t3           wz
+
+			' update the ticks if necessary
+			rdlong	bitticks,bitticks_ptr
+	
+        if_z            jmp     #transmit
+
+                        add     t3,txbuff             'get byte and inc tail
+                        rdbyte  txdata,t3
+                        sub     t3,txbuff
+                        add     t3,#1
+                        and     t3,#$0F
+                        wrlong  t3,t1
+
+                        or      txdata,#$100          'ready byte to transmit
+                        shl     txdata,#2
+                        or      txdata,#1
+                        mov     txbits,#11
+                        mov     txcnt,cnt
+
+tx.bit                  test    rxtxmode,#%100  wz    'output bit on tx pin according to mode
+                        test    rxtxmode,#%010  wc
+        if_z_and_c      xor     txdata,#1
+                        shr     txdata,#1       wc
+        if_z            muxc    outa,txmask        
+        if_nz           muxnc   dira,txmask
+                        add     txcnt,bitticks        'ready next cnt
+
+tx.wait                 jmpret  txcode,rxcode         'run a chunk of receive code, then return
+
+                        mov     t1,txcnt              'check if bit transmit period done
+                        sub     t1,cnt
+                        cmps    t1,#0           wc
+        if_nc           jmp     #tx.wait
+
+                        djnz    txbits,#tx.bit        'another bit to transmit?
+
+                        jmp     #transmit             'byte done, transmit next byte
+'
+zero    long 0
+'
+'
+' Uninitialized data
+'
+t1                      res     1
+t2                      res     1
+t3                      res     1
+
+rxtxmode                res     1
+bitticks                res     1
+bitticks_ptr		res	1
+
+rxmask                  res     1
+rxbuff                  res     1
+rxdata                  res     1
+rxbits                  res     1
+rxcnt                   res     1
+rxcode                  res     1
+
+txmask                  res     1
+txbuff                  res     1
+txdata                  res     1
+txbits                  res     1
+txcnt                   res     1
+txcode                  res     1
+
+#endif
+
+//┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+//│                                                   TERMS OF USE: MIT License                                                  │                                                            
+//├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+//│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │ 
+//│files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    │
+//│modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software│
+//│is furnished to do so, subject to the following conditions:                                                                   │
+//│                                                                                                                              │
+//│The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.│
+//│                                                                                                                              │
+//│THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          │
+//│WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         │
+//│COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   │
+//│ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         │
+//└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
