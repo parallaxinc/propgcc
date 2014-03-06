@@ -61,7 +61,7 @@ init
         or      pindir, sio_mask
         andn    pinout, sio_mask
         call    #release
-        
+                
 init_ret
         ret
 
@@ -153,9 +153,9 @@ read_write_start_ret
         ret
 
 ' variables used by the spi send/receive functions
-fn      long    0
-cmd     long    0
-ptr     long    0
+fn          long    0
+cmd         long    0
+ptr         long    0
 
 pindir      long    0
 pinout      long    0

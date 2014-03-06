@@ -193,9 +193,6 @@ typedef struct {
     uint8_t *ctop;                  /* generate - top of code staging buffer */
     uint8_t *codeBuf;               /* generate - code staging buffer */
     ImageHdr *image;                /* header of image being constructed */
-    int imageBufferSize;            /* size of image buffer including the image header in bytes */
-    VMVALUE *imageDataFree;         /* next free location in the image data buffer */
-    VMVALUE *imageDataTop;          /* top of the image data buffer */
 } ParseContext;
 
 /* partial value function codes */
@@ -279,9 +276,8 @@ struct ExprListEntry {
 };
 
 /* db_compiler.c */
-ParseContext *InitCompiler(System *sys, int imageBufferSize);
+VMVALUE Compile(System *sys, ImageHdr *image, int oneStatement);
 void InitCodeBuffer(ParseContext *c);
-ImageHdr *Compile(ParseContext *c);
 void StartCode(ParseContext *c, CodeType type);
 VMVALUE StoreCode(ParseContext *c);
 void AddIntrinsic(ParseContext *c, char *name, int index);
@@ -305,7 +301,6 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name);
 int IsIntegerLit(ParseTreeNode *node);
 
 /* db_scan.c */
-int GetLine(ParseContext *c);
 void FRequire(ParseContext *c, int requiredToken);
 void Require(ParseContext *c, int token, int requiredToken);
 int GetToken(ParseContext *c);
@@ -337,11 +332,6 @@ int putcbyte(ParseContext *c, int b);
 int putcword(ParseContext *c, VMVALUE w);
 void fixup(ParseContext *c, VMUVALUE chn, VMUVALUE val);
 void fixupbranch(ParseContext *c, VMUVALUE chn, VMUVALUE val);
-
-/* db_image.c */
-void InitImageAllocator(ParseContext *c);
-VMVALUE StoreBVector(ParseContext *c, const uint8_t *buf, int size);
-VMVALUE StoreVector(ParseContext *c, const VMVALUE *buf, int size);
 
 #endif
 

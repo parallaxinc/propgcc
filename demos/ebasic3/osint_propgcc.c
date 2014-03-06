@@ -42,9 +42,9 @@ void VM_sysexit(void)
     exit(0);
 }
 
-void VM_getline(char *buf, int size)
+char *VM_getline(char *buf, int size)
 {
-    fgets(buf, size, stdin);
+    return fgets(buf, size, stdin);
 }
 
 void VM_vprintf(const char *fmt, va_list ap)
