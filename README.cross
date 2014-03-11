@@ -42,8 +42,17 @@ we need). This boils down to:
 You'll probably want to add the "export PATH=..." stuff to one of your
 startup scripts, e.g. .bashrc, so as to avoid typing it every time.
 
+NOTE: if you install the Raspberry Pi cross compiler in a different place,
+or use a different cross compiler, then you'll have to adjust the
+definitions in the Makefile. In particular the CURSES_PREFIX variable will
+have to be set so that the ncurses library can be installed in the proper
+place (where the ARM libraries are), and obviously the CROSS_TARGET setting
+will have to reflect the proper name for the toolchain -- gcc, for example,
+will be invoked as $(CROSS_TARGET)-gcc.
+
 (2) Make the native propgcc toolchain (if you haven't already).
 
 (3) Build the Raspberry Pi toolchain by doing:
     make CROSS=rpi
 in the propgcc directory. The output is in /opt/parallax-rpi.
+
