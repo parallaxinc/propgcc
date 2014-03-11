@@ -1,99 +1,46 @@
 This is a project for the port of GCC (the GNU Compiler Collection) to
 the Parallax Propeller.
 
-Please use the rebuild.sh script to build Propeller GCC.
+Please use the Makefile to build Propeller GCC.
 
-    To build from scratch use:
-    $ ./rebuild.sh
+To build from scratch use:
+    $ make
 
-    To build without removing the build directory use:
-    $ ./rebuild.sh 1
+All the files will be placed in a ../build directory. You can also
+build individual components, e.g "make gdb" to build gdb.
 
+Cross compilation from Linux to Windows or Raspberry Pi is also
+supported by the Makefile, e.g. "make CROSS=win32" or "make
+CROSS=rpi". See README.cross for more details.
+
+Output is placed in /opt/parallax by default (/opt/parallax-win32 or
+/opt/parallax-rpi for cross compiles). You can change this
+by saying "make PREFIX=<output directory>".
+
+------------------------------------------------------------------
 Directory organization is as follows:
 
-binutils  - binutils 2.21 (complete) plus propeller changes
-gcc	  - gcc 4.6.1 (complete) plus propeller changes
+binutils  - binutils 2.23.1 (complete) plus propeller changes
 demos     - some demos for the compiler (see below)
-
-To build, build binutils first, then gcc, then demos.
-
------------------------ binutils build -------------------------------
-To build under Linux, execute the following commands (starting in this
-directory, which I assume is named "propgcc" on your system):
-
-(1) mkdir -p ../build/binutils
-(2) cd ../build/binutils
-(3) ../../propgcc/binutils/configure --target=propeller-elf --prefix=/opt/parallax --disable-nls 
-(4) make all
-
-This will build binutils. 
-
-To install it in /opt/parallax (make sure that directory exists
-on your system and is writable first!) do:
-
-(5) make install
-
-Please note that propeller-checksum is no longer used. Propeller-load is used instead.
-
-(6) cd propgcc/loader; source setenv.linux; make clean; make; make install
-
------------------------- gcc build ---------------------------------
-To build under Linux, execute the following commands (starting in this
-directory, which I assume is named "propgcc" on your system):
-
-(1) mkdir -p ../build/gcc
-(2) cd ../build/gcc
-(3) ../../propgcc/gcc/configure --target=propeller-elf --prefix=/opt/parallax --disable-nls --disable-libssp
-(4) make all-gcc
-(5) make install-gcc
-
-Now we can build libgcc
-
-(6) make all-target-libgcc
-(7) make install-target-libgcc
-
--------------------------- newlib ---------------------------------
-
-Newlib is no longer active. Ignore this step.
-It is kept here only for future reference if required.
-
-To build under Linux, execute the following commands (starting in this
-directory, which I assume is named "propgcc" on your system):
-
-(1) mkdir -p ../build/newlib
-(2) cd ../build/newlib
-(3) ../../propgcc/newlib/src/configure --target=propeller-elf --prefix=/opt/parallax --enable-target-optspace
-(4) make all
-
-This will build newlib. 
-
-To install it in /opt/parallax (make sure that directory exists
-on your system and is writable first!) do:
-
-(5) make install
-
--------------------------- Propeller GCC library ------------------
-
-To build under Linux, execute the following commands (starting in this
-directory, which I assume is named "propgcc" on your system):
-
-(1) cd lib
-(2) make clean
-(3) make
-(4) make install
+doc       - some propeller specific library documentation
+gcc	  - gcc 4.6.1 (complete) plus propeller changes
+gdb       - gdb 7.3.1 plus propeller changes
+gdbstub   - interface between gdb and the propeller
+lib       - propeller libraries
+loader    - propeller-load serial loader and communications program
+ncurses   - terminal library; needed to build gdb on Raspberry Pi
+newlib    - a different C library (not currently used)
+spin2cpp  - a tool to convert Spin programs to C or C++
+spinsim   - Dave Hein's Propeller simulator
 
 --------------------------- demos ---------------------------------
 
-The following demos are provided. In each directory there should be a
+A number of demos are provided. In each directory there should be a
 Makefile. To build the demo do "make"; to run it do "make run".
 
-fibo  - Generate Fibonacci numbers and print them, along with timings
-        This is available both in a cog only and hub (LMM) version;
-        see the appropriate subdirectories of "fibo". The Makefiles
-        are set up to load and run with Dave Hein's SPINSIM simulator,
-        but the binaries should also work on a C3 or similar platform.
-
-
+Of particular interest is the 
+demo/toggle directory, containing a number of different ways of
+toggling an LED, using one or multiple COGs.
  
 --------------------------- test suites ---------------------------------
 
