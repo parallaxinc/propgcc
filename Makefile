@@ -6,10 +6,17 @@
 # "make CROSS=win32" to build a win32 toolchain.
 #
 
+# NOTE: for raspberry pi cross builds see README.cross for the tools; you may
+# need to adjust the CURSES_PREFIX= variable setting below to get ncurses
+# installed in the correct directory for your ARM cross-compiler (gdb needs
+# ncurses, and that doesn't come with many cross compilers)
+
 #dependencies:
 # binutils and gcc have to be built first
 # 
 ROOT=$(shell pwd)
+CURSES=
+CURSES_PREFIX=$(HOME)
 ifeq ($(CROSS),)
   BUILD=$(ROOT)/../build
   CFGCROSS=
@@ -18,16 +25,20 @@ else
   BUILD=$(ROOT)/../build-$(CROSS)
   PREFIX=/opt/parallax-$(CROSS)
   ifeq ($(CROSS),win32)
-    CFGCROSS=--host=i586-mingw32msvc
-    CROSSCC=i586-mingw32msvc-gcc
+    CROSS_TARGET=i586-mingw32msvc
+    CFGCROSS=--host=$(CROSS_TARGET)
+    CROSSCC=$(CROSS_TARGET)-gcc
     OS=msys
     EXT=.exe
   else
     ifeq ($(CROSS),rpi)
-      CFGCROSS=--host=arm-linux-gnueabihf
-      CROSSCC=arm-linux-gnueabihf-gcc
+      CROSS_TARGET=arm-linux-gnueabihf
+      CFGCROSS=--host=$(CROSS_TARGET)
       OS=linux
       EXT=
+      CURSES=ncurses
+      CURSES_PREFIX=$(HOME)/rpi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/arm-linux-gnueabihf/libc/usr
+      CROSSCC=$(CROSS_TARGET)-gcc
     else
       echo "Unknown cross compilation selected"
     endif
@@ -209,7 +220,7 @@ $(BUILD)/gcc/libgcc-built: $(BUILD)/gcc/gcc-built
 #######
 
 .PHONY:	gdb
-gdb:	lib $(BUILD)/gdb/gdb-built
+gdb:	lib $(CURSES) $(BUILD)/gdb/gdb-built
 
 $(BUILD)/gdb/gdb-built:	binutils gcc $(BUILD)/gdb/gdb-configured
 	@$(ECHO) Building gdb
@@ -220,7 +231,25 @@ $(BUILD)/gdb/gdb-built:	binutils gcc $(BUILD)/gdb/gdb-configured
 
 $(BUILD)/gdb/gdb-configured:	$(BUILD)/gdb/gdb-created
 	@$(ECHO) Configuring gdb
-	@$(CD) $(BUILD)/gdb; $(ROOT)/gdb/configure $(CFGCROSS) --target=propeller-elf --prefix=$(PREFIX) --with-system-gdbinit=$(PREFIX)/lib/gdb/gdbinit 
+	@$(CD) $(BUILD)/gdb; $(ROOT)/gdb/configure $(CFGCROSS) --target=propeller-elf --prefix=$(PREFIX) --with-system-gdbinit=$(PREFIX)/lib/gdb/gdbinit $(WITH_CURSES)
+	@$(TOUCH) $@
+
+###########
+# NCURSES #
+###########
+# this is used for ncurses cross compilation only
+.PHONY: ncurses
+ncurses: $(BUILD)/ncurses/ncurses-built
+
+$(BUILD)/ncurses/ncurses-built: $(BUILD)/ncurses/ncurses-configured
+	@$(ECHO) Building ncurses
+	@$(MAKE) -C $(BUILD)/ncurses all
+	@$(MAKE) -C $(BUILD)/ncurses install
+	@$(TOUCH) $@
+
+$(BUILD)/ncurses/ncurses-configured: $(BUILD)/ncurses/ncurses-created
+	@$(ECHO) Configuring ncurses
+	@$(CD) $(BUILD)/ncurses; $(ROOT)/ncurses/configure --host=$(CROSS_TARGET) --prefix=$(CURSES_PREFIX)
 	@$(TOUCH) $@
 
 ###########
@@ -297,7 +326,7 @@ spin2cpp:	libgcc $(BUILD)/spin2cpp/spin2cpp-built
 
 $(BUILD)/spin2cpp/spin2cpp-built:	$(BUILD)/spin2cpp/spin2cpp-created
 	@$(ECHO) Building spin2cpp
-	@$(MAKE) -C spin2cpp TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp
+	@$(MAKE) -C spin2cpp CC=$(CROSSCC) TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp
 	@$(ECHO) Installing spin2cpp
 	@$(MAKE) -C spin2cpp TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp install
 	@$(TOUCH) $@
