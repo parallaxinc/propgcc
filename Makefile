@@ -322,7 +322,7 @@ install-spin-compiler:	$(PREFIX)/bin/bin-created
 ############
 
 .PHONY:	spin2cpp
-spin2cpp:	libgcc $(BUILD)/spin2cpp/spin2cpp-built
+spin2cpp:	$(BUILD)/spin2cpp/spin2cpp-built
 
 $(BUILD)/spin2cpp/spin2cpp-built:	$(BUILD)/spin2cpp/spin2cpp-created
 	@$(ECHO) Building spin2cpp
