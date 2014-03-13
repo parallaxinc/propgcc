@@ -414,6 +414,7 @@ DeclareLabels(ParserState *P)
             pendingLabels = AddToList(pendingLabels, NewAST(AST_LISTHOLDER, ast, NULL));
             break;
         case AST_ORG:
+            pendingLabels = emitPendingLabels(P, pendingLabels, datoff, asmpc, ast_type_long);
             if (ast->left) {
                 replaceHeres(ast->left, asmpc/4);
                 asmpc = 4*EvalPasmExpr(ast->left);
@@ -765,7 +766,8 @@ PrintDataBlockForGas(FILE *f, ParserState *P, int inlineAsm)
     }
 
     if (inlineAsm) {
-        fprintf(f, "\"    .compress default\\n\"\n");
+        fprintf(f, "\"\t\t.compress default\\n\"\n");
+        fprintf(f, "\"\t\t.text\\n\"\n");
         fprintf(f, "\n);\n");
     }
     P->printLabelsVerbatim = saveState;
