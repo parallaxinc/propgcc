@@ -322,14 +322,11 @@ install-spin-compiler:	$(PREFIX)/bin/bin-created
 ############
 
 .PHONY:	spin2cpp
-spin2cpp:	$(BUILD)/spin2cpp/spin2cpp-built
-
-$(BUILD)/spin2cpp/spin2cpp-built:	$(BUILD)/spin2cpp/spin2cpp-created
+spin2cpp:
 	@$(ECHO) Building spin2cpp
 	@$(MAKE) -C spin2cpp CC=$(CROSSCC) TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp
 	@$(ECHO) Installing spin2cpp
 	@$(MAKE) -C spin2cpp TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp install
-	@$(TOUCH) $@
 
 ###########
 # SPINSIM #
