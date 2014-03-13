@@ -1,6 +1,6 @@
 /*
  * Spin to C/C++ converter
- * Copyright 2011,2012 Total Spectrum Software Inc.
+ * Copyright 2011-2014 Total Spectrum Software Inc.
  * main header file
  */
 
@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-#define VERSIONSTR "1.05"
+#define VERSIONSTR "1.06"
 
 /* Yacc define */
 /* we need to put it up here because the lexer includes spin.tab.h */
