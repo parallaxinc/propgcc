@@ -49,8 +49,9 @@ LOADER = propeller-load
 
 CXXFLAGS += $(CFLAGS)
 
-# BSTC program
-BSTC=bstc
+# converter from spin to .dat
+#SPIN2DAT=bstc -Ox -c
+SPIN2DAT=spin2cpp --dat
 SPINDIR=.
 
 
@@ -70,7 +71,7 @@ $(NAME).elf: $(OBJS)
 	$(LOADER) -s $<
 
 %.dat: $(SPINDIR)/%.spin
-	$(BSTC) -Ox -c -o $(basename $@) $<
+	$(SPIN2DAT) -o $(basename $@) $<
 
 %_firmware.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
