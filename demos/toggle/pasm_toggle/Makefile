@@ -10,10 +10,6 @@ PROPLIB = ../../common
 
 CFLAGS = -Os -mlmm
 
-# BSTC program
-BSTC=bstc
-SPINDIR=.
-
 #
 # objects for this program
 #
@@ -23,8 +19,8 @@ OBJS = toggle.o toggle_firmware.o
 
 include $(PROPLIB)/lmmdemo.mk
 
-%.dat: $(SPINDIR)/%.spin
-	$(BSTC) -Ox -c -o $(basename $@) $<
+#%.dat: $(SPINDIR)/%.spin
+#	$(SPIN2DAT) -o $(basename $@) $<
 
 %_firmware.o: %.dat
 	$(OBJCOPY) -I binary -B propeller -O $(CC) $< $@
