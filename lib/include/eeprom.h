@@ -110,4 +110,16 @@ int eepromRead(EEPROM *eeprom, uint32_t address, uint8_t *buffer, int count);
  */
 int eepromWrite(EEPROM *eeprom, uint32_t address, uint8_t *buffer, int count);
 
+/**
+ * @brief Close an EEPROM
+ *
+ * @details Close an EEPROM.
+ *
+ * @param eeprom Initialized EEPROM state structure
+ *
+ * @returns 0 on success, -1 on failure.
+ *
+ */
+int eepromClose(EEPROM *eeprom);
+
 #endif

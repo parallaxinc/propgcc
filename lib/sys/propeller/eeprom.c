@@ -72,3 +72,12 @@ int eepromWrite(EEPROM *eeprom, uint32_t address, uint8_t *buffer, int count)
         
     return 0;
 }
+
+int eepromClose(EEPROM *eeprom)
+{
+    if (!eeprom->dev)
+        return -1;
+    i2cClose(eeprom->dev);
+    eeprom->dev = NULL;
+    return 0;
+}

@@ -13,11 +13,6 @@
  * NOTE: this is a raw low-level function; the
  * pthreads functions may be more useful
  */
-#if defined(__PROPELLER_USE_XMM__)
-#define EXTRA_STACK_SIZE (1024+128+32)  /* space for cache lines and tags */
-#else
-#define EXTRA_STACK_SIZE 16
-#endif
 
 int
 cogstart(void (*func)(void *), void *arg, void *stack, size_t stack_size)
@@ -26,7 +21,7 @@ cogstart(void (*func)(void *), void *arg, void *stack, size_t stack_size)
   unsigned int *sp;
 
   /* check the stack size */
-  if (stack_size < sizeof(_thread_state_t) + EXTRA_STACK_SIZE) {
+  if (stack_size < EXTRA_STACK_BYTES) {
     errno = EINVAL;
     return -1;
   }

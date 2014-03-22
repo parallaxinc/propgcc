@@ -12,6 +12,7 @@
 #include "cog.h"
 #include <stdint.h>
 #include <string.h>
+#include <sys/thread.h>
 
 #ifdef __PROPELLER2__
 #include "propeller2.h"
@@ -97,6 +98,27 @@ do { \
  * @param a The COG ID
  */
 #define cogstop(a) __builtin_propeller_cogstop((a))
+
+/* in xmm mode we need space for a cache for the new xmm cog */
+/* the code in cogthread.c currently creates a 1K stack with 32 lines of 32 bytes */
+
+/** EXTRA_STACK_BYTES is the number of additional bytes you need for a stack passed
+    to cogstart beyond what is actually needed by the function being started. */
+
+#ifndef EXTRA_STACK_BYTES
+ #ifdef __PROPELLER_USE_XMM__
+  #define EXTRA_STACK_BYTES   (1024 + 128 + 16 + 16 + sizeof(_thread_state_t))
+ #else
+  #define EXTRA_STACK_BYTES   (16 + sizeof(_thread_state_t))
+ #endif
+#endif
+
+/** EXTRA_STACK_LONGS is the number of additional longs you need for a stack passed
+    to cogstart beyond what is actually needed by the function being started. */
+
+#ifndef EXTRA_STACK_LONGS
+ #define EXTRA_STACK_LONGS   (EXTRA_STACK_BYTES / 4)
+#endif
 
 /**
  * @brief Start a new propeller LMM function/thread in another COG.
