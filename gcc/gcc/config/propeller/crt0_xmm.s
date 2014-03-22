@@ -409,6 +409,9 @@ cache_read_common
  if_z   jmp     #skip                   ' if z, use the already translated cache line
         mov     set_dirty_bit, #0       ' don't set the dirty bit in the tag
 
+' at this point:
+'   t1 contains the external address
+'   t2 contains the external address of the page containing t1
 rd_wr   mov     newtag, t1              ' get the new cache tag
         shr     newtag, offset_width
         mov     tagptr, newtag          ' get the tag line offset
@@ -425,8 +428,9 @@ rd_wr   mov     newtag, t1              ' get the new cache tag
         cmp     t3, newtag wz           ' z set means there was a cache hit
   if_z  jmp     #hit                    ' handle a cache hit
   
-' t1 has the external address
-' t2 has the external address of the cache line
+' at this point:
+'   t1 contains the external address
+'   t2 contains the external address of the page containing t1
 miss
 
 lck_spi test    $, #0 wc                ' lock no-op: clear the carry bit
@@ -446,6 +450,9 @@ do_write
 wwait   rdlong  t3, xmem_hubaddrp wz    ' wait for the write to complete
   if_nz jmp     #wwait
 
+' at this point:
+'   t1 contains the external address
+'   t2 contains the external address of the page containing t1
 do_read wrlong  t2, xmem_extaddrp
         mov     t3, size_select         ' setup the hub address of the read
         or      t3, cacheline
@@ -457,6 +464,9 @@ nlk_spi nop
 
         mov     tag, newtag             ' setup the new tag
  
+' at this point:
+'   t1 contains the external address
+'   t2 contains the external address of the page containing t1
 hit     or      tag, set_dirty_bit      ' set the dirty bit on writes
         wrlong  tag, tagptr             ' store the tag for the newly loaded cache line
 
