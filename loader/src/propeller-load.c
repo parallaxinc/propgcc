@@ -405,6 +405,12 @@ It requires a board with either external RAM or ROM.\n\
 The 'sd cache' arranges to run AUTORUN.PEX directly from the SD card.\n\
 It can be used on any board with an SD card slot.\n\
 ");
+#ifdef RASPBERRY_PI
+printf("\
+\n\
+This version supports -Dreset=gpio to use gpio 17 to reset the Propeller board.\n\
+");
+#endif
     exit(1);
 }
 
