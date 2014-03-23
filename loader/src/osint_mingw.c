@@ -38,12 +38,19 @@ static COMMTIMEOUTS timeouts;
 
 static void ShowLastError(void);
 
-/* normally we use DTR for reset but setting this variable to non-zero will use RTS instead */
-static int use_rts_for_reset = 0;
+/* Normally we use DTR for reset */
+static reset_method_t reset_method = RESET_WITH_DTR;
 
-void serial_use_rts_for_reset(int use_rts)
+int use_reset_method(char* method)
 {
-    use_rts_for_reset = use_rts;
+    if (strcasecmp(method, "dtr") == 0)
+        reset_method = RESET_WITH_DTR;
+    else if (strcasecmp(method, "rts") == 0)
+       reset_method = RESET_WITH_RTS;
+    else {
+        return -1;
+    }
+    return 0;
 }
 
 int serial_init(const char *port, unsigned long baud)
@@ -186,9 +193,9 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
  */
 void hwreset(void)
 {
-    EscapeCommFunction(hSerial, use_rts_for_reset ? SETRTS : SETDTR);
+    EscapeCommFunction(hSerial, reset_method == RESET_WITH_RTS ? SETRTS : SETDTR);
     Sleep(25);
-    EscapeCommFunction(hSerial, use_rts_for_reset ? CLRRTS : CLRDTR);
+    EscapeCommFunction(hSerial, reset_method == RESET_WITH_RTS ? CLRRTS : CLRDTR);
     Sleep(90);
     // Purge here after reset helps to get rid of buffered data.
     PurgeComm(hSerial, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
