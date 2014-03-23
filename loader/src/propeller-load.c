@@ -56,7 +56,6 @@ int main(int argc, char *argv[])
     char *port, *board, *subtype, *value;
     System sys;
     int baud = 115200;
-    int useRtsForReset = FALSE;
     int portFlags = 0;
     int flags = 0;
     int i;
@@ -268,18 +267,21 @@ int main(int argc, char *argv[])
         
     /* use the baud rate from the configuration */
     GetNumericConfigField(config, "baudrate", &baud);
-    if ((value = GetConfigField(config, "reset")) != NULL) {
-        if (strcasecmp(value, "dtr") == 0)
-            useRtsForReset = FALSE;
-        else if (strcasecmp(value, "rts") == 0)
-            useRtsForReset = TRUE;
-        else {
+
+    /* Use reset method from configuration */
+    if ((value = GetConfigField(config, "reset")) != NULL)
+    {
+        if (use_reset_method (value))
+        {
             printf("error: no reset type '%s'\n", value);
             return 1;
         }
     }
-    serial_use_rts_for_reset(useRtsForReset);
-    
+    else
+    {
+        use_reset_method ("dtr");
+    }
+
     /* check for being asked to show ports */
     if (showPorts) {
         if (showAll)
