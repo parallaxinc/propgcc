@@ -75,7 +75,7 @@ PUTL(ULONG u, int base, int width, int fill_char)
 	t = obuf;
 
 	do {
-		*t++ = "0123456789ABCDEF"[u % base];
+		*t++ = "0123456789abcdef"[u % base];
 		u /= base;
 		width--;
 	} while (u > 0);

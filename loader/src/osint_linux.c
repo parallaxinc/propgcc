@@ -44,18 +44,37 @@
 #include <signal.h>
 
 #include "osint.h"
+#ifdef RASPBERRY_PI
+#include "gpio_sysfs.h"
+#endif
 
 typedef int HANDLE;
 static HANDLE hSerial = -1;
 static struct termios old_sparm;
 static int continue_terminal = 1;
 
-/* normally we use DTR for reset but setting this variable to non-zero will use RTS instead */
-static int use_rts_for_reset = 0;
+/* Normally we use DTR for reset */
+static reset_method_t reset_method = RESET_WITH_DTR;
 
-void serial_use_rts_for_reset(int use_rts)
+int use_reset_method(char* method)
 {
-    use_rts_for_reset = use_rts;
+    if (strcasecmp(method, "dtr") == 0)
+        reset_method = RESET_WITH_DTR;
+    else if (strcasecmp(method, "rts") == 0)
+       reset_method = RESET_WITH_RTS;
+#ifdef RASPBERRY_PI
+    else if (strcasecmp(method, "gpio") == 0)
+    {
+        reset_method = RESET_WITH_GPIO;
+        gpio_export(17);
+        gpio_write(17, 0);
+        gpio_direction(17, 1);
+    }
+#endif
+    else {
+        return -1;
+    }
+    return 0;
 }
 
 static void chk(char *fun, int sts)
@@ -90,8 +109,8 @@ int serial_find(const char* prefix, int (*check)(const char* port, void* data), 
 
 static void sigint_handler(int signum)
 {
-	serial_done();
-	continue_terminal = 0;
+        serial_done();
+        continue_terminal = 0;
 }
 
 /**
@@ -193,10 +212,10 @@ int serial_init(const char* port, unsigned long baud)
     
     /* set raw input */
 #ifdef MACOSX
-	cfmakeraw(&sparm);
-	sparm.c_cc[VTIME] = 0;
-	sparm.c_cc[VMIN] = 1;
-	chk("cfsetspeed", cfsetspeed(&sparm, tbaud));
+        cfmakeraw(&sparm);
+        sparm.c_cc[VTIME] = 0;
+        sparm.c_cc[VMIN] = 1;
+        chk("cfsetspeed", cfsetspeed(&sparm, tbaud));
 #else
     memset(&sparm, 0, sizeof(sparm));
     sparm.c_cflag     = CS8 | CLOCAL | CREAD;
@@ -223,12 +242,18 @@ int serial_init(const char* port, unsigned long baud)
 void serial_done(void)
 {
     if (hSerial != -1) {
-    	tcflush(hSerial, TCIOFLUSH);
-    	tcsetattr(hSerial, TCSANOW, &old_sparm);
-    	ioctl(hSerial, TIOCNXCL);
-    	close(hSerial);
-    	hSerial = -1;
+        tcflush(hSerial, TCIOFLUSH);
+        tcsetattr(hSerial, TCSANOW, &old_sparm);
+        ioctl(hSerial, TIOCNXCL);
+        close(hSerial);
+        hSerial = -1;
     }
+#ifdef RASPBERRY_PI
+    if (reset_method == RESET_WITH_GPIO)
+    {
+        gpio_unexport(17);
+    }
+#endif
 }
 
 /**
@@ -299,16 +324,72 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
 }
 
 /**
- * hwreset ... resets Propeller hardware using DTR or RTS
- * @param sparm - pointer to DCB serial control struct
+ * assert_reset ... Asserts the Propellers reset signal via DTR, RTS or GPIO pin.
+ * @returns void
+ */
+static void assert_reset(void)
+{
+    int cmd;
+
+    switch (reset_method)
+    {
+    case RESET_WITH_DTR:
+        cmd = TIOCM_DTR;
+        ioctl(hSerial, TIOCMBIS, &cmd); /* assert bit */
+        break;
+    case RESET_WITH_RTS:
+        cmd = TIOCM_RTS;
+        ioctl(hSerial, TIOCMBIS, &cmd); /* assert bit */
+        break;
+#ifdef RASPBERRY_PI
+    case RESET_WITH_GPIO:
+        gpio_write(17, 1);
+        break;
+#endif
+    default:
+        // should be reached
+        break;
+    }
+}
+
+/**
+ * deassert_reset ... Deasserts the Propellers reset signal via DTR, RTS or GPIO pin.
+ * @returns void
+ */
+static void deassert_reset(void)
+{
+    int cmd;
+
+    switch (reset_method)
+    {
+    case RESET_WITH_DTR:
+        cmd = TIOCM_DTR;
+        ioctl(hSerial, TIOCMBIC, &cmd); /* assert bit */
+        break;
+    case RESET_WITH_RTS:
+        cmd = TIOCM_RTS;
+        ioctl(hSerial, TIOCMBIC, &cmd); /* assert bit */
+        break;
+#ifdef RASPBERRY_PI
+    case RESET_WITH_GPIO:
+        gpio_write(17, 0);
+        break;
+#endif
+    default:
+        // should be reached
+        break;
+    }
+}
+
+/**
+ * hwreset ... resets Propeller hardware.
  * @returns void
  */
 void hwreset(void)
 {
-    int cmd = use_rts_for_reset ? TIOCM_RTS : TIOCM_DTR;
-    ioctl(hSerial, TIOCMBIS, &cmd); /* assert bit */
+    assert_reset();
     msleep(10);
-    ioctl(hSerial, TIOCMBIC, &cmd); /* clear bit */
+    deassert_reset();
     msleep(90);
     tcflush(hSerial, TCIFLUSH);
 }
@@ -357,7 +438,7 @@ void terminal_mode(int check_for_exit)
 
     if (check_for_exit)
       {
-	exit_char = 0xff;
+        exit_char = 0xff;
       }
 
 #if 0
@@ -374,32 +455,32 @@ void terminal_mode(int check_for_exit)
         FD_SET(STDIN_FILENO, &set);
         if (select(hSerial + 1, &set, NULL, NULL, NULL) > 0) {
             if (FD_ISSET(hSerial, &set)) {
-	        if ((cnt = read(hSerial, buf, sizeof(buf))) > 0) {
-		    int i;
-		    // check for breaks
-		    ssize_t realbytes = 0;
-		    for (i = 0; i < cnt; i++) {
-		      if (sawexit_valid)
-			{
-			  exitcode = buf[i];
-			  continue_terminal = 0;
-			}
-		      else if (sawexit_char) {
-			if (buf[i] == 0) {
-			  sawexit_valid = 1;
-			} else {
-			  buf[realbytes++] = exit_char;
-			  buf[realbytes++] = buf[i];
-			  sawexit_char = 0;
-			}
-		      } else if (((int)buf[i] & 0xff) == exit_char) {
-			sawexit_char = 1;
-		      } else {
-			buf[realbytes++] = buf[i];
-		      }
-		    }
-		    write(fileno(stdout), buf, realbytes);
-		}
+                if ((cnt = read(hSerial, buf, sizeof(buf))) > 0) {
+                    int i;
+                    // check for breaks
+                    ssize_t realbytes = 0;
+                    for (i = 0; i < cnt; i++) {
+                      if (sawexit_valid)
+                        {
+                          exitcode = buf[i];
+                          continue_terminal = 0;
+                        }
+                      else if (sawexit_char) {
+                        if (buf[i] == 0) {
+                          sawexit_valid = 1;
+                        } else {
+                          buf[realbytes++] = exit_char;
+                          buf[realbytes++] = buf[i];
+                          sawexit_char = 0;
+                        }
+                      } else if (((int)buf[i] & 0xff) == exit_char) {
+                        sawexit_char = 1;
+                      } else {
+                        buf[realbytes++] = buf[i];
+                      }
+                    }
+                    write(fileno(stdout), buf, realbytes);
+                }
             }
             if (FD_ISSET(STDIN_FILENO, &set)) {
                 if ((cnt = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
@@ -420,7 +501,7 @@ done:
 
     if (sawexit_valid)
       {
-	exit(exitcode);
+        exit(exitcode);
       }
     
 }
