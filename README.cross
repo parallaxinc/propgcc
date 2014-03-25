@@ -10,6 +10,10 @@ the builds. Other Linux versions should work as well (in particular newer
 Ubuntu releases). They also assume you can already build the native
 Linux tools.
 
+NOTE: all cross-compilations require that the native Propeller tools be
+built first, and that they are available on the PATH. Typically this is
+done by adding /opt/parallax/bin to your PATH environment variable.
+
 ==============================================================
 WINDOWS
 ==============================================================
