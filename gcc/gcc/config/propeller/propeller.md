@@ -3213,6 +3213,25 @@
 )
 
 ;;
+;; muxz r0,r1:  r0 = (z flag set) ? r0 & ~X : r0 | X
+;;
+
+(define_peephole
+ [
+  (cond_exec (ne (reg:CC_Z CC_REG) (const_int 0))
+    (set (match_operand:SI 0 "register_operand" "=r")
+         (ior:SI (match_dup 0)
+                  (match_operand:SI 1 "register_operand" "r"))))
+  (cond_exec (eq (reg:CC_Z CC_REG) (const_int 0))
+    (set (match_dup 0)
+         (and:SI (not:SI (match_dup 1))
+                  (match_dup 0))))
+  ]
+  ""
+  "muxnz\t%0,%1"
+)
+
+;;
 ;; optimize sequences like:
 ;; (set r0 OUTA)
 ;; (set r0 (XOR r0 1))
