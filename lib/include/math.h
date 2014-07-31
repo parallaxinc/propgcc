@@ -95,6 +95,21 @@ extern char __nan[];
 #define FP_ILOGB0	(-INT_MAX)
 #define FP_ILOGBNAN	INT_MAX
 
+#ifdef __GNUC__
+
+#define fpclassify(x)	__builtin_fpclassify(x)
+#define isfinite(x)     __builtin_isfinite(x)
+#define isnormal(x)     __builtin_isnormal(x)
+#define signbit(x)      __builtin_signbit(x)
+#define isgreater(x, y) __builtin_isgreater(x, y)
+#define isgreaterequal(x, y) __builtin_isgreaterequal(x, y)
+#define isless(x, y)	__builtin_isless(x, y)
+#define islessequal(x, y) __builtin_islessequal(x, y)
+#define islessgreater(x, y) __builtin_islessgreater(x, y)
+#define isunordered(x, y) __builtin_isunordered(x, y)
+
+#else
+
 #define fpclassify(x) \
 	((sizeof (x) == sizeof (float)) ? \
 		__fpclassifyf(x) \
@@ -127,6 +142,9 @@ extern char __nan[];
 #define	islessgreater(x, y)	(!isunordered((x), (y)) && \
 					((x) > (y) || (y) > (x)))
 #define	isunordered(x, y)	(isnan(x) || isnan(y))
+
+#endif /* __GNUC__ */
+
 #endif /* __ISO_C_VISIBLE >= 1999 */
 
 #define isinf(x) \
