@@ -36,7 +36,7 @@ $2y   register/4 bit immediate: y is destination
 $3y   register/12 bit immediate: y is destination
 
 MISCELLANEOUS
-$4y   brw: y is the condition for the branch, next 2 bytes are address
+$4y   brw: y is the condition for the branch, next 2 bytes are signed offset to the PC
 $5y   mvil; y is destination, next 4 bytes are immediate value
 $6y   mviw; y is destination, next 2 bytes are unsigned immediate
 
@@ -94,8 +94,8 @@ $04   popm <byte>: pop registers from stack
 $05   popret <byte>: pop registers and return
          mov __TMP0, #<byte>
 	 call #__LMM_PUSHRET
-$06   lcall <word>: call subroutine
-         mov __TMP0, #<word>
+$06   lcall <long>: call subroutine
+         mov __TMP0, #<long>
          call #_LMM_CALL_INDIRECT
 $07   mul: multiply
          call #__MULSI
@@ -110,7 +110,9 @@ $0B   xmov <byte1> <byte2>: two register to register moves
 	 mov z, w  where byte2 is $zw
 $0C   addsp <byte>: add signed 8 bit offset to sp
          add sp, <byte> (note that byte is signed)
-$0D   reserved, unused
+$0D   ljmp <addr>: jump to long address
+         call #__LMM_JMP
+	 long <addr>
 $0E   fcache <word>: load code to fcache
          this is approximately the same as call #__LMM_FCACHE_LOAD,
 	 except that 16 bytes instead of a long word follow, and the
