@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     int check_for_exit = 0; /* flag to terminal_mode to check for a certain sequence to indicate program exit */
     int showPorts = FALSE;
     int showAll = TRUE;
+    int pstMode = FALSE;
     
     /* make sure that the serial port gets closed on exit */
     atexit(serial_done);
@@ -147,6 +148,9 @@ int main(int argc, char *argv[])
             case 'x':
                 flags |= LFLAG_WRITE_PEX;
                 break;
+            case 'T':
+                pstMode = TRUE;
+                // fall through
             case 't':
                 terminalMode = TRUE;
                 if (argv[i][2])
@@ -347,7 +351,7 @@ int main(int argc, char *argv[])
             serial_done();
             serial_init(actualport, terminalBaud);
         }
-        terminal_mode(check_for_exit);
+        terminal_mode(check_for_exit, pstMode);
     }
     return 0;
 }
@@ -373,6 +377,8 @@ usage: propeller-load\n\
          [ -f ]            write a file to the SD card\n\
          [ -t ]            enter terminal mode after running the program\n\
          [ -t<baud> ]      enter terminal mode with a different baud rate\n\
+         [ -T ]            enter pst terminal mode after running the program\n\
+         [ -T<baud> ]      enter pst terminal mode with a different baud rate\n\
          [ -q ]            quit on the exit sequence (0xff, 0x00, status)\n\
          [ -v ]            verbose output\n\
          [ -S ]            slow down the loader by adding 5 microseconds delay\n\
