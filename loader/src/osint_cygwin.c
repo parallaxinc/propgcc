@@ -316,6 +316,8 @@ void terminal_mode(int check_for_exit)
 	        sawexit_char = 1;
 	    } else {
                 console_putch(buf[0]);
+                if (pst_mode && buf[0] == '\r')
+                    console_putch('\n');
 	    }
         } else if (console_kbhit()) {
             if ((buf[0] = console_getch()) == ESC)

@@ -106,7 +106,8 @@ static void makelong(uint32_t data, uint8_t* buff)
         data >>= 3;
     }
     buff[n] = (0xf2 | (data & 1) | ((data & 2) << 2));
-    //for(n = 0; n < 11; n++) printf("0x%02x ",buff[n]);
+    for(n = 0; n < 11; n++) printf("%02x ",buff[n]);
+    printf("\n");
     //decodelong(buff,11);
 }
 

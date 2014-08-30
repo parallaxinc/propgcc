@@ -2,15 +2,14 @@ CON
 '   _clkmode = RCFAST
 
    _clkmode = xtal1 + pll16x
-   _xinfreq = 5_000_000
+   _xinfreq = 6_000_000
 
-  LED1 = 26
-  LED2 = 27
+  LED = 26
 
 PUB main : mask
-  mask := (1 << LED1) | (1 << LED2)
+  mask := 1 << LED
+  OUTA := 0
   DIRA := mask
-  OUTA := (1 << LED1)
   repeat
     OUTA ^= mask
     waitcnt(CNT + CLKFREQ / 2)

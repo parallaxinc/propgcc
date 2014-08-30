@@ -418,10 +418,10 @@ void msleep(int ms)
 /**
  * simple terminal emulator
  */
-void terminal_mode(int check_for_exit)
+void terminal_mode(int check_for_exit, int pst_mode)
 {
     struct termios oldt, newt;
-    char buf[128];
+    char buf[128], realbuf[256];
     ssize_t cnt;
     fd_set set;
     int exit_char = 0xdead; /* not a valid character */
@@ -469,17 +469,19 @@ void terminal_mode(int check_for_exit)
                         if (buf[i] == 0) {
                           sawexit_valid = 1;
                         } else {
-                          buf[realbytes++] = exit_char;
-                          buf[realbytes++] = buf[i];
+                          realbuf[realbytes++] = exit_char;
+                          realbuf[realbytes++] = buf[i];
                           sawexit_char = 0;
                         }
                       } else if (((int)buf[i] & 0xff) == exit_char) {
                         sawexit_char = 1;
                       } else {
-                        buf[realbytes++] = buf[i];
+                        realbuf[realbytes++] = buf[i];
+                        if (pst_mode && buf[i] == '\r')
+                            realbuf[realbytes++] = '\n';
                       }
                     }
-                    write(fileno(stdout), buf, realbytes);
+                    write(fileno(stdout), realbuf, realbytes);
                 }
             }
             if (FD_ISSET(STDIN_FILENO, &set)) {

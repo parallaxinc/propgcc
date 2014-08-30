@@ -244,7 +244,7 @@ void StoreCode(ParseContext *c)
 
 #if 0
     VM_printf("%s:\n", c->codeName);
-    DecodeFunction((c->image->objectDataSize + GetObjSizeInWords(sizeof(VectorObjectHdr))) * sizeof(VMVALUE), c->codeBuf, codeSize);
+    DecodeFunction((uint8_t *)c->image, (c->image->objectDataSize + GetObjSizeInWords(sizeof(VectorObjectHdr))) * sizeof(VMVALUE), c->codeBuf, codeSize);
     DumpSymbols(&c->arguments, "arguments");
     DumpSymbols(&c->locals, "locals");
     VM_printf("\n");
