@@ -328,6 +328,11 @@ spin2cpp:
 	@$(ECHO) Installing spin2cpp
 	@$(MAKE) -C spin2cpp TARGET=$(PREFIX) BUILDROOT=$(BUILD)/spin2cpp install
 
+.PHONY:	clean-spin2cpp
+clean-spin2cpp:
+	@$(RM) -rf $(BUILD)/spin2cpp
+	@$(MAKE) -C spin2cpp clean
+
 ###########
 # SPINSIM #
 ###########
@@ -340,6 +345,11 @@ $(BUILD)/spinsim/spinsim-built:	$(BUILD)/spinsim/spinsim-created
 	@$(MAKE) -C spinsim CC=$(CROSSCC) OS=$(OS) BUILD=$(BUILD)/spinsim EXT=$(EXT)
 	@$(CP) -f spinsim/spinsim$(EXT) $(PREFIX)/bin/
 	@$(TOUCH) $@
+
+.PHONY:	clean-spinsim
+clean-spinsim:
+	@$(RM) -rf $(BUILD)/spinsim
+	@$(MAKE) -C spinsim clean
 
 ##########
 # LOADER #
@@ -403,16 +413,6 @@ clean-lib:
 clean-loader:
 	@$(RM) -rf $(BUILD)/loader
 	@$(MAKE) -C loader clean
-
-.PHONY:	clean-spin2cpp
-clean-spin2cpp:
-	@$(RM) -rf $(BUILD)/spin2cpp
-	@$(MAKE) -C spin2cpp clean
-
-.PHONY:	clean-spinsim
-clean-spinsim:
-	@$(RM) -rf $(BUILD)/spinsim
-	@$(MAKE) -C spinsim clean
 
 # create a directory
 
