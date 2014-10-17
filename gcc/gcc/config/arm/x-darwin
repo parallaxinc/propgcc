@@ -1,0 +1,4 @@
+host-arm-darwin.o : $(srcdir)/config/arm/host-arm-darwin.c \
+  $(CONFIG_H) $(SYSTEM_H) coretypes.h hosthooks.h $(HOSTHOOKS_DEF_H) \
+  config/host-darwin.h
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<

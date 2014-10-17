@@ -181,6 +181,10 @@ case ${host} in
     prefix=/gnu
     local_prefix=/gnu/local
     ;;
+  arm*-*-darwin* | arm*-darwin*)
+    out_host_hook_obj="${out_host_hook_obj} host-arm-darwin.o"
+    host_xmake_file="${host_xmake_file} arm/x-darwin"
+    ;;
   hppa1.0-*-hpux10* | hppa1.1-*-hpux10* | hppa2*-*-hpux10*)
     out_host_hook_obj=host-hpux.o
     host_xmake_file="${host_xmake_file} x-hpux"
