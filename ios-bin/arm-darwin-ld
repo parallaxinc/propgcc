@@ -1,0 +1,3 @@
+#!/bin/sh
+xcrun --sdk iphoneos ld -arch armv7 "$@"
+
