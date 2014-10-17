@@ -24,24 +24,28 @@ ifeq ($(CROSS),)
 else
   BUILD=$(ROOT)/../build-$(CROSS)
   PREFIX=/opt/parallax-$(CROSS)
-  ifeq ($(CROSS),win32)
+  ifeq ($(CROSS),ios)
+    CROSS_TARGET=arm-darwin
+    CFGCROSS=--host=$(CROSS_TARGET)
+    CROSSCC=$(CROSS_TARGET)-gcc
+    OS=osx
+    EXT=
+  else ifeq ($(CROSS),win32)
     CROSS_TARGET=i586-mingw32msvc
     CFGCROSS=--host=$(CROSS_TARGET)
     CROSSCC=$(CROSS_TARGET)-gcc
     OS=msys
     EXT=.exe
+  else ifeq ($(CROSS),rpi)
+    CROSS_TARGET=arm-linux-gnueabihf
+    CFGCROSS=--host=$(CROSS_TARGET)
+    OS=linux
+    EXT=
+    CURSES=ncurses
+    CURSES_PREFIX=$(HOME)/rpi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/arm-linux-gnueabihf/libc/usr
+    CROSSCC=$(CROSS_TARGET)-gcc
   else
-    ifeq ($(CROSS),rpi)
-      CROSS_TARGET=arm-linux-gnueabihf
-      CFGCROSS=--host=$(CROSS_TARGET)
-      OS=linux
-      EXT=
-      CURSES=ncurses
-      CURSES_PREFIX=$(HOME)/rpi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/arm-linux-gnueabihf/libc/usr
-      CROSSCC=$(CROSS_TARGET)-gcc
-    else
-      echo "Unknown cross compilation selected"
-    endif
+    echo "Unknown cross compilation selected"
   endif
 endif
 
@@ -93,7 +97,8 @@ VERSION=$(shell cat release/VERSION.txt | grep -v '^\#')
 # better revision command. thanks yeti.
 HGVERSION=$(shell hg tip --template '{rev}\n')
 
-PROPGCC_VERSION=$(VERSION)_$(HGVERSION)
+#PROPGCC_VERSION=$(VERSION)_$(HGVERSION)
+PROPGCC_VERSION=propgcc_for_ios
 
 $(warning PropGCC version is $(PROPGCC_VERSION).)
 export PROPGCC_VERSION
