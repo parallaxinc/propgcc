@@ -66,6 +66,14 @@ OSINT=osint_linux
 LIBS=
 endif
 
+ifeq ($(OS),osx)
+SPINCMP?=openspin.osx
+CFLAGS += -DMACOSX
+EXT=
+OSINT=osint_linux
+LIBS=
+endif
+
 CFLAGS+=$(DEBUG) -Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 
