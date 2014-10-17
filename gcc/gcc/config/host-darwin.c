@@ -23,8 +23,13 @@
 #include "diagnostic-core.h"
 #include "config/host-darwin.h"
 
+#if defined(__arm__)
+/* Yes, this is really supposed to work.  */
+static char pch_address_space[256*1024*1024] __attribute__((aligned (4096)));
+#else
 /* Yes, this is really supposed to work.  */
 static char pch_address_space[1024*1024*1024] __attribute__((aligned (4096)));
+#endif
 
 /* Return the address of the PCH address space, if the PCH will fit in it.  */
 
