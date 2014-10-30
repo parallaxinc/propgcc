@@ -158,7 +158,6 @@ static int File_write(FILE *fp, unsigned char *buf, int count)
 // function called by fseek
 static int File_fseek(FILE *fp, long int offset, int origin)
 {
-    // This code needs to be enabled and tested
     PFILEINFO dfs_fp = (PFILEINFO)fp->drvarg[0];
     if (origin == SEEK_CUR)
         offset += dfs_fp->pointer;
@@ -172,7 +171,7 @@ static int File_fseek(FILE *fp, long int offset, int origin)
     if (offset < 0)
         offset = 0;
     DFS_Seek(dfs_fp, offset, dfs_scratch);
-    return 0;
+    return dfs_fp->pointer;
 }
 
 // function called by remove
