@@ -143,7 +143,7 @@ static int sendlong(uint32_t data)
 static int hwfind(int retry)
 {
     int  n, ii, jj, rc, to;
-    uint8_t mybuf[300];
+    uint8_t mybuf[600];
 
     /* hwfind is recursive if we get a failure on th first try.
      * retry is set by caller and should never be more than one.
@@ -162,25 +162,38 @@ static int hwfind(int retry)
     if(tx(mybuf, 1) == 0)
         return 0;   // tx should never return 0, return error if it does.
 
-    /* Send the magic propeller LFSR byte stream.
+    /*
+     * Setup the magic propeller LFSR byte stream.
      */
     for(n = 0; n < 250; n++)
         mybuf[n] = iterate() | 0xfe;
-    if(tx(mybuf, 250) == 0)
-        return 0;   // tx should never return 0, return error if it does.
 
+    /*
+     * Setup the clocker pulses
+     */
+    for(; n < 508; n++)
+        mybuf[n] = 0xf9;
+
+    /*
+     * Look for garbage input bytes
+     */
     n = 0;
-    while((jj = rx_timeout(mybuf,10,50)) > -1)
+    while((jj = rx_timeout(mybuf,10,20)) > -1)
         n += jj;
     if(n != 0)
         printf("Ignored %d bytes. \n", n);
 
-    /* Send 258 0xF9 for LFSR and Version ID
+    /*
+     * Send the magic propeller LFSR byte stream.
+     */
+    if(tx(mybuf, 250) == 0)
+        return 0;   // tx should never return 0, return error if it does.
+
+    /*
+     * Send 258 0xF9 for LFSR and Version ID
      * These bytes clock the LSFR bits and ID from propeller back to us.
      */
-    for(n = 0; n < 258; n++)
-        mybuf[n] = 0xF9;
-    if(tx(mybuf, 258) == 0)
+    if(tx(&mybuf[250], 258) == 0)
         return 0;   // tx should never return 0, return error if it does.
 
     /*
