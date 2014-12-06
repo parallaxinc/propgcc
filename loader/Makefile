@@ -69,7 +69,7 @@ endif
 
 CFLAGS+=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
-SPINFLAGS=
+SPINFLAGS=-L$(SPINDIR)
 
 ##################
 # DEFAULT TARGET #
@@ -173,11 +173,10 @@ $(DRVDIR)/sdram_cache.dat \
 $(DRVDIR)/eeprom_cache.dat \
 $(DRVDIR)/sd_cache.dat \
 $(DRVDIR)/spi_flash_cache.dat \
-$(DRVDIR)/sst_spi_flash_cache.dat \
+#$(DRVDIR)/sst_sqi_flash_cache.dat (causes build to fail) \
 $(DRVDIR)/fast_spi_flash_cache.dat \
 $(DRVDIR)/fast_sst_spi_flash_cache.dat \
 $(DRVDIR)/spi_nway_flash_cache.dat \
-$(DRVDIR)/sst_sqi_flash_cache.dat \
 $(DRVDIR)/sst_sqi_nway_flash_cache.dat \
 $(DRVDIR)/spi_sram_cache.dat \
 $(DRVDIR)/spi_nway_sram_cache.dat \
