@@ -4,7 +4,7 @@
 
 int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
 {
-  memset(mutex, 0, sizeof(mutex));
+  memset(mutex, 0, sizeof(*mutex));
   return 0;
 }
 
