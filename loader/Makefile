@@ -52,6 +52,7 @@ endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
+CC += "-mmacosx-version-min=10.6"
 SPINCMP=openspin
 EXT=
 OSINT=osint_linux
@@ -61,6 +62,7 @@ endif
 ifeq ($(OS),macosx32)
 OS=macosx
 CFLAGS += -DMACOSX -m32
+CC += "-mmacosx-version-min=10.6"
 SPINCMP=openspin
 EXT=
 OSINT=osint_linux
