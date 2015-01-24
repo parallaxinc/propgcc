@@ -38,6 +38,7 @@ endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
+CC += "-mmacosx-version-min=10.6"
 BSTC=bstc.osx
 EXT=
 OSINT=osint_linux
