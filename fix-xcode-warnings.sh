@@ -4,3 +4,6 @@ export CFLAGS="\
 -Wno-empty-body \
 -Wno-self-assign \
 -Wno-sometimes-uninitialized"
+
+export CC="cc -mmacosx-version-min=10.6"
+
