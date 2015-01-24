@@ -15,6 +15,18 @@ LDFLAGS =
 OPT := -O3
 CFLAGS  = -c -g -Wall -Wno-format $(OPT) -I/usr/include -D LINUX
 
+# Compatibility for early Mac OS X systems requires the following:
+ifeq ($(OS),macosx)
+CFLAGS += -DMACOSX
+CC += "-mmacosx-version-min=10.6"
+endif
+
+ifeq ($(OS),macosx32)
+OS=macosx
+CFLAGS += -DMACOSX -m32
+CC += "-mmacosx-version-min=10.6"
+endif
+
 all: $(SOURCES) $(OBJECTS) Makefile
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET)
 
