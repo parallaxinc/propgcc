@@ -1013,7 +1013,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
           pasm_expr = 1;
       }
       insn->code |= 1 << 22;
-      if (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA)
+      if (pasm_expr || (format != PROPELLER_OPERAND_JMP && format != PROPELLER_OPERAND_JMPRET && format != PROPELLER_OPERAND_MOVA))
         {
           integer_reloc = 1;
         }
@@ -1114,7 +1114,7 @@ parse_src(char *str, struct propeller_code *operand, struct propeller_code *insn
         }
       break;
     }
-  if (pasm_expr && operand->reloc.type == BFD_RELOC_PROPELLER_SRC_IMM
+  if (pasm_expr && (operand->reloc.type == BFD_RELOC_PROPELLER_SRC_IMM || operand->reloc.type == BFD_RELOC_PROPELLER_SRC)
       && pasm_replace_expression (&operand->reloc.exp))
   {
       operand->reloc.type = BFD_RELOC_PROPELLER_SRC;
@@ -1248,13 +1248,19 @@ parse_src_or_dest(char *str, struct propeller_code *operand, struct propeller_co
 
 static char *
 parse_dest(char *str, struct propeller_code *operand, struct propeller_code *insn){
+  int pasm_expr = pasm_default;
+
   if (prop2) {
     char *newstr;
     if ((newstr = parse_indx(str, operand, insn, BFD_RELOC_PROPELLER_DST)) != NULL) {
       return newstr;
     }
   }
-  return parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST, 0);
+  str = parse_src_or_dest(str, operand, insn, BFD_RELOC_PROPELLER_DST, 0);
+  if (pasm_expr) {
+    pasm_replace_expression (&operand->reloc.exp);
+  }
+  return str;
 }
 
 static char *
@@ -2963,6 +2969,7 @@ static int pasm_replace_expression (expressionS *exp)
     switch (exp->X_op)
     {
     case O_constant:
+        return 0;
     case O_register:
         /* make no change */
         return 0;
