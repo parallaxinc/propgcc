@@ -40,9 +40,8 @@ pthread_mutex_lock(pthread_mutex_t *mutex)
 
   /* failed to get the mutex */
   /* sleep on the queue */
-  do {
-    _pthread_sleep(&mutex->queue);
-  } while (0 != pthread_mutex_trylock(mutex));
+  /* when we wake up, we will own the mutex */
+  _pthread_sleep(&mutex->queue);
   return 0;
 }
 
@@ -63,9 +62,12 @@ pthread_mutex_unlock(pthread_mutex_t *mutex)
      (or is about to... watch out for the race condition
      where this function is called during another thread's
      attempt to lock the mutex)
+     if _pthread_wake returns non-zero, then we successfully
+     woke up another thread which will now own the mutex
   */
-  while (!_pthread_wake(&mutex->queue))
+  while (0 == _pthread_wake(&mutex->queue))
+  {
     pthread_yield();
-
+  }
   return 0;
 }
