@@ -28,8 +28,11 @@ threadfunc(void *arg)
   pthread_mutex_lock(&M);
   printf("thread %d got mutex\n", id);
   fflush(stdout);
+  printf("thread %d freeing mutex\n", id);
   pthread_mutex_unlock(&M);
   printf("thread %d done\n", id);
+  fflush(stdout);
+  pthread_yield();
   return NULL;
 }
 
