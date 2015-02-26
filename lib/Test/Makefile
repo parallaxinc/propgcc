@@ -7,6 +7,7 @@ LMMCFLAGS = -mlmm -std=c99 -Os -Wall -u __serial_exit
 BUILD=../../../build/lib/obj/$(MODEL)
 LIB=$(BUILD)/libc.a
 LIBM=$(BUILD)/libm.a $(BUILD)/libc.a
+LIBPTHREAD=$(BUILD)/libpthread.a $(BUILD)/libc.a
 LIBLMM=../../../build/lib/obj/lmm/libc.a
 
 tests: time.run strtod.run scanf.run sprintf.run strtol.run wstring.run ctype.run
@@ -42,6 +43,9 @@ scanf.elf: scanf.o $(LIB)
 tmpfile.elf: tmpfile.o $(LIB)
 	$(CC) $(CFLAGS) -o $@ $^
 
+
+mutex.elf: mutex.c $(LIBPTHREAD)
+	$(CC) $(CFLAGS) -o $@ $^
 
 %.run: %.elf
 	propeller-load -bc3 $^ -r -t -q
