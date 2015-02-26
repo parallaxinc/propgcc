@@ -66,7 +66,7 @@ _pthread_addqueue(_pthread_queue_t *queue, _pthread_state_t *thr)
    (has proper affinity)
 */
 static _pthread_state_t *
-_pthread_getqueuehead(_pthread_queue_t *queue)
+_pthread_getqueuehead_affinity(_pthread_queue_t *queue)
 {
   _pthread_state_t *p = *queue;
   unsigned short cpumask = __this_cpu_mask();
@@ -77,6 +77,22 @@ _pthread_getqueuehead(_pthread_queue_t *queue)
       p = *queue;
     }
 
+  if (p) {
+    *queue = p->queue_next;
+    p->queue_next = NULL;
+    p->queue = NULL;
+  }
+  return p;
+}
+
+/* get the first thing in the queue regardless of lock
+   (has proper affinity)
+*/
+static _pthread_state_t *
+_pthread_getqueuehead(_pthread_queue_t *queue)
+{
+  _pthread_state_t *p = *queue;
+  ASSERT_LOCKED();
   if (p) {
     *queue = p->queue_next;
     p->queue_next = NULL;
@@ -116,7 +132,7 @@ _pthread_schedule_raw(void)
   }
 #endif
   if (__ready_queue) {
-    next = _pthread_getqueuehead(&__ready_queue);
+    next = _pthread_getqueuehead_affinity(&__ready_queue);
     if (next) {
       _TLS = next;
       longjmp(next->jmpbuf, 1);
@@ -232,9 +248,11 @@ _pthread_wake(_pthread_queue_t *queue)
   if (head) {
     cnt++;
     _pthread_addqueue(&__ready_queue, head);
-    _pthread_schedule();
   }
   __unlock_pthreads();
+  if (cnt) {
+    pthread_yield(); // allow the new thread to run if it is higher priority
+  }
   return cnt;
 }
 
@@ -254,11 +272,11 @@ _pthread_wakeall(_pthread_queue_t *queue)
     _pthread_addqueue(&__ready_queue, head);
     cnt++;
   }
+  __unlock_pthreads();
   if (cnt > 0)
     {
-      _pthread_schedule();
+      pthread_yield(); // allow the new thread to run if it is higher priority
     }
-  __unlock_pthreads();
   return cnt;
 }
 
@@ -422,6 +440,7 @@ pthread_self(void)
   return _pthread_self();
 }
 
+// magic to pull in the _driverlist from pthread_io.c to force FullDuplexSerial
 __asm__ (" .global __pthreadDriverList\n .set __pthreadDriverList, __driverlist\n");
 
 /* +--------------------------------------------------------------------
