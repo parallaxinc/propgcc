@@ -12,15 +12,16 @@
 #define MAX_THREADS 8
 #define DEFAULT_STACKSIZE 1024
 
-static int max_threads = MAX_THREADS; /* current limit on threads to use */
-static int STACKSIZE = DEFAULT_STACKSIZE; /* size to provide for stack */
+int __OMP_NUM_THREADS = MAX_THREADS; /* current limit on threads to use */
+int __OMP_STACKSIZE = DEFAULT_STACKSIZE; /* size to provide for stack */
 
 struct workstruct {
     void (*fn)(void *);
     void *arg;
-    int done;
     int cogid;
 };
+
+#define isdone(x) (0 == (x).fn)
 
 static struct team {
     int threadmap[MAX_THREADS];
@@ -42,10 +43,10 @@ workerthread(void *arg)
 
     workptr->cogid = __builtin_propeller_cogid();
     for(;;) {
-        workptr->done = 1;
         while (0 == (fn = workptr->fn))
             ;
         fn(workptr->arg);
+        workptr->fn = 0;
     }
 }
 
@@ -60,7 +61,7 @@ startthreads(int max)
     team.threadmap[0] = __builtin_propeller_cogid();
     team.numthreads = 1;
 
-    maxsize = STACKSIZE + sizeof(_thread_state_t);
+    maxsize = __OMP_STACKSIZE + sizeof(_thread_state_t);
     stack = malloc(maxsize);
     for (i = 1; i < max; i++) {
         if (!stack) break;
@@ -83,7 +84,7 @@ int
 omp_get_num_threads(void)
 {
     if (!team.started)
-        return max_threads;
+        return __OMP_NUM_THREADS;
     return team.numthreads;
 }
 
@@ -92,7 +93,7 @@ omp_set_num_threads(int max)
 {
   if (max > MAX_THREADS || max <= 0)
     max = MAX_THREADS;
-  max_threads = max;
+  __OMP_NUM_THREADS = max;
 }
 
 int
@@ -115,7 +116,7 @@ wait_others()
 #ifdef DEBUG
         printf("waiting for thread %d (cog %d)\n", i, team.threadmap[i]);
 #endif
-        while (!team.work[i].done)
+        while (!isdone(team.work[i]))
             ;
     }
 }
@@ -129,8 +130,8 @@ GOMP_parallel_sections_start( void (*fn)(void *), void *data, unsigned num_threa
     if (team.started)
       return;
 
-    if (num_threads == 0 || num_threads > max_threads)
-      num_threads = max_threads;
+    if (num_threads == 0 || num_threads > __OMP_NUM_THREADS)
+      num_threads = __OMP_NUM_THREADS;
 
 #ifdef DEBUG
     printf("parallel_start: requested %d threads ", num_threads);
@@ -142,7 +143,6 @@ GOMP_parallel_sections_start( void (*fn)(void *), void *data, unsigned num_threa
     team.total_sections = section_count;
     team.section_num = 0;
     for (i = 1; i < num_threads; i++) {
-        team.work[i].done = 0;
         team.work[i].arg = data;
         team.work[i].fn = fn;
         run++;
@@ -165,6 +165,9 @@ GOMP_parallel_end()
 
     /* shut down other cogs and free their memory */
     for (i = 1; i < team.numthreads; i++) {
+#ifdef DEBUG
+        printf("stopping cog %d\n", team.threadmap[i]);
+#endif
       __builtin_propeller_cogstop(team.threadmap[i]);
       free(team.stacks[i]);
     }
