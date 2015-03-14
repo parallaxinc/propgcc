@@ -91,9 +91,10 @@ export SPINCMP
 #
 VERSION=$(shell cat release/VERSION.txt | grep -v '^\#')
 # better revision command. thanks yeti.
-HGVERSION=$(shell hg tip --template '{rev}\n')
+#HGVERSION=$(shell hg tip --template '{rev}\n')
+GITVERSION=$(shell git describe --tags --long 2>/dev/null)
 
-PROPGCC_VERSION=$(VERSION)_$(HGVERSION)
+PROPGCC_VERSION=$(VERSION)_$(GITVERSION)
 
 $(warning PropGCC version is $(PROPGCC_VERSION).)
 export PROPGCC_VERSION
