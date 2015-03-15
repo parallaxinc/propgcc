@@ -59,25 +59,27 @@ UNAME=$(shell uname -s)
 
 ifeq ($(UNAME),Linux)
   OS?=linux
-  SPINCMP=openspin.linux
+  SRC_SPINCMP=openspin.linux
   EXT?=
 endif
 
 ifeq ($(UNAME),Darwin)
   OS?=macosx
-  SPINCMP=openspin.osx
+  SRC_SPINCMP=openspin.osx
   EXT?=
 endif
 
 ifeq ($(UNAME),Msys)
   OS?=msys
-  SPINCMP=openspin.exe
+  SRC_SPINCMP=openspin.exe
   EXT?=.exe
 endif
 
 ifeq ($(OS),)
   $(error Unknown system: $(UNAME))
 endif
+
+SPINCMP=openspin$(EXT)
 
 $(warning OS $(OS) detected.)
 
@@ -315,7 +317,7 @@ $(BUILD)/lib/lib-tiny-built:	$(BUILD)/lib/lib-created
 
 .PHONY:	install-spin-compiler
 install-spin-compiler:	$(PREFIX)/bin/bin-created
-	@$(CP) -f release/$(SPINCMP) $(PREFIX)/bin
+	@$(CP) -f release/$(SRC_SPINCMP) $(PREFIX)/bin/$(SPINCMP)
 	@$(CHMOD) a+x $(PREFIX)/bin/$(SPINCMP)
 
 ############

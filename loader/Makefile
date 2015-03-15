@@ -35,7 +35,7 @@ PROPCFLAGS=-mp2
 PROPOBJDIR=$(BUILDROOT)/obj/propeller
 
 ifeq ($(OS),linux)
-SPINCMP?=openspin.linux
+SPINCMP?=openspin
 CFLAGS += -DLINUX
 EXT=
 OSINT=osint_linux
@@ -59,7 +59,7 @@ LIBS=-lsetupapi
 endif
 
 ifeq ($(OS),macosx)
-SPINCMP?=openspin.osx
+SPINCMP?=openspin
 CFLAGS += -DMACOSX
 EXT=
 OSINT=osint_linux
