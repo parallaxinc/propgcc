@@ -19,15 +19,11 @@
 # #########################################################
 
 # where we installed the propeller binaries and libraries
-PREFIX = /opt/parallax
+PREFIX ?= /opt/parallax
 
-ifndef MODEL
-MODEL=lmm
-endif
+MODEL?=lmm
 
-ifndef BOARD
-BOARD=$(PROPELLER_LOAD_BOARD)
-endif
+BOARD?=$(PROPELLER_LOAD_BOARD)
 
 ifneq ($(BOARD),)
 BOARDFLAG=-b$(BOARD)

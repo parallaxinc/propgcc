@@ -3,13 +3,9 @@
 # Copyright (c) 2011 Total Spectrum Software Inc.
 #
 
-ifndef BUILDROOT
-BUILDROOT=.
-endif
+BUILDROOT?=.
 
-ifndef TARGET
-TARGET=/opt/parallax
-endif
+TARGET?=/opt/parallax
 
 ifeq ($(OS),linux)
 EXT=

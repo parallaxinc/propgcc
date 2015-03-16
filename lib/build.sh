@@ -29,17 +29,17 @@ then
   cd ..
   exit 1
 fi
-mkdir -p /opt/parallax/share/lib
+mkdir -p $PREFIX/share/lib
 if test $? != 0
 then
-  echo "mkdir /opt/parallax/share/lib failed"
+  echo "mkdir $PREFIX/share/lib failed"
   cd ..
   exit 1
 fi
-cp -r html /opt/parallax/share/lib
+cp -r html $PREFIX/share/lib
 if test $? != 0
 then
-  echo "cp -r html /opt/parallax/share/lib failed"
+  echo "cp -r html $PREFIX/share/lib failed"
   cd ..
   exit 1
 fi

@@ -2,13 +2,9 @@
 # propeller-load Makefile #
 ###########################
 
-ifndef BUILDROOT
-BUILDROOT=.
-endif
+BUILDROOT?=.
 
-ifndef TARGET
-TARGET=/opt/parallax
-endif
+TARGET?=/opt/parallax
 
 SRCDIR=src
 SPINDIR=spin

@@ -19,7 +19,7 @@
 # #########################################################
 
 # where we installed the propeller binaries and libraries
-PREFIX = /opt/parallax
+PREFIX ?= /opt/parallax
 
 # libgcc directory
 LIBGCC = $(PREFIX)/lib/gcc/propeller-elf/4.6.1
