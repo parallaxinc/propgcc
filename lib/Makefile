@@ -2,9 +2,7 @@
 # Makefile for Propeller C library
 #
 
-ifndef PREFIX
-PREFIX = /opt/parallax
-endif
+PREFIX ?= /opt/parallax
 
 DEST = $(PREFIX)/propeller-elf
 

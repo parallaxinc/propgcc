@@ -6,7 +6,9 @@
 #
 # ADJUST THE FOLLOWING VARIABLES IF NECESSARY
 #
-PREFIX=/opt/parallax
+if [ -z "$PREFIX" ] ; then
+  PREFIX=/opt/parallax
+fi
 export PREFIX
 
 #
