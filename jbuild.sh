@@ -15,9 +15,9 @@ export PREFIX
 #
 VERSION=`cat release/VERSION.txt | grep -v "^#"`
 # better revision command. thanks yeti.
-HGVERSION=`hg tip --template '{rev}\n'`
+GITVERSION=`git describe --tags --long 2>/dev/null`
 
-PROPGCC_VERSION=`echo ${VERSION}_${HGVERSION}`
+PROPGCC_VERSION=`echo ${VERSION}_${GITVERSION}`
 
 echo Propgcc version is ${PROPGCC_VERSION}
 export PROPGCC_VERSION
