@@ -27,12 +27,12 @@
 #define StickyBit 0x10
 
 	
-			.equ	manA, r2
-			.equ	flagA, r3
-			.equ	expA, r4
-			.equ	manB, r5
-			.equ	flagB, r6
-			.equ	expB, r7
+			.equ	manA, r5
+			.equ	flagA, r6
+			.equ	expA, r7
+			.equ	manB, r2
+			.equ	flagB, r3
+			.equ	expB, r4
 
 #ifdef L_loadfloat
 			.section .float.kerext, "ax"
@@ -178,8 +178,8 @@ __Bit31                 long    $80000000
 '' trashes: r6, TMP1
 ''
 			.balign 4
-			.global __loadfloat
-__loadfloat
+			.global __load_float_code
+__load_float_code
 			mvi	r6, #__load_start_float_kerext
 			fcache	#(.FCfloatend - .FCfloatstart)
 .FCfloatstart
@@ -327,7 +327,7 @@ ___subsf3
 			.balign 4
 ___addsf3
 			mov	r7,lr
-			lcall	#__loadfloat
+			lcall	#__load_float_code
 			mov	lr,r7
 			'' swap so |r0|>|r1|
 			mov	manA,r0
@@ -392,7 +392,7 @@ __add_excep
 			.balign 4
 ___mulsf3
 			mov	r7,lr
-			lcall	#__loadfloat
+			lcall	#__load_float_code
 			mov	lr,r7
 
 	                call    #__FUnpack2               ' unpack two variables
@@ -440,7 +440,7 @@ __mul_excep
 			.balign 4
 ___divsf3
 			mov	r7,lr
-			lcall	#__loadfloat
+			lcall	#__load_float_code
 			mov	lr,r7
 
                         call    #__FUnpack2               ' unpack two variables
@@ -484,12 +484,30 @@ __div_excep
 			brw	#__return_signed_infinity
 #endif
 
+#ifdef L_floatunsisf
+			.global	___floatunsisf
+
+			.balign 4
+___floatunsisf
+			mov	r7,lr
+			lcall	#__load_float_code
+			mov	lr,r7
+
+			mov	manA, r0	wc,wz
+		if_z	mov	pc,lr
+			mov	flagA,#0
+			mov	expA, #28
+			call	#__FPack
+			lret
+#endif
+
 #ifdef L_floatsisf
 			.global	___floatsisf
+
 			.balign 4
 ___floatsisf
 			mov	r7,lr
-			lcall	#__loadfloat
+			lcall	#__load_float_code
 			mov	lr,r7
 
 			abs	manA, r0	wc,wz
@@ -498,7 +516,7 @@ ___floatsisf
 			muxc	flagA,#SignFlag
 			mov	expA, #28
 			call	#__FPack
-			mov	pc,lr
+			lret
 #endif
 
 #ifdef L_loaddouble
@@ -524,6 +542,9 @@ one_4_28	long	$10000000
 		''
 		'' re-normalize A to 4.28 format
 		''
+		.global __Normalize
+		.global __Normalize_ret
+__Normalize
 Normalize
 		'' check for 0
 		or	A, Alo wz, nr
@@ -550,6 +571,7 @@ _up
 		jmp    #_up
 
 _renorm_done
+__Normalize_ret
 Normalize_ret
 		ret
 
@@ -798,6 +820,18 @@ dpack_excep
 		brw	#dpack_exp
 
 		''
+		'' unpack (r1,r0) into A
+		'' assumes registers have already been saved
+		''
+		.global __DUnpack
+		.balign 4
+__DUnpack
+		mov	A,r1
+		mov	Alo,r0
+		call	#DUnpack
+		LMMRET
+
+		''
 		'' unpack (r1,r0) into A and (r3,r2) into B
 		'' assumes registers have already been saved
 		''
@@ -814,7 +848,6 @@ __DUnpack2
 		mov	A,r1
 		mov	Alo,r0
 		call	#DUnpack
-__DUnpack2_ret
 		LMMRET
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -850,7 +883,7 @@ do_adddf3
 		mov	r3,r5
 dskipswap
 		lcall	#__DUnpack2
-		lcall	#_Add
+		lcall	#__df_Add
 		lcall	#__DPack
 		RESTOREREGS
 		LMMRET
@@ -862,7 +895,7 @@ ___muldf3
 		SAVEREGS
 		lcall	#__load_double_code
 		lcall	#__DUnpack2
-		lcall	#_Mul
+		lcall	#__df_Mul
 		lcall	#__DPack
 		RESTOREREGS
 		LMMRET
@@ -872,7 +905,7 @@ ___divdf3
 		SAVEREGS
 		lcall	#__load_double_code
 		lcall	#__DUnpack2
-		lcall	#_Div
+		lcall	#__df_Div
 		lcall	#__DPack
 		RESTOREREGS
 		LMMRET
@@ -888,7 +921,8 @@ ___divdf3
 		'' of A being greater than the magnitude of B
 		''
 		.balign 4
-_Add
+		.global __df_Add
+__df_Add
 		'' shift B down as necessary
 		mov	 tmp0,expA
 		sub	 tmp0,expB wz
@@ -929,7 +963,8 @@ _Add_ret
 
 		'' the actual multiply routine
 		.balign 4
-_Mul
+		.global __df_Mul
+__df_Mul
 		mov	tmp0,Aflag
 		or	tmp0,Bflag
 		test	tmp0,#(FLAG_INF|FLAG_NAN) wz
@@ -980,21 +1015,26 @@ _mul_excep
 		''
 		'' the actual division routine
 		''
+
+#if 0
 		'' DivSmall just does bottom 28 bits, Div does all
 		'' 61
 		''
 		.balign 4
-_DivSmall
+		.global __df_DivSmall
+__df_DivSmall
 		'' we're given just 1.28 bits
 		'' make sure we produce a few extra bits for rounding
 		mov	count, #31
 		sub	expA, #2	'' compensate for rounding bits
 		brw	#_doDiv
-
+#endif
 		.balign 4
-_Div
+		.global __df_Div
+		.global __df_doDiv
+__df_Div
 		mov	count,#61
-_doDiv
+__df_doDiv
 		'' set the sign of the result
 		mov	tmp0, Aflag
 		xor	tmp0, Bflag
@@ -1053,28 +1093,181 @@ _a_finite
 		mov	Alo, #0
 		brw	#_Div_ret
 #endif
-#ifdef L_floatsfdf
+#ifdef L_extendsfdf2
 #include "asmdouble.h"
 	'' conversion operations
 		'' single to double
-		.global ___floatsfdf
+		.global ___extendsfdf2
 		.balign 4
-___floatsfdf
+___extendsfdf2
 		SAVEREGS
 		mov	A, r0
-		lcall	#__loadfloat
+		lcall	#__load_float_code
 		call	#__FUnpack
 		lcall	#__load_double_code
 		lcall	#__DPack
 		RESTOREREGS
 		LMMRET
 #endif
+#ifdef L_truncdfsf2
+#include "asmdouble.h"
+		'' double to single truncation
+		.global ___truncdfsf2
+		.balign 4
+___truncdfsf2
+		SAVEREGS
+		lcall	#__load_double_code
+		lcall	#__DUnpack
+		lcall	#__load_float_code
+		call	#__FPack
+		RESTOREREGS
+		LMMRET
+#endif
+#ifdef L_fixsfdi
+		.global ___fixsfsi
+		.global ___fixsfdi
+___fixsfsi
+___fixsfdi
+	'''''''''''''''''''''''''''''''''''''''''''''''''''''''
+	''
+	'' conversion from sf to si
+	''
+#define FLAG_SIGN 1
+	
+	.equ	manA, r2
+	.equ	flagA, r3
+	.equ	expA, r4
+	
+	mov	r7,lr
+	lcall	#__load_float_code
+	mov	lr,r7
+
+	mov	manA, r0
+	call	#__FUnpack
+
+	cmps	expA, #0 wz,wc
+  if_b	brs	#.ret_zero
+
+	'' need to shift manA down so that it is normalized
+	'' by default it is in 4.28 format
+	mov	r6,#28
+	sub	r6,expA wz,wc
+ if_b   brs	#.left_shift
+	shr	manA, r6
+.done
+	mov	r0, manA
+	mov	r1, #0			'' make sure return is valid to 64 bits
+
+.sign
+	test	flagA, #FLAG_SIGN wz
+  if_z	brs	#.ret
+
+  	'' negate (r0,r1)
+	neg	r0,r0 wz,wc
+	neg	r1,r1
+  if_nz	sub	r1,#1
+.ret
+	lret
+	
+.ret_zero
+	mov	r0, #0
+	mov	r1, #0
+	lret
+.left_shift
+	mov	r7,r6
+	abs	r6,r6
+	add	r7,#32
+	cmp	r6, #32 wz,wc
+  if_ae	brs	#.big_shift
+	mov	r0, manA
+	mov	r1, manA
+	shl	r0, r6
+	shr	r1, r7
+	brs	#.sign
+.big_shift
+	sub	r6,#32
+	mov	r0,#0
+	mov	r1,manA
+	shl	r1,r6
+	brs	#.sign	
+#endif
+#ifdef L_fixdfdi
+#include "asmdouble.h"
+		.global ___fixdfsi
+		.global ___fixdfdi
+		.balign 4
+___fixdfsi
+___fixdfdi
+	SAVEREGS
+	lcall	#__load_double_code
+	mov	A, r1
+	mov	Alo, r0
+	lcall	#__DUnpack2	'' FIXME
+	cmps	expA, #0 wz,wc
+ if_b   brs	#.ret_zero
+
+ 	'' need to shift (A,Alo) so that it is normalized
+	'' by default it is in 4.60 fixed point
+	'' if expA == 0 we shift right by 60 places
+	'' if expA == 1 we shift right by 59 places
+	'' etc.
+
+	mov	tmp0,#60
+	sub	tmp0,expA wz,wc
+  if_be	brs	#.left_shift
+  	cmp	tmp0,#32 wz,wc	'' need to shift more than 32?
+  if_b  brs	#.rshift
+	mov	Alo, A
+	mov	A, #0
+	sub	tmp0,#32
+	shr	Alo, tmp0
+	brs	#.done
+.rshift
+	'' right shift by tmp0
+	mov	tmp1, A
+	shr	A, tmp0
+	shr	Alo, tmp0
+	neg	tmp0,tmp0
+	add	tmp0,#32
+	shl	tmp1, tmp0
+	or	Alo, tmp1
+.done
+	test	Aflag,#FLAG_SIGN wz
+ if_z	brs	#.posret
+ 	mov	r0,#0
+	mov	r1, #0
+	sub	r0, Alo wz,wc
+	subsx	r1, A
+	brs	#.ret
+.posret
+	mov	r0, Alo
+	mov	r1, A
+.ret
+	RESTOREREGS
+	LMMRET
+.ret_zero
+	mov	A,#0
+	mov	Alo,#0
+	brs	#.done
+.left_shift
+	abs	tmp0, tmp0
+	cmp	tmp0, #32 wz,wc
+  if_ae	brs	#.ret_zero
+  	mov	tmp1, Alo
+	shl	A, tmp0
+	shl	Alo,tmp0
+	neg	tmp0,tmp0
+	add	tmp0, #32
+	shr	tmp1, tmp0
+	or	A, tmp1
+	brs	#.done
+#endif
 #ifdef L_floatsidf
 #include "asmdouble.h"
 		.global ___floatsidf
-		.global ___floatunssidf
+		.global ___floatunsidf
 		.balign 4
-___floatunssidf
+___floatunsidf
 		SAVEREGS
 		mov	A, r0 wz
 		mov	Aflag, #0
@@ -1096,7 +1289,309 @@ doint_ret
 		RESTOREREGS
 		LMMRET
 #endif
+	
+#ifdef L_cmpsf2
+	.global ___cmpsf2
+	.global ___eqsf2
+	.global ___nesf2
+	.global ___gtsf2
+	.global ___gesf2
+	.global	___ltsf2
+	.global	___lesf2
+	
+	''
+	'' comparison functions
+	'' inputs: r0 = a, r1 = b, r2 = value for unordered compare
+	'' returns 0 if a==b, -1 if a < b, +1 if a>b
+	''
+	'' what we want to return is mostly determined by the high bits
+	'' of the inputs a and b
+	''
+___ltsf2
+___lesf2
+	mov	r2,#1
+	brs	#___docmpsf2
+	
+___cmpsf2
+___eqsf2
+___nesf2
+___gesf2
+___gtsf2
+	neg	r2,#1	'' default for all of these is -1 (a false comparison)
+___docmpsf2
+	'' check for unordered compares
+	mvi	r3, #0x007fffff
+	adds	r0,r3 nr,wc
+ if_c	brs	#unordered
+	adds	r1,r3 nr,wc
+ if_c	brs	#unordered
+	'' ok, now see if r0 is negative
+	shl	r0,#1 nr,wc
+ if_c	brs	#negr0
+	shl	r1,#1 nr,wc
+ if_c	brs	#posr0_negr1
+	'' both non-negative
+	sub	r0,r1 wz
+	sar	r0,#31
+ if_nz  or	r0,#1
+	lret
+posr0_negr1
+	'' check for 0 vs -0
+	or	r1,r0
+	mov	r0,#1
+	shl	r1,#1 wz
+  if_z  mov	r0,r1
+	lret
+negr0
+	shl	r1,#1 nr,wc
+ if_nc	brs	#negr0_posr1
+	sub	r1,r0 wz
+	sar	r1,#31
+ if_nz	or	r1,#1
+	mov	r0,r1
+	lret
+negr0_posr1
+	'' check for 0 vs -0
+	or	r1,r0
+	shl	r1,#1 wz
+	neg	r0,#1
+  if_z	mov	r0,r1
+	lret
+unordered
+	mov	r0,r2
+	lret
+#endif
+#ifdef L_unordsf2
+	.global ___unordsf2
+___unordsf2
+	'' check for unordered compares
+	mvi	r3, #0x007fffff
+	adds	r0,r3 nr,wc
+ if_c	brs	#.unordered
+	adds	r1,r3 nr,wc
+ if_c	brs	#.unordered
+	mov	r0,#0
+	lret
+.unordered
+	mov	r1,#1
+	lret
+#endif
+#ifdef L_cmpdf2
+	.global ___cmpdf2
+	.global ___eqdf2
+	.global ___nedf2
+	.global ___gtdf2
+	.global ___gedf2
+	.global	___ltdf2
+	.global	___ledf2
+	''
+	'' the cmp function do_cmp takes as parameters:
+	'' r0,r1 = a
+	'' r2,r3 = b
+	'' r4 = result to return for unordered compares
+	''
+	'' and returns -1, 0, or +1 depending on whether
+	'' a < b, a == b, or a > b
+	''
+	
+	''
+	'' +1 is a failure for < or <=
+___ltdf2
+___ledf2
+	mov	r4,#1
+	brs	___docmpdf2
+___gedf2
+___gtdf2
+___nedf2
+___eqdf2
+	neg	r4,#1
+___docmpdf2
+	'' check for unordered compares
+	mvi	r5, #0x000fffff
+	add	r0,__MASK_FFFFFFFF nr,wc
+	addsx	r1,r5 nr,wc
+ if_c	brs	unordered
+	add	r2,__MASK_FFFFFFFF nr,wc
+	addsx	r3,r5 nr,wc
+ if_c	brs	unordered
+	
+	'' ok, now see if a=r0,r1 is negative
+	shl	r1,#1 nr,wc
+ if_c	brs	negA
+	shl	r3,#1 nr,wc
+ if_c	brs	posA_negB
+	'' both non-negative
+	sub	r0,r2 wz,wc
+	subsx	r1,r3 wz,wc
+	sar	r1,#31
+ if_nz  or	r1,#1
+	mov	r0,r1
+	lret
+posA_negB
+	mov	r4,#1	'' default return value
+check_zeros	
+	'' check for 0 vs -0
+	or	r2,r0
+	or	r3,r1
+	shl	r3,#1
+	or	r3,r2 wz
+	mov	r0,r4
+  if_z  mov	r0,r3
+	lret
+negA
+	shl	r3,#1 nr,wc
+ if_nc	brs	#negA_posB
+	sub	r2,r0 wz,wc
+	subsx	r3,r1 wz,wc
+	sar	r3,#31
+ if_nz	or	r3,#1
+	mov	r0,r3
+	lret
+negA_posB
+	'' check for 0 vs -0
+	neg	r4,#1	'' default return value
+	brs	check_zeros
+	
+unordered
+	mov	r0,r4
+	lret
 
+#endif
+#ifdef L_unorddf2
+	.global ___unorddf2
+___unorddf2
+	'' check for unordered compares
+	mvi	r4, #0x000fffff
+	add	r0,__MASK_FFFFFFFF nr,wc
+	addsx	r1,r4 nr,wc
+ if_c	brs	#.unordered
+	add	r2,__MASK_FFFFFFFF nr,wc
+	addsx	r3,r4 nr,wc
+ if_c	brs	#.unordered
+	mov	r0,#0
+	lret
+.unordered
+	mov	r1,#1
+	lret
+#endif
+
+#ifdef L_intpowdf
+	''
+	'' calculate r = a*b^n, where n is an signed integer
+	''
+	'' input: (r0,r1) = a
+	''        (r2,r3) = n
+	''	  r4 = n
+	''
+	'' need registers for x and r
+	''
+#include "asmdouble.h"
+	.equ	C, r8
+	.equ	Clo, r9
+	.equ	expC,r10
+	.equ	Cflag,r11
+
+	.global __intpowdf
+	.global	__intpow
+__intpowdf
+__intpow
+	lpushm	#8+(8<<4)	'' save all registers
+	mov	C, r4		'' save N
+	lcall	#__load_double_code
+	lcall	#__DUnpack2
+
+	'' push A
+	sub	sp,#4		'' push A
+	wrlong	A,sp
+	sub	sp,#4
+	wrlong	Alo,sp
+	sub	sp,#4
+	wrlong	expA,sp
+	sub	sp,#4
+	wrlong	Aflag,sp
+
+	'' set A = 1.0
+	mov    Alo,#0
+	mov    expA,#0
+	mov    Aflag,#0
+	mov    A,#1
+	shl    A,#28
+
+	abs	r0,C
+	mov	r1,C
+.loop
+	''
+	'' at this point, A contains the current result, and B contains x^n
+	''
+	shr	r0,#1 wc
+  if_nc brs	#.skipmul
+  	'' save B
+  	mov	C,B
+	mov	Clo,Blo
+	mov	Cflag,Bflag
+	mov	expC,expB
+	'' A = A * B
+	lcall	#__df_Mul
+	call	#__Normalize
+	mov	B,C
+	mov	Blo,Clo
+	mov	Bflag,Cflag
+	mov	expB,expC
+.skipmul
+	cmp	r0,#0 wz
+  if_z	brs	#pow_done
+	'' need to update B as B*B
+	'' save A
+	mov	C,A
+	mov	Clo,Alo
+	mov	Cflag,Aflag
+	mov	expC,expA
+	mov	A,B
+	mov	Alo,Blo
+	mov	Aflag,Bflag
+	mov	expA,expB
+	lcall	#__df_Mul
+	call	#__Normalize
+	mov	B,A
+	mov	Blo,Alo
+	mov	Bflag,Aflag
+	mov	expB,expA
+	'' restore old A
+	mov	A,C
+	mov	Alo,Clo
+	mov	Aflag,Cflag
+	mov	expA,expC
+	brs	#.loop
+
+pow_done
+	'' A contains the current result; put it in B
+	mov	B, A
+	mov	Blo, Alo
+	mov	Bflag, Aflag
+	mov	expB, expA
+
+	'' pop old A
+	rdlong	Aflag, sp
+	add	sp, #4
+	rdlong	expA, sp
+	add	sp, #4
+	rdlong	Alo, sp
+	add	sp, #4
+	rdlong	A, sp
+	add	sp, #4
+
+	'' either multiply or divide, based on original value of N (saved in r1)
+	shl	r1, #1 wc
+  if_c	brs	#pow_was_neg
+  	lcall	#__df_Mul
+	brs	#pow_fixup
+pow_was_neg
+	lcall	#__df_Div
+pow_fixup
+	lcall	#__DPack
+	lpopm	#15+(8<<4)
+	lret
+#endif
 #ifdef L_memkernel
 /*
  * memory functions for LMM kernels
