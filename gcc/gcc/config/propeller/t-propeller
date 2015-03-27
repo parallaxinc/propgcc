@@ -25,9 +25,10 @@ LIB2FUNCS_EXTRA =
 # compiled; these are pretty big anyway, and not often used
 # also, we do have a few assembly things as well
 
-FLOATASMFUNCS = _subsf3 _addsf3 _mulsf3 _divsf3 _floatsisf _loadfloat \
-	      _subdf3 _adddf3 _muldf3 _divdf3 _floatsidf _loaddouble \
-	      _floatsfdf _floatunssidf
+FLOATASMFUNCS = _subsf3 _addsf3 _mulsf3 _divsf3 _floatsisf _floatunsisf _loadfloat \
+	      _subdf3 _adddf3 _muldf3 _divdf3 _floatsidf _floatunsidf _loaddouble \
+	      _extendsfdf2 _cmpsf2 _cmpdf2 _unordsf2 _unorddf2 \
+	      _truncdfsf2 _fixdfdi _fixsfdi
 
 FAKEASMFUNCS = _multc3 _divtc3
 LIB1ASMFUNCS = $(FAKEASMFUNCS) $(FLOATASMFUNCS)
