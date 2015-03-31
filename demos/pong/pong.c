@@ -200,7 +200,6 @@ initgame()
 
 /*
  * update the paddle state
- * FIXME: should read some input pins here!
  */
 _NATIVE static void
 updatepaddles(void)
@@ -400,7 +399,7 @@ static _COGMEM uint32_t *displayPtr;
 
 /* display one video line from the buffer pointed to by lineptr */
 
-static _NATIVE
+static void _NATIVE
 videoLine(uint32_t *lineptr)
 {
     int i;
@@ -418,7 +417,7 @@ videoLine(uint32_t *lineptr)
 
 //
 // display N blank lines
-inline _NATIVE void
+_NATIVE void
 blankLines(int n, uint32_t thisSyncColor)
 {
     int i;
