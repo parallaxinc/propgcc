@@ -33,3 +33,4 @@ DATA_DATA="
     *(.rodata*) /* with -fdata-sections.  */
     *(.gnu.linkonce.d*)
 "
+BSS_OVERLAY=""

@@ -10,7 +10,6 @@ HUBTEXT_MEMORY=">hub AT>hub"
 DATA_MEMORY=">hub AT>hub"
 DATA_BSS_MEMORY=">hub AT>hub"
 DRIVER_MEMORY=">coguser AT>hub"
-
 HUB_HEAP=1
 
 KERNEL="
@@ -31,3 +30,4 @@ HUB_DATA="
 "
 DATA_DATA="
 "
+BSS_OVERLAY="LOADADDR($KERNEL_NAME)"

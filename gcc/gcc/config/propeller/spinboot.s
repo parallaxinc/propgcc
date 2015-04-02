@@ -60,3 +60,18 @@ pbase
 
 '' here is where the pasm code actually goes
 
+	.section .bootpasm, "ax", @progbits
+	.compress off
+	mov	param, PAR
+	shl	param,#16
+	shl	addr,#2
+	or	param,addr
+	cogid	addr
+	or	param,addr
+	coginit	param
+	cogstop	addr
+	
+param
+	long 0
+addr
+	long __load_start_kernel

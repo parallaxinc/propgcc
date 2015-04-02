@@ -12,6 +12,8 @@ MEMORY
   /* kernel memory is where the .lmm or .xmm kernel goes */
   kermem  : ORIGIN = 0, LENGTH = 0x6C0
   kerextmem : ORIGIN = 0x6C0, LENGTH = 0x100
+  /* bootpasm is an alias for kernel */
+  bootpasm : ORIGIN = 0, LENGTH = 0x6C0
 
   ram     : ORIGIN = 0x20000000, LENGTH = 256M
   rom     : ORIGIN = 0x30000000, LENGTH = 256M
@@ -22,13 +24,13 @@ MEMORY
 
 SECTIONS
 {
-  /* if we are not relocating (-r flag given) discard the boot section */
+  /* if we are not relocating (-r flag given) then discard the boot and bootpasm sections; otherwise keep them */
   ${RELOCATING- "/DISCARD/ : \{ *(.boot) \}" }
+  ${RELOCATING- "/DISCARD/ : \{ *(.bootpasm) \}" }
 
   /* the initial spin boot code, if any */
   ${RELOCATING+ ".boot : \{ KEEP(*(.boot)) \} >hub" }
-
-  ${KERNEL}
+  ${RELOCATING+ ".bootpasm : \{ KEEP(*(.bootpasm)) \} >bootpasm AT>hub" }
 
   /* the initial startup code (including constructors) */
   .init ${RELOCATING-0} :
@@ -76,7 +78,9 @@ SECTIONS
     ${RELOCATING+. = ALIGN(4);}
   } ${RELOCATING+ ${DATA_MEMORY}}
 
-  .bss ${RELOCATING-0} :
+  ${KERNEL}
+
+  .bss ${RELOCATING-0} ${RELOCATING+ $BSS_OVERLAY} :
   {
     ${RELOCATING+ PROVIDE (__bss_start = .) ; }
     *(.bss)
