@@ -29,7 +29,7 @@ CFLAGS += -DUSE_FDS
 CFLAGS += -DUSE_ASM
 
 %.dat:	%.spin
-	@spin2cpp --dat -o $@ $<
+	@openspin -c -o $@ $<
 	@echo $@
 	
 %.o: %.dat
