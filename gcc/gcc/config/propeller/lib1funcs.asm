@@ -1132,28 +1132,32 @@ ___fixsfdi
 	''
 	'' conversion from sf to si
 	''
+
 #define FLAG_SIGN 1
 	
-	.equ	manA, r2
-	.equ	flagA, r3
-	.equ	expA, r4
-	
+	.equ	manA, r5
+	.equ	flagA, r6
+	.equ	expA, r7
+	.equ	manB, r2
+	.equ	flagB, r3
+	.equ	expB, r4
+
 	mov	r7,lr
 	lcall	#__load_float_code
 	mov	lr,r7
 
 	mov	manA, r0
 	call	#__FUnpack
-
+	
 	cmps	expA, #0 wz,wc
   if_b	brs	#.ret_zero
 
 	'' need to shift manA down so that it is normalized
 	'' by default it is in 4.28 format
-	mov	r6,#28
-	sub	r6,expA wz,wc
+	mov	expB,#28
+	sub	expB,expA wz,wc
  if_b   brs	#.left_shift
-	shr	manA, r6
+	shr	manA, expB
 .done
 	mov	r0, manA
 	mov	r1, #0			'' make sure return is valid to 64 bits
@@ -1174,21 +1178,21 @@ ___fixsfdi
 	mov	r1, #0
 	lret
 .left_shift
-	mov	r7,r6
-	abs	r6,r6
-	add	r7,#32
-	cmp	r6, #32 wz,wc
+	mov	r3,expB
+	abs	expB,expB
+	add	r3,#32
+	cmp	expB, #32 wz,wc
   if_ae	brs	#.big_shift
 	mov	r0, manA
 	mov	r1, manA
-	shl	r0, r6
-	shr	r1, r7
+	shl	r0, expB
+	shr	r1, r3
 	brs	#.sign
 .big_shift
-	sub	r6,#32
+	sub	expB,#32
 	mov	r0,#0
 	mov	r1,manA
-	shl	r1,r6
+	shl	r1,expB
 	brs	#.sign	
 #endif
 #ifdef L_fixdfdi
