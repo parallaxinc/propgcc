@@ -3,4 +3,5 @@ export CFLAGS="\
 -Wno-deprecated-declarations \
 -Wno-empty-body \
 -Wno-self-assign \
--Wno-sometimes-uninitialized"
+-Wno-sometimes-uninitialized \
+-Wno-null-pointer-arithmetic"
