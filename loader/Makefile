@@ -212,7 +212,7 @@ sd-loader:	$(DRVDIR)/dir-created
 ##################
 
 $(OBJDIR)/%.binary:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(SPINCMP) -b $(SPINFLAGS) -o $@ $<
+	@${TARGET}/bin/$(SPINCMP) -b $(SPINFLAGS) -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.binary

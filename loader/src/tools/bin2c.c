@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-    char base[100], opath[100], *name, *p;
+    char base[1024], opath[1024], *name, *p;
     FILE *ifp, *ofp;
     int byte, cnt;
 
